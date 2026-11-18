@@ -9,7 +9,11 @@
 <h1>CARLA: photo-real towns, and Carleton&#x27;s streets</h1>
 <div class="meta">12 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -115,7 +127,7 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#the-picture">The picture</a><a href="#which-carla-5-unreal-engine-5-or-4">Which CARLA: 5 (Unreal Engine 5) or 4?</a><a href="#what-you-need">What you need</a><a href="#1-start-the-server-headless">1. Start the server, headless</a><a href="#2-give-the-adapter-carlas-python-client">2. Give the adapter CARLA&#x27;s Python client</a><a href="#3-run-the-stack">3. Run the stack</a><a href="#what-the-adapter-publishes">What the adapter publishes</a><a href="#a-digital-twin-of-carleton">A digital twin of Carleton</a><a href="#cloud-gpu-instead">Cloud GPU instead</a><a href="#other-ways-we-didnt-pick">Other ways we didn&#x27;t pick</a><a href="#what-works-and-whats-untested">What works and what&#x27;s untested</a><a href="#licences">Licences</a><a href="#sources">Sources</a></nav>
 <div class="lead"><p>CARLA is a driving simulator built on Unreal Engine: real-looking towns, traffic and
-cameras. Gazebo stays our everyday simulator. CARLA is for what Gazebo can't do well:
+cameras. Ravensim stays our everyday simulator. CARLA is for what Ravensim can't do well:
 testing the cameras and the detectors on real-looking streets.</p>
 <p><strong>Status (15 Oct):</strong> the research is done and the ROS side is built and tested without a
 server. <strong>It has never run against a CARLA server</strong>: there is none here, and CARLA has
@@ -125,7 +137,7 @@ no Mac version. Running it needs the team's NVIDIA Linux computer, or a cloud GP
  +---------------------------+   TCP 2000-2001  +----------------------------------+
  | CARLA server, headless     | &lt;-------------&gt; | carla_adapter (CARLA's Python    |
  | (Docker or the package)    |  CARLA's own    |   client) -&gt; our topics          |
- | Town10, or Carleton's roads|  protocol       | mux, ego, EKFs, Nav2, watchdog   |
+ | Town10, or Carleton's roads|  protocol       | mux, ego, EKFs, nav, watchdog    |
  +---------------------------+                  +----------------------------------+
                                                      | ROS 2 (only if you share it)
                                                      v
@@ -346,7 +358,7 @@ over TCP, not ROS.</p>
 &lt;the CARLA computer&gt;</code>, then <code>ws://localhost:8765</code> (<a href="foxglove.html">Watch from a laptop</a>).</p>
 </section>
 <section class="card"><h2 id="what-the-adapter-publishes">What the adapter publishes</h2>
-<p>The same topics as Gazebo, so nothing else can tell them apart
+<p>The same topics as Ravensim, so nothing else can tell them apart
 (<a href="interfaces.html">Interfaces</a>):</p>
 <div class="table-wrap"><table>
 <thead>
@@ -370,7 +382,7 @@ over TCP, not ROS.</p>
 </tr>
 <tr>
 <td><code>/sensors/camera/{front_left,front_right,rear}/image_raw</code> and <code>camera_info</code></td>
-<td>CARLA's cameras, with Gazebo's lens (640 x 360)</td>
+<td>CARLA's cameras, with the simulators' lens (640 x 360)</td>
 </tr>
 <tr>
 <td><code>/sensors/radar/points</code></td>
@@ -378,7 +390,7 @@ over TCP, not ROS.</p>
 </tr>
 <tr>
 <td><code>/sensors/lidar/points</code></td>
-<td>CARLA's lidar, 16 beams like Gazebo's</td>
+<td>CARLA's lidar, 16 beams like Ravensim's</td>
 </tr>
 <tr>
 <td><code>/clock</code>, <code>/system/source</code> (all SIM), <code>/vehicle/carla/truth</code></td>
@@ -451,7 +463,7 @@ x east, y north. The adapter builds the CARLA map with a projection centred on t
 <li>CARLA's world origin <strong>is</strong> the datum, and its x points east;</li>
 <li><code>frame:=auto</code> sees that (CARLA's own georeference puts the origin within 20 km of the
   datum) and uses CARLA's world as our map frame;</li>
-<li>the GPS, Nav2's maps, GPS goals and the map window all agree with the streets CARLA
+<li>the GPS, the navigation maps, GPS goals and the map window all agree with the streets CARLA
   draws.</li>
 </ul>
 <p>A Digital Twin Tool map lines up the same way if its georeference is right: the adapter

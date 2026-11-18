@@ -5,7 +5,7 @@ import pytest
 
 OPEN = 'OPEN - car: every source REAL'
 WAIT = 'WAIT - car: all REAL, settling for 2 s'
-STOP = ('STOP - target car needs REAL - camera_front_left is SIM (gazebo_adapter) '
+STOP = ('STOP - target car needs REAL - camera_front_left is SIM (sim_adapter) '
         '- latched: /safety/output_mux/clear')
 
 

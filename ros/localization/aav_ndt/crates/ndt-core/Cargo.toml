@@ -9,3 +9,13 @@ publish.workspace = true
 [dependencies]
 # Apache-2.0 (docs/designs/2026-10-28_research-picks.md): 3x3 matrices, eigenvalues.
 nalgebra = { version = "0.35", default-features = false, features = ["std"] }
+# Ours: the map's fixed 64 m chunks (TODO 175 step 4), shared with the planner and the things.
+map-chunks = { path = "../../../../bringup/aav_description/map-chunks" }
+
+# TODO 203: benchmarks only (benches/align.rs).
+[dev-dependencies]
+criterion = { version = "0.7", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "align"
+harness = false

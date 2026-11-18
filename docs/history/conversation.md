@@ -1671,56 +1671,95 @@ The accelerator has no position sensor. IMU and GPS aren't on the ESP32, so its 
 A: Two EGM reviews found the first plan bigger than the question. Ben chose the second review's order,
 with the graphs in `hw_panel`: `docs/designs/2026-11-07_esp32-debug-link_brief.md`, "The plan now".
 
+## 16 November: keep right
+
+### "yes we want to know about lanes and yes we want to stick to the right side of the lane unless we need to for obstical avoidance."
+
+On a mapped road `ours` already planned the right lane's centre (`path:=lane`). But a box
+parked on that line gave the whole path to the lattice, which stayed over the centre
+line 18 m past it. Now only the blocked stretch moves left, the least that clears it,
+then back; a person or moving thing is still waited for (the behaviour planner). Scores:
+[own-planner.md](../own-planner.md#passing-something-parked-16-nov); TODO 208.
+
+## 16 November: Ravensim, and Gazebo goes
+
+**Q: What do we call our simulator, and does Gazebo stay?** Ben: Ravensim, and its chunked
+maps RavenTiles. Remove Gazebo (CARLA stays).
+
+**A (16-17 Nov):**
+
+| Done | How |
+|---|---|
+| The name | `simulator:=ravensim`, the default; `own` works for one release, with a warning. ROS packages keep their names |
+| Gazebo's last job | the cameras with no GPU: under `tools/software_gl.sh` the clock waits for each picture (**camera lockstep**), so they keep 10 Hz in sim time |
+| Gazebo's shared parts | moved to `aav_sim_models` (was `aav_gazebo`): `sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar`, `sim_camera_relay`, `sim_esp32`; topics `/gazebo/*` → `/vehicle/sim/*` |
+| Deleted | the Gazebo launch, nodes, xacro files, world plugins, `ros_gz` in `pixi.toml`, CI's Gazebo step |
+| Kept | its last scores: [Gazebo, as it was](gazebo-as-it-was.md); `vendor/gazebo/`, to read |
+
 ## Open threads
+
+Checked 13 Nov against the code, `TODO.md`, the audits and the pull requests. **Closed**, **Folded** and **Dead** threads keep their old text, with what ended them.
+
+- **The night of 14-15 Nov:** two stalls fixed in the simulator (TODO 193: the radar's costmap marks never cleared; 194: the behaviour missed a walker 1 time in 3); camera names for things, the stop zone in Rust (shadow), map chunks, Lanelet2 in Rust, software cameras, the lane finder as a pose sensor: all trials, off by default. Open: the screens' new layers never looked at (192), Linux for 183, slow map correction in the league (186).
+- **One shape (13 Nov):** the design is proposed and Fable reviewed it (go, with changes). Open for Ben: D1-D7. Nothing built: the lane ramp, the league, placeholder cameras, the planner and MPPI fixes (TODO 147-152).
+- **The drive of 13 Nov:** Ben: the car "drove and stopped well", with only the localization update installed. No audit, no bag and no notes are in the repo: what drove it, and which commit was installed, are unwritten. Open: his question on Alpamayo in place of the detector has no written answer.
+- **Car day, 9 Nov:** no record in the repo of what ran. The messages files stop at 7 Nov and start again at 11 Nov.
+- **Pull requests #28 and #29 (13 Nov):** **Closed 15 Nov** in our code: both merged into the fork's `main` (and on to the team's with the next pull request); Ben closes them on the team repo. Was: both open. #28 (the install fix found on the localization Pi) has changes requested; #29 (the mux tests) has green CI, and GitHub still shows changes requested.
+- **Off Nav2 (8 Nov):** our costmap, planner, navigator and smoother are built and scored in our simulator; none is the default. Open: the campus at 2.5 m/s, `mppi_lag`'s overshoot and CPU, `map_server` and `collision_monitor` not written, nothing timed on the Orin (TODO 143-146, 152).
+- **The adaptive brake (8 Nov):** built, simulator only. Open: the brake's real limits (car day A7), then the car (TODO 145).
+- **Ravensim, our own simulator (7-8 Nov):** the default since 8 Nov, the only simulator since 16 Nov (Gazebo removed). Open: one stop-sign miss in 8. Without a GPU: software cameras in lockstep work on a Mac, 17 Nov; Linux and CI untested (TODO 183, 240).
+- **Diffusion on the car (7-8 Nov):** 88 % of plans from the model in the simulator. Open: the Orin's timing, the car trial A12 (TODO 133).
+- **Directions on the campus (7 Nov):** P4 to the Fieldhouse reached 1 of 2 with our navigator, 0 of 2 with Nav2's. Open: bends, real drop-off points, a screen to pick a place (TODO 140).
+- **The record itself:** `TODO.md` quotes Ben on 27 and 30 Oct and 8 Nov, and eight more requests on 7 Nov, with no `messages-*.md` holding the words. `status.md` and `decisions.md` were last changed on 1 Nov.
 
 - **The hardware debug plan (7 Nov):** order chosen, nothing built (TODO 126). Replaces the bench link. Open: a USB cable, rotating the WiFi password and closing the C++'s `/update`, which computer runs `hw_panel` on the day, whether the return wire exists.
 
 - **The car, 6 Nov evening:** it moved forward once a hardware fuse and a questionable circuit board were dealt with (Ben). The remote reaches the ESP32 and it sends throttle. Open: which fuse and board, why the fuse went, what each stop cuts. CORTEX does the Motor Pi's job (H1). The Orin's CAN was down. Next steps and the hardware people's questions: `docs/history/audit-2026-11-06-car.md`.
-- **The bench link (6 Nov):** replaced by the hardware debug plan (7 Nov, above). Still open from it: where the steering and brake sensors connect (the hardware people); whether WiFi upsets the firmware's timing.
+- **The bench link (6 Nov):** replaced by the hardware debug plan (7 Nov, above). Still open from it: where the steering and brake sensors connect (the hardware people); whether WiFi upsets the firmware's timing. **Folded** into the hardware debug plan, 7 Nov.
 - **The campus (5 Nov):** which lot is the real one and where the measurements are (Ben); test the kerbs (TODO 119); how a wrong pose scores on the campus (TODO 121); reversing on long drives (TODO 122); MPPI's speed (TODO 123); the wiggle (TODO 124).
-- **Own simulator:** does the Bevy window pass on a slower laptop? EGM review of the design; does carly have a GPU?
+- **Own simulator:** does the Bevy window pass on a slower laptop? EGM review of the design; does carly have a GPU? **Closed 8 Nov** for the build: the core and cameras are in and it is the default (TODO 134, 141). Still open: a slower laptop, and carly's GPU.
 - **The Mac as a driver:** does the car stop if the MacBook drops off (TODO 116)?
 - **One car (4-5 Nov):** Ben's direction (our own algorithms now, one design down the road; corrected 5 Nov) and five picks in `docs/designs/2026-11-04_one-car.md`; the detail in `2026-11-04_weak-links.md` and `2026-11-04_research-ideas.md`; five designs of 5 Nov (one window, knows itself, behaviour and speed, tracks and memory, shadow mode). EGM: zoom out done, 3 blockers open (`2026-11-05_egm-review.md`); three stages not run. Open for Ben: which algorithm first, how "our own" fits "prefer stock packages", each design's questions.
-- **The diffusion planner (2 Nov):** design written, for review; nothing built. Open: the crop, the teacher mix, the guard's limits (its six questions).
-- **Road to 0.2 (1 Nov, night):** five rows left (TODO, "Left for 0.2"): the car-ready checklist, TODO 74's gaps, the hardware lead's questions (H1, C1, `.211`, the router), the people named, the release notes.
-- **Car setup (1 Nov):** the runbook and `car_setup.sh` are written and tested in dry run; their first real run is on the car. Open: the joystick turned off with its receiver in, a firmware cap for the first moves (TODO 74); which computer is the Motor Pi (H1); a machine file for the localization Pi.
+- **The diffusion planner (2 Nov):** design written, for review; nothing built. Open: the crop, the teacher mix, the guard's limits (its six questions). **Closed 2 Nov** as a design: built that day (TODO 83), improved 8 Nov. What is left is the thread "Diffusion on the car" above.
+- **Road to 0.2 (1 Nov, night):** five rows left (TODO, "Left for 0.2"): the car-ready checklist, TODO 74's gaps, the hardware lead's questions (H1, C1, `.211`, the router), the people named, the release notes. **Closed 5 Nov:** 0.2 merged as PR #21. Still open from it: the hardware lead's questions and the people named (`TODO.md`, "Left for 0.2").
+- **Car setup (1 Nov):** the runbook and `car_setup.sh` are written and tested in dry run; their first real run is on the car. Open: the joystick turned off with its receiver in, a firmware cap for the first moves (TODO 74); which computer is the Motor Pi (H1); a machine file for the localization Pi. **Update, by 11 Nov:** its first real run was on the localization Pi; the install broke on `aav_hud` and PR #28 fixes it (open). The joystick-alive check was built 2 Nov (TODO 82).
 - **Car day (1 Nov):** roll the car to measure the wheel diameter; check the front and rear track; then the lattice forward only (TODO 60-62).
 - **D3, the muxes (23 Oct):** built and tested in every profile; for the team: agree
   "check, not copy", and whether a bench with a real spine board and pretend sensors needs
   a deliberate exception (today the output mux refuses it). On the car next.
-- **CARLA (15 Oct, Q31 reopened):** the adapter and Carleton's map download are ready and tested without a server. Left: run it on the NVIDIA computer (0.10 for Town10, 0.9.16 for Carleton's streets), and check the IMU's roll and pitch signs, the radar's speed sign and the GPS line-up ([CARLA](../carla.md)).
+- **CARLA (15 Oct, Q31 reopened):** the adapter and Carleton's map download are ready and tested without a server. Left: run it on the NVIDIA computer (0.10 for Town10, 0.9.16 for Carleton's streets), and check the IMU's roll and pitch signs, the radar's speed sign and the GPS line-up ([CARLA](../carla.md)). **Update, 1 Nov:** Ben: the lab's Ubuntu desktop already runs CARLA; its version is unknown. Still never run with our adapter.
 - **Plain English (15 Oct):** works in Gazebo and the turtle; untested on the bench and
   the car. Before the car: the scripted driver on stands, steering feedback, a safety
   driver on the joystick.
 
-- **Topic areas (15 Oct):** done and on `main`. Bags recorded before then hold the old names: play them with `--remap`. The raylib HUD's window wasn't opened in this check (no screen for the session); its names come from `config/hud.yaml`.
+- **Topic areas (15 Oct):** done and on `main`. Bags recorded before then hold the old names: play them with `--remap`. The raylib HUD's window wasn't opened in this check (no screen for the session); its names come from `config/hud.yaml`. **Closed 15 Oct.**
 - **Secrets (Q34):** revoke the token and keys, and change the WiFi password. The owners are unknown.
 - **oirp-spss:** its copy of `aav` stops at 04:23, with the old commit IDs. Make a fresh clone from GitHub there; nothing on the server is missing from GitHub (checked 21:30).
-- **The five overnight pieces (10-11):** all merged and pushed (02:07–11:05). Now Ben's 11 October order: the full graph (with Ackermann), the C++ to Rust, the Mac with ML, Nav2, the board drivers, raylib. Three helpers started at 11:18.
-- **The obstacle check:** fixed in the check (a lane-wide box, a re-arm after a latch); N7 and collision_monitor's flicker are still open.
-- **Raylib for the HUD:** Decided (Ben, 11:58). The next free helper, after the boards one.
-- **Paused 11 Oct, saved on branches:** `wt/sim-full` (nearly ready: its docs page is left), `wt/ackermann` (reversing in Nav2), `wt/rust-ports` (the radar clustering in Rust). See `TODO.md`, "Where we stopped".
-- **Friday 16 Oct:** the hardware audit; then W A S D driving.
-- **micro-ROS:** Tentative since 11 Oct: none for now; think again once we see the hardware.
-- **Your Mac as the operator station:** an idea, saved (11 Oct): `TODO.md`, "Ideas to keep".
-- **The repo public?** Checked 11 Oct; waits on Ben's yes.
-- **One detector per machine:** `yolo_detector_<machine>`, each with its own model file (done 11 Oct). The device names without aliases come with the obstacles merge.
-- **Backups:** image the Orin and the Pis before any reflash. They hold the detector, `camera_decode`, the three rqt_graph nodes and `/home/aavjetson`. A backup checklist and script were offered.
-- **The car on Jazzy:** it runs Humble today, so no Jazzy laptop can join it. Try Pixi on its Ubuntu 22.04 first, then reflash the Orin to JetPack 7.2 (Q24).
-- **Ben's Mac:** works, 10-10: build, tests, the turtle, Gazebo headless, Nav2, the Rust listener, the docs. Our version, `aav/aav`, is complete on the Mac since 16:13, with every commit from the `~/aav` clone merged in, and it builds and tests green. Gazebo's window works on the Mac: Ben saw the screenshots, and in `pixi run sim` every driver goes through twist_mux and ego (16:34). Left: look at RViz and rqt_graph.
-- **Bench mode and perception (10-10 afternoon):** the whole car graph runs on the Mac with stand-ins (`pixi run bench`, `bench-check` 7 of 7); YOLO stops the car at stop signs on the bench; the spine's device drivers are in Rust; the HUD's back end is on our topics. Done 11 Oct: Ben's server work is in `dfaec15`, perception is parts of `car.launch.py`, and we wrote our own lane finder. Waiting on the team: the spine's chip, three firmware decisions (one constant each now), `best.pt`.
-- **Claude on the car's network (Ben, 10-10 16:42):** Ben will put Claude on the network with the hardware, to audit it directly. The plan is read-only first: find the devices, take each computer's inventory, copy what only the Orin has, and compare with our contract. Done beforehand: the stand-ins stay on their own computer (`tools/ros.sh --local`).
-- **`.gitignore` and `vendor/`:** both done: the fuller `.gitignore` (593db7f), and `vendor/` (10-10 evening: the lists in git, the source out of it). Pruning the app's snapshots from `.git` waits on Ben.
-- **The MCP server (Ben, 10-10 17:03):** built that evening, read-only. Open: bench-only actions through the stand-ins, if the team wants them; nothing that reaches the car.
-- **Slim per-machine Pixi environments:** for the Orin, the Motor Pi and laptops, matching the machine files. Waits until the first car computer gets Pixi (Phase 0).
-- **Running today:** the inventory commands haven't been run on the car's computers.
-- **The board survey** (the old repos, for the board's wiring, photos and the e-stop): stopped unfinished at 20:48, with no report. It runs again only if Ben asks.
-- **2024–25 repos:** cloning and surveying `emergency-stop`, `Simulation`, `camera_Yolo_detection`, `Braking` and `Power-Management-Documentation-2024-25` was offered, not done. Only `GNSS` has been read in depth.
-- **`ros2-rust/`:** keep or delete is undecided; the recommendation is keep.
-- **The claude.ai chat (fe09d020…):** Ben to paste the key parts.
-- **CARLA:** parked this year (10-10). It comes back on the NVIDIA Linux machine if it ever supports Jazzy (Q31).
-- **The NVIDIA Linux machine:** which one, and access to it, to find `best.pt`.
-- **The board:** a photo of the ESP32 board, and a spare Pico 2 with a 3.3 V MCP2515 module, to test the spine on a desk.
+- **The five overnight pieces (10-11):** all merged and pushed (02:07–11:05). Now Ben's 11 October order: the full graph (with Ackermann), the C++ to Rust, the Mac with ML, Nav2, the board drivers, raylib. Three helpers started at 11:18. **Closed 11 Oct.**
+- **The obstacle check:** fixed in the check (a lane-wide box, a re-arm after a latch); N7 and collision_monitor's flicker are still open. **Folded:** N7 is now the wiggle (TODO 124, 149), still open on 13 Nov.
+- **Raylib for the HUD:** Decided (Ben, 11:58). The next free helper, after the boards one. **Closed:** the raylib HUD and map window are built (15 Oct); Initial D on every screen since 2 Nov.
+- **Paused 11 Oct, saved on branches:** `wt/sim-full` (nearly ready: its docs page is left), `wt/ackermann` (reversing in Nav2), `wt/rust-ports` (the radar clustering in Rust). See `TODO.md`, "Where we stopped". **Closed:** all three merged by 15 Oct; the old fork branches were deleted 29 Oct.
+- **Friday 16 Oct:** the hardware audit; then W A S D driving. **Closed:** read-only audits on 16 and 21 Oct (`audit-2026-10-16-car.md`, `audit-2026-10-21-car.md`). W A S D on the real car never happened.
+- **micro-ROS:** Tentative since 11 Oct: none for now; think again once we see the hardware. Still Tentative on 13 Nov: the hardware has been seen, and nobody has chosen again.
+- **Your Mac as the operator station:** an idea, saved (11 Oct): `TODO.md`, "Ideas to keep". **Closed 5 Nov** as a decision ("the debug huds run on my computer"; `CLAUDE.md`, Screens). Left: the thread "The Mac as a driver".
+- **The repo public?** Checked 11 Oct; waits on Ben's yes. **Closed 25 Oct:** the team's repo, `AAV-2025-2026/ecolo-av`, is public.
+- **One detector per machine:** `yolo_detector_<machine>`, each with its own model file (done 11 Oct). The device names without aliases come with the obstacles merge. **Closed 11 Oct;** renamed `aav_detector` on 24 Oct.
+- **Backups:** image the Orin and the Pis before any reflash. They hold the detector, `camera_decode`, the three rqt_graph nodes and `/home/aavjetson`. A backup checklist and script were offered. Still open on 13 Nov: no audit (16 Oct, 21 Oct, 6 Nov) records a backup or a file copied off the car.
+- **The car on Jazzy:** it runs Humble today, so no Jazzy laptop can join it. Try Pixi on its Ubuntu 22.04 first, then reflash the Orin to JetPack 7.2 (Q24). Still open on 13 Nov: only the localization Pi has our kit (by 11 Nov). The Orin's reflash waits on the hardware lead.
+- **Ben's Mac:** works, 10-10: build, tests, the turtle, Gazebo headless, Nav2, the Rust listener, the docs. Our version, `aav/aav`, is complete on the Mac since 16:13, with every commit from the `~/aav` clone merged in, and it builds and tests green. Gazebo's window works on the Mac: Ben saw the screenshots, and in `pixi run sim` every driver goes through twist_mux and ego (16:34). Left: look at RViz and rqt_graph. **Closed 10 Oct.**
+- **Bench mode and perception (10-10 afternoon):** the whole car graph runs on the Mac with stand-ins (`pixi run bench`, `bench-check` 7 of 7); YOLO stops the car at stop signs on the bench; the spine's device drivers are in Rust; the HUD's back end is on our topics. Done 11 Oct: Ben's server work is in `dfaec15`, perception is parts of `car.launch.py`, and we wrote our own lane finder. Waiting on the team: the spine's chip, three firmware decisions (one constant each now), `best.pt`. **Update:** the chip is the ESP32 (Ben, 14 and 23 Oct); its Rust firmware passed in QEMU on 3 Nov and is not flashed. `best.pt` and the three firmware decisions are still open.
+- **Claude on the car's network (Ben, 10-10 16:42):** Ben will put Claude on the network with the hardware, to audit it directly. The plan is read-only first: find the devices, take each computer's inventory, copy what only the Orin has, and compare with our contract. Done beforehand: the stand-ins stay on their own computer (`tools/ros.sh --local`). **Closed:** done on 16 and 21 Oct and 6 Nov, read-only.
+- **`.gitignore` and `vendor/`:** both done: the fuller `.gitignore` (593db7f), and `vendor/` (10-10 evening: the lists in git, the source out of it). Pruning the app's snapshots from `.git` waits on Ben. **Closed.** The snapshot pruning is **dead**: that repo was retired on 25 Oct.
+- **The MCP server (Ben, 10-10 17:03):** built that evening, read-only. Open: bench-only actions through the stand-ins, if the team wants them; nothing that reaches the car. **Closed 15 Oct:** the actions went into a separate drive server (`aav_language`), with its limits.
+- **Slim per-machine Pixi environments:** for the Orin, the Motor Pi and laptops, matching the machine files. Waits until the first car computer gets Pixi (Phase 0). **Folded** into the car kit and `tools/car_setup.sh <role>` (24 Oct, 1 Nov).
+- **Running today:** the inventory commands haven't been run on the car's computers. **Closed 21 Oct:** 6 of 8 computers surveyed. QNX-PI and `.211` are still unread.
+- **The board survey** (the old repos, for the board's wiring, photos and the e-stop): stopped unfinished at 20:48, with no report. It runs again only if Ben asks. **Dead:** Ben's photos (14 Oct) and the audits replaced it.
+- **2024–25 repos:** cloning and surveying `emergency-stop`, `Simulation`, `camera_Yolo_detection`, `Braking` and `Power-Management-Documentation-2024-25` was offered, not done. Only `GNSS` has been read in depth. **Dead:** the repos are in `archive/` for reference; no survey is planned.
+- **`ros2-rust/`:** keep or delete is undecided; the recommendation is keep. **Closed 10 Oct:** kept, in `vendor/`.
+- **The claude.ai chat (fe09d020…):** Ben to paste the key parts. **Dead:** never pasted; the design moved on.
+- **CARLA:** parked this year (10-10). It comes back on the NVIDIA Linux machine if it ever supports Jazzy (Q31). **Folded** into the CARLA thread of 15 Oct, above.
+- **The NVIDIA Linux machine:** which one, and access to it, to find `best.pt`. **Update, 1 Nov:** it is the lab's Ubuntu desktop. `best.pt` is still not found.
+- **The board:** a photo of the ESP32 board, and a spare Pico 2 with a 3.3 V MCP2515 module, to test the spine on a desk. **Closed** for the photo (14 Oct). The spare Pico 2 is **dead**: the spine stays on the ESP32, tested in QEMU.
 - **Team decisions:**
   - the team's `ROS_DOMAIN_ID`;
   - the spine arming rules (Proposed);
@@ -1728,15 +1767,15 @@ with the graphs in `hw_panel`: `docs/designs/2026-11-07_esp32-debug-link_brief.m
   - the brake after boot: `IDLE_BRAKE` is 0, so the brake lets go; the 2025-26 firmware kept it on;
   - the `/estop` QoS in the mux (N2), respawning device nodes (N3), and Nav2's lookahead (N7);
   - every other Proposed row;
-  - QNX (Q23);
-  - the GPS model and corrections (Q18, Q19);
+  - QNX (Q23); Ben, 23 Oct: "the qnx doesnt' work". Still Tentative in `decisions.md`.
+  - the GPS model and corrections (Q18, Q19); **Answered:** a ZED-F9R (audit, 16 Oct); no RTK (Ben, 5 Nov).
   - the spine owner and inputs (Q10, Q12);
-  - a new org or not (Q25);
+  - a new org or not (Q25); **Closed 25 Oct.**
   - steering at standstill (Q27);
   - joystick handover (Q28);
   - the rest of Q1–Q34.
 - **Hardware checks:**
   - the conflicting steering calibrations (Q2);
-  - whether the 8-spoke encoder can hold walking pace;
+  - whether the 8-spoke encoder can hold walking pace; Still open: the Orin's CAN was down on 6 Nov, so no wheel frame has been seen.
   - the IR sensor spacing needed for quadrature;
   - the Orin module part number, before JetPack 7.2.

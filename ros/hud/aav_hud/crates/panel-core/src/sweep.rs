@@ -68,14 +68,20 @@ impl Default for SweepSettings {
 /// One leg of the check.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Leg {
+    /// To the centre.
     ToCentre,
+    /// To the left limit.
     ToLeft,
+    /// Back from the left to the centre.
     BackFromLeft,
+    /// To the right limit.
     ToRight,
+    /// Back from the right to the centre.
     BackFromRight,
 }
 
 impl Leg {
+    /// Every leg, in order.
     pub const ALL: [Leg; 5] = [
         Leg::ToCentre,
         Leg::ToLeft,
@@ -105,11 +111,26 @@ impl fmt::Display for Leg {
 /// Why the check stopped.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stop {
-    Resistance { error: u16 },
-    NoMovement { for_s: f64 },
-    NotArrived { error: u16 },
+    /// The position fell too far behind the target.
+    Resistance {
+        /// Counts behind the target.
+        error: u16,
+    },
+    /// No movement while the target moved.
+    NoMovement {
+        /// s without movement.
+        for_s: f64,
+    },
+    /// The leg's end wasn't reached.
+    NotArrived {
+        /// Counts short of the leg's end.
+        error: u16,
+    },
+    /// The position was lost.
     LostPosition,
+    /// The firmware isn't jogging: its state.
     Firmware(FirmwareState),
+    /// Stopped by a person or the page, and why.
     Aborted(String),
 }
 
@@ -138,12 +159,19 @@ impl fmt::Display for Stop {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Outcome {
     /// Every leg passed: the largest error seen on each (counts).
-    Passed { max_error: Vec<(Leg, u16)> },
+    Passed {
+        /// Each leg, and its largest error (counts).
+        max_error: Vec<(Leg, u16)>,
+    },
+    /// It stopped.
     Stopped {
+        /// On which leg.
         leg: Leg,
+        /// Why.
         why: Stop,
         /// Where the wheels were, and the target then (counts).
         position: u16,
+        /// Counts.
         target: u16,
     },
 }
@@ -175,11 +203,15 @@ impl fmt::Display for Outcome {
 /// Why the check can't start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CantStart {
+    /// No position.
     NoPosition,
     /// The wheels are outside the limits: the check only asks for targets inside them.
     Outside {
+        /// Counts.
         position: u16,
+        /// The low limit (counts).
         lo: u16,
+        /// The high limit (counts).
         hi: u16,
     },
 }
@@ -230,6 +262,10 @@ pub struct Sweep {
 
 impl Sweep {
     /// Starts the check with the wheels at `position`.
+    ///
+    /// # Errors
+    ///
+    /// [`CantStart`] with no position, or the wheels outside the limits.
     pub fn start(
         now: Instant,
         position: Option<u16>,
@@ -264,16 +300,19 @@ impl Sweep {
     }
 
     /// The leg it is on.
+    #[must_use]
     pub fn leg(&self) -> Leg {
         self.leg
     }
 
     /// How it ended, once it has.
+    #[must_use]
     pub fn outcome(&self) -> Option<&Outcome> {
         self.outcome.as_ref()
     }
 
     /// The target now (counts), always between the limits.
+    #[must_use]
     pub fn target(&self) -> u16 {
         // Between lo and hi by construction; clamped again, so it can never leave them.
         (self.target.round() as u16).clamp(self.lo, self.hi)

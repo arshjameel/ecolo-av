@@ -9,7 +9,11 @@
 <h1>A command&#x27;s journey</h1>
 <div class="meta">12 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,8 +125,8 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-whole-trip-in-one-picture">The whole trip in one picture</a><a href="#1-the-joystick-push">1. The joystick push</a><a href="#2-today-to-the-wheels-through-the-motor-pi">2. Today: to the wheels through the Motor-Pi</a><a href="#3-after-the-kefc-changes-can">3. After the KEFC changes: CAN</a><a href="#4-a-nav2-goal">4. A Nav2 goal</a><a href="#5-the-way-back-sensors-to-where-am-i">5. The way back: sensors to &quot;where am I&quot;</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
-<div class="lead"><p>Follow one joystick push from your hand to the wheels, then a Nav2 goal, then the
+<nav class="toc"><span>On this page:</span><a href="#the-whole-trip-in-one-picture">The whole trip in one picture</a><a href="#1-the-joystick-push">1. The joystick push</a><a href="#2-today-to-the-wheels-through-the-motor-pi">2. Today: to the wheels through the Motor-Pi</a><a href="#3-after-the-kefc-changes-can">3. After the KEFC changes: CAN</a><a href="#4-a-navigation-goal">4. A navigation goal</a><a href="#5-the-way-back-sensors-to-where-am-i">5. The way back: sensors to &quot;where am I&quot;</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
+<div class="lead"><p>Follow one joystick push from your hand to the wheels, then a navigation goal, then the
 sensor data on its way back.</p>
 <p><strong>You'll learn:</strong></p>
 <ul>
@@ -126,7 +138,7 @@ sensor data on its way back.</p>
 <a href="glossary.html">Glossary</a>. The boxes themselves are in <a href="learn-car.html">The car, box by box</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Not on the car yet</p>
-<p>Every hop below runs in the turtle, Gazebo or <a href="bench.html">bench mode</a>. None of it has
+<p>Every hop below runs in the turtle, Ravensim or <a href="bench.html">bench mode</a>. None of it has
 run on the real car yet: the car still runs the 2025-26 code, on Humble.</p>
 </div></div>
 <section class="card"><h2 id="the-whole-trip-in-one-picture">The whole trip in one picture</h2>
@@ -250,7 +262,7 @@ run on the real car yet: the car still runs the 2025-26 code, on Humble.</p>
 <td>25</td>
 </tr>
 <tr>
-<td>Nav2</td>
+<td>Navigation</td>
 <td><code>/drivers/nav/cmd_vel</code></td>
 <td>20</td>
 </tr>
@@ -266,17 +278,17 @@ run on the real car yet: the car still runs the 2025-26 code, on Humble.</p>
 </tr>
 <tr>
 <td><strong>lock:</strong> <code>/safety/legacy_uart_bridge/lock</code> true: the ESP32's firmware has no timeout (<code>frame_version: 1</code>)</td>
-<td>blocks scripted, replay, point, Nav2 and AI</td>
+<td>blocks scripted, replay, point, navigation and AI</td>
 <td>60</td>
 </tr>
 <tr>
 <td><strong>lock:</strong> <code>/perception/stop_sign</code> true</td>
-<td>blocks point, Nav2 and AI</td>
+<td>blocks point, navigation and AI</td>
 <td>30</td>
 </tr>
 <tr>
 <td><strong>lock:</strong> <code>/safety/sensor_watchdog/lock</code> true, or silent 1 s</td>
-<td>blocks point, Nav2 and AI</td>
+<td>blocks point, navigation and AI</td>
 <td>30</td>
 </tr>
 </tbody>
@@ -434,8 +446,8 @@ is <code>actuators:=uart</code> (section 2). The CAN path works on the bench, ag
 <p>The frames are defined in <code>firmware/can/aav.dbc</code> (<a href="firmware.html">Firmware</a>). The KEFC plan
 changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 </section>
-<section class="card"><h2 id="4-a-nav2-goal">4. A Nav2 goal</h2>
-<p>Nav2 is just another driver, at priority 20. Its command joins the same path at hop 3.</p>
+<section class="card"><h2 id="4-a-navigation-goal">4. A navigation goal</h2>
+<p>Navigation is just another driver, at priority 20. Its command joins the same path at hop 3.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -460,7 +472,7 @@ changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 </tr>
 <tr>
 <td>2</td>
-<td><code>bt_navigator</code> starts the action</td>
+<td>the navigator (<code>aav_navigator</code>) starts the action</td>
 <td><code>/navigate_to_pose</code></td>
 <td><code>NavigateToPose</code> action</td>
 <td>once</td>
@@ -469,7 +481,7 @@ changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 </tr>
 <tr>
 <td>3</td>
-<td><code>planner_server</code> (SmacPlannerHybrid: paths a car can drive)</td>
+<td>the planner (<code>aav_planner</code>, the State Lattice: paths a car can drive)</td>
 <td><code>/plan</code></td>
 <td><code>nav_msgs/Path</code></td>
 <td>when asked</td>
@@ -478,7 +490,7 @@ changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 </tr>
 <tr>
 <td>4</td>
-<td><code>controller_server</code> (MPPI)</td>
+<td><code>mppi_lag</code> (MPPI with lag)</td>
 <td><code>cmd_vel_nav</code></td>
 <td><code>TwistStamped</code></td>
 <td>20 Hz</td>
@@ -496,7 +508,7 @@ changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 </tr>
 <tr>
 <td>6</td>
-<td><code>collision_monitor</code> (only where the radar runs)</td>
+<td>the stop zone (<code>aav_stop_zone</code>, where the radar or lidar runs)</td>
 <td><code>/drivers/nav/cmd_vel</code></td>
 <td><code>TwistStamped</code></td>
 <td>20 Hz</td>
@@ -509,7 +521,7 @@ changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 <td>as in sections 1 to 3</td>
 <td></td>
 <td></td>
-<td>the joystick, the keyboard or a stop sign outranks Nav2</td>
+<td>the joystick, the keyboard or a stop sign outranks navigation</td>
 <td><code>ros2 topic echo /control/cmd_vel</code></td>
 </tr>
 </tbody>
@@ -577,7 +589,7 @@ changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 <td><code>/localization/odom/local</code>, TF <code>odom → base_link</code></td>
 <td><code>Odometry</code></td>
 <td>30 Hz</td>
-<td>Nav2's controller, the scripted driver</td>
+<td>the path follower, the scripted driver</td>
 </tr>
 <tr>
 <td>7</td>
@@ -585,7 +597,7 @@ changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 <td><code>/localization/odom/global</code>, TF <code>map → odom</code></td>
 <td><code>Odometry</code></td>
 <td>30 Hz</td>
-<td><code>navsat_transform</code>, Nav2's planner (through TF)</td>
+<td><code>navsat_transform</code>, the planner (through TF)</td>
 </tr>
 <tr>
 <td>8</td>
@@ -597,7 +609,7 @@ changes a few: <a href="can-plan.html">CAN plan</a> (Proposed).</p>
 </tr>
 <tr>
 <td>9</td>
-<td>the backend (spine, Gazebo)</td>
+<td>the backend (spine, Ravensim)</td>
 <td><code>/vehicle/status</code></td>
 <td><code>aav_interfaces/VehicleStatus</code></td>
 <td>10 Hz</td>
@@ -696,7 +708,7 @@ with <code>docs/interfaces.yaml</code>.</p>
 <td><code>firmware/spine/crates/spine-core</code></td>
 </tr>
 <tr>
-<td>Nav2</td>
+<td>Navigation</td>
 <td><code>ros/drivers/aav_navigation/</code></td>
 </tr>
 <tr>

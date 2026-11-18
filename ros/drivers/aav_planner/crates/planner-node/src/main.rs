@@ -1,31 +1,61 @@
-//! planner: our own path planner (Nav2's State Lattice, in Rust), beside planner_server.
+//! planner: our own path planner (Nav2's State Lattice, or its Hybrid-A*, in Rust), in
+//! Nav2's planner_server's place (the only planner since 17 Nov).
 //!
 //! Action      drivers/nav/planner/compute_path_to_pose
 //!                                         nav2_msgs/action/ComputePathToPose: one path from
 //!                                         the car (or the goal's start, use_start) to the
 //!                                         goal, in map. navigation.launch.py planner:=own
-//!                                         points bt_navigator's compute_path_to_pose here
+//!                                         points the navigator's compute_path_to_pose here
 //!             drivers/nav/planner/compute_path_through_poses
 //!                                         nav2_msgs/action/ComputePathThroughPoses: one path
 //!                                         through each goal in turn (a plan a leg, joined, as
-//!                                         planner_server does); bt_navigator's and our
-//!                                         navigator's (aav_navigator) are pointed here
+//!                                         Nav2's planner_server did); our navigator's
+//!                                         (aav_navigator) is pointed here
 //! Subscribes  costmap_topic               nav2_msgs/Costmap: the global costmap the plan is
 //!                                         made on: Nav2's /global_costmap/costmap_raw
 //!                                         (latched, with costmap_updates_topic's
 //!                                         nav2_msgs/CostmapUpdate patches), or ours,
-//!                                         /drivers/nav/costmap/global_raw (costmap:=own)
+//!                                         /drivers/nav/costmap/global_raw (costmap:=own).
+//!                                         Older than costmap_timeout: goals fail, TIMEOUT
 //!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link, the
-//!                                         car's pose in map (when use_start is false)
-//! Publishes   /plan                       nav_msgs/Path: each path found (planner_server's
-//!                                         own goes to /drivers/nav/planner/nav2_plan)
+//!                                         car's pose in map (when use_start is false).
+//!                                         Either older than TRANSFORM_TIMEOUT: goals
+//!                                         fail, TF_ERROR (the EKFs send at 30 Hz)
+//! Publishes   /plan                       nav_msgs/Path: each path found
 //!             drivers/nav/planner/status  diagnostic_msgs/DiagnosticStatus, one a plan: the
-//!                                         times, iterations, length, cusps, error
-//! Serves      nothing else; calls nothing.
+//!                                         times, iterations, length, cusps, error; with
+//!                                         a lane map, "how": lane, pass (and pass_m:
+//!                                         how far left round a parked obstacle), or
+//!                                         lattice and why;
+//!                                         "cut": the goal was off the costmap
+//!             drivers/nav/planner/route   nav_msgs/Path: the route level's whole way to the
+//!                                         goal with each plan (the lane line, or the
+//!                                         start and the goals off it), for a costmap
+//!                                         made of chunks (costmap_chunks:=, TODO 175)
+//! Serves      is_path_valid_service (empty: none; navigation.launch.py gives
+//!             /is_path_valid)
+//!                                         nav2_msgs/srv/IsPathValid, as planner_server's:
+//!                                         from the pose nearest the car on, a pose on a
+//!                                         lethal or inscribed cell is invalid. No costmap,
+//!                                         a stale one, or a path not in map: invalid
+//!                                         (the trees then plan again)
+//! Calls       nothing.
 //! Parameters  settings (JSON: aav_description's vehicle.planner_params, from the tuned
-//!             nav2.yaml's Lattice block, vehicle.yaml's outline and the global costmap's
-//!             inflation), costmap_topic, costmap_updates_topic (empty: none),
-//!             costmap_latched, map_frame, odom_frame, base_frame.
+//!             nav2.yaml's Lattice block, or with "search": "hybrid" (planner_search:=hybrid)
+//!             its GridBased Hybrid-A* block; vehicle.yaml's outline and the global
+//!             costmap's inflation), costmap_topic, costmap_updates_topic (empty: none),
+//!             costmap_latched, map_frame, odom_frame, base_frame, is_path_valid_service.
+//!             With "lanes" in settings (navigation.launch.py lane_route:=, path:=lane), the
+//!             lane-centre planner (lattice_planner::lane): the right lane's centre along
+//!             the lane map, the lattice joining the car and the goal to it; off the map,
+//!             the lattice alone. "lanes"."pass": false (lane_pass:=false): a blocked
+//!             lane line is the lattice's, not passed. "lanes"."corners": "clothoid"
+//!             (lane_corners:=clothoid): the lane line's corners as clothoid, arc,
+//!             clothoid (TODO 211, a challenger); else circle arcs.
+//!
+//! A goal off the costmap (a global costmap made of the chunks round the car): the path
+//! goes as far as the way there stays on it (lattice_planner::steps), and the navigator's
+//! next replan goes on from there.
 //!
 //! The maths is the `lattice-planner` crate; this file only moves messages. Each goal is
 //! planned on its own thread, on the newest costmap.
@@ -36,27 +66,36 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context as _, Result};
-use costmap::{footprint, Grid, Inflation};
+use costmap::{Arrival, Grid};
 use futures::channel::oneshot;
-use lattice_planner::{cusps, length, Lattice, Plan, PlanError, Planner, Pose, Settings};
+use lanelet_map::{LaneletMap, Origin};
+use lattice_planner::lane::{roads_from_json, How, LaneRouter, LaneSettings, CLOTHOID_TRANSITION};
+use lattice_planner::steps;
+use lattice_planner::{cusps, length, planner_from_json, Plan, PlanError, Pose};
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::{Duration as DurationMsg, Time};
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
-use ros_env::geometry_msgs::msg::{Pose as PoseMsg, PoseStamped, Quaternion};
+use ros_env::geometry_msgs::msg::{Point, Pose as PoseMsg, PoseArray, PoseStamped, Quaternion};
 use ros_env::nav2_msgs::action::{
     ComputePathThroughPoses, ComputePathThroughPoses_Result as ThroughAnswer, ComputePathToPose,
     ComputePathToPose_Result as Answer,
 };
 use ros_env::nav2_msgs::msg::{Costmap as CostmapMsg, CostmapUpdate};
+use ros_env::nav2_msgs::srv::{IsPathValid, IsPathValid_Request, IsPathValid_Response};
 use ros_env::nav_msgs::msg::Path;
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
 use serde_json::Value;
 
+/// s: a /tf transform older than this is no pose (robot_localization sends at 30 Hz).
+const TRANSFORM_TIMEOUT: f64 = 1.0;
+
 const ACTION: &str = "/drivers/nav/planner/compute_path_to_pose";
 const THROUGH_ACTION: &str = "/drivers/nav/planner/compute_path_through_poses";
 const PLAN_TOPIC: &str = "/plan";
 const STATUS_TOPIC: &str = "/drivers/nav/planner/status";
+const ROUTE_TOPIC: &str = "/drivers/nav/planner/route";
+const STOPS_TOPIC: &str = "/drivers/nav/planner/route_stops";
 
 fn main() -> Result<()> {
     let context = Context::default_from_env()?;
@@ -78,6 +117,7 @@ fn main() -> Result<()> {
     let costmap_topic = text_param("costmap_topic", "/global_costmap/costmap_raw")?;
     let updates_topic = text_param("costmap_updates_topic", "")?;
     let latched = text_param("costmap_latched", "true")? == "true";
+    let valid_service = text_param("is_path_valid_service", "")?;
     let frames = Frames {
         map: text_param("map_frame", "map")?,
         odom: text_param("odom_frame", "odom")?,
@@ -87,24 +127,73 @@ fn main() -> Result<()> {
         bail!("the settings parameter is empty: navigation.launch.py planner:=own sets it");
     }
     let spec: Value = serde_json::from_str(&settings_json).context("settings: JSON")?;
-    let planner = Arc::new(build(&spec)?);
+    let planner = Arc::new(planner_from_json(&spec)?);
+    // s: a costmap older than this is not planned on (planner_server's
+    // costmap_update_timeout, plus the global costmap's publish period).
+    let costmap_timeout = match &spec["costmap_timeout"] {
+        Value::Null => 2.0,
+        v => v
+            .as_f64()
+            .ok_or_else(|| anyhow!("costmap_timeout: a number is needed"))?,
+    };
     let planner_through = Arc::clone(&planner);
+    // path:=lane: the lane-centre planner, the lattice joining its ends.
+    let lanes = match &spec["lanes"] {
+        Value::Null => None,
+        block => {
+            // lane_pass:=false: a blocked lane line is the lattice's, as before 16 Nov.
+            let settings = LaneSettings {
+                pass: if block["pass"].as_bool().unwrap_or(true) {
+                    LaneSettings::default().pass
+                } else {
+                    None
+                },
+                // lane_corners:=clothoid: clothoid, arc, clothoid (TODO 211, a
+                // challenger); else circle arcs.
+                transition: if block["corners"].as_str() == Some("clothoid") {
+                    CLOTHOID_TRANSITION
+                } else {
+                    0.0
+                },
+                ..LaneSettings::default()
+            };
+            // lane_graph:=lanelet2: {"lanelet2": "<map.osm>"}; else lanes.yaml's roads.
+            Some(Arc::new(match block["lanelet2"].as_str() {
+                Some(osm) => {
+                    let text =
+                        std::fs::read_to_string(osm).with_context(|| format!("lanes: {osm}"))?;
+                    let map = LaneletMap::from_osm(&text, Origin::default())
+                        .map_err(|e| anyhow!("lanes: {osm}: {e}"))?;
+                    LaneRouter::from_lanelets(map, settings)
+                }
+                None => LaneRouter::new(
+                    roads_from_json(block).map_err(|e| anyhow!("lanes: {e}"))?,
+                    settings,
+                ),
+            }))
+        }
+    };
+    let lanes_through = lanes.clone();
     log_info!(
         node.logger(),
-        "State Lattice (ours): {} headings, {} m cells, turning radius {} m, reversing {}; \
-         costmap {costmap_topic}",
-        planner.lattice().headings.len(),
-        planner.lattice().resolution,
-        planner.lattice().turning_radius,
-        planner.settings().allow_reverse
+        "{} (ours){}; costmap {costmap_topic}",
+        planner.describe(),
+        lanes.as_ref().map_or(String::new(), |l| format!(
+            "; along the lane map's lanes ({}), the lattice off it",
+            l.describe()
+        ))
     );
 
     let core = Core {
         frames,
         grid: None,
+        costmap_heard: Arrival::new(),
+        costmap_timeout,
         map_odom: None,
         odom_base: None,
         plan_pub: node.create_publisher(PLAN_TOPIC)?,
+        route_pub: node.create_publisher(ROUTE_TOPIC)?,
+        stops_pub: node.create_publisher(STOPS_TOPIC)?,
         status: node.create_publisher(STATUS_TOPIC)?,
         clock: node.get_clock(),
         logger: node.logger().clone(),
@@ -127,6 +216,12 @@ fn main() -> Result<()> {
         ),
         Box::new(worker.create_subscription("/tf", |s: &mut Core, msg: TFMessage| s.on_tf(&msg))?),
     ];
+    if !valid_service.is_empty() {
+        keep.push(Box::new(worker.create_service::<IsPathValid, _>(
+            valid_service.as_str(),
+            |s: &mut Core, req: IsPathValid_Request| s.is_path_valid(&req.path),
+        )?));
+    }
     if !updates_topic.is_empty() {
         keep.push(Box::new(
             worker.create_subscription(
@@ -146,6 +241,7 @@ fn main() -> Result<()> {
         move |requested: RequestedGoal<ComputePathToPose>| {
             let worker = goals.clone();
             let planner = Arc::clone(&planner);
+            let lanes = lanes.clone();
             async move {
                 let goal = requested.accept().execute();
                 let asked = goal.goal().clone();
@@ -171,15 +267,23 @@ fn main() -> Result<()> {
                 let stop_thread = Arc::clone(&stop);
                 let (done, finished) = oneshot::channel();
                 std::thread::spawn(move || {
-                    let r = planner.plan(&grid, &start, &goal_poses[0], &|| {
-                        stop_thread.load(Ordering::Relaxed)
-                    });
+                    let stop = || stop_thread.load(Ordering::Relaxed);
+                    let goal = goal_poses[0];
+                    let r = match &lanes {
+                        Some(l) => l
+                            .plan(&planner, &grid, &start, &goal, &stop)
+                            .map(|p| (p.plan, Some(p.how), p.cut, (p.route, p.stops))),
+                        None => steps::plan_toward(&planner, &grid, &start, &goal, &stop)
+                            .map(|(p, cut)| (p, None, cut, (vec![start, goal], Vec::new()))),
+                    };
                     let _ = done.send(r);
                 });
                 match goal.until_cancel_requested(finished).await {
-                    Ok(Ok(Ok(plan))) => {
+                    Ok(Ok(Ok((plan, how, cut, route)))) => {
                         let reply = worker
-                            .run(move |s: &mut Core| s.succeeded(&plan, stamp))
+                            .run(move |s: &mut Core| {
+                                s.succeeded(&plan, how, cut, &route.0, &route.1, stamp)
+                            })
                             .await;
                         match reply {
                             Ok(a) => goal.succeeded_with(a),
@@ -209,6 +313,7 @@ fn main() -> Result<()> {
         move |requested: RequestedGoal<ComputePathThroughPoses>| {
             let worker = goals.clone();
             let planner = Arc::clone(&planner_through);
+            let lanes = lanes_through.clone();
             async move {
                 let goal = requested.accept().execute();
                 let asked = goal.goal().clone();
@@ -233,15 +338,26 @@ fn main() -> Result<()> {
                 let stop_thread = Arc::clone(&stop);
                 let (done, finished) = oneshot::channel();
                 std::thread::spawn(move || {
-                    let r = planner.plan_through(&grid, &start, &goal_poses, &|| {
-                        stop_thread.load(Ordering::Relaxed)
-                    });
+                    let stop = || stop_thread.load(Ordering::Relaxed);
+                    let r = match &lanes {
+                        Some(l) => l
+                            .plan_through(&planner, &grid, &start, &goal_poses, &stop)
+                            .map(|p| (p.plan, Some(p.how), p.cut, (p.route, p.stops))),
+                        None => planner
+                            .plan_through(&grid, &start, &goal_poses, &stop)
+                            .map(|p| {
+                                let route = std::iter::once(start).chain(goal_poses).collect();
+                                (p, None, false, (route, Vec::new()))
+                            }),
+                    };
                     let _ = done.send(r);
                 });
                 match goal.until_cancel_requested(finished).await {
-                    Ok(Ok(Ok(plan))) => {
+                    Ok(Ok(Ok((plan, how, cut, route)))) => {
                         let reply = worker
-                            .run(move |s: &mut Core| s.succeeded(&plan, stamp))
+                            .run(move |s: &mut Core| {
+                                s.succeeded(&plan, how, cut, &route.0, &route.1, stamp)
+                            })
                             .await;
                         match reply {
                             Ok(a) => goal.succeeded_with(ThroughAnswer {
@@ -286,94 +402,6 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// The planner from vehicle.planner_params' JSON.
-fn build(spec: &Value) -> Result<Planner> {
-    let number = |key: &str, default: f64| -> Result<f64> {
-        match &spec[key] {
-            Value::Null => Ok(default),
-            v => v
-                .as_f64()
-                .ok_or_else(|| anyhow!("{key}: a number is needed")),
-        }
-    };
-    let flag = |key: &str, default: bool| -> Result<bool> {
-        match &spec[key] {
-            Value::Null => Ok(default),
-            v => v.as_bool().ok_or_else(|| anyhow!("{key}: true or false")),
-        }
-    };
-    let d = Settings::default();
-    let settings = Settings {
-        allow_reverse: flag("allow_reverse_expansion", d.allow_reverse)?,
-        allow_unknown: flag("allow_unknown", d.allow_unknown)?,
-        tolerance: number("tolerance", d.tolerance)?,
-        max_iterations: number("max_iterations", d.max_iterations as f64)? as usize,
-        max_on_approach_iterations: number(
-            "max_on_approach_iterations",
-            d.max_on_approach_iterations as f64,
-        )? as usize,
-        max_planning_time: number("max_planning_time", d.max_planning_time)?,
-        terminal_checking_interval: number(
-            "terminal_checking_interval",
-            d.terminal_checking_interval as f64,
-        )?
-        .max(1.0) as usize,
-        reverse_penalty: number("reverse_penalty", d.reverse_penalty)?,
-        change_penalty: number("change_penalty", d.change_penalty)?,
-        non_straight_penalty: number("non_straight_penalty", d.non_straight_penalty)?,
-        cost_penalty: number("cost_penalty", d.cost_penalty)?,
-        retrospective_penalty: number("retrospective_penalty", d.retrospective_penalty)?,
-        rotation_penalty: number("rotation_penalty", d.rotation_penalty)?,
-        analytic_expansion_ratio: number("analytic_expansion_ratio", d.analytic_expansion_ratio)?,
-        analytic_expansion_max_length: number(
-            "analytic_expansion_max_length",
-            d.analytic_expansion_max_length,
-        )?,
-        analytic_expansion_max_cost: number(
-            "analytic_expansion_max_cost",
-            d.analytic_expansion_max_cost,
-        )?,
-        analytic_expansion_max_cost_override: flag(
-            "analytic_expansion_max_cost_override",
-            d.analytic_expansion_max_cost_override,
-        )?,
-        lookup_table_size: number("lookup_table_size", d.lookup_table_size)?,
-        smooth_path: flag("smooth_path", d.smooth_path)?,
-        smoother: d.smoother,
-    };
-    let file = spec["lattice_filepath"]
-        .as_str()
-        .ok_or_else(|| anyhow!("lattice_filepath: a path is needed"))?;
-    let text = std::fs::read_to_string(file).with_context(|| format!("reading {file}"))?;
-    let lattice = Lattice::parse(&text)?;
-    let corners: Vec<(f64, f64)> = spec["footprint"]
-        .as_array()
-        .ok_or_else(|| anyhow!("footprint: a list of [x, y] is needed"))?
-        .iter()
-        .map(|p| Some((p[0].as_f64()?, p[1].as_f64()?)))
-        .collect::<Option<_>>()
-        .ok_or_else(|| anyhow!("footprint: [x, y] numbers"))?;
-    let outline = footprint::padded(&corners, number("footprint_padding", 0.01)?);
-    let inflation = match &spec["inflation"] {
-        Value::Null => None,
-        i => Some(Inflation {
-            inflation_radius: i["radius"]
-                .as_f64()
-                .ok_or_else(|| anyhow!("inflation.radius"))?,
-            cost_scaling_factor: i["scaling"]
-                .as_f64()
-                .ok_or_else(|| anyhow!("inflation.scaling"))?,
-            inscribed_radius: footprint::radii(&outline).0,
-        }),
-    };
-    Ok(Planner::new(
-        lattice,
-        settings,
-        &outline,
-        inflation.as_ref(),
-    ))
-}
-
 fn error_code(e: PlanError) -> u16 {
     match e {
         PlanError::StartOutsideMap => Answer::START_OUTSIDE_MAP,
@@ -414,14 +442,44 @@ struct Core {
     frames: Frames,
     /// The newest costmap, shared with the planning threads.
     grid: Option<Arc<Grid>>,
-    map_odom: Option<Pose>,
-    odom_base: Option<Pose>,
+    /// When the costmap (or a patch to it) last arrived.
+    costmap_heard: Arrival,
+    /// s: older than this, a goal fails with TIMEOUT (Nav2's PlannerTimedOut).
+    costmap_timeout: f64,
+    /// map -> odom and odom -> base_link, each with when it arrived (s).
+    map_odom: Option<(Pose, f64)>,
+    odom_base: Option<(Pose, f64)>,
     plan_pub: Publisher<Path>,
+    route_pub: Publisher<Path>,
+    stops_pub: Publisher<PoseArray>,
     status: Publisher<DiagnosticStatus>,
     clock: Clock,
     logger: Logger,
     plans: u64,
     failures: u64,
+}
+
+/// Poses as a Path's, each with `header`.
+fn stamped(header: &Header, poses: &[Pose]) -> Vec<PoseStamped> {
+    poses
+        .iter()
+        .map(|p| PoseStamped {
+            header: header.clone(),
+            pose: PoseMsg {
+                position: ros_env::geometry_msgs::msg::Point {
+                    x: p.x,
+                    y: p.y,
+                    z: 0.0,
+                },
+                orientation: Quaternion {
+                    x: 0.0,
+                    y: 0.0,
+                    z: (p.yaw / 2.0).sin(),
+                    w: (p.yaw / 2.0).cos(),
+                },
+            },
+        })
+        .collect()
 }
 
 fn yaw_of(q: &Quaternion) -> f64 {
@@ -469,6 +527,11 @@ impl Core {
         );
         grid.data.clone_from(&msg.data);
         self.grid = Some(Arc::new(grid));
+        self.costmap_heard.mark(self.now());
+    }
+
+    fn now(&self) -> f64 {
+        self.clock.now().nsec as f64 * 1e-9
     }
 
     /// Nav2's partial update: a rectangle of new costs.
@@ -487,6 +550,7 @@ impl Core {
             let at = (y0 + row) * grid.width + x0;
             grid.data[at..at + w].copy_from_slice(&msg.data[row * w..(row + 1) * w]);
         }
+        self.costmap_heard.mark(self.now());
     }
 
     fn on_tf(&mut self, msg: &TFMessage) {
@@ -496,10 +560,61 @@ impl Core {
             let r = &t.transform;
             let pose = Pose::new(r.translation.x, r.translation.y, yaw_of(&r.rotation));
             if parent == self.frames.map && child == self.frames.odom {
-                self.map_odom = Some(pose);
+                self.map_odom = Some((pose, self.now()));
             } else if parent == self.frames.odom && child == self.frames.base {
-                self.odom_base = Some(pose);
+                self.odom_base = Some((pose, self.now()));
             }
+        }
+    }
+
+    /// Nav2's IsPathValid: invalid from the pose nearest the car on, where a pose sits on
+    /// a lethal or inscribed cell (`Grid::blocked_along`).
+    fn is_path_valid(&self, path: &Path) -> IsPathValid_Response {
+        let invalid = |indices: Vec<i32>| IsPathValid_Response {
+            is_valid: false,
+            invalid_pose_indices: indices,
+        };
+        let frame = path.header.frame_id.trim_start_matches('/');
+        let now = self.now();
+        let grid = match &self.grid {
+            Some(g) if self.costmap_heard.fresh(now, self.costmap_timeout) => g,
+            _ => return invalid(Vec::new()),
+        };
+        if !(frame.is_empty() || frame == self.frames.map) {
+            return invalid(Vec::new());
+        }
+        let points: Vec<(f64, f64)> = path
+            .poses
+            .iter()
+            .map(|p| (p.pose.position.x, p.pose.position.y))
+            .collect();
+        let car = match (&self.map_odom, &self.odom_base) {
+            (Some((a, _)), Some((b, _))) => Some(compose(a, b)),
+            _ => None,
+        };
+        let from = car.map_or(0, |c| {
+            points
+                .iter()
+                .enumerate()
+                .min_by(|(_, p), (_, q)| {
+                    let d = |(x, y): &(f64, f64)| (x - c.x).hypot(y - c.y);
+                    d(p).total_cmp(&d(q))
+                })
+                .map_or(0, |(i, _)| i)
+        });
+        let blocked = grid.blocked_along(&points, from);
+        if blocked.is_empty() {
+            IsPathValid_Response {
+                is_valid: true,
+                invalid_pose_indices: Vec::new(),
+            }
+        } else {
+            invalid(
+                blocked
+                    .into_iter()
+                    .map(|i| i32::try_from(i).unwrap_or(i32::MAX))
+                    .collect(),
+            )
         }
     }
 
@@ -514,6 +629,19 @@ impl Core {
             .grid
             .clone()
             .ok_or((Answer::UNKNOWN, "no costmap yet".to_string()))?;
+        // Nav2's planner waits costmap_update_timeout for a current costmap, then fails
+        // with TIMEOUT (207; 307 through poses). Ours doesn't plan on a stale one.
+        let now = self.now();
+        if !self.costmap_heard.fresh(now, self.costmap_timeout) {
+            let age = self.costmap_heard.age(now).unwrap_or(f64::INFINITY);
+            return Err((
+                Answer::TIMEOUT,
+                format!(
+                    "the costmap is {age:.1} s old (limit {:.1} s)",
+                    self.costmap_timeout
+                ),
+            ));
+        }
         let frame_ok = |f: &str| {
             let f = f.trim_start_matches('/');
             f.is_empty() || f == self.frames.map
@@ -534,7 +662,19 @@ impl Core {
             pose_of(&start.pose)
         } else {
             match (&self.map_odom, &self.odom_base) {
-                (Some(a), Some(b)) => compose(a, b),
+                (Some((a, a_at)), Some((b, b_at))) => {
+                    let age = now - a_at.min(*b_at);
+                    if age > TRANSFORM_TIMEOUT {
+                        return Err((
+                            Answer::TF_ERROR,
+                            format!(
+                                "map -> odom -> base_link is {age:.1} s old \
+                                 (limit {TRANSFORM_TIMEOUT:.1} s)"
+                            ),
+                        ));
+                    }
+                    compose(a, b)
+                }
                 _ => {
                     return Err((
                         Answer::TF_ERROR,
@@ -548,33 +688,48 @@ impl Core {
         Ok((grid, start, goals, stamp))
     }
 
-    fn succeeded(&mut self, plan: &Plan, stamp: Time) -> Answer {
+    /// `how`: with a lane map, the lane or the lattice and why (the status's "how").
+    /// `cut`: the goal was off the costmap; `route`: the whole way, on its own topic.
+    fn succeeded(
+        &mut self,
+        plan: &Plan,
+        how: Option<How>,
+        cut: bool,
+        route: &[Pose],
+        stops: &[(f64, f64)],
+        stamp: Time,
+    ) -> Answer {
         self.plans += 1;
         let header = Header {
             stamp,
             frame_id: self.frames.map.clone(),
         };
-        let poses = plan
-            .poses
-            .iter()
-            .map(|p| PoseStamped {
+        let route = Path {
+            header: header.clone(),
+            poses: stamped(&header, route),
+        };
+        if let Err(e) = self.route_pub.publish(&route) {
+            log_error!(&self.logger, "{ROUTE_TOPIC}: {e}");
+        }
+        if how.is_some() {
+            let stops = PoseArray {
                 header: header.clone(),
-                pose: PoseMsg {
-                    position: ros_env::geometry_msgs::msg::Point {
-                        x: p.x,
-                        y: p.y,
-                        z: 0.0,
-                    },
-                    orientation: Quaternion {
-                        x: 0.0,
-                        y: 0.0,
-                        z: (p.yaw / 2.0).sin(),
-                        w: (p.yaw / 2.0).cos(),
-                    },
-                },
-            })
-            .collect();
-        let path = Path { header, poses };
+                poses: stops
+                    .iter()
+                    .map(|&(x, y)| PoseMsg {
+                        position: Point { x, y, z: 0.0 },
+                        ..PoseMsg::default()
+                    })
+                    .collect(),
+            };
+            if let Err(e) = self.stops_pub.publish(&stops) {
+                log_error!(&self.logger, "{STOPS_TOPIC}: {e}");
+            }
+        }
+        let path = Path {
+            header: header.clone(),
+            poses: stamped(&header, &plan.poses),
+        };
         if let Err(e) = self.plan_pub.publish(&path) {
             log_error!(&self.logger, "/plan: {e}");
         }
@@ -582,21 +737,39 @@ impl Core {
             key: k.into(),
             value: v,
         };
+        let mut values = vec![
+            kv("search_ms", format!("{:.2}", plan.search_time * 1e3)),
+            kv("total_ms", format!("{:.2}", plan.total_time * 1e3)),
+            kv("iterations", plan.iterations.to_string()),
+            kv("length_m", format!("{:.2}", length(&plan.poses))),
+            kv("cusps", cusps(&plan.poses).to_string()),
+            kv("poses", plan.poses.len().to_string()),
+            kv("plans", self.plans.to_string()),
+            kv("failures", self.failures.to_string()),
+            kv("cut", cut.to_string()),
+        ];
+        if how.is_some() {
+            values.push(kv("stops", stops.len().to_string()));
+        }
+        match how {
+            Some(How::Lane(m)) => {
+                values.push(kv("how", "lane".into()));
+                values.push(kv("lane_m", format!("{m:.1}")));
+            }
+            Some(How::Pass(m, d)) => {
+                values.push(kv("how", "pass".into()));
+                values.push(kv("lane_m", format!("{m:.1}")));
+                values.push(kv("pass_m", format!("{d:.2}")));
+            }
+            Some(How::Lattice(why)) => values.push(kv("how", format!("lattice: {}", why.word()))),
+            None => {}
+        }
         let status = DiagnosticStatus {
             level: DiagnosticStatus::OK,
             name: "planner".into(),
             message: "path".into(),
             hardware_id: String::new(),
-            values: vec![
-                kv("search_ms", format!("{:.2}", plan.search_time * 1e3)),
-                kv("total_ms", format!("{:.2}", plan.total_time * 1e3)),
-                kv("iterations", plan.iterations.to_string()),
-                kv("length_m", format!("{:.2}", length(&plan.poses))),
-                kv("cusps", cusps(&plan.poses).to_string()),
-                kv("poses", plan.poses.len().to_string()),
-                kv("plans", self.plans.to_string()),
-                kv("failures", self.failures.to_string()),
-            ],
+            values,
         };
         let _ = self.status.publish(&status);
         let secs = plan.total_time;

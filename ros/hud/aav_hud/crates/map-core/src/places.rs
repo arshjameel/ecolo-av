@@ -107,6 +107,7 @@ pub enum Match {
 
 impl Match {
     /// How `name` matches `query`; both already lower case. None: it doesn't.
+    #[must_use]
     pub fn of(name: &str, query: &str) -> Option<Self> {
         if query.is_empty() {
             return None;
@@ -141,7 +142,9 @@ pub struct Place {
     pub kind: String,
     /// "1125 Colonel By Drive", when the row has a street and isn't only an address.
     pub address: Option<String>,
+    /// Where it is.
     pub at: LatLon,
+    /// How well it matched the words.
     pub matched: Match,
     /// From the place the search was asked near, when one was given.
     pub distance: Option<Metres>,
@@ -149,6 +152,7 @@ pub struct Place {
 
 impl Place {
     /// The line under the title: "university · 1125 Colonel By Drive".
+    #[must_use]
     pub fn detail(&self) -> String {
         let kind = self.kind.replace('_', " ");
         match &self.address {
@@ -171,18 +175,26 @@ impl Place {
 /// Why the place file can't be used.
 #[derive(Debug, Error)]
 pub enum PlacesError {
+    /// There's no file there.
     #[error("no place database at {0}: pixi run get places")]
     Missing(PathBuf),
+    /// The file can't be opened.
     #[error("can't open {path}: {source}")]
     Open {
+        /// The file.
         path: PathBuf,
+        /// SQLite's error.
         source: rusqlite::Error,
     },
+    /// The file has no places table.
     #[error("{path} has no places table: {source}")]
     NotPlaces {
+        /// The file.
         path: PathBuf,
+        /// SQLite's error.
         source: rusqlite::Error,
     },
+    /// A search failed.
     #[error("searching: {0}")]
     Query(#[from] rusqlite::Error),
 }
@@ -264,6 +276,10 @@ impl Candidate {
 
 impl Places {
     /// Opens the file read-only (it is never changed), and checks it has the table.
+    ///
+    /// # Errors
+    ///
+    /// [`PlacesError`] if there's no file, it can't be opened, or it has no places table.
     pub fn open(path: &Path) -> Result<Self, PlacesError> {
         if !path.is_file() {
             return Err(PlacesError::Missing(path.to_path_buf()));
@@ -284,6 +300,10 @@ impl Places {
 
     /// The best [`MAX_RESULTS`] places for `query`, nearest to `near` first among
     /// equal matches. Fewer than [`MIN_QUERY_CHARS`] letters: none.
+    ///
+    /// # Errors
+    ///
+    /// [`PlacesError::Query`] if SQLite fails.
     pub fn search(&self, query: &str, near: Option<LatLon>) -> Result<Vec<Place>, PlacesError> {
         let query = query.split_whitespace().collect::<Vec<_>>().join(" ");
         if query.chars().count() < MIN_QUERY_CHARS {
@@ -451,6 +471,7 @@ fn escape_like(s: &str) -> String {
 
 /// The distance along the Earth's surface (a sphere of the mean radius: within 0.5 %,
 /// plenty to rank places across a city).
+#[must_use]
 pub fn great_circle(a: LatLon, b: LatLon) -> Metres {
     const R: f64 = 6_371_008.8;
     let (p1, p2) = (a.lat.to_radians(), b.lat.to_radians());

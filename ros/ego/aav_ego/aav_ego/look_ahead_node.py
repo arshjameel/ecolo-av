@@ -7,7 +7,9 @@ Subscribes  ego/trace                 nav_msgs/Path, base_link: what the car WIL
             drivers/nav/local_plan    nav_msgs/Path, any frame: what the path follower
                                       WANTS over its own horizon (Nav2's MPPI, mppi_lag)
             plan                      nav_msgs/Path, map: Nav2's whole plan, to its goal
-            local_costmap/costmap     nav_msgs/OccupancyGrid, odom: what's in the way
+            /drivers/nav/costmap/local     nav_msgs/OccupancyGrid, odom: what's in the way
+            world/road_ahead          aav_interfaces/RoadAhead, map: the road ahead
+                                      (behaviour's), for road_mps, road_m, road_why
             /tf, /tf_static           each of those frames into base_link (the newest)
 Publishes   ego/plan_ahead            nav_msgs/Path, base_link, at rate_hz: the faint line,
                                       the local plan while fresh, else Nav2's plan, from
@@ -19,7 +21,11 @@ Publishes   ego/plan_ahead            nav_msgs/Path, base_link, at rate_hz: the 
                                       stop_m, goal_m, obstacle_m, room_m ('nan':
                                       unknown); front_m, rear_m, half_width_m (the
                                       body from vehicle.yaml, so screens draw the car
-                                      and its bumper's stop without a copy)
+                                      and its bumper's stop without a copy); road_mps
+                                      (the speed the road ahead allows here), road_m
+                                      (metres to its end), road_why (its nearest stop:
+                                      sign, obstacle, fence, goal; '' none) - 'nan' and
+                                      '' with no fresh road ahead
 Serves      nothing; calls nothing.
 Parameters  rate_hz (10), plan_ahead_m (10.0), local_plan_timeout (0.5 s), stale_after
             (1.0 s: older trace, stop point, plan or costmap is ignored), gap_warn (0.3 m),
@@ -35,7 +41,9 @@ import math
 import signal
 
 from aav_description import vehicle
+from aav_description.road_ahead_ros import from_msg
 from aav_ego import look_ahead as la
+from aav_interfaces.msg import RoadAhead
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import OccupancyGrid, Path
@@ -88,8 +96,10 @@ class LookAhead(Node):
                                   ('stop', PoseStamped, 'ego/stop_point'),
                                   ('local', Path, 'drivers/nav/local_plan'),
                                   ('plan', Path, 'plan'),
-                                  ('costmap', OccupancyGrid, 'local_costmap/costmap')):
+                                  ('costmap', OccupancyGrid, '/drivers/nav/costmap/local')):
             self.create_subscription(kind, topic, self.keeper(name), 10)
+        self.road, self.road_frame = None, 'map'
+        self.create_subscription(RoadAhead, 'world/road_ahead', self.on_road, 10)
         self.tf = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf, self)
         self.plan_pub = self.create_publisher(Path, 'ego/plan_ahead', 10)
@@ -100,6 +110,26 @@ class LookAhead(Node):
         def keep(msg):
             self.latest[name] = (msg, self.get_clock().now())
         return keep
+
+    def on_road(self, msg):
+        self.road, self.road_frame = from_msg(msg), msg.header.frame_id or 'map'
+        self.latest['road'] = (msg, self.get_clock().now())
+
+    def car_in(self, frame):
+        """Return base_link's (x, y) in frame, the newest TF; None when unknown."""
+        try:
+            t = self.tf.lookup_transform(frame, self.base, Time()).transform
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException):
+            return None
+        return t.translation.x, t.translation.y
+
+    def road_here(self):
+        """Return the road ahead at the car (look_ahead.road); None when stale or unplaced."""
+        if self.fresh('road') is None:
+            return None
+        car = self.car_in(self.road_frame)
+        return None if car is None else la.road(self.road, *car)
 
     def fresh(self, name, within=None):
         got = self.latest.get(name)
@@ -191,6 +221,10 @@ class LookAhead(Node):
                   ('obstacle_m', num(obstacle_m)), ('room_m', num(room_m)),
                   ('front_m', num(self.front)), ('rear_m', num(self.rear)),
                   ('half_width_m', num(self.half_width))]
+        road = self.road_here()
+        values += [('road_mps', num(None if road is None else road.limit)),
+                   ('road_m', num(None if road is None else road.room)),
+                   ('road_why', '' if road is None else road.why)]
         status.values = [KeyValue(key=k, value=v) for k, v in values]
         self.ahead_pub.publish(status)
 

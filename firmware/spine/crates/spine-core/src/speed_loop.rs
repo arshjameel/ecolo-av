@@ -104,6 +104,7 @@ impl LqiConfig {
     };
 
     /// The pedals for a signed acceleration (m/s²): throttle or brake (0..1), never both.
+    #[must_use]
     pub fn pedals(&self, accel: f32) -> (f32, f32) {
         if accel > self.dead_band {
             (clamp01(accel / self.max_accel), 0.0)
@@ -127,6 +128,7 @@ impl LqiConfig {
     }
 }
 
+/// The speed loop's law and gains.
 #[derive(Debug, Clone, Copy)]
 pub struct SpeedLoopConfig {
     /// How the error becomes throttle and brake. The fields below are the PI's; the LQI
@@ -179,6 +181,7 @@ impl SpeedLoopConfig {
     /// - setpoint weight 0.75: the zero moves to −ki/(b·kp) = −0.33, past the slow pole.
     /// - integral limit 1.0 and clamping: the integral may hold up to full throttle (a weak
     ///   throttle needs it), but never winds up while the throttle is pinned.
+    #[must_use]
     pub fn smooth() -> Self {
         SpeedLoopConfig {
             kp: 1.0,
@@ -192,8 +195,21 @@ impl SpeedLoopConfig {
 }
 
 impl SpeedLoopConfig {
+    /// The `firm` profile (TODO 163): `smooth`, with a firmer brake past a narrower coast
+    /// band. On the car model a set speed ramped to 0 at 1 m/s² is overrun by 0.68 m with
+    /// `smooth`'s brake (0.5 per m/s past 0.2 m/s), 0.21 m with this one. To try on stands.
+    #[must_use]
+    pub fn firm() -> Self {
+        SpeedLoopConfig {
+            brake_gain: 2.0,
+            coast_band: 0.05,
+            ..SpeedLoopConfig::smooth()
+        }
+    }
+
     /// The `lqi` profile (TODO 3: a comparison, not the default): [`LqiConfig::MODEL`],
     /// with today's stop (brake at least `hold_brake` until stopped, then hold it).
+    #[must_use]
     pub fn lqi() -> Self {
         SpeedLoopConfig {
             law: SpeedLaw::Lqi(LqiConfig::MODEL),
@@ -212,31 +228,38 @@ pub enum SpeedLoopProfile {
     Smooth,
     /// [`SpeedLoopConfig::lqi`]: TODO 3's LQI, to compare against the PI.
     Lqi,
+    /// [`SpeedLoopConfig::firm`]: `Smooth` with a firmer brake (TODO 163).
+    Firm,
 }
 
 impl SpeedLoopProfile {
     /// Every profile, in the order the docs list them.
-    pub const ALL: [SpeedLoopProfile; 3] = [
+    pub const ALL: [SpeedLoopProfile; 4] = [
         SpeedLoopProfile::Default,
         SpeedLoopProfile::Smooth,
         SpeedLoopProfile::Lqi,
+        SpeedLoopProfile::Firm,
     ];
 
     /// The profile's name, as the parameter and the docs spell it.
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             SpeedLoopProfile::Default => "default",
             SpeedLoopProfile::Smooth => "smooth",
             SpeedLoopProfile::Lqi => "lqi",
+            SpeedLoopProfile::Firm => "firm",
         }
     }
 
     /// The profile's parameters.
+    #[must_use]
     pub fn config(self) -> SpeedLoopConfig {
         match self {
             SpeedLoopProfile::Default => SpeedLoopConfig::default(),
             SpeedLoopProfile::Smooth => SpeedLoopConfig::smooth(),
             SpeedLoopProfile::Lqi => SpeedLoopConfig::lqi(),
+            SpeedLoopProfile::Firm => SpeedLoopConfig::firm(),
         }
     }
 }
@@ -247,7 +270,7 @@ pub struct UnknownProfile;
 
 impl fmt::Display for UnknownProfile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("no such speed loop profile: pick default, smooth or lqi")
+        f.write_str("no such speed loop profile: pick default, smooth, lqi or firm")
     }
 }
 
@@ -265,12 +288,16 @@ impl FromStr for SpeedLoopProfile {
 /// Actuator demand. Throttle and brake are never both above zero.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Drive {
+    /// 0..1.
     pub throttle: f32,
+    /// 0..1.
     pub brake: f32,
+    /// The direction: true for reverse.
     pub reverse: bool,
 }
 
 // Clone: a car model's prediction (car-model, beside aav_description) runs a copy ahead.
+/// The closed speed loop: a target and the measured speed in, throttle and brake out.
 #[derive(Debug, Clone)]
 pub struct SpeedLoop {
     cfg: SpeedLoopConfig,
@@ -287,6 +314,8 @@ fn clamp01(x: f32) -> f32 {
 }
 
 impl SpeedLoop {
+    /// A loop at rest: no integral, forward.
+    #[must_use]
     pub fn new(cfg: SpeedLoopConfig) -> Self {
         SpeedLoop {
             cfg,
@@ -297,12 +326,21 @@ impl SpeedLoop {
         }
     }
 
+    /// The PI's integral (throttle, 0..its ceiling): for a model that predicts the loop
+    /// from where it is now (aav_mpc_lag's estimate). 0 under the LQI.
+    #[must_use]
+    pub fn integral(&self) -> f32 {
+        self.integral
+    }
+
+    /// Forget the integrals and the pedals' state, as after a stop.
     pub fn reset(&mut self) {
         self.integral = 0.0;
         self.lqi_integral = 0.0;
         self.pedals = 0.0;
     }
 
+    /// One step: `target` and `measured` in m/s, `dt` in s.
     pub fn update(&mut self, target: f32, measured: f32, dt: f32) -> Drive {
         let c = self.cfg;
         let stopped = abs(measured) < c.stopped_speed;

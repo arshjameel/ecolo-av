@@ -88,8 +88,48 @@ sensor_watchdog:
       # dropout within 5 s of its first beat is forgiven: the window starting up.
       latch: true
       latch_grace: 5.0          # s
-    radar:                      # collision_monitor stops Nav2 itself when it goes quiet
+    steering:                   # the steering asked against the steering measured (TODO 207)
+      topic: /vehicle/steering
+      kind: actuator
+      max_age: 1.0
+      stop: true
+      # Stuck: more than 0.15 rad (8.6 degrees) off its command for 1 s, latched until a
+      # person clears it. Ego ramps the command at the steering motor's rate, so a working
+      # motor stays within a few hundredths. NaN on a side (the car's legacy uplink) means
+      # no check, not a fault. Tuned in the sim only (TODO 159's stuck steering).
+      follow_tolerance: 0.15    # rad
+      follow_persist: 1.0       # s
+    speed:                      # ego's speed against the wheels' (TODO 207, a stuck throttle)
+      topic: /ego/actuator_cmd  # the measured speed: /vehicle/odom, which the node reads anyway
+      kind: speed
+      max_age: 1.0              # ego sends at 50 Hz, also while still
+      stop: true
+      # More than 0.2 m/s over the command while not slowing (falling under 0.3 m/s^2 over
+      # 0.5 s): a warning (OVER) after 1 s, OVERSPEED after 2 s, latched until a person
+      # clears it. From the car model (TODO 163): the default loop's overshoot is 0.14 m/s
+      # at 1 m/s and 0.20 at 2.5 (+14 %, +8 %), and a healthy stop lags its command by up to
+      # 0.7 m/s but is slowing all the while; never OVER in any loop profile
+      # (test_watchdog.py). A throttle stuck while speeding up holds 1.25 m/s for 1.0.
+      # Tuned on the model and in the sim only.
+      over_margin: 0.2          # m/s
+      over_warn: 1.0            # s
+      over_persist: 2.0         # s
+      over_slowing: 0.3         # m/s^2
+    radar:                      # the stop zone stops navigation itself when it goes quiet
       topic: /sensors/radar/points
       kind: cloud
       max_age: 1.0
       stop: false
+    # Our own nodes (Ben, 14 Nov: warn only, no lock): kind node, topic = the node's full
+    # name, looked for in the ROS graph each tick. Each respawns 1 s after it dies, so 3 s
+    # gone is a node that keeps dying or hangs. sim.launch.py adds the ones it starts.
+    node_costmap: {topic: /costmap, kind: node, max_age: 3.0, stop: false}
+    node_planner: {topic: /planner, kind: node, max_age: 3.0, stop: false}
+    node_navigator: {topic: /navigator, kind: node, max_age: 3.0, stop: false}
+    node_mppi_lag: {topic: /mppi_lag, kind: node, max_age: 3.0, stop: false}
+    node_smoother: {topic: /velocity_smoother, kind: node, max_age: 3.0, stop: false}
+    node_behaviour: {topic: /behaviour, kind: node, max_age: 3.0, stop: false}
+    node_voxels: {topic: /voxels, kind: node, max_age: 3.0, stop: false}
+    node_things: {topic: /things, kind: node, max_age: 3.0, stop: false}
+    node_ego: {topic: /ego, kind: node, max_age: 3.0, stop: false}
+    node_look_ahead: {topic: /look_ahead, kind: node, max_age: 3.0, stop: false}

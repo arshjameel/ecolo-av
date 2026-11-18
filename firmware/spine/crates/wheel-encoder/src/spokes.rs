@@ -33,6 +33,9 @@ impl SpokeSensors {
     /// The 2025-26 numbers: 10 ms of lockout on each sensor, a 20 ms window for B.
     pub const TODAY: SpokeSensors = SpokeSensors::new(10, 20);
 
+    /// `lockout_ms` on each sensor; a step counts backwards when B rose within
+    /// `direction_window_ms` before A, and is still high.
+    #[must_use]
     pub const fn new(lockout_ms: u32, direction_window_ms: u32) -> Self {
         SpokeSensors {
             a: Lockout::new(false, lockout_ms),
@@ -62,6 +65,7 @@ impl SpokeSensors {
     }
 
     /// The counter, and the clock at its latest count.
+    #[must_use]
     pub fn count(&self) -> WheelCount {
         self.count
     }

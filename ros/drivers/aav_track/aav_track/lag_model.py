@@ -10,7 +10,7 @@ tick. test_lag_model.py checks the two give the same states, step for step:
 
 | Part | Model (one step dt) |
 |---|---|
-| speed loop | the spine's PI (spine-core speed_loop.rs; aav_gazebo SpeedLoop) |
+| speed loop | the spine's PI (spine-core speed_loop.rs; aav_sim_models SpeedLoop) |
 | throttle, brake | first-order lags, exact: x += (command - x)(1 - exp(-dt / lag)) |
 | speed | a = max_accel throttle (past its deadband) - max_brake brake - drag v |
 | | the brake and drag never reverse v |
@@ -72,11 +72,11 @@ def without_dead_times(car: CarParams) -> CarParams:
 
 
 def speed_loop(name: str) -> car_model.SpeedLoopConfig:
-    """Return the spine's speed loop profile by name: its PIs ('default', 'smooth') only."""
+    """Return the spine's speed loop profile by name: its PIs (default, smooth, firm) only."""
     loop = car_model.speed_loop_profile(name)
     if loop.lqi is not None:
         raise ValueError(f"the speed loop {name!r} (the LQI) isn't modelled here yet: "
-                         'pick default or smooth')
+                         'pick default, smooth or firm')
     return loop
 
 

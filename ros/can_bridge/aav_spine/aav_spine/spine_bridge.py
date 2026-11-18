@@ -21,7 +21,7 @@ Publishes   can/tx            can_msgs/Frame  (ros2_socketcan sender)
             vehicle/throttle, vehicle/brake  aav_interfaces/ActuatorState  (measured, from
                               VEHICLE_STATUS; command NaN: the spine's speed loop decides)
             system/source     aav_interfaces/DataSource, latched: REAL on the car, BENCH on
-                              the bench, SIM in Gazebo's spine profile (the `source`
+                              the bench, SIM in the simulator's spine profile (the `source`
                               parameter)
 Service     spine/arm         std_srvs/SetBool: refused during an e-stop, and while the
                               safety gate is shut: the output mux not OPEN for this
@@ -53,6 +53,7 @@ import math
 import signal
 import time
 
+from aav_description import vehicle
 from aav_interfaces.msg import ActuatorState, DataSource, SensorSource, VehicleStatus
 from aav_interfaces.msg import WheelSpeeds
 from aav_spine import bridges
@@ -176,7 +177,7 @@ class SpineBridge(Node):
             self.send_estop()
 
     def on_gate(self, msg):
-        # A steady clock: in Gazebo the node's is simulated, and may pause.
+        # A steady clock: in the simulator the node's is simulated, and may pause.
         self.gate.heard(msg.data, time.monotonic())
 
     def on_arm(self, request, response):
@@ -292,7 +293,8 @@ class SpineBridge(Node):
         cov[7] = 1e-4                    # vy: a car doesn't slide sideways
         cov[14] = cov[21] = cov[28] = UNKNOWN  # vz, roll and pitch rates: not measured
         cov[35] = UNKNOWN if yaw_rate is None else self.yaw_rate_var
-        odom.twist.covariance = cov
+        # Wheels that read nothing: the car stands, exactly (TODO 191).
+        odom.twist.covariance = vehicle.standstill_covariance(speed, cov)
         odom.pose.covariance = [UNKNOWN if i % 7 == 0 else 0.0 for i in range(36)]
         self.odom_pub.publish(odom)
 

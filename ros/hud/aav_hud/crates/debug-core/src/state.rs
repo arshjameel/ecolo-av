@@ -3,7 +3,7 @@
 //!
 //! News comes in as [`Update`]s (the ROS thread or the demo makes them); the cubes come
 //! separately, newest only ([`DebugState::set_scan`]), so a burst of clouds never queues.
-//! Each scan also goes into the kept cubes ([`crate::persist`]), which fade. Nav2's cubes
+//! Each scan also goes into the kept cubes ([`crate::persist`]), which fade. the costmap's cubes
 //! (the voxels trial's) come the same way ([`DebugState::set_nav2_cubes`]), and are
 //! never kept: the newest cloud only, as Nav2 has it.
 
@@ -57,6 +57,8 @@ impl Localizer {
         Localizer::Ndt,
     ];
 
+    /// Its name on the screen.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Local => "EKF local",
@@ -68,6 +70,7 @@ impl Localizer {
     }
 
     /// Whether its poses are in the map frame (so drawn through map -> odom).
+    #[must_use]
     pub fn in_map(self) -> bool {
         !matches!(self, Self::Local)
     }
@@ -76,20 +79,29 @@ impl Localizer {
 /// A row of the panel: one sensor, actuator or estimate, from its own topic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Source {
+    /// The IMU.
     Imu,
+    /// The GPS receiver.
     Gps,
+    /// The lidar.
     Lidar,
+    /// The wheel speeds.
     Wheels,
+    /// The wheels' odometry.
     WheelOdom,
+    /// The car's status.
     Vehicle,
+    /// The trial tracker.
     Track,
+    /// A localizer's pose.
     Estimate(Localizer),
+    /// map to odom, from `/tf`.
     MapToOdom,
     /// NDT's status (its own panel section, not a row).
     NdtStatus,
     /// AMCL's particles (drawn, not a row).
     Particles,
-    /// Nav2's cubes from the voxels trial (`voxels:=true`).
+    /// The costmap's cubes from the voxels trial (`voxels:=true`).
     Nav2Cubes,
     /// The voxels trial's status (its own section, not a row).
     VoxelsStatus,
@@ -117,6 +129,8 @@ impl Source {
         Source::Track,
     ];
 
+    /// Its name on the screen.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Imu => "IMU",
@@ -130,7 +144,7 @@ impl Source {
             Self::MapToOdom => "map > odom",
             Self::NdtStatus => "NDT status",
             Self::Particles => "particles",
-            Self::Nav2Cubes => "Nav2 cubes",
+            Self::Nav2Cubes => "costmap cubes",
             Self::VoxelsStatus => "voxels status",
             Self::LocalizationHealth => "loc. health",
         }
@@ -142,8 +156,11 @@ impl Source {
 pub enum Update {
     /// A pose from a localizer, in `frame`.
     Pose {
+        /// Which localizer.
         who: Localizer,
+        /// Where it puts the car.
         pose: Pose,
+        /// Its frame.
         frame: String,
         /// m/s forward, if the message has it.
         speed: Option<f64>,
@@ -152,15 +169,21 @@ pub enum Update {
     MapToOdom(Pose),
     /// Nav2's plan, in `frame`.
     Plan {
+        /// Its points.
         points: Vec<Point>,
+        /// Its frame.
         frame: String,
     },
     /// A topic was heard, with a short detail for the panel.
     Heard {
+        /// Which row.
         source: Source,
+        /// What the row says.
         detail: String,
     },
+    /// A `/vehicle/status` message.
     Vehicle(VehicleStatus),
+    /// The trial tracker's status.
     Track(TrackStatus),
     /// `/system/source`: the SIMULATED banner.
     Origin(Announcement),
@@ -172,7 +195,9 @@ pub enum Update {
     Ndt(NdtStatus),
     /// AMCL's particles, in `frame` (the map).
     Particles {
+        /// Their poses.
         poses: Vec<Pose>,
+        /// Their frame.
         frame: String,
     },
     /// `/perception/voxels/status`.
@@ -194,13 +219,18 @@ pub struct DebugState {
     poses: HashMap<Localizer, Pose>,
     /// m/s, the local EKF's.
     pub speed: Option<f64>,
+    /// The latest map to odom.
     pub map_to_odom: MapToOdom,
     plan: Vec<Point>,
     seen: HashMap<Source, LastSeen>,
     details: HashMap<Source, String>,
+    /// The car's last status.
     pub vehicle: Option<VehicleStatus>,
+    /// The trial tracker's last status.
     pub track: Option<TrackStatus>,
+    /// Where each sensor's data comes from.
     pub origins: Origins,
+    /// The last cloud's cubes.
     pub scan: Option<CubeScan>,
     /// The last cloud's problem, until a good one comes.
     pub scan_problem: Option<String>,
@@ -238,6 +268,8 @@ const TRAIL_STEP: f64 = 0.25;
 pub const MAX_PARTICLES: usize = 5000;
 
 impl DebugState {
+    /// Nothing heard yet, with these settings.
+    #[must_use]
     pub fn new(config: &DebugConfig) -> Self {
         Self {
             odom_frame: config.odom_frame.clone(),
@@ -420,7 +452,7 @@ impl DebugState {
         self.heard(Source::Nav2Cubes, now);
     }
 
-    /// The Nav2 cubes row's words: the status's numbers, or the cloud's count.
+    /// The costmap cubes row's words: the status's numbers, or the cloud's count.
     fn nav2_detail(&mut self) {
         let words = match (&self.voxels, &self.nav2) {
             (Some(status), _) => format!("{}, road {}", status.numbers(), status.road.word()),
@@ -430,7 +462,7 @@ impl DebugState {
         self.details.insert(Source::Nav2Cubes, words);
     }
 
-    /// Nav2's cubes to draw: none with key V off.
+    /// The costmap's cubes to draw: none with key V off.
     pub fn nav2_cubes(&self) -> impl Iterator<Item = [f32; 3]> + '_ {
         self.nav2
             .iter()
@@ -439,6 +471,7 @@ impl DebugState {
     }
 
     /// Clouds a second, by their stamps.
+    #[must_use]
     pub fn scan_rate(&self) -> Option<f64> {
         let (first, last) = (self.scan_times.front()?, self.scan_times.back()?);
         let span = last.seconds_since(*first);
@@ -446,6 +479,7 @@ impl DebugState {
     }
 
     /// A localizer's pose, in odom. Map-frame ones need map -> odom.
+    #[must_use]
     pub fn pose_in_odom(&self, who: Localizer) -> Option<Pose> {
         let pose = *self.poses.get(&who)?;
         if who.in_map() {
@@ -457,6 +491,7 @@ impl DebugState {
 
     /// A localizer's pose, in the map frame (the seeing screen's top-downs). The local
     /// EKF's needs map -> odom.
+    #[must_use]
     pub fn pose_in_map(&self, who: Localizer) -> Option<Pose> {
         let pose = *self.poses.get(&who)?;
         if who.in_map() {
@@ -471,6 +506,7 @@ impl DebugState {
 
     /// The latest scan's cubes above the ground, seen from above in the map frame (none
     /// without map -> odom): what NDT matches against its map.
+    #[must_use]
     pub fn scan_in_map(&self) -> Vec<Point> {
         let (Some(scan), Some(odom)) = (&self.scan, self.map_to_odom.odom_in_map) else {
             return Vec::new();
@@ -483,11 +519,13 @@ impl DebugState {
     }
 
     /// The car as the local EKF has it: what the camera follows.
+    #[must_use]
     pub fn car(&self) -> Option<Pose> {
         self.pose_in_odom(Localizer::Local)
     }
 
     /// Nav2's plan, in odom.
+    #[must_use]
     pub fn plan_in_odom(&self) -> Vec<Point> {
         self.plan
             .iter()
@@ -509,10 +547,13 @@ impl DebugState {
             .then(|| self.kept.cubes().iter().copied())
             .into_iter()
             .flatten();
+        let ground = self.layers.ground;
         scan.chain(kept)
+            .filter(move |c| ground || c.band != Band::Ground)
     }
 
     /// How many cubes [`DebugState::drawn_cubes`] gives, and how many were cut.
+    #[must_use]
     pub fn drawn_count(&self) -> (usize, usize) {
         match self.layers.cubes {
             CubeView::Kept => (self.kept.cubes().len(), self.kept.cut()),
@@ -536,6 +577,7 @@ impl DebugState {
     }
 
     /// How far a localizer is from the local EKF, seen from above (metres).
+    #[must_use]
     pub fn offset_from_local(&self, who: Localizer) -> Option<f64> {
         let a = self.pose_in_odom(who)?;
         let b = self.car()?;
@@ -544,6 +586,7 @@ impl DebugState {
 
     /// One row's health at `now`. `/localization/health` comes once a second, so it
     /// has its own, longer limit.
+    #[must_use]
     pub fn health(&self, source: Source, now: Instant) -> Health {
         let limit = match source {
             Source::LocalizationHealth => self.health_stale_after,
@@ -670,6 +713,26 @@ mod tests {
         s.layers.apply(crate::keys::Action::Cubes);
         assert_eq!(s.drawn_cubes().count(), 1);
         assert_eq!(s.drawn_count(), (1, 0));
+    }
+
+    #[test]
+    fn the_ground_shows_only_with_key_g() {
+        use crate::cubes::{Band, Cube};
+        let mut s = state();
+        let cube = |x: f32, band| Cube {
+            centre: [x, 0.1, 0.1],
+            band,
+        };
+        let scan = CubeScan {
+            cubes: vec![cube(1.1, Band::Ground), cube(2.1, Band::Knee)],
+            size: 0.2,
+            ..CubeScan::default()
+        };
+        s.set_scan(scan, Instant::now());
+        let bands = |s: &DebugState| s.drawn_cubes().map(|c| c.band).collect::<Vec<_>>();
+        assert_eq!(bands(&s), [Band::Knee]);
+        s.layers.apply(crate::keys::Action::Ground);
+        assert_eq!(bands(&s).len(), 2);
     }
 
     #[test]

@@ -1,0 +1,29 @@
+[package]
+name = "detector-core"
+description = "RF-DETR from its ONNX file, in plain Rust (no ROS): aav_detector's detr.py, ported, and ONNX Runtime through ort"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# ONNX Runtime (MIT) through pyke's ort (MIT OR Apache-2.0). Pinned: 2.0 is still a release
+# candidate, and its API moves between them. download-binaries fetches pyke's prebuilt
+# ONNX Runtime at build time (CPU and, on macOS, Core ML).
+ort = { version = "=2.0.0-rc.15", optional = true }
+
+[features]
+default = []
+ort = ["dep:ort"]
+# Execution providers. coreml: a Mac's GPU and Neural Engine. cuda, tensorrt: the Orin;
+# they need an ONNX Runtime built with them (ORT_DYLIB_PATH or ORT_LIB_LOCATION): untested.
+coreml = ["ort", "ort/coreml"]
+cuda = ["ort", "ort/cuda"]
+tensorrt = ["ort", "ort/tensorrt"]
+
+[dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
+serde_json = "1"
+
+[[example]]
+name = "timing"
+required-features = ["ort"]

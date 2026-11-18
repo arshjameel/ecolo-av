@@ -7,9 +7,13 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">74 min read · 8 sections</div></header>
+<div class="meta">76 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -135,22 +147,28 @@
 <td><a href="#the-map-window-big-screen">The map window</a></td>
 <td><code>map</code></td>
 <td>the big ~15" monitor</td>
-<td>Nav2's map over Ottawa's streets, the plan, place search</td>
+<td>the navigation map over Ottawa's streets, the plan, place search</td>
 </tr>
 <tr>
 <td><a href="#the-debug-hud">The debug HUD</a> (the seeing screen)</td>
 <td><code>debug_hud</code></td>
-<td>a laptop, or the Orin's screen</td>
+<td>a laptop</td>
 <td>the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor</td>
 </tr>
 <tr>
 <td><a href="#the-hardware-panel">The hardware panel</a></td>
 <td><code>hw_panel</code></td>
-<td>the Orin's screen, or a wired laptop</td>
-<td>every sensor's number, and simple buttons for the actuators (Gazebo and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path</td>
+<td>a wired laptop</td>
+<td>every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path</td>
 </tr>
 </tbody>
 </table></div>
+<p><strong>Where each runs (Ben, 5 Nov):</strong> the HUD and the map stay raylib, on the dash Pi. The
+Orin runs no graphics, so the other two run on a laptop. Laptop screens can be Bevy: the
+<strong>developer window</strong> (<code>ros/hud/aav_dev_window</code>, <code>pixi run dev-window</code>; not a ROS package)
+is one, live on the simulators since 5 Nov, and <code>debug_hud</code> retires once it covers the
+same ground (<a href="../designs/2026-11-05_one-window.md">design</a>). It has no section on this page
+yet: its README is the reference.</p>
 <p>An easter egg hides in three of them: <a href="#the-little-robot-easter-egg">the little robot</a>.</p>
 <p><strong>Two screens for testing (Ben, 29 Oct evening):</strong> "one screen just to test all the
 sensors and operate all the actuators and another screen to show off the voxels". The
@@ -192,7 +210,7 @@ a second program. Each opens full screen on its own monitor at boot:
 </tr>
 <tr>
 <td>Camera</td>
-<td>the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange <strong>SIMULATED</strong> / <strong>BENCH</strong> / <strong>REPLAY</strong> band along its bottom when <code>/system/source</code> says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red <strong>STOP: gps STALE (...)</strong> while it holds Nav2, amber for a warning, red <strong>SENSOR WATCHDOG SILENT</strong> if it stops talking (twist_mux then holds Nav2 for its silence) (<a href="simulation.html#sensor-failures-on-purpose">simulation</a>)</td>
+<td>the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange <strong>SIMULATED</strong> / <strong>BENCH</strong> / <strong>REPLAY</strong> band along its bottom when <code>/system/source</code> says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red <strong>STOP: gps STALE (...)</strong> while it holds navigation, amber for a warning, red <strong>SENSOR WATCHDOG SILENT</strong> if it stops talking (twist_mux then holds navigation for its silence) (<a href="simulation.html#sensor-failures-on-purpose">simulation</a>)</td>
 </tr>
 <tr>
 <td>E-STOP</td>
@@ -240,7 +258,7 @@ HUD and on the developer window.</p>
 </tr>
 <tr>
 <td>thin grey line</td>
-<td>what the planner WANTS: MPPI's own future, or Nav2's plan ahead</td>
+<td>what the planner WANTS: MPPI's own future, or the planner's plan ahead</td>
 <td><code>/ego/plan_ahead</code></td>
 </tr>
 <tr>
@@ -273,16 +291,33 @@ HUD and on the developer window.</p>
 <td>room left between the stop and the goal (along the plan), or the obstacle; HITS in red when a full brake now still reaches it</td>
 <td>goal_m, room_m</td>
 </tr>
+<tr>
+<td>ROAD 0.6 m/s, SIGN IN 12 m</td>
+<td>with <code>behaviour:=true</code>: the road ahead's speed here and its end (the nearest stop: sign, obstacle, fence, goal). It takes the third line, unless an obstacle is within 1 m of the stop point; <code>ROAD: STOP</code> in amber at the end</td>
+<td>road_mps, road_m, road_why</td>
+</tr>
+<tr>
+<td>coloured boxes, PERSON 3</td>
+<td>with <code>things:=true</code>: each thing near the car, its box in its kind's colour (person yellow, car blue, stop sign red, other names green, unknown orange, grey unseen now); a named one has its name over it (TODO 192)</td>
+<td><code>/world/things</code>, placed with <code>/localization/odom/local</code></td>
+</tr>
+<tr>
+<td>STOP SIGN 12 m (top right)</td>
+<td>the nearest two named things ahead past the 6 m drawing, within 30 m</td>
+<td>the same</td>
+</tr>
 </tbody>
 </table></div>
+<p>The road line, on Ben's Mac (14 Nov, <code>pixi run hud --demo</code>): "ROAD 1.0 m/s, GOAL IN 3.2 m" under STOPS IN and ON PLAN:</p>
+<p><img alt="The HUD with the road ahead's line, bottom right, pretend data" src="../img/hud-road.png" /></p>
 <p>While braking for the goal, the bold line shrinks to the bar and goes green:</p>
 <p><img alt="AHEAD braking for the goal: the line short, on the plan" src="../img/hud-squiggly-braking.png" /></p>
-<p><strong>Live, 8 Nov</strong> (our own simulator, <code>simulator:=own world:=test_lot</code>, a Nav2 goal at
-(14, 3), which succeeded): the faint line is Nav2's MPPI's own future
+<p><strong>Live, 8 Nov</strong> (Ravensim, <code>simulator:=own world:=test_lot</code>, a goal (then Nav2's) at
+(14, 3), which succeeded): the faint line is MPPI's own future (Nav2's then)
 (<code>/drivers/nav/local_plan</code>). <code>/ego/ahead</code> said ON PLAN 0.01-0.18 m and "13.4 m short of
 the goal" while it drove; here the trace runs 0.31 m off MPPI's future (amber): MPPI plans
 without the lag, ego's model has it.</p>
-<p><img alt="AHEAD live in our own simulator, driving to a Nav2 goal" src="../img/hud-squiggly-live.png" /></p>
+<p><img alt="AHEAD live in Ravensim, driving to a goal" src="../img/hud-squiggly-live.png" /></p>
 <p><strong>One answer for every screen.</strong> The maths lives in ROS, once; the screens only draw:</p>
 <pre class="highlight"><code class="language-text">ego ──▶ /ego/trace       (base_link)  the car model, 2 s ahead
     └─▶ /ego/stop_point  (base_link)  the car model, full brake now   (stop_ahead.py)
@@ -290,7 +325,7 @@ look_ahead ──▶ /ego/plan_ahead (base_link)  the plan, moved with TF, cut a
            └─▶ /ego/ahead      the gap, the stop, the goal, the room  (look_ahead.py)</code></pre>
 <p>All four are in base_link, so the screens need no TF. The stop-point check in <code>sim-check</code>
 reads the same <code>/ego/stop_point</code>. The faint line is <code>/drivers/nav/local_plan</code> while a
-follower sends one (Nav2's MPPI, the default, and <code>mppi_lag</code>), else Nav2's <code>/plan</code>.</p>
+follower sends one (<code>mppi_lag</code>, the default), else the planner's <code>/plan</code>.</p>
 <p>The GPS fix moved into the top strip (GPS: 3D FIX, RTK FIXED, NO GPS, SILENT) to make room.
 Its lat, lon and accuracy are on the hardware panel and the map window.</p>
 <p><strong>Not yet:</strong> stop lines (no topic says where one is); the camera picture with the line
@@ -350,7 +385,7 @@ one colour:</p>
 <tr>
 <td>red, a stop sign</td>
 <td><strong>AUTO STOP</strong></td>
-<td>Nav2 and the AI slot are held; people can still drive</td>
+<td>navigation and the AI slot are held; people can still drive</td>
 </tr>
 <tr>
 <td>grey, a question mark</td>
@@ -473,7 +508,7 @@ pixi run hud fullscreen:=true monitor:=HDMI-2   # on that monitor, by name or nu
 <pre class="highlight"><code class="language-text"> window draws a frame --&gt; count + 1
  every 10 ms, the e-stop's timer (ROS thread):
      0.1 s since the last beat, and the count rose?  --&gt; /hud/heartbeat = count (10 Hz)
- sensor_watchdog, input hud:  quiet 1 s, or the count stuck 1 s  --&gt; STOP: Nav2 and the AI slot</code></pre>
+ sensor_watchdog, input hud:  quiet 1 s, or the count stuck 1 s  --&gt; STOP: nav and the AI slot</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -488,15 +523,15 @@ pixi run hud fullscreen:=true monitor:=HDMI-2   # on that monitor, by name or nu
 </tr>
 <tr>
 <td>The ROS thread freezes</td>
-<td>the timer stops: no beats, and no e-stop either. The watchdog stops Nav2</td>
+<td>the timer stops: no beats, and no e-stop either. The watchdog stops navigation</td>
 </tr>
 <tr>
 <td>The program dies</td>
-<td>no beats. systemd restarts it in 5 s; Nav2 stays held (<strong>latched</strong>, below)</td>
+<td>no beats. systemd restarts it in 5 s; navigation stays held (<strong>latched</strong>, below)</td>
 </tr>
 <tr>
 <td>The HUD never started</td>
-<td>the watchdog says <code>hud NEVER</code>: Nav2 never drives</td>
+<td>the watchdog says <code>hud NEVER</code>: navigation never drives</td>
 </tr>
 </tbody>
 </table></div>
@@ -505,7 +540,7 @@ pixi run hud fullscreen:=true monitor:=HDMI-2   # on that monitor, by name or nu
    one dropout in the grace: forgiven      any dropout: hud LOST, latched
    (held only while it lasts)              (held even once it beats again)
 
- a person checks the screen ──► pixi run clear watchdog ──► Nav2 may drive</code></pre>
+ a person checks the screen ──► pixi run clear watchdog ──► nav may drive</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -528,7 +563,7 @@ pixi run hud fullscreen:=true monitor:=HDMI-2   # on that monitor, by name or nu
 </tr>
 <tr>
 <td><code>pixi run clear watchdog</code></td>
-<td>Nav2 drives again, if the HUD beats; the grace starts again</td>
+<td>navigation drives again, if the HUD beats; the grace starts again</td>
 </tr>
 <tr>
 <td>The watchdog itself stalled (a busy computer)</td>
@@ -551,7 +586,7 @@ in <code>aav_safety</code> <code>watchdog.py</code>, with tests. The HUD shows i
 <td>yes: <code>car.launch.py watch_hud:=true</code>, the default. <code>watch_hud:=false</code> for a session with no HUD screen</td>
 </tr>
 <tr>
-<td>Gazebo</td>
+<td>Ravensim</td>
 <td>with <code>hud:=true</code> (the window), or <code>watch_hud:=true</code> (something else beats)</td>
 </tr>
 <tr>
@@ -561,7 +596,7 @@ in <code>aav_safety</code> <code>watchdog.py</code>, with tests. The HUD shows i
 </tbody>
 </table></div>
 <ul>
-<li>People, the joystick and the e-stop are never held by it: only Nav2 and the AI slot.</li>
+<li>People, the joystick and the e-stop are never held by it: only navigation and the AI slot.</li>
 <li>The e-stop button doesn't depend on it. It's the same timer, so a beat also proves the
   e-stop's sender runs.</li>
 <li>The logic: <code>hud-core</code> <code>heartbeat</code> (no ROS). The watchdog's side: <code>kind: heartbeat</code> in
@@ -645,13 +680,13 @@ in <code>aav_safety</code> <code>watchdog.py</code>, with tests. The HUD shows i
 <h3 id="what-it-shows-with-each-backend">What it shows with each backend</h3>
 <p>The HUD reads topics, so it works next to anything that publishes them. Start the backend,
 then <code>pixi run hud</code> in another terminal (the same <code>ROS_DOMAIN_ID</code>).
-With Gazebo, one command does both: <code>pixi run sim world:=test_lot hud:=true</code>.</p>
+In Ravensim, one command does both: <code>pixi run sim world:=test_lot hud:=true</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>HUD panel</th>
 <th>Turtle (<code>pixi run turtle</code>)</th>
-<th>Gazebo (<code>pixi run sim world:=road</code>)</th>
+<th>Sim (<code>pixi run sim world:=road</code>; Ravensim, Gazebo until 16 Nov)</th>
 <th>Bench (<code>pixi run bench</code>)</th>
 <th>Car</th>
 </tr>
@@ -660,7 +695,7 @@ With Gazebo, one command does both: <code>pixi run sim world:=test_lot hud:=true
 <tr>
 <td>Speed, steering, mode, armed</td>
 <td>✅ from the turtle's motion (15 Oct)</td>
-<td>✅ 50 Hz, from Gazebo's wheels</td>
+<td>✅ 50 Hz, from the simulated wheels</td>
 <td>✅</td>
 <td>the backend's <code>/vehicle/status</code></td>
 </tr>
@@ -707,10 +742,10 @@ nothing publishes that topic there.</p>
 </section>
 <section class="card"><h2 id="the-map-window-big-screen">The map window (big screen)</h2>
 <p><code>ros/hud/aav_hud</code>, binary <code>map</code>: its own window, which is also the ROS node <code>map</code>.
-Step 1 (15 October): what Nav2 already knows, drawn north up. Step 2 (15 October): an
+Step 1 (15 October): what navigation already knows, drawn north up. Step 2 (15 October): an
 offline street map of Ottawa under it (<a href="#the-street-map-under-it">below</a>). Step 3
 (15 October): <a href="#search-for-a-place-and-drive-there">search for a place</a> and send it to
-Nav2.</p>
+navigation.</p>
 <p><img alt="The map window, with pretend data (--demo)" src="../img/map-raylib.png" /></p>
 <div class="table-wrap"><table>
 <thead>
@@ -734,11 +769,11 @@ Nav2.</p>
 </tr>
 <tr>
 <td>The goal: a green dot</td>
-<td>the plan's last point; RViz's <code>/goal_pose</code> until Nav2 plans for it</td>
+<td>the plan's last point; RViz's <code>/goal_pose</code> until the planner plans for it</td>
 </tr>
 <tr>
 <td>TRIP</td>
-<td>NO GOAL, DRIVING, ARRIVED (within 1 m), WAITING FOR A PLAN, NO NEW PLAN (Nav2 stopped replanning: cancelled or failed), NO POSITION</td>
+<td>NO GOAL, DRIVING, ARRIVED (within 1 m), WAITING FOR A PLAN, NO NEW PLAN (the navigator stopped replanning: cancelled or failed), NO POSITION</td>
 </tr>
 <tr>
 <td>DISTANCE LEFT</td>
@@ -758,7 +793,7 @@ Nav2.</p>
 </tr>
 <tr>
 <td>Watchdog banner (15 Oct)</td>
-<td>across the bottom of the map: the sensor watchdog's verdict, as on the HUD: red <strong>STOP: ...</strong> while it holds Nav2, or <strong>SENSOR WATCHDOG SILENT</strong>; amber for a warning (<code>/safety/sensor_watchdog/state</code>)</td>
+<td>across the bottom of the map: the sensor watchdog's verdict, as on the HUD: red <strong>STOP: ...</strong> while it holds navigation, or <strong>SENSOR WATCHDOG SILENT</strong>; amber for a warning (<code>/safety/sensor_watchdog/state</code>)</td>
 </tr>
 <tr>
 <td>Scale bar, N</td>
@@ -804,7 +839,7 @@ Nav2.</p>
 <h3 id="run-it_1">Run it</h3>
 <pre class="highlight"><code class="language-bash">pixi run map --demo                          # pretend data: no ROS, no car
 pixi run build &amp;&amp; pixi run map             # the real node (ros2 launch aav_hud map.launch.py)
-pixi run sim world:=test_lot map:=true     # Gazebo, Nav2 and the map window together
+pixi run sim world:=test_lot map:=true     # the simulator, our stack and the map window together
 pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor</code></pre>
 <h3 id="how-its-built_1">How it's built</h3>
 <div class="table-wrap"><table>
@@ -825,12 +860,12 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor</c
 </tr>
 <tr>
 <td><code>config/map.yaml</code></td>
-<td>every topic name, the limits: <code>stale_after</code>, <code>plan_stale_after</code> (3 s; 25 s, <code>plan_kept_for</code>, within <code>final_approach</code> 8 m of the plan's end, where Nav2 keeps its path), <code>arrive_within</code> (1 m), and <code>street_map</code>, the street map's file</td>
+<td>every topic name, the limits: <code>stale_after</code>, <code>plan_stale_after</code> (3 s; 25 s, <code>plan_kept_for</code>, within <code>final_approach</code> 8 m of the plan's end, where the navigator keeps its path), <code>arrive_within</code> (1 m), and <code>street_map</code>, the street map's file</td>
 </tr>
 </tbody>
 </table></div>
 <ul>
-<li>The distance comes from <code>/plan</code> and the car, not from Nav2's action feedback: simpler,
+<li>The distance comes from <code>/plan</code> and the car, not from the navigator's action feedback: simpler,
   and it works for a goal sent from anywhere.</li>
 <li>The car's size: <code>vehicle.yaml</code>, built in, and the installed one at launch (<code>--vehicle</code>).</li>
 </ul>
@@ -871,13 +906,13 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor</c
 </table></div>
 <p><img alt="The map window next to Gazebo, whole map (--whole-map), driving to a goal" src="../img/map-raylib-sim.png" /></p>
 <ul>
-<li><code>/plan</code> isn't latched: a window opened after Nav2 finished shows NO GOAL until the
+<li><code>/plan</code> isn't latched: a window opened after the navigator finished shows NO GOAL until the
   next goal.</li>
-<li>Near the goal, Nav2 may plan a loop to arrive facing the right way; the distance left
+<li>Near the goal, the planner may plan a loop to arrive facing the right way; the distance left
   follows the loop.</li>
 </ul>
 <h3 id="the-street-map-under-it">The street map under it</h3>
-<p>OpenStreetMap's streets, water, parks and buildings, drawn under Nav2's map, so the car
+<p>OpenStreetMap's streets, water, parks and buildings, drawn under the navigation map, so the car
 and its path sit on real streets. It works with no internet: the map is a file.</p>
 <p><img alt="The demo lot on a Carleton parking lot, by Stadium Way and Bronson Avenue (--demo --zoom 2.5)" src="../img/map-streets-demo.png" /></p>
 <div class="table-wrap"><table>
@@ -1011,7 +1046,7 @@ datum, turned by the meridian convergence (-0.495 degrees at Carleton).</p>
 </tr>
 </tbody>
 </table></div>
-<p>The sim's datum is the placeholder near Carleton, so in Gazebo the test lot sits on
+<p>The sim's datum is the placeholder near Carleton, so in the simulator the test lot sits on
 campus streets that aren't really there: the streets only match the world on the car.</p>
 <h4 id="how-it-draws">How it draws</h4>
 <div class="table-wrap"><table>
@@ -1049,7 +1084,7 @@ campus streets that aren't really there: the streets only match the world on the
 </tbody>
 </table></div>
 <ul>
-<li>Order: streets, then Nav2's map see-through (unknown clear, free a faint blue,
+<li>Order: streets, then the navigation map see-through (unknown clear, free a faint blue,
   occupied near-white), then the plan, the goal and the car.</li>
 <li>Roads by class: paths and service roads dim, residential grey, major roads (Bronson,
   Colonel By) brighter and wider, highways (the 417) amber. Zoomed in, roads are their
@@ -1092,7 +1127,7 @@ campus streets that aren't really there: the streets only match the world on the
 </table></div>
 <p><img alt="The live window in Gazebo, whole map: the test lot, see-through, over the street map" src="../img/map-streets-sim.png" /></p>
 <h3 id="search-for-a-place-and-drive-there">Search for a place, and drive there</h3>
-<p>Type a name or an address, pick a result, and send it to Nav2 as the goal. Two presses
+<p>Type a name or an address, pick a result, and send it to the navigator as the goal. Two presses
 (DRIVE HERE, then CONFIRM), so a stray tap never moves the car.</p>
 <p><img alt="Typing &quot;carleton&quot;: names, types, streets and the distance from the car (--demo --search carleton)" src="../img/map-search.png" /></p>
 <div class="table-wrap"><table>
@@ -1211,7 +1246,7 @@ bottom. A mouse click counts as a tap, so it works the same on a Mac.</p>
 </tr>
 <tr>
 <td>Frame</td>
-<td>Nav2's map frame (<code>map</code>), from the place's lat/lon by the same sums as navsat_transform (<code>earth.rs</code>)</td>
+<td>the map frame (<code>map</code>), from the place's lat/lon by the same sums as navsat_transform (<code>earth.rs</code>)</td>
 </tr>
 <tr>
 <td>Facing</td>
@@ -1219,17 +1254,17 @@ bottom. A mouse click counts as a tap, so it works the same on a Mac.</p>
 </tr>
 <tr>
 <td>Refused</td>
-<td>outside Nav2's <code>/map</code> (<strong>Outside Nav2's map: 3.8 km away</strong>, from its edge), no <code>/map</code> yet, or no car position</td>
+<td>outside the navigation map (<code>/map</code>) (<strong>Outside the map: 3.8 km away</strong>, from its edge), no <code>/map</code> yet, or no car position</td>
 </tr>
 <tr>
 <td><code>--demo</code></td>
-<td>no Nav2: the goal shows, and the pretend car stops</td>
+<td>no ROS: the goal shows, and the pretend car stops</td>
 </tr>
 </tbody>
 </table></div>
 <p><img alt="A place 3.8 km off Nav2's map: no DRIVE HERE, the reason instead (--demo --search parliament --pick 1)" src="../img/map-search-outside.png" /></p>
-<p>On the car, Nav2's map is only the test site, so most of Ottawa is "outside" until a
-bigger map (or Nav2's GPS waypoints over a road map) exists. That's the right answer, not
+<p>On the car, the navigation map is only the test site, so most of Ottawa is "outside" until a
+bigger map (or GPS waypoints over a road map) exists. That's the right answer, not
 a bug.</p>
 <h4 id="how-the-search-works">How the search works</h4>
 <div class="table-wrap"><table>
@@ -1307,7 +1342,7 @@ a bug.</p>
 </tr>
 <tr>
 <td><code>--send-goal TEXT</code></td>
-<td>once <code>/map</code> and the car are known: sends the first result inside Nav2's map, and says so on the terminal</td>
+<td>once <code>/map</code> and the car are known: sends the first result inside the navigation map, and says so on the terminal</td>
 </tr>
 </tbody>
 </table></div>
@@ -1330,7 +1365,7 @@ a bug.</p>
 </tr>
 <tr>
 <td>The same, <code>--send-goal "carleton university"</code></td>
-<td>nothing sent: every result "Outside Nav2's map" (109 m to 700 m away)</td>
+<td>nothing sent: every result "Outside the map" (109 m to 700 m away)</td>
 </tr>
 <tr>
 <td>Typing, clicks, Up/Down, DRIVE HERE and CONFIRM by hand</td>
@@ -1347,7 +1382,7 @@ a bug.</p>
 </tbody>
 </table></div>
 <p><img alt="Gazebo: University Drive, sent by --send-goal, and Nav2 driving there" src="../img/map-search-sim.png" /></p>
-<p>The sim's datum is the placeholder near Carleton, so in Gazebo "University Drive" lands
+<p>The sim's datum is the placeholder near Carleton, so in the simulator "University Drive" lands
 inside the test lot. On the car, the datum is the real test site.</p>
 </section>
 <section class="card"><h2 id="themes-the-screens-colours">Themes: the screens' colours</h2>
@@ -1398,6 +1433,12 @@ debug screen and the hardware panel.</p>
 <td><img alt="Before" src="../img/debug-hud-before-theme.png" /></td>
 <td><img alt="Mocha" src="../img/debug-hud-seeing.png" /></td>
 <td><img alt="Initial D" src="../img/debug-hud-initial-d.png" /></td>
+</tr>
+<tr>
+<td>Hardware panel</td>
+<td></td>
+<td></td>
+<td><img alt="Initial D" src="../img/hw-panel-initial-d.png" /></td>
 </tr>
 <tr>
 <td>Hardware panel</td>
@@ -1455,11 +1496,11 @@ no glow.</p>
 </tr>
 <tr>
 <td>Map</td>
-<td>a night street map in greys; highways dark red; Carleton's campus a faint red; Nav2's plan <strong>white</strong>, the street route <strong>red</strong>; black boxes with white edges; the faint car at the foot of the right panel</td>
+<td>a night street map in greys; highways dark red; Carleton's campus a faint red; the plan <strong>white</strong>, the street route <strong>red</strong>; black boxes with white edges; the faint car at the foot of the right panel</td>
 </tr>
 <tr>
 <td>Debug screen</td>
-<td>black 3D view, grey ground grid, the lidar's cubes teal, Nav2's cubes red wireframes; black side panel with a white edge; the faint car at its foot</td>
+<td>black 3D view, grey ground grid, the lidar's cubes teal, the costmap's cubes red wireframes; black side panel with a white edge; the faint car at its foot</td>
 </tr>
 <tr>
 <td>Hardware panel</td>
@@ -1508,7 +1549,7 @@ robot is drawn after it, so it always goes in front.</p>
 <p>Only the localizers keep Catppuccin's colours (blue, green, orange, purple, yellow), so
 a picture means the same in every theme. Corners come from <code>Style::corner</code>: soft in the
 glass themes, under a third as round in Initial D.</p>
-<p>The pictures (2 Nov, Ben's Mac, pretend data): <code>pixi run hud --demo --screenshot FILE</code>;
+<p>The pictures (2 Nov; the Initial D ones again 15 Nov, with the faint car on all four, and the hardware panel's added; Ben's Mac, pretend data): <code>pixi run hud --demo --screenshot FILE</code>;
 <code>pixi run map --demo --zoom 2.5 --screenshot FILE</code>; <code>pixi run debug-hud --demo
 --screenshot FILE --after 8</code>; <code>pixi run hw-panel --demo --screenshot FILE --after 12</code>.</p>
 <h3 id="switch-theme">Switch theme</h3>
@@ -1683,11 +1724,11 @@ by night:</p>
 <td>purple</td>
 </tr>
 <tr>
-<td>Nav2's plan</td>
+<td>The plan</td>
 <td>yellow</td>
 </tr>
 <tr>
-<td>Nav2's cubes</td>
+<td>The costmap's cubes</td>
 <td>red wireframes</td>
 </tr>
 <tr>
@@ -1734,7 +1775,7 @@ on the right two views from above. Key <strong>L</strong> swaps the right side f
 <td><code>/localization/ndt/status</code>; the scan</td>
 </tr>
 <tr>
-<td>Nav2's cubes</td>
+<td>The costmap's cubes</td>
 <td>the road's fit (<strong>OK</strong> green, <strong>WARN</strong> amber: taken as flat), how many cubes, ms per cloud; "off (voxels:=false)" when none came; STALE when quiet</td>
 <td><code>/perception/voxels/status</code>, <code>/perception/voxels/cubes</code></td>
 </tr>
@@ -1758,12 +1799,12 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 </thead>
 <tbody>
 <tr>
-<td>Cubes (20 cm), coloured by height: grey ground, then the theme's teal, standing out more the higher. <strong>Kept</strong> for 2 s and fading darker (key K: this scan's only)</td>
+<td>Cubes (20 cm), coloured by height: the theme's teal, standing out more the higher. <strong>Kept</strong> for 2 s and fading darker (key K: this scan's only). The ground is hidden (key G shows it, grey): the road, and flat ground a little higher, such as the campus's grass a kerb up, whose lidar rings filled the screen (17 Nov). A low cube beside the road (a kerb) or under a taller one stays</td>
 <td><code>/sensors/lidar/points</code></td>
 <td>lidar_link -&gt; base_link -&gt; odom</td>
 </tr>
 <tr>
-<td><strong>Nav2's cubes</strong>: red 0.25 m wireframes over the screen's own (key V), the newest cloud only; dimmer when STALE. What Nav2 stops for (<code>voxels:=true</code>), beside what the lidar sees</td>
+<td><strong>The costmap's cubes</strong>: red 0.25 m wireframes over the screen's own (key V), the newest cloud only; dimmer when STALE. What the car stops for (<code>voxels:=true</code>), beside what the lidar sees</td>
 <td><code>/perception/voxels/cubes</code></td>
 <td>base_link -&gt; odom, EKF local's pose at the cloud's stamp</td>
 </tr>
@@ -1788,7 +1829,7 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 <td>map, through map -&gt; odom</td>
 </tr>
 <tr>
-<td>Nav2's plan (yellow), the car's trail (grey)</td>
+<td>The plan (yellow), the car's trail (grey)</td>
 <td><code>/plan</code>; EKF local</td>
 <td>map; odom</td>
 </tr>
@@ -1798,7 +1839,7 @@ drive</code>). No map -&gt; odom yet: only the map-frame cars are drawn.</p>
 <td>-</td>
 </tr>
 <tr>
-<td>Panel (key L): IMU, GPS, lidar, Nav2 cubes, wheels, wheel odom, vehicle, each estimate, map -&gt; odom, loc. health (amber when WARN), tracker</td>
+<td>Panel (key L): IMU, GPS, lidar, costmap cubes, wheels, wheel odom, vehicle, each estimate, map -&gt; odom, loc. health (amber when WARN), tracker</td>
 <td>each topic: OK, STALE or NEVER, and what it said</td>
 <td>-</td>
 </tr>
@@ -1879,7 +1920,7 @@ another tracker, in the simulator only (the design's D3: never an actuator).</p>
 </tr>
 <tr>
 <td>V</td>
-<td>Nav2's cubes (red wireframes): on by default</td>
+<td>The costmap's cubes (red wireframes): on by default</td>
 </tr>
 <tr>
 <td>M</td>
@@ -1912,14 +1953,15 @@ another tracker, in the simulator only (the design's D3: never an actuator).</p>
 </tbody>
 </table></div>
 <h3 id="run-it_2">Run it</h3>
-<pre class="highlight"><code class="language-bash">pixi run demo --debug               # Gazebo, RViz, the HUD, the map window and the debug HUD
+<pre class="highlight"><code class="language-bash">pixi run demo --debug               # the simulated car, RViz, the HUD, the map window and the debug HUD
 pixi run debug-hud --demo          # pretend data: no ROS (a walled lot, a ray-cast lidar)
 pixi run build &amp;&amp; pixi run debug-hud    # the node alone, beside a running sim</code></pre>
-<p><code>demo --debug</code> is <code>demo</code> with <code>amcl:=true tracker:=pure_pursuit reversing:=false</code>, so AMCL
-and the trial tracker have something to show; and <code>ndt:=true</code> too when
-<code>maps/ndt/test_lot.pcd</code> is there. No map yet: <code>pixi run ndt-map drive</code> once (about 6
-min, headless; the map stays out of git). Swap the tracker live with keys 1-4, or
-from a terminal: <code>ros2 param set /track tracker lqr</code> (sim only, both ways).</p>
+<p><code>demo --debug</code> is <code>demo</code> with <code>amcl:=true</code>, on the default stack (ours), so AMCL has
+something to show; and <code>ndt:=true</code> too when <code>maps/ndt/test_lot.pcd</code> is there. No map yet:
+<code>pixi run ndt-map drive</code> once (about 6 min, headless; the map stays out of git). To swap a
+tracker live, start it with one of <code>aav_track</code>'s, forward only:
+<code>pixi run demo --debug tracker:=pure_pursuit reversing:=false</code>; then keys 1-4, or
+<code>ros2 param set /track tracker lqr</code> (sim only, both ways).</p>
 <h3 id="how-its-built_2">How it's built</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -1942,7 +1984,7 @@ from a terminal: <code>ros2 param set /track tracker lqr</code> (sim only, both 
 <td>every topic name, the frames, <code>cube_size</code>, <code>max_cubes</code>, <code>pose_window</code>, <code>stale_after</code>, <code>keep_cubes_for</code>, <code>ndt_map</code>, <code>ndt_map_cell</code>, <code>voxels_cube_size</code> (0.25 m), <code>health_stale_after</code> (3 s)</td>
 </tr>
 <tr>
-<td>Nav2's cubes</td>
+<td>The costmap's cubes</td>
 <td>their own newest-only slots and thread (<code>nav2_cubes</code>), as the lidar's; <code>debug-core</code>'s <code>voxels</code> moves each centre into odom (no second snap)</td>
 </tr>
 <tr>
@@ -1951,8 +1993,8 @@ from a terminal: <code>ros2 param set /track tracker lqr</code> (sim only, both 
 </tr>
 </tbody>
 </table></div>
-<p>On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar); on the Orin's
-own screen.</p>
+<p>On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar): a laptop on
+the car's cable. Not the Orin's own screen: it runs no graphics (Ben, 5 Nov).</p>
 <h3 id="tested-29-october-a-mac">Tested (29 October, a Mac)</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -2007,7 +2049,7 @@ own screen.</p>
 </tr>
 </tbody>
 </table></div>
-<h3 id="tested-1-november-bens-mac-nav2s-cubes-and-localization-health">Tested (1 November, Ben's Mac): Nav2's cubes and localization health</h3>
+<h3 id="tested-1-november-bens-mac-the-costmaps-cubes-and-localization-health">Tested (1 November, Ben's Mac): the costmap's cubes and localization health</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -2139,10 +2181,10 @@ relies on <code>speed_wheels</code> and the no-timeout lock (both refuse today's
 </table></div>
 <h3 id="run-it_3">Run it</h3>
 <pre class="highlight"><code class="language-bash">pixi run hw-panel --demo                 # a pretend car: no ROS, any laptop
-pixi run sim world:=test_lot           # Gazebo (or: pixi run demo --debug) ...
+pixi run sim world:=test_lot           # the simulator (or: pixi run demo --debug) ...
 pixi run hw-panel                      # ... and the panel beside it, localhost-only
-pixi run hw-panel stands:=true         # on the car's stands (speed stays off until 49b)</code></pre>
-<p>Run it from the Orin's own screen or a wired laptop, not a Mac over WiFi. For checks,
+pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true   # the car on stands, from a laptop on its network (pixi run hw-panel stays on this computer)</code></pre>
+<p>Run it from a wired laptop, not a Mac over WiFi (and not the Orin: it runs no graphics, Ben, 5 Nov). For checks,
 <code>hw_panel --self-test 0.3:8</code> presses Speed + to 0.3 m/s and holds GO for 8 s, through the
 same buttons and rules, and prints what was asked and seen.</p>
 <h3 id="the-steering-calibration-page">The steering calibration page</h3>

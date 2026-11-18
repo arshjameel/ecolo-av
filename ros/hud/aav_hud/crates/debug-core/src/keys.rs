@@ -17,6 +17,8 @@ pub enum CubeView {
 }
 
 impl CubeView {
+    /// The other view.
+    #[must_use]
     pub fn toggled(self) -> Self {
         match self {
             Self::Kept => Self::Scan,
@@ -24,6 +26,8 @@ impl CubeView {
         }
     }
 
+    /// Its name in the legend.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Kept => "kept, fading",
@@ -45,6 +49,8 @@ pub enum Layout {
 }
 
 impl Layout {
+    /// The other layout.
+    #[must_use]
     pub fn toggled(self) -> Self {
         match self {
             Self::Seeing => Self::Panel,
@@ -52,6 +58,8 @@ impl Layout {
         }
     }
 
+    /// Its name in the legend.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Seeing => "seeing: cubes, map, NDT",
@@ -65,12 +73,15 @@ impl Layout {
 pub struct Layers {
     /// The seeing screen, or the sensor panel (key L).
     pub layout: Layout,
+    /// Which cubes the 3D view shows (key K).
     pub cubes: CubeView,
+    /// The ground and flat raised ground, the lidar's rings (key G; off: Ben, 17 Nov).
+    pub ground: bool,
     /// NDT's map as faint wireframe cubes (key M).
     pub ndt_map: bool,
     /// AMCL's particles (key A).
     pub particles: bool,
-    /// Nav2's cubes, the voxels trial's, as red wireframes (key V).
+    /// The costmap's cubes, the voxels trial's, as red wireframes (key V).
     pub nav2_cubes: bool,
     /// The key legend itself (key H).
     pub keys: bool,
@@ -81,6 +92,7 @@ impl Default for Layers {
         Self {
             layout: Layout::Seeing,
             cubes: CubeView::Kept,
+            ground: false,
             ndt_map: false,
             particles: true,
             nav2_cubes: true,
@@ -98,11 +110,13 @@ pub enum Action {
     ResetCamera,
     /// K: kept cubes or this scan's.
     Cubes,
+    /// G: the ground's cubes.
+    Ground,
     /// M: NDT's map.
     NdtMap,
     /// A: AMCL's particles.
     Particles,
-    /// V: Nav2's cubes (the voxels trial).
+    /// V: the costmap's cubes (the voxels trial).
     Nav2Cubes,
     /// H: the key legend.
     Keys,
@@ -114,9 +128,10 @@ pub enum Action {
 
 impl Action {
     /// Every key, in the legend's order (keys 1-4 come after them).
-    pub const ALL: [Action; 9] = [
+    pub const ALL: [Action; 10] = [
         Action::Layout,
         Action::Cubes,
+        Action::Ground,
         Action::Nav2Cubes,
         Action::NdtMap,
         Action::Particles,
@@ -127,11 +142,13 @@ impl Action {
     ];
 
     /// The key, as printed.
+    #[must_use]
     pub fn key(self) -> &'static str {
         match self {
             Self::Camera => "C",
             Self::ResetCamera => "R",
             Self::Cubes => "K",
+            Self::Ground => "G",
             Self::NdtMap => "M",
             Self::Particles => "A",
             Self::Nav2Cubes => "V",
@@ -142,14 +159,16 @@ impl Action {
     }
 
     /// What it does, in a few words.
+    #[must_use]
     pub fn what(self) -> &'static str {
         match self {
             Self::Camera => "camera",
             Self::ResetCamera => "reset the camera",
             Self::Cubes => "cubes",
+            Self::Ground => "ground (the lidar's rings)",
             Self::NdtMap => "NDT's map",
             Self::Particles => "AMCL's particles",
-            Self::Nav2Cubes => "Nav2's cubes (red)",
+            Self::Nav2Cubes => "the costmap's cubes (red)",
             Self::Keys => "hide these keys",
             Self::Layout => "layout",
             Self::FullScreen => "full screen",
@@ -162,6 +181,7 @@ impl Layers {
     pub fn apply(&mut self, action: Action) {
         match action {
             Action::Cubes => self.cubes = self.cubes.toggled(),
+            Action::Ground => self.ground = !self.ground,
             Action::NdtMap => self.ndt_map = !self.ndt_map,
             Action::Particles => self.particles = !self.particles,
             Action::Nav2Cubes => self.nav2_cubes = !self.nav2_cubes,
@@ -173,6 +193,7 @@ impl Layers {
 
     /// The legend: each key, what it does, and what it is now (if it has a state).
     /// `has_map`: whether NDT's map was loaded (else M says so).
+    #[must_use]
     pub fn legend(&self, camera: Mode, has_map: bool) -> Vec<KeyLine> {
         let on = |b: bool| if b { "on" } else { "off" };
         let mut lines: Vec<KeyLine> = Action::ALL
@@ -180,6 +201,7 @@ impl Layers {
             .map(|a| {
                 let now = match a {
                     Action::Cubes => self.cubes.label().to_owned(),
+                    Action::Ground => on(self.ground).to_owned(),
                     Action::NdtMap if !has_map => "no map".to_owned(),
                     Action::NdtMap => on(self.ndt_map).to_owned(),
                     Action::Particles => on(self.particles).to_owned(),
@@ -212,7 +234,9 @@ impl Layers {
 /// One line of the key legend.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyLine {
+    /// The key.
     pub key: &'static str,
+    /// What it does.
     pub what: &'static str,
     /// Its state now, or empty.
     pub now: String,
@@ -234,6 +258,9 @@ mod tests {
         assert!(l.nav2_cubes);
         l.apply(Action::Nav2Cubes);
         assert!(!l.nav2_cubes);
+        assert!(!l.ground, "the ground starts hidden");
+        l.apply(Action::Ground);
+        assert!(l.ground);
         l.apply(Action::Camera);
         l.apply(Action::Cubes);
         assert_eq!(l.cubes, CubeView::Kept);

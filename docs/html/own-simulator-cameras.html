@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Our simulator&#x27;s cameras · AAV 2026–27</title>
+<title>Ravensim&#x27;s cameras · AAV 2026–27</title>
 <link rel="stylesheet" href="style.css">
 </head><body>
 <!-- Generated from docs/own-simulator-cameras.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
-<h1>Our simulator&#x27;s cameras</h1>
-<div class="meta">7 min read · 7 sections</div></header>
+<h1>Ravensim&#x27;s cameras</h1>
+<div class="meta">13 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,10 +125,14 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#in-one-line">In one line</a><a href="#the-cameras">The cameras</a><a href="#run-it">Run it</a><a href="#how-the-core-plugs-it-in">How the core plugs it in</a><a href="#tests">Tests</a><a href="#measured-7-nov-bens-m4-max">Measured (7 Nov, Ben&#x27;s M4 Max)</a><a href="#what-it-is-not-yet">What it is not, yet</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#in-one-line">In one line</a><a href="#the-cameras">The cameras</a><a href="#run-it">Run it</a><a href="#how-the-core-plugs-it-in">How the core plugs it in</a><a href="#tests">Tests</a><a href="#measured-7-nov-bens-m4-max">Measured (7 Nov, Ben&#x27;s M4 Max)</a><a href="#with-no-gpu-15-nov">With no GPU (15 Nov)</a><a href="#camera-lockstep-16-nov">Camera lockstep (16 Nov)</a><a href="#what-it-is-not-yet">What it is not, yet</a></nav>
 <div class="lead"><p>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. This page is the
 <strong>cameras</strong> part: <code>ros/sim/aav_sim_cameras</code>. The rest of the simulator (world, car, lidar,
-IMU, GPS, wheels, clock) is built beside it. The plan:
+IMU, GPS, wheels, clock) is <a href="own-simulator.html">its own page</a>; together they are
+Ravensim, our own simulator (the default since 8 Nov, the only one since 16 Nov:
+<a href="simulation.html">Simulation</a>). With no GPU the clock waits for each picture
+(<a href="#camera-lockstep-16-nov">camera lockstep</a>). They draw on the GPU;
+with none, Mesa's software renderer draws them (<a href="#with-no-gpu-15-nov">below</a>). The plan:
 <a href="../designs/2026-11-05_own-simulator.md">our own simulator</a>.</p>
 <p><img alt="The front left camera, 7 m from the stop sign" src="../img/own-sim-cameras-front.png" /></p></div>
 <section class="card"><h2 id="in-one-line">In one line</h2>
@@ -233,14 +249,32 @@ IMU, GPS, wheels, clock) is built beside it. The plan:
 </tr>
 <tr>
 <td><code>pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0</code></td>
-<td>a Gazebo world (the core's reader), parked at x, y, yaw</td>
+<td>an SDF world (the core's reader), parked at x, y, yaw</td>
 </tr>
 <tr>
-<td><code>pixi run sim simulator:=own world:=road</code></td>
+<td><code>pixi run sim world:=road</code></td>
 <td>the whole simulator: the launch starts the cameras on the world it runs</td>
+</tr>
+<tr>
+<td><code>pixi run sim-cameras --software</code></td>
+<td>a software renderer only, even beside a GPU</td>
+</tr>
+<tr>
+<td><code>pixi run sim-cameras --graphics simple</code></td>
+<td>the plain look (<code>pretty</code>: grain, a sky, haze; the default <code>auto</code>: pretty on a GPU, simple in software). <a href="own-simulator.html#looks-graphicspretty-17-nov">Looks</a></td>
+</tr>
+<tr>
+<td><code>tools/software_gl.sh pixi run sim-check</code></td>
+<td>the road world on a computer with no GPU: the cameras on Mesa's lavapipe</td>
+</tr>
+<tr>
+<td><code>tools/software_gl.sh --force pixi run sim-cameras --bench 100</code></td>
+<td>CI's way on a computer with a GPU, a Mac too</td>
 </tr>
 </tbody>
 </table></div>
+<p>The first line of the log says what draws: <code>sim_cameras: drawing with Apple M4 Max (Metal, GPU)</code>
+or <code>sim_cameras: drawing with llvmpipe (LLVM 23.1.3, 128 bits) (Vulkan, software, on the CPU)</code>.</p>
 <p><code>--ros</code> needs <code>pixi run build</code> first, and stays on this computer (<code>tools/ros.sh --local</code>).</p>
 </section>
 <section class="card"><h2 id="how-the-core-plugs-it-in">How the core plugs it in</h2>
@@ -323,8 +357,8 @@ IMU, GPS, wheels, clock) is built beside it. The plan:
 <td><code>core_world::LIGHT</code></td>
 </tr>
 <tr>
-<td><code>simulator:=own</code> starts <code>sim_cameras --ros --pose truth --world &lt;the world&gt;</code>; <code>gazebo_adapter</code> announces the cameras</td>
-<td><code>aav_gazebo</code> <code>gazebo.launch.py</code></td>
+<td><code>ravensim.launch.py</code> starts <code>sim_cameras --ros --pose truth --world &lt;the world&gt;</code>; <code>sim_adapter</code> announces the cameras</td>
+<td><code>aav_sim_models</code> <code>ravensim.launch.py</code></td>
 </tr>
 <tr>
 <td>Models placed while running (<code>obstacle:=true</code>, <code>spawn_entity</code>): the simulator lists them on <code>/vehicle/sim/entities</code>; the cameras read each SDF file and draw the world again</td>
@@ -409,6 +443,163 @@ IMU, GPS, wheels, clock) is built beside it. The plan:
 </table></div>
 <p>So four cameras at the car's 15 Hz (60 pictures a second) should fit when the computer is quiet: not yet run at 15 Hz.</p>
 </section>
+<section class="card"><h2 id="with-no-gpu-15-nov">With no GPU (15 Nov)</h2>
+<p>TODO 183, Gazebo's last job: GitHub's runners and oirp-spss have no GPU.</p>
+<pre class="highlight"><code class="language-text"> sim_cameras ─ Bevy ─ wgpu ─ Vulkan loader ─┬─ the GPU's driver        (a GPU: picked first)
+                                            └─ Mesa's lavapipe, on the CPU (no GPU, or --software)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The adapter</td>
+<td>wgpu picks a GPU first, a software one only when there is no GPU: the GPU path is unchanged</td>
+</tr>
+<tr>
+<td>Asking for software</td>
+<td><code>--software</code>, or <code>WGPU_FORCE_FALLBACK_ADAPTER=1</code> (wgpu's fallback adapter)</td>
+</tr>
+<tr>
+<td>Mesa's lavapipe</td>
+<td>from conda-forge (<code>mesa-lavapipe</code>, MIT), through <code>pixi exec</code>: <code>tools/software_gl.sh</code>. Not in <code>pixi.lock</code>: it would replace a Linux laptop's own driver</td>
+</tr>
+<tr>
+<td>On a Mac</td>
+<td>Metal always. To try lavapipe anyway: <code>tools/software_gl.sh --force</code> builds the cameras with Vulkan too (feature <code>vulkan-on-mac</code>)</td>
+</tr>
+<tr>
+<td>A fix on the way</td>
+<td>lavapipe lists cooperative-matrix shapes but not the feature; Bevy asked for it and Vulkan refused the device. The cameras now turn that feature off (nothing uses it)</td>
+</tr>
+<tr>
+<td>Building on Linux</td>
+<td>the cameras take Bevy's renderer without its window parts (winit, X11, Wayland, gamepads), so pixi's environment is enough (gamepads wanted libudev's headers). The pictures are the same to the pixel</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="how-fast-15-nov-bens-m4-max-16-cores-load-14">How fast (15 Nov, Ben's M4 Max, 16 cores, load 14)</h3>
+<p>The road world's test copy, all four cameras (640 x 360, 4x MSAA, shadows), <code>--bench</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Drawn by</th>
+<th>One round of 4 pictures</th>
+<th>Rounds a second</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the GPU (Metal)</td>
+<td>13.6 ms</td>
+<td>74</td>
+</tr>
+<tr>
+<td>lavapipe, every core</td>
+<td>36.6 ms</td>
+<td>27</td>
+</tr>
+<tr>
+<td>lavapipe, 4 threads (<code>LP_NUM_THREADS=4</code>)</td>
+<td>54 ms (3 cameras: 39 ms)</td>
+<td>18 (3 cameras: 26)</td>
+</tr>
+<tr>
+<td>lavapipe, 2 threads</td>
+<td>89 ms (3 cameras: 62 ms)</td>
+<td>11 (3 cameras: 16)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The timing check, 10 s, lavapipe</td>
+<td>4 cameras at 10.06 Hz, out 40 ms after due (median), worst 66 ms, none late</td>
+</tr>
+<tr>
+<td>Its pictures against the GPU's</td>
+<td>the same: no pixel off by more than 8 of 255 (worst 31, on edges)</td>
+</tr>
+<tr>
+<td>The campus world (596,000 triangles), lavapipe</td>
+<td>1.3 s a round: <strong>not usable</strong>. Without shadows and MSAA still 0.29 s. Campus needs a GPU</td>
+</tr>
+</tbody>
+</table></div>
+<p>So the road world at 10 Hz x 3 cameras fits in software with 2 cores to spare for it.
+GitHub's runners have 4 (x86_64), slower than the M4's: <span class="badge b-untested">untested</span> there.</p>
+</section>
+<section class="card"><h2 id="camera-lockstep-16-nov">Camera lockstep (16 Nov)</h2>
+<p><strong>The problem.</strong> On CI, drawn in software, the cameras ran at 1.6 Hz: the world ran on
+without them and they skipped poses. Gazebo drew its sensors in lockstep; now Ravensim does.</p>
+<pre class="highlight"><code class="language-text"> sim_cameras ── /vehicle/sim/cameras/free_until ──▶ simulator
+   "my next picture is due at t"                       at each truth stamped t or later:
+                                                       hold /clock until a later t comes</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>camera_lockstep:=auto</code> (the default)</td>
+<td>on under <code>tools/software_gl.sh</code> (it exports <code>AAV_SOFTWARE_GL=1</code>), off with a GPU</td>
+</tr>
+<tr>
+<td><code>camera_lockstep:=true</code> / <code>false</code></td>
+<td>always on / off</td>
+</tr>
+<tr>
+<td><code>camera_timeout</code> (10 s)</td>
+<td>no word that long: the clock runs free until the cameras speak again</td>
+</tr>
+</tbody>
+</table></div>
+<p>The logic is <code>sim-core</code>'s <code>lockstep.rs</code> (<code>CameraGate</code>), tested without ROS. The simulator
+logs <code>camera lockstep on</code>, and in each 30 s report how often it held the clock.</p>
+<h3 id="measured-17-nov-bens-m4-max-lavapipe-forced-load-6-14">Measured (17 Nov, Ben's M4 Max, lavapipe forced, load 6-14)</h3>
+<p><code>tools/software_gl.sh --force pixi run sim-check --obstacle</code>, the road world:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sim-check</td>
+<td>every leg passes, the obstacle too (stopped 0.80 m short)</td>
+</tr>
+<tr>
+<td>The cameras, in sim time</td>
+<td>front left 10.0 Hz, front right 10.0 Hz, rear 10.0 Hz</td>
+</tr>
+<tr>
+<td>The lockstep</td>
+<td>held the clock at every picture: about 300 times per 30 s, 12.5-14.2 s of waiting in all; never timed out</td>
+</tr>
+<tr>
+<td>The real-time factor</td>
+<td>0.99-1.00: on this Mac lavapipe keeps up, so the waits fit inside the time the clock would have slept anyway</td>
+</tr>
+</tbody>
+</table></div>
+<p>On a slower computer (CI's 4 cores) the clock should slow instead of the cameras:
+<span class="badge b-untested">untested</span> on Linux until CI's <code>sim</code> job has run it.</p>
+</section>
 <section class="card"><h2 id="what-it-is-not-yet">What it is not, yet</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -419,8 +610,8 @@ IMU, GPS, wheels, clock) is built beside it. The plan:
 </thead>
 <tbody>
 <tr>
-<td>A computer with no GPU (CI, oirp-spss)</td>
-<td>Bevy needs Vulkan or Metal: the picture tests can't run there. Only <code>camera-core</code> runs in CI</td>
+<td>Lavapipe on Linux (CI, oirp-spss)</td>
+<td>tried on a Mac only (<code>software_gl.sh --force</code>). The picture tests (<code>tests/render.rs</code>) still don't run in CI</td>
 </tr>
 <tr>
 <td>A side-by-side with Gazebo's pictures</td>
@@ -436,15 +627,15 @@ IMU, GPS, wheels, clock) is built beside it. The plan:
 </tr>
 <tr>
 <td>Faults (freeze, stop)</td>
-<td><code>gazebo_camera</code> does them for Gazebo; the simulator's fault switch should cover these</td>
+<td><code>sim_camera_relay</code> does them (as it did for Gazebo); the simulator's fault switch should cover these</td>
 </tr>
 <tr>
 <td>The JPEG topics</td>
-<td>Gazebo has none either: <code>chase_jpeg</code> and <code>preview_jpeg</code> still make them</td>
+<td>Gazebo had none either: <code>chase_jpeg</code> and <code>preview_jpeg</code> still make them</td>
 </tr>
 <tr>
 <td>Lifelike pictures</td>
-<td>a non-goal: Gazebo's aren't either</td>
+<td>a non-goal: Gazebo's weren't either</td>
 </tr>
 </tbody>
 </table></div></section>

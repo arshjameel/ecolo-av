@@ -7,9 +7,13 @@
 <!-- Generated from docs/glossary.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Glossary</h1>
-<div class="meta">14 min read · 7 sections</div></header>
+<div class="meta">18 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -139,7 +151,7 @@
 <tr>
 <td>A*</td>
 <td>a classic way to find the shortest path on a grid</td>
-<td>the 2025-26 planner, now replaced by Nav2</td>
+<td>the 2025-26 planner, replaced by Nav2's planners, then by ours (<code>aav_planner</code>)</td>
 </tr>
 <tr>
 <td>AAV</td>
@@ -178,7 +190,7 @@
 </tr>
 <tr>
 <td>backend</td>
-<td>the one program that plays the car: the real car, Gazebo or the turtle</td>
+<td>the one program that plays the car: the real car, Ravensim, CARLA or the turtle</td>
 <td><code>ros/can_bridge/</code> and <code>ros/sim/</code></td>
 </tr>
 <tr>
@@ -190,6 +202,11 @@
 <td><code>base_link</code></td>
 <td>the car's own frame: on the ground, under the middle of the rear axle</td>
 <td>TF</td>
+</tr>
+<tr>
+<td>behaviour planner</td>
+<td>a trial (<code>behaviour:=true</code>, off by default): decides DRIVE, APPROACH, STOPPED, WAIT, GO or ASK, and caps navigation's speed for a stop sign, an obstacle, the fence and the goal</td>
+<td><code>ros/drivers/aav_behaviour</code>, <a href="stopping.html">How the car stops</a></td>
 </tr>
 <tr>
 <td>bench mode</td>
@@ -208,8 +225,8 @@
 </tr>
 <tr>
 <td><code>bt_navigator</code></td>
-<td>Nav2's boss: runs a behaviour tree that plans, follows and recovers</td>
-<td>Nav2</td>
+<td>Nav2's boss: ran a behaviour tree that planned, followed and recovered. Ours in its place: the navigator (<code>aav_navigator</code>)</td>
+<td>Nav2, until 17 Nov</td>
 </tr>
 <tr>
 <td>CAN</td>
@@ -233,7 +250,7 @@
 </tr>
 <tr>
 <td>CARLA</td>
-<td>a photo-real driving simulator, on Unreal Engine; next to Gazebo, for the cameras (Q31, <a href="carla.html">CARLA</a>)</td>
+<td>a photo-real driving simulator, on Unreal Engine; beside Ravensim, for photo-real cameras (Q31, <a href="carla.html">CARLA</a>)</td>
 <td><code>ros/sim/aav_carla</code></td>
 </tr>
 <tr>
@@ -253,7 +270,7 @@
 </tr>
 <tr>
 <td><code>collision_monitor</code></td>
-<td>a Nav2 node that sends zero speed when something enters its stop zone</td>
+<td>Nav2's node that sent zero speed when something entered its stop zone; ported as <code>aav_stop_zone</code>, the lock since 17 Nov. Its state topic keeps the name</td>
 <td><code>/safety/collision_monitor/state</code></td>
 </tr>
 <tr>
@@ -279,6 +296,11 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>cubes</td>
+<td>our word for voxels: see voxel</td>
+<td><code>voxels:=true</code></td>
+</tr>
 <tr>
 <td>D* Lite</td>
 <td>a path planner that repairs its plan as the map changes</td>
@@ -310,13 +332,18 @@
 <td>the joystick's trigger</td>
 </tr>
 <tr>
+<td>diffusion planner</td>
+<td>a trial planner (<code>planner:=diffusion</code>): a small model draws paths, a guard checks them, and the lattice's path is used when none passes</td>
+<td><code>ros/drivers/aav_diffusion_planner</code>, <a href="trials.html">Trials</a></td>
+</tr>
+<tr>
 <td>DIN rail</td>
 <td>a metal rail that boxes clip onto</td>
 <td>the Pis at the windscreen</td>
 </tr>
 <tr>
 <td>driver (ROS)</td>
-<td>anything that proposes a command: joystick, keyboard, Nav2...</td>
+<td>anything that proposes a command: joystick, keyboard, navigation...</td>
 <td><code>/drivers/&lt;name&gt;/cmd_vel</code></td>
 </tr>
 <tr>
@@ -396,8 +423,23 @@
 </tr>
 <tr>
 <td>Gazebo</td>
-<td>a 3D physics simulator</td>
+<td>a 3D physics simulator. Ours until 8 Nov, removed 16 Nov: <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a></td>
+<td>-</td>
+</tr>
+<tr>
+<td>Ravensim</td>
+<td>Ravensim, in Rust: the world, the car, its sensors and cameras</td>
 <td><code>pixi run sim</code></td>
+</tr>
+<tr>
+<td>RavenTiles</td>
+<td>a big map cut into 64 m chunks, so only those round the car are loaded</td>
+<td><code>pixi run campus</code></td>
+</tr>
+<tr>
+<td>camera lockstep</td>
+<td>with no GPU, Ravensim's clock waits for each camera's picture</td>
+<td><code>tools/software_gl.sh pixi run sim</code></td>
 </tr>
 <tr>
 <td>GNSS</td>
@@ -455,7 +497,7 @@
 <tr>
 <td>inflation</td>
 <td>a soft band of cost around each obstacle in a costmap</td>
-<td>Nav2</td>
+<td><code>aav_costmap</code></td>
 </tr>
 <tr>
 <td>Jazzy</td>
@@ -488,9 +530,19 @@
 <td><a href="can-plan.html">CAN plan</a></td>
 </tr>
 <tr>
+<td>KISS-ICP</td>
+<td>lidar odometry: how far the car moved, from matching each lidar cloud to the last ones. Open source (MIT); a trial here (<code>kiss_icp:=true</code>)</td>
+<td><code>ros/localization/aav_kiss_icp</code>, <a href="trials.html">Trials</a></td>
+</tr>
+<tr>
 <td>KTC-100</td>
 <td>a linear position sensor (a potentiometer)</td>
 <td>the steering, new (KEFC)</td>
+</tr>
+<tr>
+<td>lattice (State Lattice)</td>
+<td>a planner that joins short pre-computed curves the car can drive, reversing too. Nav2's, ported to Rust in <code>aav_planner</code>: our default planner since 1 Nov (<code>planner:=own</code>); Hybrid-A* with <code>planner_search:=hybrid</code></td>
+<td><code>nav2.yaml</code>, <a href="controllers.html#planners">Controllers</a></td>
 </tr>
 <tr>
 <td>launch file</td>
@@ -548,13 +600,18 @@
 <td>the 2025-26 path</td>
 </tr>
 <tr>
+<td>MPC</td>
+<td>model-predictive control: each tick, solve for the best next few seconds of steering and speed on a model of the car, then use only the first step. Trials here (<code>tracker:=mpc</code>, <code>mpc_lag</code>)</td>
+<td><code>ros/drivers/aav_track</code>, <a href="trials.html">Trials</a></td>
+</tr>
+<tr>
 <td>MPPI</td>
-<td>Model-predictive path integral: Nav2's controller on our car (since 22 Oct). It tries thousands of futures through a model of the car. <code>controller:=rpp</code> for Regulated Pure Pursuit instead</td>
+<td>Model-predictive path integral: our path follower (since 22 Oct). It tries thousands of futures through a model of the car. Nav2's until 14 Nov; since then our Rust port, which knows the actuators' lag (<code>tracker:=mppi_lag</code>, <a href="mppi-lag.html">its page</a>)</td>
 <td><a href="path-followers.html">path followers</a></td>
 </tr>
 <tr>
 <td>Nav2</td>
-<td>ROS 2's navigation stack: plans a path and follows it</td>
+<td>ROS 2's stock navigation stack: plans a path and follows it. Ours until 17 Nov; each of its parts is now a Rust port of ours (<a href="../history/nav2-as-it-was.md">as it was</a>). We keep <code>nav2_msgs</code> and <code>nav2_amcl</code></td>
 <td><code>ros/drivers/aav_navigation</code></td>
 </tr>
 <tr>
@@ -566,6 +623,11 @@
 <td><code>navsat_transform</code></td>
 <td>turns GPS fixes into map x and y, and back</td>
 <td><code>/localization/gps/odom</code></td>
+</tr>
+<tr>
+<td>NDT</td>
+<td>Normal Distributions Transform: finds where the car is by matching the lidar's cloud to a saved lidar map. Our own, in Rust; a trial (<code>ndt:=true</code>), never TF</td>
+<td><code>ros/localization/aav_ndt</code>, <a href="../designs/2026-10-29_ndt.md">the design</a></td>
 </tr>
 <tr>
 <td>NMEA</td>
@@ -604,6 +666,11 @@
 <td>open loop</td>
 <td>sending a command with no measurement back</td>
 <td>today's throttle</td>
+</tr>
+<tr>
+<td>Ravensim</td>
+<td>our own simulator, in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov, the only one since 16 Nov. With no GPU, <code>tools/software_gl.sh</code> draws its cameras (lockstep)</td>
+<td><code>ros/sim/aav_simulator</code>, <a href="own-simulator.html">its page</a></td>
 </tr>
 <tr>
 <td>OSM</td>
@@ -672,7 +739,7 @@
 </tr>
 <tr>
 <td>Regulated Pure Pursuit</td>
-<td>a Nav2 controller: steers toward a point ahead on the path. Ours until 22 Oct; <code>controller:=rpp</code></td>
+<td>a Nav2 controller: steers toward a point ahead on the path. Ours until 22 Oct; gone with Nav2 (17 Nov). Our pure pursuit: <code>tracker:=pure_pursuit</code></td>
 <td><a href="path-followers.html">path followers</a></td>
 </tr>
 <tr>
@@ -721,8 +788,8 @@
 <td><code>/spine/arm</code>, <code>/fromLL</code></td>
 </tr>
 <tr>
-<td>SmacPlannerHybrid</td>
-<td>Nav2's planner that only plans turns a car can make</td>
+<td>SmacPlannerHybrid (Hybrid-A*)</td>
+<td>Nav2's planner that only plans turns a car can make. The default until 1 Nov; ours now runs it with <code>planner_search:=hybrid</code>: see lattice</td>
 <td><code>nav2.yaml</code></td>
 </tr>
 <tr>
@@ -822,6 +889,11 @@
 <td><code>vehicle.yaml</code></td>
 <td>the only file with the car's measurements</td>
 <td><code>ros/bringup/aav_description/config</code></td>
+</tr>
+<tr>
+<td>voxel</td>
+<td>a small cube of space. The lidar's cloud as 0.25 m cubes for the costmap is a trial (<code>voxels:=true</code>) beside the flat scan</td>
+<td><code>ros/perception/aav_voxels</code>, <a href="../designs/2026-10-30_voxels.md">the design</a></td>
 </tr>
 <tr>
 <td>W5500</td>

@@ -4,7 +4,7 @@
 //!
 //! It takes the actuators' demands ([`Command::Drive`]), as [`ActuatorCar`] does, and
 //! gives the same states: `tests` drives both side by side. The node doesn't use it yet:
-//! it runs [`TwistFollower`] behind `gazebo_adapter`'s actuator model, as Gazebo does.
+//! it runs [`TwistFollower`] behind `sim_adapter`'s actuator model, as Gazebo does.
 //!
 //! [`ActuatorCar`]: crate::car::ActuatorCar
 //! [`TwistFollower`]: crate::car::TwistFollower
@@ -23,6 +23,8 @@ pub struct SharedCar {
 }
 
 impl SharedCar {
+    /// The shared car with these actuator settings, standing still at the origin.
+    #[must_use]
     pub fn new(cfg: SharedConfig) -> Self {
         Self {
             cfg,
@@ -32,10 +34,16 @@ impl SharedCar {
     }
 
     /// The car from a vehicle.yaml file.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] if the file can't be read or a number in it can't work.
     pub fn from_vehicle_yaml(path: impl AsRef<std::path::Path>) -> Result<Self, ConfigError> {
         SharedConfig::from_vehicle_yaml(path).map(Self::new)
     }
 
+    /// The actuator settings this car runs with.
+    #[must_use]
     pub fn config(&self) -> &SharedConfig {
         &self.cfg
     }

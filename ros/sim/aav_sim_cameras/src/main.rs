@@ -6,11 +6,13 @@
 //! sim_cameras --save /tmp/pics        # and keep each camera's first picture
 //! sim_cameras --from 18 --speed 0     # the car parked 18 m on (7 m from the stop sign)
 //! sim_cameras --bench 300             # draw as fast as it can: the most pictures a second
-//! sim_cameras --ros                   # publish Gazebo's camera topics (feature `ros`)
+//! sim_cameras --ros                   # publish the car's camera topics (feature `ros`)
 //! sim_cameras --ros --pose truth      # draw where /vehicle/sim/truth says, stamped with its time
-//! sim_cameras --world road.sdf        # a Gazebo world (the core's reader), not the test copy
+//! sim_cameras --world road.sdf        # an SDF world (the core's reader), not the test copy
 //! sim_cameras --at 49,-71,0          # parked there (m, m, rad), in the map frame
 //! sim_cameras --image-topic front_left=/x/image_raw  # its picture elsewhere (faults)
+//! sim_cameras --software              # a software renderer only (lavapipe), even beside a GPU
+//! sim_cameras --graphics simple       # plain colours, flat sky (default in software; pretty on a GPU)
 //! ```
 //!
 //! Without `--ros` nothing is published: it renders, times and prints.
@@ -25,17 +27,17 @@ use std::{
 };
 
 use camera_core::{world, Cameras, Frame, Pose, Rig, SimWorld};
-use sim_cameras::BevyRenderer;
+use sim_cameras::{Adapter, BevyRenderer, Graphics};
 
 const CAMERAS: &str = include_str!("../config/cameras.yaml");
 const VEHICLE: &str = include_str!("../../../bringup/aav_description/config/vehicle.yaml");
 /// Gazebo's stop sign picture, so the detector sees the same sign.
 const STOP_SIGN: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../aav_gazebo/models/stop_sign/materials/textures/stop_sign.png"
+    "/../aav_sim_models/models/stop_sign/materials/textures/stop_sign.png"
 );
-/// aav_gazebo's models, for `model://` in a world file.
-const MODELS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../aav_gazebo/models");
+/// aav_sim_models's models, for `model://` in a world file.
+const MODELS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../aav_sim_models/models");
 /// The scripted drive turns back after this far, m.
 const LAP: f64 = 60.0;
 
@@ -62,6 +64,9 @@ struct Options {
     models: Vec<PathBuf>,
     topics: Vec<(String, String)>,
     at: Option<[f64; 3]>,
+    adapter: Adapter,
+    /// None: pretty on a GPU, simple in software.
+    graphics: Option<Graphics>,
 }
 
 impl Options {
@@ -80,6 +85,8 @@ impl Options {
             models: Vec::new(),
             topics: Vec::new(),
             at: None,
+            adapter: Adapter::Any,
+            graphics: None,
         };
         while let Some(arg) = args.next() {
             let mut value = |name: &str| args.next().ok_or(format!("{name} needs a value"));
@@ -109,7 +116,10 @@ impl Options {
                 }
                 "--at" => {
                     let v = value("--at")?;
-                    let n = v.split(',').map(number).collect::<Result<Vec<_>, _>>()?;
+                    let n = v
+                        .split(',')
+                        .map(|s| number(s.trim()))
+                        .collect::<Result<Vec<_>, _>>()?;
                     let [x, y, yaw] = n[..] else {
                         return Err(format!("--at {v}: x,y,yaw"));
                     };
@@ -129,6 +139,13 @@ impl Options {
                         .ok_or(format!("--image-topic {v}: camera=/topic"))?;
                     o.topics.push((name.to_owned(), topic.to_owned()));
                 }
+                "--software" => o.adapter = Adapter::Software,
+                "--graphics" => {
+                    o.graphics = match value("--graphics")?.as_str() {
+                        "auto" => None,
+                        word => Some(word.parse().map_err(|e| format!("{e} (or auto)"))?),
+                    }
+                }
                 "-h" | "--help" => return Err(USAGE.to_owned()),
                 other => return Err(format!("unknown option {other}\n{USAGE}")),
             }
@@ -141,7 +158,7 @@ impl Options {
 }
 
 const USAGE: &str = "sim_cameras [--ros] [--pose script|truth] [--seconds S] \
-[--cameras front_left,front_right,rear,chase] [--save DIR] [--speed M/S] [--from X] [--plain-sign] [--bench N] [--at X,Y,YAW] [--world FILE.sdf] [--models DIR:DIR] [--image-topic camera=/topic]";
+[--cameras front_left,front_right,rear,chase] [--save DIR] [--speed M/S] [--from X] [--plain-sign] [--bench N] [--at X,Y,YAW] [--world FILE.sdf] [--models DIR:DIR] [--image-topic camera=/topic] [--software] [--graphics auto|simple|pretty]";
 
 fn number(s: &str) -> Result<f64, String> {
     s.parse().map_err(|e| format!("{s}: {e}"))
@@ -209,7 +226,7 @@ fn run(o: &Options) -> Result<(), String> {
     run_in(o, rig, &world, &model_dirs(&o.models))
 }
 
-/// Where `model://` may be: `models`, then aav_gazebo's models, then GZ_SIM_RESOURCE_PATH.
+/// Where `model://` may be: `models`, then aav_sim_models's models, then GZ_SIM_RESOURCE_PATH.
 fn model_dirs(models: &[PathBuf]) -> Vec<PathBuf> {
     let mut dirs = models.to_vec();
     dirs.push(PathBuf::from(MODELS));
@@ -235,8 +252,8 @@ fn with_placed(base: &SimWorld, placed: &[ros::Placed], dirs: &[PathBuf]) -> Sim
     world
 }
 
-/// A Gazebo world, read as the core simulator reads it: `model://` from `models`, then
-/// aav_gazebo's models, then GZ_SIM_RESOURCE_PATH.
+/// An SDF world, read as the core simulator reads it: `model://` from `models`, then
+/// aav_sim_models's models, then GZ_SIM_RESOURCE_PATH.
 fn sdf_world(path: &Path, models: &[PathBuf]) -> Result<SimWorld, String> {
     let dirs = model_dirs(models);
     let start = Instant::now();
@@ -274,7 +291,13 @@ fn test_world(plain: bool) -> SimWorld {
 
 fn run_in(o: &Options, rig: Rig, world: &SimWorld, dirs: &[PathBuf]) -> Result<(), String> {
     let start = Instant::now();
-    let renderer = BevyRenderer::new(&rig, world).map_err(|e| e.to_string())?;
+    let renderer = BevyRenderer::with_graphics(&rig, world, o.adapter, o.graphics)
+        .map_err(|e| e.to_string())?;
+    eprintln!(
+        "sim_cameras: drawing with {}, graphics {}",
+        renderer.adapter(),
+        renderer.graphics()
+    );
     eprintln!(
         "sim_cameras: Bevy ready in {:.1} s; cameras: {}",
         start.elapsed().as_secs_f64(),
@@ -362,6 +385,8 @@ fn run_in(o: &Options, rig: Rig, world: &SimWorld, dirs: &[PathBuf]) -> Result<(
             if o.pose == PoseSource::Script {
                 std::thread::sleep(Duration::from_millis(1));
             }
+            #[cfg(feature = "ros")]
+            free_until(out.as_ref(), cameras.next_due())?;
             continue;
         }
         let frames = cameras
@@ -381,12 +406,24 @@ fn run_in(o: &Options, rig: Rig, world: &SimWorld, dirs: &[PathBuf]) -> Result<(
             }
             tallies[i].delays.push(due_at.elapsed());
         }
+        // Every picture for this pose is out: the simulator's lockstep may go on.
+        #[cfg(feature = "ros")]
+        free_until(out.as_ref(), cameras.next_due())?;
     }
     report(&cameras, &tallies, started.elapsed());
     Ok(())
 }
 
 use camera_core::CameraRenderer;
+
+/// Lockstep: tell the simulator when the next picture is due (only with `--pose truth`).
+#[cfg(feature = "ros")]
+fn free_until(out: Option<&ros::RosOut>, next: Option<Duration>) -> Result<(), String> {
+    match (out, next) {
+        (Some(out), Some(next)) => out.free_until(next),
+        _ => Ok(()),
+    }
+}
 
 fn save(dir: &PathBuf, name: &str, f: &Frame) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;

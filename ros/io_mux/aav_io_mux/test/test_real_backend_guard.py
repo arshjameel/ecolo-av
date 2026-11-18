@@ -54,7 +54,7 @@ START = 20.0
 # Our own nodes. Any other on the domain is another run's (cross-talk): its frames on
 # /can/tx, or its announcements, would make this test's counts meaningless. The domain is
 # probed empty first (domains.free_domain); this catches a run that arrives later.
-OURS = {'sensor_mux', 'output_mux', 'spine_bridge', 'guard_test', 'gazebo_adapter'}
+OURS = {'sensor_mux', 'output_mux', 'spine_bridge', 'guard_test', 'sim_adapter'}
 
 
 class Run:
@@ -104,13 +104,13 @@ class Run:
             self.start_gazebo()
 
     def start_gazebo(self):
-        """Announce SIM, as gazebo_adapter does: under its name, so it counts as alive."""
+        """Announce SIM, as sim_adapter does: under its name, so it counts as alive."""
         self.gazebo_at = time.monotonic()
-        self.gazebo = rclpy.create_node('gazebo_adapter')
+        self.gazebo = rclpy.create_node('sim_adapter')
         self.nodes.append(self.gazebo)
         self.executor.add_node(self.gazebo)
         pub = self.gazebo.create_publisher(DataSource, '/system/source', LATCHED)
-        pub.publish(DataSource(announcer='gazebo_adapter', sensors=[SensorSource(
+        pub.publish(DataSource(announcer='sim_adapter', sensors=[SensorSource(
             name='camera_front_left', topic='/sensors/camera/front_left/image_raw',
             source=SensorSource.SIM)]))
 
@@ -225,7 +225,7 @@ def test_all_real_reaches_the_cars_backend(run):
 def test_a_simulated_source_cant_drive_the_real_backend(run):
     run.drive(4.0)
     assert run.state.startswith('STOP - target car needs REAL'), run.state
-    assert 'camera_front_left is SIM (gazebo_adapter)' in run.state
+    assert 'camera_front_left is SIM (sim_adapter)' in run.state
     assert run.drive_frames == 0, (run.drive_frames, run.states, sorted(run.foreign))
     # Ben, 24 Oct: the bridge refuses to arm while the gate is shut, and says why.
     success, message = run.arm()
@@ -271,18 +271,18 @@ def test_an_announcer_seen_before_its_announcement_holds_the_gate(run):
     # its announcement arrives (24 Oct). Until it does, the gate waits: it may say SIM.
     run.drive(3.0)
     assert run.state == 'OPEN - car: every source REAL', run.states
-    node = rclpy.create_node('gazebo_adapter')
+    node = rclpy.create_node('sim_adapter')
     run.nodes.append(node)
     run.executor.add_node(node)
     pub = node.create_publisher(DataSource, '/system/source', LATCHED)   # nothing said yet
     run.drive(1.5)
     assert run.state.startswith('WAIT - car: '), run.states
-    assert 'gazebo_adapter publishes /system/source, its announcement not heard yet' in (
+    assert 'sim_adapter publishes /system/source, its announcement not heard yet' in (
         run.state), run.states
     held = run.drive_frames
     run.drive(1.0)
     assert run.drive_frames == held, 'frames while the announcement was missing'
-    pub.publish(DataSource(announcer='gazebo_adapter', sensors=[SensorSource(
+    pub.publish(DataSource(announcer='sim_adapter', sensors=[SensorSource(
         name='imu', topic='/sensors/imu/data_raw', source=SensorSource.SIM)]))
     run.drive(1.0)
     assert run.state.startswith('STOP - target car needs REAL - imu is SIM'), run.states

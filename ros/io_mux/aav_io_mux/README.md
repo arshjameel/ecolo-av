@@ -20,14 +20,19 @@ topics (pictures, point clouds) cost nothing extra.
 | Target | Its source | Command topic |
 |---|---|---|
 | `car` | REAL | `/control/car/actuator_cmd` |
-| `sim` (Gazebo today), `turtle`, `carla` | SIM | `/control/<target>/actuator_cmd` |
+| `sim` (Ravensim), `turtle`, `carla` | SIM | `/control/<target>/actuator_cmd` |
 | `bench` | BENCH | `/control/bench/actuator_cmd` |
 
 ## Interface
 
-Launch: `ros2 launch aav_io_mux io_mux.launch.py target:=car|sim|bench|turtle|carla [source:=real|sim|bench|replay]`.
+Launch: `ros2 launch aav_io_mux io_mux.launch.py target:=car|sim|bench|turtle|carla [source:=real|sim|bench|replay] [io_mux_impl:=rust|python]`.
 An empty `target` starts no output mux (a replay drives nothing). An empty `source`
 takes the target's. A source the target can't take is refused before anything starts.
+
+**Which language.** `io_mux_impl:=rust`, the default since Ben, 17 Nov ("Rust
+tomorrow"), starts both muxes from [`aav_io_mux_rs`](../aav_io_mux_rs/README.md): the same
+node names, topics and answers. `io_mux_impl:=python` starts this package's, the
+fall-back. `car.launch.py` and `sim.launch.py` pass it on.
 
 **`sensor_mux`**
 
@@ -35,7 +40,7 @@ takes the target's. A source the target can't take is refused before anything st
 |---|---|
 | Subscribes | `/system/source` (`aav_interfaces/DataSource`; reliable, transient local, depth 50) |
 | Publishes | `/system/sensor_mux/state` (`aav_interfaces/SourceCheck`), every `period` |
-| Parameters | `source` (`real`), `period` (0.5 s), `startup` (2.0 s silent while discovery settles), `hold` (5.0 s before a graph doubt counts) |
+| Parameters | `source` (`real`), `period` (0.5 s), `startup` (2.0 s silent while discovery settles), `hold` (5.0 s before a graph doubt counts), `grace` (30.0 s from start before a missing announcement counts) |
 
 It watches `provenance.SENSORS`: IMU, GPS, three cameras, radar, lidar, `/vehicle/odom`,
 `/vehicle/wheels`, `/vehicle/status`, `/vehicle/battery`.
@@ -55,12 +60,16 @@ Modules:
 |---|---|
 | `provenance.py` | the rules, no ROS: `SOURCES`, `TARGETS`, `SENSORS`, `command_topic`, `choose`, `Announcers`, `foreign`, `check_sensors`, `Hold`, `Report`, `Gate` |
 | `heartbeat.py` | no ROS: `heartbeat_topic(target)`, `Counter.beat()` (1 ... 255, 0) |
-| `sensor_mux.py`, `output_mux.py` | the two ROS nodes |
+| `muxes.py` | no ROS: `SensorMuxLogic`, `OutputMuxLogic`, `screen_names`: each node's work, each message and tick in, what to publish and log out. The Rust twins are checked against it |
+| `sensor_mux.py`, `output_mux.py` | the two ROS nodes: messages into `muxes.py`, its answers out |
 | `domains.py` | `free_domain()`: a free ROS domain (150-230) for a test or check; used by the guard test, `sim_check.py`, `bench_check.py` |
 
 ## Invariants
 
-- `provenance.py` and `heartbeat.py` have no ROS imports.
+- `provenance.py`, `heartbeat.py` and `muxes.py` have no ROS imports.
+- **The Rust twins answer the same**: `aav_io_mux_rs/gen_vectors.py` writes this
+  package's answers; after a change here, run it (and port the change). `test_vectors.py`
+  fails until you do.
 - Every rule errs towards "this is the real car, and something is wrong": an unknown
   source number is never REAL; a silent sensor mux closes the gate.
 - Each sensor topic has at most one publisher, from the source asked for. An
@@ -70,8 +79,13 @@ Modules:
   problems. Only `/safety/output_mux/clear` reopens it, and only once the evidence is gone.
 - **Doubt only holds WAIT**: the sensor mux not heard yet or quiet for `stale_after`,
   its doubts, an announcer not heard yet. It reopens after `settle` s of all clear.
+- **A missing announcement gets a start-up grace** (`grace`, 30 s; TODO 234): a sensor
+  nobody announces, or an announcer not heard yet, stays a doubt (WAIT, closed) until
+  then, because on a busy computer discovery has shown `sim_gps` 10 s before `sim_adapter`,
+  which announces it. After the grace it latches as before. An announcement of another
+  source (a simulator on the car) and two publishers on one sensor get no grace.
 - Closed, nothing goes out; each backend's own timeout brakes (spine_bridge 0.1 s then
-  the spine's 100 ms; legacy_uart_bridge 0.3 s; Gazebo 0.2 s).
+  the spine's 100 ms; legacy_uart_bridge 0.3 s; Ravensim's `sim_adapter` 0.2 s).
 - Each backend reads only its own target's topic, so a simulator's ego can't reach the car.
 - The heartbeat moves only while OPEN. The ESP32 brakes, latched, when it stops for 100 ms.
 - A quiet screen (`screens`) is doubt: WAIT, never STOP. It only exists in tests.
@@ -97,4 +111,5 @@ runs it). `pixi run test` runs everything.
 |---|---|
 | `test_provenance.py` | the rules: choose, announcers, check, hold, gate |
 | `test_heartbeat.py` | the counter wraps in a byte |
+| `test_vectors.py` | `muxes.py` still gives the answers the Rust is checked against (`aav_io_mux_rs`'s `vectors.json`) |
 | `test_real_backend_guard.py` | real nodes on a private domain: a SIM announcement stops DRIVE_CMD frames to the real spine_bridge (needs ROS) |

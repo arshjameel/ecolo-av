@@ -13,10 +13,10 @@ files you'll work in, and the open questions you own. Everyone starts with
 | [Today's car](#todays-car-the-legacy-path) | drive the car we have, with the 2025-26 firmware | 0, on today's hardware |
 | [Ego and vehicle control](#ego-and-vehicle-control) | one command into speed and steering the car can do | 0 and 1a |
 | [Localization and sensors](#localization-and-sensors) | where the car is: IMU, GPS, wheels, two EKFs | 1b–2 |
-| [Navigation and costmaps](#navigation-and-costmaps) | Nav2: plan through a map and follow the path | 1b–2 and 3 |
+| [Navigation and costmaps](#navigation-and-costmaps) | our navigation (Rust): plan through a map and follow the path | 1b–2 and 3 |
 | [Drivers and teleop](#drivers-and-teleop) | joystick, keyboard, scripted, and new drivers | 0 and 1a |
 | [HUD and UI](#hud-and-ui) | the touchscreen and the remote views | later |
-| [Simulation and testing](#simulation-and-testing) | Gazebo, replay, and the test ladder | every phase, before the car |
+| [Simulation and testing](#simulation-and-testing) | Ravensim, replay, and the test ladder | every phase, before the car |
 
 ## Integration (Ben)
 
@@ -79,10 +79,10 @@ Phase 0 on the hardware we have now, before the spine exists.
 | | |
 |---|---|
 | Read first | [Costmaps](costmaps.md) |
-| Run first | `pixi run sim world:=test_lot`, then send a Nav2 goal from RViz |
-| First tasks | 1. Draw your first map: copy `maps/example_lot.spec.yaml`, change a wall, run `tools/make_map.py`, and drive it in Gazebo. 2. The real test site (Q21): survey the datum, measure, draw. 3. Nav2's lookahead: its turn command flips sign about once a second in the sim (N7). 4. GPS waypoints for A→B |
-| Files | `ros/drivers/aav_navigation/` (`config/nav2.yaml`, `maps/`), `tools/make_map.py`, `ros/localization/aav_localization/config/navsat.yaml` (the datum) |
-| Open questions | Q21, and the Proposed Nav2 setup |
+| Run first | `pixi run sim world:=test_lot`, then send a goal from RViz |
+| First tasks | 1. Draw your first map: copy `maps/example_lot.spec.yaml`, change a wall, run `tools/make_map.py`, and drive it in Ravensim. 2. The real test site (Q21): survey the datum, measure, draw. 3. The follower's sway: its turn command flips sign about once a second in the sim (N7). 4. GPS waypoints for A→B |
+| Files | `ros/drivers/aav_navigation/` (`config/nav2.yaml`, `maps/`), `aav_planner`, `aav_mppi_lag`, `aav_navigator`, `aav_costmap`, `tools/make_map.py`, `ros/localization/aav_localization/config/navsat.yaml` (the datum) |
+| Open questions | Q21 |
 
 ## Drivers and teleop
 
@@ -110,6 +110,6 @@ Phase 0 on the hardware we have now, before the spine exists.
 |---|---|
 | Read first | [Simulation](simulation.md) |
 | Run first | `pixi run sim`, `pixi run check sim`, and the replay of a recorded drive |
-| First tasks | 1. Gazebo's window and RViz on a Mac: confirm what they show. 2. The test lot world against the real site, once Q21 is answered. 3. Recordings from the car, for replay. 4. CARLA on the NVIDIA computer: the adapter, `aav_carla`, is ready ([CARLA](carla.md), Q31) |
-| Files | `ros/sim/aav_gazebo/`, `ros/bringup/aav_bringup/launch/sim.launch.py` and `replay.launch.py`, `tools/check_graph.py` |
+| First tasks | 1. The developer window (`pixi run ravensim`) and RViz on a Mac: confirm what they show. 2. The test lot world against the real site, once Q21 is answered. 3. Recordings from the car, for replay. 4. CARLA on the NVIDIA computer: the adapter, `aav_carla`, is ready ([CARLA](carla.md), Q31) |
+| Files | `ros/sim/aav_simulator/`, `ros/sim/aav_sim_models/`, `ros/bringup/aav_bringup/launch/sim.launch.py` and `replay.launch.py`, `tools/check_graph.py` |
 | Open questions | Q31, Q32 |

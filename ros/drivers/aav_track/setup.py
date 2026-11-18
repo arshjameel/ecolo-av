@@ -17,7 +17,7 @@ setup(
     zip_safe=True,
     maintainer='AAV 2026-27 team',
     maintainer_email='aav-team@todo.invalid',
-    description='Trial path followers in place of Nav2 controller_server: FollowPath.',
+    description='Trial path followers in place of mppi_lag: FollowPath.',
     license='TODO',
     extras_require={'test': ['pytest']},
     entry_points={

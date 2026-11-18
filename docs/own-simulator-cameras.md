@@ -1,8 +1,12 @@
-# Our simulator's cameras
+# Ravensim's cameras
 
 Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. This page is the
 **cameras** part: `ros/sim/aav_sim_cameras`. The rest of the simulator (world, car, lidar,
-IMU, GPS, wheels, clock) is built beside it. The plan:
+IMU, GPS, wheels, clock) is [its own page](own-simulator.md); together they are
+Ravensim, our own simulator (the default since 8 Nov, the only one since 16 Nov:
+[Simulation](simulation.md)). With no GPU the clock waits for each picture
+([camera lockstep](#camera-lockstep-16-nov)). They draw on the GPU;
+with none, Mesa's software renderer draws them ([below](#with-no-gpu-15-nov)). The plan:
 [our own simulator](designs/2026-11-05_own-simulator.md).
 
 ![The front left camera, 7 m from the stop sign](img/own-sim-cameras-front.png)
@@ -41,8 +45,15 @@ Bevy draws the world from each camera on the car, with no window, and the pictur
 | `pixi run sim-cameras --bench 300` | as fast as it can: the most pictures a second |
 | `pixi run sim-cameras --ros` | publishes the topics, a scripted drive, wall-clock stamps |
 | `pixi run sim-cameras --ros --pose truth` | draws where `/vehicle/sim/truth` says, with its stamps |
-| `pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0` | a Gazebo world (the core's reader), parked at x, y, yaw |
-| `pixi run sim simulator:=own world:=road` | the whole simulator: the launch starts the cameras on the world it runs |
+| `pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0` | an SDF world (the core's reader), parked at x, y, yaw |
+| `pixi run sim world:=road` | the whole simulator: the launch starts the cameras on the world it runs |
+| `pixi run sim-cameras --software` | a software renderer only, even beside a GPU |
+| `pixi run sim-cameras --graphics simple` | the plain look (`pretty`: grain, a sky, haze; the default `auto`: pretty on a GPU, simple in software). [Looks](own-simulator.md#looks-graphicspretty-17-nov) |
+| `tools/software_gl.sh pixi run sim-check` | the road world on a computer with no GPU: the cameras on Mesa's lavapipe |
+| `tools/software_gl.sh --force pixi run sim-cameras --bench 100` | CI's way on a computer with a GPU, a Mac too |
+
+The first line of the log says what draws: `sim_cameras: drawing with Apple M4 Max (Metal, GPU)`
+or `sim_cameras: drawing with llvmpipe (LLVM 23.1.3, 128 bits) (Vulkan, software, on the CPU)`.
 
 `--ros` needs `pixi run build` first, and stays on this computer (`tools/ros.sh --local`).
 
@@ -80,7 +91,7 @@ The shared types live in `camera-core`, which has no Bevy and no ROS:
 | Those shapes become a `SimWorld`: boxes, cylinders and planes one to one; OBJ meshes with their picture coordinates | `camera-core` `core_world.rs`, `obj.rs` |
 | Bevy draws them; pictures repeat (the campus's tarmac and grass), with smaller copies far off | `src/scene.rs` |
 | SDF's light is scaled by 0.6 to look like Gazebo's | `core_world::LIGHT` |
-| `simulator:=own` starts `sim_cameras --ros --pose truth --world <the world>`; `gazebo_adapter` announces the cameras | `aav_gazebo` `gazebo.launch.py` |
+| `ravensim.launch.py` starts `sim_cameras --ros --pose truth --world <the world>`; `sim_adapter` announces the cameras | `aav_sim_models` `ravensim.launch.py` |
 | Models placed while running (`obstacle:=true`, `spawn_entity`): the simulator lists them on `/vehicle/sim/entities`; the cameras read each SDF file and draw the world again | `sim-node`, `src/ros.rs`, `core_world::placed` |
 
 ## Tests
@@ -108,14 +119,86 @@ Other agents were using the same computer (load 10 to 40), so the slow tail is p
 
 So four cameras at the car's 15 Hz (60 pictures a second) should fit when the computer is quiet: not yet run at 15 Hz.
 
+## With no GPU (15 Nov)
+
+TODO 183, Gazebo's last job: GitHub's runners and oirp-spss have no GPU.
+
+```text
+ sim_cameras ─ Bevy ─ wgpu ─ Vulkan loader ─┬─ the GPU's driver        (a GPU: picked first)
+                                            └─ Mesa's lavapipe, on the CPU (no GPU, or --software)
+```
+
+| Part | How |
+|---|---|
+| The adapter | wgpu picks a GPU first, a software one only when there is no GPU: the GPU path is unchanged |
+| Asking for software | `--software`, or `WGPU_FORCE_FALLBACK_ADAPTER=1` (wgpu's fallback adapter) |
+| Mesa's lavapipe | from conda-forge (`mesa-lavapipe`, MIT), through `pixi exec`: `tools/software_gl.sh`. Not in `pixi.lock`: it would replace a Linux laptop's own driver |
+| On a Mac | Metal always. To try lavapipe anyway: `tools/software_gl.sh --force` builds the cameras with Vulkan too (feature `vulkan-on-mac`) |
+| A fix on the way | lavapipe lists cooperative-matrix shapes but not the feature; Bevy asked for it and Vulkan refused the device. The cameras now turn that feature off (nothing uses it) |
+| Building on Linux | the cameras take Bevy's renderer without its window parts (winit, X11, Wayland, gamepads), so pixi's environment is enough (gamepads wanted libudev's headers). The pictures are the same to the pixel |
+
+### How fast (15 Nov, Ben's M4 Max, 16 cores, load 14)
+
+The road world's test copy, all four cameras (640 x 360, 4x MSAA, shadows), `--bench`:
+
+| Drawn by | One round of 4 pictures | Rounds a second |
+|---|---|---|
+| the GPU (Metal) | 13.6 ms | 74 |
+| lavapipe, every core | 36.6 ms | 27 |
+| lavapipe, 4 threads (`LP_NUM_THREADS=4`) | 54 ms (3 cameras: 39 ms) | 18 (3 cameras: 26) |
+| lavapipe, 2 threads | 89 ms (3 cameras: 62 ms) | 11 (3 cameras: 16) |
+
+| Check | Result |
+|---|---|
+| The timing check, 10 s, lavapipe | 4 cameras at 10.06 Hz, out 40 ms after due (median), worst 66 ms, none late |
+| Its pictures against the GPU's | the same: no pixel off by more than 8 of 255 (worst 31, on edges) |
+| The campus world (596,000 triangles), lavapipe | 1.3 s a round: **not usable**. Without shadows and MSAA still 0.29 s. Campus needs a GPU |
+
+So the road world at 10 Hz x 3 cameras fits in software with 2 cores to spare for it.
+GitHub's runners have 4 (x86_64), slower than the M4's: [[untested]] there.
+
+## Camera lockstep (16 Nov)
+
+**The problem.** On CI, drawn in software, the cameras ran at 1.6 Hz: the world ran on
+without them and they skipped poses. Gazebo drew its sensors in lockstep; now Ravensim does.
+
+```text
+ sim_cameras ── /vehicle/sim/cameras/free_until ──▶ simulator
+   "my next picture is due at t"                       at each truth stamped t or later:
+                                                       hold /clock until a later t comes
+```
+
+| Setting | Means |
+|---|---|
+| `camera_lockstep:=auto` (the default) | on under `tools/software_gl.sh` (it exports `AAV_SOFTWARE_GL=1`), off with a GPU |
+| `camera_lockstep:=true` / `false` | always on / off |
+| `camera_timeout` (10 s) | no word that long: the clock runs free until the cameras speak again |
+
+The logic is `sim-core`'s `lockstep.rs` (`CameraGate`), tested without ROS. The simulator
+logs `camera lockstep on`, and in each 30 s report how often it held the clock.
+
+### Measured (17 Nov, Ben's M4 Max, lavapipe forced, load 6-14)
+
+`tools/software_gl.sh --force pixi run sim-check --obstacle`, the road world:
+
+| What | Result |
+|---|---|
+| sim-check | every leg passes, the obstacle too (stopped 0.80 m short) |
+| The cameras, in sim time | front left 10.0 Hz, front right 10.0 Hz, rear 10.0 Hz |
+| The lockstep | held the clock at every picture: about 300 times per 30 s, 12.5-14.2 s of waiting in all; never timed out |
+| The real-time factor | 0.99-1.00: on this Mac lavapipe keeps up, so the waits fit inside the time the clock would have slept anyway |
+
+On a slower computer (CI's 4 cores) the clock should slow instead of the cameras:
+[[untested]] on Linux until CI's `sim` job has run it.
+
 ## What it is not, yet
 
 | Missing | Why it matters |
 |---|---|
-| A computer with no GPU (CI, oirp-spss) | Bevy needs Vulkan or Metal: the picture tests can't run there. Only `camera-core` runs in CI |
+| Lavapipe on Linux (CI, oirp-spss) | tried on a Mac only (`software_gl.sh --force`). The picture tests (`tests/render.rs`) still don't run in CI |
 | A side-by-side with Gazebo's pictures | the looks match by eye (`docs/img/sim-cameras.png`); not measured |
 | The detector on these pictures | the stop sign carries Gazebo's own picture: see [own-simulator.md](own-simulator.md)'s results |
 | The campus at 10 Hz on a busy computer | 4 cameras on the campus: 9.1 Hz, 105 ms median (no ROS, load 11) |
-| Faults (freeze, stop) | `gazebo_camera` does them for Gazebo; the simulator's fault switch should cover these |
-| The JPEG topics | Gazebo has none either: `chase_jpeg` and `preview_jpeg` still make them |
-| Lifelike pictures | a non-goal: Gazebo's aren't either |
+| Faults (freeze, stop) | `sim_camera_relay` does them (as it did for Gazebo); the simulator's fault switch should cover these |
+| The JPEG topics | Gazebo had none either: `chase_jpeg` and `preview_jpeg` still make them |
+| Lifelike pictures | a non-goal: Gazebo's weren't either |

@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_navigation</name>
   <version>0.1.0</version>
-  <description>Nav2 configured for the car (SmacPlannerHybrid, the MPPI controller by default or Regulated Pure Pursuit with controller:=rpp, costmap_2d with the car's footprint, no spin), launched as a driver that publishes /drivers/nav/cmd_vel into twist_mux. Also the maps (empty and example) and their specs.</description>
+  <description>Navigation as a driver: our own map server, costmaps, planner, navigator, follower, smoother and stop zone (Nav2's ports; Nav2 deleted 17 Nov), launched as one driver that publishes /drivers/nav/cmd_vel into twist_mux. Their settings (config/nav2.yaml, in Nav2's layout), the lattice primitives, and the maps (empty and example) and their specs.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
@@ -11,33 +11,30 @@
 
   <exec_depend>aav_description</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
-  <exec_depend>nav2_common</exec_depend>
-  <exec_depend>nav2_map_server</exec_depend>
-  <exec_depend>nav2_planner</exec_depend>
-  <exec_depend>nav2_smac_planner</exec_depend>
-  <exec_depend>nav2_navfn_planner</exec_depend>
-  <exec_depend>nav2_theta_star_planner</exec_depend>
-  <exec_depend>nav2_controller</exec_depend>
-  <exec_depend>nav2_regulated_pure_pursuit_controller</exec_depend>
-  <exec_depend>nav2_mppi_controller</exec_depend>
-  <exec_depend>nav2_behaviors</exec_depend>
-  <exec_depend>nav2_bt_navigator</exec_depend>
-  <exec_depend>nav2_waypoint_follower</exec_depend>
-  <exec_depend>nav2_velocity_smoother</exec_depend>
-  <exec_depend>nav2_collision_monitor</exec_depend>
-  <exec_depend>nav2_lifecycle_manager</exec_depend>
-  <exec_depend>nav2_costmap_2d</exec_depend>
   <exec_depend>aav_lidar</exec_depend>
+  <exec_depend>aav_lidar_rs</exec_depend>
   <exec_depend>aav_voxels</exec_depend>
+  <exec_depend>aav_things</exec_depend>
+  <exec_depend>aav_things_rs</exec_depend>
+  <exec_depend>aav_voxels_rs</exec_depend>
   <exec_depend>aav_ghost</exec_depend>
   <exec_depend>aav_safety</exec_depend>
   <exec_depend>aav_track</exec_depend>
   <exec_depend>aav_mppi_lag</exec_depend>
+  <exec_depend>aav_mpc_lag</exec_depend>
   <exec_depend>aav_smoother</exec_depend>
+  <exec_depend>aav_costmap</exec_depend>
+  <exec_depend>aav_planner</exec_depend>
+  <exec_depend>aav_navigator</exec_depend>
+  <exec_depend>aav_stop_zone</exec_depend>
+  <exec_depend>aav_behaviour_rs</exec_depend>
+  <exec_depend>aav_localization</exec_depend>
   <exec_depend>aav_diffusion_planner</exec_depend>
   <exec_depend>aav_behaviour</exec_depend>
   <exec_depend>aav_ego</exec_depend>
+  <!-- The one Nav2 package kept (amcl:=true, a scored trial), with its lifecycle manager. -->
   <exec_depend>nav2_amcl</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

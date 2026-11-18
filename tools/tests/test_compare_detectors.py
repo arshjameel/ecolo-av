@@ -129,5 +129,3 @@ def test_checked_weights_refuses_a_wrong_file(tmp_path):
 def test_sim_frames_puts_the_camera_at_each_distance():
     for d in sim_frames.DISTANCES:
         assert math.isclose(sim_frames.car_x(d) + sim_frames.CAMERA_X + d, sim_frames.SIGN_X)
-    req = sim_frames.set_pose_request(3.25)
-    assert req.startswith('name: "aav", position: {x: 3.250, y: 0.000')

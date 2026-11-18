@@ -14,12 +14,16 @@
 //!     // publish each frame on cameras.rig().cameras[frame.camera]'s topics
 //! }
 //! ```
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod core_world;
 pub mod frame;
 pub mod geom;
 pub mod lens;
 pub mod obj;
+pub mod pretty;
 pub mod rig;
 pub mod schedule;
 pub mod world;
@@ -30,20 +34,30 @@ pub use frame::Frame;
 pub use geom::{Pose, Rotation, Vec3};
 pub use lens::{Lens, Pixel};
 pub use obj::TriMesh;
+pub use pretty::{Detail, Graphics, Surface};
 pub use rig::{CameraSpec, Hz, Rig};
 pub use schedule::Timer;
 pub use world::{Geometry, Look, Rgb, Shape, SimWorld, Sun};
 
 /// Draws pictures of a world. Bevy's is `sim_cameras::BevyRenderer`; a test can use a fake.
 pub trait CameraRenderer {
+    /// What goes wrong when drawing.
     type Error;
 
     /// Replaces the world: the next pictures show this one.
+    ///
+    /// # Errors
+    ///
+    /// The renderer's error if it can't take the world.
     fn set_world(&mut self, world: &SimWorld) -> Result<(), Self::Error>;
 
     /// Draws the cameras `which` (indices into the rig it was made with), with the car's
     /// base_link at `car` in the map, and stamps them `stamp`. Blocks until every picture
     /// is back from the GPU. Returns them in `which`'s order.
+    ///
+    /// # Errors
+    ///
+    /// The renderer's error if it can't draw or read back a picture.
     fn render(
         &mut self,
         car: &Pose,
@@ -59,7 +73,18 @@ pub struct Cameras<R> {
     renderer: R,
 }
 
+// Debug by hand: the renderer is the GPU's, left out.
+impl<R> std::fmt::Debug for Cameras<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Cameras")
+            .field("rig", &self.rig)
+            .field("timers", &self.timers)
+            .finish_non_exhaustive()
+    }
+}
+
 impl<R: CameraRenderer> Cameras<R> {
+    /// The rig's cameras, each with its own timer, drawn by `renderer`.
     pub fn new(rig: Rig, renderer: R) -> Self {
         let timers = rig.cameras.iter().map(|c| Timer::new(c.rate)).collect();
         Self {
@@ -69,10 +94,12 @@ impl<R: CameraRenderer> Cameras<R> {
         }
     }
 
+    /// The cameras.
     pub fn rig(&self) -> &Rig {
         &self.rig
     }
 
+    /// The renderer, to change its world.
     pub fn renderer_mut(&mut self) -> &mut R {
         &mut self.renderer
     }
@@ -86,7 +113,18 @@ impl<R: CameraRenderer> Cameras<R> {
             .collect()
     }
 
+    /// The sim time the next picture is due, of any camera: `None` before the first
+    /// look. Lockstep (software rendering): the simulator holds its clock there until
+    /// the cameras say a later one.
+    pub fn next_due(&self) -> Option<Duration> {
+        self.timers.iter().map(Timer::next).min().flatten()
+    }
+
     /// Draws the cameras due at `now`, with the car at `car`. Often none.
+    ///
+    /// # Errors
+    ///
+    /// The renderer's error if it can't draw the cameras due.
     pub fn tick(&mut self, car: &Pose, now: Duration) -> Result<Vec<Frame>, R::Error> {
         let due = self.due(now);
         if due.is_empty() {
@@ -153,5 +191,23 @@ mod tests {
             assert_eq!(drawn.iter().filter(|&&d| d == c).count(), 600);
         }
         assert!(stamps.iter().all(|s| s.as_millis() % 100 == 0));
+    }
+
+    /// Lockstep: after each look, the cameras say when their next picture is due.
+    #[test]
+    fn says_its_next_picture() {
+        let rig = Rig::from_yaml(
+            include_str!("../../../config/cameras.yaml"),
+            include_str!("../../../../../bringup/aav_description/config/vehicle.yaml"),
+        )
+        .unwrap();
+        let mut cameras = Cameras::new(rig, Fake(Vec::new()));
+        assert_eq!(cameras.next_due(), None);
+        cameras.tick(&Pose::IDENTITY, Duration::ZERO).unwrap();
+        assert_eq!(cameras.next_due(), Some(Duration::from_millis(100)));
+        cameras
+            .tick(&Pose::IDENTITY, Duration::from_millis(120))
+            .unwrap();
+        assert_eq!(cameras.next_due(), Some(Duration::from_millis(200)));
     }
 }

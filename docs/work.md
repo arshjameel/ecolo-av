@@ -1,6 +1,8 @@
 # Work: what's done, and what needs doing
 
-> **A snapshot from 10 October 2026.** What's true now: [Status](status.md), [The plan](plan.md) and `TODO.md`.
+> **A snapshot from 10 October 2026**, kept as a record. What's true now: [Status](status.md), [The plan](plan.md) and `TODO.md`.
+>
+> Since then: releases 0.2 (3 Nov) and 0.3 (9 Nov: our own simulator, and our own costmap, planner, navigator and smoother beside Nav2); the car drove on 13 Nov with only the localization update installed. What's next is at the top of `TODO.md`; two designs are proposed, not built: [one shape](designs/2026-11-13_one-shape.md) and [the whole car](designs/2026-11-14_the-whole-car.md).
 
 Where the project stands on 10 October 2026: the plan in five phases, the next twelve
 steps, what's done, and the work left in each area. Who owns each area is Q33: see
@@ -14,7 +16,7 @@ steps, what's done, and the work left in each area. Who owns each area is Q33: s
 
 | Part | State |
 |---|---|
-| The software stack | [[works]] end to end in simulation: the turtle, Gazebo, Nav2 goals, replay. On Linux, and on a Mac since 10 Oct |
+| The software stack | [[works]] end to end in simulation: the turtle, Ravensim, navigation goals, replay. On Linux, and on a Mac since 10 Oct |
 | The car | [[untested]] nothing has run on it yet. It runs the 2025-26 software on Humble, and the spine's board code is missing |
 | Phase 0 on the car | waits on Jazzy on the car's computers (Q24), and on the spine (Q10–Q17) or the legacy path |
 
@@ -37,8 +39,8 @@ From the design doc's next steps, in order.
 | 9 | **CAN frame map:** finish the DBC with the firmware owner; bench-test the spine with a USB-CAN adapter and `candump` | [[untested]] the DBC is a draft; no spine board yet |
 | 10 | **URDF:** from the measurements | [[untested]] it exists, with guessed numbers |
 | | **On the car** | |
-| 11 | **Phase 0:** CAN to the Orin and the spine, then the `car` profile on stands with localization and Nav2 off, then on the ground at walking pace | [[missing]] |
-| 12 | **Phase 1:** the scripted drive on the car. GPS A→B in Gazebo first, then on the car | [[missing]] |
+| 11 | **Phase 0:** CAN to the Orin and the spine, then the `car` profile on stands with localization and navigation off, then on the ground at walking pace | [[missing]] |
+| 12 | **Phase 1:** the scripted drive on the car. GPS A→B in Ravensim first, then on the car | [[missing]] |
 
 ## Done so far
 
@@ -93,9 +95,9 @@ From the design doc's next steps, in order.
 
 ### Navigation and costmaps
 
-- Draw the real test site (Q21) and drive it in Gazebo first.
-- Nav2's lookahead (N7): its turn command flips sign about once a second.
-- Restart crashed sensor drivers (N3): Nav2 gives up without TF.
+- Draw the real test site (Q21) and drive it in Ravensim first.
+- The follower's lookahead (N7, found with Nav2): its turn command flips sign about once a second.
+- Restart crashed sensor drivers (N3): navigation gives up without TF.
 - Later: the radar obstacle layer, and the collision monitor. The radar's clusters are ready on `/perception/radar/clusters`.
 
 ### Drivers and teleop
@@ -119,7 +121,7 @@ From the design doc's next steps, in order.
 
 ### Simulation
 
-- Look at the Gazebo window and RViz on a Mac, and say what they show.
+- Look at the developer window (`pixi run ravensim`) and RViz on a Mac, and say what they show.
 - Make the bench's model car match the measured car (Q1-Q5), once it's measured.
 - CARLA on the NVIDIA computer: the adapter is ready ([CARLA](carla.md), Q31).
 
@@ -147,7 +149,7 @@ From the design doc's next steps, in order.
 | The static map → odom used with `gps:=false` isn't in the contract's `/tf_static` | fixed: `map_to_odom_no_gps` |
 | `/sensors/radar/points` is best-effort; the contract doesn't say | fixed |
 | `firmware/spine/Cargo.toml` points to a README that doesn't exist | fixed: the comment changed, and `firmware/spine/README.md` exists |
-| `aav_gazebo`'s test skips at module level, which `CLAUDE.md` says not to do | fixed |
+| `aav_sim_models`'s test skips at module level, which `CLAUDE.md` says not to do | fixed |
 | The HUD's camera address differs: 192.168.1.101 in the old back end, .118 in the app | fixed: the app gets the picture from its back end (`/camera/latest.png`) |
 | `car gps:=false` still starts the GPS driver when the machine file says `gps: true` | fixed, with a test for it and the other arguments (`aav_bringup/test/test_car_launch.py`) |
 | Ctrl-C makes our Python nodes print an error while they shut down (Ctrl-C arrives twice) | fixed: 0 tracebacks from a full bench; the radar clustering's C++ can still crash inside Fast DDS |

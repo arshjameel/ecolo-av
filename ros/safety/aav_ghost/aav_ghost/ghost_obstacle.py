@@ -1,11 +1,11 @@
 """
-ghost_obstacle: a pretend person in Nav2's view, to test stopping with nothing real to hit.
+ghost_obstacle: a pretend person in navigation's view, to test stopping with nothing real to hit.
 
 Publishes   safety/ghost/scan    sensor_msgs/LaserScan, in base_link, at rate_hz: what a
                                  perfect 2D lidar at base_link would see of the ghost (its
                                  near side), inf in every other direction; all inf with no
                                  ghost. Read by the local costmap's ghost_layer and
-                                 collision_monitor's ghost source (navigation.launch.py
+                                 the stop zone's ghost source (navigation.launch.py
                                  ghost:=true): their own layer and source, so the ghost only
                                  ever adds an obstacle, and never clears or hides a real one
             safety/ghost/marker  visualization_msgs/Marker: the ghost as a cylinder, for
@@ -19,7 +19,7 @@ Parameters (config/ghost_obstacle.yaml; change them live, or with `pixi run ghos
   x, y     m in frame, when ahead is negative
   frame    the fixed frame the ghost stands still in: map
   width, height   m: a person 0.5 x 1.7 (the default); a post 0.3 x 1.2
-  rate_hz  how often the scan goes out. Keep it well inside collision_monitor's
+  rate_hz  how often the scan goes out. Keep it well inside the stop zone's
            source_timeout (1 s): a silent ghost stops Nav2, like a silent radar
 
 Setting enabled, ahead, x, y or frame places the ghost again. The maths is in ghost.py.

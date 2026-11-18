@@ -23,6 +23,9 @@
 //! Plain `no_std` Rust with no hardware access: the board reads the pins, the clock and
 //! the I2C writes, and drives the displays.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod alerts;
 pub mod controls;
@@ -55,6 +58,8 @@ pub struct Sentinel {
 }
 
 impl Sentinel {
+    /// A display with no packet yet, on the home page.
+    #[must_use]
     pub const fn new(now_ms: u32) -> Self {
         Sentinel {
             telemetry: None,
@@ -67,6 +72,10 @@ impl Sentinel {
 
     /// One I2C write. A good packet replaces the last; a bad one is refused and changes
     /// nothing.
+    ///
+    /// # Errors
+    ///
+    /// The packet's [`TelemetryError`]; nothing changes.
     pub fn on_write(&mut self, bytes: &[u8], now_ms: u32) -> Result<Option<Beep>, TelemetryError> {
         let t = Telemetry::from_write(bytes)?;
         self.telemetry = Some(t);
@@ -112,28 +121,37 @@ impl Sentinel {
     }
 
     /// The LCD.
+    #[must_use]
     pub fn screen(&self) -> Screen {
         self.page.render(self.telemetry.as_ref(), self.pinned)
     }
 
     /// The matrix.
+    #[must_use]
     pub fn pattern(&self, now_ms: u32) -> Pattern {
         Pattern::now(self.telemetry.as_ref(), self.alerts.comms_lost(), now_ms)
     }
 
     /// The LED bar, LED 0 first: all off until the first packet.
+    #[must_use]
     pub fn leds(&self) -> [bool; 10] {
         self.telemetry.map(|t| t.status.leds()).unwrap_or_default()
     }
 
+    /// The page shown.
+    #[must_use]
     pub fn page(&self) -> Page {
         self.page
     }
 
+    /// The page is pinned: it never times out.
+    #[must_use]
     pub fn pinned(&self) -> bool {
         self.pinned
     }
 
+    /// The last good packet.
+    #[must_use]
     pub fn telemetry(&self) -> Option<&Telemetry> {
         self.telemetry.as_ref()
     }

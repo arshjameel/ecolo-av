@@ -1,9 +1,16 @@
 # Provenance
 
 The `lattice-planner` crate ports the parts of Nav2's `nav2_smac_planner` that our
-nav2.yaml runs as `planner:=lattice` (SmacPlannerLattice). It is rewritten in Rust's own
-style, not transliterated: plain structs and functions, enums for errors, no plugins, no
-ROS. The curves come from OMPL, as Nav2 takes them.
+nav2.yaml runs as `planner:=lattice` (SmacPlannerLattice) and, since 14 Nov, as
+`planner:=hybrid` (SmacPlannerHybrid, Hybrid-A*: Dolgov, Thrun, Montemerlo and Diebel,
+2010). It is rewritten in Rust's own style, not transliterated: plain structs and
+functions, enums for errors, no plugins, no ROS. The curves come from OMPL, as Nav2
+takes them.
+
+Nav2 shares one A* (`AStarAlgorithm<NodeT>`), one `AnalyticExpansion<NodeT>`, one
+collision checker and one smoother between its two car planners; only the node type
+differs. Ours does the same: one `Search`, and an `Expansion` (lattice or Hybrid) for
+the three places they differ.
 
 ## Where it came from
 
@@ -13,6 +20,7 @@ ROS. The curves come from OMPL, as Nav2 takes them.
 | Package | `nav2_smac_planner` |
 | Commit | the Jazzy commit in `vendor/ros2-src.repos` (645abd95, the same as `aav_costmap`'s) |
 | Licence | Apache-2.0 (Samsung Research America, Steve Macenski and the Nav2 authors) |
+| Read 14 Nov 2026 (Hybrid-A*) | `src/smac_planner_hybrid.cpp` (parameters, `configure`, `createPlan`), `src/node_hybrid.cpp` (`HybridMotionTable::initDubin`, `initReedsShepp`, `getProjections`, `getClosestAngularBin`, `isNodeValid`, `getTraversalCost`, `getHeuristicCost`, `getObstacleHeuristic` with `downsample_obstacle_heuristic`, `getDistanceHeuristic`, `precomputeDistanceHeuristic`, `getNeighbors`, `backtracePath`), `src/a_star.cpp` (the template, shared with the lattice), `src/analytic_expansion.cpp` (shared) |
 | Read 8 Nov 2026 | `src/smac_planner_lattice.cpp` (parameters, `createPlan`), `src/a_star.cpp` (`createPath`), `src/node_lattice.cpp` (the motion table, `getNeighbors`, `isNodeValid`, `getTraversalCost`, `getHeuristicCost`, `getDistanceHeuristic`, `precomputeDistanceHeuristic`, `backtracePath`), `src/node_hybrid.cpp` (`resetObstacleHeuristic`, `getObstacleHeuristic`), `src/analytic_expansion.cpp`, `src/collision_checker.cpp`, `src/smoother.cpp`, `include/.../types.hpp` (the smoother's defaults), `include/.../utils.hpp` |
 | Curves | OMPL's `DubinsStateSpace` and `ReedsSheppStateSpace` (BSD-3-Clause, Rice University; Mark Moll), the formulas Nav2 calls through OMPL |
 
@@ -20,9 +28,10 @@ ROS. The curves come from OMPL, as Nav2 takes them.
 
 | Ours | Nav2's (or OMPL's) |
 |---|---|
-| `lattice.rs` | `LatticeMotionTable`: the primitives file, `getClosestAngularBin` |
+| `lattice.rs` | `LatticeMotionTable`: the primitives file, `getClosestAngularBin`; `Lattice::hybrid`: `HybridMotionTable::initDubin` and `initReedsShepp` (the arcs: a whole number of heading bins, chord over a cell's diagonal, `allow_primitive_interpolation`), as a lattice of one-pose moves |
+| `search.rs`, Hybrid-A* | `Expansion::Hybrid`: `NodeHybrid::isNodeValid` (the move's end only), `getTraversalCost` (the six turn kinds, the first move's `travel_distance_cost`), `getHeuristicCost` from the node's own pose; the reversed moves are the facing heading's moves driven backwards, which are Nav2's `REVERSE`, `REV_LEFT` and `REV_RIGHT` |
 | `search.rs` | `AStarAlgorithm::createPath` (the goal, the tolerance and on-approach iterations, the clock and cancel checks), `NodeLattice::getNeighbors` (forward and reversed moves), `isNodeValid` (the sweep along a move), `getTraversalCost` (every penalty), `backtracePath`; `AnalyticExpansion` (when to try, the ancestor refinement, wider radii up to 4x, the score, the max-cost rule) |
-| `heuristic.rs` | `getObstacleHeuristic` (the lazy grid search from the goal, 4 cells clear of the edge), `getDistanceHeuristic` and its precomputed table (mirrored in y) |
+| `heuristic.rs` | `getObstacleHeuristic` (the lazy grid search from the goal, 4 cells clear of the edge; Hybrid-A*'s 2 x 2 downsampling, each block its cheapest cell, the answer doubled), `getDistanceHeuristic` and its precomputed table (mirrored in y) |
 | `collision.rs` | `GridCollisionChecker::inCollision` (the circumscribed-cost shortcut, 72 turned outlines), `FootprintCollisionChecker::footprintCost` |
 | `smoother.rs` | `Smoother`: pieces between cusps, the gradient smoothing with refinement, `updateApproximatePathOrientations`, the Dubins boundary expansions at both ends |
 | `curves.rs` | OMPL's Dubins (6 words) and Reeds-Shepp (48 candidate words, Desaulniers and Soumis' corrections), and their interpolation |
@@ -39,7 +48,21 @@ ROS. The curves come from OMPL, as Nav2 takes them.
 | Two curve samples in the same cell are allowed | Nav2 treats that as a failed curve |
 | The distance table's mirrored heading wraps (`(n - h) % n`) | Nav2's index can step one past the end for heading 0 |
 | `StartOccupied` only when not one move from the start fits | as Nav2's (`num_iterations == 1`), said plainly |
-| No 2D, Hybrid-A* or omni models; no costmap downsampling; no debug markers | our nav2.yaml runs the lattice for a car (Hybrid-A* is a later piece) |
+| No 2D or omni models; no costmap downsampling; no debug markers | our nav2.yaml runs the lattice and Hybrid-A* for a car |
+| 14 Nov: Hybrid-A* (`Planner::hybrid`, `planner_search:=hybrid`), on the same search as the lattice, with the lattice's fixes above (a node's pose only when cheaper; each move checked on its own) | TODO 178 (Ben, 14 Nov: "Hybrid-A* in our Rust planner: Now") |
+| 14 Nov: Hybrid-A*'s moves are made again when the costmap's cells change size, on the next plan | Nav2 does it in its parameter callback; ours has none |
+| 14 Nov: Hybrid-A* has no `use_quadratic_cost_penalty` or `cache_obstacle_heuristic` | nav2.yaml leaves both off |
+| 14 Nov: the lattice's distance estimate takes the node's cell, Hybrid-A*'s its pose (`DistanceTable::get` takes both as numbers) | as Nav2's two nodes do |
+| 14 Nov: the example lot's map loader moved from `examples/moves.rs` to `scenes::map` (errors, not panics), with the lot tour (`LOT_TOUR`) | the Hybrid-A* tests and `examples/hybrid.rs` plan on it too |
 | The node reads one JSON block (`vehicle.planner_params`) | the launch file makes it from the same tuned nav2.yaml Nav2 gets |
 | The car's pose comes from `/tf` (map -> odom -> base_link), latest | rclrs has no tf2 yet |
 | `Planner::plan_through` (8 Nov): one plan a leg, each from the last goal, joined (the repeated join pose dropped); the failing leg is named | `PlannerServer::computePlanThroughPoses`, which does the same with any planner plugin; for `ComputePathThroughPoses` |
+| 14 Nov: a global costmap older than `costmap_timeout` (2 s: planner_server's `costmap_update_timeout` 1 s plus the global costmap's 1 Hz publish period) fails the goal at once with TIMEOUT (207; 307 through poses), `costmap::Arrival` | Nav2's `PlannerTimedOut` after waiting for a current costmap; ours planned on the last one for ever. It fails at once, not after a wait: our navigator's recovery replans |
+| 14 Nov: map -> odom or odom -> base_link over 1 s old (`TRANSFORM_TIMEOUT`) fails the goal with TF_ERROR | Nav2 looks the pose up through tf2 with `transform_tolerance`; ours kept the last pose for ever when `/tf` stopped (the gap list) |
+| 15 Nov: the node reads the planner block's `smoother` (w_data, w_smooth, max_iterations, tolerance, do_refinement, refinement_num), as Nav2's Smac planners read `<planner>.smoother.*`; until then ours always took Nav2's defaults | `plan_smoothing:=strong` (TODO 168) lowers w_data to 0.02 for both planners |
+| 15 Nov: `scenes::angled_road`, a straight 6.5 m road at any angle; `examples/staircase.rs` scores the plan's own swing on it | TODO 168: the lattice's staircase, measured without ROS |
+| 15 Nov: `outline_cost` traces the outline without collecting its corners into a `Vec` first; `scenes::campus` and `examples/campus.rs` time the campus tour's legs on the real map | TODO 152: about a million outline traces a long campus plan, each allocating; the same paths, 11 % less search time |
+| 15 Nov: `cusp_penalty` (m; nav2.yaml's 4.0): each change of gear costs that much driving, and with a price set the last Reeds-Shepp curve may not change gear | Nav2 has no such price: its lattice planned 5-6 cusps in a narrow street (TODO 174) |
+| 15 Nov (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour | Ben, 10 Oct: "Not just c code in the rust language" |
+| 16 Nov: `lane.rs`, the lane-centre planner (`path:=lane`), ours, not Nav2's: Dijkstra on the lane map's road graph, the right lane's centre, the lattice joining the ends (or a straight join when the car is on its lane); `roads_from_json`, `scenes::campus_area`, `examples/lane.rs`. The node takes a `lanes` block in `settings` and adds `how` to its status | TODO 148 and 169, the Fable review's change 7: Autoware's idea (follow the lane's centre) on our `lanes.yaml`, a challenger beside the lanes layer |
+| 17 Nov: the settings reader (`build`, `smoother`) moved from the node into the crate as `spec::planner_from_json`, errors as `LatticeError`; the same keys and defaults. `examples/teach.rs`: our global costmap and planner on a map file, a JSON line a request, no ROS | TODO 242: `tools/diffusion_data.py`'s teachers were Nav2's map_server and planner_server; now ours, planning as the node does. "Keep the maths out of ROS" |

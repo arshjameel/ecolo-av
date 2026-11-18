@@ -45,6 +45,7 @@ pub enum FrameError {
 
 impl Frame {
     /// The 13 bytes, as `legacy_protocol.pack_frame` sends them (without its clamp).
+    #[must_use]
     pub fn encode(&self) -> [u8; FRAME_LEN] {
         let mut bytes = [0; FRAME_LEN];
         let values = [self.steering, self.speed, self.accel];
@@ -57,6 +58,10 @@ impl Frame {
     }
 
     /// A frame from 13 bytes, if its checksum matches. The values are not checked.
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::Checksum`] if the checksum doesn't match.
     pub fn decode(bytes: &[u8; FRAME_LEN]) -> Result<Frame, FrameError> {
         if checksum(&bytes[..12]) != bytes[12] {
             return Err(FrameError::Checksum);
@@ -74,6 +79,10 @@ impl Frame {
     }
 
     /// The frame, if every value is within -1..1 (not a number fails too).
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::OutOfRange`] for any other value.
     pub fn check(self) -> Result<Frame, FrameError> {
         let ok = |v: f32| v.abs() <= 1.0; // false for NaN, as fabsf(NaN) <= 1.0f is
         if ok(self.steering) && ok(self.speed) && ok(self.accel) {

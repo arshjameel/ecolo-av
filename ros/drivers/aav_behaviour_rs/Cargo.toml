@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+# behaviour-core: the behaviour states, the road ahead's writer, the lane map and the
+#   fence, with no ROS (aav_behaviour's and aav_description's Python modules, ported):
+#   cargo test -p behaviour-core
+# behaviour-node: the ROS node (rclrs), binary `behaviour`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/behaviour-core", "crates/behaviour-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

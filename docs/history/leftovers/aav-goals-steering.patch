@@ -1,0 +1,403 @@
+# From ~/Code/aav/aav worktree goals-steering (branch wt/goals-steering, base 307f4480), saved 15 Nov before the folder was deleted
+diff --git a/TODO.md b/TODO.md
+index a9f55f6d..0469610f 100644
+--- a/TODO.md
++++ b/TODO.md
+@@ -12,7 +12,7 @@ control thing ... is that something we should consider? ... Maybe second order s
+ |---|---|---|
+ | 52 | **The car's linear model**, in SYSC 3600's terms ([The car as a linear model](docs/vehicle-model.md)) | ✅ 24 Oct, `wt/vehicle-model`. `aav_ego` `vehicle_model.py` (no ROS; numpy, scipy.signal): speed K/(τs+1) with the throttle lag and the spine's PI (poles −0.28 ± 0.28j: settles in 13 s); the steering as a second-order system (ωn 12.6 rad/s, ζ 1.03); the bicycle linearised, x = [e_y, e_θ, δ], with linearised pure pursuit (ζ 0.707 at every speed); Bode margins with the delays (lateral, 1 m/s: 52° none, 45° typical 84 ms, 31° worst 259 ms); the discrete loops at 100 Hz and 20 Hz. 27 + 3 tests. `pixi run vehicle-model`: the tables, `docs/img/vehicle-model-*.png`. Found: the guesses disagree (drag 0.1 says full throttle holds 15 m/s; the open loop's `FULL_THROTTLE_SPEED` says 3); Gazebo's `steer_p_gain` 10 adds a steering lag after the actuator model: measured in Gazebo (headless, `steer-rate --sim` and `/joint_states`), its wheels follow the model's angle with a 0.110 s first-order lag (0.5 mrad rms) |
+ | 52b | **Refit the model from the actuator tests at the car** | ⬜ car day: the tests print the numbers; `pixi run vehicle-model --set throttle_lag=... --set drag=...`; then the speed loop's gains by pole placement (`place_speed_gains`), not before |
+-| 52c | Make Gazebo's steering match `vehicle.yaml` | ✅ 25 Oct, `wt/goals-steering`. Gazebo's wheels now follow the actuator model's angle with a **0.022 s** lag (was **0.111 s**; 2 runs each, 0.4-0.5 mrad rms left; a third on a busy Mac 0.063 s: the adapter's ticks stalled). Found: raising `steer_p_gain` alone made it worse (0.07-0.16 s): the URDF's steering joints had a 1.0 rad/s speed limit, which Gazebo enforces (the wheels turned at 0.63 rad/s, under the model's 0.8). Fix: the joints' limit 1.0 → 5.0 rad/s, `steer_p_gain` 10 → 100. The lag left is 1/gain + about 12 ms from the adapter's 50 Hz hold. Chose gain 100 over "the adapter's lag less 0.1 s" (11 ms off): `/vehicle/steering` stays the wheels' angle, and a new `steer_lag` needs no change in the xacro. Lateral phase margin in Gazebo 43° at 1 m/s (was 37°; the model 45°). `tools/gazebo_steering.py` measures it (with `actuator-test steer-rate --sim`); `test_vehicle_model_tool.py` keeps the extra lag under a quarter of `steer_lag`. `sim-check`: the scripted drive came up short (2.3-3.8 m of 6.5) with main's settings as with these, on a Mac at load 24 (other simulators): not this change. Next: the same step on the car (T2.7) |
++| 52c | Make Gazebo's steering match `vehicle.yaml` | ✅ 25 Oct, `wt/goals-steering`. Gazebo's wheels now follow the actuator model's angle with a **0.022 s** lag (was **0.111 s**; 2 runs each, 0.4-0.5 mrad rms left; a third on a busy Mac 0.063 s: the adapter's ticks stalled). Found: raising `steer_p_gain` alone made it worse (0.07-0.16 s): the URDF's steering joints had a 1.0 rad/s speed limit, which Gazebo enforces (the wheels turned at 0.63 rad/s, under the model's 0.8). Fix: the joints' limit 1.0 → 5.0 rad/s, `steer_p_gain` 10 → 100. The lag left is 1/gain + about 12 ms from the adapter's 50 Hz hold. Chose gain 100 over "the adapter's lag less 0.1 s" (11 ms off): `/vehicle/steering` stays the wheels' angle, and a new `steer_lag` needs no change in the xacro. Lateral phase margin in Gazebo 43° at 1 m/s (was 37°; the model 45°). `tools/gazebo_steering.py` measures it (with `actuator-test steer-rate --sim`); `test_vehicle_model_tool.py` keeps the extra lag under a quarter of `steer_lag`. `sim-check --spine` all pass, and `--obstacle --plan-around` (with 17 too). At load 24 (other simulators) the scripted drive came up short with main's settings as with these: the load, not this change. Next: the same step on the car (T2.7) |
+ | 52d | **The state-space primer** ([Learn: state space](docs/learn-state-space.md)), for Ben's SYSC 3600 refresher | ✅ 25 Oct, `wt/learn-state-space`. The 12 steps (why, free-body diagrams, Newton, states and A B C D, simulating, transfer functions, poles = eigenvalues, Bode and delay, what it means at 1 vs 3 m/s, shocks and roll, LQR and Kalman, a cheat sheet). `pixi run state-space-demo` (`tools/state_space_demo.py`, 16 tests): Euler, RK4 and exact side by side; a quarter-car and a roll model with GUESSED springs. Roll at 3 m/s on full lock: 2°, 46 % of the inside wheels' weight moves out, 0.32 g against a 0.70 g rollover limit: not a control problem; matters for the lidar's tilt. The kinematic bicycle holds to 3 m/s (the tyres' poles 4× faster than the steering's) |
+ | 52e | **Body roll tilts the lidar** (found by the roll model, [Learn: state space](docs/learn-state-space.md) section 10): at 3 m/s on full lock about 2° of roll, so the ground about 0.7 m off at 20 m, and could show as an obstacle in hard turns. Nothing to do at today's 1 m/s cap. Before raising it: check Nav2's obstacle layer's height filter against a rolled scan (Gazebo has no suspension, so it can't show this: a replayed bag from the car), or tilt-correct the cloud with the IMU's roll | open: before speeds over 1 m/s. CG height and springs are guesses (measure day) |
+ 
+@@ -107,7 +107,7 @@ proposal's full list: [PLAN.md](PLAN.md).
+ | 5 | Email Ben as work lands | 🔧 ongoing | part 1 ~01:30; part 2 ~02:50 (every goal reached; the DDS finding); part 3 ~03:20 (MPPI default; Cyclone); part 4 ~04:06 (round the box; the U-turn; the early push); part 5 04:38 (three-point turns); part 6 05:14 (jerk limit, steering check, nightly Gazebo; the part 4 time corrected); part 7 06:08 (the EKF heading; the antenna mount; part 6 corrected); part 8 06:41 (good morning: the forward U-turn still a coin toss) |
+ | 6 | MPPI loops at goals | ✅ fixed (`7697778f`), confirming in 8 | it now turns to the goal's heading from 2.5 m out: left turn 28 s, 21.4 m (was 58 s, 47.5 m with a loop); round the building reached. Confirm in the full comparison (task 8) |
+ | 7 | The corner problem (PLAN.md M8): the car stops at the building's corner | ✅ fixed | the planner's path passed 0.86 m from the corner. Now the planner's costmap inflates 3.0 m, gently (1.0), so paths keep to the middle of a lane; and it plans turns 1.25 x wider than full lock (`vehicle.PLAN_TURN_MARGIN`), so the controller has steering to spare. Lot run, 02:00: both kept clear of the building, both reached the first goal in 29 s, each reached 3 of 4 goals (were 1 and 2) |
+-| 17 | The car still sometimes circles a goal it just missed (a different goal each run) | 🔧 testing a fix | not the heading: the comparison now records where the global EKF put the car, and at walking pace its heading is good (worst 5°). Its **position** is up to 0.7 m off (Gazebo's GPS noise is 0.5 m), but the goal tolerance was 0.5 m: the car chased GPS noise with a loop. Tolerance now 1.0 m ("GPS without RTK is good to about a metre"); tighten with RTK. Run e, 02:20: **all 8 goals reached**, both controllers. Still extra driving on 2 legs (RPP's left turn 81 m for 21; MPPI's turn back 68 m) |
++| 17 | The car still sometimes circles a goal it just missed (a different goal each run) | ✅ fixed 25 Oct, `wt/goals-steering` | **Why:** the behaviour tree planned a new path every second from wherever the car was, also in the last metres. There a car a little off the approach line can reach the goal's heading only with a loop, so Smac planned one (seen: 3.7 m out, a 24 m loop, and the car drove it); and every new path resets the controller's goal checker (`setPlannerPath`), so a car in the goal's circle but off its heading lost it. Not the heading (EKF 1-2° off when the loops were planned) nor the tolerances. **Fix:** `navigate_to_pose_car*.xml` keep the path within 8 m of the goal (while it ends at the goal, `IsPathValid`, under 30 s old); 1 Hz elsewhere. Stock Nav2 nodes. **Runs** (Gazebo lot, 3 tours per controller each way, 24 in all, after 52c): no goal circled; every leg ≤ 1.39 × its first route except MPPI's three-point turn (reversing, 1.76-1.86: it rolls on 5 m before backing up, as before the fix: 1.68) and MPPI's forward-only U-turn (1 of 3; twice stopped facing a wall). Before, same day: MPPI 49.4 m for 21.7 at the first goal. Rejected: "plan only when needed" everywhere (`sim-check --obstacle` failed twice), MPPI `az_max` 0.38 (left the path). `sim-check --obstacle --plan-around` pass. The map window waits 35 s (was 3) before NO NEW PLAN. GPS-limited still: goals count within 1.0 m (EKF up to 0.83 m off); RTK would allow about 0.3 m. Next: MPPI's slow start in reverse ([Path followers](docs/controllers.md#circling-a-goal-found-and-fixed-25-october-todo-17)) |
+ | 8 | Run the full comparison again with 6 and 7; update `docs/controllers.md` | ✅ done | 6 runs overnight (b-f); the page has the fixes, a table of runs and a picture of the best. Pushed 03:18 (815 tests pass) |
+ | 9 | Make MPPI the default, if it now does as well as Pure Pursuit (Ben: "I thought we decided to go mppi") | ✅ done | in every lot run MPPI did at least as well; it reached the first goal cleanly in all 4, Pure Pursuit looped there in 2 of 3 (it aims only at a point, so it arrives facing wrong). `vehicle.DEFAULT_CONTROLLER`; `controller:=rpp` for the old one. `sim-check --obstacle` passes with it. Untested on the Orin's CPU |
+ | 10 | **Split `gazebo_adapter` into one node per sensor**, as on the car, so each runs on its own core (Ben, 22 Oct). Rust for any part still late | ✅ done | `gazebo_imu`, `gazebo_gps`, `gazebo_radar`, `gazebo_camera` (one process each); `gazebo_adapter` keeps the car (actuators, wheels, odometry). The IMU works out the car's acceleration from Gazebo's odometry. Each sensor node takes its own `fault.<sensor>`. `sim-check` passes; `sim-check --faults`: 14 of 16, every fault reaches its node; the 2 fails were a whole-Mac stall (task 11). Not on the car: there each sensor already has its own driver |
+diff --git a/docs/controllers.md b/docs/controllers.md
+index 0303bb15..31a08039 100644
+--- a/docs/controllers.md
++++ b/docs/controllers.md
+@@ -9,6 +9,7 @@ second. We have two, and a script that compares them on the same drives in Gazeb
+ > - **Switch:** `controller:=rpp` on `sim.launch.py` or `navigation.launch.py`.
+ > - **Compare:** `pixi run controller-compare` (about 25 min, headless, on this computer only; `--legs 1` for a quick check).
+ > - **Results, night of 22 Oct (Gazebo's lot, four runs):** after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI uses twice the CPU (20% of a Mac core).
++> - **No more circling goals (25 Oct, TODO 17):** Nav2 planned a new path every second, also in the last metres, where a new path is a loop for a car. Now it keeps its path for the last 8 m. 12 lot tours since: no goal circled (below).
+ 
+ ## What each one does
+ 
+@@ -27,11 +28,11 @@ collision monitor, twist_mux and ego. Everything after the controller is the sam
+ ## Switch between them
+ 
+ ```bash
+-pixi run sim world:=test_lot controller:=mppi      # Gazebo, MPPI following the path
+-ros2 launch aav_navigation navigation.launch.py controller:=mppi
++pixi run sim world:=test_lot controller:=rpp       # Gazebo, Pure Pursuit following the path
++ros2 launch aav_navigation navigation.launch.py controller:=rpp
+ ```
+ 
+-`controller:=` takes `rpp` (the default) or `mppi`. The launch file copies the `MPPI` block
++`controller:=` takes `mppi` (the default since 22 Oct) or `rpp`. The launch file copies the `MPPI` block
+ of `nav2.yaml` under the name the behaviour trees ask for, `FollowPath`, and sets its
+ turning radius, its reverse speed and its top speed from `vehicle.yaml`
+ (`aav_description/vehicle.py`, `nav2_tuned`).
+@@ -42,6 +43,7 @@ turning radius, its reverse speed and its top speed from `vehicle.yaml`
+ pixi run controller-compare                    # both controllers, both tours
+ pixi run controller-compare --tours obstacle   # only the box in the lane
+ pixi run controller-compare --controllers mppi --speed 2
++pixi run controller-compare --tours lot --reversing --plans   # as on the car; keep every plan
+ ```
+ 
+ For each tour and controller the script starts Gazebo's test lot with no windows, on a ROS
+@@ -66,9 +68,11 @@ What the numbers mean (`tools/drive_metrics.py`):
+ | Number | Means |
+ |---|---|
+ | Time | from the goal sent to Nav2's answer |
++| The first route; driven / the first route | the planner's first path for the leg, and what the car drove against it: over about 1.5 is a detour (a loop, a missed turn) |
++| Drove on after the EKF had it at the goal | from the global EKF first putting the car within the goal's 1.0 m to Nav2's answer: a car circling a goal it reached shows here |
+ | Controller asked to move after | the controller's first speed command over 0.05 m/s |
+ | Car moving after | the car 0.1 m from where it started |
+-| Off the path | from the planner's newest path (it replans every second) |
++| Off the path | from the planner's newest path (it replans every second, except on the final approach) |
+ | Off the first route | from the first path: shows a car that wanders off |
+ | End: off the goal | where the car stopped, against the goal |
+ | Steering work | how fast the steering command changes (RMS): lower is smoother |
+@@ -76,6 +80,54 @@ What the numbers mean (`tools/drive_metrics.py`):
+ | Closest to the box | the car's outline to the box's |
+ | Controller CPU | `controller_server`'s share of one core |
+ 
++## Circling a goal: found and fixed, 25 October (TODO 17)
++
++The car sometimes drove a full loop at a goal it had nearly reached (21 Oct to 24 Oct: a
++different goal each run; Pure Pursuit 81 m for a 21 m leg). Found with `--plans`, which
++keeps every plan of a leg:
++
++![Before: a new path 3.7 m from the goal was a 24 m loop, and the car drove it. After: the path is kept for the last 8 m](img/controllers-goal-loop.svg)
++
++| Why it looped | Detail |
++|---|---|
++| **A new path every second, from wherever the car is** | the behaviour tree replanned at 1 Hz, also a few metres from the goal |
++| **There, a new path is a loop** | a car a little off the approach line (1.7 m beside it, heading 30° off) can't reach the goal's heading in 4 m: an S-bend back onto the line needs about 2 × the planner's 3.6 m turning radius. So Smac planned a loop |
++| **And each new path resets the goal checker** | Nav2's `controller_server` resets it with every path (`setPlannerPath`): a car in the goal's 1.0 m circle, but off its heading, lost the goal a second later |
++| Not the cause | the EKF's heading (worst 7-19° per leg, and 1-2° off when the loops were planned), the tolerances (1.0 m, 0.75 rad), the progress checker, the speed near the goal |
++
++**The fix** (`aav_navigation/behavior_trees/navigate_to_pose_car*.xml`): within 8 m of the
++goal the tree keeps the path it has, as long as it still ends at this goal, nothing blocks
++it (`IsPathValid`: the radar and lidar are in the planner's map) and it is under 30 s old.
++Everywhere else it still replans every second. All stock Nav2 tree nodes, no code of ours.
++
++| Tried first | Why not |
++|---|---|
++| Keep the path within 4 m | the last replan before the zone was already the loop |
++| Plan only when needed everywhere (every 10 s, or blocked: Nav2's "consistent replanning" tree) | `sim-check --obstacle` failed twice: with the planner blind to the box, MPPI crept into it between the stop zone's stops |
++| MPPI's `az_max` 1.0 → 0.38 rad/s² (how fast the car can really start a turn) | worse: MPPI left the path at the start of the U-turn |
++
++**Results**, Gazebo's lot, headless, the Mac, 3 tours per controller and way (24 tours
++in all), with Gazebo's steering fixed too (TODO 52c). "Detour" = driven / the first route:
++
++| | MPPI, forward only | Pure Pursuit, forward only | MPPI, reversing (as the car) | Pure Pursuit, reversing |
++|---|---|---|---|---|
++| A left turn (21 m) | 3 of 3, detour 0.99-1.01 | 3 of 3, 0.94-0.98 | 3 of 3, 0.98-1.01 | 3 of 3, 0.96-0.98 |
++| Round the building (41 m) | 3 of 3, 0.98-1.00 | 3 of 3, 0.97-1.01 | 3 of 3, 0.96-0.98 | 3 of 3, 0.96-0.99 |
++| Turn back (U-turn, 14 m lane) | **1 of 3** (1.32); twice stopped facing a wall | 3 of 3, 1.28-1.39 | 3 of 3, **1.76-1.86** | 3 of 3, 1.10-1.20 |
++| Home | 1 of 3 (after the U-turn) | 3 of 3, 0.99-1.02 | 3 of 3, 0.99-1.22 | 3 of 3, 0.97-1.00 |
++| Drove on after the EKF had it at the goal | 1.5 s at most | 0.2 s | 3.5 s | 5.8 s (a heading at the 43° edge) |
++
++Before the fix (the same day, the same Gazebo, 3 tours): MPPI circled the first goal once,
++**49.4 m for 21.7** (it drove on 34 s after reaching the goal's circle).
++
++Still open, and not circling:
++
++| | |
++|---|---|
++| **MPPI's three-point turn** (reversing) | 1.8 × the route: it rolls on about 5 m east before it backs up. It started each leg at 0.6 m/s forward and took 12 s to slow to 0 (seen since 22 Oct, run q). Before the fix the same (1.68) |
++| **The U-turn forward only** | MPPI swings wide and the stop zone stops it facing the building or the wall (2 of 3); a person must back it out. Pure Pursuit made it 3 of 3. The car may reverse (since 22 Oct), and then both make it |
++| **GPS noise** | goals count within 1.0 m and 0.75 rad, because the global EKF was up to 0.83 m off in these runs (Gazebo's GPS noise 0.5 m). With RTK (2 cm) the tolerance can drop to about 0.3 m. The 8 m hold stays: it is geometry, not noise |
++
+ ## After the fixes, night of 22 October
+ 
+ Five changes, each found from a run that failed (all in `nav2.yaml` or `vehicle.py`, with
+diff --git a/docs/decisions.md b/docs/decisions.md
+index d3ce07c9..f3516b83 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -148,6 +148,8 @@ What we changed, and why.
+ | Decision | Why | By |
+ |---|---|---|
+ | **CI tests on 64-bit ARM Linux too, on every push**: `pixi run test` and the HUD drawn once (job `arm`), and the car kit installed with no network (job `car-kit`), on GitHub's free ARM runner | The Orin and the Pis are ARM; nothing had built there before the car day. 12 and 7 min beside the Linux job, so every push, not nightly: a break shows on the push that made it ([CI](infrastructure.md#sharing-the-code)) | Ben's go-ahead, 24 Oct: everything that can be done without the car |
++| **Nav2 keeps its path for the last 8 m to a goal**: it plans again every second elsewhere, but near the goal only if the path is blocked, for another goal, or 30 s old | Planning again there made the car circle goals: a new path from a little off the approach line is a loop for a car, and each new path resets Nav2's goal checker. 24 lot tours in Gazebo since: no goal circled ([Path followers](controllers.md#circling-a-goal-found-and-fixed-25-october-todo-17)) | 25 Oct, from the Gazebo runs (TODO 17) |
++| **Gazebo's steering follows `vehicle.yaml`**: its own lag after the actuator model is 0.022 s, was 0.111 (`steer_p_gain` 10 → 100, the steering joints' speed limit 1.0 → 5.0 rad/s) | So the simulator steers like the model of the car, before the sim-versus-real report ([The car as a linear model](vehicle-model.md#6-gazebos-car-against-the-model)) | 25 Oct, TODO 52c |
+ | **Tests never use the network** (`pixi run test` and `tools/test.sh` set `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`), and **colcon tests one package at a time** | On GitHub's Mac a test on the network never ended: Cyclone DDS's multicast reader can't be stopped there (TODO 42). On one computer and one domain, two packages' tests side by side heard each other. One at a time costs 14 s | the same |
+ 
+ ## Open questions
+diff --git a/docs/hud.md b/docs/hud.md
+index 51f269bd..80810fa0 100644
+--- a/docs/hud.md
++++ b/docs/hud.md
+@@ -255,7 +255,7 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor
+ |---|---|
+ | `crates/map-core` | the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status. `cargo test -p map-core` (in `tools/test.sh`) |
+ | `crates/map-app` | the window and the node, built like the HUD's. `--demo`, `--screenshot FILE`, `--vehicle FILE` |
+-| `config/map.yaml` | every topic name, the limits: `stale_after`, `plan_stale_after` (3 s), `arrive_within` (1 m), and `street_map`, the street map's file |
++| `config/map.yaml` | every topic name, the limits: `stale_after`, `plan_stale_after` (35 s: Nav2 keeps its path up to 30 s near the goal), `arrive_within` (1 m), and `street_map`, the street map's file |
+ 
+ - The distance comes from `/plan` and the car, not from Nav2's action feedback: simpler,
+   and it works for a goal sent from anywhere.
+diff --git a/docs/learn-nav2.md b/docs/learn-nav2.md
+index 1b716b3c..59f4ec82 100644
+--- a/docs/learn-nav2.md
++++ b/docs/learn-nav2.md
+@@ -121,6 +121,7 @@ standard tree, changed for a car.
+ ```text
+ Navigate (up to 6 tries)
+  ├─ every 1 s: plan a path  ── fails? clear the global costmap, try again
++ │    (not in the last 8 m: keep the path, unless blocked or 30 s old)
+  ├─ follow the path         ── fails? clear the local costmap, try again
+  └─ still failing? take turns: clear both costmaps, or wait 5 s
+ ```
+@@ -130,6 +131,7 @@ Navigate (up to 6 tries)
+ | **No Spin** | a car can't turn on the spot |
+ | **BackUp only with reversing** | the `*_car_reversing.xml` trees back up 1 m at 0.25 m/s after the wait. Without something that sees behind the car, the `*_car.xml` trees: no BackUp |
+ | Server timeouts 1 s, not Nav2's 20 ms | a busy computer failed whole goals (the bench, 11 Oct) |
++| **Keep the path for the last 8 m** | a new path planned near the goal is a loop for a car, and resets the goal checker: the car circled goals ([TODO 17](controllers.md#circling-a-goal-found-and-fixed-25-october-todo-17)) |
+ 
+ ## Reversing
+ 
+diff --git a/src/drivers/aav_navigation/behavior_trees/navigate_to_pose_car.xml b/src/drivers/aav_navigation/behavior_trees/navigate_to_pose_car.xml
+index ab6ecaa5..beec395c 100644
+--- a/src/drivers/aav_navigation/behavior_trees/navigate_to_pose_car.xml
++++ b/src/drivers/aav_navigation/behavior_trees/navigate_to_pose_car.xml
+@@ -4,7 +4,7 @@
+   - No BackUp: this is the forward-only tree (navigation.launch.py reversing:=false, the car's
+     default). Nothing senses what is behind the car. navigate_to_pose_car_reversing.xml is the
+     same tree with BackUp; test_behavior_trees.py checks that they stay the same otherwise.
+-  Replans at 1 Hz; recovery = clear the costmaps, or wait.
++  Replans at 1 Hz, except on the final approach (TODO 17: below); recovery = clear the costmaps, or wait.
+ -->
+ <root BTCPP_format="4" main_tree_to_execute="MainTree">
+   <BehaviorTree ID="MainTree">
+@@ -12,14 +12,39 @@
+       <PipelineSequence name="NavigateWithReplanning">
+         <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+         <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
++        <!-- Plans again once a second, as Nav2's own tree, except on the final approach
++             (the car within 8 m of the goal): there it keeps the path it has, for up to
++             30 s, as long as that still ends at this goal and nothing blocks it
++             (IsPathValid: the radar and lidar are in the planner's map). Replanning there
++             made the car circle goals (TODO 17):
++             - a path planned from a little off the approach line, a few metres out, can
++               reach the goal's heading only with a loop (an S-bend back onto the line needs
++               about 2 x the 3.6 m turning radius);
++             - each new path resets the controller's goal checker (controller_server,
++               setPlannerPath): a car in the goal's circle but off its heading lost it.
++             The 30 s: a car that can't follow the path it kept (Pure Pursuit circling the
++             goal) gets a new one. The RateController stays outside the Fallback: inside
++             it, the Fallback restarted it each time, and it planned on every tick. -->
+         <RateController hz="1.0">
+-          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+-            <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+-            <Sequence>
+-              <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+-              <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+-            </Sequence>
+-          </RecoveryNode>
++          <Fallback name="PlanUnlessOnTheFinalApproach">
++            <ReactiveSequence name="OnTheFinalApproach">
++              <GetCurrentPose current_pose="{current_pose}" global_frame="map" robot_base_frame="base_link"/>
++              <ArePosesNear ref_pose="{current_pose}" target_pose="{goal}" tolerance="8.0" global_frame="map"/>
++              <GetPoseFromPath path="{path}" index="-1" pose="{path_end}"/>
++              <ArePosesNear ref_pose="{path_end}" target_pose="{goal}" tolerance="0.6" global_frame="map"/>
++              <Inverter>
++                <PathExpiringTimer seconds="30" path="{path}"/>
++              </Inverter>
++              <IsPathValid path="{path}"/>
++            </ReactiveSequence>
++            <RecoveryNode number_of_retries="1" name="ComputePathToPose">
++              <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
++              <Sequence>
++                <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
++                <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
++              </Sequence>
++            </RecoveryNode>
++          </Fallback>
+         </RateController>
+         <RecoveryNode number_of_retries="1" name="FollowPath">
+           <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>
+diff --git a/src/drivers/aav_navigation/behavior_trees/navigate_to_pose_car_reversing.xml b/src/drivers/aav_navigation/behavior_trees/navigate_to_pose_car_reversing.xml
+index 0d23fd12..1616414b 100644
+--- a/src/drivers/aav_navigation/behavior_trees/navigate_to_pose_car_reversing.xml
++++ b/src/drivers/aav_navigation/behavior_trees/navigate_to_pose_car_reversing.xml
+@@ -7,7 +7,7 @@
+     checks the local costmap before it reverses, but behind the car that is only what the
+     radar saw on the way in.
+   navigate_to_pose_car.xml is the same tree without BackUp; test_behavior_trees.py checks
+-  that they stay the same otherwise. Replans at 1 Hz.
++  that they stay the same otherwise. Replans at 1 Hz, except on the final approach (TODO 17: below).
+ -->
+ <root BTCPP_format="4" main_tree_to_execute="MainTree">
+   <BehaviorTree ID="MainTree">
+@@ -15,14 +15,39 @@
+       <PipelineSequence name="NavigateWithReplanning">
+         <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+         <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
++        <!-- Plans again once a second, as Nav2's own tree, except on the final approach
++             (the car within 8 m of the goal): there it keeps the path it has, for up to
++             30 s, as long as that still ends at this goal and nothing blocks it
++             (IsPathValid: the radar and lidar are in the planner's map). Replanning there
++             made the car circle goals (TODO 17):
++             - a path planned from a little off the approach line, a few metres out, can
++               reach the goal's heading only with a loop (an S-bend back onto the line needs
++               about 2 x the 3.6 m turning radius);
++             - each new path resets the controller's goal checker (controller_server,
++               setPlannerPath): a car in the goal's circle but off its heading lost it.
++             The 30 s: a car that can't follow the path it kept (Pure Pursuit circling the
++             goal) gets a new one. The RateController stays outside the Fallback: inside
++             it, the Fallback restarted it each time, and it planned on every tick. -->
+         <RateController hz="1.0">
+-          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+-            <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+-            <Sequence>
+-              <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+-              <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+-            </Sequence>
+-          </RecoveryNode>
++          <Fallback name="PlanUnlessOnTheFinalApproach">
++            <ReactiveSequence name="OnTheFinalApproach">
++              <GetCurrentPose current_pose="{current_pose}" global_frame="map" robot_base_frame="base_link"/>
++              <ArePosesNear ref_pose="{current_pose}" target_pose="{goal}" tolerance="8.0" global_frame="map"/>
++              <GetPoseFromPath path="{path}" index="-1" pose="{path_end}"/>
++              <ArePosesNear ref_pose="{path_end}" target_pose="{goal}" tolerance="0.6" global_frame="map"/>
++              <Inverter>
++                <PathExpiringTimer seconds="30" path="{path}"/>
++              </Inverter>
++              <IsPathValid path="{path}"/>
++            </ReactiveSequence>
++            <RecoveryNode number_of_retries="1" name="ComputePathToPose">
++              <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
++              <Sequence>
++                <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
++                <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
++              </Sequence>
++            </RecoveryNode>
++          </Fallback>
+         </RateController>
+         <RecoveryNode number_of_retries="1" name="FollowPath">
+           <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>
+diff --git a/src/drivers/aav_navigation/test/test_behavior_trees.py b/src/drivers/aav_navigation/test/test_behavior_trees.py
+index d4f86213..4bcc0081 100644
+--- a/src/drivers/aav_navigation/test/test_behavior_trees.py
++++ b/src/drivers/aav_navigation/test/test_behavior_trees.py
+@@ -64,3 +64,40 @@ def test_the_behavior_server_can_back_up():
+     plugins = yaml.safe_load(NAV2.read_text())['behavior_server']['ros__parameters']
+     assert 'backup' in plugins['behavior_plugins']
+     assert 'spin' not in plugins['behavior_plugins']
++
++
++TO_POSE = ['navigate_to_pose_car.xml', 'navigate_to_pose_car_reversing.xml']
++
++
++@pytest.mark.parametrize('name', TO_POSE)
++def test_no_replanning_on_the_final_approach(name):
++    # TODO 17: near the goal a new path was a loop for a car, and reset the goal checker.
++    # The tree keeps its path there (unless blocked, for another goal, or 30 s old).
++    # Inside a RateController: a Fallback restarts its children, and a RateController
++    # under it planned on every tick, not once a second (25 Oct).
++    (guard,) = [f for r in tree(name).iter('RateController') for f in r
++                if f.tag == 'Fallback' and f.get('name') == 'PlanUnlessOnTheFinalApproach']
++    assert not list(guard.iter('RateController'))
++    keep, plan = list(guard)
++    assert list(keep.iter('IsPathValid'))          # a blocked path is planned again
++    assert list(keep.iter('PathExpiringTimer'))    # and one it can't follow, in time
++    assert list(plan.iter('ComputePathToPose'))
++    # The zone must leave room for an S-bend back onto the line (two turns at the
++    # planner's radius), and be wider than the goal checker's circle.
++    zone = float(next(n for n in keep.iter('ArePosesNear')
++                      if n.get('ref_pose') == '{current_pose}').get('tolerance'))
++    nav2 = yaml.safe_load(NAV2.read_text())
++    checker = nav2['controller_server']['ros__parameters']['general_goal_checker']
++    radius = nav2['planner_server']['ros__parameters']['GridBased']['minimum_turning_radius']
++    assert zone >= 2.0 * radius
++    assert zone >= 3.0 * checker['xy_goal_tolerance']
++
++
++def test_the_map_window_waits_longer_than_nav2_keeps_a_path():
++    # The big screen's map shows NO NEW PLAN when /plan is older than plan_stale_after: it
++    # must wait longer than the tree keeps a path, or it cries wolf (TODO 17).
++    longest = max(float(t.get('seconds')) for name in TO_POSE
++                  for t in tree(name).iter('PathExpiringTimer'))
++    window = PACKAGE.parents[1] / 'hud' / 'aav_hud_raylib' / 'config' / 'map.yaml'
++    stale = yaml.safe_load(window.read_text())['map']['ros__parameters']['plan_stale_after']
++    assert stale > longest
+diff --git a/src/hud/aav_hud_raylib/config/map.yaml b/src/hud/aav_hud_raylib/config/map.yaml
+index 8fa5db30..ead63abb 100644
+--- a/src/hud/aav_hud_raylib/config/map.yaml
++++ b/src/hud/aav_hud_raylib/config/map.yaml
+@@ -11,7 +11,7 @@ map:
+     watchdog_topic: /safety/sensor_watchdog/state  # std_msgs/msg/String: the sensor watchdog's verdict, a banner unless OK
+     street_route_topic: /drivers/nav/route/path   # nav_msgs/msg/Path, map frame, latched: street_router's street route (aav_routes), violet under the plan
+     stale_after: 1.0                          # s: the car's position this old shows STALE
+-    plan_stale_after: 3.0                     # s: Nav2 replans every 1 s while it drives; older = it stopped
++    plan_stale_after: 35.0                    # s: Nav2 replans every 1 s, but keeps its path up to 30 s within 8 m of the goal (TODO 17); older = it stopped
+     arrive_within: 1.0                        # m: the car this close to the goal = ARRIVED (Nav2's own is 0.5)
+     # The street map under Nav2's map (pixi run get-street-map). A path relative to the
+     # folder the window starts in (pixi starts it in the repo); missing = no streets.
+diff --git a/src/hud/aav_hud_raylib/crates/map-core/src/state.rs b/src/hud/aav_hud_raylib/crates/map-core/src/state.rs
+index d620e47e..f2dfc5a8 100644
+--- a/src/hud/aav_hud_raylib/crates/map-core/src/state.rs
++++ b/src/hud/aav_hud_raylib/crates/map-core/src/state.rs
+@@ -333,12 +333,16 @@ mod tests {
+ 
+     #[test]
+     fn a_plan_that_stops_coming_says_so() {
+-        let mut s = MapState::new(MapConfig::default());
++        let config = MapConfig::default();
++        // Past plan_stale_after: Nav2 keeps its path up to 30 s near the goal (TODO 17).
++        let late = config.plan_stale_after() + Duration::from_secs(5);
++        let mut s = MapState::new(config);
+         let t0 = Instant::now();
+         s.apply(car_at(0.0, 0.0), t0);
+         s.apply(plan(&[(0.0, 0.0), (20.0, 0.0)]), t0);
+-        assert_eq!(s.trip(t0 + Duration::from_secs(10)), Trip::PlanStopped);
+-        assert!(!s.health(Topic::Plan, t0 + Duration::from_secs(10)).is_ok());
++        assert_eq!(s.trip(t0 + Duration::from_secs(10)), Trip::Driving);
++        assert_eq!(s.trip(t0 + late), Trip::PlanStopped);
++        assert!(!s.health(Topic::Plan, t0 + late).is_ok());
+         // The map never goes stale: it's sent once.
+         let info = GridInfo {
+             width: 1,
+diff --git a/docs/img/controllers-goal-loop.svg b/docs/img/controllers-goal-loop.svg
+new file mode 100644
+index 00000000..8a187901
+--- /dev/null
++++ b/docs/img/controllers-goal-loop.svg
+@@ -0,0 +1,23 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="420" height="438" font-family="sans-serif" font-size="14">
++<rect width="420" height="438" fill="white"/>
++<rect x="322.0" y="-196.0" width="280.0" height="210.0" fill="#9e9e9e"/>
++<rect x="742.0" y="-126.0" width="28.0" height="420.0" fill="#9e9e9e"/>
++<rect x="-98.0" y="420.0" width="1120.0" height="14.0" fill="#9e9e9e"/>
++<rect x="-98.0" y="-406.0" width="14.0" height="840.0" fill="#9e9e9e"/>
++<polyline points="42.0,294.0 42.0,294.0 42.0,294.0 42.4,294.0 43.2,294.0 44.4,294.0 46.0,293.9 48.0,293.8 50.4,293.6 53.1,293.3 56.1,292.9 59.4,292.4 62.9,291.8 66.6,291.0 70.5,289.9 74.5,288.5 78.6,286.8 82.6,284.8 86.4,282.5 90.1,280.0 92.3,278.2 92.6,278.0 92.6,278.0 92.8,277.8 93.4,277.4 94.2,276.7 95.4,275.7 96.9,274.4 98.7,272.8 100.7,271.0 103.0,268.8 105.4,266.4 108.0,263.8 110.7,260.8 113.6,257.6 116.5,254.2 119.6,250.6 122.9,246.9 126.4,243.0 129.9,239.0 133.6,234.8 137.4,230.6 141.5,226.4 145.8,222.3 150.3,218.2 154.7,213.9 159.0,209.5 163.5,205.1 168.0,200.7 172.7,196.4 177.4,192.1 182.3,188.0 187.2,184.0 192.2,180.1 197.1,176.1 201.8,171.9 206.3,167.6 210.8,163.2 215.2,158.7 219.4,154.0 223.4,149.0 227.1,143.9 230.6,138.7 234.0,133.5 237.5,128.5 241.0,123.5 244.7,118.8 248.3,114.0 251.6,109.2 254.8,104.3 258.1,99.4 261.6,94.8 265.2,90.4 268.9,86.4 272.7,82.7 276.5,79.3 280.6,76.1 284.9,73.2 289.5,70.7 294.2,68.5 299.1,66.6 304.1,65.1 309.3,63.9 314.6,62.9 320.0,62.4 325.5,62.2 331.0,62.4 336.5,63.0 342.0,63.9 347.5,65.3 352.8,67.2 358.0,69.5 363.1,72.3 367.8,75.5 372.3,79.2 376.4,83.3 380.1,87.9 383.3,92.8 386.0,98.0 388.2,103.4 389.8,109.0 390.8,114.7 391.1,120.5 390.9,126.3 390.0,132.1 388.6,137.8 386.6,143.2 384.0,148.5 380.9,153.5 377.4,158.1 373.4,162.4 369.0,166.3 364.3,169.8 359.2,172.7 354.0,175.0 348.5,176.9 343.0,178.1 337.3,178.9 331.6,179.3 325.8,179.1 320.2,178.4 314.7,177.1 309.3,175.3 304.2,173.1 299.2,170.4 294.5,167.3 289.9,163.9 285.6,160.1 281.5,156.0 277.6,151.5 274.1,146.8 271.0,141.7 268.2,136.4 265.7,131.0 263.2,125.4 260.9,119.7 258.7,113.9 256.8,108.0 255.3,102.1 254.3,97.0" fill="none" stroke="#c92a2a" stroke-width="2.5" stroke-linejoin="round"/>
++<polyline points="230.3,133.0 253.3,107.4 279.9,86.9 310.7,82.3 336.8,97.4 347.1,125.7 336.8,154.0 310.8,169.0 281.0,163.9 260.7,142.0 255.2,118.3 252.8,95.5 252.0,84.0" fill="none" stroke="#868e96" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="6,4"/>
++<polyline points="42.0,294.0 42.0,294.0 42.1,294.0 42.5,294.0 43.4,294.0 44.6,294.0 46.3,293.9 48.4,293.8 50.8,293.6 53.6,293.3 56.6,292.8 64.4,290.9 67.4,289.9 69.6,289.2 71.9,288.4 74.3,287.6 76.6,286.7 79.0,285.7 81.6,284.6 84.2,283.3 87.0,281.9 89.8,280.4 92.6,278.7 95.5,276.8 98.5,274.7 101.5,272.4 104.5,269.9 107.5,267.2 110.5,264.2 113.5,261.1 116.6,257.8 119.6,254.4 122.8,250.8 126.1,247.3 129.5,243.7 133.1,240.0 136.7,236.3 140.5,232.6 144.3,228.8 148.3,225.1 152.4,221.4 156.5,217.7 160.8,214.0 165.0,210.2 169.3,206.3 173.5,202.5 178.0,198.7 182.4,194.9 186.8,191.0 191.1,187.0 195.3,182.9 199.2,178.5 203.1,174.1 206.8,169.6 210.3,164.9 213.9,160.3 217.6,155.7 221.4,151.2 225.3,146.6 229.3,142.0 233.1,137.1 236.7,132.0 239.9,126.6 242.8,121.1 245.3,115.4 247.5,109.5 249.1,103.6 250.3,97.6 251.1,91.8 251.4,87.7" fill="none" stroke="#1f6fb4" stroke-width="2.5" stroke-linejoin="round"/>
++<circle cx="252.0" cy="84.0" r="5" fill="black"/>
++<text x="260.0" y="76.0">the goal, facing north</text>
++<circle cx="42.0" cy="294.0" r="5" fill="black"/>
++<text x="50.0" y="286.0">start</text>
++<line x1="10" y1="365.0" x2="40" y2="365.0" stroke="#c92a2a" stroke-width="2.5"/>
++<text x="48" y="370.0">before: a new path, 3.7 m out</text>
++<line x1="10" y1="389.0" x2="40" y2="389.0" stroke="#868e96" stroke-width="2.5" stroke-dasharray="6,4"/>
++<text x="48" y="394.0">that path: a 24 m loop</text>
++<line x1="10" y1="413.0" x2="40" y2="413.0" stroke="#1f6fb4" stroke-width="2.5"/>
++<text x="48" y="418.0">after: path kept, last 8 m</text>
++<line x1="270.0" y1="365.0" x2="410.0" y2="365.0" stroke="black" stroke-width="3"/>
++<text x="270.0" y="385.0">10 m</text>
++</svg>
++

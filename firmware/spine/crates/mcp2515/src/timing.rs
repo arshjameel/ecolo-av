@@ -19,13 +19,19 @@
 pub struct Crystal(u32);
 
 impl Crystal {
+    /// An 8 MHz crystal.
     pub const MHZ_8: Crystal = Crystal(8_000_000);
+    /// A 16 MHz crystal.
     pub const MHZ_16: Crystal = Crystal(16_000_000);
 
+    /// A crystal of `hz`.
+    #[must_use]
     pub const fn from_hz(hz: u32) -> Crystal {
         Crystal(hz)
     }
 
+    /// Its frequency (Hz).
+    #[must_use]
     pub const fn hz(self) -> u32 {
         self.0
     }
@@ -36,16 +42,23 @@ impl Crystal {
 pub struct Bitrate(u32);
 
 impl Bitrate {
+    /// 125 kbit/s.
     pub const KBPS_125: Bitrate = Bitrate(125_000);
+    /// 250 kbit/s.
     pub const KBPS_250: Bitrate = Bitrate(250_000);
     /// The car's bus (`firmware/can/aav.dbc`).
     pub const KBPS_500: Bitrate = Bitrate(500_000);
+    /// 1 Mbit/s.
     pub const MBPS_1: Bitrate = Bitrate(1_000_000);
 
+    /// A bitrate of `bps` bits a second.
+    #[must_use]
     pub const fn from_bps(bps: u32) -> Bitrate {
         Bitrate(bps)
     }
 
+    /// Bits a second.
+    #[must_use]
     pub const fn bps(self) -> u32 {
         self.0
     }
@@ -75,6 +88,10 @@ const BRP_MAX: u32 = 64;
 
 impl BitTiming {
     /// The timing for `bitrate` from `crystal`.
+    ///
+    /// # Errors
+    ///
+    /// [`TimingError`] if no setting gives exactly that bitrate.
     pub fn new(crystal: Crystal, bitrate: Bitrate) -> Result<BitTiming, TimingError> {
         let clock = crystal.hz() / 2; // the TQ clock before the prescaler
         let target = sample_point_target(bitrate);
@@ -111,6 +128,7 @@ impl BitTiming {
 
     /// CNF3, CNF2 and CNF1, in address order (0x28 to 0x2A). PS2 is set in CNF3 (BTLMODE),
     /// each bit is sampled once (SAM = 0), and the CLKOUT pin's SOF signal is off.
+    #[must_use]
     pub fn registers(&self) -> [u8; 3] {
         let cnf1 = ((self.sjw - 1) << 6) | (self.brp - 1);
         let cnf2 = 0x80 | ((self.phase_seg1 - 1) << 3) | (self.prop_seg - 1);
@@ -119,11 +137,13 @@ impl BitTiming {
     }
 
     /// Time quanta in one bit.
+    #[must_use]
     pub fn quanta(&self) -> u8 {
         1 + self.prop_seg + self.phase_seg1 + self.phase_seg2
     }
 
     /// Where in the bit it is read, in tenths of a percent (875 is 87.5 %).
+    #[must_use]
     pub fn sample_point_permille(&self) -> u16 {
         let before = u16::from(1 + self.prop_seg + self.phase_seg1);
         1000 * before / u16::from(self.quanta())
@@ -131,6 +151,7 @@ impl BitTiming {
 
     /// The prescaler (1 to 64), and the segments in TQ: propagation, phase 1, phase 2, and
     /// the synchronisation jump width.
+    #[must_use]
     pub fn segments(&self) -> (u8, u8, u8, u8, u8) {
         (
             self.brp,
@@ -142,6 +163,7 @@ impl BitTiming {
     }
 
     /// The bitrate these settings give from `crystal`, in bit/s.
+    #[must_use]
     pub fn bitrate(&self, crystal: Crystal) -> u32 {
         crystal.hz() / (2 * u32::from(self.brp) * u32::from(self.quanta()))
     }

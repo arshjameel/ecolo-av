@@ -8,9 +8,25 @@ publish.workspace = true
 
 # No dependencies by default: the random numbers and the threads are std and our own
 # (src/rng.rs). The feature `shared` adds the shared car model (crate car-model, ours),
-# behind CarModel (src/shared.rs): cargo test -p mppi-lag --features shared.
+# behind CarModel (src/shared.rs): cargo test -p mppi-lag --features shared; and the lag
+# model's speed loop from spine-core's named profiles (the node's `speed_loop`, TODO 163).
 [dependencies]
 car-model = { path = "../../../../bringup/aav_description/car-model", optional = true }
+spine-core = { path = "../../../../../firmware/spine/crates/spine-core", optional = true }
+# The feature `trace` (TODO 196): a span around each stage of a tick, for the node's
+# subscriber (mppi-node's own `trace` and `tracy` features) to time.
+tracing = { version = "0.1", optional = true, default-features = false, features = ["std"] }
+
+# TODO 203: benchmarks (benches/tick.rs), never in the node's build.
+[dev-dependencies]
+criterion = { version = "0.7", default-features = false, features = ["cargo_bench_support"] }
+# TODO 202: follow_plan reads a recording's plans (examples/bag); examples and tests only.
+mcap = "0.24"   # with zstd and lz4: rosbag2 compresses its chunks
+
+[[bench]]
+name = "tick"
+harness = false
 
 [features]
-shared = ["dep:car-model"]
+shared = ["dep:car-model", "dep:spine-core"]
+trace = ["dep:tracing"]

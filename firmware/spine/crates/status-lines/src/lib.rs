@@ -9,7 +9,7 @@
 //! | `config` | [`Config`] | at boot and every 10 s: the build and the numbers it runs with |
 //! | `devices` | [`DeviceList`] | at boot and every 10 s: which I2C devices answered at boot |
 //!
-//! A [`Line`] is one of them with its `seq` and `up_ms`. It is [`Display`](core::fmt::Display),
+//! A [`Line`] is one of them with its `seq` and `up_ms`. It is [`Display`],
 //! so it can go straight to a log, or into a fixed buffer with [`Line::write_to`] or a
 //! [`LineBuf`] for a socket. Nothing allocates. [`Spread`] keeps the lowest and highest
 //! device values between two status lines; [`Trickle`] hands lines to a slow serial log a
@@ -19,6 +19,9 @@
 //! `golden.jsonl` beside the contract is the test: every line here is checked against it
 //! byte for byte.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 mod json;
 mod spread;
@@ -51,17 +54,26 @@ pub struct Line<'a> {
     pub seq: u32,
     /// Milliseconds since boot.
     pub up_ms: u32,
+    /// The line's kind and its values.
     pub body: Body<'a>,
 }
 
 /// What a line says.
+// no_std, no heap: a line lives on the stack for one print, so a Box would cost more.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Body<'a> {
+    /// `hb`.
     Heartbeat(Heartbeat<'a>),
+    /// `status`.
     Status(Status<'a>),
+    /// `event`.
     Event(Event<'a>),
+    /// `health`.
     Health(Health<'a>),
+    /// `config`.
     Config(Config<'a>),
+    /// `devices`.
     Devices(DeviceList<'a>),
 }
 
@@ -83,14 +95,21 @@ pub struct Heartbeat<'a> {
 pub struct Status<'a> {
     /// The last good frame from the Pi; `None` before the first.
     pub rx: Option<Rx>,
+    /// What it asked of each device this tick.
     pub out: Out,
     /// The lowest and highest of `out` since the last status line ([`Spread`]).
     pub low: Levels,
+    /// The highest of `out` since the last status line.
     pub high: Levels,
+    /// Each Jrk's position.
     pub pos: Positions,
+    /// The Pi link's counts and verdict.
     pub link: LinkCounts,
+    /// The RC.
     pub rc: Rc<'a>,
+    /// The spine's state.
     pub state: State,
+    /// The tick's timing.
     pub tick: Tick,
 }
 
@@ -106,7 +125,9 @@ pub struct Rx {
     /// Steering, speed and accel, -1..1, as the frame said. A value that is not a
     /// finite number is written `null`.
     pub steer: f32,
+    /// The frame's speed, -1..1.
     pub speed: f32,
+    /// The frame's accel, -1..1.
     pub accel: f32,
     /// How long ago it came.
     pub age_ms: u32,
@@ -115,17 +136,24 @@ pub struct Rx {
 /// What the firmware asked of each device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Out {
+    /// The steering Jrk's target (counts).
     pub steer_counts: u16,
+    /// The brake Jrk's target (counts).
     pub brake_counts: u16,
+    /// The throttle DAC's code.
     pub dac: u16,
+    /// The direction output: true for reverse.
     pub reverse: bool,
 }
 
 /// The three device values that [`Spread`] follows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Levels {
+    /// The steering Jrk's target (counts).
     pub steer_counts: u16,
+    /// The brake Jrk's target (counts).
     pub brake_counts: u16,
+    /// The throttle DAC's code.
     pub dac: u16,
 }
 
@@ -142,16 +170,22 @@ impl From<&Out> for Levels {
 /// Each Jrk's position in counts; `None` when not known (written `null`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Positions {
+    /// The steering Jrk's.
     pub steer: Option<u16>,
+    /// The brake Jrk's.
     pub brake: Option<u16>,
 }
 
 /// The Pi link's counts since boot, and its verdict now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct LinkCounts {
+    /// Frames that passed their checksum or CRC.
     pub frames: u32,
+    /// Frames turned down: a checksum or CRC, a version, a flag.
     pub bad: u32,
+    /// Stray bytes skipped between frames.
     pub skipped: u32,
+    /// Good frames whose counter hadn't moved.
     pub repeats: u32,
     /// The board's verdict (`spine-board`'s `LinkHealth`); `None` (written `null`) on a
     /// link it doesn't judge (CAN).
@@ -175,6 +209,7 @@ pub enum Verdict {
 
 impl Verdict {
     /// Its name in a line.
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Verdict::NoFrames => "no_frames",
@@ -195,22 +230,32 @@ pub struct Health<'a> {
     pub age_ms: Option<u32>,
     /// `None`: no frames to tell from, or no counter (version 1 frames).
     pub counter_moving: Option<bool>,
+    /// The link's counts since boot.
     pub counts: LinkCounts,
     /// The I2C devices that answered at boot, of how many, and the names of the rest.
     pub devices_answered: u8,
+    /// The I2C devices the board looks for.
     pub devices_expected: u8,
+    /// The names of those that didn't answer.
     pub missing: &'a [&'a str],
+    /// `spine-core`'s fault bits.
     pub faults: u16,
+    /// Who drives.
     pub mode: Mode,
+    /// Why the chip last reset, as the HAL names it.
     pub last_reset: &'a str,
+    /// The program's git commit, short.
     pub build: &'a str,
+    /// Random at each boot.
     pub boot_id: u32,
 }
 
 /// `config`: the build, and the numbers the firmware runs with.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Config<'a> {
+    /// The program's git commit, short.
     pub build: &'a str,
+    /// The features it was built with, comma-separated.
     pub features: &'a str,
     /// The program's version (Cargo's).
     pub version: &'a str,
@@ -218,8 +263,11 @@ pub struct Config<'a> {
     pub link: &'a str,
     /// The UART link's frame version (1 or 2); `None` on CAN.
     pub frame_version: Option<u8>,
+    /// The spine's tick.
     pub tick_ms: u32,
+    /// The spine's command watchdog.
     pub watchdog_ms: u32,
+    /// A command older than this stops the car.
     pub cmd_timeout_ms: u32,
     /// The brake while nobody drives, 0..1.
     pub idle_brake: f32,
@@ -227,10 +275,15 @@ pub struct Config<'a> {
     pub full_throttle_speed: f32,
     /// The I2C bus speed; `None` with stand-in devices (QEMU).
     pub i2c_khz: Option<u32>,
+    /// The I2C devices' addresses.
     pub addresses: Addresses,
+    /// The steering Jrk's targets.
     pub steering: SteeringLimits,
+    /// The brake Jrk's targets.
     pub brake: BrakeLimits,
+    /// The DAC code for full throttle.
     pub throttle_full_code: u16,
+    /// Why the chip last reset, as the HAL names it.
     pub last_reset: &'a str,
     /// The rest of the steering's settings, written inside `steering` after `max`.
     pub steering_more: SteeringSettings<'a>,
@@ -270,6 +323,7 @@ pub struct BrakeSettings<'a> {
     pub overspeed: f32,
     /// RC direct, throttle stick at zero: this brake for `rc_stop_ms`, then `stop`.
     pub rc_stop: f32,
+    /// How long `rc_stop` holds (ms).
     pub rc_stop_ms: u32,
     /// The RC gear switch's brake position: `full_brake` or `speed_zero`.
     pub rc_gear: &'a str,
@@ -280,11 +334,13 @@ pub struct BrakeSettings<'a> {
 pub struct SpeedSettings {
     /// The fastest forward and backward, whoever drives (m/s).
     pub max_forward: f32,
+    /// The fastest backward (m/s).
     pub max_reverse: f32,
     /// The highest DAC code an open-loop command can get, forward and in reverse: the
     /// limit over `full_throttle_speed`. `None` with a wheel speed (the throttle is cut at
     /// the limit instead).
     pub cap_code: Option<u16>,
+    /// The same, in reverse.
     pub reverse_cap_code: Option<u16>,
     /// The DAC code the UART frame's speed 1.0 is scaled to (the C++'s `DAC_MAX_CAP`);
     /// `None` on CAN.
@@ -293,6 +349,7 @@ pub struct SpeedSettings {
     pub rise_per_s: u16,
     /// The speed loop's speeding-up and slowing-down caps (m/s²).
     pub max_accel: f32,
+    /// The slowing-down cap (m/s²).
     pub max_decel: f32,
     /// Measured this far over the limit trips the overspeed rule (m/s).
     pub overspeed_margin: f32,
@@ -330,6 +387,7 @@ pub struct Rates {
     pub ibus_baud: u32,
     /// How often each Jrk and the DAC get their target.
     pub jrk_write_ms: u32,
+    /// How often the DAC gets its code.
     pub dac_write_ms: u32,
     /// How often a status line is written.
     pub status_ms: u32,
@@ -338,38 +396,51 @@ pub struct Rates {
 /// The four I2C devices' addresses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Addresses {
+    /// The steering Jrk.
     pub steering: u8,
+    /// The brake Jrk.
     pub brake: u8,
+    /// The throttle DAC.
     pub dac: u8,
+    /// The I/O expander (the direction pin).
     pub expander: u8,
 }
 
 /// The steering Jrk's targets: never beyond `min` and `max`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SteeringLimits {
+    /// The lowest target.
     pub min: u16,
+    /// Straight ahead.
     pub centre: u16,
+    /// The highest target.
     pub max: u16,
 }
 
 /// The brake Jrk's targets, released and full.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BrakeLimits {
+    /// The brake let go.
     pub released: u16,
+    /// The brake full on.
     pub full: u16,
 }
 
 /// `devices`: which I2C devices answered at boot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DeviceList<'a> {
+    /// Each device looked for.
     pub devices: &'a [DeviceSeen<'a>],
 }
 
 /// One I2C device at boot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DeviceSeen<'a> {
+    /// What it is: `steering`, `dac`, ...
     pub name: &'a str,
+    /// Its I2C address.
     pub address: u8,
+    /// It answered.
     pub answered: bool,
     /// A Jrk's feedback mode (`none`, `analog`, `frequency`, `other`, or `unknown` when
     /// the read failed); `None` (written `null`) for the others.
@@ -379,6 +450,7 @@ pub struct DeviceSeen<'a> {
 /// The RC: its mode switch, and the raw channels (none while it is silent).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rc<'a> {
+    /// Where the mode switch is.
     pub switch: Switch,
     /// At most [`MAX_CHANNELS`] are written.
     pub channels: &'a [u16],
@@ -387,6 +459,7 @@ pub struct Rc<'a> {
 /// The RC's mode switch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Switch {
+    /// The computer drives.
     Computer,
     /// RC through ROS (the three-position switch's middle).
     ViaRos,
@@ -398,6 +471,7 @@ pub enum Switch {
 
 impl Switch {
     /// Its name in a line.
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Switch::Computer => "computer",
@@ -413,7 +487,9 @@ impl Switch {
 pub enum Mode {
     /// Nobody: the actuators are idle (`spine-core`'s `Manual`).
     Stopped,
+    /// A person, on the RC.
     Rc,
+    /// The computer.
     Computer,
     /// The hardware test mode.
     Test,
@@ -421,6 +497,7 @@ pub enum Mode {
 
 impl Mode {
     /// Its name in a line.
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Mode::Stopped => "stopped",
@@ -434,8 +511,11 @@ impl Mode {
 /// The spine's state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct State {
+    /// Who drives.
     pub mode: Mode,
+    /// The car is armed.
     pub armed: bool,
+    /// An e-stop is on.
     pub estop: bool,
     /// `spine-core`'s fault bits.
     pub faults: u16,
@@ -444,7 +524,9 @@ pub struct State {
 /// The tick's timing since boot (`spine-board`'s `TickTiming`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Tick {
+    /// The longest gap between two ticks (µs).
     pub worst_gap_us: u32,
+    /// Ticks that ran late.
     pub overruns: u32,
 }
 
@@ -453,15 +535,20 @@ pub struct Tick {
 pub struct Event<'a> {
     /// What changed: `mode`, `armed`, ...
     pub what: &'a str,
+    /// Its value before.
     pub from: Value<'a>,
+    /// Its value now.
     pub to: Value<'a>,
 }
 
 /// One value in an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Value<'a> {
+    /// A name, written as a string.
     Text(&'a str),
+    /// Written `true` or `false`.
     Flag(bool),
+    /// Written as a number.
     Number(u32),
 }
 
@@ -477,6 +564,10 @@ impl Display for TooLong {
 
 impl Line<'_> {
     /// The line into `buf`, without a newline. Returns the part of `buf` it filled.
+    ///
+    /// # Errors
+    ///
+    /// [`TooLong`] if it doesn't fit; `buf` then holds nothing to use.
     pub fn write_to<'b>(&self, buf: &'b mut [u8]) -> Result<&'b str, TooLong> {
         let mut w = SliceWriter { buf, len: 0 };
         write!(w, "{self}").map_err(|_| TooLong)?;
@@ -739,6 +830,7 @@ impl<'a> Config<'a> {
     /// after boot. Its first keys, up to `last_reset`, are the ones the first check has
     /// always read; the rest follow in the JSON line's order. An unknown value is `none`
     /// (JSON's `null`), never 0: `frame=none` on CAN, `i2c_khz=none` with QEMU's stand-ins.
+    #[must_use]
     pub fn text(&self, now_ms: u32) -> ConfigText<'_, 'a> {
         ConfigText {
             config: self,
@@ -916,6 +1008,7 @@ pub struct LineBuf<const N: usize = MAX_LINE> {
 
 impl<const N: usize> LineBuf<N> {
     /// An empty buffer.
+    #[must_use]
     pub const fn new() -> Self {
         LineBuf {
             buf: [0; N],
@@ -924,6 +1017,10 @@ impl<const N: usize> LineBuf<N> {
     }
 
     /// Replace what it holds with `line`. On [`TooLong`] it holds nothing.
+    ///
+    /// # Errors
+    ///
+    /// [`TooLong`] if the line doesn't fit in `N` bytes.
     pub fn set(&mut self, line: &Line<'_>) -> Result<(), TooLong> {
         self.len = 0;
         let len = line.write_to(&mut self.buf)?.len();
@@ -933,6 +1030,10 @@ impl<const N: usize> LineBuf<N> {
 
     /// Replace what it holds with any one line of text (a text log line). On [`TooLong`]
     /// it holds nothing.
+    ///
+    /// # Errors
+    ///
+    /// [`TooLong`] if the text doesn't fit in `N` bytes.
     pub fn set_text(&mut self, text: &impl Display) -> Result<(), TooLong> {
         self.len = 0;
         let mut w = SliceWriter {
@@ -945,15 +1046,20 @@ impl<const N: usize> LineBuf<N> {
     }
 
     /// The line, without a newline; empty if none.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         // `set` only keeps what `write_to` checked.
         core::str::from_utf8(&self.buf[..self.len]).unwrap_or("")
     }
 
+    /// The line's bytes, without a newline; empty if none.
+    #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         &self.buf[..self.len]
     }
 
+    /// It holds no line.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }

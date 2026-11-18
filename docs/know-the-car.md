@@ -4,6 +4,10 @@ Written 1 November 2026. Ben, 1 Nov: "If we do enough tests we should be able to
 out the driving characteristics of the car and get more accurate with every pass ... We
 can map the area while there."
 
+**Not started** (14 Nov): no test here has been run on the car, so every number it fits
+is still a guess ([the 14 Nov review](history/audit-2026-11-14-review.md)). Use this page
+after [Car day](car-day.md)'s A10; the tape-measure sheet is [Measure the car](measure-the-car.md).
+
 > **The short version**
 > - One page: **the order**, and **when to stop**. How to run each test is on its own page (the links).
 > - Car day's step A11: only after [A10](car-day.md#a10-the-ground-at-walking-pace) is signed. Test 1 is on stands, earlier (A6, session 9).

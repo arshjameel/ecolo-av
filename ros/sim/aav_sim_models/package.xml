@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_sim_models</name>
+  <version>0.1.0</version>
+  <description>Ravensim's Python side (Ravensim: our own simulator, aav_simulator): the worlds (empty, test_lot, road) and their models, ravensim.launch.py, and the nodes that put the simulated car behind the same topics as the real one: sim_adapter (/control/sim/actuator_cmd in, from the output mux; /vehicle/odom, status, steering, wheels out), sim_imu, sim_gps, sim_radar, sim_camera_relay, sim_esp32, truth_localizer. And the shared sim models: the actuator model, faults, wheels, the GPS, IMU and radar models, which tools and tests import too.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>ackermann_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>sensor_msgs_py</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>aav_interfaces</exec_depend>
+  <exec_depend>aav_description</exec_depend>
+  <!-- Ravensim itself: the Rust simulator. -->
+  <exec_depend>aav_simulator</exec_depend>
+  <exec_depend>image_transport</exec_depend>
+  <exec_depend>compressed_image_transport</exec_depend>
+  <!-- spine:=true: the car's spine_bridge, and spine_sim (the spine's own logic). -->
+  <exec_depend>aav_spine</exec_depend>
+  <exec_depend>aav_spine_sim</exec_depend>
+  <exec_depend>aav_legacy</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <exec_depend>python3-yaml</exec_depend>
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

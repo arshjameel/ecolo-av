@@ -2,7 +2,8 @@
 NDT on a saved lidar map (aav_ndt, Rust): the node ndt, a trial. Never TF.
 
   ros2 launch aav_ndt ndt.launch.py [ndt_map:=maps/ndt/test_lot.pcd] [ndt_x:=0.0]
-      [ndt_y:=0.0] [ndt_yaw:=0.0] [ndt_from_global:=false] [use_sim_time:=false]
+      [ndt_y:=0.0] [ndt_yaw:=0.0] [ndt_from_global:=false] [ndt_chunks:=]
+      [use_sim_time:=false]
 
 The arguments start with ndt_: included launch files share their arguments, and sim's
 own map and start_y mean other things (aav_bringup README).
@@ -13,6 +14,9 @@ ndt_map     the PCD file (pixi run ndt-map drive makes the test lot's); a relati
 ndt_x, ndt_y, ndt_yaw  where it starts, map frame (m, rad); sim.launch.py ndt:=true
             passes the car's start, as AMCL's
 ndt_from_global  take ekf_global's pose instead (the car)
+ndt_chunks  a folder of the map in 64 m chunks (ndt-chunks writes it; chunks.yaml beside
+            it): only the 3 x 3 round the car is held, rebuilt as it drives (TODO 175).
+            Empty (the default): the whole ndt_map, built once
 
 The lidar's mount (lidar_link) and the car's box (vehicle.self_box) come from aav_description's
 vehicle.yaml; the rest from config/ndt.yaml. Topics: docs/interfaces.yaml
@@ -58,6 +62,17 @@ def map_path(given):
     return path
 
 
+def chunks_path(given):
+    """Return the chunk folder's absolute path ('' for none); refuse one without its grid."""
+    if not given:
+        return ''
+    path = os.path.abspath(os.path.expanduser(given))
+    if not os.path.isfile(os.path.join(os.path.dirname(path), 'chunks.yaml')):
+        raise ValueError(f'ndt_chunks:={given}: no chunks.yaml beside it. Make the chunks '
+                         'with pixi run campus')
+    return path
+
+
 def nodes(context):
     def arg(name):
         return LaunchConfiguration(name).perform(context)
@@ -76,10 +91,11 @@ def nodes(context):
             settings['min_score_per_point'] = float(arg('ndt_min_score'))
         if arg('ndt_min_height'):
             settings['min_height'] = float(arg('ndt_min_height'))
-    return [Node(package='aav_ndt', executable='ndt', name='ndt', output='screen',
+    return [Node(package='aav_ndt', executable='ndt', name='ndt', namespace='/', output='screen',
                  parameters=[settings,
                              car_parameters(vehicle.load()), start,
                              {'map': map_path(arg('ndt_map')),
+                              'map_chunks': chunks_path(arg('ndt_chunks')),
                               'use_sim_time': arg('use_sim_time').lower() == 'true'}])]
 
 
@@ -98,6 +114,9 @@ def generate_launch_description():
         DeclareLaunchArgument('ndt_min_height', default_value='',
                               description='m above the ground: what NDT ignores below (empty: '
                                           "ndt.yaml's)"),
+        DeclareLaunchArgument('ndt_chunks', default_value='',
+                              description='a folder of the map in chunks (empty: the whole '
+                                          'ndt_map)'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         OpaqueFunction(function=nodes),
     ])

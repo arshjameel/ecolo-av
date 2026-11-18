@@ -6,7 +6,7 @@ velocity command, `/control/cmd_vel` (v, w), into one Ackermann command,
 
 ```
 twist_mux -> /control/cmd_vel -> ego -> /ego/actuator_cmd (50 Hz, always)
-          -> output mux (aav_io_mux) -> one backend: spine, legacy serial, Gazebo, turtlesim, CARLA
+          -> output mux (aav_io_mux) -> one backend: spine, legacy serial, Ravensim, turtlesim, CARLA
 ```
 
 ## Overview
@@ -24,18 +24,23 @@ speed, reverse speed, acceleration, jerk, steering angle and rate, and a body mo
 | Subscribes | `/control/cmd_vel` (`geometry_msgs/TwistStamped`; plain `Twist` when the parameter `use_stamped` is false, in `ego.yaml`: not a launch argument) |
 | | `/vehicle/odom` (`nav_msgs/Odometry`): the measured speed, for the trace's twin |
 | | `/drivers/<d>/lag_aware` (`std_msgs/Bool`, latched) and `/drivers/<d>/cmd_vel`, for each `d` in `lag_aware_drivers`: is a lag-aware driver driving? |
+| | `/drivers/<d>/cmd_vel` for each `d` in `pedal_drivers`, and `/safety/estop` (`std_msgs/Bool`): the pedal |
+| | `/world/road_ahead` (`aav_interfaces/RoadAhead`) and `/localization/odom/global`, only with `road_ahead` true: an automatic driver's forward speed (`road_ahead_drivers`) never above what the road ahead allows where the car is; no road, or a stale pose, allows 0. People are never trimmed |
 | Publishes | `/ego/actuator_cmd` (`ackermann_msgs/AckermannDriveStamped`) at `rate_hz`: speed (m/s), steering_angle (rad, + left), acceleration (m/s²: the limit used; while speeding up with `max_jerk` > 0, the eased acceleration now), steering_angle_velocity (`max_steering_rate`) |
 | | `/ego/trace` (`nav_msgs/Path`, frame `base_link`) at `trace_rate_hz`: where the car goes over `trace_horizon` s |
 | | `/ego/stop_point` (`geometry_msgs/PoseStamped`, frame `base_link`, with each trace): where a full brake now stops the car |
-| Node `look_ahead` | started by `ego.launch.py` (`look_ahead:=true`, the default): the squiggly line's numbers for the screens. Subscribes `/ego/trace`, `/ego/stop_point`, `/drivers/nav/local_plan`, `/plan`, `/local_costmap/costmap`, TF; publishes `/ego/plan_ahead` (Path, base_link) and `/ego/ahead` (DiagnosticStatus: gap_m, plan, stop_m, goal_m, obstacle_m, room_m, front_m, rear_m, half_width_m). Parameters in its docstring (`look_ahead_node.py`) |
+| Node `look_ahead` | started by `ego.launch.py` (`look_ahead:=true`, the default): the squiggly line's numbers for the screens. Subscribes `/ego/trace`, `/ego/stop_point`, `/drivers/nav/local_plan`, `/plan`, `/local_costmap/costmap`, `/world/road_ahead`, TF; publishes `/ego/plan_ahead` (Path, base_link) and `/ego/ahead` (DiagnosticStatus: gap_m, plan, stop_m, goal_m, obstacle_m, room_m, front_m, rear_m, half_width_m, road_mps, road_m, road_why). Parameters in its docstring (`look_ahead_node.py`) |
 
 Launch arguments:
 
 | Name | Meaning |
 |---|---|
-| `max_speed` | m/s, a lower forward cap than `ego.yaml`'s (a first drive on stands). Must be above 0 and at most `ego.yaml`'s |
+| `max_speed` | m/s, a lower forward cap than `ego.yaml`'s (a first drive on stands); it caps reverse too, never above `vehicle.yaml`'s `max_reverse_speed` (17 Nov). Must be above 0 and at most `ego.yaml`'s |
 | `sim_max_speed` | m/s, a higher cap, up to 5.0, only with `use_sim_time:=true` |
 | `look_ahead` | `true`: also start `look_ahead` (the screens' squiggly line); `false`: ego alone |
+| `road_ahead` | `false`; `true`: hold navigation to `/world/road_ahead` (`sim.launch.py` sets it with `behaviour:=true`, its writer) |
+| `speed_loop` | `default`: the spine's speed loop profile the car runs (`default`, `smooth`, `lqi`, `firm`), set as `trace_speed_loop` over `ego.yaml`'s, so the trace's twin assumes it; `sim.launch.py` and `bench.launch.py` pass theirs (TODO 163). An unknown name is refused |
+| `ego_impl` | `rust`: [`aav_ego_rs`](../aav_ego_rs/README.md), ego and look_ahead in one Rust process with the same names, topics and answers (the default since Ben, 16 Nov; `sim.launch.py` and `car.launch.py` pass it on); `python`: this package's two nodes |
 
 Parameters. From `config/ego.yaml`:
 
@@ -54,6 +59,8 @@ Parameters. From `config/ego.yaml`:
 | `lag_lead` | `auto` | live. The lag lead: `auto` in a simulator only (off on the car, SAFE); `on` the car too, once tests 3.10-4.5 measured the lags; `off` never. Never while a lag-aware driver drives |
 | `lag_lead_filter`, `lag_lead_max_speed`, `lag_lead_max_steer` | 0.1 s, 0.3 m/s, 0.1 rad | the request's filter; the most the lead adds or takes |
 | `lag_aware_drivers` | scripted, point, nav, ai | whose `/drivers/<d>/lag_aware` ego watches |
+| `pedal_drivers`, `pedal_let_off`, `pedal_full`, `pedal_shift_hold`, `pedal_stop_speed` | joy, rc, keyboard; 1.0 m/s²; 1.0 m/s; 1.0 s; 0.05 m/s | the pedal (`pedal.py`): while a person drives, the stick is an accelerator and a brake. Let off slows (let go: `pedal_let_off`), pulled back brakes by how far (all the way: `max_deceleration`), then reverses only after `pedal_shift_hold` s held at 0, the brake on (Ben, 17 Nov), and while `/vehicle/odom` is fresh (0.5 s), once its speed is under `pedal_stop_speed`; `pedal_full` is what a full stick asks. 0 s: no hold. Off during an e-stop (`/safety/estop`), and for a stale command or a turn's cap. `[]`: off |
+| `road_ahead`, `road_ahead_drivers`, `road_pose_timeout` | false, nav and point, 1.0 s | the road ahead's limit (`road_limit.py`): on or off, whose commands (each also in `lag_aware_drivers`), how old the pose may be |
 | `trace_horizon`, `trace_rate_hz`, `trace_speed_loop` | 2.0 s, 10 Hz, `default` | the trace; 0 Hz: none |
 | `vehicle_yaml` | `''` | the car model's numbers (`''`: `aav_description`'s) |
 
@@ -68,7 +75,9 @@ Modules:
 | `ackermann.py` | `Limits`, `EgoModel.step(cmd, dt)` -> (speed, steering, accel); `steering_angle`, `turn_rate`, `slew_speed`, `ease_speed`, `curvature`; `LIVE_LIMITS`, `live_change()` |
 | `dynamics.py` | `Body`; `speed_up_limit`, `braking_limit`, `lateral_limit`, `curve_speed`, `stopping_distance`, `energy`, `describe()` (start-up log lines) |
 | `vehicle_model.py` | the car as a linear model (transfer functions, state space, margins), for tuning and the report: `VehicleModel`, `from_vehicle_yaml()`, `summary()`. Never drives the car. Used by `tools/vehicle_model.py` (`pixi run python3 tools/vehicle_model.py`, `docs/vehicle-model.md`) |
+| `pedal.py` | `Pedal`, `slow_rate(pedal, current, target, max_deceleration)`: how hard a person's let-off or pull-back slows; `may_shift(pedal, held, wheel_speed)`: may the car change direction yet |
 | `lag_lead.py` | `LagLead` (the lead), `LeadTimes`, `LeadLimits`, `lead_wanted(mode, sim, aware)`, `LagAwareWatch` (whose command is it?), `command_key` |
+| `road_limit.py` | the road ahead's limit: `allowed(strip, pose, age, timeout, curve, base)`, `cap(cmd, limit)` (keeps the curvature) |
 | `trace_ahead.py` | `Twin` (ego's copy of the car), `trace(...)` -> poses in `base_link`, `ego_commands` |
 | `stop_ahead.py` | `stop_point(cfg, state)` -> `StopPoint` (where a full brake now stops, base_link; the car model), `s_of_v` (the design's S(v)) |
 | `look_ahead.py` | the squiggly line's maths: `crop_ahead`, `gap`, `grade`, `to_goal`, `Grid`, `first_hit`, `extend`, `describe` |
@@ -78,7 +87,7 @@ Modules:
 ## Invariants
 
 - `ackermann.py`, `dynamics.py`, `vehicle_model.py`, `lag_lead.py`, `trace_ahead.py`,
-  `stop_ahead.py` and `look_ahead.py` have no ROS imports. The car model is `aav_description`'s `car_model.py` (`docs/car-model.md`).
+  `stop_ahead.py`, `road_limit.py` and `look_ahead.py` have no ROS imports. The car model is `aav_description`'s `car_model.py` (`docs/car-model.md`).
 - The lag lead runs before every limit: `max_speed`, the steering limit and rate, the slews,
   the jerk and the body still apply after it. It never softens a slow-down, never changes
   direction, never touches a stop, and never runs while a lag-aware driver drives.
@@ -90,6 +99,8 @@ Modules:
   to 0 at `max_deceleration`, steering holds. Header stamps only log a warning when
   more than 0.5 s off (check chrony).
 - A change of direction passes through a stop.
+- The pedal grades only a person's own slowing: a stop, an e-stop and a turn's cap always brake at `max_deceleration`.
+- With the pedal, a change of direction waits at a standstill: `pedal_shift_hold` s at 0, and a fresh wheel speed (if any) under `pedal_stop_speed`. Going the same way again, or from rest after start-up, does not wait.
 - Jerk limits only speeding up. Braking is never softened, and never weaker for a heavy
   car; a turn slows the car rather than steering less.
 - Turn speed stays under `max_lateral_accel` and under half of what slides or tips the car.
@@ -119,7 +130,9 @@ it; `test_ego_launch.py` skips without ROS). `pixi run test` runs everything.
 | `test_dynamics.py` | the body's limits |
 | `test_vehicle_model.py` | the linear model (needs numpy, scipy) |
 | `test_ego_launch.py` | the `max_speed` and `sim_max_speed` caps; `look_ahead` on by default, and off |
+| `test_pedal.py` | the pedal: let off more slows more, back harder brakes harder, full back stops, holds `shift_hold`, then reverses (and backwards then forward); a turning wheel blocks the shift; the same way or from rest goes at once; let go rolls to a stop; a stale command and the e-stop still brake fully at once |
 | `test_lag_lead.py` | the lead: when it runs, its limits, ego's limits after it, it helps on the car model |
+| `test_road_limit.py` | the road ahead's limit: no road or a stale pose allow 0; it falls to 0 at the end; the curvature kept; reverse untouched |
 | `test_trace_ahead.py` | the trace and the twin |
 | `test_stop_ahead.py` | the stop point: parked, S(v), dead time, turning, backwards, no brake |
 | `test_look_ahead.py` | the plan cut ahead, the gap and its grade, the goal, the costmap's first obstacle |

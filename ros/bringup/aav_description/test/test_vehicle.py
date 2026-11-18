@@ -1,3 +1,4 @@
+import copy
 import json
 import math
 from pathlib import Path
@@ -263,7 +264,7 @@ def test_mppi_follows_the_path_under_the_name_the_trees_ask_for():
     assert 'PreferForwardCritic' in forward['FollowPath']['critics']
     # The MPPI block itself stays as the file has it, where nav2_rewrites expects it.
     assert mppi[servers]['ros__parameters']['MPPI'] == nav2[servers]['ros__parameters']['MPPI']
-    with pytest.raises(ValueError, match='pick one of rpp, mppi'):
+    with pytest.raises(ValueError, match='pick one of rpp, mppi'):  # TUNED_CONTROLLERS
         vehicle.nav2_tuned(nav2, v, controller='dwb')
 
 
@@ -281,6 +282,11 @@ def test_the_planner_sees_the_sensors_but_not_the_ghost():
     assert plugins == ['static_layer', 'obstacle_layer', 'lidar_layer', 'inflation_layer']
     assert cfg['obstacle_layer']['enabled'] is True          # the local one waits for launch
     assert cfg['lidar_layer']['lidar']['topic'] == '/sensors/lidar/scan'
+    # The planner's copy of the lidar looks further than the follower's (16 Nov).
+    assert cfg['lidar_layer']['lidar']['obstacle_max_range'] == vehicle.PLANNER_SEES
+    local = vehicle.nav2_tuned(nav2, v, radar=True, lidar=True)['local_costmap'][
+        'local_costmap']['ros__parameters']['lidar_layer']['lidar']
+    assert local['obstacle_max_range'] < vehicle.PLANNER_SEES
     assert 'ghost_layer' not in plugins
     assert layers(radar=False, lidar=True)[0] == ['static_layer', 'lidar_layer',
                                                   'inflation_layer']
@@ -302,6 +308,36 @@ def test_voxels_needs_the_lidar_and_reaches_the_planner_too():
     # The file itself is left as it was: the scan stays the default.
     local = nav2['local_costmap']['local_costmap']['ros__parameters']['lidar_layer']
     assert local['observation_sources'] == 'lidar'
+
+
+def test_kerbs_add_a_marking_only_layer_with_the_lidar():
+    v = {'max_reverse_speed': 0.4, 'body': {'length': 2.0, 'width': 1.0, 'rear_overhang': 0.2}}
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+
+    def plugins(**args):
+        cfg = vehicle.nav2_tuned(nav2, v, radar=False, **args)
+        return cfg, cfg['local_costmap']['local_costmap']['ros__parameters']['plugins']
+
+    assert 'kerb_layer' not in plugins(lidar=True)[1]
+    assert 'kerb_layer' not in plugins(lidar=False, kerbs=True)[1]
+    cfg, on = plugins(lidar=True, kerbs=True)
+    assert on.index('kerb_layer') < on.index('inflation_layer')
+    layer = cfg['local_costmap']['local_costmap']['ros__parameters']['kerb_layer']
+    assert layer['observation_sources'] == 'steps'
+    assert layer['steps']['topic'] == '/perception/voxels/steps'
+    assert layer['steps']['marking'] and not layer['steps']['clearing']
+    # The stop zone's too (the node keeps them: the lidar loses a kerb before the zone
+    # reaches it); not the planner's.
+    assert cfg['collision_monitor']['ros__parameters']['observation_sources'] == [
+        'lidar', 'steps']
+    assert 'steps' not in plugins(lidar=True)[0]['collision_monitor']['ros__parameters'][
+        'observation_sources']
+    assert 'kerb_layer' not in cfg['global_costmap']['global_costmap']['ros__parameters'][
+        'plugins']
+    # Our costmap reads it too, from the same file.
+    ours = vehicle.costmap_params(cfg, vehicle.load(CONFIG)['vehicle'])['local']
+    kerb = [layer for layer in ours['layers'] if layer['name'] == 'kerb_layer']
+    assert len(kerb) == 1 and kerb[0]['sources'][0]['clearing'] is False
 
 
 def test_every_rewrite_lands_on_a_key_nav2_yaml_has():
@@ -417,25 +453,10 @@ def test_m5s_two_angles_give_the_centre_angle_back():
         vehicle.centre_angle(CAR, 0.5, 0.0)
 
 
-def gazebo_centre_angle(v, steering_limit):
-    """Gazebo's AckermannSteering at full lock (gz-sim 8, UpdateVelocity): the centre angle."""
-    smallest_radius = v['wheelbase'] / math.sin(steering_limit)
-    return math.atan(v['wheelbase'] / smallest_radius)
-
-
-def test_gazebos_steering_limit_gives_the_centre_angle_at_full_lock():
-    # Given max_steering_angle as it is, Gazebo stops 10% short: the 0.433 found by circles.
-    assert gazebo_centre_angle(CAR, 0.5) < 0.45
-    limit = vehicle.gazebo_steering_limit(CAR)
-    assert limit > 0.5
-    assert math.isclose(gazebo_centre_angle(CAR, limit), 0.5)
-    # Its smallest radius is the bicycle model's: Nav2's minimum turning radius.
-    assert math.isclose(CAR['wheelbase'] / math.sin(limit), vehicle.min_turning_radius(CAR))
+def test_the_inner_wheels_joint_limit_leaves_room():
     # The inner wheel's joint limit in aav.urdf.xacro (1.3 x max) leaves it room.
     v = vehicle.load(CONFIG)['vehicle']
     assert vehicle.wheel_angles(v, v['max_steering_angle'])[0] < 1.3 * v['max_steering_angle']
-    with pytest.raises(ValueError):
-        vehicle.gazebo_steering_limit({'max_steering_angle': math.radians(50)})
 
 
 def find_share():
@@ -448,32 +469,31 @@ def find_share():
 
 @pytest.mark.skipif(shutil.which('xacro') is None or find_share() is None,
                     reason='needs xacro and the built package')
-def test_gazebos_urdf_gets_the_derived_limit_and_refuses_none():
+def test_the_urdf_has_no_gazebo_left():
     urdf = Path(find_share()) / 'urdf' / 'aav.urdf.xacro'
-    v = vehicle.load(CONFIG)['vehicle']
-    limit = f'{vehicle.gazebo_steering_limit(v):.6f}'
-    out = subprocess.run(['xacro', str(urdf), 'sim:=true', f'gz_steering_limit:={limit}'],
-                         capture_output=True, text=True, check=True).stdout
-    assert f'<steering_limit>{limit}</steering_limit>' in out
-    missing = subprocess.run(['xacro', str(urdf), 'sim:=true'], capture_output=True)
-    assert missing.returncode != 0
     car = subprocess.run(['xacro', str(urdf)], capture_output=True, text=True, check=True)
-    assert 'steering_limit' not in car.stdout
+    assert 'gazebo' not in car.stdout and 'steering_limit' not in car.stdout
 
 
 EGO_YAML = ROOT / 'ros/ego/aav_ego/config/ego.yaml'
 
 
-def test_trackers_sit_beside_the_controllers_and_none_is_the_default():
-    assert vehicle.DEFAULT_TRACKER == 'none' and 'none' in vehicle.TRACKERS
-    # Not in CONTROLLERS: nav2_tuned would take a tracker's name for RPP.
-    assert not set(vehicle.TRACKERS) & set(vehicle.CONTROLLERS)
+def test_trackers_sit_beside_the_controllers_and_mppi_lag_is_the_default():
+    # Nav2's controller_server (tracker:=none) went on 17 Nov: mppi_lag is the default.
+    assert vehicle.DEFAULT_TRACKER == 'mppi_lag' and 'none' not in vehicle.TRACKERS
+    # Not in CONTROLLERS: nav2_tuned would take a tracker's name for a block layout.
+    assert not set(vehicle.TRACKERS) & set(vehicle.TUNED_CONTROLLERS)
     assert vehicle.check_tracker(' LQR ') == 'lqr'
-    assert vehicle.check_tracker('none', reversing=True) == 'none'
+    assert vehicle.check_tracker('mppi_lag', reversing=True) == 'mppi_lag'
+    with pytest.raises(ValueError, match='pick one of'):
+        vehicle.check_tracker('none')
     with pytest.raises(ValueError, match='pick one of'):
         vehicle.check_tracker('mppi')
     with pytest.raises(ValueError, match='reversing:=false'):
         vehicle.check_tracker('stanley', reversing=True)
+    # mppi_lag reverses (Ben, 14 Nov); aav_track's trackers drive forwards only.
+    assert vehicle.check_tracker('mppi_lag', reversing=True) == 'mppi_lag'
+    assert set(vehicle.FORWARD_ONLY_TRACKERS) == set(vehicle.TRACKERS) - {'none', 'mppi_lag'}
 
 
 def test_track_params_are_nav2s_own_checks_and_speeds():
@@ -496,6 +516,40 @@ def test_track_params_are_nav2s_own_checks_and_speeds():
     assert p['max_steering_rate'] == min(cfg['actuators']['steer_rate'],
                                          ego['max_steering_rate'])
     assert vehicle.track_params(nav2, cfg, ego, max_speed=3.0)['cruise_speed'] == 3.0
+
+
+def test_check_speed_loop_takes_spine_cores_names_and_refuses_the_rest():
+    from aav_description.car_model import SPEED_LOOP_PROFILES
+    assert vehicle.DEFAULT_SPEED_LOOP == 'default'
+    for name in SPEED_LOOP_PROFILES:
+        assert vehicle.check_speed_loop(name) == name
+    assert vehicle.check_speed_loop(' Firm ') == 'firm'
+    with pytest.raises(ValueError, match='pick one of'):
+        vehicle.check_speed_loop('fast')
+    # The two MPCs model the PI only; mppi_lag and the rest take the LQI too.
+    for tracker in vehicle.PI_ONLY_TRACKERS:
+        with pytest.raises(ValueError, match='PI'):
+            vehicle.check_speed_loop('lqi', tracker)
+        assert vehicle.check_speed_loop('firm', tracker) == 'firm'
+    assert vehicle.check_speed_loop('lqi', 'mppi_lag') == 'lqi'
+
+
+def test_every_model_of_the_car_gets_the_speed_loop_asked_for():
+    # TODO 163: the followers' and the behaviour planner's models predict the simulated
+    # car's loop; default unchanged, an unknown name refused.
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    cfg = vehicle.load(CONFIG)
+    ego = yaml.safe_load(EGO_YAML.read_text())['ego']['ros__parameters']
+    makers = {
+        'mpc_lag.speed_loop': (vehicle.track_params, vehicle.mpc_lag_rs_params),
+        'speed_loop': (vehicle.mppi_lag_params, vehicle.behaviour_params),
+    }
+    for key, fns in makers.items():
+        for fn in fns:
+            assert fn(nav2, cfg, ego)[key] == 'default', fn.__name__
+            assert fn(nav2, cfg, ego, speed_loop='firm')[key] == 'firm', fn.__name__
+            with pytest.raises(ValueError):
+                fn(nav2, cfg, ego, speed_loop='fast')
 
 
 def test_behaviour_params_from_nav2_the_body_and_ego():
@@ -540,10 +594,37 @@ def test_mppi_lag_params_are_nav2s_mppi_and_the_cars_lag():
     assert p['actuators.steer_dead_time'] == cfg['actuators'].get('steer_dead_time', 0.0)
     assert p['ego.max_steering_rate'] == ego['max_steering_rate']
     assert len(p['footprint']) == 8
+    # controller_server's 0.3 s wait for a current costmap, plus the local one's 2 Hz.
+    assert p['costmap_timeout'] == pytest.approx(0.8)
     # sim_speed:= 3: faster, and the path ahead stretched to fit 2.8 s of it.
     fast = vehicle.mppi_lag_params(nav2, cfg, ego, max_speed=3.0)
     assert fast['vx_max'] == 3.0
     assert fast['prune_distance'] >= 3.0 * 2.8
+    # Forward only by default: no cusps to stop at, PathAngle's own mode.
+    assert p['enforce_path_inversion'] is False and 'PathAngleCritic.mode' not in p
+    # Reversing, as nav2_tuned sets Nav2's MPPI up.
+    back = vehicle.mppi_lag_params(nav2, cfg, ego, reversing=True)
+    tuned = vehicle.nav2_tuned(nav2, cfg['vehicle'], reversing=True, controller='mppi')
+    follow = tuned['controller_server']['ros__parameters']['FollowPath']
+    assert back['vx_min'] == pytest.approx(-cfg['vehicle']['max_reverse_speed'])
+    assert back['vx_min'] == pytest.approx(follow['vx_min'])
+    assert back['enforce_path_inversion'] is follow['enforce_path_inversion'] is True
+    assert back['critics'] == follow['critics'] and 'PreferForwardCritic' not in back['critics']
+    assert back['PathAngleCritic.mode'] == follow['PathAngleCritic']['mode'] == 2
+    assert isinstance(back['PathAngleCritic.mode'], int)
+    assert back['inversion_xy_tolerance'] == mppi['inversion_xy_tolerance']
+    assert back['inversion_yaw_tolerance'] == mppi['inversion_yaw_tolerance']
+    # No lane map: Nav2's critics only, the road ahead not read.
+    assert 'LaneCritic' not in p['critics'] and p['road_ahead_topic'] == ''
+    assert not any(k.startswith('LaneCritic.') for k in p)
+    # With one (behaviour:=true lane_map:=...): our LaneCritic too, on the road ahead.
+    lane = vehicle.mppi_lag_params(nav2, cfg, ego, lane=True)
+    assert lane['critics'] == mppi['critics'] + ['LaneCritic']
+    assert lane['road_ahead_topic'] == '/world/road_ahead'
+    assert lane['LaneCritic.hard_weight'] > 5 * lane['LaneCritic.soft_weight']
+    assert isinstance(lane['LaneCritic.cost_power'], int)
+    both = vehicle.mppi_lag_params(nav2, cfg, ego, reversing=True, lane=True)
+    assert both['critics'] == back['critics'] + ['LaneCritic']
 
 
 def test_costmap_params_read_nav2s_costmaps_as_nav2_does():
@@ -556,6 +637,7 @@ def test_costmap_params_read_nav2s_costmaps_as_nav2_does():
     assert (local['width'], local['resolution'], local['update_frequency']) == (20.0, 0.1, 5.0)
     assert local['footprint'] == vehicle.footprint_points(v)
     assert local['inflation'] == {'radius': 2.0, 'scaling': 3.0}
+    assert local['transform_tolerance'] == 0.3   # Nav2's default: nav2.yaml sets none
     # The radar's and the cameras' layers are off unless asked for; the lidar's is on.
     names = [layer['name'] for layer in local['layers']]
     assert names == ['lidar_layer']
@@ -569,6 +651,9 @@ def test_costmap_params_read_nav2s_costmaps_as_nav2_does():
     radar = with_radar['local']['layers'][0]
     assert radar['name'] == 'obstacle_layer'
     assert radar['sources'][0]['observation_persistence'] == 0.2
+    # The radar's view clears what it no longer sees (TODO 193); the lidar's scan has its inf.
+    assert radar['sources'][0]['view_angle'] == pytest.approx(math.radians(120.0), abs=1e-3)
+    assert lidar['view_angle'] == 0.0
     json.dumps(p)   # one JSON parameter each
 
 
@@ -596,23 +681,21 @@ LATTICE_JSON = ROOT / 'ros/drivers/aav_navigation/config/lattice_ackermann.json'
 SEARCH_MODEL = 'planner_server.ros__parameters.GridBased.motion_model_for_search'
 
 
-def test_planners_lattice_by_default_hybrid_forward_only_and_only_car_shaped_ones_on_the_car():
-    assert vehicle.DEFAULT_PLANNER == 'lattice'
-    assert vehicle.default_planner(reversing=True) == 'lattice'
-    assert vehicle.default_planner(reversing=False) == 'hybrid'
-    assert {vehicle.DEFAULT_PLANNER, vehicle.FORWARD_ONLY_PLANNER} <= set(vehicle.CAR_PLANNERS)
+def test_planners_ours_by_default_and_on_the_car():
+    # Nav2's planner_server and its planners went on 17 Nov: ours, forward or reversing.
+    assert vehicle.DEFAULT_PLANNER == 'own'
+    assert vehicle.default_planner(reversing=True) == 'own'
+    assert vehicle.default_planner(reversing=False) == 'own'
+    assert vehicle.CAR_PLANNERS == ('own',)
     assert set(vehicle.CAR_PLANNERS) < set(vehicle.PLANNERS)
-    assert set(vehicle.PLANNER_BLOCKS) == set(vehicle.PLANNERS)
-    assert vehicle.check_planner(' Lattice ') == 'lattice'
-    assert vehicle.check_planner('navfn') == 'navfn'
-    assert vehicle.check_planner('lattice', real=True) == 'lattice'
-    for name in ('smac2d', 'navfn', 'theta_star', 'own'):
-        with pytest.raises(ValueError, match='turning radius'):
-            vehicle.check_planner(name, real=True)
+    assert set(vehicle.PLANNERS) <= set(vehicle.PLANNER_BLOCKS)
+    assert vehicle.check_planner(' Own ') == 'own'
+    assert vehicle.check_planner('own', real=True) == 'own'
+    for gone in ('lattice', 'hybrid', 'smac2d', 'navfn', 'theta_star'):
+        with pytest.raises(ValueError, match='pick one of'):
+            vehicle.check_planner(gone)
     with pytest.raises(ValueError, match='a trial'):
         vehicle.check_planner('diffusion', real=True)
-    with pytest.raises(ValueError, match='pick one of'):
-        vehicle.check_planner('rrt')
 
 
 def test_every_planner_has_its_block_in_nav2_yaml():
@@ -638,14 +721,11 @@ def test_nav2_tuned_puts_the_planner_under_gridbased(planner):
 
 
 def test_the_diffusion_trial_stands_on_the_lattice():
-    # planner:=diffusion: planner_server runs the lattice, the fallback (aav_diffusion_planner).
+    # planner:=diffusion: our planner runs the lattice beside it, the fallback.
     assert vehicle.server_planner('diffusion') == 'lattice'
-    assert vehicle.server_planner('hybrid') == 'hybrid'
     assert 'diffusion' not in vehicle.CAR_PLANNERS
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     v = vehicle.load(CONFIG)['vehicle']
-    with pytest.raises(ValueError, match='lattice_file'):
-        vehicle.nav2_tuned(nav2, v, planner='diffusion')
     grid = vehicle.nav2_tuned(nav2, v, reversing=True, planner='diffusion',
                               lattice_file='/x/l.json')['planner_server'][
                                   'ros__parameters']['GridBased']
@@ -655,7 +735,7 @@ def test_the_diffusion_trial_stands_on_the_lattice():
 def test_our_planner_reads_the_lattice_block_the_car_and_the_inflation():
     # planner:=own: aav_planner gets Nav2's own Lattice block, so both plan alike.
     assert vehicle.server_planner('own') == 'lattice'
-    assert 'own' not in vehicle.CAR_PLANNERS
+    assert 'own' in vehicle.CAR_PLANNERS
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     v = vehicle.load(CONFIG)['vehicle']
     for reversing in (False, True):
@@ -674,20 +754,75 @@ def test_our_planner_reads_the_lattice_block_the_car_and_the_inflation():
             'inflation_layer']
         assert p['inflation'] == {'radius': inflation['inflation_radius'],
                                   'scaling': inflation['cost_scaling_factor']}
+        # planner_server's 1 s wait for a current costmap, plus the global one's 1 Hz.
+        assert p['costmap_timeout'] == pytest.approx(2.0)
     assert set(vehicle.GLOBAL_COSTMAP_TOPICS) == set(vehicle.COSTMAPS)
 
 
-def test_lattice_needs_its_file_and_reverses_only_with_reversing():
+def test_our_hybrid_a_star_reads_nav2s_hybrid_block_the_radius_and_the_cells():
+    # planner_search:=hybrid: the GridBased block (Hybrid-A*), not the lattice's, as
+    # nav2_rewrites writes it for planner:=hybrid.
     nav2 = yaml.safe_load(NAV2_YAML.read_text())
     v = vehicle.load(CONFIG)['vehicle']
-    with pytest.raises(ValueError, match='lattice_file'):
-        vehicle.nav2_tuned(nav2, v, planner='lattice')
+    hybrid = nav2['planner_server']['ros__parameters']['GridBased']
+    for reversing, model in ((False, 'DUBIN'), (True, 'REEDS_SHEPP')):
+        tuned = vehicle.nav2_tuned(nav2, v, reversing=reversing, planner='own',
+                                   lattice_file='/x/l.json')
+        p = vehicle.planner_params(tuned, v, search='hybrid', nav2=nav2)
+        assert p['search'] == 'hybrid'
+        assert p['motion_model_for_search'] == model
+        assert p['minimum_turning_radius'] == pytest.approx(vehicle.plan_turning_radius(v),
+                                                            abs=1e-3)
+        for key in ('reverse_penalty', 'change_penalty', 'non_straight_penalty',
+                    'cost_penalty', 'angle_quantization_bins', 'smooth_path', 'tolerance'):
+            assert p[key] == hybrid[key], key
+        assert 'lattice_filepath' not in p
+        assert p['resolution'] == nav2['global_costmap']['global_costmap'][
+            'ros__parameters']['resolution']
+        assert p['footprint'] == vehicle.footprint_points(v)
+    with pytest.raises(ValueError, match='needs nav2.yaml'):
+        vehicle.planner_params(tuned, v, search='hybrid')
+    assert vehicle.check_planner_search('') == 'lattice'
+    with pytest.raises(ValueError, match='planner:=own'):
+        vehicle.check_planner_search('hybrid', 'lattice')
+    with pytest.raises(ValueError, match='pick one of'):
+        vehicle.check_planner_search('rrt')
+
+
+def test_lattice_takes_its_file_and_reverses_only_with_reversing():
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    v = vehicle.load(CONFIG)['vehicle']
     for reversing in (False, True):
-        grid = vehicle.nav2_tuned(nav2, v, reversing=reversing, planner='lattice',
+        grid = vehicle.nav2_tuned(nav2, v, reversing=reversing, planner='own',
                                   lattice_file='/x/l.json')['planner_server'][
                                       'ros__parameters']['GridBased']
         assert grid['lattice_filepath'] == '/x/l.json'
         assert grid['allow_reverse_expansion'] is reversing
+
+
+def test_smooth_moves_have_their_own_file_and_turn_the_smoother_off():
+    assert vehicle.lattice_file_name(16, 'nav2') == 'lattice_ackermann.json'
+    assert vehicle.lattice_file_name(16, 'smooth') == 'lattice_ackermann_smooth.json'
+    assert vehicle.lattice_file_name(16, '') == 'lattice_ackermann.json'
+    assert vehicle.lattice_file_name(16, 'smooth_fast') == 'lattice_ackermann_smooth_fast.json'
+    with pytest.raises(ValueError, match='16 headings only'):
+        vehicle.lattice_file_name(32, 'smooth')
+    with pytest.raises(ValueError, match='pick one of'):
+        vehicle.lattice_file_name(16, 'wiggly')
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    v = vehicle.load(CONFIG)['vehicle']
+
+    def grid(moves):
+        return vehicle.nav2_tuned(nav2, v, planner='own', lattice_file='/x/l.json',
+                                  lattice_moves=moves)['planner_server'][
+                                      'ros__parameters']['GridBased']
+    # Nav2's moves keep nav2.yaml's smoother; the smooth ones would get its Dubins ends back.
+    assert grid('nav2')['smooth_path'] is True
+    assert grid('smooth')['smooth_path'] is False
+    # Our planner (planner:=own) reads the same block.
+    tuned = vehicle.nav2_tuned(nav2, v, planner='own', lattice_file='/x/l.json',
+                               lattice_moves='smooth')
+    assert vehicle.planner_params(tuned, v)['smooth_path'] is False
 
 
 def test_the_committed_lattice_fits_the_car():
@@ -715,7 +850,7 @@ def test_the_diffusion_car_trial_needs_its_switch_and_a_low_speed():
         vehicle.check_planner('diffusion', real=True)
     assert vehicle.check_planner('diffusion', real=True, trial=True) == 'diffusion'
     with pytest.raises(ValueError, match='planner:=diffusion only'):
-        vehicle.check_planner('lattice', real=True, trial=True)
+        vehicle.check_planner('own', real=True, trial=True)
     assert vehicle.check_planner('diffusion') == 'diffusion'        # sim and bench, as before
     # The speed: walking pace, the reverse limit, below ego's own cap.
     v = vehicle.load(CONFIG)['vehicle']
@@ -725,3 +860,248 @@ def test_the_diffusion_car_trial_needs_its_switch_and_a_low_speed():
     for bad in ('0.51', '1.0', '0', '-1', 'fast'):
         with pytest.raises(ValueError, match='max_speed'):
             vehicle.diffusion_trial_speed(bad)
+
+
+def test_lidar_memory_sets_the_local_lidar_sources_only():
+    # TODO 188: the stock blind-zone memory, on the lidar's marking sources.
+    path = (Path(__file__).resolve().parents[3] / 'drivers' / 'aav_navigation' / 'config'
+            / 'nav2.yaml')
+    with open(path) as f:
+        cfg = yaml.safe_load(f)
+    layer = cfg['local_costmap']['local_costmap']['ros__parameters']['lidar_layer']
+    assert layer['lidar']['observation_persistence'] == 0.0
+    vehicle.with_lidar_memory(cfg, 3.0)
+    assert layer['lidar']['observation_persistence'] == 3.0
+    assert layer['voxels']['observation_persistence'] == 3.0
+    assert layer['voxels_ground']['observation_persistence'] == 0.0     # clears only
+    with pytest.raises(ValueError):
+        vehicle.with_lidar_memory(cfg, -1.0)
+
+
+def test_a_still_car_sends_a_nearly_certain_zero_and_a_moving_one_unchanged():
+    # TODO 191: stops reset the drift.
+    cov = [0.0] * 36
+    cov[0], cov[7], cov[35] = 0.01, 1e-4, 1e3
+    still = vehicle.standstill_covariance(0.0, cov)
+    assert [still[i] for i in (0, 7, 35)] == [vehicle.STANDSTILL_VARIANCE] * 3
+    assert vehicle.standstill_covariance(0.5, cov) == cov
+    assert vehicle.standstill_covariance(math.nan, cov) == cov
+    assert cov[35] == 1e3                  # the caller's list is left alone
+
+
+def test_a_global_window_rolls_the_global_costmap_and_0_leaves_it():
+    """TODO 175 step 3: the global costmap as a 192 m square round the car."""
+    def cfg():
+        return {'global_costmap': {'global_costmap': {'ros__parameters': {
+            'rolling_window': False, 'resolution': 0.25}}}}
+    block = vehicle.with_global_window(cfg(), 192.0)['global_costmap']['global_costmap'][
+        'ros__parameters']
+    assert block == {'rolling_window': True, 'width': 192.0, 'height': 192.0,
+                     'resolution': 0.25}
+    assert vehicle.with_global_window(cfg(), 0.0) == cfg()
+    with pytest.raises(ValueError):
+        vehicle.with_global_window(cfg(), -1.0)
+
+
+def test_the_chunks_block_needs_a_chunks_folder(tmp_path):
+    """TODO 175 step 3: our global costmap from the map's chunks (costmap_chunks:=)."""
+    with pytest.raises(ValueError):
+        vehicle.costmap_chunks_block(str(tmp_path))
+    (tmp_path / 'chunks.yaml').write_text('origin: [0, 0]\nsize: 64\n')
+    block = vehicle.costmap_chunks_block(str(tmp_path))
+    assert block == {'dir': str(tmp_path), 'ahead': vehicle.CHUNKS_AHEAD,
+                     'margin': vehicle.CHUNKS_MARGIN}
+    with pytest.raises(ValueError):
+        vehicle.costmap_chunks_block(str(tmp_path), margin=-1)
+
+
+def test_plan_smoothing_strong_weights_the_smoother_for_both_planners():
+    """TODO 168: plan_smoothing:=strong lowers w_data in GridBased's smoother block."""
+    nav2 = yaml.safe_load(NAV2_YAML.read_text())
+    v = vehicle.load(CONFIG)['vehicle']
+    tuned = vehicle.nav2_tuned(nav2, v, planner='own', lattice_file='/x/l.json')
+    assert 'smoother' not in vehicle.planner_params(tuned, v)      # nav2: Nav2's defaults
+    assert vehicle.with_plan_smoothing(copy.deepcopy(tuned), 'nav2') == tuned
+    strong = vehicle.with_plan_smoothing(tuned, 'strong')
+    block = strong['planner_server']['ros__parameters']['GridBased']['smoother']
+    assert block == vehicle.PLAN_SMOOTHINGS['strong']
+    assert block['w_data'] < 0.2                                  # Nav2's own w_data
+    assert vehicle.planner_params(strong, v)['smoother'] == block  # ours reads it too
+    assert vehicle.check_plan_smoothing('') == 'nav2'
+    with pytest.raises(ValueError):
+        vehicle.check_plan_smoothing('soft')
+
+
+def test_mppi_lag_steer_gamma_is_a_number_0_or_more():
+    assert vehicle.check_steer_gamma('0.05') == pytest.approx(0.05)
+    for bad in ('x', '-1', 'nan'):
+        with pytest.raises(ValueError):
+            vehicle.check_steer_gamma(bad)
+
+
+def test_the_stop_zone_reads_the_collision_monitor_block():
+    """TODO 182: our stop zone's settings from the tuned nav2.yaml and the car."""
+    share = Path(__file__).resolve().parents[3] / 'drivers' / 'aav_navigation' / 'config'
+    car = vehicle.load(CONFIG)
+    tuned = vehicle.nav2_tuned(yaml.safe_load((share / 'nav2.yaml').read_text()),
+                               car['vehicle'], False, None, True, True)
+    p = vehicle.stop_zone_params(tuned, car)
+    assert [b['name'] for b in p['bands']] == ['forward', 'backward']
+    assert p['bands'][0]['points'] == vehicle.stop_zone_points(car['vehicle'])
+    assert p['bands'][0]['speed'] == [0.0, 10.0]
+    assert (p['min_points'], p['source_timeout'], p['stop_pub_timeout']) == (3, 1.0, 2.0)
+    names = [src['name'] for src in p['sources']]
+    assert names == ['radar', 'lidar']
+    radar = p['sources'][0]
+    assert radar['kind'] == 'pointcloud' and radar['min_range'] == 0.2
+    assert radar['mount'][:3] == [float(x) for x in car['sensors']['radar_link']['xyz']]
+    assert p['sources'][1]['kind'] == 'scan' and p['sources'][1]['mount'] == [0.0] * 4
+
+
+def test_ego_impl_is_python_or_rust():
+    # Rust on the car and in the simulator (Ben, 16 Nov); the Python stays selectable.
+    assert vehicle.DEFAULT_EGO_IMPL == vehicle.SIM_DEFAULT_EGO_IMPL == 'rust'
+    assert vehicle.check_ego_impl('python') == 'python'
+    assert vehicle.check_ego_impl(' Rust ') == 'rust'
+    assert vehicle.EGO_IMPLS['rust'] == 'aav_ego_rs'
+    with pytest.raises(ValueError, match='ego_impl:=c'):
+        vehicle.check_ego_impl('c')
+
+
+def test_behaviour_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_BEHAVIOUR_IMPL == vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL == 'rust'
+    assert vehicle.check_behaviour_impl('python') == 'python'
+    assert vehicle.check_behaviour_impl(' Rust ') == 'rust'
+    assert vehicle.BEHAVIOUR_IMPLS == {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+    with pytest.raises(ValueError, match='behaviour_impl:=c'):
+        vehicle.check_behaviour_impl('c')
+
+
+def test_watchdog_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_WATCHDOG_IMPL == 'rust'
+    assert vehicle.check_watchdog_impl('python') == 'python'
+    assert vehicle.check_watchdog_impl(' Rust ') == 'rust'
+    assert vehicle.WATCHDOG_IMPLS == {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+    with pytest.raises(ValueError, match='watchdog_impl:=c'):
+        vehicle.check_watchdog_impl('c')
+
+
+def test_io_mux_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_IO_MUX_IMPL == 'rust'
+    assert vehicle.check_io_mux_impl('python') == 'python'
+    assert vehicle.check_io_mux_impl(' Rust ') == 'rust'
+    assert vehicle.IO_MUX_IMPLS == {'python': 'aav_io_mux', 'rust': 'aav_io_mux_rs'}
+    with pytest.raises(ValueError, match='io_mux_impl:=c'):
+        vehicle.check_io_mux_impl('c')
+
+
+def test_legacy_and_rc_impls_are_python_or_rust():
+    # Ben, 17 Nov: "Rust tomorrow": the UART bridge and rc_driver; *_impl:=python falls back.
+    assert vehicle.DEFAULT_LEGACY_IMPL == vehicle.DEFAULT_RC_IMPL == 'rust'
+    assert vehicle.LEGACY_IMPLS == {'python': 'aav_legacy', 'rust': 'aav_legacy_rs'}
+    assert vehicle.RC_IMPLS == {'python': 'aav_rc', 'rust': 'aav_rc_rs'}
+    assert vehicle.check_legacy_impl(' Python ') == 'python'
+    assert vehicle.check_rc_impl('rust') == 'rust'
+    with pytest.raises(ValueError, match='legacy_impl:=c'):
+        vehicle.check_legacy_impl('c')
+    with pytest.raises(ValueError, match='rc_impl:=c'):
+        vehicle.check_rc_impl('c')
+
+
+def test_lane_finder_impl_is_rust_or_python():
+    # Ben, 18 Nov: the lane finder in Rust, the default; lane_finder_impl:=python falls back.
+    assert vehicle.DEFAULT_LANE_FINDER_IMPL == 'rust'
+    assert vehicle.LANE_FINDER_IMPLS == {'python': 'aav_lane_finder',
+                                         'rust': 'aav_lane_finder_rs'}
+    assert vehicle.check_lane_finder_impl(' Python ') == 'python'
+    with pytest.raises(ValueError, match='lane_finder_impl:=c'):
+        vehicle.check_lane_finder_impl('c')
+
+
+def test_camera_stream_impl_is_rust_unless_a_model_runs():
+    # Ben, 18 Nov: camera_stream in Rust, the default; camera_stream_impl:=python falls back.
+    assert vehicle.DEFAULT_CAMERA_STREAM_IMPL == 'rust'
+    assert vehicle.CAMERA_STREAM_IMPLS == {'python': 'aav_camera_stream',
+                                           'rust': 'aav_camera_stream_rs'}
+    assert vehicle.check_camera_stream_impl(' Rust ') == 'rust'
+    with pytest.raises(ValueError, match='camera_stream_impl:=c'):
+        vehicle.check_camera_stream_impl('c')
+    assert vehicle.camera_stream_runs('rust', 'none', 'gst-nvidia') == ('rust', '')
+    assert vehicle.camera_stream_runs('python', 'none', 'ffmpeg') == ('python', '')
+    runs, why = vehicle.camera_stream_runs('rust', 'rfdetr', 'gst-nvidia')
+    assert runs == 'python' and 'detector:=rfdetr' in why
+    runs, why = vehicle.camera_stream_runs('rust', 'None', 'opencv')
+    assert runs == 'python' and 'opencv' in why
+
+
+def test_localization_health_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
+    assert vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
+    assert vehicle.check_localization_health_impl('python') == 'python'
+    assert vehicle.check_localization_health_impl(' Rust ') == 'rust'
+    assert vehicle.LOCALIZATION_HEALTH_IMPLS == {'python': 'aav_localization_health',
+                                                 'rust': 'aav_localization_health_rs'}
+    with pytest.raises(ValueError, match='localization_health_impl:=c'):
+        vehicle.check_localization_health_impl('c')
+
+
+def test_ekf_control_term_follows_the_command_within_the_cars_limits():
+    cfg = vehicle.load(CONFIG)
+    p = vehicle.ekf_control_params(cfg)
+    assert p['use_control'] and p['stamped_control']
+    assert p['control_config'] == [True, False, False, False, False, False]
+    for key in ('control_config', 'acceleration_limits', 'acceleration_gains',
+                'deceleration_limits', 'deceleration_gains'):
+        assert len(p[key]) == 6, key
+    assert p['acceleration_limits'][0] == 0.0    # it only ever slows the prediction
+    assert p['deceleration_limits'][0] == cfg['actuators']['max_brake']
+    assert 0.0 < p['control_timeout'] <= 1.0
+
+
+def test_the_navigator_replans_at_replan_hz_and_once_at_zero():
+    v = vehicle.load(CONFIG)['vehicle']
+    assert vehicle.navigator_params(v, False)['replan_period'] == 1.0 / vehicle.REPLAN_HZ
+    assert vehicle.navigator_params(v, False, replan_hz=0.5)['replan_period'] == 2.0
+    once = vehicle.navigator_params(v, False, replan_hz=0)['replan_period']
+    assert once == 1.0 / vehicle.REPLAN_ONCE_HZ
+    with pytest.raises(ValueError, match='0 .plan once. or more'):
+        vehicle.navigator_params(v, False, replan_hz=-1)
+
+
+def test_rewrite_follows_rewrittenyamls_rules():
+    # Nav2's RewrittenYaml, ours (no ROS): a leaf name everywhere, a dotted path once.
+    cfg = {'a': {'footprint': 'x', 'b': {'footprint': 'y', 'n': 1}}, 'c': [{'footprint': 'z'}]}
+    out = vehicle.rewrite(cfg, {'footprint': '[[1, 2]]', 'a.b.n': '2.5', 'a.new.flag': 'true'})
+    assert out['a']['footprint'] == out['a']['b']['footprint'] == '[[1, 2]]'
+    assert out['c'][0]['footprint'] == '[[1, 2]]'
+    assert out['a']['b']['n'] == 2.5 and out['a']['new']['flag'] is True
+    assert cfg['a']['footprint'] == 'x'          # a copy
+
+
+def test_joy_alive_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_JOY_ALIVE_IMPL == 'rust'
+    assert vehicle.check_joy_alive_impl(' Python ') == 'python'
+    assert vehicle.JOY_ALIVE_IMPLS['rust'] == 'aav_joy_alive_rs'
+    with pytest.raises(ValueError, match='joy_alive_impl:=c'):
+        vehicle.check_joy_alive_impl('c')
+
+
+def test_stop_sign_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_STOP_SIGN_IMPL == 'rust'
+    assert vehicle.check_stop_sign_impl('PYTHON') == 'python'
+    assert vehicle.STOP_SIGN_IMPLS == {'python': 'aav_detector', 'rust': 'aav_stop_sign_rs'}
+    with pytest.raises(ValueError, match='stop_sign_impl:=c'):
+        vehicle.check_stop_sign_impl('c')
+
+
+def test_drive_to_point_and_arm_when_open_impls_are_python_or_rust():
+    assert vehicle.DEFAULT_DRIVE_TO_POINT_IMPL == vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL == 'rust'
+    assert vehicle.DRIVE_TO_POINT_IMPLS == {'python': 'aav_drive_to_point',
+                                            'rust': 'aav_drive_to_point_rs'}
+    assert vehicle.ARM_WHEN_OPEN_IMPLS == {'python': 'aav_spine', 'rust': 'aav_spine_bridge'}
+    assert vehicle.check_drive_to_point_impl(' Python ') == 'python'
+    assert vehicle.check_arm_when_open_impl('rust') == 'rust'
+    with pytest.raises(ValueError, match='drive_to_point_impl:=c'):
+        vehicle.check_drive_to_point_impl('c')
+    with pytest.raises(ValueError, match='arm_when_open_impl:=c'):
+        vehicle.check_arm_when_open_impl('c')

@@ -12,6 +12,7 @@ use debug_core::{
 use hud_core::{
     origin::{Announcement, Entry, Origin},
     picture::Picture,
+    things::Thing,
     units::{Fraction, MetresPerSecond, Radians},
     vehicle::{Faults, Mode, VehicleStatus},
 };
@@ -20,7 +21,7 @@ use map_core::{
     grid::{Grid, GridInfo},
 };
 
-use crate::feed::{Feed, Level, Update};
+use crate::feed::{self, Feed, Level, RoadAhead, Update};
 
 /// A straight piece of wall on the map, metres.
 pub type Wall = (Point, Point);
@@ -43,6 +44,20 @@ pub fn walls() -> Vec<Wall> {
         (p(31.0, 30.0), p(19.0, 30.0)),
         (p(19.0, 30.0), p(19.0, 20.0)),
         (p(38.0, 7.0), p(38.0, 33.0)),
+    ]
+}
+
+/// The street route: out of the lot's gap and 200 m along a street to the east, then
+/// north (the coarse chunks follow it, `--chunks`).
+pub fn route() -> Vec<Point> {
+    let p = Point::new;
+    vec![
+        p(10.0, 12.0),
+        p(0.0, 12.0),
+        p(-6.0, 12.0),
+        p(-6.0, -10.0),
+        p(200.0, -10.0),
+        p(200.0, 120.0),
     ]
 }
 
@@ -176,6 +191,25 @@ pub fn ndt_cells() -> MapCells {
     MapCells::from_points(points, 1.0)
 }
 
+/// A pretend road ahead (`/world/road_ahead`): from the gate east along the lot's lower
+/// lane, slowing to a stop for the goal, as the behaviour planner draws it.
+pub fn road_ahead() -> RoadAhead {
+    const SPACING: f64 = 1.0;
+    const LENGTH: u32 = 30;
+    const TOP: f64 = 2.5;
+    let points: Vec<_> = (0..=LENGTH)
+        .map(|i| {
+            let along = f64::from(i) * SPACING;
+            let to_end = f64::from(LENGTH) * SPACING - along;
+            // The stopping law's shape: v = sqrt(2 a d), a = 0.5 m/s², capped.
+            let limit = (2.0 * 0.5 * to_end).sqrt().min(TOP);
+            (2.0 + along, 10.0, 0.0, limit)
+        })
+        .collect();
+    let end = f64::from(LENGTH) * SPACING;
+    RoadAhead::from_parts(&points, SPACING, end, &[(end, "goal".to_owned())])
+}
+
 /// Pretend ROS.
 pub struct PretendFeed {
     started: Instant,
@@ -196,6 +230,32 @@ pub fn ahead_at(t: f64) -> Vec<Update> {
     updates.extend(ahead.stop.map(Update::StopPoint));
     updates.extend(ahead.summary.map(Update::Ahead));
     updates
+}
+
+/// The pretend things at `t` seconds, round the car (odom): a person crossing 6 m ahead,
+/// a stop sign by the road, a car further on and a box no camera has named. They ride
+/// along with the car, so they stay in view.
+pub fn things_at(t: f64, car: Pose) -> Vec<Thing> {
+    let thing = |id, name: &str, at: (f64, f64), (length, width, height)| {
+        let p = feed::from_base(car, at);
+        Thing {
+            id,
+            name: name.to_owned(),
+            x: p.x,
+            y: p.y,
+            length,
+            width,
+            height,
+            ..Thing::default()
+        }
+    };
+    let walk = (t / 12.0 * TAU).sin() * 3.0;
+    vec![
+        thing(3, "person", (6.0, walk), (0.5, 0.5, 1.7)),
+        thing(7, "stop sign", (9.0, -2.5), (0.3, 0.3, 2.1)),
+        thing(9, "car", (16.0, 1.5), (4.0, 1.8, 1.5)),
+        thing(4, "unknown", (4.0, 3.0), (0.6, 0.6, 0.5)),
+    ]
 }
 
 impl PretendFeed {
@@ -271,6 +331,8 @@ impl Feed for PretendFeed {
                 }
             };
             updates.extend(lot_grid(occupied).map(Update::Map));
+            updates.push(Update::RoadAhead(road_ahead()));
+            updates.push(Update::Route(route()));
             updates.extend(lot_grid(cost).map(Update::Costmap));
             updates.push(Update::Origin(Announcement {
                 announcer: "pretend".to_owned(),
@@ -302,6 +364,8 @@ impl Feed for PretendFeed {
             // ego and look_ahead send theirs at 10 Hz.
             self.next_ahead = t + 0.1;
             updates.extend(ahead_at(t));
+            // things sends at 10 Hz too.
+            updates.push(Update::Things(things_at(t, car_odom)));
         }
         if t >= self.next_slow {
             self.next_slow = t + 0.5;
@@ -352,6 +416,15 @@ impl Feed for PretendFeed {
 
     fn press_estop(&mut self) -> Result<(), String> {
         Err("pretend data: there is no e-stop to set".to_owned())
+    }
+
+    fn cancel_goal(&mut self) -> Result<(), String> {
+        self.plan = None;
+        Ok(())
+    }
+
+    fn swap_tracker(&mut self, name: &'static str) -> Result<(), String> {
+        Err(format!("pretend data: no track node to swap to {name}"))
     }
 }
 
@@ -411,6 +484,25 @@ mod tests {
     }
 
     #[test]
+    fn the_first_drain_has_the_road_ahead_ending_at_the_goal() {
+        let mut feed = PretendFeed::new(10);
+        let updates = feed.drain(Instant::now());
+        let road = updates
+            .iter()
+            .find_map(|u| match u {
+                Update::RoadAhead(r) => Some(r.clone()),
+                _ => None,
+            })
+            .expect("a road ahead");
+        assert_eq!(road.line.len(), 31);
+        let (end, heading) = road.end.expect("an end");
+        assert!((end.x - 32.0).abs() < 1e-9 && heading.abs() < 1e-9);
+        assert_eq!(road.stops.len(), 1);
+        assert_eq!(road.stops[0].1, "goal");
+        assert!(road.top_speed() > 2.4);
+    }
+
+    #[test]
     fn the_first_drain_has_the_squiggly_line() {
         let mut feed = PretendFeed::new(10);
         let updates = feed.drain(Instant::now());
@@ -432,6 +524,17 @@ mod tests {
             })
             .expect("a trace");
         assert!(trace.last().is_some_and(|p| p.1 > 0.05));
+    }
+
+    #[test]
+    fn the_pretend_things_are_named_and_ahead_of_the_car() {
+        let car = car_at(5.0);
+        let things = things_at(5.0, car);
+        let named =
+            hud_core::things::named_ahead(&things, (car.position.x, car.position.y, car.yaw), 30.0);
+        let labels: Vec<_> = named.iter().map(|(t, _)| t.label()).collect();
+        assert_eq!(labels, vec!["person 3", "stop sign 7", "car 9"]);
+        assert!(things.iter().any(|t| !t.is_named()));
     }
 
     #[test]

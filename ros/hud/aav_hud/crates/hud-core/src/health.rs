@@ -21,6 +21,7 @@ pub enum Health {
 
 impl Health {
     /// The word on the screen.
+    #[must_use]
     pub fn word(self) -> &'static str {
         match self {
             Self::Ok(_) => "OK",
@@ -30,6 +31,7 @@ impl Health {
     }
 
     /// How long ago the topic was heard, if ever.
+    #[must_use]
     pub fn age(self) -> Option<Duration> {
         match self {
             Self::Ok(age) | Self::Stale(age) => Some(age),
@@ -38,6 +40,7 @@ impl Health {
     }
 
     /// Only Ok counts as live.
+    #[must_use]
     pub fn is_ok(self) -> bool {
         matches!(self, Self::Ok(_))
     }
@@ -60,6 +63,7 @@ impl LastSeen {
     }
 
     /// OK, STALE or NEVER at `now`, with `stale_after` as the limit.
+    #[must_use]
     pub fn health(self, now: Instant, stale_after: Duration) -> Health {
         match self.0 {
             None => Health::Never,

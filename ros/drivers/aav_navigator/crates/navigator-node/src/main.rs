@@ -1,28 +1,38 @@
 //! navigator: our own navigator (Nav2's bt_navigator and waypoint_follower, in Rust).
 //!
-//! Actions     drivers/nav/navigator/navigate_to_pose
-//!                                         nav2_msgs/action/NavigateToPose: to one map pose
-//!             drivers/nav/navigator/navigate_through_poses
+//! Actions     Nav2's own names, so it is a drop-in for bt_navigator and waypoint_follower:
+//!             no goal sender needs to know which navigator runs.
+//!             /navigate_to_pose           nav2_msgs/action/NavigateToPose: to one map pose
+//!             /navigate_through_poses
 //!                                         nav2_msgs/action/NavigateThroughPoses: one path
 //!                                         through each pose
-//!             drivers/nav/navigator/follow_waypoints
+//!             /follow_waypoints
 //!                                         nav2_msgs/action/FollowWaypoints: map poses,
 //!                                         passed without stopping (waypoints: pass_through)
-//!             drivers/nav/navigator/follow_gps_waypoints
+//!             /follow_gps_waypoints
 //!                                         nav2_msgs/action/FollowGPSWaypoints: lat/lon,
 //!                                         put on the map by navsat_transform's datum
 //!                                         (navsat.yaml), then as follow_waypoints
 //! Subscribes  /goal_pose                  geometry_msgs/PoseStamped (map): a to-pose goal
 //!                                         from RViz, the map window, the dev window
-//!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link
-//! Publishes   drivers/nav/navigator/status
+//!             /tf                         tf2_msgs/TFMessage: map -> odom -> base_link;
+//!                                         older than TRANSFORM_TIMEOUT: no car pose (no
+//!                                         waypoint passed, no plan kept, no progress)
+//! Publishes   /drivers/nav/navigator/status
 //!                                         diagnostic_msgs/DiagnosticStatus, 2 Hz and at
 //!                                         each goal's end: the goal, the step, recoveries
 //! Calls       the planner's ComputePathToPose and ComputePathThroughPoses
-//!             (planner_action, planner_through_action), the follower's FollowPath
+//!             (planner_action, planner_through_action), its IsPathValid once a second
+//!             on the final approach (is_path_valid_service: planner_server's, or ours,
+//!             aav_planner, where none runs), the follower's FollowPath
 //!             (follow_action), the costmaps' ClearEntireCostmap (clear_local,
 //!             clear_global: comma-separated lists), and with backup_action set,
-//!             behavior_server's BackUp.
+//!             behavior_server's BackUp; without it (no behaviour server: all ours), the
+//!             BackUp recovery is the follower's FollowPath on a straight line behind the
+//!             car (the follower must reverse: mppi_lag with reversing:=true).
+//!             Every call has a time limit (settings: plan_timeout, follow_timeout: the
+//!             follower's silence, recovery_timeout): a server that dies mid-goal fails
+//!             the goal; it never hangs it.
 //! Parameters  settings (JSON: aav_description's vehicle.navigator_params), the action and
 //!             service names above, navsat_file, map_frame, odom_frame, base_frame.
 //!
@@ -36,10 +46,12 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context as _, Result};
 use futures::channel::oneshot;
+use futures::future::{self, Either};
 use map_core::earth::{Datum, LatLon, BUILT_IN_NAVSAT_YAML};
+use navigator::path::straight_back;
 use navigator::{
-    BackUp as BackUpSettings, Command, Mission, Navigator, Outcome, Pose, Settings, Token,
-    WaypointMode,
+    Abort, BackUp as BackUpSettings, Command, FollowError, Mission, Navigator, Outcome, PlanError,
+    Pose, Settings, Token, WaypointMode,
 };
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::{Duration as DurationMsg, Time};
@@ -55,18 +67,30 @@ use ros_env::nav2_msgs::action::{
     NavigateToPose_Feedback, NavigateToPose_Result,
 };
 use ros_env::nav2_msgs::msg::MissedWaypoint;
-use ros_env::nav2_msgs::srv::{ClearEntireCostmap, ClearEntireCostmap_Response};
+use ros_env::nav2_msgs::srv::{
+    ClearEntireCostmap, ClearEntireCostmap_Response, IsPathValid, IsPathValid_Request,
+    IsPathValid_Response,
+};
 use ros_env::nav_msgs::msg::Path;
 use ros_env::std_msgs::msg::Header;
 use ros_env::tf2_msgs::msg::TFMessage;
 use serde_json::Value;
 
-const PREFIX: &str = "/drivers/nav/navigator/";
+/// m between the poses of the BackUp recovery's straight line (as the planners' paths).
+const BACK_UP_SPACING: f64 = 0.05;
+
+/// s: a /tf transform older than this is no car pose (robot_localization sends at 30 Hz).
+const TRANSFORM_TIMEOUT: f64 = 1.0;
+
+/// Nav2's action names: ours serves them in bt_navigator's and waypoint_follower's place.
+const PREFIX: &str = "/";
 const STATUS_TOPIC: &str = "/drivers/nav/navigator/status";
 const GOAL_TOPIC: &str = "/goal_pose";
 /// s between ticks, and between feedback and status messages.
 const TICK: f64 = 0.1;
 const REPORT_EVERY: u32 = 5;
+/// Ticks between IsPathValid calls on the final approach: once a second, as the trees.
+const CHECK_EVERY: u32 = 10;
 
 fn main() -> Result<()> {
     let context = Context::default_from_env()?;
@@ -98,6 +122,7 @@ fn main() -> Result<()> {
             "/global_costmap/clear_entirely_global_costmap",
         )?),
         backup: text_param("backup_action", "")?,
+        is_path_valid: text_param("is_path_valid_service", "/is_path_valid")?,
     };
     let navsat_file = text_param("navsat_file", "")?;
     let frames = Frames {
@@ -145,6 +170,7 @@ fn main() -> Result<()> {
         } else {
             Some(node.create_action_client::<BackUp>(names.backup.as_str())?)
         },
+        is_path_valid: node.create_client::<IsPathValid>(names.is_path_valid.as_str())?,
     };
 
     let core = Core {
@@ -162,6 +188,7 @@ fn main() -> Result<()> {
         clock: node.get_clock(),
         logger: node.logger().clone(),
         ticks: 0,
+        checking: false,
         step: "idle",
         last_end: String::new(),
         done: (0, 0),
@@ -200,8 +227,8 @@ fn main() -> Result<()> {
                 };
                 match goal.until_cancel_requested(finished).await {
                     Ok(Ok(Outcome::Succeeded { .. })) => goal.succeeded_with(result(0, "")),
-                    Ok(Ok(Outcome::Aborted { code, message, .. })) => {
-                        goal.aborted_with(result(code, &message))
+                    Ok(Ok(Outcome::Aborted { reason, .. })) => {
+                        goal.aborted_with(result(reason.code(), &reason.to_string()))
                     }
                     Ok(_) => goal.aborted_with(result(0, "stopped")),
                     Err(_) => {
@@ -236,8 +263,8 @@ fn main() -> Result<()> {
                 };
                 match goal.until_cancel_requested(finished).await {
                     Ok(Ok(Outcome::Succeeded { .. })) => goal.succeeded_with(result(0, "")),
-                    Ok(Ok(Outcome::Aborted { code, message, .. })) => {
-                        goal.aborted_with(result(code, &message))
+                    Ok(Ok(Outcome::Aborted { reason, .. })) => {
+                        goal.aborted_with(result(reason.code(), &reason.to_string()))
                     }
                     Ok(_) => goal.aborted_with(result(0, "stopped")),
                     Err(_) => {
@@ -276,11 +303,9 @@ fn main() -> Result<()> {
                     Ok(Ok(Outcome::Succeeded { missed })) => {
                         goal.succeeded_with(result(0, "", &missed))
                     }
-                    Ok(Ok(Outcome::Aborted {
-                        code,
-                        message,
-                        missed,
-                    })) => goal.aborted_with(result(code, &message, &missed)),
+                    Ok(Ok(Outcome::Aborted { reason, missed })) => {
+                        goal.aborted_with(result(reason.code(), &reason.to_string(), &missed))
+                    }
                     Ok(_) => goal.aborted_with(result(0, "stopped", &[])),
                     Err(_) => {
                         let _ = worker.run(move |c: &mut Core| c.cancel_goal(id)).await;
@@ -320,11 +345,9 @@ fn main() -> Result<()> {
                     Ok(Ok(Outcome::Succeeded { missed })) => {
                         goal.succeeded_with(result(0, "", &missed))
                     }
-                    Ok(Ok(Outcome::Aborted {
-                        code,
-                        message,
-                        missed,
-                    })) => goal.aborted_with(result(code, &message, &missed)),
+                    Ok(Ok(Outcome::Aborted { reason, missed })) => {
+                        goal.aborted_with(result(reason.code(), &reason.to_string(), &missed))
+                    }
                     Ok(_) => goal.aborted_with(result(0, "stopped", &[])),
                     Err(_) => {
                         let _ = worker.run(move |c: &mut Core| c.cancel_goal(id)).await;
@@ -383,6 +406,7 @@ fn settings_from(spec: &Value) -> Result<Settings> {
         final_approach: number("final_approach", d.final_approach)?,
         path_end_tolerance: number("path_end_tolerance", d.path_end_tolerance)?,
         path_max_age: number("path_max_age", d.path_max_age)?,
+        keep_path_age: number("keep_path_age", d.keep_path_age)?,
         retries: number("retries", f64::from(d.retries))? as u32,
         wait: number("wait", d.wait)?,
         backup,
@@ -393,6 +417,9 @@ fn settings_from(spec: &Value) -> Result<Settings> {
             .as_bool()
             .unwrap_or(d.stop_on_failure),
         replan_failures: number("replan_failures", f64::from(d.replan_failures))? as u32,
+        plan_timeout: number("plan_timeout", d.plan_timeout)?,
+        follow_timeout: number("follow_timeout", d.follow_timeout)?,
+        recovery_timeout: number("recovery_timeout", d.recovery_timeout)?,
     })
 }
 
@@ -414,6 +441,7 @@ struct Names {
     clear_local: Vec<String>,
     clear_global: Vec<String>,
     backup: String,
+    is_path_valid: String,
 }
 
 struct Frames {
@@ -429,6 +457,7 @@ struct Clients {
     clear_local: Vec<Client<ClearEntireCostmap>>,
     clear_global: Vec<Client<ClearEntireCostmap>>,
     backup: Option<ActionClient<BackUp>>,
+    is_path_valid: Client<IsPathValid>,
 }
 
 /// Where each goal's feedback goes.
@@ -460,8 +489,9 @@ struct Core {
     nav: Navigator,
     frames: Frames,
     datum: Datum,
-    map_odom: Option<Pose>,
-    odom_base: Option<Pose>,
+    /// map -> odom and odom -> base_link, each with when it arrived (s).
+    map_odom: Option<(Pose, f64)>,
+    odom_base: Option<(Pose, f64)>,
     goals: HashMap<u64, Waiting>,
     next_id: u64,
     clients: Clients,
@@ -472,6 +502,8 @@ struct Core {
     clock: Clock,
     logger: Logger,
     ticks: u32,
+    /// An IsPathValid call is out: no second one until it answers.
+    checking: bool,
     step: &'static str,
     last_end: String,
     /// Goals succeeded, and not.
@@ -502,13 +534,6 @@ fn msg_of(p: &Pose) -> PoseMsg {
     }
 }
 
-/// b placed in a's frame: a ∘ b.
-fn compose(a: &Pose, b: &Pose) -> Pose {
-    let (s, c) = a.yaw.sin_cos();
-    let yaw = (a.yaw + b.yaw).sin().atan2((a.yaw + b.yaw).cos());
-    Pose::new(a.x + c * b.x - s * b.y, a.y + s * b.x + c * b.y, yaw)
-}
-
 fn seconds(d: f64) -> DurationMsg {
     let d = if d.is_finite() { d.max(0.0) } else { 0.0 };
     DurationMsg {
@@ -526,8 +551,12 @@ impl Core {
         self.clock.now().to_ros_msg().unwrap_or_default()
     }
 
+    /// The car in map, from /tf; `None` while either transform is missing or stale.
     fn car(&self) -> Option<Pose> {
-        Some(compose(self.map_odom.as_ref()?, self.odom_base.as_ref()?))
+        let (a, a_at) = self.map_odom.as_ref()?;
+        let (b, b_at) = self.odom_base.as_ref()?;
+        let fresh = self.now() - a_at.min(*b_at) <= TRANSFORM_TIMEOUT;
+        fresh.then(|| a.compose(b))
     }
 
     fn on_tf(&mut self, msg: &TFMessage) {
@@ -537,16 +566,30 @@ impl Core {
             let r = &t.transform;
             let pose = Pose::new(r.translation.x, r.translation.y, yaw_of(&r.rotation));
             if parent == self.frames.map && child == self.frames.odom {
-                self.map_odom = Some(pose);
+                self.map_odom = Some((pose, self.now()));
             } else if parent == self.frames.odom && child == self.frames.base {
-                self.odom_base = Some(pose);
+                self.odom_base = Some((pose, self.now()));
             }
         }
     }
 
+    /// A goal pose on the map: as it is in map (or with no frame); through map -> odom
+    /// from odom; through the car's pose from base_link (Nav2 turns goals from any frame
+    /// it has a transform for). `None` for another frame, or when /tf is stale. The latest
+    /// transforms, not those at the goal's stamp.
     fn in_map(&self, p: &PoseStamped) -> Option<Pose> {
         let f = p.header.frame_id.trim_start_matches('/');
-        (f.is_empty() || f == self.frames.map).then(|| pose_of(&p.pose))
+        let pose = pose_of(&p.pose);
+        if f.is_empty() || f == self.frames.map {
+            Some(pose)
+        } else if f == self.frames.odom {
+            let (map_odom, at) = self.map_odom.as_ref()?;
+            (self.now() - at <= TRANSFORM_TIMEOUT).then(|| map_odom.compose(&pose))
+        } else if f == self.frames.base {
+            self.car().map(|car| car.compose(&pose))
+        } else {
+            None
+        }
     }
 
     fn stamped(&self, poses: &[Pose]) -> Vec<PoseStamped> {
@@ -616,8 +659,10 @@ impl Core {
             self.finish(
                 id,
                 Outcome::Aborted {
-                    code: 0,
-                    message: format!("a pose is not in the {} frame", self.frames.map),
+                    reason: Abort::InvalidGoal(format!(
+                        "a pose is not in {}, {} or {} (or /tf is over {TRANSFORM_TIMEOUT} s old)",
+                        self.frames.map, self.frames.odom, self.frames.base
+                    )),
                     missed: Vec::new(),
                 },
             );
@@ -644,6 +689,9 @@ impl Core {
         let out = self.nav.tick(now, car.as_ref());
         self.carry_out(out);
         self.ticks += 1;
+        if self.ticks.is_multiple_of(CHECK_EVERY) {
+            self.check_path(now, car.as_ref());
+        }
         if self.ticks.is_multiple_of(REPORT_EVERY) {
             self.report(now, car.as_ref());
         }
@@ -745,7 +793,7 @@ impl Core {
         let text = match &outcome {
             Outcome::Succeeded { missed } if missed.is_empty() => "succeeded".to_string(),
             Outcome::Succeeded { missed } => format!("succeeded, missed {missed:?}"),
-            Outcome::Aborted { message, .. } => format!("aborted: {message}"),
+            Outcome::Aborted { reason, .. } => format!("aborted: {reason}"),
             Outcome::Cancelled => "cancelled".to_string(),
         };
         if matches!(outcome, Outcome::Succeeded { .. }) {
@@ -825,11 +873,11 @@ impl Core {
 
     fn plan(&mut self, token: Token, goals: Vec<Pose>) {
         let stamped = self.stamped(&goals);
-        let then = move |c: &mut Core, answer: Result<Vec<Pose>, (u16, String)>, now: f64| {
-            if let Err((code, why)) = &answer {
+        let then = move |c: &mut Core, answer: Result<Vec<Pose>, (PlanError, String)>, now: f64| {
+            if let Err((error, why)) = &answer {
                 log_warn!(
                     c.logger.throttle(Duration::from_secs(2)),
-                    "no path ({code}): {why}"
+                    "no path ({error:?}): {why}"
                 );
             }
             let out = c.nav.planned(token, answer, now);
@@ -846,16 +894,19 @@ impl Core {
             self.spawn(
                 async move {
                     if !client.server_is_available().unwrap_or(false) {
-                        return Err((200, "no planner serves ComputePathToPose".into()));
+                        return Err((
+                            PlanError::Unknown,
+                            "no planner serves ComputePathToPose".into(),
+                        ));
                     }
                     let Some(g) = client.request_goal(goal).await else {
-                        return Err((200, "the planner refused the goal".into()));
+                        return Err((PlanError::Unknown, "the planner refused the goal".into()));
                     };
                     let (status, result) = g.result.await;
                     if status == GoalStatusCode::Succeeded {
                         Ok(result.path.poses.iter().map(|p| pose_of(&p.pose)).collect())
                     } else {
-                        Err((result.error_code, result.error_msg))
+                        Err((PlanError::from_code(result.error_code), result.error_msg))
                     }
                 },
                 then,
@@ -871,16 +922,19 @@ impl Core {
             self.spawn(
                 async move {
                     if !client.server_is_available().unwrap_or(false) {
-                        return Err((300, "no planner serves ComputePathThroughPoses".into()));
+                        return Err((
+                            PlanError::Unknown,
+                            "no planner serves ComputePathThroughPoses".into(),
+                        ));
                     }
                     let Some(g) = client.request_goal(goal).await else {
-                        return Err((300, "the planner refused the goal".into()));
+                        return Err((PlanError::Unknown, "the planner refused the goal".into()));
                     };
                     let (status, result) = g.result.await;
                     if status == GoalStatusCode::Succeeded {
                         Ok(result.path.poses.iter().map(|p| pose_of(&p.pose)).collect())
                     } else {
-                        Err((result.error_code, result.error_msg))
+                        Err((PlanError::from_code(result.error_code), result.error_msg))
                     }
                 },
                 then,
@@ -902,23 +956,131 @@ impl Core {
             goal_checker_id: String::new(),
             progress_checker_id: String::new(),
         };
+        let me = self.me.clone();
         self.spawn(
             async move {
                 if !client.server_is_available().unwrap_or(false) {
-                    return Err((100, "no follower serves FollowPath".into()));
+                    return Err((FollowError::Unknown, "no follower serves FollowPath".into()));
                 }
                 let Some(g) = client.request_goal(goal).await else {
-                    return Err((100, "the follower refused the path".into()));
+                    return Err((FollowError::Unknown, "the follower refused the path".into()));
                 };
-                let (status, result) = g.result.await;
+                // Each feedback tells the navigator the follower is alive (follow_timeout),
+                // until the result.
+                let mut feedback = g.feedback;
+                let mut result = g.result;
+                let (status, result) = loop {
+                    match future::select(result, Box::pin(feedback.recv())).await {
+                        Either::Left((done, _)) => break done,
+                        Either::Right((heard, waiting)) => {
+                            result = waiting;
+                            if heard.is_none() {
+                                break result.await; // no more feedback: just the result
+                            }
+                            if let Some(me) = &me {
+                                drop(me.run(|c: &mut Core| {
+                                    let now = c.now();
+                                    c.nav.follower_heard(now);
+                                }));
+                            }
+                        }
+                    }
+                };
                 match status {
                     GoalStatusCode::Succeeded => Ok(()),
-                    _ => Err((result.error_code, format!("{status:?}"))),
+                    _ => Err((
+                        FollowError::from_code(result.error_code),
+                        format!("{status:?}"),
+                    )),
                 }
             },
-            move |c: &mut Core, answer: Result<(), (u16, String)>, now| {
+            move |c: &mut Core, answer: Result<(), (FollowError, String)>, now| {
                 let out = c.nav.followed(token, answer, now);
                 c.carry_out(out);
+            },
+        );
+    }
+
+    /// BackUp with no behaviour server: the follower backs along a straight line behind
+    /// the car (`straight_back`), checking the costmap as it goes. No car pose: it fails,
+    /// and the next recovery is another kind.
+    fn back_up_following(&mut self, token: Token, distance: f64) {
+        let path = self
+            .car()
+            .map(|car| straight_back(&car, distance, BACK_UP_SPACING));
+        let client = self.clients.follow.clone();
+        let goal = path.map(|poses| FollowPath_Goal {
+            path: Path {
+                header: Header {
+                    stamp: self.stamp(),
+                    frame_id: self.frames.map.clone(),
+                },
+                poses: self.stamped(&poses),
+            },
+            controller_id: String::new(),
+            goal_checker_id: String::new(),
+            progress_checker_id: String::new(),
+        });
+        self.spawn(
+            async move {
+                let Some(goal) = goal else {
+                    return false;
+                };
+                if !client.server_is_available().unwrap_or(false) {
+                    return false;
+                }
+                let Some(g) = client.request_goal(goal).await else {
+                    return false;
+                };
+                g.result.await.0 == GoalStatusCode::Succeeded
+            },
+            move |c: &mut Core, ok: bool, now| {
+                let out = c.nav.recovered(token, ok, now);
+                c.carry_out(out);
+            },
+        );
+    }
+
+    /// While the path is kept, not replanned (the final approach, or a to-pose path up to
+    /// `keep_path_age`), ask the planner's IsPathValid about it, as the trees do. No answer, or no server: nothing changes
+    /// (the follower's own costmap checks and collision_monitor still stop the car).
+    fn check_path(&mut self, now: f64, car: Option<&Pose>) {
+        if self.checking {
+            return;
+        }
+        let Some((made, poses)) = self.nav.path_to_check(now, car) else {
+            return;
+        };
+        let request = IsPathValid_Request {
+            path: Path {
+                header: Header {
+                    stamp: self.stamp(),
+                    frame_id: self.frames.map.clone(),
+                },
+                poses: self.stamped(poses),
+            },
+        };
+        let client = self.clients.is_path_valid.clone();
+        self.checking = true;
+        self.spawn(
+            async move {
+                if !client.service_is_ready().unwrap_or(false) {
+                    return None;
+                }
+                let promise: Promise<IsPathValid_Response> = client.call(&request).ok()?;
+                promise.await.ok().map(|r| r.is_valid)
+            },
+            move |c: &mut Core, valid: Option<bool>, _now| {
+                c.checking = false;
+                if let Some(valid) = valid {
+                    if !valid {
+                        log_warn!(
+                            &c.logger,
+                            "IsPathValid: the kept path is blocked: planning again"
+                        );
+                    }
+                    c.nav.path_checked(made, valid);
+                }
             },
         );
     }
@@ -956,6 +1118,9 @@ impl Core {
     }
 
     fn back_up(&mut self, token: Token, distance: f64, speed: f64) {
+        if self.clients.backup.is_none() {
+            return self.back_up_following(token, distance);
+        }
         let client = self.clients.backup.clone();
         let goal = BackUp_Goal {
             target: Point {

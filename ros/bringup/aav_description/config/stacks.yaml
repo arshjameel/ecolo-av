@@ -1,0 +1,152 @@
+# The league: each level's champion and its challengers, and the named stacks.
+#
+# One file answers "what is the car?" (docs/league.md; the design:
+# docs/designs/2026-11-13_one-shape.md, "The league"). A launch reads it through
+# aav_description.stacks: `pixi run sim stack:=ours` sets every switch below at once, and
+# a switch given on the command line still wins over the stack.
+#
+# Rules (one shape):
+#   - a challenger wins by a margin, on 3 or more runs of the same routes (tools/scorecard.py);
+#   - a person approves each swap, and the car needs its own win, on the Orin;
+#   - nothing is deleted: the loser stays a challenger (Ben, 5 Nov). Nav2 was the one
+#     exception (Ben, 16 Nov: "Now"): its options and the stock stack went on 17 Nov
+#     (TODO 184); their last scores are in docs/league-results-2026-11-16.md and
+#     docs/history/nav2-as-it-was.md. Each Nav2 champion handed over to its port.
+#
+# A level's options each set one or more of sim.launch.py's switches, as text.
+
+levels:
+  pose:
+    what: where the car is (robot_localization's EKFs; what steers, not what is scored beside)
+    champion: ekf
+    options:
+      ekf: {ndt_ekf: 'false', kiss_ekf: 'false', lane_pose: 'false'}
+      ndt_ekf: {ndt_ekf: 'true', kiss_ekf: 'false', lane_pose: 'false'}
+      kiss_ekf: {ndt_ekf: 'false', kiss_ekf: 'true', lane_pose: 'false'}
+      # The EKF with the lane finder as a sideways pose (TODO 155, aav_lane_pose). Ours'
+      # pick since 17 Nov: our simulator, University Drive, the EKF's sideways error 9.2-9.6
+      # -> 6.9-7.8 cm RMS, its box tour 7.1-8.2 -> 1.9-2.1 cm; the campus tour no change
+      # (9.1 -> 9.4, little paint on its way); sway and off the lane's centre no worse.
+      ekf_lane: {ndt_ekf: 'false', kiss_ekf: 'false', lane_pose: 'true'}
+    score: ''
+  costmap:
+    what: what is in the way (aav_costmap, Nav2's layers ported)
+    champion: ours
+    options:
+      ours: {costmap: own, costmap_chunks: 'off'}
+      # Ours, the global costmap from the map's 64 m chunks round the car and along the
+      # route ahead (costmap_chunks:=auto; the campus's when pixi run campus made them, the
+      # whole map elsewhere), each read and inflated on its own core (TODO 175, 195). Ours'
+      # pick on 16 Nov (no worse on any tour: lot, campus, University Drive; 2 runs each;
+      # a third of the memory and CPU; docs/own-costmap.md, "From map chunks"), until
+      # ours_all_chunks below.
+      ours_chunks: {costmap: own, costmap_chunks: auto, local_chunks: 'false'}
+      # And the local costmap's static layer from the 3 x 3 chunks round the car, not /map
+      # (TODO 175): no costmap then reads the campus's 41 million cells. Ours' pick since
+      # 16 Nov: every leg of the campus and box tours (2 runs each), the same times, half
+      # the costmap node's memory (docs/own-costmap.md, "The local costmap from the chunks").
+      ours_all_chunks: {costmap: own, costmap_chunks: auto, local_chunks: 'true'}
+    score: ''
+  navigator:
+    what: plan, follow, replan, recover (aav_navigator, the trees' logic ported)
+    champion: ours
+    options:
+      ours: {navigator: own}
+    score: ''
+  path:
+    what: the path to the goal (keeps to the turning radius on the car)
+    champion: lattice_rs
+    options:
+      # Nav2's State Lattice ported (aav_planner): the champion since Nav2's lattice went.
+      lattice_rs: {planner: own}
+      # The smooth moves (tools/lattice_smooth.py): curvature no faster than the steering
+      # turns at 1 m/s, each move straight at both ends, the smoother off. A trial (14 Nov).
+      lattice_rs_smooth: {planner: own, lattice_moves: smooth}
+      # Nav2's Hybrid-A* ported into our planner, beside the lattice it shares the search
+      # with (planner_search:=hybrid, docs/own-planner.md). A challenger (14 Nov, TODO 178).
+      hybrid_rs: {planner: own, planner_search: hybrid}
+      # Ours with its smoother pulling harder (plan_smoothing:=strong, w_data 0.02): no
+      # staircase on a road at an angle (TODO 168, 15 Nov; docs/mppi-lag.md, "The sway
+      # that was left"). Ours' pick since 15 Nov, scored with mppi_lag_calm.
+      lattice_rs_strong: {planner: own, plan_smoothing: strong}
+      # The lane-centre planner (TODO 148, 169; the Fable review's change 7): on the lane
+      # map, the right lane's centre by the road graph, our lattice joining the car and the
+      # goal to it; off it (the lot), the lattice alone (lattice_rs_strong). Ours' pick
+      # since 16 Nov: no worse on any column, 3 runs each of the university tour
+      # (docs/own-planner.md, "The lane-centre planner").
+      lane: {planner: own, plan_smoothing: strong, lane_route: 'true', lane_graph: lanes_yaml}
+      # The lane-centre planner routed on the Lanelet2 map beside the lane map (lanelet-map,
+      # Rust: lanes, neighbours, one way, stop lines; TODO 175 step 6). A challenger (16 Nov).
+      lane_lanelet2: {planner: own, plan_smoothing: strong, lane_route: 'true',
+                      lane_graph: lanelet2}
+      diffusion: {planner: diffusion}
+    score: ''
+  steer:
+    what: follow the path and avoid (the path follower)
+    champion: mppi_lag
+    options:
+      # Nav2's MPPI ported, its model with the actuators' lag: the champion since Nav2's
+      # controller_server (MPPI, Regulated Pure Pursuit) went.
+      mppi_lag: {controller: mppi, tracker: mppi_lag}
+      # mppi_lag following in odom with the map's corrections taken slowly (TODO 186), its
+      # steering's control cost 0.05 (TODO 168). Ours' pick since 15 Nov: the sway at or
+      # under Nav2's on the lot and the campus (docs/mppi-lag.md, "The sway that was left").
+      mppi_lag_calm: {controller: mppi, tracker: mppi_lag, map_correction: slow,
+                      mppi_lag_steer_gamma: '0.05'}
+      mpc_lag: {controller: mppi, tracker: mpc_lag}
+      # mpc_lag in Rust (aav_mpc_lag), beside the Python one: a challenger (TODO 132, 199).
+      mpc_lag_rs: {controller: mppi, tracker: mpc_lag_rs}
+    score: ''
+  smoother:
+    what: the velocity smoother after the follower (aav_smoother, which knows it drives a car)
+    champion: ours
+    options:
+      ours: {smoother: own}
+    score: ''
+  lanes:
+    what: the lanes as soft costs in our global costmap (TODO 148, D2; needs costmap ours)
+    champion: 'off'
+    options:
+      'off': {lane_costs: 'false'}
+      # The lane map's roads drawn as a ramp, lowest at the right lane's centre: a
+      # challenger (15 Nov), beside the road ahead's lane line (behaviour, lane_map:=).
+      ramp: {lane_costs: 'true'}
+    score: ''
+  behaviour:
+    what: the behaviour planner and the road ahead (stop sign, obstacle, fence, goal)
+    champion: 'off'
+    options:
+      'off': {behaviour: 'false', things: 'false'}
+      # With the things (aav_things): the behaviour planner holds the car for anything
+      # moving near (Ben, 16 Nov: "if we see a car people or stuff moving around us we
+      # should likely just stop"), and passes only what is still.
+      'on': {behaviour: 'true', things: 'true'}
+    score: ''
+  kerbs:
+    what: kerbs the lidar sees (the Rust voxels node's step finder, the local costmap's kerb_layer)
+    champion: 'off'
+    options:
+      'off': {kerbs: 'false'}
+      # Sudden steps in the ground, 0.10-0.5 m over 0.3 m, kept 10 s, in the local
+      # costmap and the stop zone (TODO 119, docs/kerbs.md). Ours' pick since 16 Nov:
+      # sim-check --kerb stopped 0.80-0.82 m before a 0.3 m kerb (it drove into it
+      # before), and no worse on the lot and University Drive (2 runs each, no new stops).
+      'on': {kerbs: 'true'}
+    score: ''
+
+# Each stack names an option per level; a level left out takes its champion.
+stacks:
+  best:
+    what: every level's champion
+  car:
+    what: the champions approved for the car (car.launch.py runs these today)
+  ours:
+    what: every level ours that has one, as `measure controllers --stacks own`, plus the road ahead and the kerbs
+    pose: ekf_lane
+    costmap: ours_all_chunks
+    navigator: ours
+    path: lane
+    steer: mppi_lag_calm
+    smoother: ours
+    behaviour: 'on'
+    kerbs: 'on'

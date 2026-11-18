@@ -80,7 +80,16 @@ ros/<area>/aav_<what>/
 | small types for units: `Metres(f32)` | bare `f32` everywhere |
 | `?`, and `expect` with a reason, only where failure is a bug | `unwrap()` in library code |
 | traits for a device (`embedded-hal`) | functions that take a bus handle and a pin number |
+| `#[must_use]` on a pure function: dropping its value is a mistake | a getter whose answer can be thrown away silently |
+| a doc comment on every public item, units included; `# Errors` on a call that returns `Result` | fields only the author understands |
+| `#[derive(Debug)]` on every public type (by hand where a field can't print) | types nobody can print while debugging |
 | `cargo fmt`, `cargo clippy` clean | a style of your own |
+
+The `#[must_use]` and doc comment rows are kept by the compiler (TODO 176, 15 Nov). A crate root says
+`#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]`, and
+clippy's `-D warnings` turns a miss into a failed `tools/test.sh`. Every library crate
+has it (the HUD's four logic crates, `sim-core`, `camera-core` and `bench-car` since
+15 Nov); the programs (boards, nodes, screens) don't.
 
 ### A launch override that silently loses
 
@@ -88,7 +97,7 @@ ROS 2 quirk, found 15 Oct: if a launch file sets a **global** parameter (`SetPar
 as `sim.launch.py` does for `use_sim_time`), then a YAML file that **names the node**
 (`ego:`) beats any dict passed **after** it. The override is ignored, with no warning.
 `sim_speed:=3` left ego at 1.0 m/s that way, and (again, 15 Oct) `watchdog:=false` left
-twist_mux's sensors lock at its 1 s timeout, so Nav2 never drove.
+twist_mux's sensors lock at its 1 s timeout, so navigation never drove.
 
 | Do | Don't |
 |---|---|
@@ -101,5 +110,5 @@ twist_mux's sensors lock at its 1 s timeout, so Nav2 never drove.
 |---|---|---|
 | Python | PEP 8 with 99-character lines, single quotes, docstrings that start with a summary line | `pixi run lint` (ROS's `ament_flake8` and `ament_pep257`) |
 | C++ | the ROS 2 C++ style | `ament_uncrustify`, `ament_cpplint` (in `colcon test`) |
-| Rust | rustfmt and clippy | `cargo fmt`, `cargo clippy` |
+| Rust | rustfmt and clippy | `tools/test.sh`: `cargo fmt --check` on every crate, `cargo clippy -D warnings` on every crate without ROS (a lint wrong for us: a targeted `#[allow]` with its reason) |
 | Markdown docs | short pages, a purpose line, sections, tables | `pixi run docs`, and a look at the result |

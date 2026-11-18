@@ -7,9 +7,13 @@
 <!-- Generated from docs/firmware.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Firmware: the spine and its CAN contract</h1>
-<div class="meta">17 min read · 10 sections</div></header>
+<div class="meta">18 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a class="here" href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -195,15 +207,15 @@ publishes the same thing drops in, and nothing downstream changes.</p>
 <tbody>
 <tr>
 <td>IMU: <code>sensor_msgs/Imu</code> on <code>/sensors/imu/data_raw</code>, frame <code>imu_link</code></td>
-<td><code>aav_imu_yahboom</code>, <code>gazebo_imu</code></td>
+<td><code>aav_imu_yahboom</code>, <code>sim_imu</code></td>
 </tr>
 <tr>
 <td>GPS: <code>sensor_msgs/NavSatFix</code> on <code>/sensors/gps/fix</code>, frame <code>gps_link</code></td>
-<td><code>ublox_gps</code>, <code>nmea_navsat_driver</code>, <code>ublox_dgnss</code>, <code>gazebo_gps</code></td>
+<td><code>ublox_gps</code>, <code>nmea_navsat_driver</code>, <code>ublox_dgnss</code>, <code>sim_gps</code></td>
 </tr>
 <tr>
 <td>Backend: <code>/control/&lt;target&gt;/actuator_cmd</code> in (ego's, through the output mux), <code>/vehicle/odom</code> out</td>
-<td><code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>turtlesim_adapter</code>, <code>gazebo_adapter</code>, <code>carla_adapter</code></td>
+<td><code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>turtlesim_adapter</code>, <code>sim_adapter</code>, <code>carla_adapter</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -343,7 +355,7 @@ from the drive direction.</p>
 </section>
 <section class="card"><h2 id="firmwarespine-the-rust-code">firmware/spine: the Rust code</h2>
 <p><code>crates/spine-core</code> is plain <code>no_std</code> Rust: no allocator, no dependencies, no hardware.
-<code>cargo test</code> runs its 84 tests on any laptop.</p>
+<code>cargo test</code> runs its 143 tests on any laptop.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -354,11 +366,15 @@ from the drive direction.</p>
 <tbody>
 <tr>
 <td><code>spine.rs</code></td>
-<td>the priorities above: <code>Spine::step(&amp;Inputs) -&gt; Outputs</code>, about 100 times a second. Its <code>SpineConfig</code> holds the limits: 3.0 m/s, ±0.5 rad, 0.6 rad/s; 1.5 m/s² up, 2.5 m/s² down</td>
+<td>the priorities above: <code>Spine::step(&amp;Inputs) -&gt; Outputs</code>, about 100 times a second. Its <code>SpineConfig</code> holds the limits: 1.0 m/s (<code>MAX_SPEED</code>, since 6 Nov, T3.6), ±0.5 rad, 0.6 rad/s; 1.5 m/s² up, 2.5 m/s² down</td>
 </tr>
 <tr>
 <td><code>protocol.rs</code></td>
 <td>encodes and decodes the six frames, with the CRC and counter checks</td>
+</tr>
+<tr>
+<td><code>fsm.rs</code></td>
+<td>the five state regions the status lines report</td>
 </tr>
 <tr>
 <td><code>watchdog.rs</code></td>
@@ -408,7 +424,7 @@ and the glue between them and <code>spine-core</code>, are written too (10 Octob
 <tr>
 <td><code>ibus</code></td>
 <td>the FlySky RC receiver</td>
-<td>25</td>
+<td>26</td>
 </tr>
 <tr>
 <td><code>mcp2515</code></td>
@@ -417,13 +433,13 @@ and the glue between them and <code>spine-core</code>, are written too (10 Octob
 </tr>
 <tr>
 <td><code>legacy-link</code></td>
-<td>the Motor-Pi's 13-byte UART frames, and the targets the C++ set for them (15 Oct); version 2 with the Orin's heartbeat (24 Oct, TODO 50)</td>
-<td>72</td>
+<td>the Motor-Pi's 13-byte UART frames, and the targets the C++ set for them (15 Oct); version 2 with the Orin's heartbeat (24 Oct, TODO 50); versions 3 and 4 since</td>
+<td>121</td>
 </tr>
 <tr>
 <td><code>spine-board</code></td>
 <td>all of them, from <code>spine-core</code>'s outputs, in a safe order; their errors become fault bits. Commands through CAN or the UART (<code>CommandLink</code>)</td>
-<td>79</td>
+<td>119</td>
 </tr>
 </tbody>
 </table></div>
@@ -527,8 +543,9 @@ settings and flashing: <a href="rust-firmware.html">Rust on the hardware</a>.</p
 <p class="admonition-title">The ESP32's Rust replacement (15 Oct)</p>
 <p><code>firmware/spine/boards/esp32-umod</code> is <code>aav_umod_esp32</code> in Rust: the same board, pins
 and devices, and byte for byte the same UART frames (checked against the C++ itself).
-It builds, and has never been flashed. The C++ stays here, and on the car, until the
-Rust one is proven on the car: <a href="rust-firmware.html">Rust firmware</a>,
+It builds, and runs in QEMU. The repo has no record of it flashed on the car: the
+last check of the board (6 Nov, <a href="../history/audit-2026-11-06-car.md">the audit</a>) found
+the C++. The C++ stays here, and on the car, until the Rust one is proven on the car: <a href="rust-firmware.html">Rust firmware</a>,
 <a href="esp32-bench.html">First flash on the bench</a>.</p>
 </div>
 <div class="table-wrap"><table>
@@ -561,7 +578,8 @@ WiFi details: fine for a test build, but that board can't join the car's WiFi.</
 <li><strong>No command timeout.</strong> If frames stop, the last throttle stays on. So the bridge
    locks every program out (twist_mux's no-timeout lock, priority 60): only people and
    the actuator tests drive. <code>allow_programs_without_timeout: true</code> lifts it, on stands only.</li>
-<li><strong>The OTA update page has no password.</strong> Anyone on the WiFi can flash the car.</li>
+<li><strong>The OTA update page has no password.</strong> Anyone on the WiFi can flash the car
+   (seen again on 6 Nov).</li>
 <li><strong>No feedback.</strong> No speed, steering or faults come back.</li>
 <li><strong>The steering sign is unconfirmed.</strong> Check it with the wheels off the ground.</li>
 <li><strong>The WiFi password was public</strong> in the 2025-26 repositories. Change it.</li>
@@ -621,7 +639,7 @@ reviewed these yet.</strong></p>
 </tbody>
 </table></div>
 <p>The table in full: <a href="../../firmware/spine/crates/spine-core/README.md"><code>spine-core</code></a>.</p>
-<p>A person stopping any other way is ego's job, and an obstacle stop is Nav2's and ego's: not
+<p>A person stopping any other way is ego's job, and an obstacle stop is navigation's (the stop zone) and ego's: not
 built yet. The wheel speed reaches the firmware only once the Motor Pi sends frame
 version 4: until then the two speed rules stay off.</p>
 <p><strong>The proposed done test.</strong> The proposal's needs the bench rig and the CAN link. The rig
@@ -694,7 +712,7 @@ choice:</p>
 <li>steering feedback;</li>
 <li>what the actuators do when nobody is driving.</li>
 </ul></section>
-<nav class="prevnext"><a class="prev" href="model-comparison.html"><small>Previous</small>← Newer models</a>
+<nav class="prevnext"><a class="prev" href="onnx.html"><small>Previous</small>← ONNX from Rust</a>
 <a class="next" href="can-plan.html"><small>Next</small>CAN plan →</a></nav>
 </main>
 <footer>Source: <code>docs/firmware.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>

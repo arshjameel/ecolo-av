@@ -7,9 +7,13 @@
 <!-- Generated from docs/car_measurements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car measurements and the URDF</h1>
-<div class="meta">9 min read · 6 sections</div></header>
+<div class="meta">11 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,7 +125,7 @@
 <a class="here" href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#every-value-is-still-a-guess">Every value is still a guess</a><a href="#the-frames">The frames</a><a href="#how-to-measure">How to measure</a><a href="#weight-and-balance">Weight and balance</a><a href="#look-at-it">Look at it</a><a href="#in-gazebo">In Gazebo</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-is-measured-and-what-is-still-a-guess">What is measured, and what is still a guess</a><a href="#the-frames">The frames</a><a href="#how-to-measure">How to measure</a><a href="#weight-and-balance">Weight and balance</a><a href="#look-at-it">Look at it</a><a href="#in-ravensim">In Ravensim</a></nav>
 <div class="lead"><p>The car's measurements live in one file, <code>ros/bringup/aav_description/config/vehicle.yaml</code>. Every
 other part reads them from there, so a number only ever changes in one place.</p>
 <div class="table-wrap"><table>
@@ -145,8 +157,8 @@ other part reads them from there, so a number only ever changes in one place.</p
 <td>footprint (both costmaps), minimum turning radius (SmacPlannerHybrid), reverse speed</td>
 </tr>
 <tr>
-<td><code>aav_turtlesim</code>, <code>aav_gazebo</code></td>
-<td>wheelbase, and in Gazebo the whole model</td>
+<td><code>aav_turtlesim</code>, <code>aav_sim_models</code>, <code>aav_simulator</code></td>
+<td>wheelbase, and in Ravensim the whole model</td>
 </tr>
 <tr>
 <td><code>aav_drive_to_point</code>, <code>carla_adapter</code></td>
@@ -161,11 +173,81 @@ other part reads them from there, so a number only ever changes in one place.</p
 <p><code>aav_description/aav_description/vehicle.py</code> does the derived maths: turning radius =
 wheelbase / tan(max steering angle), and the footprint polygon from the body. Its tests
 (<code>ros/bringup/aav_description/test/test_vehicle.py</code>) run without ROS.</p></div>
-<section class="card"><h2 id="every-value-is-still-a-guess">Every value is still a guess</h2>
-<p>Each <code>TODO</code> in <code>vehicle.yaml</code> came from the previous teams' code, with the file and line
-cited next to it, or is a guess. Two examples: the wheelbase (1.57 m) comes from a MATLAB
-script, and the old code's steering limit varies from 0.45 to 0.55 rad. Measure the car,
-replace the number and delete the <code>TODO</code>.</p>
+<section class="card"><h2 id="what-is-measured-and-what-is-still-a-guess">What is measured, and what is still a guess</h2>
+<p>Checked against <code>vehicle.yaml</code> on 14 Nov. The tape measurements are Betsi's (PR #18,
+1 Nov); the file calls them PROVISIONAL until the mounts are frozen and checked in RViz.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Value</th>
+<th>In the file</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wheelbase</code></td>
+<td>1.561 m</td>
+<td><strong>measured</strong> (1 Nov)</td>
+</tr>
+<tr>
+<td><code>track</code></td>
+<td>0.75 m</td>
+<td>the average of the <strong>measured</strong> front 0.650 m and rear 0.850 m</td>
+</tr>
+<tr>
+<td><code>wheel_diameter</code></td>
+<td>0.36 m</td>
+<td>tape-measured, provisional: loaded it read 0.42 m. The rolling test settles it (TODO 60)</td>
+</tr>
+<tr>
+<td><code>imu_link</code> xyz</td>
+<td>0.49, 0.00, 1.44 m</td>
+<td><strong>measured</strong>, provisional</td>
+</tr>
+<tr>
+<td><code>lidar_link</code> xyz</td>
+<td>0.49, 0.00, 1.52 m</td>
+<td><strong>measured</strong>, provisional</td>
+</tr>
+<tr>
+<td><code>gps_link</code> xyz</td>
+<td>0.00, 0.00, 1.40 m</td>
+<td>z <strong>measured</strong>; over the rear axle (Ben, 23 Oct, confirmed 31 Oct)</td>
+</tr>
+<tr>
+<td>ground clearance</td>
+<td>0.220 m, a comment only</td>
+<td><strong>measured</strong>; nothing reads it</td>
+</tr>
+<tr>
+<td><code>wheel_width</code>, <code>max_steering_angle</code> (0.50 rad), <code>body</code> (2.00 x 1.00 x 1.50 m, overhang 0.20 m)</td>
+<td></td>
+<td>guesses, or the previous teams' code (the old steering limit varies from 0.45 to 0.55 rad)</td>
+</tr>
+<tr>
+<td><code>mass</code> 181 kg, <code>centre_of_mass</code>, <code>tyre_grip</code></td>
+<td></td>
+<td>Ben's estimate and guesses: the car has not been weighed (TODO 14)</td>
+</tr>
+<tr>
+<td>every number under <code>actuators:</code></td>
+<td></td>
+<td>guesses: tests 3.10-3.12 and 4.1-4.5, none run on the car</td>
+</tr>
+<tr>
+<td>every number under <code>brake:</code></td>
+<td></td>
+<td>placeholders: car day A7, rows 6-8</td>
+</tr>
+<tr>
+<td>radar and the three cameras, every <code>rpy</code></td>
+<td></td>
+<td>guesses (the left camera has one candidate x, 0.810 m, not used)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Measure the car, replace the number and delete the <code>TODO</code>.</p>
 </section>
 <section class="card"><h2 id="the-frames">The frames</h2>
 <p>REP-103 and REP-105 conventions:</p>
@@ -299,7 +381,7 @@ replace the number and delete the <code>TODO</code>.</p>
   <code>max_accel × mass ÷ (mass + payload)</code>.</li>
 <li><strong>Turns:</strong> ego slows the car so the sideways acceleration stays under 2 m/s², or under
   half of what slides or tips the car if that is lower. It keeps the turn the driver asked
-  for and lowers the speed, so the car stays on its path. At full lock (2.87 m) that is
+  for and lowers the speed, so the car stays on its path. At full lock (2.86 m) that is
   2.4 m/s: it only matters above the car's 1 m/s, so today in the simulator. Checked in
   Gazebo (22 Oct, <code>sim_speed:=3</code>): asked 3 m/s at full lock, ego allowed 2.40 m/s and the
   car held 2.37-2.43 m/s, 1.9-2.0 m/s² sideways.</li>
@@ -308,9 +390,9 @@ replace the number and delete the <code>TODO</code>.</p>
 <li><strong>Payload</strong> is a parameter (ego.yaml, 0 kg): <code>ros2 param set /ego payload 80</code> when
   someone gets in.</li>
 </ul>
-<p>Tipping matters on this car: a 77 cm track is narrow for a 1.5 m tall car. The car tips
+<p>Tipping matters on this car: a 75 cm track (the average; 65 cm at the front) is narrow for a 1.5 m tall car. The car tips
 when the sideways acceleration reaches g × (track ÷ 2) ÷ (height of the centre of mass):
-6.9 m/s² at 0.55 m high, but 3.8 m/s² at 1 m. Ego keeps to half of that.</p>
+6.7 m/s² at 0.55 m high, but 3.7 m/s² at 1 m. Ego keeps to half of that.</p>
 <p>From M7 and M7b (any unit, as long as all four are the same):</p>
 <pre class="highlight"><code class="language-python">from aav_description import vehicle
 v = vehicle.load()['vehicle']
@@ -324,9 +406,9 @@ x, height = vehicle.centre_of_mass(v, front=FL + FR, rear=RL + RR,
 z up). Each sensor is an orange box. A slider window moves the steering and wheel joints.</p>
 <p>The shapes are only for looking at, and every size comes from <code>vehicle.yaml</code>: a red tub
 over the wheels, a cabin with a white roof and a seat, a bumper and headlights at the
-front, and a white mark on each wheel so you can see it turn. Physics and Nav2 use only
+front, and a white mark on each wheel so you can see it turn. The simulator and the planner use only
 the collision shapes: the body's outline between the bumpers, and the four wheels.</p>
-<p><img alt="The car model in Gazebo" src="../img/gazebo-car.png" /></p>
+<p><img alt="The car model in Gazebo (before 16 Nov)" src="../img/gazebo-car.png" /></p>
 <p>After editing <code>vehicle.yaml</code>, rebuild and relaunch:</p>
 <pre class="highlight"><code class="language-bash">colcon build --packages-select aav_description --symlink-install</code></pre>
 <p>With <code>--symlink-install</code>, later edits to <code>vehicle.yaml</code> only need a relaunch.</p>
@@ -336,16 +418,14 @@ the collision shapes: the body's outline between the bumpers, and the four wheel
 <li>Draw the frame tree as a diagram: <code>ros2 run rqt_tf_tree rqt_tf_tree</code>.</li>
 </ul>
 </section>
-<section class="card"><h2 id="in-gazebo">In Gazebo</h2>
-<p><code>aav.gazebo.xacro</code> adds the simulation parts when <code>sim:=true</code>:</p>
-<ul>
-<li>the Ackermann steering system (gz-sim 8);</li>
-<li>IMU and NavSat sensors;</li>
-<li>the joint-state publisher.</li>
-</ul>
-<p>Gazebo builds the simulated car from the same <code>vehicle.yaml</code>, so the simulated car turns
-like the real one. Its odometry frames are bridged but its TF is not:
-<code>robot_localization</code> owns <code>odom -&gt; base_link</code>, exactly as on the car.</p></section>
+<section class="card"><h2 id="in-ravensim">In Ravensim</h2>
+<p>Ravensim (<code>aav_simulator</code>, <a href="own-simulator.html">its page</a>) builds the simulated car from the
+same <code>vehicle.yaml</code>: the wheelbase, the steering's full lock, the outline it hits things
+with, and where each sensor sits. So the simulated car turns like the real one. It
+publishes its own odometry on <code>/vehicle/sim/odom</code>, but no TF: <code>robot_localization</code> owns
+<code>odom -&gt; base_link</code>, exactly as on the car.</p>
+<p>Until 16 Nov Gazebo did this job, with <code>aav.gazebo.xacro</code> adding its Ackermann steering,
+IMU and NavSat plugins (<a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>).</p></section>
 <nav class="prevnext"><a class="prev" href="interfaces.html"><small>Previous</small>← Topics</a>
 <a class="next" href="hud.html"><small>Next</small>HUD →</a></nav>
 </main>

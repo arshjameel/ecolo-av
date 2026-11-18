@@ -179,6 +179,24 @@ def test_the_orins_frames_move_freeze_or_break():
         unpack_frame_v2(orin.frames(values, bad_crc=True)())
 
 
+RELAY_BIN = (Path(__file__).resolve().parents[2]
+             / 'ros/can_bridge/aav_legacy_rs/target/release/examples/relay_frames')
+
+
+@pytest.mark.skipif(not RELAY_BIN.exists(), reason='relay_frames not built (esp32.sh builds it)')
+def test_the_rust_and_python_relays_send_the_qemu_check_the_same_frames():
+    rust = q.RustRelay(RELAY_BIN)
+    try:
+        mapping = q.LegacyMapping()
+        for command in (q.DRIVE, q.STAND_STILL):
+            values = q.to_legacy(*command, mapping)
+            frames = [q.Orin(relay).frames(values) for relay in (rust, None)]
+            for _ in range(3):
+                assert frames[0]() == frames[1]()
+    finally:
+        rust.close()
+
+
 # --- The uplink and the RC (TODO 50, 48) ---
 
 def up(**changes):
@@ -340,3 +358,19 @@ def test_a_local_clock_fit_ignores_a_drift_elsewhere_in_the_run():
     lines = early + late
     assert q.ClockMap.fit(lines).offset == pytest.approx(100.001)
     assert q.ClockMap.fit_local(lines, 110.3, 111.3).offset == pytest.approx(100.301)
+
+
+def test_only_host_timings_earn_a_second_run():
+    assert q.timing_only(['31 uplink frames a second while driving, not ~50'])
+    assert q.timing_only(['the uplink said stopped after 520 ms, not 100-400',
+                          '3 uplink frames lost'])
+    assert not q.timing_only([])
+
+
+def test_a_failed_safety_outcome_is_never_retried():
+    # A timing problem beside a safety one: the safety one decides.
+    assert not q.timing_only(['the uplink said stopped after 520 ms, not 100-400',
+                              'fresh frames without a stop drove again: EVENT t=1'])
+    assert not q.timing_only(['no timeout event after the frames stopped'])
+    assert not q.timing_only(['the brake Jrk never got 3500 with the DAC at 0'])
+    assert not q.timing_only(['the timeout event did not stop the car: EVENT t=1'])

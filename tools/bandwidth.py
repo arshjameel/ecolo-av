@@ -3,7 +3,7 @@
 Measure every topic of a running system: how often it sends, how big, how many MB/s.
 
 Like `ros2 topic hz` and `ros2 topic bw` for every topic at once, as one table, biggest
-first. Run it beside Gazebo now, and on the car later (docs/bandwidth.md):
+first. Run it beside Ravensim now, and on the car later (docs/bandwidth.md):
 
   pixi run measure bandwidth                    10 s, every topic, a table
   pixi run measure bandwidth --local            the same, for pixi run sim on this computer

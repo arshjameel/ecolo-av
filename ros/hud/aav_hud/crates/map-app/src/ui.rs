@@ -914,7 +914,7 @@ fn draw_picked(
         );
     }
     let hint = if confirming {
-        "Enter sends Nav2 this goal"
+        "Enter sends the navigator this goal"
     } else {
         "Esc back to the list"
     };
@@ -1144,7 +1144,7 @@ fn panel(
     p.card(x, y, w, h, "DISTANCE LEFT");
     let remaining = state.remaining();
     let (big, note) = match remaining {
-        Some(Remaining::AlongPlan(d)) => (distance(d), "along Nav2's plan"),
+        Some(Remaining::AlongPlan(d)) => (distance(d), "along the plan"),
         Some(Remaining::StraightLine(d)) => (distance(d), "in a straight line: no plan yet"),
         None if state.goal().is_some() => ("--".to_owned(), "the car's position is unknown"),
         None => ("--".to_owned(), "no goal"),

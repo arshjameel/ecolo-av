@@ -2,7 +2,7 @@
 """
 Timing test: whether every message arrives on time, for minutes, parked and driving.
 
-Starts Gazebo's test lot headless with the car's whole graph, then measures every topic's
+Starts Ravensim's test lot headless with the car's whole graph, then measures every topic's
 arrivals, first with the car parked, then while Nav2 drives controller_compare.py's lot
 tour round and round. Made to compare the messaging (TODO 11 and 32, docs/mac.md):
 
@@ -23,7 +23,7 @@ For each phase it prints:
 the messaging. The numbers: tools/stalls.py (no ROS; tests in tools/tests/test_stalls.py).
 
 The report, every topic's table and each late gap go to log/timing-test/<time>-<rmw>/; the
-launch log beside them. A ROS domain and Gazebo partition of its own (AAV_SIM_DOMAIN picks
+launch log beside them. A ROS domain of its own (AAV_SIM_DOMAIN picks
 the domain), on this computer only; stopped by its process group; Fast DDS's shared memory
 is cleared after a Fast DDS run.
 """
@@ -47,8 +47,6 @@ DOMAIN = os.environ.get('AAV_SIM_DOMAIN', str(random.randint(150, 230)))
 os.environ['ROS_DOMAIN_ID'] = DOMAIN
 os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
 os.environ.pop('ROS_STATIC_PEERS', None)
-os.environ['GZ_IP'] = '127.0.0.1'
-os.environ['GZ_PARTITION'] = f'timing_test_{DOMAIN}'
 
 from action_msgs.msg import GoalStatus  # noqa: E402
 import bandwidth  # noqa: E402
@@ -67,7 +65,7 @@ import topic_load  # noqa: E402
 
 # (topic, what it is): the ones the stack can't drive without, and the big ones.
 KEY = [
-    ('/clock', "Gazebo's clock"),
+    ('/clock', "the simulator's clock"),
     ('/sensors/imu/data', 'IMU'),
     ('/vehicle/odom', 'wheel odometry'),
     ('/sensors/gps/fix', 'GPS'),
@@ -87,7 +85,7 @@ KEY = [
 WHILE_DRIVING = {'/drivers/nav/cmd_vel'}
 PROBE = '(probe)'
 STALL_TOPICS = 3        # key topics quiet together: a stall
-UP_TIME = 150.0         # s for Gazebo and the EKF, then again for Nav2
+UP_TIME = 150.0         # s for the simulator and the EKF, then again for navigation
 READY_TIME = 30.0       # s for the sensor watchdog to let Nav2 drive
 CPU_EVERY = 10.0        # s between samples of the computer's load
 GIVE_UP = 4             # goals failed in a row: the car is stuck, stop driving
@@ -355,8 +353,7 @@ def main():
     out_dir = os.path.join(ROOT, 'log', 'timing-test', f'{started:%Y%m%d-%H%M%S}-{rmw}')
     os.makedirs(out_dir, exist_ok=True)
     log_path = os.path.join(out_dir, 'sim.log')
-    print(f'{rmw}: the test lot on ROS domain {DOMAIN}, Gazebo partition '
-          f'{os.environ["GZ_PARTITION"]} (this computer only); load average '
+    print(f'{rmw}: the test lot on ROS domain {DOMAIN} (this computer only); load average '
           f'{os.getloadavg()[0]:.1f}; results in {out_dir}', flush=True)
     load = Load()
     load.start()
@@ -366,7 +363,10 @@ def main():
             ['ros2', 'launch', 'aav_bringup', 'sim.launch.py', 'world:=test_lot', 'gui:=false',
              # Reversing, as the car's reversing:=true (Ben, 22 Oct): forward only, the lot tour's
              # U-turn can end facing a wall, and the drive stops there (23 Oct).
-             'rviz:=false', 'reversing:=true'],
+             'rviz:=false', 'reversing:=true',
+             # The champions' stack (best): until 17 Nov this was Nav2's (stack:=stock),
+             # as every timing run before 14 Nov; Nav2 went (TODO 184).
+             'stack:=best'],
             cwd=ROOT, env=dict(os.environ), stdout=log, stderr=subprocess.STDOUT,
             start_new_session=True)
         rclpy.init()

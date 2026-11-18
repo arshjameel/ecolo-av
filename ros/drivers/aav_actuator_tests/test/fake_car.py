@@ -10,10 +10,10 @@ import math
 from aav_actuator_tests import procedures as pr
 from aav_actuator_tests.reports import COLUMNS
 from aav_ego.ackermann import EgoModel, Limits
-from aav_gazebo.actuator_model import ActuatorConfig, Actuators
+from aav_sim_models.actuator_model import ActuatorConfig, Actuators
 
 NAN = float('nan')
-DT = 0.02   # s: gazebo_adapter's 50 Hz
+DT = 0.02   # s: sim_adapter's 50 Hz
 
 
 def drive(steps, cfg=ActuatorConfig(), limits=None, dt=DT, max_time=900.0):

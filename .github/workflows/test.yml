@@ -41,7 +41,7 @@ jobs:
   linux:
     if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
       - name: Install Pixi
@@ -58,11 +58,28 @@ jobs:
           path: ~/.cache/rattler/cache/pkgs
           key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-${{ runner.os }}-
+      # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
+      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
+      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
+      # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
         # once a test has run 5 min (the Mac nightly of 24 Oct ran past 90 min).
-        timeout-minutes: 45
+        timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
@@ -93,11 +110,28 @@ jobs:
           path: ~/Library/Caches/rattler/cache/pkgs
           key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-${{ runner.os }}-
+      # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
+      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
+      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
+      # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
         # once a test has run 5 min (the Mac nightly of 24 Oct ran past 90 min).
-        timeout-minutes: 45
+        timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
@@ -115,7 +149,7 @@ jobs:
   arm:
     if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
       - name: Install Pixi
@@ -133,8 +167,25 @@ jobs:
           # Not pixi-pkgs-Linux-*: the linux job's packages are x86_64.
           key: pixi-pkgs-arm64-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-arm64-${{ runner.os }}-
+      # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
+      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
+      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
+      # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
-        timeout-minutes: 45
+        timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
@@ -259,7 +310,9 @@ jobs:
         run: |
           ~/aav-jazzy/aav.sh ros2 pkg list > pkgs.txt
           echo "$(grep -c '^aav' pkgs.txt) of our packages installed"
-          for pkg in aav_bringup aav_hud aav_spine_bridge; do
+          # The Rust nodes the car runs by default (16 Nov) too, not only the screens.
+          for pkg in aav_bringup aav_hud aav_spine_bridge aav_ego_rs aav_behaviour_rs \
+                     aav_watchdog_rs aav_localization_health_rs; do
             if ! grep -qx "$pkg" pkgs.txt; then
               echo "::error title=car kit::$pkg isn't installed"
               exit 1
@@ -267,9 +320,10 @@ jobs:
           done
           file -bL ~/aav-jazzy/aav/install/aav_hud/lib/aav_hud/hud
 
-  # Gazebo, headless: the car's whole graph, a drive, and a stop for a box (PLAN T2.6).
-  # New 22 Oct and not yet seen to pass on GitHub's computers (no GPU: the cameras render
-  # in software, tools/software_gl.sh), so a failure here doesn't turn the night red yet. Remove
+  # Ravensim, headless: the car's whole graph, a drive, and a stop for a box (PLAN T2.6).
+  # No GPU here: the cameras draw in software (tools/software_gl.sh), with Ravensim's clock
+  # waiting for each picture (camera_lockstep:=auto, 16 Nov). New with Gazebo's removal and
+  # not yet seen to pass here, so a failure doesn't turn the night red yet. Remove
   # continue-on-error once it has passed a few nights.
   sim:
     if: (github.event_name == 'schedule' && github.repository == 'AAV-2025-2026/ecolo-av') || github.event_name == 'workflow_dispatch'
@@ -294,18 +348,31 @@ jobs:
           restore-keys: pixi-pkgs-${{ runner.os }}-
       - name: pixi run build
         run: pixi run --locked build
-      # No GPU here, and our environment's EGL has no driver of its own: without
-      # tools/software_gl.sh (Mesa's llvmpipe) Gazebo crashed as the world loaded, and
-      # sim-check found nothing in 120 s (23 Oct, reproduced on oirp-spss).
-      # Gazebo, said outright: our simulator's cameras need a GPU (Bevy), GitHub's have none.
-      - name: pixi run sim-check --simulator gazebo --obstacle
+      # Ravensim with its cameras, drawn in software: Mesa's lavapipe through
+      # tools/software_gl.sh, which also turns camera lockstep on (the clock waits for each
+      # picture, so they get their full rate in sim time: 1.6 Hz free-running on 15 Nov).
+      # The first run builds Bevy (minutes).
+      - name: tools/software_gl.sh pixi run sim-check --obstacle
         env:
-          QT_QPA_PLATFORM: offscreen
           AAV_SIM_LOG: ${{ github.workspace }}/sim-logs/aav-sim-check.log
           ROS_LOG_DIR: ${{ github.workspace }}/sim-logs/ros
         run: |
           mkdir -p sim-logs
-          tools/software_gl.sh pixi run --locked sim-check --simulator gazebo --obstacle 2>&1 | tee sim-logs/sim.log
+          tools/software_gl.sh pixi run --locked sim-check --obstacle 2>&1 | tee sim-logs/sim.log
+      # With no cameras at all (cameras:=false): the whole graph but the pictures, real time.
+      - name: pixi run sim-check --no-cameras --obstacle
+        if: always()
+        env:
+          AAV_SIM_LOG: ${{ github.workspace }}/sim-logs/aav-sim-check-no-cameras.log
+          ROS_LOG_DIR: ${{ github.workspace }}/sim-logs/ros-no-cameras
+        run: |
+          mkdir -p sim-logs
+          pixi run --locked sim-check --no-cameras --obstacle 2>&1 | tee sim-logs/sim-no-cameras.log
+      # The cameras' picture tests (tests/render.rs: colours and edges where the lens says),
+      # on lavapipe too. They pass on a Mac's lavapipe (15 Nov); new here.
+      - name: The cameras' picture tests, in software
+        if: always()
+        run: tools/software_gl.sh pixi run --locked cargo test --release --manifest-path ros/sim/aav_sim_cameras/Cargo.toml --test render
       # Readable without signing in: sim-check's FAIL lines and the launch log's last errors.
       - name: Failures as annotations (readable without signing in)
         if: failure() && hashFiles('sim-logs/sim.log') != ''

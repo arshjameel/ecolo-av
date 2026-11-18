@@ -12,6 +12,9 @@
   <exec_depend>aav_interfaces</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
+  <!-- io_mux.launch.py: io_mux_impl:= (vehicle.IO_MUX_IMPLS); rust, the Rust twins. -->
+  <exec_depend>aav_description</exec_depend>
+  <exec_depend>aav_io_mux_rs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

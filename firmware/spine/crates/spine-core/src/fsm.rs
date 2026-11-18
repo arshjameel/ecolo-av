@@ -26,7 +26,7 @@
 
 use crate::protocol::Mode;
 
-/// [1] Is the spine ready to run at all?
+/// \[1\] Is the spine ready to run at all?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Lifecycle {
     /// Before the first tick.
@@ -41,6 +41,7 @@ pub enum Lifecycle {
 
 impl Lifecycle {
     /// One tick. `devices_ok`: no driver fault that stops the car this tick.
+    #[must_use]
     pub fn next(self, devices_ok: bool) -> Lifecycle {
         match self {
             Lifecycle::Boot => Lifecycle::SelfTest,
@@ -50,12 +51,14 @@ impl Lifecycle {
         }
     }
 
+    /// True once the self-test passed.
+    #[must_use]
     pub fn is_running(self) -> bool {
         self == Lifecycle::Running
     }
 }
 
-/// [2] May anything move? Worked out each tick from what is happening now (an e-stop, a
+/// \[2\] May anything move? Worked out each tick from what is happening now (an e-stop, a
 /// driver fault) and what the spine remembers ([`Latch`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Safety {
@@ -78,6 +81,7 @@ pub enum Safety {
 
 impl Safety {
     /// The state for this tick. Highest first: e-stop, fault, lost input, overspeed, latch.
+    #[must_use]
     pub fn of(
         estop: bool,
         driver_fault: bool,
@@ -184,14 +188,19 @@ pub const OVERSPEED_WINDOW_MS: u32 = 2000;
 /// aims for the limit, not for a stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Overspeed {
+    /// Not over the trip speed.
     #[default]
     Clear,
     /// Past the trip speed at `since_ms`, and not yet back under the limit.
-    Slowing { since_ms: u32 },
+    Slowing {
+        /// When it tripped (ms).
+        since_ms: u32,
+    },
 }
 
 impl Overspeed {
     /// One tick. `over_trip`: past the trip speed. `over_limit`: still over the limit.
+    #[must_use]
     pub fn next(self, over_trip: bool, over_limit: bool, now_ms: u32) -> Overspeed {
         match self {
             Overspeed::Clear if over_trip => Overspeed::Slowing { since_ms: now_ms },
@@ -201,11 +210,14 @@ impl Overspeed {
         }
     }
 
+    /// True while coming back under the limit.
+    #[must_use]
     pub fn is_slowing(self) -> bool {
         matches!(self, Overspeed::Slowing { .. })
     }
 
     /// Slowing for the whole window, and still over the limit.
+    #[must_use]
     pub fn expired(self, now_ms: u32) -> bool {
         match self {
             Overspeed::Clear => false,
@@ -214,7 +226,7 @@ impl Overspeed {
     }
 }
 
-/// [3] Whose commands count? Highest first: Rc, Test, Drive, Idle (Safety is above all).
+/// \[3\] Whose commands count? Highest first: Rc, Test, Drive, Idle (Safety is above all).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Authority {
     /// Nobody drives: the actuators idle. On the wire: `Mode::Manual`.
@@ -230,6 +242,7 @@ pub enum Authority {
 
 impl Authority {
     /// What VEHICLE_STATUS reports.
+    #[must_use]
     pub fn mode(self) -> Mode {
         match self {
             Authority::Idle => Mode::Manual,
@@ -239,6 +252,8 @@ impl Authority {
         }
     }
 
+    /// True in the hardware test mode.
+    #[must_use]
     pub fn in_test(self) -> bool {
         matches!(self, Authority::Test(_))
     }
@@ -274,6 +289,7 @@ pub enum TestRequest {
 
 impl TestRequest {
     /// The stage a request leaves the test mode in.
+    #[must_use]
     pub fn stage(self) -> TestStage {
         match self {
             TestRequest::Steering(_) | TestRequest::Brake(_) | TestRequest::Throttle(_) => {
@@ -286,6 +302,7 @@ impl TestRequest {
     /// Whether the spine carries this request out at this [`Confidence`]. A throttle test
     /// needs a wheel speed: without one, the "faster than [`TEST_MAX_SPEED`]" exit can't
     /// fire. A refused request holds still, like [`TestRequest::Hold`].
+    #[must_use]
     pub fn allowed(self, confidence: Confidence) -> bool {
         match self {
             TestRequest::Throttle(_) => confidence.measures_speed(),
@@ -303,18 +320,21 @@ pub const TEST_MAX_SPEED: f32 = 0.5;
 /// Slower than this (m/s) counts as standing still.
 pub const STANDSTILL_SPEED: f32 = 0.05;
 
-/// [4] Which way may the car move? Direction changes only through `StandstillHold`.
+/// \[4\] Which way may the car move? Direction changes only through `StandstillHold`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Motion {
     /// Stopped, with no throttle: the brake holds the car.
     #[default]
     StandstillHold,
+    /// Moving, or about to, forward.
     Forward,
+    /// Moving, or about to, backward.
     Reverse,
 }
 
 impl Motion {
     /// What this tick's outputs and the measured speed show.
+    #[must_use]
     pub fn observe(measured_speed: f32, throttle: f32, reverse: bool) -> Motion {
         let still = measured_speed.abs() < STANDSTILL_SPEED;
         if still && throttle == 0.0 {
@@ -327,7 +347,7 @@ impl Motion {
     }
 }
 
-/// [5] How far do we trust the measurements?
+/// \[5\] How far do we trust the measurements?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Confidence {
     /// A wheel speed, from the board or sent over the UART link: the overspeed check works.
@@ -342,6 +362,7 @@ pub enum Confidence {
 impl Confidence {
     /// The spine sees the car's speed: the overspeed check and the test mode's speed
     /// exit work.
+    #[must_use]
     pub fn measures_speed(self) -> bool {
         matches!(self, Confidence::Full)
     }
@@ -350,10 +371,15 @@ impl Confidence {
 /// All five regions, as the spine left them after the latest tick.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State {
+    /// \[1\] Booting, testing itself, or running.
     pub lifecycle: Lifecycle,
+    /// \[2\] Stopped by a rule, or free to drive.
     pub safety: Safety,
+    /// \[3\] Who drives.
     pub authority: Authority,
+    /// \[4\] Which way the car may move.
     pub motion: Motion,
+    /// \[5\] How far the measurements are trusted.
     pub confidence: Confidence,
 }
 

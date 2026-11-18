@@ -10,7 +10,7 @@ ndt_status: /localization/ndt/status             # DiagnosticStatus: its fit and
 log: /rosout                                     # rcl_interfaces Log: the console
 plan: /plan                                      # Path: Nav2's plan
 map: /map                                        # OccupancyGrid, latched
-costmap: /global_costmap/costmap                 # OccupancyGrid: the danger halo
+costmap: /drivers/nav/costmap/global                 # OccupancyGrid: the danger halo
 source: /system/source                           # DataSource, latched: SIM or real
 status: /vehicle/status                          # VehicleStatus: the e-stop
 gate: /safety/output_mux/state                   # String: the output gate
@@ -18,7 +18,12 @@ watchdog: /safety/sensor_watchdog/state          # String: the sensor watchdog
 goal: /goal_pose                                 # PoseStamped, out: only in developer mode
 screen_alive: /hud/dev_window/heartbeat         # UInt64, out: only in developer mode, frames drawn
 estop: /safety/estop                             # Bool, out: only ever true, developer mode
+cancel_goal: /navigate_to_pose/_action/cancel_goal   # CancelGoal, called: developer mode, SIM only: the navigator's goals
+track_parameters: /track/set_parameters          # SetParameters, called: developer mode, SIM only: aav_track's tracker (SWAP)
 trace: /ego/trace                                # Path, base_link: ego's trace, the squiggly line's bold line
 plan_ahead: /ego/plan_ahead                      # Path, base_link: what the planner wants, its faint line
 stop_point: /ego/stop_point                      # PoseStamped, base_link: where a full brake now stops
+road_ahead: /world/road_ahead                    # RoadAhead, map: the road ahead, coloured by its speed limit
 ahead: /ego/ahead                                # DiagnosticStatus: the gap, the stop, the room
+route: /drivers/nav/route/path                   # Path, map, latched: the street route (street_router)
+things: /world/things                            # Things, odom: the things near the car, named by the camera (aav_things)

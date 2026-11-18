@@ -13,6 +13,27 @@ one computer.
 > - 🔒 = waits on the hardware lead's answer (session 3). Skip it, and go on.
 > - **Secrets:** logins come from the team's password vault. Type them; never paste them into a file, a chat or the repo.
 
+!!! note "Where this stands (checked 14 Nov)"
+    This runbook has **not been run end to end**, and no step here carries a signature.
+    What the records say was done on the car:
+
+    | When | What | Record |
+    |---|---|---|
+    | 16, 21 Oct | read-only audits | [16 Oct](history/audit-2026-10-16-car.md), [21 Oct](history/audit-2026-10-21-car.md) |
+    | 6 Nov | drove the 2025-26 stack as is; nothing flashed ([Car evening](car-evening.md)) | [6 Nov](history/audit-2026-11-06-car.md) |
+    | 9 Nov | a car day was planned ([Rolling out](rollout.md)) | **none in the repo** |
+    | by 11 Nov | our kit on the localization Pi; its first install broke on `aav_hud` (PR #28) | [14 Nov review](history/audit-2026-11-14-review.md), section 5 |
+    | 13 Nov | the car drove "with only the localization update installed"; the full suite isn't on it | `history/messages-2026-11-13.md` |
+
+    So A2's backups, A7b, A8 (the Rust ESP32) and Day B are still to do, by the records.
+    **Which page when:** this one for a whole day at the car, in order;
+    [Rolling out](rollout.md) for the short version and for a newer version later;
+    [Car setup](car-setup.md) for one computer; [Car install](car-install.md) for what the
+    kit is and how to undo it.
+
+
+**The ESP32 and the Motor Pi, on one page:** [Flash the ESP32, upgrade the Motor Pi](esp32-motor-pi-runbook.md) (Senura's runbook, 17 Nov).
+
 ## The people
 
 Fill this in before the day. Nobody does two jobs at once.
@@ -45,20 +66,21 @@ password:
 
 ## The machines
 
-As the 21 Oct audit found them ([audit](history/audit-2026-10-21-car.md)). Every address
+As the 21 Oct audit found them ([audit](history/audit-2026-10-21-car.md)), with what the
+[6 Nov audit](history/audit-2026-11-06-car.md) added. Every address
 is `192.168.1.x`. **Role** is the name `car_setup.sh` uses. Usernames: none are in the
 repo yet: fill them in from the vault.
 
 | Machine | Address | Role | Username | Vault entry | Runs today (2025-26, Humble, domain 0) | Day B: should be |
 |---|---|---|---|---|---|---|
-| JETSON, **the Orin** (AGX Orin) | .140 | `orin` | ☐ | `aav-jetson` | the Velodyne driver (UDP 2368), lidar SLAM, `foxglove-bridge` (8765). JetPack 6 (R36.4.7, 22.04) | JetPack 7.2 (24.04): a reflash |
-| CORTEX, **the Motor Pi?** (H1), Pi 4 | .120 | `motor_pi` | ☐ | `aav-cortex` | `aav_serial_bridge` on `/dev/ttyAMA0` (to the ESP32), joystick teleop. Ubuntu 22.04 | 24.04, only after the Rust ESP32 |
-| LOCALIZATION, Pi 4 | .113 | `localization` | ☐ | `aav-localization` | the IMU (200 Hz) and GPS (10 Hz) drivers. Ubuntu 22.04 | 24.04, only once a machine file runs its IMU and GPS |
+| JETSON, **the Orin** (AGX Orin) | .140 | `orin` | ☐ | `aav-jetson` | the Velodyne driver (UDP 2368), lidar SLAM, `foxglove-bridge` (8765). JetPack 6 (R36.4.7, 22.04). 6 Nov: `can0` and `can1` down | JetPack 7.2 (24.04): a reflash |
+| CORTEX, **the Motor Pi?** (H1), Pi 4 | .120 | `motor_pi` | ☐ | `aav-cortex` | `aav_serial_bridge` on `/dev/ttyAMA0` (to the ESP32), joystick teleop. Ubuntu 22.04. 6 Nov: it does the Motor Pi's job today; the hardware lead still confirms H1 | 24.04, only after the Rust ESP32 |
+| LOCALIZATION, Pi 4 | .113 | `localization` | ☐ | `aav-localization` | the IMU (200 Hz) and GPS (10 Hz) drivers. Ubuntu 22.04. Our kit is on it too (by 11 Nov) | 24.04: its machine file exists now (`machines/localization.yaml`); not upgraded, by the records |
 | aav-desktop, **the dash**, Pi 4 | .196 | `dash` | ☐ | `aav-desktop` | the two screens. Ubuntu 22.04 Desktop | 24.04 Desktop |
 | CAM1-PI, **the front cameras**, Pi 5 | .108 (also seen at .102: C1) | `camera_pi` | ☐ | `aav-cam1` | MediaMTX, RTSP on 8554. Pi OS | Pi OS, updated |
 | CAM2-PI, Pi 5 | .118 | `camera_pi` | ☐ | `aav-cam2` | MediaMTX with a USB camera. Pi OS | Pi OS, updated |
 | `.211`, a Pi | .211 | none | ☐ | ☐ | unknown (Ubuntu 22.04) | ask the hardware lead first |
-| the ESP32 | .132 (WiFi) | none | none | none | the 2025-26 C++ firmware: **no command timeout** | the Rust firmware (Day A, A8) |
+| the ESP32 | .132 (WiFi) | none | none | none | the 2025-26 C++ firmware (seen 6 Nov; no record of a flash since): **no command timeout** | the Rust firmware (Day A, A8) |
 | the Velodyne | .201 | none | none | none | sends to the Orin | |
 | **the lab's Ubuntu desktop** (x86, NVIDIA; stays in the lab) | ☐ | `lab_desktop` | ☐ | ☐ | CARLA (☐ which version) | **frozen** until the Orin's reflash is done (Day B) |
 
@@ -98,7 +120,7 @@ Our stack runs in **ROS domain 42**, so it never mixes with theirs (domain 0).
 | all day | What to record | [session 10](#session-10-what-to-record) | laptop person | |
 | B1-B4 | Day B | [Day B](#day-b-upgrades-and-the-reflash) | laptop person, hardware lead, approver | Day A done; a restore proven |
 
-Autonomy (Nav2 goals on the ground) comes after A11, on another day: [Every test](tests.md), stage 5.
+Autonomy (navigation goals on the ground) comes after A11, on another day: [Every test](tests.md), stage 5.
 
 ## Ready for car day (the 0.2 checklist)
 
@@ -241,6 +263,17 @@ Car day: is /Users/ben/Code/ecolo-av ready? (car-day.md)
 
 14 OK, 3 missing, 6 to tick by hand.
 ```
+
+## The clocks, before any recording {#the-clocks}
+
+Bags from two computers only line up if their clocks agree. `car_setup.sh`'s `services`
+step installs chrony (the Orin keeps the car's time, the others ask it); until that has
+run on a computer, check by hand.
+
+| # | Do, on each computer that records | You should see | If not |
+|---|---|---|---|
+| 1 | `date -u`, at the same moment as the laptop's | the same time, to the second | write the difference on the sheet, with the computer's name |
+| 2 | `chronyc tracking` (only where `services` has run) | `Reference ID` is the Orin; `System time` under 0.01 s | `car_setup.sh <role> check`, its `time` line; without chrony, step 1's note is the record |
 
 ## Day A: nothing destroyed
 
@@ -459,6 +492,39 @@ The same venv also runs the engine once on the test stop sign, with the score an
 
 **Stop point:** our stack built on the Orin and the Motor Pi; the engine built (or why not).
 
+### 4f. The Rust nodes are the ones running
+
+Since 16 Nov (Ben) four nodes run in **Rust** on the car by default; since 17 Nov six. The Python twins
+stay installed, one switch away. Check this each time you start `car.launch.py`.
+
+| Node | Rust package (default) | Fall back to Python |
+|---|---|---|
+| ego + look_ahead | `aav_ego_rs` | `ego_impl:=python` |
+| behaviour (with `behaviour:=true`) | `aav_behaviour_rs` | `behaviour_impl:=python` |
+| sensor watchdog | `aav_watchdog_rs` | `watchdog_impl:=python` |
+| localization_health | `aav_localization_health_rs` | `localization_health_impl:=python` |
+| lidar_scan (the flat scan) | `aav_lidar_rs` | `lidar_impl:=python` |
+| things (with `things:=true`) | `aav_things_rs` | `things_impl:=python` |
+| sensor mux + output mux (the ESP32's heartbeat; the Motor Pi alone too) | `aav_io_mux_rs` | `io_mux_impl:=python` |
+| legacy_uart_bridge (the ESP32's UART, on the Motor Pi) | `aav_legacy_rs` | `legacy_impl:=python` |
+| rc_driver (beside the bridge) | `aav_rc_rs` | `rc_impl:=python` |
+| lane_finder (with the `lane` part; since 18 Nov) | `aav_lane_finder_rs` | `lane_finder_impl:=python` |
+| joy_alive (the joystick's check, wherever teleop runs) | `aav_joy_alive_rs` | `joy_alive_impl:=python` |
+| stop_sign_watcher (the stop_signs part, next to the mux) | `aav_stop_sign_rs` | `stop_sign_impl:=python` |
+| camera_stream (the camera_stream part, only with `detector: none` in `orin.yaml`: RF-DETR runs in the Python one; since 18 Nov) | `aav_camera_stream_rs` | `camera_stream_impl:=python` |
+
+| # | Do | You should see | If not |
+|---|---|---|---|
+| 1 | read the first lines of `car.launch.py` (`~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...`) | `languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust joy_alive_impl:=rust stop_sign_impl:=rust camera_stream_impl:=rust` | a word other than `rust`: someone passed `:=python` |
+| 2 | on the Orin: `ps -eo args \| grep '_rs/lib/' \| grep -v grep` | `aav_ego_rs/lib/...`, `aav_watchdog_rs/lib/...`, `aav_localization_health_rs/lib/...`, `aav_lidar_rs/lib/...`, `aav_io_mux_rs/lib/...`, `aav_stop_sign_rs/lib/...` (and `aav_lane_finder_rs/lib/...` with the lane part); on the Motor Pi `aav_legacy_rs/lib/...`, `aav_rc_rs/lib/...` (and `aav_joy_alive_rs/lib/...` with teleop there) (and `aav_behaviour_rs`, `aav_things_rs` with behaviour and things on) | a package missing: its build failed, see `~/aav-jazzy/build.log` |
+| 3 | `ros2 node list` | `/ego`, `/look_ahead`, `/sensor_watchdog`, `/localization_health`, `/lidar_scan`, `/sensor_mux`, `/output_mux` (and `/things`): the same names as the Python's | |
+
+**If a Rust node misbehaves:** stop the car (e-stop), stop the launch, and start it again
+with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... watchdog_impl:=python`.
+With the short form, put `--` before the switch: `~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python`
+(without `--`, Pixi stops: "received more arguments than expected"). One switch
+per node; the others stay Rust. Write down what you saw: it decides whether the Rust stays.
+
 ## A6 · The steering actuator's ends, Way A
 
 **Who:** the hardware lead, and the laptop person. **How long:** 45 min. **Bring:** a
@@ -535,7 +601,7 @@ ESP32 as noise. And theirs (`aav_serial_bridge`) only stopped comes back at the 
 | 3 | **No login prompt on it:** `sudo systemctl disable --now serial-getty@ttyAMA0.service` (the name from L3; skip if none) | L3 shows none | `sudo systemctl enable --now serial-getty@ttyAMA0.service` |
 | 4 | **Theirs off at boot:** `sudo systemctl disable --now aav_serial_bridge` | L4: `disabled`; L5: nobody | `sudo systemctl enable --now aav_serial_bridge` |
 | 5 | `sudo reboot`, then L1-L5 again | no serial console, no prompt, theirs disabled, nobody on the port | the way back of 2-4, then reboot |
-| 6 | **Ours on:** `~/aav-jazzy/aav.sh car motor_pi` | `serial port /dev/ttyAMA0 open`; L5 shows **one** `python3` | Ctrl-C |
+| 6 | **Ours on:** `~/aav-jazzy/aav.sh car motor_pi` | `serial port /dev/ttyAMA0 open`; L5 shows **one** process: `legacy_uart_bridge` (the Rust bridge, the default since 17 Nov), or `python3` with `-- legacy_impl:=python` | Ctrl-C |
 | 7 | A second terminal: `~/aav-jazzy/aav.sh ros2 topic hz /control/car/link_frame` | about 10 Hz: the bridge reports what it writes | |
 
 !!! warning "The boot line is one line"
@@ -671,7 +737,7 @@ before, without the positions coming back.
 | ☐ | which ESP32 firmware: the Rust (session 6 passed). The C++ (**no timeout**) only for 3.1-3.8, never the joystick or the ground |
 | ☐ | `legacy.yaml`'s `frame_version`: 2 with the Rust, 1 with the C++ |
 | ☐ | A6 done: the steering's ends on the sheet (3.0). A7 done: the brake holds |
-| ☐ | with the C++ (1): the bridge's log says `no-timeout lock ON`. twist_mux then holds every program (scripted, point, Nav2, AI); the keyboard and the actuator tests below still drive. Leave `allow_programs_without_timeout: false` |
+| ☐ | with the C++ (1): the bridge's log says `no-timeout lock ON`. twist_mux then holds every program (scripted, point, navigation, AI); the keyboard and the actuator tests below still drive. Leave `allow_programs_without_timeout: false` |
 | ☐ | everyone knows: **the throttle's strength is a guess.** Two guesses disagree by 5 times ([the car's model](vehicle-model.md): full throttle holds 15 m/s by the drag guess, 3 m/s by the ESP32's open loop). 0.3 m/s asked may spin the wheels much faster: the e-stop person watches 3.2 |
 
 | Where | Run |
@@ -690,7 +756,7 @@ The HUD's GO / STOP panel says whether the car may move, and why not. A latched 
 | 3.2 | Forward, gently | the drive wheels turn **forward**, slowly | backwards: write it down (`legacy_protocol.py`), not fixed at the car. **Fast:** e-stop, write down the speed (3.12's tachometer), and no ground driving until tests 4.2 and 4.4 |
 | 3.2b | Backward, gently (the keyboard's back key) | the drive wheels turn **backward**, slowly; the HUD's speed reads negative | forward: the ESP32's direction switch (ask the hardware lead). **Nav2 must not reverse on the ground until this passes:** `reversing:=false` |
 | 3.3 | Left | the front wheels turn **left** | right: `steering_sign` (Q2) |
-| 3.4 | Let go of the key | slows to 0 within 0.3 s | |
+| 3.4 | Let go of the key | throttle off within 0.5 s (the QEMU rehearsal: 0.4 s), then the hold brake | |
 | 3.5 | The HUD's e-stop button | brakes at once; nothing moves until `pixi run clear estop` | |
 | 3.6 | Stop the keyboard program | the bridge brakes: its commands go stale | |
 | 3.7 | Ctrl-C the Motor Pi's bridge | a last stop frame | |
@@ -806,10 +872,10 @@ the lattice has driven the same goals on the ground ([4f](tests.md#4f-reversing-
 | Layer | What | Changed for the trial? |
 |---|---|---|
 | The switch | `diffusion_trial:=true`; without it `planner:=diffusion` is **refused** on the car | new |
-| The speed | **0.5 m/s at most** for ego, Nav2 and the geofence; `max_speed:=` above 0.5 is **refused** | new |
+| The speed | **0.5 m/s at most** for ego, navigation and the geofence; `max_speed:=` above 0.5 is **refused** | new |
 | The guard | G1-G8 on every path the model draws; the lattice's path if none passes, or after 150 ms | no |
 | Below it | MPPI, collision_monitor (front and back), twist_mux's locks, ego, the geofence, the watchdog, the spine | **no** |
-| A person | the joystick or keyboard outranks Nav2; the Kar-Tech stop | no |
+| A person | the joystick or keyboard outranks navigation; the Kar-Tech stop | no |
 
 Why 0.5 m/s: walking pace; the car's own reverse limit, so forwards and backwards alike;
 at ego's 2 m/s² it stops in 6 cm, plus 15 cm for a 0.3 s stale command. Half of ego's
@@ -911,7 +977,7 @@ Step 10, calibration:
 
 At home: the delay goes in `orin.yaml`'s `camera_stream` `delay` (0.06 s today); commit
 the two calibration files (`docs/camera-calibration.md`). Until they're in, the stop-sign
-rule uses Gazebo's lens and the car stops too early.
+rule uses the simulator's lens and the car stops too early.
 
 **Stop point:** both streams at 15 fps on the Orin, the delay measured, both cameras calibrated.
 
@@ -983,7 +1049,7 @@ ends the 2025-26 software on that computer, and the backup is the only way back.
 | B2a | The dash: `upgrade` ([Car setup, step 2](car-setup.md#step-2-the-ubuntu-2204-pis-to-2404)) | its card image GOOD (A2) | `✍ ________ at __:__` |
 | B2b | The camera Pis: `apt full-upgrade` only ([step 3](car-setup.md#step-3-the-pis-on-raspberry-pi-os)) | their card images GOOD | `✍ ________ at __:__` |
 | B2c | The Motor Pi: `upgrade --after-esp32` | the Rust ESP32 passed session 6; its card image GOOD | `✍ ________ at __:__` |
-| B2d | LOCALIZATION: **not yet**. `car_setup.sh` refuses until a machine file runs its IMU and GPS | that machine file (TODO 75) | |
+| B2d | LOCALIZATION: `upgrade` ([step 2](car-setup.md#step-2-the-ubuntu-2204-pis-to-2404)). Its machine file exists since 8 Nov (`machines/localization.yaml`), so `car_setup.sh` no longer refuses | its card image GOOD; our IMU and GPS drivers seen running from the kit | `✍ ________ at __:__` |
 | B3 | The Orin: its full image, then the reflash | the box below | `✍ ________ at __:__` |
 | B4 | The lab desktop: its update | B3 done | `✍ ________ at __:__` |
 
@@ -1027,7 +1093,7 @@ can't). At the drive, Ben's MacBook is the ground station: it does everything el
 | 1 | Which CARLA: `docker images \| grep carla`, or the folder's name (`CarlaUE4` = 0.9.x, `CarlaUnreal` = 0.10); `lsb_release -d; nvidia-smi` | the version, Ubuntu's, the GPU and its memory: write them in the machines table | 0.10 needs 16 GB of video memory; Carleton's map needs 0.9.16 ([CARLA](carla.md)) |
 | 2 | Clone ecolo-av, then `pixi run build` and `pixi run test` | all green | as on any laptop ([Getting started](getting-started.md)) |
 | 3 | CARLA's server, headless ([CARLA](carla.md), steps 1-2), its Python client the same version | the server listens on 2000 | the client must match the server |
-| 4 | **The rehearsal:** `pixi run carla-car host:=127.0.0.1`, then the car day's own steps: the keyboard, a scripted drive, a Nav2 goal, a goal behind (the U-turn) | the car drives each, in CARLA | write down what failed: fix it before the day |
+| 4 | **The rehearsal:** `pixi run carla-car host:=127.0.0.1`, then the car day's own steps: the keyboard, a scripted drive, a goal, a goal behind (the U-turn) | the car drives each, in CARLA | write down what failed: fix it before the day |
 
 ### 11b. In the lab: the Orin's full image
 

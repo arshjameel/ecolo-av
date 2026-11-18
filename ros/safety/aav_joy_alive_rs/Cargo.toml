@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# joy-alive-core: joy_alive's rules without ROS (aav_safety's joy_alive.py, ported):
+#   cargo test -p joy-alive-core
+# joy-alive-node: the ROS node (rclrs), binary `joy_alive`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/joy-alive-core", "crates/joy-alive-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

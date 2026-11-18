@@ -30,6 +30,18 @@ ego:
     lag_lead_max_speed: 0.3     # m/s the lead may add or take; max_speed still caps
     lag_lead_max_steer: 0.1     # rad the lead may add or take; the steering limits still cap
     lag_aware_drivers: [scripted, point, nav, ai]
+    # The pedal (pedal.py, Ben 15 Nov): while a person drives, the stick is an accelerator
+    # and a brake. Let off: slows, at most pedal_let_off (stick let go, like engine braking);
+    # pulled back: brakes by how far, up to max_deceleration; at a standstill, reverses,
+    # but only after pedal_shift_hold s held at 0, the brake on (Ben, 17 Nov: "come to a
+    # complete stop and shift"), and, while /vehicle/odom is fresh, its speed under
+    # pedal_stop_speed: ego's own model reaches 0 before the wheels do.
+    # The e-stop, a stale command or a turn still brake fully. [] = off (plain speeds).
+    pedal_drivers: [joy, rc, keyboard]
+    pedal_let_off: 1.0          # m/s^2 (Ben, 15 Nov); a guess to tune on the car
+    pedal_full: 1.0             # m/s: what a full stick asks (teleop_twist_joy scale_linear)
+    pedal_shift_hold: 1.0       # s at a standstill before the other way; a guess to tune on stands
+    pedal_stop_speed: 0.05      # m/s: a fresh wheel speed under this counts as stopped
     # The trace (aav_ego trace_ahead.py): /ego/trace, where the car goes, in base_link.
     trace_horizon: 2.0          # s ahead
     trace_rate_hz: 10.0         # 0: none

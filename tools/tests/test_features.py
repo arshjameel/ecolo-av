@@ -11,8 +11,9 @@ import re
 
 ROOT = Path(__file__).resolve().parents[2]
 PAGE = ROOT / 'docs' / 'features.md'
-TYPES = ('Sensors', 'Localization', 'Perception', 'Drivers', 'Navigation', 'Control',
-         'Safety', 'Backends', 'Firmware', 'Simulation', 'HUD', 'Tools', 'Infrastructure')
+TYPES = ('Sensors', 'Localization', 'Perception', 'Drivers', 'Navigation', 'Behaviour',
+         'Control', 'Safety', 'Backends', 'Firmware', 'Simulation', 'HUD', 'Tools',
+         'Infrastructure')
 STATUSES = ('planned', 'built', 'sim', 'car')
 HEADER = ['Feature', 'Why', 'Who', 'Date', 'Status']
 

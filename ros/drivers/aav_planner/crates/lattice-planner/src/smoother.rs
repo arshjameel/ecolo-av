@@ -16,11 +16,17 @@ use crate::Pose;
 /// Nav2's `SmootherParams` (its defaults: nav2.yaml sets none).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SmootherSettings {
+    /// Stop once a pass moves the path less than this.
     pub tolerance: f64,
+    /// The most passes.
     pub max_iterations: usize,
+    /// The weight on staying near the search's path.
     pub w_data: f64,
+    /// The weight on smoothness.
     pub w_smooth: f64,
+    /// Smooth the smoothed path again.
     pub do_refinement: bool,
+    /// How many times, with `do_refinement`.
     pub refinement_num: usize,
 }
 

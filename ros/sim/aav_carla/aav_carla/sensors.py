@@ -153,7 +153,7 @@ def radar_points(raw: bytes, intensity: float = 1.0) -> np.ndarray:
     Return a CARLA radar's detections as the TI driver's points.
 
     A CARLA radar's detections as the TI driver's points: x, y, z, intensity, velocity
-    (N x 5 float32, ROS axes, radar_link), as aav_gazebo's radar.FIELDS.
+    (N x 5 float32, ROS axes, radar_link), as aav_sim_models's radar.FIELDS.
 
     Each CARLA detection is velocity (m/s, along the ray), azimuth and altitude (rad;
     azimuth + to the right, Unreal's y) and depth (m), float32 each. The point goes along

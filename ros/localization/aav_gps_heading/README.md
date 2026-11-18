@@ -22,7 +22,7 @@ The car has no working magnetometer, so without this the gyro alone carries the 
 
 | In / out | Topic | Type |
 |---|---|---|
-| in | `/sensors/gps/fix_velocity` | `geometry_msgs/TwistWithCovarianceStamped`: ENU m/s (ublox_gps; Gazebo's gazebo_gps) |
+| in | `/sensors/gps/fix_velocity` | `geometry_msgs/TwistWithCovarianceStamped`: ENU m/s (ublox_gps; the simulator's sim_gps) |
 | in | `/vehicle/odom` | `nav_msgs/Odometry`: the wheels' signed speed and turn rate |
 | out | `/localization/gps/heading` | `sensor_msgs/Imu`, `base_link`: orientation (yaw from east, counter-clockwise) and its variance only |
 
@@ -66,5 +66,5 @@ cd ros/localization/aav_gps_heading && python3 -m pytest -q   # the maths, no RO
 pixi run build && colcon test --packages-select aav_gps_heading && colcon test-result --verbose
 ```
 
-`tools/test.sh` runs the first; `pixi run test` runs everything. Against Gazebo's
+`tools/test.sh` runs the first; `pixi run test` runs everything. Against Ravensim's
 truth, forward and reversing: `pixi run tools/ros.sh --local python3 tools/heading_check.py` (about 4 min a run).

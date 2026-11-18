@@ -5,8 +5,16 @@
 //! drawn between pictures and a camera not due costs nothing. Bevy keeps ROS's axes (z up),
 //! as the developer window does: only each camera turns into Bevy's camera axes.
 //!
+//! Which adapter draws: a GPU if there is one, else a software one (Mesa's lavapipe, through
+//! Vulkan: `tools/software_gl.sh` on Linux). [`Adapter::Software`] or
+//! `WGPU_FORCE_FALLBACK_ADAPTER=1` asks for the software one even beside a GPU.
+//! [`BevyRenderer::adapter`] says which one it got.
+//!
 //! Lighting: no tone mapping, no dithering. A colour in the world (linear, as Gazebo's) comes
 //! out times the light, `ambient + sun.strength * cos(angle to the sun)`, then into sRGB.
+//! [`Graphics::Pretty`] (the program's default on a GPU) adds grain, a sky, haze and longer
+//! shadows ([`scene`]); [`Graphics::Simple`] (the default drawn in software, and
+//! [`BevyRenderer::new`]'s) is exactly the plain look above.
 
 pub mod scene;
 
@@ -26,15 +34,18 @@ use bevy::{
         gpu_readback::{Readback, ReadbackComplete},
         pipelined_rendering::PipelinedRenderingPlugin,
         render_resource::{PipelineCache, TextureFormat, TextureUsages},
-        RenderApp,
+        renderer::RenderAdapterInfo,
+        settings::{RenderCreation, WgpuSettings},
+        RenderApp, RenderPlugin,
     },
     window::ExitCondition,
-    winit::WinitPlugin,
 };
 use camera_core::{
     frame::{padded_row_bytes, rgba_rows_to_rgb, ShortCopy},
     CameraRenderer, Frame, Pose, Rig, SimWorld,
 };
+
+pub use camera_core::Graphics;
 
 pub use camera_core;
 
@@ -48,8 +59,8 @@ const WARM_UP_RENDERS: usize = 200;
 /// Why a picture can't be drawn.
 #[derive(Debug)]
 pub enum RenderError {
-    /// Bevy found no GPU to draw with (on a Linux computer with none: `tools/software_gl.sh`
-    /// gives no Vulkan, so the cameras can't run there).
+    /// Bevy found nothing to draw with: no GPU, and no software renderer either (on a Linux
+    /// computer with no GPU, run it under `tools/software_gl.sh`: Mesa's lavapipe).
     NoGpu(String),
     /// The GPU didn't hand the pictures back in time.
     Timeout {
@@ -67,7 +78,11 @@ pub enum RenderError {
 impl fmt::Display for RenderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoGpu(why) => write!(f, "no GPU to draw with: {why}"),
+            Self::NoGpu(why) => write!(
+                f,
+                "no GPU to draw with, and no software renderer: {why} \
+                 (with no GPU on Linux: tools/software_gl.sh)"
+            ),
             Self::Timeout { steps } => {
                 write!(f, "no picture back from the GPU after {steps} steps")
             }
@@ -80,6 +95,39 @@ impl fmt::Display for RenderError {
 }
 
 impl std::error::Error for RenderError {}
+
+/// Which adapter to ask Bevy for.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Adapter {
+    /// A GPU if there is one, else a software renderer if one is installed. The default.
+    #[default]
+    Any,
+    /// A software renderer only (wgpu's fallback adapter: Mesa's lavapipe), even beside a
+    /// GPU: to try CI's way on a computer with a GPU.
+    Software,
+}
+
+/// The adapter Bevy drew with, for the log.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AdapterUsed {
+    /// The adapter's own name, such as "Apple M4 Max" or "llvmpipe (LLVM 20.1.8, 256 bits)".
+    pub name: String,
+    /// Metal, Vulkan, Gl...
+    pub backend: String,
+    /// Drawn by the CPU, not a GPU: slow.
+    pub software: bool,
+}
+
+impl fmt::Display for AdapterUsed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let kind = if self.software {
+            "software, on the CPU"
+        } else {
+            "GPU"
+        };
+        write!(f, "{} ({}, {kind})", self.name, self.backend)
+    }
+}
 
 /// One rig camera inside Bevy.
 struct Slot {
@@ -129,13 +177,35 @@ pub struct BevyRenderer {
     slots: Vec<Slot>,
     /// Everything spawned for the world, to replace it.
     world_entities: Vec<Entity>,
+    adapter: AdapterUsed,
+    graphics: Graphics,
 }
 
 impl BevyRenderer {
     /// Starts Bevy with no window, adds one offscreen camera per rig camera and the world,
-    /// and draws until every shader is ready.
+    /// and draws until every shader is ready. Any adapter: a GPU if there is one.
     pub fn new(rig: &Rig, world: &SimWorld) -> Result<Self, RenderError> {
-        let app = panic::catch_unwind(AssertUnwindSafe(start_app)).map_err(|e| {
+        Self::with_adapter(rig, world, Adapter::Any)
+    }
+
+    /// As [`BevyRenderer::new`], on the adapter asked for.
+    pub fn with_adapter(
+        rig: &Rig,
+        world: &SimWorld,
+        adapter: Adapter,
+    ) -> Result<Self, RenderError> {
+        Self::with_graphics(rig, world, adapter, Some(Graphics::Simple))
+    }
+
+    /// As [`BevyRenderer::with_adapter`], drawing `graphics`; `None` chooses by the adapter
+    /// it gets ([`Graphics::for_adapter`]: pretty on a GPU, simple in software).
+    pub fn with_graphics(
+        rig: &Rig,
+        world: &SimWorld,
+        adapter: Adapter,
+        graphics: Option<Graphics>,
+    ) -> Result<Self, RenderError> {
+        let app = panic::catch_unwind(AssertUnwindSafe(|| start_app(adapter))).map_err(|e| {
             let why = e
                 .downcast_ref::<String>()
                 .cloned()
@@ -143,15 +213,37 @@ impl BevyRenderer {
                 .unwrap_or_else(|| "Bevy stopped while starting".to_owned());
             RenderError::NoGpu(why)
         })?;
+        let adapter = app
+            .world()
+            .get_resource::<RenderAdapterInfo>()
+            .map(|info| AdapterUsed {
+                name: info.name.clone(),
+                backend: format!("{:?}", info.backend),
+                software: info.device_type == wgpu::DeviceType::Cpu,
+            })
+            .ok_or_else(|| RenderError::NoGpu("Bevy started with no adapter".to_owned()))?;
+        let graphics = graphics.unwrap_or_else(|| Graphics::for_adapter(adapter.software));
         let mut renderer = Self {
             app,
             slots: Vec::new(),
             world_entities: Vec::new(),
+            adapter,
+            graphics,
         };
         renderer.add_cameras(rig);
         renderer.set_world(world)?;
         renderer.warm_up()?;
         Ok(renderer)
+    }
+
+    /// The adapter it draws with: say it in the log, so a slow picture has its reason.
+    pub fn adapter(&self) -> &AdapterUsed {
+        &self.adapter
+    }
+
+    /// How much it draws: simple or pretty.
+    pub fn graphics(&self) -> Graphics {
+        self.graphics
     }
 
     fn add_cameras(&mut self, rig: &Rig) {
@@ -225,17 +317,29 @@ impl BevyRenderer {
     }
 }
 
-fn start_app() -> App {
+fn start_app(adapter: Adapter) -> App {
+    // Bevy's own defaults (and its WGPU_* variables), with the software renderer if asked.
+    let settings = WgpuSettings {
+        force_fallback_adapter: adapter == Adapter::Software,
+        // Mesa's lavapipe lists cooperative-matrix shapes but not the feature itself, so
+        // wgpu 30 offers it, Bevy asks for every feature offered, and Vulkan refuses the
+        // device (VK_ERROR_FEATURE_NOT_PRESENT, 15 Nov). Nothing here uses it.
+        disabled_features: Some(wgpu::Features::EXPERIMENTAL_COOPERATIVE_MATRIX),
+        ..default()
+    };
     let mut app = App::new();
     app.add_plugins(
         DefaultPlugins
+            .set(RenderPlugin {
+                render_creation: RenderCreation::Automatic(Box::new(settings)),
+                ..default()
+            })
             .set(WindowPlugin {
                 primary_window: None,
                 exit_condition: ExitCondition::DontExit,
                 close_when_requested: false,
                 ..default()
             })
-            .disable::<WinitPlugin>()
             // Draw in the same step: a picture comes back sooner, and nothing renders
             // between our steps.
             .disable::<PipelinedRenderingPlugin>(),
@@ -271,7 +375,8 @@ impl CameraRenderer for BevyRenderer {
                 entity.despawn();
             }
         }
-        self.world_entities = scene::spawn(ecs, world, CAR_LAYER)?;
+        let cameras: Vec<Entity> = self.slots.iter().map(|s| s.entity).collect();
+        self.world_entities = scene::spawn(ecs, world, CAR_LAYER, self.graphics, &cameras)?;
         Ok(())
     }
 

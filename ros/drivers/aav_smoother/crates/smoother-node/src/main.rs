@@ -3,7 +3,9 @@
 //! Subscribes  cmd_vel              geometry_msgs/TwistStamped: the follower's command
 //!                                  (navigation.launch.py remaps it to cmd_vel_nav)
 //!             odom_topic           nav_msgs/Odometry, only with feedback CLOSED_LOOP: the
-//!                                  measured speed (the latest, not Nav2's average)
+//!                                  measured speed (the latest, not Nav2's average;
+//!                                  older than velocity_timeout: not used, the last
+//!                                  speed sent instead)
 //! Publishes   cmd_vel_smoothed     geometry_msgs/TwistStamped, every 1/smoothing_frequency s
 //!                                  while there is a command (remapped to /drivers/nav/cmd_vel
 //!                                  or /control/cmd_vel_smoothed): the speed within the
@@ -23,7 +25,7 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{bail, Context as _, Result};
 use car_model::ActuatorConfig;
-use car_smoother::{Car, Feedback, Nav2Limits, Settings, Smoother};
+use car_smoother::{Car, Feedback, Nav2Limits, Reading, Settings, Smoother};
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::geometry_msgs::msg::{Twist, TwistStamped, Vector3};
@@ -109,7 +111,10 @@ fn main() -> Result<()> {
     let _odom = if feedback == Feedback::ClosedLoop {
         Some(
             worker.create_subscription(odom_topic.as_str(), |s: &mut Core, msg: Odometry| {
-                s.measured = Some(msg.twist.twist.linear.x)
+                s.measured = Some(Reading {
+                    speed: msg.twist.twist.linear.x,
+                    at: s.now(),
+                })
             })?,
         )
     } else {
@@ -142,7 +147,8 @@ struct Core {
     header: Header,
     /// s: when the last command was stamped (or arrived, if unstamped).
     received: f64,
-    measured: Option<f64>,
+    /// The latest odometry speed, with when it arrived (closed loop).
+    measured: Option<Reading>,
     stamp_with_time: bool,
 }
 
@@ -175,11 +181,13 @@ impl Core {
 
     fn tick(&mut self) {
         let now = self.now();
-        let Some(out) = self.smoother.tick(now, self.measured) else {
+        let timeout = self.smoother.settings().timeout;
+        let measured = self.measured.and_then(|r| r.fresh(now, timeout));
+        let Some(out) = self.smoother.tick(now, measured) else {
             return;
         };
         let mut header = self.header.clone();
-        if now - self.received > self.smoother.settings().timeout {
+        if now - self.received > timeout {
             // Stopping for a stale command: stamped now, as Nav2's zero command is.
             header.stamp = time_of(now);
         } else if self.stamp_with_time {

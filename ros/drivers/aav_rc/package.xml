@@ -11,6 +11,8 @@
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>aav_interfaces</exec_depend>
   <exec_depend>aav_description</exec_depend>
+  <!-- rc.launch.py rc_impl:=rust (the default) starts the Rust twin. -->
+  <exec_depend>aav_rc_rs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

@@ -5,25 +5,37 @@
 //! nearer than the near one, as Gazebo's. The cloud is packed as Gazebo packs it
 //! (gz-sensors' GpuLidarSensor, memory aligned): x, y, z (float32) at 0, 4, 8, intensity
 //! (float32) at 16, ring (uint16) at 24, 32 bytes a point, `height` rings of `width`
-//! points: an organised cloud, so `ros_gz_bridge`'s readers read ours the same.
+//! points: an organised cloud, so `ros_gz_bridge`'s readers read ours the same. Ours adds
+//! `speed` (float32) in Gazebo's padding at 20: how fast what the ray hit moves along the
+//! ray, over the ground (m/s, + away; 0 for the still world), so the radar stand-in can
+//! give a person walking their own Doppler speed (TODO 194). Gazebo's cloud has no such
+//! field: there everything stands still.
 
 use crate::math::{Pose, Vec3};
 use crate::noise::Noise;
 use crate::scene::{Ray, Scene};
+
+/// A placed model's velocity over the ground (m/s, world frame) by its name; `None`: still.
+pub type Motion<'a> = &'a (dyn Fn(&str) -> Option<Vec3> + Sync);
 
 /// A lidar's scan pattern and range, as the URDF's `<lidar>` block says.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LidarSpec {
     /// Steps round (`<horizontal><samples>`), from `h_min` to `h_max` inclusive.
     pub h_samples: usize,
+    /// rad: the first step round.
     pub h_min: f64,
+    /// rad: the last step round.
     pub h_max: f64,
     /// Rings (`<vertical><samples>`), from `v_min` to `v_max` inclusive.
     pub v_samples: usize,
+    /// rad: the lowest ring.
     pub v_min: f64,
+    /// rad: the highest ring.
     pub v_max: f64,
     /// m.
     pub range_min: f64,
+    /// m: the farthest the lidar sees.
     pub range_max: f64,
     /// m: the range noise's standard deviation.
     pub noise: f64,
@@ -32,7 +44,7 @@ pub struct LidarSpec {
 }
 
 impl LidarSpec {
-    /// The simulated roof lidar (aav.sensors.gazebo.xacro): 1800 x 16, ±15°, 0.5-100 m,
+    /// The simulated roof lidar (as Gazebo's URDF had it until 16 Nov): 1800 x 16, ±15°, 0.5-100 m,
     /// 3 cm, 10 Hz, like a VLP-16.
     pub const ROOF: LidarSpec = LidarSpec {
         h_samples: 1800,
@@ -93,9 +105,12 @@ impl LidarSpec {
 /// One scan: the range of every ray, ring by ring.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scan {
+    /// The pattern the scan was taken with.
     pub spec: LidarSpec,
     /// `v_samples` x `h_samples` ranges (m); `inf` for nothing, `-inf` for too near.
     pub ranges: Vec<f32>,
+    /// m/s, one per ray: how fast what it hit moves along it over the ground (+ away).
+    pub speeds: Vec<f32>,
 }
 
 impl Scan {
@@ -110,38 +125,63 @@ impl Scan {
         noise: &mut Noise,
         threads: usize,
     ) -> Scan {
+        Self::cast_moving(spec, scene, sensor, noise, threads, &|_| None)
+    }
+
+    /// As [`Scan::cast`], with each placed model's `motion`: a ray that hits a moving one
+    /// gets its speed along the ray.
+    pub fn cast_moving(
+        spec: &LidarSpec,
+        scene: &Scene,
+        sensor: &Pose,
+        noise: &mut Noise,
+        threads: usize,
+        motion: Motion,
+    ) -> Scan {
         let (rings, steps) = spec.angles();
         let mut ranges = vec![f32::INFINITY; rings.len() * steps.len()];
+        let mut speeds = vec![0.0f32; ranges.len()];
         let width = steps.len().max(1);
         let chunk = rings.len().div_ceil(threads.max(1)).max(1);
-        // One noise stream per worker, forked in order, so a seed still repeats.
-        let streams: Vec<Noise> = (0..rings.len().div_ceil(chunk))
-            .map(|_| noise.fork())
-            .collect();
+        // One noise stream per ring, forked in order: a seed gives the same scan on any
+        // number of threads (one stream per worker made the noise depend on `threads`).
+        let mut streams: Vec<Noise> = rings.iter().map(|_| noise.fork()).collect();
         std::thread::scope(|s| {
-            for ((rows, ring_angles), mut n) in ranges
+            for (((rows, speed_rows), ring_angles), ring_noise) in ranges
                 .chunks_mut(width * chunk)
+                .zip(speeds.chunks_mut(width * chunk))
                 .zip(rings.chunks(chunk))
-                .zip(streams)
+                .zip(streams.chunks_mut(chunk))
             {
                 let steps = &steps;
                 s.spawn(move || {
-                    for (row, &elevation) in rows.chunks_mut(width).zip(ring_angles) {
+                    for (((row, speed_row), &elevation), n) in rows
+                        .chunks_mut(width)
+                        .zip(speed_rows.chunks_mut(width))
+                        .zip(ring_angles)
+                        .zip(ring_noise.iter_mut())
+                    {
                         let (se, ce) = (elevation as f64).sin_cos();
-                        for (cell, &azimuth) in row.iter_mut().zip(steps) {
+                        for ((cell, speed), &azimuth) in
+                            row.iter_mut().zip(speed_row.iter_mut()).zip(steps)
+                        {
                             let (sa, ca) = (azimuth as f64).sin_cos();
                             let local = Vec3::new(ce * ca, ce * sa, se);
                             let ray = Ray {
                                 origin: sensor.position,
                                 direction: sensor.rotation.apply(local),
                             };
-                            *cell = match scene.cast(&ray, spec.range_max) {
+                            let hit = scene.cast_named(&ray, spec.range_max);
+                            *cell = match hit {
                                 None => f32::INFINITY,
-                                Some(d) if d < spec.range_min => f32::NEG_INFINITY,
-                                Some(d) => (d + n.gauss(spec.noise))
+                                Some((d, _)) if d < spec.range_min => f32::NEG_INFINITY,
+                                Some((d, _)) => (d + n.gauss(spec.noise))
                                     .clamp(spec.range_min, spec.range_max)
                                     as f32,
                             };
+                            if let Some(v) = hit.and_then(|(_, name)| name).and_then(motion) {
+                                *speed = ray.direction.dot(v) as f32;
+                            }
                         }
                     }
                 });
@@ -150,6 +190,7 @@ impl Scan {
         Scan {
             spec: *spec,
             ranges,
+            speeds,
         }
     }
 
@@ -174,6 +215,7 @@ impl Scan {
     }
 
     /// The cloud's bytes, packed as Gazebo packs them (see the module's notes).
+    #[must_use]
     pub fn pack(&self) -> Vec<u8> {
         let (rings, steps) = self.spec.angles();
         let mut data = Vec::with_capacity(self.ranges.len() * POINT_STEP);
@@ -186,6 +228,8 @@ impl Scan {
                     point[4 * k..4 * k + 4].copy_from_slice(&v.to_le_bytes());
                 }
                 point[16..20].copy_from_slice(&0.0f32.to_le_bytes());
+                let speed = self.speeds[ring * steps.len() + step];
+                point[20..24].copy_from_slice(&speed.to_le_bytes());
                 point[24..26].copy_from_slice(&(ring as u16).to_le_bytes());
                 data.extend_from_slice(&point);
             }
@@ -194,6 +238,7 @@ impl Scan {
     }
 
     /// Whether every ray hit something within range (PointCloud2's `is_dense`).
+    #[must_use]
     pub fn dense(&self) -> bool {
         self.ranges.iter().all(|r| r.is_finite())
     }
@@ -203,11 +248,12 @@ impl Scan {
 pub const POINT_STEP: usize = 32;
 
 /// A packed cloud's fields: name, byte offset, PointField datatype (7 float32, 4 uint16).
-pub const FIELDS: [(&str, u32, u8); 5] = [
+pub const FIELDS: [(&str, u32, u8); 6] = [
     ("x", 0, 7),
     ("y", 4, 7),
     ("z", 8, 7),
     ("intensity", 16, 7),
+    ("speed", 20, 7),
     ("ring", 24, 4),
 ];
 
@@ -238,6 +284,52 @@ mod tests {
         let scan = Scan::cast(&spec, &scene, &Pose::IDENTITY, &mut Noise::new(1), 2);
         assert!((scan.ranges[1] - 10.0).abs() < 1e-4, "{:?}", scan.ranges);
         assert!(scan.ranges[0] > 10.0 && scan.ranges[0] < 10.1);
+    }
+
+    #[test]
+    fn a_ray_on_a_moving_model_gets_its_speed_along_the_ray() {
+        // TODO 194: a person walking across, 4 m ahead and 3 m right, at 0.8 m/s to the
+        // left: the ray to them closes at 0.8 x 3/5 = 0.48 m/s. The wall stands still.
+        let mut scene = Scene::new(Vec::new());
+        let at = Vec3::new(4.0, -3.0, 0.0);
+        scene.place(
+            "walker",
+            &Mesh::cuboid(Vec3::new(0.2, 0.2, 0.2)),
+            &Pose::new(at, Rot3::IDENTITY),
+        );
+        scene.place(
+            "wall",
+            &Mesh::cuboid(Vec3::new(1.0, 20.0, 5.0)),
+            &Pose::new(Vec3::new(10.5, 0.0, 0.0), Rot3::IDENTITY),
+        );
+        let towards = (-3.0f64).atan2(4.0);
+        let spec = LidarSpec {
+            h_samples: 2,
+            h_min: towards,
+            h_max: 0.0,
+            v_samples: 1,
+            v_min: 0.0,
+            v_max: 0.0,
+            noise: 0.0,
+            ..LidarSpec::ROOF
+        };
+        let walking = |name: &str| (name == "walker").then_some(Vec3::new(0.0, 0.8, 0.0));
+        let scan = Scan::cast_moving(
+            &spec,
+            &scene,
+            &Pose::IDENTITY,
+            &mut Noise::new(1),
+            1,
+            &walking,
+        );
+        assert!((scan.ranges[0] - 4.9).abs() < 0.05, "{:?}", scan.ranges);
+        assert!((scan.speeds[0] + 0.48).abs() < 1e-4, "{:?}", scan.speeds);
+        assert_eq!(scan.speeds[1], 0.0);
+        // Packed at byte 20, as FIELDS says.
+        let packed = scan.pack();
+        let speed = f32::from_le_bytes(packed[20..24].try_into().expect("4 bytes"));
+        assert!((speed + 0.48).abs() < 1e-4);
+        assert!(FIELDS.contains(&("speed", 20, 7)));
     }
 
     #[test]
@@ -287,5 +379,24 @@ mod tests {
         let a = Scan::cast(&LidarSpec::ROOF, &scene, &lidar, &mut Noise::new(9), 4);
         let b = Scan::cast(&LidarSpec::ROOF, &scene, &lidar, &mut Noise::new(9), 4);
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn the_noise_does_not_depend_on_the_threads() {
+        let scene = Scene::new(Mesh::plane(400.0, 400.0).triangles);
+        let lidar = Pose::new(Vec3::new(0.0, 0.0, 1.52), Rot3::IDENTITY);
+        let one = Scan::cast(&LidarSpec::ROOF, &scene, &lidar, &mut Noise::new(9), 1);
+        for threads in [2, 3, 4, 7, 16] {
+            let many = Scan::cast(
+                &LidarSpec::ROOF,
+                &scene,
+                &lidar,
+                &mut Noise::new(9),
+                threads,
+            );
+            assert_eq!(one, many, "{threads} threads");
+        }
+        // And the noise is there: the lowest ring isn't the noiseless 5.873 m everywhere.
+        assert!(one.ranges[..1800].windows(2).any(|w| w[0] != w[1]));
     }
 }

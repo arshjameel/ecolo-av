@@ -17,11 +17,17 @@ use pca9555::Pin;
 /// Everything about today's car that the board-independent code needs.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Calibration {
+    /// The I2C devices' addresses.
     pub addresses: Addresses,
+    /// The steering Jrk's targets.
     pub steering: Steering,
+    /// The brake Jrk's targets.
     pub brake: Brake,
+    /// The throttle DAC's codes.
     pub throttle: Throttle,
+    /// The direction pin.
     pub direction: Direction,
+    /// The wheel encoder.
     pub wheel: Wheel,
     /// Which RC channel does what.
     pub rc: RcMap,
@@ -37,9 +43,13 @@ pub struct Calibration {
 /// expander at the PCA95x5 library's default).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Addresses {
+    /// The steering Jrk.
     pub steering: u8,
+    /// The brake Jrk.
     pub brake: u8,
+    /// The throttle DAC.
     pub dac: u8,
+    /// The I/O expander.
     pub expander: u8,
 }
 
@@ -52,13 +62,16 @@ pub struct Steering {
     pub counts_per_rad: f32,
     /// The targets at full lock: never sent beyond these.
     pub min: u16,
+    /// The target at full lock the other way.
     pub max: u16,
 }
 
 /// The brake: 0 (released) to 1 (full) into brake Jrk targets.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Brake {
+    /// The target with the brake let go.
     pub released: u16,
+    /// The target with the brake full on.
     pub full: u16,
 }
 
@@ -85,6 +98,7 @@ pub struct Direction {
 /// The wheel encoder.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Wheel {
+    /// How far the car rolls a count (m).
     pub metres_per_count: f32,
     /// With no count for this long, the car counts as stopped.
     pub timeout_ms: u32,
@@ -158,6 +172,7 @@ impl Default for Calibration {
 impl Steering {
     /// The Jrk target for an angle (rad, positive left), inside the limits.
     /// Not a number gives the centre.
+    #[must_use]
     pub fn target(&self, angle: f32) -> u16 {
         let target = if angle.is_finite() {
             f32::from(self.centre) + angle * self.counts_per_rad
@@ -169,6 +184,7 @@ impl Steering {
 
     /// The angle (rad) for a reading in target units, such as the Jrk's scaled
     /// feedback.
+    #[must_use]
     pub fn angle(&self, target: u16) -> f32 {
         (f32::from(target) - f32::from(self.centre)) / self.counts_per_rad
     }
@@ -176,6 +192,7 @@ impl Steering {
 
 impl Brake {
     /// The Jrk target for 0 (released) to 1 (full). Not a number gives full.
+    #[must_use]
     pub fn target(&self, brake: f32) -> u16 {
         let b = if brake.is_nan() {
             1.0
@@ -190,6 +207,7 @@ impl Brake {
 
 impl Brake {
     /// The fraction (0 to 1) for a target: the inverse of [`Brake::target`].
+    #[must_use]
     pub fn fraction(&self, target: u16) -> f32 {
         let span = f32::from(self.full) - f32::from(self.released);
         if span == 0.0 {
@@ -201,6 +219,7 @@ impl Brake {
 
 impl Throttle {
     /// The fraction (0 to 1) for a DAC code: the inverse of [`Throttle::code`].
+    #[must_use]
     pub fn fraction(&self, code: u16) -> f32 {
         if self.full_code == 0 {
             return 0.0;
@@ -209,6 +228,7 @@ impl Throttle {
     }
 
     /// The DAC code for 0 to 1. Not a number gives 0.
+    #[must_use]
     pub fn code(&self, throttle: f32) -> u16 {
         if throttle > 0.0 {
             round_within(throttle * f32::from(self.full_code), 0, self.full_code)
@@ -218,6 +238,7 @@ impl Throttle {
     }
 
     /// How far the code may rise in `dt_ms`.
+    #[must_use]
     pub fn max_rise(&self, dt_ms: u32) -> u16 {
         let rise = u32::from(self.rise_per_s) * dt_ms / 1000;
         rise.min(u32::from(u16::MAX)) as u16
@@ -226,6 +247,7 @@ impl Throttle {
 
 impl Direction {
     /// All sixteen expander levels, for forward or reverse.
+    #[must_use]
     pub fn levels(&self, reverse: bool) -> u16 {
         if self.forward_high != reverse {
             self.other_pins | self.pin.mask()

@@ -7,7 +7,7 @@ car move. Ben asked for it on 15 October: type what we want in plain English, li
 ReAct commands.
 
 !!! warning "Stand-ins only, for now"
-    It drives the turtle, Gazebo and bench mode. It refuses the real car unless it's
+    It drives the turtle, Ravensim and bench mode. It refuses the real car unless it's
     started with `--car`, and nobody should do that before the car has been tested on
     stands with a safety driver (see [Why not on the car yet](#why-not-on-the-car-yet)).
 
@@ -19,7 +19,7 @@ ReAct commands.
                                 │  Thought → Action → Observation, again and again
                                 │
                                 ├──MCP, stdio──► drive server ──► /scripted_drive ──► scripted_driver
-                                │                (the rules)   ──► /follow_gps_waypoints (Nav2)
+                                │                (the rules)   ──► /follow_gps_waypoints (the navigator)
                                 │                              ──► /safety/estop (true only)
                                 ▼
                  "The plan: 1. drive(distance_m=10)   Type yes to drive it"
@@ -45,7 +45,7 @@ High-level moves only. The model never sends a speed or a steering angle by itse
 | `status()` | speed, pose (odom, and map when there is one), GPS fix, e-stop, armed, who the mux listens to, any drive running, the limits | no |
 | `drive(distance_m, speed_mps, direction, curvature)` | drives `distance_m` **in total**, speeding up and slowing down included | yes |
 | `turn(angle_deg, radius_m, direction)` | drives forward along an arc: `direction` "left" or "right" | yes |
-| `go_to_gps(lat, lon)` | Nav2 drives to a point (only when Nav2 runs) | yes |
+| `go_to_gps(lat, lon)` | navigation drives to a point (only when navigation runs) | yes |
 | `wait(seconds)` | waits between moves | part of the plan |
 | `check(tool, arguments)` | asks whether a move would pass the rules, without moving | no |
 | `stop()` | cancels the drive: the car slows down and stops | **never** |
@@ -90,7 +90,7 @@ server checks it.
 | No word from twist_mux | every move refused: whether the e-stop is on is unknown | `DriveTools._may_move` |
 | Clearing the e-stop | **never**: a person runs `pixi run clear estop` | it has no such tool |
 | One drive at a time | refused while one runs | `DriveTools._may_move` |
-| A twist_mux lock | refused while a lock holds the driver that would carry the move: the stop-sign and sensor locks (30) hold Nav2 (20), so `go_to_gps`; not the scripted driver (50), so not `drive` or `turn` | `safety.holding_locks` |
+| A twist_mux lock | refused while a lock holds the driver that would carry the move: the stop-sign and sensor locks (30) hold navigation (20), so `go_to_gps`; not the scripted driver (50), so not `drive` or `turn` | `safety.holding_locks` |
 | The real car | refused unless started with `--car` | `safety.allowed_here` |
 | `--car` that can't reach the car | refuses to start: the pixi tasks keep ROS on this computer, so run `AAV_DISCOVERY=SUBNET pixi run -e mcp drive-server --car` (or `talk --car`) | `safety.car_unreachable` |
 | A person driving | the joystick (100) and keyboard (90) outrank the scripted driver (50) in twist_mux | `aav_command_mux/config/twist_mux.yaml`, checked by `test_safety.py` |
@@ -174,7 +174,7 @@ Once: `pixi run build`, then `pixi install -e llm` (Macs with Apple silicon only
 | Terminal 1 | Terminal 2 |
 |---|---|
 | `pixi run turtle` | `pixi run -e llm talk` |
-| `pixi run sim` (Gazebo) | `pixi run -e llm talk` |
+| `pixi run sim` (Ravensim) | `pixi run -e llm talk` |
 | `pixi run bench` | `pixi run -e llm talk` |
 
 Then type, for example:
@@ -212,7 +212,7 @@ The drive server doesn't care which model calls its tools. Claude Code can be th
 instead of the local model: same tools, same limits, same mux priority.
 
 ```text
-  you ──► Claude Code ──MCP, stdio──► drive server ──► /scripted_drive, Nav2 ──► twist_mux ──► ego
+  you ──► Claude Code ──MCP, stdio──► drive server ──► /scripted_drive, the navigator ──► twist_mux ──► ego
 ```
 
 | Step | Do |
@@ -229,7 +229,7 @@ entry to its own config, with `cwd` set to this folder.
 | Question | Answer |
 |---|---|
 | Can it drive the real car? | No. `.mcp.json` starts the server without `--car`, through `tools/ros.sh --local`: it refuses unless it sees a simulator or stand-in on this computer only |
-| Does Claude steer? | No. Each tool runs a whole move here, ramps included, through the scripted driver (priority 50) or Nav2 (20). The joystick and keyboard always win; the e-stop and the watchdog still apply |
+| Does Claude steer? | No. Each tool runs a whole move here, ramps included, through the scripted driver (priority 50) or navigation (20). The joystick and keyboard always win; the e-stop and the watchdog still apply |
 | What if the internet drops? | The move in progress finishes on its own; closing Claude cancels any drive still running |
 | What does it cost? | Claude's own usage; the local model (`talk`) costs nothing and needs no internet, so it stays the car's default |
 

@@ -8,7 +8,9 @@
 
 /// The receiver's serial speed: 115200 baud, 8 data bits, no parity, 1 stop bit.
 pub const BAUD: u32 = 115_200;
+/// Bytes in one servo frame.
 pub const FRAME_LEN: usize = 32;
+/// Channels in one servo frame.
 pub const CHANNELS: usize = 14;
 /// The first two bytes of every servo frame.
 pub const HEADER: [u8; 2] = [0x20, 0x40];
@@ -20,12 +22,14 @@ pub struct Channels(pub [u16; CHANNELS]);
 
 impl Channels {
     /// The channel at a 0-based index, or None past the 14th.
+    #[must_use]
     pub fn get(&self, index: usize) -> Option<u16> {
         self.0.get(index).copied()
     }
 }
 
 /// 0xFFFF minus the sum of the bytes (the first 30 of a frame).
+#[must_use]
 pub fn checksum(bytes: &[u8]) -> u16 {
     bytes
         .iter()
@@ -33,6 +37,7 @@ pub fn checksum(bytes: &[u8]) -> u16 {
 }
 
 /// The channels of a whole frame, or None if its header or checksum is wrong.
+#[must_use]
 pub fn decode(frame: &[u8; FRAME_LEN]) -> Option<Channels> {
     let sent = u16::from_le_bytes([frame[30], frame[31]]);
     if frame[..2] != HEADER || checksum(&frame[..30]) != sent {
@@ -46,6 +51,7 @@ pub fn decode(frame: &[u8; FRAME_LEN]) -> Option<Channels> {
 }
 
 /// The frame a receiver would send for these channels: for tests and bench tools.
+#[must_use]
 pub fn encode(channels: &Channels) -> [u8; FRAME_LEN] {
     let mut frame = [0; FRAME_LEN];
     frame[..2].copy_from_slice(&HEADER);

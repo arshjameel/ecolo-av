@@ -16,6 +16,9 @@
   <exec_depend>diagnostic_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>aav_description</exec_depend>
+  <exec_depend>aav_interfaces</exec_depend>
+  <!-- ego.launch.py ego_impl:=rust: the Rust challenger, ego and look_ahead in one process. -->
+  <exec_depend>aav_ego_rs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

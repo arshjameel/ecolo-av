@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+# stop-zone: the stop zone's decision, no ROS (TODO 182): cargo test -p stop-zone.
+# stop-zone-node: the ROS node (rclrs); the stop zone since 17 Nov (it ran in shadow beside Nav2's
+# collision_monitor first).
+members = ["crates/stop-zone", "crates/stop-zone-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

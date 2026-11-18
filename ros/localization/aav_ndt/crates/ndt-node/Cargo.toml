@@ -15,6 +15,8 @@ anyhow = "1"
 # SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
 ctrlc = { version = "3", features = ["termination"] }
 ndt-core = { path = "../ndt-core" }
+# Ours: the chunk grid (map_chunks:=, TODO 175 step 4).
+map-chunks = { path = "../../../../bringup/aav_description/map-chunks" }
 rclrs = "0.8"
 # The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
 ros-env = "0.3"

@@ -107,6 +107,10 @@ pub struct Matcher {
 impl Matcher {
     /// Builds the map's cubes at each size in `cubes` (m, biggest first: the design's
     /// `[2.0, 1.0]`), from points in the map frame.
+    ///
+    /// # Errors
+    ///
+    /// [`MapError`] if a size gives no map, or `cubes` is empty.
     pub fn new(
         map_points: &[Point],
         cubes: &[f64],
@@ -128,18 +132,51 @@ impl Matcher {
         Ok(Self { levels, settings })
     }
 
+    /// As `new`, but a cube size with no curve gets an empty map instead of an error: the
+    /// chunks near the car may hold nothing (`chunks.rs`); a match then finds no overlap.
+    ///
+    /// # Errors
+    ///
+    /// [`MapError::BadCube`] for a bad size, or `cubes` empty.
+    pub fn new_or_empty(
+        map_points: &[Point],
+        cubes: &[f64],
+        map: impl Fn(f64) -> MapSettings,
+        settings: MatchSettings,
+    ) -> Result<Self, MapError> {
+        let levels = cubes
+            .iter()
+            .map(|&side| {
+                let built = match CubeMap::build(map_points, &map(side)) {
+                    Err(MapError::NoCubes { .. }) => Ok(CubeMap::empty(side)),
+                    other => other,
+                };
+                built.map(|map| Level {
+                    map,
+                    gauss: Gauss::new(side, settings.outlier_ratio),
+                })
+            })
+            .collect::<Result<Vec<_>, MapError>>()?;
+        if levels.is_empty() {
+            return Err(MapError::BadCube(f64::NAN));
+        }
+        Ok(Self { levels, settings })
+    }
+
     /// The cube sizes and how many curves each has.
     pub fn levels(&self) -> impl Iterator<Item = (f64, usize)> + '_ {
         self.levels.iter().map(|l| (l.map.side(), l.map.len()))
     }
 
     /// The score per point of `scan` at `pose`, on the smallest cubes, with no search.
+    #[must_use]
     pub fn score_per_point(&self, scan: &[Point], pose: &Pose2) -> f64 {
         let fine = self.fine();
         evaluate(&fine.map, &fine.gauss, scan, pose, false).score / scan.len().max(1) as f64
     }
 
     /// The derivatives at `pose` on the smallest cubes (for tests and the covariance).
+    #[must_use]
     pub fn evaluate(&self, scan: &[Point], pose: &Pose2) -> Evaluation {
         let fine = self.fine();
         evaluate(&fine.map, &fine.gauss, scan, pose, true)
@@ -151,6 +188,10 @@ impl Matcher {
     }
 
     /// Where `scan` (points in `base_link`) sits best on the map, starting from `guess`.
+    ///
+    /// # Errors
+    ///
+    /// [`MatchError::EmptyScan`] or [`MatchError::NoOverlap`].
     pub fn align(&self, scan: &[Point], guess: Pose2) -> Result<Match, MatchError> {
         if scan.is_empty() {
             return Err(MatchError::EmptyScan);

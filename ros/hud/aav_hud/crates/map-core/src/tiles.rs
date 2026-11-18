@@ -11,8 +11,11 @@ use crate::{
 /// One tile: zoom `z` cuts the world into 2^z x 2^z squares; x goes east, y south.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TileId {
+    /// Zoom.
     pub z: u8,
+    /// Column, east.
     pub x: u32,
+    /// Row, south.
     pub y: u32,
 }
 
@@ -26,17 +29,21 @@ const EQUATOR_M: f64 = 40_075_016.686;
 pub const MAX_TILES: usize = 64;
 
 impl TileId {
+    /// A tile from its zoom, column and row.
+    #[must_use]
     pub const fn new(z: u8, x: u32, y: u32) -> Self {
         Self { z, x, y }
     }
 
     /// The tile one zoom out that holds this one; None at zoom 0.
+    #[must_use]
     pub fn parent(self) -> Option<Self> {
         (self.z > 0).then(|| Self::new(self.z - 1, self.x / 2, self.y / 2))
     }
 
     /// Where a point inside the tile is on the Earth: `(u, v)` from 0 to 1 across it,
     /// v down (the tile's own pixels, divided by its extent).
+    #[must_use]
     pub fn lat_lon(self, u: f64, v: f64) -> LatLon {
         let n = f64::from(1u32 << self.z);
         from_web_mercator((f64::from(self.x) + u) / n, (f64::from(self.y) + v) / n)
@@ -45,6 +52,7 @@ impl TileId {
 
 /// The zoom whose tiles come out about [`TILE_PX`] wide at this scale, at latitude `lat`
 /// (degrees), from 0 to [`MAX_ZOOM`].
+#[must_use]
 pub fn zoom_for(scale: PixelsPerMetre, lat: f64) -> u8 {
     let tile_m_at_zoom_0 = EQUATOR_M * lat.to_radians().cos();
     let z = (tile_m_at_zoom_0 * scale.0 / TILE_PX).log2().round();

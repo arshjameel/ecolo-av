@@ -17,12 +17,15 @@ use crate::geom::{Rotation, Vec3};
 /// Where a point lands, in pixels (u right, v down).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pixel {
+    /// Pixels from the left edge.
     pub u: f64,
+    /// Pixels from the top edge.
     pub v: f64,
 }
 
 impl Pixel {
     /// The pixel's column and row, if it's inside a `width` x `height` picture.
+    #[must_use]
     pub fn index(self, width: u32, height: u32) -> Option<(u32, u32)> {
         let (i, j) = (self.u.floor(), self.v.floor());
         (i >= 0.0 && j >= 0.0 && i < f64::from(width) && j < f64::from(height))
@@ -63,7 +66,11 @@ pub struct Lens {
 }
 
 impl Lens {
-    /// From the focal length in pixels (`aav.sensors.gazebo.xacro`'s `camera_focal`).
+    /// From the focal length in pixels (`camera_focal`, as Gazebo's URDF had it until 16 Nov).
+    ///
+    /// # Errors
+    ///
+    /// [`LensError`] if the picture is empty or the focal length isn't above 0.
     pub fn from_focal(width: u32, height: u32, focal_px: f64) -> Result<Self, LensError> {
         if width == 0 || height == 0 {
             return Err(LensError::EmptyPicture);
@@ -79,6 +86,10 @@ impl Lens {
     }
 
     /// From the horizontal field of view (radians), as SDF's `horizontal_fov`.
+    ///
+    /// # Errors
+    ///
+    /// [`LensError`] if the field of view isn't between 0 and pi, or the picture is empty.
     pub fn from_horizontal_fov(width: u32, height: u32, fov: f64) -> Result<Self, LensError> {
         if !(fov > 0.0 && fov < std::f64::consts::PI) {
             return Err(LensError::BadFov(fov));
@@ -86,40 +97,56 @@ impl Lens {
         Self::from_focal(width, height, f64::from(width) / 2.0 / (fov / 2.0).tan())
     }
 
+    /// Pixels across.
+    #[must_use]
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    /// Pixels down.
+    #[must_use]
     pub fn height(&self) -> u32 {
         self.height
     }
 
+    /// Focal length across, in pixels (camera_info's fx).
+    #[must_use]
     pub fn fx(&self) -> f64 {
         self.focal
     }
 
+    /// Focal length down, in pixels (camera_info's fy): the same, as pixels are square.
+    #[must_use]
     pub fn fy(&self) -> f64 {
         self.focal
     }
 
+    /// The centre's column, in pixels (camera_info's cx).
+    #[must_use]
     pub fn cx(&self) -> f64 {
         f64::from(self.width) / 2.0
     }
 
+    /// The centre's row, in pixels (camera_info's cy).
+    #[must_use]
     pub fn cy(&self) -> f64 {
         f64::from(self.height) / 2.0
     }
 
     /// Top to bottom, radians: what a GPU's perspective camera takes.
+    #[must_use]
     pub fn vertical_fov(&self) -> f64 {
         2.0 * (f64::from(self.height) / 2.0 / self.focal).atan()
     }
 
+    /// Left to right, radians.
+    #[must_use]
     pub fn horizontal_fov(&self) -> f64 {
         2.0 * (f64::from(self.width) / 2.0 / self.focal).atan()
     }
 
     /// camera_info's K, row by row.
+    #[must_use]
     pub fn k(&self) -> [f64; 9] {
         [
             self.fx(),
@@ -135,6 +162,7 @@ impl Lens {
     }
 
     /// camera_info's P: K with a zero fourth column (one camera, no stereo shift).
+    #[must_use]
     pub fn p(&self) -> [f64; 12] {
         [
             self.fx(),
@@ -153,22 +181,26 @@ impl Lens {
     }
 
     /// camera_info's R: the identity (one camera).
+    #[must_use]
     pub fn r(&self) -> [f64; 9] {
         [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
     }
 
     /// camera_info's D (k1, k2, p1, p2, k3): none.
+    #[must_use]
     pub fn d(&self) -> [f64; 5] {
         [0.0; 5]
     }
 
     /// camera_info's distortion_model, as Gazebo's bridge sends it.
+    #[must_use]
     pub fn distortion_model(&self) -> &'static str {
         "plumb_bob"
     }
 
     /// A point in the optical frame (x right, y down, z ahead) to a pixel. `None` behind the
     /// lens. The pixel may be outside the picture: check with [`Pixel::index`].
+    #[must_use]
     pub fn project(&self, optical: Vec3) -> Option<Pixel> {
         (optical.z > 0.0).then(|| Pixel {
             u: self.fx() * optical.x / optical.z + self.cx(),
@@ -179,6 +211,7 @@ impl Lens {
 
 /// The optical frame in a camera's link frame: the link looks along x with z up (ROS, and
 /// Gazebo's camera), the optical frame along z with y down (REP-103's `_optical` suffix).
+#[must_use]
 pub fn optical_in_link() -> Rotation {
     Rotation::from_axes(
         Vec3::new(0.0, -1.0, 0.0), // optical x: right = link -y

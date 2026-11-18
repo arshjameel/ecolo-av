@@ -1,7 +1,7 @@
 # ROS 2 in ten minutes
 
 ROS 2 is three things: a way for programs to send each other messages, a library of
-ready-made programs (Nav2, robot_localization, twist_mux …), and tools to build them and
+ready-made programs (robot_localization, twist_mux …), and tools to build them and
 look inside. We configure the ready-made programs, and write a few of our own.
 
 ## The three parts
@@ -9,7 +9,7 @@ look inside. We configure the ready-made programs, and write a few of our own.
 | Part | What it is | Examples |
 |---|---|---|
 | Messaging | Programs, called **nodes**, publish typed messages on named **topics**. Any node on the network can listen. Nodes find each other by themselves. | `/control/cmd_vel`, `/sensors/imu/data` |
-| Packages | Thousands of open-source nodes, configured with YAML | Nav2, robot_localization, twist_mux, turtlesim |
+| Packages | Thousands of open-source nodes, configured with YAML | robot_localization, twist_mux, turtlesim (Nav2, until we ported it) |
 | Tools | Build, run, inspect, record and visualise | `colcon`, `ros2`, RViz, rqt, `ros2 bag` |
 
 A ROS release is one tested set of all three. Ours is **Jazzy**, supported until May 2029.
@@ -51,7 +51,7 @@ A ROS release is one tested set of all three. Ours is **Jazzy**, supported until
 
 | | Stock: we configure | Ours: we write |
 |---|---|---|
-| Examples | Nav2, robot_localization, twist_mux, joy, teleop, turtlesim | ego, `scripted_driver`, `spine_bridge`, the turtlesim and Gazebo adapters |
+| Examples | robot_localization, twist_mux, joy, teleop, turtlesim | ego, `scripted_driver`, `spine_bridge`, the turtlesim and Ravensim adapters |
 | We change | YAML files and launch files | Python code |
 | Rule | use these first | only for glue that's specific to our car |
 

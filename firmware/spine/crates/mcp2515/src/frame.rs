@@ -46,12 +46,14 @@ impl Frame {
 
     /// A data frame with an 11-bit ID given as a number, as the spine's frames are; None if
     /// the ID needs more than 11 bits, or there are more than 8 bytes.
+    #[must_use]
     pub fn new_standard(id: u16, data: &[u8]) -> Option<Frame> {
         Frame::new(StandardId::new(id)?, data)
     }
 
     /// The ID and the bytes of a standard (11-bit) data frame; None for an extended or a
     /// remote frame.
+    #[must_use]
     pub fn standard_data(&self) -> Option<(u16, &[u8])> {
         match self.id {
             Id::Standard(id) if !self.remote => Some((id.as_raw(), self.data())),
@@ -59,11 +61,14 @@ impl Frame {
         }
     }
 
+    /// The frame's ID, standard or extended.
+    #[must_use]
     pub fn id(&self) -> Id {
         self.id
     }
 
     /// The data bytes; empty for a remote frame.
+    #[must_use]
     pub fn data(&self) -> &[u8] {
         if self.remote {
             &[]
@@ -73,10 +78,13 @@ impl Frame {
     }
 
     /// 0 to 8.
+    #[must_use]
     pub fn dlc(&self) -> usize {
         usize::from(self.dlc)
     }
 
+    /// A remote frame: a request, with no data.
+    #[must_use]
     pub fn is_remote(&self) -> bool {
         self.remote
     }

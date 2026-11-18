@@ -16,7 +16,9 @@ pub type Point = (f32, f32);
 /// A wheel: its centre and radius.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Wheel {
+    /// Its centre.
     pub centre: Point,
+    /// Its radius.
     pub radius: f32,
 }
 
@@ -26,6 +28,7 @@ pub struct Silhouette {
     /// The body's outline (closed: its last point is its first), then the windows, the
     /// door's cut and the crease along the side.
     pub lines: Vec<Vec<Point>>,
+    /// Rear and front wheels.
     pub wheels: [Wheel; 2],
 }
 
@@ -36,14 +39,18 @@ pub const HEIGHT: f32 = 0.345;
 /// and how long it is.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Placement {
+    /// The tail's x (px).
     pub left: f32,
+    /// The ground's y (px).
     pub ground: f32,
+    /// The car's length (px).
     pub length: f32,
 }
 
 impl Placement {
     /// As long as it fits in the box (`x`, `y`, `width`, `height`), standing on the
     /// box's bottom, at its right end.
+    #[must_use]
     pub fn bottom_right(x: f32, y: f32, width: f32, height: f32) -> Self {
         let length = width.min(height / HEIGHT).max(0.0);
         Self {
@@ -54,6 +61,7 @@ impl Placement {
     }
 
     /// A point of the drawing on the screen.
+    #[must_use]
     pub fn at(self, (x, y): Point) -> Point {
         (self.left + x * self.length, self.ground - y * self.length)
     }
@@ -84,6 +92,7 @@ fn arch(axle: f32) -> impl Iterator<Item = Point> {
 }
 
 /// The hatchback coupe.
+#[must_use]
 pub fn hatchback() -> Silhouette {
     // Round the top, from the tail's bottom to the nose's bottom.
     let top = [

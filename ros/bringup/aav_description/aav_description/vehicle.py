@@ -17,17 +17,19 @@ The launch files use this so the car's measurements live in one file:
                        controller)                              # RewrittenYaml can't write
     vehicle.ego_params(vehicle.load())          # ego: the whole file (the actuators too)
     vehicle.track_params(nav2, cfg, ego, max_speed)  # aav_track: a trial tracker (tracker:=)
-    vehicle.mppi_lag_params(nav2, cfg, ego, max_speed)  # aav_mppi_lag: MPPI with the lag
+    vehicle.mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)  # aav_mppi_lag's
+    vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed)  # aav_mpc_lag's (tracker:=mpc_lag_rs)
+    vehicle.check_speed_loop(name, tracker)  # speed_loop:=, the profile every car model assumes
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
-    vehicle.gazebo_steering_limit(v) # Gazebo's AckermannSteering steering_limit
 """
 
 import copy
 import math
 import os
 
+from aav_description.car_model import SPEED_LOOP_PROFILES
 import yaml
 
 
@@ -70,23 +72,6 @@ def centre_angle(v, inner, outer):
     if inner <= 0.0 or outer <= 0.0:
         raise ValueError('measure both wheels turned the same way, each > 0')
     return math.atan(2.0 / (1.0 / math.tan(inner) + 1.0 / math.tan(outer)))
-
-
-def gazebo_steering_limit(v):
-    """
-    Return the steering_limit for Gazebo's AckermannSteering system (rad).
-
-    It is not the centre angle, nor the inner wheel's (gz-sim 8, AckermannSteering.cc,
-    UpdateVelocity): Gazebo turns it into a smallest radius, wheelbase / sin(limit), then
-    sets the centre angle to atan(wheelbase / radius). Given max_steering_angle itself,
-    the car stops at atan(sin(0.5)) = 0.447 rad, not 0.5. So pass the limit whose sine
-    is tan(max_steering_angle): the smallest radius is then wheelbase / tan(max), the
-    bicycle model's, and the centre wheel reaches max_steering_angle.
-    """
-    t = math.tan(v['max_steering_angle'])
-    if not 0.0 < t < 1.0:
-        raise ValueError("Gazebo's AckermannSteering can't steer 45 degrees or more")
-    return math.asin(t)
 
 
 def footprint_points(v):
@@ -173,13 +158,13 @@ SEES_BEHIND = ('lidar', 'rear_camera')
 
 def blind_behind(reversing, **sensors):
     """
-    Why Nav2 must not reverse with these sensors, or None if it may.
+    Why navigation must not reverse with these sensors, or None if it may.
 
     sensors: name=True for each one running (lidar=..., radar=..., rear_camera=...).
     """
     if not reversing or any(sensors.get(name) for name in SEES_BEHIND):
         return None
-    return ('nothing sees behind the car (the radar faces forward): Nav2 stays forward '
+    return ('nothing sees behind the car (the radar faces forward): navigation stays forward '
             "only. Start the lidar (or the rear camera's obstacles) to let it reverse")
 
 
@@ -188,12 +173,51 @@ def blind_behind(reversing, **sensors):
 # car (0.3 m is the ground 10 m away, with the car pitched 1.7 degrees). Above the car's
 # roof by more than OVERHEAD_MARGIN: branches, signs, a garage door the car passes under.
 GROUND_CLEARANCE = 0.3  # m
+# m: how far the planner's copy of the lidar's layer marks (the follower's: 12 m). A box
+# parked in the lane was first planned round 7-11 m ahead at 2.5 m/s (the global costmap
+# and the plan each once a second), too late for a gentle pass (16 Nov). Not further: the
+# ground at 20 m is 0.6 m up with the car pitched 1.7 degrees.
+PLANNER_SEES = 18.0
 OVERHEAD_MARGIN = 0.5   # m above the body's height
 
 
 def obstacle_heights(v):
     """Return (lowest, highest) m above the road that counts as an obstacle for the lidar."""
     return GROUND_CLEARANCE, float(v['body']['height']) + OVERHEAD_MARGIN
+
+
+# Both EKFs let the car's command slow their speed (robot_localization's control term,
+# TODO 207). With the wheels silent (a fault, a lost frame) an EKF with no speed
+# measurement kept its last speed and its last acceleration: ekf_local ran on 15 m while
+# the car stood, and map -> odom jumped 10 m back when the wheels came back (the
+# follower's path then lay outside its costmap, and goals failed). Now a command below the
+# speed slows the prediction toward it (or to 0 once the command is silent
+# EKF_CONTROL_TIMEOUT s: twist_mux's locks send nothing), at EKF_CONTROL_GAIN (1/s) and at
+# most the car's max_brake. A command above the speed never speeds the prediction up
+# (acceleration limit 0): the car answers late (its actuators' lag), and a prediction
+# that ran ahead of wheels saying 0 dragged the position metres on (tried, 17 Nov). The
+# wheels, when they speak, still decide.
+EKF_CONTROL_TOPIC = '/control/cmd_vel'
+EKF_CONTROL_TIMEOUT = 0.5
+EKF_CONTROL_GAIN = 2.0
+
+
+def ekf_control_params(cfg):
+    """
+    Return robot_localization's control term for both EKFs, from vehicle.yaml's actuators.
+
+    Only the forward speed (vx) follows the command, and only down: acceleration limit 0,
+    deceleration up to max_brake. The turn is the IMU's. Six values each (vx, vy, vz,
+    vroll, vpitch, vyaw), as robot_localization wants.
+    """
+    brake = float(cfg['actuators']['max_brake'])
+    return {'use_control': True, 'stamped_control': True,
+            'control_timeout': EKF_CONTROL_TIMEOUT,
+            'control_config': [True, False, False, False, False, False],
+            'acceleration_limits': [0.0] + [1.0] * 5,
+            'acceleration_gains': [EKF_CONTROL_GAIN] + [1.0] * 5,
+            'deceleration_limits': [brake] + [1.0] * 5,
+            'deceleration_gains': [EKF_CONTROL_GAIN] + [1.0] * 5}
 
 
 def ego_params(cfg):
@@ -282,21 +306,37 @@ def final_approach(v):
     return s_bend_length(r, 2.0 * r)
 
 
-# Nav2's path followers (docs/path-followers.md): rpp, Regulated Pure Pursuit, chases a point
-# ahead on the path; mppi samples thousands of futures through its Ackermann model. MPPI is
-# the default since 22 Oct: in Gazebo it did at least as well in every run, and it turns to
-# a goal's heading, which Pure Pursuit can't (it aims only at a point).
-CONTROLLERS = ('rpp', 'mppi')
+# How often the navigator plans a to-pose goal again (Hz): Nav2's own tree's 1 Hz. The
+# wiggle's second test (TODO 149) plans once per goal: REPLAN_ONCE_HZ, once in about three
+# hours (navigator_params' replan_period).
+REPLAN_HZ = 1.0
+REPLAN_ONCE_HZ = 1e-4
+
+
+# The follower's tuning block in nav2.yaml (controller_server's FollowPath): mppi, Nav2's
+# MPPI block, which mppi_lag and the trackers read. Nav2's controller_server, and with it
+# Regulated Pure Pursuit (rpp), went with Nav2 on 17 Nov (TODO 184): its scores are in
+# docs/league-results-2026-11-16.md and docs/history/nav2-as-it-was.md.
+CONTROLLERS = ('mppi',)
 DEFAULT_CONTROLLER = 'mppi'
+# nav2_tuned's layouts of FollowPath: mppi, the MPPI block copied there (what the launch
+# always picks); rpp, the file's own FollowPath kept (Regulated Pure Pursuit's numbers,
+# whose lookahead aav_track reads; and a part of nav2.yaml with no MPPI block, as tests give).
+TUNED_CONTROLLERS = ('rpp', 'mppi')
 
 
-# The trial path followers (docs/trials.md, aav_track): each stands in for controller_server's
-# FollowPath with tracker:=<name>. 'none' keeps controller_server (CONTROLLERS) following.
-# Apart from CONTROLLERS, not in it: nav2_tuned treats anything not mppi as RPP.
-# mppi_lag is aav_mppi_lag's node (Rust), not aav_track's: Nav2's MPPI ported, on a car
-# model with the actuators' lag (docs/mppi-lag.md).
-TRACKERS = ('none', 'pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag')
-DEFAULT_TRACKER = 'none'
+# The path followers (tracker:=, docs/trials.md): each serves follow_path. mppi_lag, the
+# default since Nav2 went (17 Nov), is aav_mppi_lag's node (Rust): Nav2's MPPI ported, on a
+# car model with the actuators' lag (docs/mppi-lag.md). mpc_lag_rs is aav_mpc_lag's node
+# (Rust): aav_track's mpc_lag ported, a challenger beside it (TODO 132, 199). The rest are
+# aav_track's (Python). 'none' (Nav2's controller_server) went with Nav2.
+TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
+            'mpc_lag_rs')
+DEFAULT_TRACKER = 'mppi_lag'
+# The trackers that drive forwards only (aav_track's, and mpc_lag_rs): refused with
+# reversing:=true. mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse").
+FORWARD_ONLY_TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag',
+                         'mpc_lag_rs')
 
 
 def check_tracker(tracker, reversing=False):
@@ -304,18 +344,20 @@ def check_tracker(tracker, reversing=False):
     name = str(tracker).strip().lower()
     if name not in TRACKERS:
         raise ValueError(f'tracker:={tracker}: pick one of {", ".join(TRACKERS)}')
-    if name != 'none' and reversing:
+    if name in FORWARD_ONLY_TRACKERS and reversing:
         raise ValueError(f'tracker:={name} drives forwards only: add reversing:=false '
                          "(the planner would plan reversing it can't follow)")
     return name
 
 
-# Whose costmaps (costmap:=, docs/own-costmap.md): nav2 (the default, and the car's) or own
-# (aav_costmap, a trial beside Nav2's). Each one's raw local costmap, for aav_mppi_lag.
-COSTMAPS = ('nav2', 'own')
-DEFAULT_COSTMAP = 'nav2'
-COSTMAP_RAW_TOPICS = {'nav2': '/local_costmap/costmap_raw',
-                      'own': '/drivers/nav/costmap/local_raw'}
+# Whose costmaps (costmap:=, docs/own-costmap.md): own (aav_costmap), the only one since
+# Nav2's went (17 Nov, TODO 184); the switch stays so a challenger can join it. Its raw
+# local costmap, for aav_mppi_lag; its local costmap, for the screens' look ahead.
+COSTMAPS = ('own',)
+DEFAULT_COSTMAP = 'own'
+COSTMAP_RAW_TOPICS = {'own': '/drivers/nav/costmap/local_raw'}
+LOCAL_COSTMAP_TOPIC = '/drivers/nav/costmap/local'
+GLOBAL_COSTMAP_GRID_TOPIC = '/drivers/nav/costmap/global'
 
 
 def check_costmap(costmap):
@@ -326,14 +368,13 @@ def check_costmap(costmap):
     return name
 
 
-# Whose navigator (navigator:=, docs/own-navigator.md): nav2 (bt_navigator and
-# waypoint_follower: the default, and the car's) or own (aav_navigator, a trial). Each
-# one's actions, by Nav2's own short names: a goal sender asks navigator_action() for its.
-NAVIGATORS = ('nav2', 'own')
-DEFAULT_NAVIGATOR = 'nav2'
+# Whose navigator (navigator:=, docs/own-navigator.md): own (aav_navigator), the only one
+# since bt_navigator and waypoint_follower went with Nav2 (17 Nov). It serves the four
+# actions under Nav2's own names, so no goal sender changed.
+NAVIGATORS = ('own',)
+DEFAULT_NAVIGATOR = 'own'
 NAVIGATOR_ACTIONS = ('navigate_to_pose', 'navigate_through_poses', 'follow_waypoints',
                      'follow_gps_waypoints')
-OWN_NAVIGATOR_PREFIX = '/drivers/nav/navigator/'
 
 
 def check_navigator(navigator):
@@ -344,11 +385,11 @@ def check_navigator(navigator):
     return name
 
 
-# Whose velocity smoother (smoother:=, docs/own-smoother.md): nav2 (velocity_smoother: the
-# default, and the car's) or own (aav_smoother's car_smoother, a trial: the turn rate from
-# where the wheels can be). Ours runs under Nav2's node name, so it reads the same block.
-SMOOTHERS = ('nav2', 'own')
-DEFAULT_SMOOTHER = 'nav2'
+# Whose velocity smoother (smoother:=, docs/own-smoother.md): own (aav_smoother's
+# car_smoother: the turn rate from where the wheels can be), the only one since Nav2's
+# velocity_smoother went (17 Nov). It runs under that node name and reads its block.
+SMOOTHERS = ('own',)
+DEFAULT_SMOOTHER = 'own'
 
 
 def check_smoother(smoother):
@@ -357,6 +398,330 @@ def check_smoother(smoother):
     if name not in SMOOTHERS:
         raise ValueError(f'smoother:={smoother}: pick one of {", ".join(SMOOTHERS)}')
     return name
+
+
+# Which voxels node cuts the lidar into cubes (voxels:= or screen_cubes:=, voxels_impl:=):
+# python (aav_voxels, the default) or rust (aav_voxels_rs, its port: the same node name,
+# topics and answers, about 8 times faster). Each one's package.
+VOXELS_IMPLS = {'python': 'aav_voxels', 'rust': 'aav_voxels_rs'}
+DEFAULT_VOXELS_IMPL = 'python'
+
+
+def check_voxels_impl(impl):
+    """Return the voxels node's language (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in VOXELS_IMPLS:
+        raise ValueError(f'voxels_impl:={impl}: pick one of {", ".join(VOXELS_IMPLS)}')
+    return name
+
+
+# Which lidar_scan flattens the lidar (lidar:=true, lidar_impl:=): rust (aav_lidar_rs, the
+# default since 17 Nov: the same node name, topics and ranges, 2 % of a core against 5 %)
+# or python (aav_lidar, the fallback). Each one's package.
+LIDAR_IMPLS = {'python': 'aav_lidar', 'rust': 'aav_lidar_rs'}
+DEFAULT_LIDAR_IMPL = 'rust'
+
+
+def check_lidar_impl(impl):
+    """Return lidar_scan's language (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in LIDAR_IMPLS:
+        raise ValueError(f'lidar_impl:={impl}: pick one of {", ".join(LIDAR_IMPLS)}')
+    return name
+
+
+# Which things node tracks the cubes (things:=true, things_impl:=): rust (aav_things_rs,
+# the default since 17 Nov: the same node name, topics, parameters and things, 1.5 % of a
+# core against 7.5 %) or python (aav_things, the fallback). Each one's package.
+THINGS_IMPLS = {'python': 'aav_things', 'rust': 'aav_things_rs'}
+DEFAULT_THINGS_IMPL = 'rust'
+
+
+def check_things_impl(impl):
+    """Return the things node's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in THINGS_IMPLS:
+        raise ValueError(f'things_impl:={impl}: pick one of {", ".join(THINGS_IMPLS)}')
+    return name
+
+
+# Which object detector runs (detector.launch.py, sim.launch.py detector_impl:=): python
+# (aav_detector: PyTorch, Core ML or TensorRT; the default) or rust (aav_detector_rs:
+# RF-DETR's ONNX through ONNX Runtime, a challenger, docs/onnx.md). The same node name and
+# topics. Each one's package.
+DETECTOR_IMPLS = {'python': 'aav_detector', 'rust': 'aav_detector_rs'}
+DEFAULT_DETECTOR_IMPL = 'python'
+
+
+def check_detector_impl(impl):
+    """Return the detector's language (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in DETECTOR_IMPLS:
+        raise ValueError(f'detector_impl:={impl}: pick one of {", ".join(DETECTOR_IMPLS)}')
+    return name
+
+
+# Which ego runs (ego.launch.py, car.launch.py, sim.launch.py ego_impl:=): rust
+# (aav_ego_rs: ego and look_ahead in one process; the default on the car and in the
+# simulator, Ben, 16 Nov) or python (aav_ego's two nodes: the same node names, topics and
+# answers; kept selectable until a car day proves the Rust). Each one's package.
+EGO_IMPLS = {'python': 'aav_ego', 'rust': 'aav_ego_rs'}
+DEFAULT_EGO_IMPL = 'rust'
+# The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
+SIM_DEFAULT_EGO_IMPL = DEFAULT_EGO_IMPL
+
+
+def check_ego_impl(impl):
+    """Return ego's language (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in EGO_IMPLS:
+        raise ValueError(f'ego_impl:={impl}: pick one of {", ".join(EGO_IMPLS)}')
+    return name
+
+
+# Which behaviour node runs, with behaviour:=true (navigation.launch.py, car.launch.py,
+# sim.launch.py behaviour_impl:=): rust (aav_behaviour_rs, the default on the car and in
+# the simulator, Ben, 16 Nov) or python (aav_behaviour: the same node name, topics and
+# answers; kept selectable until a car day proves the Rust). Each one's package.
+BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+DEFAULT_BEHAVIOUR_IMPL = 'rust'
+# The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
+SIM_DEFAULT_BEHAVIOUR_IMPL = DEFAULT_BEHAVIOUR_IMPL
+
+
+# Which sensor watchdog runs (watchdog.launch.py, car.launch.py, sim.launch.py
+# watchdog_impl:=): rust (aav_watchdog_rs, the default since Ben decided, 16 Nov:
+# "watchdog in rust sure") or python (aav_safety's: the same node name, topics and
+# answers; kept selectable until a car day proves the Rust). Each one's package.
+WATCHDOG_IMPLS = {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+DEFAULT_WATCHDOG_IMPL = 'rust'
+
+
+def check_watchdog_impl(impl):
+    """Return the sensor watchdog's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in WATCHDOG_IMPLS:
+        raise ValueError(f'watchdog_impl:={impl}: pick one of {", ".join(WATCHDOG_IMPLS)}')
+    return name
+
+
+# Which sensor mux and output mux run (io_mux.launch.py, car.launch.py, sim.launch.py
+# io_mux_impl:=): rust (aav_io_mux_rs, the default on the car and in the simulator since
+# Ben decided, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later")
+# or python (aav_io_mux: the same node names, topics and answers; kept selectable until a
+# car day proves the Rust). Both muxes switch together. Each one's package.
+IO_MUX_IMPLS = {'python': 'aav_io_mux', 'rust': 'aav_io_mux_rs'}
+DEFAULT_IO_MUX_IMPL = 'rust'
+
+
+def check_io_mux_impl(impl):
+    """Return the muxes' language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in IO_MUX_IMPLS:
+        raise ValueError(f'io_mux_impl:={impl}: pick one of {", ".join(IO_MUX_IMPLS)}')
+    return name
+
+
+# Which legacy_uart_bridge runs (legacy.launch.py, car.launch.py, sim.launch.py esp32:=true;
+# legacy_impl:=): rust (aav_legacy_rs, the default since Ben decided, 17 Nov: "Rust
+# tomorrow ... I don't think we want to do this again later") or python (aav_legacy: the
+# same node name, topics, parameters and frames; kept until a car day proves the Rust).
+LEGACY_IMPLS = {'python': 'aav_legacy', 'rust': 'aav_legacy_rs'}
+DEFAULT_LEGACY_IMPL = 'rust'
+
+
+def check_legacy_impl(impl):
+    """Return the UART bridge's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in LEGACY_IMPLS:
+        raise ValueError(f'legacy_impl:={impl}: pick one of {", ".join(LEGACY_IMPLS)}')
+    return name
+
+
+# Which rc_driver runs (rc.launch.py, legacy.launch.py, car.launch.py; rc_impl:=): rust
+# (aav_rc_rs, the default since 17 Nov, with the bridge) or python (aav_rc).
+RC_IMPLS = {'python': 'aav_rc', 'rust': 'aav_rc_rs'}
+DEFAULT_RC_IMPL = 'rust'
+
+
+def check_rc_impl(impl):
+    """Return rc_driver's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in RC_IMPLS:
+        raise ValueError(f'rc_impl:={impl}: pick one of {", ".join(RC_IMPLS)}')
+    return name
+
+
+# Which point_driver drives to one point (drive_to_point.launch.py, and the sim, bench and car
+# profiles that start it; drive_to_point_impl:=): rust (aav_drive_to_point_rs, the default
+# since 18 Nov: the same node name, action, topics and answers) or python
+# (aav_drive_to_point, the fall-back). Each one's package.
+DRIVE_TO_POINT_IMPLS = {'python': 'aav_drive_to_point', 'rust': 'aav_drive_to_point_rs'}
+DEFAULT_DRIVE_TO_POINT_IMPL = 'rust'
+
+
+def check_drive_to_point_impl(impl):
+    """Return point_driver's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in DRIVE_TO_POINT_IMPLS:
+        raise ValueError(f'drive_to_point_impl:={impl}: pick one of '
+                         f'{", ".join(DRIVE_TO_POINT_IMPLS)}')
+    return name
+
+
+# Which arm_when_open arms the stand-ins' spine (bench.launch.py arm:=true, ravensim.launch.py
+# spine:=true; arm_when_open_impl:=): rust (aav_spine_bridge's, beside the Rust bridge, the
+# default since 18 Nov) or python (aav_spine's). Each one's package.
+ARM_WHEN_OPEN_IMPLS = {'python': 'aav_spine', 'rust': 'aav_spine_bridge'}
+DEFAULT_ARM_WHEN_OPEN_IMPL = 'rust'
+
+
+def check_arm_when_open_impl(impl):
+    """Return arm_when_open's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in ARM_WHEN_OPEN_IMPLS:
+        raise ValueError(f'arm_when_open_impl:={impl}: pick one of '
+                         f'{", ".join(ARM_WHEN_OPEN_IMPLS)}')
+    return name
+
+
+# Which lane_finder finds the lane lines (lane_finder.launch.py, and every profile that starts
+# it: lane:=true, lane_pose:=true, the car's lane part; lane_finder_impl:=): rust
+# (aav_lane_finder_rs, the default since Ben, 18 Nov: "it helps the car stay on the correct
+# side"; the same node name, topics, parameters and lanes, no OpenCV) or python
+# (aav_lane_finder, the fallback). Each one's package.
+LANE_FINDER_IMPLS = {'python': 'aav_lane_finder', 'rust': 'aav_lane_finder_rs'}
+DEFAULT_LANE_FINDER_IMPL = 'rust'
+
+
+def check_lane_finder_impl(impl):
+    """Return lane_finder's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in LANE_FINDER_IMPLS:
+        raise ValueError(f'lane_finder_impl:={impl}: pick one of '
+                         f'{", ".join(LANE_FINDER_IMPLS)}')
+    return name
+
+
+# Which camera_stream pulls each camera Pi stream (camera_stream.launch.py, the car's
+# camera_stream part; camera_stream_impl:=): rust (aav_camera_stream_rs, the default since
+# Ben, 18 Nov: "lets port them to rust"; the same node name, topics, parameters and
+# diagnostics) or python (aav_camera_stream, the fallback). The Rust one runs no model: with
+# a detector (rfdetr, yolo) or decoder:=opencv, the Python one runs (camera_stream_runs).
+CAMERA_STREAM_IMPLS = {'python': 'aav_camera_stream', 'rust': 'aav_camera_stream_rs'}
+DEFAULT_CAMERA_STREAM_IMPL = 'rust'
+
+
+def check_camera_stream_impl(impl):
+    """Return camera_stream's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in CAMERA_STREAM_IMPLS:
+        raise ValueError(f'camera_stream_impl:={impl}: pick one of '
+                         f'{", ".join(CAMERA_STREAM_IMPLS)}')
+    return name
+
+
+def camera_stream_runs(impl, detector, decoder):
+    """
+    Return (the language that runs, why it isn't the one asked for, or '').
+
+    The Rust camera_stream has no model and no in-process OpenCV decoder: with a detector
+    or decoder:=opencv, the Python one runs instead.
+    """
+    name = check_camera_stream_impl(impl)
+    if name == 'python':
+        return name, ''
+    if str(detector).strip().lower() != 'none':
+        return 'python', (f'detector:={detector} runs inside the Python camera_stream '
+                          '(the Rust one has no model)')
+    if str(decoder).strip() == 'opencv':
+        return 'python', 'decoder:=opencv decodes inside the Python camera_stream'
+    return name, ''
+
+
+# Which joy_alive runs (teleop.launch.py, car.launch.py; joy_alive_impl:=): rust
+# (aav_joy_alive_rs, the default since Ben, 17 Nov: "I don't think we want to do this again
+# later") or python (aav_safety's: the same node name, topics, parameters and answers).
+JOY_ALIVE_IMPLS = {'python': 'aav_safety', 'rust': 'aav_joy_alive_rs'}
+DEFAULT_JOY_ALIVE_IMPL = 'rust'
+
+
+def check_joy_alive_impl(impl):
+    """Return joy_alive's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in JOY_ALIVE_IMPLS:
+        raise ValueError(f'joy_alive_impl:={impl}: pick one of {", ".join(JOY_ALIVE_IMPLS)}')
+    return name
+
+
+# Which stop_sign_watcher runs (car.launch.py's stop_signs, sim.launch.py and
+# bench.launch.py with perception; stop_sign_impl:=): rust (aav_stop_sign_rs, the default
+# since Ben, 17 Nov) or python (aav_detector's: the same node name, topics, parameters and
+# answers). Each one's package.
+STOP_SIGN_IMPLS = {'python': 'aav_detector', 'rust': 'aav_stop_sign_rs'}
+DEFAULT_STOP_SIGN_IMPL = 'rust'
+
+
+def check_stop_sign_impl(impl):
+    """Return stop_sign_watcher's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in STOP_SIGN_IMPLS:
+        raise ValueError(f'stop_sign_impl:={impl}: pick one of {", ".join(STOP_SIGN_IMPLS)}')
+    return name
+
+
+# Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
+# localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
+# in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or
+# python (aav_localization_health: the same node name, topics and answers; kept selectable
+# until a car day proves the Rust). Each one's package. Warn only, so no safety lock.
+LOCALIZATION_HEALTH_IMPLS = {'python': 'aav_localization_health',
+                             'rust': 'aav_localization_health_rs'}
+DEFAULT_LOCALIZATION_HEALTH_IMPL = 'rust'
+# The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
+SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = DEFAULT_LOCALIZATION_HEALTH_IMPL
+
+
+def check_localization_health_impl(impl):
+    """Return localization_health's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in LOCALIZATION_HEALTH_IMPLS:
+        raise ValueError(f'localization_health_impl:={impl}: pick one of '
+                         f'{", ".join(LOCALIZATION_HEALTH_IMPLS)}')
+    return name
+
+
+def check_behaviour_impl(impl):
+    """Return the behaviour node's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in BEHAVIOUR_IMPLS:
+        raise ValueError(f'behaviour_impl:={impl}: pick one of {", ".join(BEHAVIOUR_IMPLS)}')
+    return name
+
+
+# The spine's speed loop profile the car runs (sim.launch.py and bench.launch.py
+# speed_loop:=): spine-core's SpeedLoopProfile, car_model.SPEED_LOOP_PROFILES. Every node
+# with a model of the car predicts with the one the simulated car runs (TODO 163): ego's
+# trace (trace_speed_loop), the behaviour planner's stopping law, aav_track's mpc_lag and
+# aav_mpc_lag (mpc_lag.speed_loop), mppi_lag (speed_loop). The car's spine runs default.
+DEFAULT_SPEED_LOOP = 'default'
+# Trackers whose model has only the PI's law: they can't predict the LQI.
+PI_ONLY_TRACKERS = ('mpc_lag', 'mpc_lag_rs')
+
+
+def check_speed_loop(name, tracker=None):
+    """
+    Return a speed loop profile's name (lower case), or raise ValueError saying what to pick.
+
+    tracker: the path follower that will predict it; mpc_lag and mpc_lag_rs refuse the LQI.
+    """
+    profile = str(name).strip().lower()
+    if profile not in SPEED_LOOP_PROFILES:
+        raise ValueError(f'speed_loop:={name}: pick one of {", ".join(SPEED_LOOP_PROFILES)}')
+    if tracker in PI_ONLY_TRACKERS and SPEED_LOOP_PROFILES[profile].lqi is not None:
+        raise ValueError(f"speed_loop:={profile}: tracker:={tracker} models the PI's "
+                         'profiles only (default, smooth, firm)')
+    return profile
 
 
 def smoother_params(cfg, ego, vehicle_yaml):
@@ -374,87 +739,71 @@ def smoother_params(cfg, ego, vehicle_yaml):
             'min_speed_for_steering': float((ego or {}).get('min_speed_for_steering', 0.05))}
 
 
-def navigator_action(navigator, action):
+def navigator_action(action):
     """
-    Return the action's full name for a navigator.
+    Return the action's full name, the same whichever navigator runs: '/navigate_to_pose'.
 
-    '/navigate_to_pose' for Nav2's, or '/drivers/nav/navigator/navigate_to_pose' for ours.
     action: one of NAVIGATOR_ACTIONS.
     """
     if action not in NAVIGATOR_ACTIONS:
         raise ValueError(f'{action}: one of {", ".join(NAVIGATOR_ACTIONS)}')
-    prefix = OWN_NAVIGATOR_PREFIX if check_navigator(navigator) == 'own' else '/'
-    return prefix + action
+    return '/' + action
 
 
-def all_ours(navigator, planner, costmap, tracker):
-    """
-    Return True when every navigation piece is ours.
-
-    Then no Nav2 server is needed for navigation (planner_server, controller_server,
-    behavior_server, bt_navigator, waypoint_follower stay off). map_server, the velocity
-    smoother and collision_monitor still run: the map, and the command line in front of
-    the safety locks.
-    """
-    return (navigator, planner, costmap, tracker) == ('own', 'own', 'own', 'mppi_lag')
-
-
-def navigator_params(v, reversing, waypoints='pass_through'):
+def navigator_params(v, reversing, waypoints='pass_through', replan_hz=None):
     """
     Return aav_navigator's settings (navigator:=own) as a dict, for its JSON parameter.
 
-    The trees' numbers (behavior_trees/*_car*.xml): replanning at 1 Hz (through-poses
-    0.333 Hz), the final approach (final_approach(v), TODO 17), 6 recoveries, Wait 5 s,
+    The trees' numbers (behavior_trees/*_car*.xml): replanning at 1 Hz, but a to-pose goal
+    keeps a valid path up to 10 s (keep_path_age: the trees since 14 Nov, TODO 149; here
+    since 15 Nov, TODO 168) (through-poses 0.333 Hz), the final approach
+    (final_approach(v), TODO 17), 6 recoveries, Wait 5 s,
     BackUp 1 m at half max_reverse_speed only with reversing, RemovePassedGoals' 1 m.
     waypoints: pass_through (ours: one through-poses goal, TODO 140) or stop_at_each
-    (Nav2's waypoint_follower).
+    (Nav2's waypoint_follower). The time limits, so a server that dies mid-goal fails it:
+    plan_timeout, twice nav2.yaml's max_planning_time (5 s); follow_timeout, the
+    follower's silence, Nav2's bond_timeout (4 s); recovery_timeout, a costmap clear.
     """
-    out = {'replan_period': 1.0, 'through_replan_period': 3.0,
+    hz = REPLAN_HZ if replan_hz is None else float(replan_hz)
+    if hz < 0.0:
+        raise ValueError(f'replan_hz:={hz:g}: 0 (plan once) or more')
+    out = {'replan_period': 1.0 / (hz if hz > 0.0 else REPLAN_ONCE_HZ),
+           'through_replan_period': 3.0,
            'final_approach': round(final_approach(v), 3), 'path_end_tolerance': 0.5,
-           'path_max_age': 20.0, 'retries': 6, 'wait': 5.0, 'pass_radius': 1.0,
-           'on_path': 2.0, 'waypoints': waypoints, 'stop_on_failure': False,
-           'replan_failures': 3, 'backup': None}
+           'path_max_age': 20.0, 'keep_path_age': 10.0, 'retries': 6, 'wait': 5.0,
+           'pass_radius': 1.0, 'on_path': 2.0, 'waypoints': waypoints, 'stop_on_failure': False,
+           'replan_failures': 3, 'backup': None,
+           'plan_timeout': 10.0, 'follow_timeout': 4.0, 'recovery_timeout': 5.0}
     if reversing:
         out['backup'] = {'distance': 1.0, 'speed': 0.5 * float(v['max_reverse_speed'])}
     return out
 
 
-# Nav2's planners (planner:=, docs/controllers.md "Planners"), each under the one plugin name
-# the behaviour trees ask for, GridBased. hybrid (SmacPlannerHybrid, the default) and lattice
-# (SmacPlannerLattice, on our own primitives: tools/lattice_primitives.py) keep to the car's
-# turning radius. smac2d (SmacPlanner2D), navfn (NavfnPlanner) and theta_star
-# (ThetaStarPlanner) plan on the grid as if the car could turn on the spot: their paths may
-# have corners the car can't drive, and the follower must round them. Trials only: refused
-# on the real car (check_planner real=True).
-# diffusion (aav_diffusion_planner, a trial: docs/designs/2026-11-02_diffusion-planner.md):
-# a model draws the path and a guard checks it, with the lattice behind it in planner_server
-# as the fallback (TRIAL_PLANNERS: the planner each stands on). Sim and bench only.
-# own (aav_planner, a trial: docs/own-planner.md): Nav2's State Lattice ported to Rust,
-# on the same primitives file and penalties; bt_navigator's trees call it, and
-# planner_server keeps running the lattice beside it (navigate_through_poses, and the
-# head-to-head in controller_compare). Sim and bench only.
-PLANNERS = ('hybrid', 'lattice', 'smac2d', 'navfn', 'theta_star', 'diffusion', 'own')
-CAR_PLANNERS = ('hybrid', 'lattice')
+# The planners (planner:=, docs/own-planner.md). own (aav_planner): Nav2's State Lattice
+# (and its Hybrid-A*, planner_search:=hybrid) ported to Rust, on the same primitives file
+# and penalties: the only one on the car. diffusion (aav_diffusion_planner, a trial:
+# docs/designs/2026-11-02_diffusion-planner.md): a model draws the path and a guard checks
+# it, our planner behind it as the fallback (TRIAL_PLANNERS: the block each plans from).
+# Nav2's planner_server and its planners (SmacPlannerHybrid, SmacPlannerLattice, Smac2D,
+# NavFn, Theta*) went with Nav2 on 17 Nov (TODO 184).
+PLANNERS = ('own', 'diffusion')
+CAR_PLANNERS = ('own',)
 TRIAL_PLANNERS = {'diffusion': 'lattice', 'own': 'lattice'}
-# planner:=own: our planner's action; bt_navigator's compute_path_to_pose is pointed here.
+# Our planner's action; the navigator's (and the diffusion planner's fallback) calls it.
 OWN_PLANNER_ACTION = '/drivers/nav/planner/compute_path_to_pose'
-# ... and its through-poses action (bt_navigator's, and our navigator's, are pointed here).
+# ... and its through-poses action (the navigator's).
 OWN_PLANNER_THROUGH_ACTION = '/drivers/nav/planner/compute_path_through_poses'
-# ... and planner_server's own /plan goes here (ours publishes /plan).
-OWN_PLANNER_NAV2_PLAN = '/drivers/nav/planner/nav2_plan'
-# The lattice is the default (Ben, 1 Nov): with reversing on, every leg of the lot tour,
-# 29 s quicker than Hybrid-A* (docs/trials.md, 30 Oct). Forward only it lost the U-turn
-# (29 Oct), so a car that may not reverse takes Hybrid-A* (FORWARD_ONLY_PLANNER).
-DEFAULT_PLANNER = 'lattice'
-FORWARD_ONLY_PLANNER = 'hybrid'
-# Each planner's block in nav2.yaml's planner_server (GridBased is hybrid's own).
-PLANNER_BLOCKS = {'hybrid': 'GridBased', 'lattice': 'Lattice', 'smac2d': 'Smac2D',
-                  'navfn': 'NavFn', 'theta_star': 'ThetaStar', 'diffusion': 'Lattice',
+# Ours, forward or reversing (its Hybrid-A* is planner_search:=hybrid).
+DEFAULT_PLANNER = 'own'
+FORWARD_ONLY_PLANNER = 'own'
+# Each planner's block in nav2.yaml's planner_server (GridBased is hybrid's own): the
+# file keeps Nav2's layout, so our ports read the blocks they were tuned with.
+PLANNER_BLOCKS = {'hybrid': 'GridBased', 'lattice': 'Lattice', 'diffusion': 'Lattice',
                   'own': 'Lattice'}
 
 
 def server_planner(planner):
-    """Return the planner planner_server runs for planner:= (a trial's, the one behind it)."""
+    """Return nav2.yaml's planner block planner:= plans with: the lattice's (ours ported)."""
     return TRIAL_PLANNERS.get(planner, planner)
 
 
@@ -463,14 +812,56 @@ LATTICE_TOLERANCE = 0.005
 # The lattice primitives files (lattice_headings:=): 16 headings, the default, and 32, a
 # trial (finer headings, more moves; tools/lattice_primitives.py --headings 32).
 LATTICE_HEADINGS = (16, 32)
+# The lattice's moves (lattice_moves:=): nav2, Nav2's generator's (straights and arcs, the
+# default); smooth and smooth_fast, trials: curvature that changes no faster than the
+# steering can turn at 1 m/s (ego's top speed) and at 2.5 m/s (the campus tours'), each
+# move straight at both ends (tools/lattice_smooth.py; 16 headings only).
+LATTICE_MOVES = ('nav2', 'smooth', 'smooth_fast')
 
 
-def lattice_file_name(headings=LATTICE_HEADINGS[0]):
-    """Return the primitives file's name in aav_navigation's config/ for this many headings."""
+# Our planner's search (planner_search:=, with planner:=own; docs/own-planner.md): lattice,
+# Nav2's State Lattice ported (the default, the league's lattice_rs); hybrid, Nav2's
+# Hybrid-A* ported (SmacPlannerHybrid, a challenger: hybrid_rs), on nav2.yaml's GridBased
+# block. Both in aav_planner, sharing the search, the checks, the estimates and the smoother.
+PLANNER_SEARCHES = ('lattice', 'hybrid')
+
+
+def check_planner_search(search, planner='own'):
+    """Return planner_search:= checked (empty: lattice), or raise ValueError saying why."""
+    name = str(search).strip().lower() or PLANNER_SEARCHES[0]
+    if name not in PLANNER_SEARCHES:
+        raise ValueError(f'planner_search:={search}: pick one of {", ".join(PLANNER_SEARCHES)}')
+    if name != PLANNER_SEARCHES[0] and planner != 'own':
+        raise ValueError(f"planner_search:={name} is our planner's (planner:=own), "
+                         f"not planner:={planner}'s")
+    return name
+
+
+def check_lattice_moves(moves):
+    """Return lattice_moves:= checked (empty: nav2), or raise ValueError saying what to pick."""
+    name = str(moves).strip().lower() or LATTICE_MOVES[0]
+    if name not in LATTICE_MOVES:
+        raise ValueError(f'lattice_moves:={moves}: pick one of {", ".join(LATTICE_MOVES)}')
+    return name
+
+
+def smooth_moves(moves):
+    """Return whether lattice_moves:= is one of the smooth trials (not Nav2's moves)."""
+    return check_lattice_moves(moves) != LATTICE_MOVES[0]
+
+
+def lattice_file_name(headings=LATTICE_HEADINGS[0], moves=LATTICE_MOVES[0]):
+    """Return the primitives file's name in aav_navigation's config/: headings, moves."""
     headings = int(headings)
     if headings not in LATTICE_HEADINGS:
         raise ValueError(f'lattice_headings:={headings}: pick one of '
                          f'{", ".join(str(h) for h in LATTICE_HEADINGS)}')
+    moves = check_lattice_moves(moves)
+    if smooth_moves(moves):
+        if headings != LATTICE_HEADINGS[0]:
+            raise ValueError(f'lattice_moves:={moves} has {LATTICE_HEADINGS[0]} headings only, '
+                             f'not lattice_headings:={headings}')
+        return f'lattice_ackermann_{moves}.json'
     tail = '' if headings == LATTICE_HEADINGS[0] else f'_{headings}'
     return f'lattice_ackermann{tail}.json'
 
@@ -561,7 +952,7 @@ def lattice_problems(meta, v, resolution):
     return out
 
 
-def track_params(nav2, cfg, ego=None, max_speed=None):
+def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP):
     """
     Return aav_track's parameters: the same speed and "done" as Nav2's controllers.
 
@@ -569,7 +960,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None):
     cfg: vehicle.yaml (load()); ego: ego.yaml's ros__parameters, for its steering rate.
     The cruise speed is RPP's desired_linear_vel, or `max_speed` (sim_speed:=); the goal
     and progress checks are controller_server's; speeding up and slowing down are the
-    velocity smoother's.
+    velocity smoother's. `speed_loop`: the profile mpc_lag predicts (check_speed_loop).
     """
     server = nav2['controller_server']['ros__parameters']
     goal = server[server['goal_checker_plugins'][0]]
@@ -601,6 +992,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None):
         'max_steering_angle': float(v['max_steering_angle']),
         'max_steering_rate': rate,
         'stamped': bool(server.get('enable_stamped_cmd_vel', False)),
+        'mpc_lag.speed_loop': check_speed_loop(speed_loop),
     }
 
 
@@ -610,10 +1002,36 @@ MPPI_LAG_ACTUATORS = ('max_accel', 'throttle_deadband', 'throttle_lag', 'max_bra
                       'brake_lag', 'drag', 'steer_rate', 'steer_lag', 'steer_offset',
                       'steer_deadband', 'throttle_dead_time', 'brake_dead_time',
                       'steer_dead_time')
+# aav_track's parameters mpc_lag_rs (aav_mpc_lag) doesn't take: pure pursuit's lookahead.
+MPC_LAG_RS_UNUSED = ('lookahead_min', 'lookahead_max', 'lookahead_time')
+
+
+def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP):
+    """
+    Return aav_mpc_lag's parameters: aav_track's (track_params), and the car's actuators.
+
+    The same speed, checks and steering limits as the Python mpc_lag gets, so the two race
+    on the same terms; vehicle.yaml's actuators as actuators.<key> (MPPI_LAG_ACTUATORS, the
+    dead times 0 when unset), where aav_track reads the file itself.
+    """
+    params = {k: v for k, v in track_params(nav2, cfg, ego, max_speed, speed_loop).items()
+              if k not in MPC_LAG_RS_UNUSED}
+    act = cfg['actuators']
+    params.update({f'actuators.{k}': float(act.get(k, 0.0)) for k in MPPI_LAG_ACTUATORS})
+    return params
+
+
 # nav2.yaml's MPPI settings it takes under the same name, and their types.
 MPPI_LAG_SAME = {'time_steps': int, 'model_dt': float, 'batch_size': int,
                  'iteration_count': int, 'temperature': float, 'gamma': float,
                  'vx_std': float, 'transform_tolerance': float, 'retry_attempt_limit': int}
+# The road ahead (aav_interfaces/RoadAhead, the behaviour planner's), which mppi_lag reads
+# for its LaneCritic when the lane map gives it edges.
+ROAD_AHEAD_TOPIC = '/world/road_ahead'
+# LaneCritic's settings (ours; aav_mppi_lag critics.rs, docs/mppi-lag.md): per m² past a
+# lane line, per pose past a kerb (plus per m), every 2nd pose checked.
+LANE_CRITIC = {'soft_weight': 100.0, 'hard_weight': 1000.0, 'cost_power': 1,
+               'trajectory_point_step': 2}
 # ego.yaml's limits it models in front of the car (as ego.<key>).
 MPPI_LAG_EGO = ('max_acceleration', 'max_deceleration', 'max_steering_rate',
                 'min_speed_for_steering')
@@ -624,10 +1042,23 @@ def critic_value(key, value):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return value
     return int(value) if key in ('cost_power', 'offset_from_furthest',
-                                 'trajectory_point_step') else float(value)
+                                 'trajectory_point_step', 'mode') else float(value)
 
 
-def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
+def costmap_timeout(server, costmap):
+    """
+    Return the s after which a costmap is too old to act on, for a node outside Nav2.
+
+    server: planner_server's or controller_server's ros__parameters (their
+    costmap_update_timeout, Nav2's defaults 1.0 and 0.3 s); costmap: its costmap's
+    (publish_frequency): the reader sees a new costmap only once a publish period.
+    """
+    wait = float(server.get('costmap_update_timeout', 0.3))
+    return round(wait + 1.0 / float(costmap.get('publish_frequency', 1.0)), 3)
+
+
+def mppi_lag_params(nav2, cfg, ego=None, max_speed=None, reversing=False, lane=False,
+                    speed_loop=DEFAULT_SPEED_LOOP):
     """
     Return aav_mppi_lag's parameters: Nav2's MPPI block, its checks, and the car's lag.
 
@@ -636,7 +1067,14 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
     controller:=mppi runs it), the goal and progress checks controller_server's, the
     outline and inflation the local costmap's, the actuators vehicle.yaml's, the ramps
     ego's. `max_speed` (sim_speed:=) sets vx_max and stretches prune_distance as
-    nav2_tuned does for Nav2's MPPI. Forward only: vx_min 0.
+    nav2_tuned does for Nav2's MPPI. `reversing` sets it up as nav2_tuned sets Nav2's
+    MPPI: vx_min -max_reverse_speed (else 0), the path followed stretch by stretch at its
+    cusps (enforce_path_inversion, nav2.yaml's tolerances), PathAngleCritic in mode 2,
+    and no PreferForwardCritic.
+    `lane` (behaviour:=true with a lane map: the road ahead has edges) reads
+    `ROAD_AHEAD_TOPIC` and adds our LaneCritic (`LANE_CRITIC`) to the critics; without it
+    the topic is empty and the critics are Nav2's, as before.
+    `speed_loop`: the spine's profile its model predicts (check_speed_loop).
     """
     server = nav2['controller_server']['ros__parameters']
     mppi = server['MPPI']
@@ -647,13 +1085,23 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
     speed = float(max_speed) if max_speed else float(mppi['vx_max'])
     ahead = float(mppi['time_steps']) * float(mppi['model_dt']) * speed
     out = {name: kind(mppi[name]) for name, kind in MPPI_LAG_SAME.items() if name in mppi}
+    critics = list(mppi['critics'])
+    if reversing:
+        # As nav2_tuned's: the planner decides when to reverse (reverse_penalty).
+        critics = [c for c in critics if c != 'PreferForwardCritic']
+    if lane:
+        critics.append('LaneCritic')
     out.update({
         'rate_hz': float(server['controller_frequency']),
         'odom_topic': server['odom_topic'],
         'vx_max': speed,
-        'vx_min': 0.0,
+        'vx_min': reverse_limit(v, reversing),
+        'enforce_path_inversion': bool(reversing),
+        'inversion_xy_tolerance': float(mppi.get('inversion_xy_tolerance', 0.2)),
+        'inversion_yaw_tolerance': float(mppi.get('inversion_yaw_tolerance', 0.4)),
         'prune_distance': max(float(mppi.get('prune_distance', 1.5)), ahead * 1.2),
-        'critics': list(mppi['critics']),
+        'critics': critics,
+        'road_ahead_topic': ROAD_AHEAD_TOPIC if lane else '',
         'xy_goal_tolerance': float(goal['xy_goal_tolerance']),
         'yaw_goal_tolerance': float(goal['yaw_goal_tolerance']),
         'progress_radius': float(progress['required_movement_radius']),
@@ -666,6 +1114,11 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
         'inflation_radius': float(local['inflation_layer']['inflation_radius']),
         'cost_scaling_factor': float(local['inflation_layer']['cost_scaling_factor']),
         'track_unknown_space': bool(local.get('track_unknown_space', False)),
+        # s: a costmap older than this stops the car and fails the path. Nav2's
+        # controller waits costmap_update_timeout for a current one; ours sees the
+        # costmap only when it is published, so one publish period more.
+        'costmap_timeout': costmap_timeout(server, local),
+        'speed_loop': check_speed_loop(speed_loop),
     })
     for key in MPPI_LAG_ACTUATORS:
         out[f'actuators.{key}'] = float(act.get(key, 0.0))
@@ -673,9 +1126,14 @@ def mppi_lag_params(nav2, cfg, ego=None, max_speed=None):
         if ego and key in ego:
             out[f'ego.{key}'] = float(ego[key])
     # Each critic's own settings, under its name, as Nav2 reads them.
-    for critic in mppi['critics']:
+    for critic in critics:
         for key, value in (mppi.get(critic) or {}).items():
             out[f'{critic}.{key}'] = critic_value(key, value)
+    if lane:
+        out.update({f'LaneCritic.{k}': v for k, v in LANE_CRITIC.items()})
+    if reversing and 'PathAngleCritic' in critics:
+        # Mode 2, as nav2_tuned's: follow the path the way it faces, backwards too.
+        out['PathAngleCritic.mode'] = 2
     return out
 
 
@@ -686,7 +1144,7 @@ COSTMAP_SOURCE_DEFAULTS = {
     'min_obstacle_height': 0.0, 'max_obstacle_height': 2.0,
     'obstacle_min_range': 0.0, 'obstacle_max_range': 2.5,
     'raytrace_min_range': 0.0, 'raytrace_max_range': 3.0,
-    'inf_is_valid': False, 'observation_persistence': 0.0,
+    'inf_is_valid': False, 'observation_persistence': 0.0, 'view_angle': 0.0,
 }
 
 
@@ -694,14 +1152,20 @@ COSTMAP_SOURCE_DEFAULTS = {
 OWN_PLANNER_KEYS = (
     'lattice_filepath', 'allow_reverse_expansion', 'allow_unknown', 'tolerance',
     'max_iterations', 'max_on_approach_iterations', 'max_planning_time',
-    'terminal_checking_interval', 'reverse_penalty', 'change_penalty',
+    'terminal_checking_interval', 'reverse_penalty', 'change_penalty', 'cusp_penalty',
     'non_straight_penalty', 'cost_penalty', 'retrospective_penalty', 'rotation_penalty',
     'analytic_expansion_ratio', 'analytic_expansion_max_length',
     'analytic_expansion_max_cost', 'analytic_expansion_max_cost_override',
-    'lookup_table_size', 'smooth_path')
+    'lookup_table_size', 'smooth_path', 'smoother')
 
 
-def planner_params(tuned, v, costmap='nav2'):
+# The Hybrid-A* block's keys our planner reads (planner_search:=hybrid), besides the shared
+# ones in OWN_PLANNER_KEYS; motion_model_for_search and minimum_turning_radius are written.
+OWN_HYBRID_KEYS = ('angle_quantization_bins', 'allow_primitive_interpolation',
+                   'downsample_obstacle_heuristic')
+
+
+def planner_params(tuned, v, costmap='own', search='lattice', nav2=None):
     """
     Return aav_planner's settings (planner:=own) as a dict, from the tuned nav2.yaml.
 
@@ -709,12 +1173,30 @@ def planner_params(tuned, v, costmap='nav2'):
     reversing filled in, is planner_server's GridBased); v: vehicle.yaml's `vehicle`;
     costmap: which global costmap it plans on (nav2 or own). The same block, the car's
     outline and padding, and the global costmap's inflation, so ours plans as Nav2's does.
+    search (PLANNER_SEARCHES): hybrid plans with Hybrid-A* on nav2.yaml's own Hybrid-A*
+    block (`nav2`, the file as loaded: nav2_tuned keeps only the lattice's), as
+    nav2_rewrites writes it for planner:=hybrid: the planning radius
+    (plan_turning_radius), and REEDS_SHEPP when the lattice may reverse, else DUBIN; and
+    the global costmap's cells, which its moves are made for.
     """
+    search = check_planner_search(search)
     block = tuned['planner_server']['ros__parameters']['GridBased']
-    out = {k: block[k] for k in OWN_PLANNER_KEYS if k in block}
     gc = tuned['global_costmap']['global_costmap']['ros__parameters']
+    if search == 'hybrid':
+        if nav2 is None:
+            raise ValueError('planner_search:=hybrid needs nav2.yaml (nav2) for its block')
+        reversing = bool(block.get('allow_reverse_expansion', False))
+        hybrid = nav2['planner_server']['ros__parameters'][PLANNER_BLOCKS['hybrid']]
+        out = {k: hybrid[k] for k in OWN_PLANNER_KEYS + OWN_HYBRID_KEYS if k in hybrid}
+        out['search'] = 'hybrid'
+        out['motion_model_for_search'] = 'REEDS_SHEPP' if reversing else 'DUBIN'
+        out['minimum_turning_radius'] = round(plan_turning_radius(v), 3)
+        out['resolution'] = float(gc.get('resolution', 0.05))
+    else:
+        out = {k: block[k] for k in OWN_PLANNER_KEYS if k in block}
     out['footprint'] = footprint_points(v)
     out['footprint_padding'] = float(gc.get('footprint_padding', 0.01))
+    out['costmap_timeout'] = costmap_timeout(tuned['planner_server']['ros__parameters'], gc)
     out['inflation'] = None
     for plugin in gc['plugins']:
         layer = gc.get(plugin, {})
@@ -728,7 +1210,6 @@ def planner_params(tuned, v, costmap='nav2'):
 # planner:=own: each global costmap's raw topic, its partial updates, and whether it is
 # latched (Nav2 sends the whole map once, then only the changed parts).
 GLOBAL_COSTMAP_TOPICS = {
-    'nav2': ('/global_costmap/costmap_raw', '/global_costmap/costmap_raw_updates', True),
     'own': ('/drivers/nav/costmap/global_raw', '', False),
 }
 
@@ -757,6 +1238,7 @@ def costmap_params(tuned, v, radar=False, camera=False):
             'track_unknown': bool(block.get('track_unknown_space', False)),
             'update_frequency': float(block.get('update_frequency', 5.0)),
             'publish_frequency': float(block.get('publish_frequency', 1.0)),
+            'transform_tolerance': float(block.get('transform_tolerance', 0.3)),
             'footprint': footprint_points(v),
             'footprint_padding': float(block.get('footprint_padding', 0.01)),
             'static_layer': False, 'inflation': None, 'layers': [],
@@ -784,7 +1266,7 @@ def costmap_params(tuned, v, radar=False, camera=False):
                                         'min_obstacle_height', 'max_obstacle_height',
                                         'obstacle_min_range', 'obstacle_max_range',
                                         'raytrace_min_range', 'raytrace_max_range',
-                                        'observation_persistence')}})
+                                        'observation_persistence', 'view_angle')}})
                 spec['layers'].append({
                     'name': plugin,
                     'min_obstacle_height': float(layer.get('min_obstacle_height', 0.0)),
@@ -795,7 +1277,8 @@ def costmap_params(tuned, v, radar=False, camera=False):
     return out
 
 
-def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CONTROLLER):
+def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CONTROLLER,
+                     speed_loop=DEFAULT_SPEED_LOOP):
     """
     Return aav_behaviour's parameters: the cap's top, the lane ahead, ego's limits.
 
@@ -803,6 +1286,7 @@ def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CON
     or `max_speed`, sim_speed:=): a higher cap would raise MPPI's envelope. front and
     half_width are the body's front bumper and half its width plus the stop zone's margin;
     stop_gap is the stop zone's reach (STOP_ZONE_AHEAD): the obstacle's final stop.
+    speed_loop: the spine's profile the stopping law's lag comes from (check_speed_loop).
     """
     server = nav2['controller_server']['ros__parameters']
     if max_speed:
@@ -816,10 +1300,228 @@ def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CON
     out = {'base_speed': base,
            'front': float(body['length'] - body['rear_overhang']),
            'half_width': float(body['width'] / 2.0 + STOP_ZONE_MARGIN),
-           'stop_gap': float(STOP_ZONE_AHEAD)}
+           'stop_gap': float(STOP_ZONE_AHEAD),
+           'speed_loop': check_speed_loop(speed_loop)}
     for key in ('max_deceleration', 'max_jerk'):
         if ego and key in ego:
             out[key] = float(ego[key])
+    return out
+
+
+# Stops reset the drift (TODO 191; the whole-car design, research idea 12): wheels that
+# read nothing mean the car stands still, so its speed, sideways speed and turn rate are
+# exactly 0: free information. The backends then send them nearly certain, and the EKFs'
+# yaw stops creeping on the gyro's bias. Under STANDSTILL_SPEED the encoders can't tell
+# motion from noise (one pulse per window).
+STANDSTILL_SPEED = 0.01        # m/s
+STANDSTILL_VARIANCE = 1e-6     # (m/s)², (rad/s)²: the zero is known, not guessed
+TWIST_STILL = (0, 7, 35)       # vx, vy, vyaw on a 6 x 6 twist covariance's diagonal
+
+
+def standstill_covariance(speed, covariance):
+    """
+    Return the wheels' twist covariance, nearly certain while they read standing still.
+
+    speed: the wheels' speed (m/s); covariance: the 36 numbers the backend would send.
+    Moving (or NaN), the list comes back unchanged.
+    """
+    out = list(covariance)
+    if math.isfinite(speed) and abs(speed) < STANDSTILL_SPEED:
+        for i in TWIST_STILL:
+            out[i] = STANDSTILL_VARIANCE
+    return out
+
+
+LIDAR_MEMORY_SOURCES = ('lidar', 'voxels')    # the local lidar layer's marking sources
+
+
+def with_lidar_memory(cfg, seconds):
+    """
+    Return nav2.yaml's dict with the local lidar layer remembering marks for `seconds`.
+
+    observation_persistence on the lidar's marking sources (the scan, or the cubes): a box
+    the roof lidar saw on the way in stays marked that long after it drops below the
+    lowest beam, about 2.5 m from the bumper for a 0.5 m box (TODO 188, the stock
+    blind-zone memory). 0: the newest scan only, as the file has it. Nav2's costmap and
+    ours both read it.
+    """
+    if not (math.isfinite(seconds) and seconds >= 0.0):
+        raise ValueError(f'lidar_memory must be 0 or more seconds (got {seconds})')
+    layer = cfg['local_costmap']['local_costmap']['ros__parameters']['lidar_layer']
+    for source in LIDAR_MEMORY_SOURCES:
+        if source in layer:
+            layer[source]['observation_persistence'] = float(seconds)
+    return cfg
+
+
+def stop_zone_params(tuned, car):
+    """
+    Return our stop zone's settings (aav_stop_zone's JSON) from tuned nav2.yaml and the car.
+
+    The same as Nav2's collision_monitor reads, so the shadow decides on the same things:
+    the forward and backward boxes (stop_zone_points, rear_stop_zone_points) with their
+    speed ranges, min_points, the timeouts, and each observation source's topic, type,
+    heights and range. Each source's mount in base_link: the radar's from vehicle.yaml
+    (its points come in its own frame); every other source sends base_link already.
+    tuned: nav2_tuned's dict; car: vehicle.load().
+    """
+    v = car['vehicle']
+    monitor = tuned['collision_monitor']['ros__parameters']
+    zone = monitor['StopZone']
+    corners = {'forward': stop_zone_points(v), 'backward': rear_stop_zone_points(v)}
+    bands = [{'name': name, 'points': corners[name],
+              'speed': [float(zone[name]['linear_min']), float(zone[name]['linear_max'])],
+              'turn': [float(zone[name]['theta_min']), float(zone[name]['theta_max'])]}
+             for name in zone['velocity_polygons']]
+    radar = car['sensors']['radar_link']
+    mounts = {'radar': [*map(float, radar['xyz']), float(radar['rpy'][2])]}
+    sources = []
+    for name in monitor['observation_sources']:
+        block = monitor[name]
+        source = {'name': name, 'topic': block['topic'], 'kind': block['type'],
+                  'min_range': float(block.get('min_range', 0.0)),
+                  'mount': mounts.get(name, [0.0, 0.0, 0.0, 0.0])}
+        for bound in ('min_height', 'max_height'):
+            if bound in block:
+                source[bound] = float(block[bound])
+        sources.append(source)
+    return {'min_points': int(zone['min_points']),
+            'source_timeout': float(monitor['source_timeout']),
+            'stop_pub_timeout': float(monitor['stop_pub_timeout']),
+            'bands': bands, 'sources': sources}
+
+
+# Our global costmap from the map's 64 m chunks (costmap_chunks:=, TODO 175 step 3): the
+# chunks the route crosses in the next CHUNKS_AHEAD m are held besides the 3 x 3 round the
+# car (the design's C3), and CHUNKS_MARGIN more chunks round them all, room for the planner
+# to go round a block the route's own chunks leave out.
+CHUNKS_AHEAD = 100.0
+CHUNKS_MARGIN = 1
+
+
+def costmap_chunks_block(folder, ahead=CHUNKS_AHEAD, margin=CHUNKS_MARGIN):
+    """
+    Return the global costmap's `chunks` block for aav_costmap: {dir, ahead, margin}.
+
+    folder: what map-chunks' chunk-map wrote (chunks.yaml, fine/i_j.pgm); made absolute.
+    Raises ValueError without its chunks.yaml, or with a negative ahead or margin.
+    """
+    path = os.path.abspath(folder)
+    if not os.path.isfile(os.path.join(path, 'chunks.yaml')):
+        raise ValueError(f'costmap_chunks:={folder}: no chunks.yaml there. Make the chunks '
+                         'with pixi run campus (or map-chunks chunk-map)')
+    if not (math.isfinite(ahead) and ahead >= 0.0) or int(margin) < 0:
+        raise ValueError(f'chunks: ahead {ahead} m and margin {margin} must be 0 or more')
+    return {'dir': path, 'ahead': float(ahead), 'margin': int(margin)}
+
+
+def with_global_window(cfg, metres):
+    """
+    Return nav2.yaml's dict with the global costmap a `metres` square rolling with the car.
+
+    The three levels' middle level (TODO 175, step 3): 192 m is the 3 x 3 map chunks round
+    the car. The planner then searches only that, and the static layer fills it from the
+    map as it rolls. The street router's legs (10-30 m between waypoints) always fit; a
+    goal further than half the window away can't be planned to. 0: the whole map, as the
+    file has it. Nav2's costmap and ours both read it.
+    """
+    if not (math.isfinite(metres) and metres >= 0.0):
+        raise ValueError(f'global_window must be 0 or more metres (got {metres})')
+    if metres > 0.0:
+        block = cfg['global_costmap']['global_costmap']['ros__parameters']
+        block.update(rolling_window=True, width=float(metres), height=float(metres))
+    return cfg
+
+
+# How hard the planner's smoother pulls its path straight (plan_smoothing:=; TODO 168).
+# nav2: Nav2's own weights (w_data 0.2, w_smooth 0.3), the default. strong, a challenger:
+# w_data 0.02, so the smoother also takes out the lattice's staircase. A road at an angle
+# between two of its 16 headings comes out as steps about 9 m long and 0.2 m high; Nav2's
+# weights only take out wiggles shorter than about 2 m, so the follower drove the steps:
+# the sway on the campus roads. Offline (aav_planner's example staircase, 2.2 m/s) the
+# plan's own swing 0.08-0.16 m -> 0.02-0.07 m. Both planners read it (Nav2's lattice and
+# ours, planner:=own), from the GridBased block's `smoother`.
+PLAN_SMOOTHINGS = {'nav2': None, 'strong': {'w_data': 0.02, 'w_smooth': 0.3}}
+
+
+def check_steer_gamma(gamma):
+    """Return mppi_lag_steer_gamma:= as a float (0 or more), or raise ValueError saying why."""
+    try:
+        value = float(gamma)
+    except (TypeError, ValueError):
+        raise ValueError(f'mppi_lag_steer_gamma:={gamma}: a number, such as 0.05') from None
+    if not (math.isfinite(value) and value >= 0.0):
+        raise ValueError(f'mppi_lag_steer_gamma:={gamma}: 0 or more')
+    return value
+
+
+def check_plan_smoothing(smoothing):
+    """Return plan_smoothing:= checked (empty: nav2), or raise ValueError saying what to pick."""
+    name = str(smoothing).strip().lower() or 'nav2'
+    if name not in PLAN_SMOOTHINGS:
+        raise ValueError(f'plan_smoothing:={smoothing}: pick one of '
+                         f'{", ".join(PLAN_SMOOTHINGS)}')
+    return name
+
+
+def with_plan_smoothing(cfg, smoothing):
+    """
+    Return nav2.yaml's dict (tuned) with the planner's smoother weights for plan_smoothing:=.
+
+    nav2 leaves the file's (Nav2's defaults); strong writes PLAN_SMOOTHINGS' weights into
+    the GridBased block's `smoother`, which Nav2's Smac planners and ours
+    (planner_params) both read.
+    """
+    weights = PLAN_SMOOTHINGS[check_plan_smoothing(smoothing)]
+    plans = cfg.get('planner_server', {}).get('ros__parameters', {})
+    if weights and 'GridBased' in plans:
+        plans['GridBased'].setdefault('smoother', {}).update(weights)
+    return cfg
+
+
+def _typed(value):
+    """Return a rewrite's text as its number or bool (RewrittenYaml's convert_types)."""
+    if not isinstance(value, str):
+        return value
+    try:
+        parsed = yaml.safe_load(value)
+    except yaml.YAMLError:
+        return value
+    return parsed if isinstance(parsed, (bool, int, float)) else value
+
+
+def rewrite(cfg, rewrites):
+    """
+    Return a copy of a parameter file's dict with `rewrites` written in (no ROS).
+
+    Nav2's RewrittenYaml's rules, so nav2.yaml's tuning reads the same without Nav2: a key
+    with no dot (`footprint`) changes every key of that name, at any depth; a dotted path
+    (`collision_monitor.ros__parameters.StopZone.forward.points`) changes that one key,
+    and adds it where it is missing. Text that reads as a number or a bool becomes one.
+    """
+    out = copy.deepcopy(cfg)
+    leaves = {k: _typed(v) for k, v in rewrites.items() if '.' not in k}
+
+    def walk(node):
+        if isinstance(node, dict):
+            for key in node:
+                if key in leaves:
+                    node[key] = leaves[key]
+                else:
+                    walk(node[key])
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(out)
+    for path, value in rewrites.items():
+        if '.' not in path:
+            continue
+        *parents, leaf = path.split('.')
+        node = out
+        for key in parents:
+            node = node.setdefault(key, {})
+        node[leaf] = _typed(value)
     return out
 
 
@@ -860,7 +1562,8 @@ def nav2_rewrites(v, reversing=False, planner='hybrid'):
 
 def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False,
                ghost=False, controller=DEFAULT_CONTROLLER, plan_around=True, camera=False,
-               planner='hybrid', lattice_file=None, voxels=False):
+               planner='own', lattice_file=None, voxels=False, lattice_moves='nav2',
+               kerbs=False):
     """
     Return a copy of nav2.yaml's settings (`nav2`, loaded) with what RewrittenYaml can't write.
 
@@ -890,16 +1593,21 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
       the launch files always name one, as default_planner(reversing) picks): its
       block (PLANNER_BLOCKS) becomes GridBased, the name the behaviour trees ask for, and
       the spare blocks go. lattice also takes
-      `lattice_file` (the primitives) and, with `reversing`, may expand backwards;
+      `lattice_file` (the primitives) and, with `reversing`, may expand backwards; with
+      `lattice_moves` smooth (LATTICE_MOVES), its smoother off (smooth_path): Nav2's
+      smoother joins each stretch's ends with Dubins curves, the curvature jumps the
+      smooth moves leave out (tools/lattice_smooth.py);
     - with `voxels` and `lidar` (aav_voxels, a trial): the lidar_layer reads the cubes and
       the road they saw (sources voxels, voxels_ground) instead of the scan, and
-      collision_monitor's voxels source takes the lidar's place.
+      collision_monitor's voxels source takes the lidar's place;
+    - with `kerbs` and `lidar` (TODO 119): the local costmap's kerb_layer (marks only) and
+      collision_monitor's steps source, both on /perception/voxels/steps: the step
+      finder's kerbs, those of the last 10 s kept by the node (the roof lidar loses a kerb
+      about 4 m before the bumper, before it reaches the stop zone).
     """
-    if controller not in CONTROLLERS:
-        raise ValueError(f'controller:={controller}: pick one of {", ".join(CONTROLLERS)}')
+    if controller not in TUNED_CONTROLLERS:
+        raise ValueError(f'controller:={controller}: pick one of {", ".join(TUNED_CONTROLLERS)}')
     planner = server_planner(check_planner(planner))
-    if planner == 'lattice' and not lattice_file:
-        raise ValueError('planner:=lattice needs its primitives file (lattice_file)')
     out = copy.deepcopy(nav2)
     # (A part of nav2.yaml with no planner_server, as some tests give, keeps none.)
     plans = out.get('planner_server', {}).get('ros__parameters')
@@ -907,9 +1615,12 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
         chosen = copy.deepcopy(plans[PLANNER_BLOCKS[planner]])
         for block in PLANNER_BLOCKS.values():
             plans.pop(block, None)
-        if planner == 'lattice':
+        if planner == 'lattice' and lattice_file:
+            # The launch always gives it (navigation.launch.py lattice_for, checked).
             chosen['lattice_filepath'] = lattice_file
             chosen['allow_reverse_expansion'] = bool(reversing)
+            if smooth_moves(lattice_moves):
+                chosen['smooth_path'] = False
         plans['GridBased'] = chosen
     servers = out['controller_server']['ros__parameters']
     if controller == 'mppi':
@@ -930,10 +1641,12 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
     lidar_source = 'voxels' if cubes else 'lidar'
     monitor['observation_sources'] = [name for name, on in (('radar', radar),
                                                             (lidar_source, lidar),
+                                                            ('steps', kerbs and lidar),
                                                             ('camera', camera), ('ghost', ghost))
                                       if on]
     local = out['local_costmap']['local_costmap']['ros__parameters']
-    gone = {layer for layer, on in (('lidar_layer', lidar), ('ghost_layer', ghost)) if not on}
+    gone = {layer for layer, on in (('lidar_layer', lidar), ('ghost_layer', ghost),
+                                    ('kerb_layer', kerbs and lidar)) if not on}
     local['plugins'] = [p for p in local['plugins'] if p not in gone]
     if cubes:
         # The cubes stand up to the roof plus its margin: the layer, which bounds every
@@ -951,6 +1664,13 @@ def nav2_tuned(nav2, v, reversing=False, max_speed=None, radar=True, lidar=False
     for layer in seen:
         planner[layer] = copy.deepcopy(local[layer])
         planner[layer]['enabled'] = True
+        if layer == 'lidar_layer':
+            for source in planner[layer].get('observation_sources', '').split():
+                block = planner[layer][source]
+                block['obstacle_max_range'] = max(float(block.get('obstacle_max_range', 0.0)),
+                                                  PLANNER_SEES)
+                block['raytrace_max_range'] = max(float(block.get('raytrace_max_range', 0.0)),
+                                                  PLANNER_SEES + 3.0)
     if seen:
         at = planner['plugins'].index('inflation_layer')
         planner['plugins'] = planner['plugins'][:at] + seen + planner['plugins'][at:]

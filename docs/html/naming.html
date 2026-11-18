@@ -9,7 +9,11 @@
 <h1>Topic names by area (Done, 15 October)</h1>
 <div class="meta">8 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -141,7 +153,7 @@ match a folder under <code>ros/</code> (the <code>/sensors/</code> topics come f
 <tr>
 <td><code>/vehicle/</code></td>
 <td>what the car says about itself</td>
-<td>the backend (spine, legacy, Gazebo, bench)</td>
+<td>the backend (spine, legacy, Ravensim, bench)</td>
 </tr>
 <tr>
 <td><code>/can/</code></td>
@@ -161,7 +173,7 @@ match a folder under <code>ros/</code> (the <code>/sensors/</code> topics come f
 <tr>
 <td><code>/drivers/</code></td>
 <td>one command per driver</td>
-<td>joystick, RC, keyboard, tests, scripted, replay, go-to, Nav2, AI</td>
+<td>joystick, RC, keyboard, tests, scripted, replay, go-to, navigation, AI</td>
 </tr>
 <tr>
 <td><code>/control/</code></td>
@@ -184,6 +196,11 @@ match a folder under <code>ros/</code> (the <code>/sensors/</code> topics come f
 <td>the HUD</td>
 </tr>
 <tr>
+<td><code>/world/</code></td>
+<td>one picture of the world that every level shares: <code>/world/road_ahead</code> (where the car may be, how fast, where it stops); later <code>/world/things</code> (14 Nov, <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>, W2)</td>
+<td>the behaviour planner</td>
+</tr>
+<tr>
 <td><code>/system/</code></td>
 <td>what kind of run this is: <code>/system/source</code> (real, sim, bench, replay); the sensor mux's check, <code>/system/sensor_mux/state</code></td>
 <td>the backends, the bench, a replay (added 15 Oct, <code>full-simulation.md</code>); the sensor mux (23 Oct)</td>
@@ -192,8 +209,8 @@ match a folder under <code>ros/</code> (the <code>/sensors/</code> topics come f
 </table></div>
 <p>Global names stay global, because every ROS tool expects them: <code>/tf</code>, <code>/tf_static</code>,
 <code>/clock</code>, <code>/robot_description</code>, <code>/joint_states</code>, <code>/diagnostics</code>, <code>/rosout</code>,
-<code>/parameter_events</code>. Nav2 keeps its own names for now: <code>/map</code>, <code>/plan</code>, <code>/goal_pose</code>, its
-actions, <code>/cmd_vel_nav</code> and the costmaps' topics.</p>
+<code>/parameter_events</code>. Nav2's old names stay (our nodes took over its jobs on 17 Nov, names and all): <code>/map</code>, <code>/plan</code>, <code>/goal_pose</code>, its
+actions and <code>/cmd_vel_nav</code>. Our costmaps are in the area: <code>/drivers/nav/costmap/*</code>.</p>
 </section>
 <section class="card"><h2 id="how-the-drivers-get-their-names">How the drivers get their names</h2>
 <div class="table-wrap"><table>
@@ -236,8 +253,8 @@ actions, <code>/cmd_vel_nav</code> and the costmaps' topics.</p>
 <td><code>/drivers/point/cmd_vel</code></td>
 </tr>
 <tr>
-<td>Nav2</td>
-<td><code>velocity_smoother</code> or <code>collision_monitor</code>, remapped</td>
+<td>navigation</td>
+<td><code>velocity_smoother</code> (<code>aav_smoother</code>) or the stop zone (<code>aav_stop_zone</code>)</td>
 <td><code>/drivers/nav/cmd_vel</code></td>
 </tr>
 <tr>
@@ -321,7 +338,7 @@ config files name their nodes <code>/**/joy_node</code> and so on, so they match
 <td>unchanged</td>
 </tr>
 <tr>
-<td>(new: each wheel's speed: Gazebo, and the CAN wheel nodes)</td>
+<td>(new: each wheel's speed: Ravensim, and the CAN wheel nodes)</td>
 <td><code>/vehicle/wheels</code> (one topic for both)</td>
 </tr>
 <tr>
@@ -426,19 +443,19 @@ config files name their nodes <code>/**/joy_node</code> and so on, so they match
 <tbody>
 <tr>
 <td><code>/fromLL</code>, <code>/toLL</code>, <code>/datum</code> (navsat_transform's services)</td>
-<td>Nav2's <code>waypoint_follower</code> calls <code>/fromLL</code> by its absolute name. Moving them needs a remap on two nodes, one of them inside Nav2: not a clean remap</td>
+<td>Nav2's <code>waypoint_follower</code> called <code>/fromLL</code> by its absolute name, and our navigator, <code>street_router</code> and <code>point_driver</code> do too. Moving them needs a remap on each: not done</td>
 </tr>
 <tr>
 <td><code>/spine/arm</code>, <code>/scripted_drive</code>, <code>/ekf_*/set_pose</code></td>
 <td>services and actions, not topics: the rule is for topics</td>
 </tr>
 <tr>
-<td><code>/gazebo/cmd_vel</code>, <code>/gazebo/odom</code>, <code>/gazebo/imu</code>, <code>/gazebo/navsat</code></td>
-<td>Gazebo's own side of <code>gazebo_adapter</code> and its sensor nodes, like <code>/turtle1/...</code> for turtlesim; not in the contract</td>
+<td><code>/vehicle/sim/cmd_vel</code>, <code>/vehicle/sim/odom</code>, <code>/vehicle/sim/imu</code>, <code>/vehicle/sim/navsat</code></td>
+<td>Ravensim's own side of <code>sim_adapter</code> and its sensor nodes, like <code>/turtle1/...</code> for turtlesim; not in the contract</td>
 </tr>
 <tr>
-<td><code>/map</code>, <code>/plan</code>, <code>/goal_pose</code>, <code>/cmd_vel_nav</code>, the costmaps</td>
-<td>Nav2's own, for now</td>
+<td><code>/map</code>, <code>/plan</code>, <code>/goal_pose</code>, <code>/cmd_vel_nav</code></td>
+<td>Nav2's names, kept by our nodes so every sender and screen stayed the same</td>
 </tr>
 <tr>
 <td>Bags recorded before 15 Oct</td>
@@ -476,8 +493,8 @@ standard setup. Each one fuses the raw sensors itself.</p>
 </tr>
 <tr>
 <td>Who uses it</td>
-<td>Nav2's controller (steering)</td>
-<td>Nav2's planner, the HUD's map</td>
+<td>the path follower (steering)</td>
+<td>the planner, the HUD's map</td>
 </tr>
 </tbody>
 </table></div>

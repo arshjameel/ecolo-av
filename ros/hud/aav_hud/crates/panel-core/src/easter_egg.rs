@@ -27,6 +27,7 @@ pub const STILL: f64 = 0.05;
 
 /// What the panel shows this frame, for the easter egg. `page`: which page (0 = DRIVE),
 /// `input`: a key, a click, the mouse or the wheel this frame.
+#[must_use]
 pub fn watch(
     state: &PanelState,
     buttons: &Buttons,

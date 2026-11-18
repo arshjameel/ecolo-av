@@ -2,7 +2,7 @@
 //! (/safety/output_mux/state, aav_io_mux). The bridge refuses to arm unless the gate is
 //! OPEN for its own target, and was heard recently (Ben, 24 Oct).
 //!
-//! Its times are a steady clock's ([`Instant`]), never the node's: in Gazebo the node's
+//! Its times are a steady clock's ([`Instant`]), never the node's: in the simulator the node's
 //! clock is simulated, and a paused simulation must not keep an old OPEN fresh. The output
 //! mux keeps its own time on a steady clock too.
 
@@ -28,6 +28,7 @@ pub enum Target {
 
 impl Target {
     /// The output mux's name for it, as its state line says it.
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Target::Car => "car",
@@ -78,7 +79,12 @@ pub enum GateShut {
     /// The output mux says WAIT or STOP: its line, with the reason.
     Shut(String),
     /// An output mux for another target says OPEN: not this bridge's gate.
-    OtherTarget { line: String, target: Target },
+    OtherTarget {
+        /// The mux's line.
+        line: String,
+        /// The target it is open for.
+        target: Target,
+    },
 }
 
 impl fmt::Display for GateShut {
@@ -116,6 +122,7 @@ pub struct OutputGate {
 impl OutputGate {
     /// A gate not heard from yet. `timeout`: an older line counts as silence (the mux
     /// says its state twice a second).
+    #[must_use]
     pub fn new(target: Target, timeout: Duration) -> Self {
         Self {
             target,
@@ -130,6 +137,10 @@ impl OutputGate {
     }
 
     /// Ok if the output mux said OPEN for this bridge's target within the timeout.
+    ///
+    /// # Errors
+    ///
+    /// [`GateShut`]: why not.
     pub fn check(&self, now: Instant) -> Result<(), GateShut> {
         let Some((line, at)) = &self.last else {
             return Err(GateShut::NotHeard);
@@ -150,4 +161,14 @@ impl OutputGate {
             }),
         }
     }
+}
+
+/// `arm_when_open`: ask `/spine/arm` again? Only while the gate alone refused (a message
+/// starting with [`GATE_SHUT`]), for `give_up` (`output_gate.py`'s `try_again`).
+///
+/// An e-stop's refusal is final: a person pressed it, and a launch must not keep arming
+/// behind them.
+#[must_use]
+pub fn try_again(success: bool, message: &str, waited: Duration, give_up: Duration) -> bool {
+    !success && message.starts_with(GATE_SHUT) && waited < give_up
 }

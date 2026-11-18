@@ -20,7 +20,7 @@ Parameters  size (m), min_height, max_height (m above the road; navigation.launc
             (its points don't count) from vehicle.yaml's body (aav_lidar scan.body_box).
 
 navigation.launch.py voxels:=true (with lidar:=true) starts it, with its parameters from
-nav2.yaml (voxels:). The local costmap's lidar_layer and collision_monitor then read the
+nav2.yaml (voxels:). The local costmap's lidar_layer and the stop zone then read the
 cubes instead of /sensors/lidar/scan. docs/designs/2026-10-30_voxels.md.
 """
 
@@ -56,7 +56,7 @@ class Voxels(Node):
         mount = car['sensors']['lidar_link']
         self.xyz, self.rpy = mount['xyz'], mount['rpy']
         newest = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)
-        # Reliable, depth 1: best-effort readers (the costmap's, collision_monitor's) still
+        # Reliable, depth 1: best-effort readers (the costmap's, the stop zone's) still
         # connect, and a Mac's UDP doesn't lose them.
         self.cubes_pub = self.create_publisher(PointCloud2, 'perception/voxels/cubes', newest)
         self.ground_pub = self.create_publisher(PointCloud2, 'perception/voxels/ground', newest)

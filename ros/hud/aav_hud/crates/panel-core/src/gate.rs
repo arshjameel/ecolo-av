@@ -17,12 +17,14 @@ use crate::{
 /// Whether the speed buttons may drive, and how fast.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Gate {
+    /// The buttons may drive.
     On {
         /// m/s: the most the buttons ask for.
         cap: f64,
         /// The real car on stands: stop when the speed can't be seen (4 s).
         watch_unseen: bool,
     },
+    /// The buttons are off, and why.
     Off(Off),
 }
 
@@ -51,7 +53,7 @@ impl fmt::Display for Off {
                  buttons stay off",
             ),
             Self::OnTheGround => f.write_str(
-                "the real car on the ground: the buttons drive only Gazebo, the bench, \
+                "the real car on the ground: the buttons drive only Ravensim, the bench, \
                  and the car on stands (--stands) once TODO 49b is answered",
             ),
             Self::Refused(r) => write!(f, "on stands: {r}"),
@@ -66,6 +68,7 @@ impl fmt::Display for Off {
 /// What the gate needs to know about the car.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Situation<'a> {
+    /// What `/system/source` says we're driving.
     pub kind: Kind,
     /// `--stands`: the wheels are off the ground.
     pub stands: bool,
@@ -82,13 +85,14 @@ pub struct Situation<'a> {
 /// The caps, from the settings.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Caps {
-    /// m/s in Gazebo and on the bench.
+    /// m/s in Ravensim and on the bench.
     pub sim: f64,
     /// m/s on stands.
     pub stands: f64,
 }
 
 /// Where the speed buttons may drive now.
+#[must_use]
 pub fn gate(s: &Situation<'_>, caps: Caps) -> Gate {
     let on = |cap: f64, watch_unseen| Gate::On {
         cap: if s.stands { cap.min(caps.stands) } else { cap },

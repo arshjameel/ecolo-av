@@ -1,35 +1,97 @@
 #!/usr/bin/env bash
-# Run a command with Mesa's software OpenGL (llvmpipe) as EGL's only driver, so Gazebo's
-# cameras and lidar render on a Linux computer with no GPU: GitHub's runners, oirp-spss.
+# Run a command with Mesa's software renderers, so a computer with no GPU draws pictures:
+# GitHub's runners, oirp-spss.
 #
-#   tools/software_gl.sh pixi run sim-check --simulator gazebo --obstacle
-#   tools/software_gl.sh pixi run sim simulator:=gazebo gui:=false
+#   tools/software_gl.sh pixi run sim-check --obstacle        # Ravensim's cameras on lavapipe
+#   tools/software_gl.sh --force pixi run sim-check --obstacle  # CI's way, beside a GPU
+#   tools/software_gl.sh --force pixi run sim-cameras --bench 100
 #
-# Why: our environment's EGL (libglvnd) has no driver of its own; it uses the computer's.
-# With none (no Mesa, no NVIDIA), Ogre can't start, and Gazebo crashes as the world loads
-# ("Unable to load Ogre Plugin[.../RenderSystem_GL3Plus]", then a segfault): the car never
-# appears. Found 23 Oct, the nightly sim job's first run, and again on oirp-spss.
+# | For | Mesa's | Through |
+# |---|---|---|
+# | Ravensim's cameras (Bevy, wgpu) | lavapipe (llvmpipe inside) | Vulkan |
+# | anything on OpenGL (EGL), on Linux | llvmpipe | OpenGL (EGL) |
+#
+# Why: our environment's EGL (libglvnd) and Vulkan loader have no driver of their own; they
+# use the computer's. With none (no Mesa, no NVIDIA), the cameras find no adapter ("no GPU
+# to draw with"; 15 Nov).
+#
+# Drawn in software, the cameras can't keep up with real time, so this sets AAV_SOFTWARE_GL=1
+# and Ravensim's clock waits for each picture (camera_lockstep:=auto): the world runs
+# slower than real time, and every camera gets its full rate in sim time.
 #
 # Mesa comes from conda-forge through `pixi exec`, into pixi's cache, not into pixi.lock:
 # Mesa in the default environment would also replace a Linux laptop's own GPU driver.
-# Macs render with Metal, and a Linux computer with a GPU has its own driver: there the
-# command just runs.
+# A Linux computer with a GPU keeps it: wgpu picks a GPU before a software adapter.
+#
+# --force: the software renderer even beside a GPU (WGPU_FORCE_FALLBACK_ADAPTER=1), on Linux
+# or a Mac, to try CI's way. On a Mac it also builds the cameras with Vulkan
+# (feature vulkan-on-mac). Without --force a Mac just runs the command: it has Metal.
+#
+# Portable: bash 3.2 (a Mac), no GNU-only flags.
 set -euo pipefail
-MESA="mesa-llvmpipe==26.2.5"   # Mesa's software renderer, and EGL for it (mesa-libgallium)
+MESA_GL="mesa-llvmpipe==26.2.5"   # OpenGL: llvmpipe, and EGL for it (mesa-libgallium)
+MESA_VK="mesa-lavapipe==26.2.5"   # Vulkan: lavapipe
+LOADER="libvulkan-loader"         # the Vulkan loader (libvulkan), to find lavapipe
 
-if [[ "$(uname -s)" != Linux ]]; then
+force=false
+if [[ "${1:-}" == --force ]]; then
+  force=true
+  shift
+fi
+system=$(uname -s)
+if [[ "$system" != Linux && "$force" != true ]]; then
   exec "$@"
 fi
-prefix=$(pixi exec --spec "$MESA" -- sh -c 'echo "$CONDA_PREFIX"')
-if [[ ! -f "$prefix/lib/libEGL_mesa.so.0" ]]; then
-  echo "software_gl.sh: no libEGL_mesa.so.0 in $prefix ($MESA)" >&2
+
+if [[ "$system" == Linux ]]; then
+  specs=(--spec "$MESA_GL" --spec "$MESA_VK" --spec "$LOADER")
+else
+  specs=(--spec "$MESA_VK" --spec "$LOADER")   # no EGL on a Mac: only Vulkan
+fi
+prefix=$(pixi exec "${specs[@]}" -- sh -c 'echo "$CONDA_PREFIX"')
+icd=$(ls "$prefix"/share/vulkan/icd.d/lvp_icd.*.json 2>/dev/null | head -n 1 || true)
+if [[ -z "$icd" ]]; then
+  echo "software_gl.sh: no lavapipe in $prefix ($MESA_VK)" >&2
   exit 1
 fi
-# EGL's driver list, by full path: Mesa's own file names the library without a folder.
-vendor=$(mktemp -d "${TMPDIR:-/tmp}/aav-software-gl.XXXXXX")
-cat > "$vendor/50_mesa.json" <<EOF
+here=$(mktemp -d "${TMPDIR:-/tmp}/aav-software-gl.XXXXXX")
+
+# Vulkan: lavapipe as the loader's only driver, and a folder with only the loader in it, so
+# nothing else of Mesa's environment shadows our own libraries.
+export VK_DRIVER_FILES="$icd"
+export VK_ICD_FILENAMES="$icd"   # the same, for loaders older than 1.3.234
+mkdir "$here/lib"
+for lib in "$prefix"/lib/libvulkan.so.1 "$prefix"/lib/libvulkan.1.dylib "$prefix"/lib/libvulkan.dylib; do
+  if [[ -e "$lib" ]]; then
+    ln -s "$lib" "$here/lib/"
+  fi
+done
+
+if [[ "$system" == Linux ]]; then
+  if [[ ! -f "$prefix/lib/libEGL_mesa.so.0" ]]; then
+    echo "software_gl.sh: no libEGL_mesa.so.0 in $prefix ($MESA_GL)" >&2
+    exit 1
+  fi
+  # EGL's driver list, by full path: Mesa's own file names the library without a folder.
+  cat > "$here/50_mesa.json" <<EOF
 {"file_format_version": "1.0.0", "ICD": {"library_path": "$prefix/lib/libEGL_mesa.so.0"}}
 EOF
-export __EGL_VENDOR_LIBRARY_FILENAMES="$vendor/50_mesa.json"
-echo "software_gl.sh: EGL renders with Mesa llvmpipe ($prefix)" >&2
+  export __EGL_VENDOR_LIBRARY_FILENAMES="$here/50_mesa.json"
+  export LD_LIBRARY_PATH="$here/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  echo "software_gl.sh: OpenGL (EGL) draws with Mesa llvmpipe, Vulkan with lavapipe ($prefix)" >&2
+else
+  # macOS takes DYLD_LIBRARY_PATH out of every program started through /usr/bin/env, so
+  # the folder goes under its own name: tools/sim_cameras.sh and the launch put it back
+  # (aav_sim_models worlds.sim_cameras_env).
+  export AAV_VULKAN_LIB_DIR="$here/lib"
+  export AAV_SIM_CAMERAS_FEATURES=vulkan-on-mac
+  echo "software_gl.sh: Vulkan draws with Mesa lavapipe ($prefix)" >&2
+fi
+# Ravensim's clock then waits for each camera's picture (camera_lockstep:=auto): drawn
+# in software, the cameras can't keep up with real time.
+export AAV_SOFTWARE_GL=1
+if [[ "$force" == true ]]; then
+  export WGPU_FORCE_FALLBACK_ADAPTER=1
+  echo "software_gl.sh: --force: a software adapter only, even beside a GPU" >&2
+fi
 exec "$@"

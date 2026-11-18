@@ -21,8 +21,11 @@ pub enum PacketError {
 /// Which way the wheel turned in one packet's time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
+    /// More spokes forward than back.
     Forward,
+    /// More spokes back than forward.
     Reverse,
+    /// No net spoke.
     Stopped,
 }
 
@@ -31,11 +34,16 @@ impl SpokeDelta {
     pub const LEN: usize = 4;
 
     /// The packet: big-endian, as the 2025-26 encoder sent it.
+    #[must_use]
     pub fn to_bytes(self) -> [u8; Self::LEN] {
         self.0.to_be_bytes()
     }
 
     /// Read a packet, as the Motor Pi does.
+    ///
+    /// # Errors
+    ///
+    /// [`PacketError::Length`] unless `bytes` is exactly four bytes long.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, PacketError> {
         let four: [u8; Self::LEN] = bytes
             .try_into()
@@ -43,6 +51,8 @@ impl SpokeDelta {
         Ok(SpokeDelta(i32::from_be_bytes(four)))
     }
 
+    /// Which way the wheel turned: the count's sign.
+    #[must_use]
     pub fn direction(self) -> Direction {
         match self.0 {
             0 => Direction::Stopped,
@@ -52,6 +62,7 @@ impl SpokeDelta {
     }
 
     /// The wheel's turns a minute, for the logs only: `aav_legacy` works out the speed.
+    #[must_use]
     pub fn rpm(self, spokes_per_rev: u16, interval_ms: u32) -> f32 {
         if spokes_per_rev == 0 || interval_ms == 0 {
             return 0.0;
@@ -73,6 +84,7 @@ pub struct Reporter {
 
 impl Reporter {
     /// Starts from the counter as it is now.
+    #[must_use]
     pub const fn new(now: WheelCount) -> Self {
         Reporter { sent: now.count }
     }

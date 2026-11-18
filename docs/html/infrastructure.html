@@ -7,9 +7,13 @@
 <!-- Generated from docs/infrastructure.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Infrastructure: how the project is put together</h1>
-<div class="meta">17 min read · 11 sections</div></header>
+<div class="meta">18 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a class="here" href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -135,12 +147,12 @@ tests, and how a change goes from an idea to the car.</p></div>
 </tr>
 <tr>
 <td>The car's firmware</td>
-<td>the CAN contract, the Rust spine logic and its Pico 2 program, the 2025-26 boards' code</td>
+<td>the CAN contract, the Rust spine logic and its board programs (the ESP32, the Pico 2s), the 2025-26 boards' code</td>
 <td><code>firmware/</code></td>
 </tr>
 <tr>
 <td>The environment</td>
-<td>ROS, Gazebo, compilers, Python and Rust, all from Pixi</td>
+<td>ROS, compilers, Python and Rust, all from Pixi</td>
 <td><code>pixi.toml</code>, <code>pixi.lock</code></td>
 </tr>
 <tr>
@@ -177,21 +189,25 @@ tests, and how a change goes from an idea to the car.</p></div>
                         and aav_description (the URDF and vehicle.yaml, the car's measurements)
     ecolo_msgs/         aav_interfaces: our own messages and actions
     sources/            drivers that turn devices into standard messages: IMU, GPS, lidar, cameras, radar
-    localization/       the two EKFs and navsat_transform, and the GPS heading
-    perception/         the detector (RF-DETR, YOLO), radar clustering, lanes, the lidar
+    localization/       the two EKFs and navsat_transform, the GPS heading, NDT and KISS-ICP
+    perception/         the detector (RF-DETR, YOLO), radar clustering, lanes, the lidar, voxels
     drivers/            everything that proposes a command: teleop, RC, actuator tests, scripted,
-                        drive to point, plain English, Nav2, street routes
+                        drive to point, plain English, navigation (ours, in Rust: costmap,
+                        planner, navigator, smoother, MPPI with lag), street routes, trials
     command_mux/        twist_mux: picks one command
     io_mux/             the sensor mux and the output mux: real or simulated, never mixed
     ego/                the virtual car: one command into speed and steering
     can_bridge/         the real car: the spine bridge (CAN) and today's ESP32 link
-    sim/                whatever plays the car instead: Gazebo, turtlesim, CARLA, bench mode
+    sim/                whatever plays the car instead: Ravensim, turtlesim, CARLA,
+                        bench mode
     safety/             the sensor watchdog and the ghost obstacles
-    hud/                the in-car screens: the raylib HUD and the map window
+    hud/                the in-car screens: the raylib HUD and the map window; the developer
+                        window (Bevy, for laptops)
   firmware/           microcontroller code (colcon ignores it)
     can/                aav.dbc, the CAN contract, and its test vectors
     spine/              Rust: spine-core (the spine's logic), aav-inputs, the device drivers,
-                        and boards/pico2, the spine's board program
+                        and boards/: esp32-umod (today's ESP32 board), pico2 (the spine),
+                        the wheel encoder and the status display
     legacy/             the 2025-26 ESP32 and Pico code that runs the car today
   models/             trained model files, not in git: pixi run get models
   tools/              scripts: see the table below
@@ -226,7 +242,7 @@ the checks tell you if the two disagree.</p>
 <tr>
 <td><code>ros/bringup/aav_description/config/vehicle.yaml</code></td>
 <td>every measurement of the car</td>
-<td>its unit test; ego, the URDF, Nav2 and the adapters all read it</td>
+<td>its unit test; ego, the URDF, navigation and the simulator all read it</td>
 <td>measure the car: <a href="car_measurements.html">Car numbers</a></td>
 </tr>
 </tbody>
@@ -299,7 +315,7 @@ because <code>pixi.lock</code> pins them all.</p>
 <tbody>
 <tr>
 <td><code>default</code></td>
-<td>ROS 2 Jazzy, Gazebo, Nav2, Rust, the compilers</td>
+<td>ROS 2 Jazzy, Rust, the compilers</td>
 <td>everyone</td>
 </tr>
 <tr>
@@ -320,7 +336,7 @@ because <code>pixi.lock</code> pins them all.</p>
 <tr>
 <td><code>firmware</code></td>
 <td>Python and PlatformIO, no ROS</td>
-<td>today's C++ boards: <code>pixi run -e firmware legacy-esp32</code></td>
+<td>the 2025-26 C++ ESP32 firmware: <code>pixi run -e firmware legacy-esp32</code></td>
 </tr>
 <tr>
 <td><code>llm</code></td>
@@ -341,6 +357,11 @@ because <code>pixi.lock</code> pins them all.</p>
 <td><code>calib</code></td>
 <td>ROS's camera_calibration</td>
 <td><code>pixi run calibrate-camera</code> (<a href="camera-calibration.html">camera calibration</a>)</td>
+</tr>
+<tr>
+<td><code>kiss</code>, <code>learn</code></td>
+<td>the KISS-ICP and diffusion-planner trials' own packages, no ROS</td>
+<td>see <code>pixi.toml</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -423,7 +444,7 @@ Every one, with what it does: README's <a href="../../README.md#every-command">E
 </tr>
 <tr>
 <td><code>make_map.py</code></td>
-<td>draws a Nav2 map from a short spec</td>
+<td>draws a map (PGM and YAML, Nav2's format) from a short spec</td>
 <td><code>pixi run python tools/make_map.py &lt;spec&gt;</code></td>
 </tr>
 <tr>
@@ -526,7 +547,7 @@ changes.</p>
 <tr>
 <td><code>sim</code></td>
 <td><code>pixi run sim</code></td>
-<td>Gazebo</td>
+<td>Ravensim, our own simulator (with no GPU: <code>tools/software_gl.sh</code> in front, the cameras in lockstep)</td>
 <td>the whole stack: both EKFs, <code>navsat_transform</code>, Nav2</td>
 </tr>
 <tr>
@@ -545,13 +566,13 @@ changes.</p>
 <td><code>replay</code></td>
 <td><code>ros2 launch aav_bringup replay.launch.py</code>, with a bag playing</td>
 <td>a recorded drive</td>
-<td>localization (and Nav2) on real sensor data</td>
+<td>localization (and navigation) on real sensor data</td>
 </tr>
 <tr>
 <td><code>bench</code></td>
 <td><code>pixi run bench</code></td>
 <td>a model car, driven by the spine's own firmware logic</td>
-<td>the car's whole graph: the spine bridge, both EKFs with GPS, Nav2, and pretend sensors</td>
+<td>the car's whole graph: the spine bridge, both EKFs with GPS, navigation, and pretend sensors</td>
 </tr>
 </tbody>
 </table></div>
@@ -570,13 +591,18 @@ changes.</p>
 <tbody>
 <tr>
 <td><code>orin</code> (Jetson AGX Orin)</td>
-<td>the car's model, mux, ego, scripted and point drivers, IMU, GPS, the roof lidar, the two camera streams (RF-DETR inside), the stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove</td>
-<td>Ubuntu 22.04 and Humble: it must move to Jazzy first (Q24)</td>
+<td>the car's model, mux, ego, scripted and point drivers, the roof lidar, the two camera streams (RF-DETR inside), the stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove</td>
+<td>JetPack 6 (Ubuntu 22.04) and the 2025-26 Humble software. Ours goes on beside it from the car kit; not yet run on the real Orin (<a href="rollout.html">Rolling out</a>)</td>
 </tr>
 <tr>
 <td><code>motor_pi</code></td>
-<td>the legacy bridge to today's ESP32 (UART); the 2025-26 UDP encoder is off since 23 Oct</td>
-<td>Humble</td>
+<td>the legacy bridge to today's ESP32 (UART); the 2025-26 UDP encoder is off since 23 Oct. <code>motor_pi_alone</code>: the same Pi without the Orin, for the stands</td>
+<td>Ubuntu 22.04; the 2025-26 Humble bridge was running it on 6 Nov (the audit)</td>
+</tr>
+<tr>
+<td><code>localization</code></td>
+<td>the IMU and GPS drivers, on the Pi they are plugged into</td>
+<td>13 Nov: the car drove with only the localization update installed (<a href="../history/messages-2026-11-13.md">Ben's messages</a>)</td>
 </tr>
 <tr>
 <td><code>laptop</code></td>
@@ -591,7 +617,7 @@ changes.</p>
 <tr>
 <td>the spine</td>
 <td>a microcontroller on CAN: throttle, brake, steering, watchdog</td>
-<td>a Pico 2 program builds, never flashed; the car's chip is Q10–Q17</td>
+<td>a Pico 2 program builds; no record of a flash. The car's chip is Q10–Q17. Today's ESP32: <a href="firmware.html">Firmware</a></td>
 </tr>
 </tbody>
 </table></div>
@@ -610,7 +636,7 @@ changes.</p>
 </tr>
 <tr>
 <td>Ben's Mac</td>
-<td>development, rqt_graph, Gazebo, RViz; one day, driving and watching the car</td>
+<td>development, rqt_graph, the simulators, RViz; reading the car's computers at the car (the audits)</td>
 </tr>
 <tr>
 <td>team laptops</td>
@@ -651,7 +677,7 @@ changes.</p>
 </tr>
 <tr>
 <td>5</td>
-<td><code>pixi run test</code>, then the turtle, then <code>pixi run check sim</code> in Gazebo</td>
+<td><code>pixi run test</code>, then the turtle, then <code>pixi run check sim</code> in the simulator</td>
 <td><a href="simulation.html">Simulation</a></td>
 </tr>
 <tr>
@@ -694,7 +720,7 @@ Changes reach <code>main</code> only through a pull request from your own fork a
 </tr>
 </tbody>
 </table></div>
-<p>CI (<code>.github/workflows/test.yml</code>) runs <code>pixi run test</code> on Linux for every push to <code>main</code>,
+<p>CI (<code>.github/workflows/test.yml</code>) runs <code>pixi run test</code> on Linux (x86_64 and 64-bit ARM) for every push to <code>main</code>,
 every pull request and every merge-queue entry, and on a Mac every night. The results are
 on the repo's Actions tab.</p>
 <p><strong>In your fork too.</strong> Turn Actions on once in your fork (its Actions tab, then "I
@@ -739,21 +765,49 @@ request. The nightly <code>mac</code> and <code>sim</code> runs stay in the team
 <td><code>car-kit-22.04</code></td>
 <td>Ubuntu <strong>22.04</strong>, 64-bit ARM: the car's own OS (JetPack 6)</td>
 <td>the same</td>
-<td>the same kit, installed offline on the car's Ubuntu. New 26 Oct: allowed to fail until it has passed a few times</td>
+<td>the same kit, installed offline on the car's Ubuntu. New 26 Oct: still allowed to fail (<code>continue-on-error</code>)</td>
 </tr>
 <tr>
 <td><code>sim</code></td>
 <td>Ubuntu 24.04, x86_64</td>
 <td>every night (team's repo)</td>
-<td><code>sim-check --obstacle</code> in Gazebo, below</td>
+<td><code>sim-check --obstacle</code> on Ravensim, its cameras in software and in lockstep, and with no cameras, below</td>
 </tr>
 </tbody>
 </table></div>
 <p>Every job also runs from the Actions tab (Run workflow).</p>
-<p>Every night it also runs <code>sim-check --obstacle</code> (Gazebo, headless) on Linux: the job
-<code>sim</code>. New on 22 Oct and still on trial: GitHub's computers have no GPU, so the cameras
-render in software (Mesa's llvmpipe, through <code>tools/software_gl.sh</code>), and a failure there
-doesn't fail the night yet (<code>continue-on-error</code>).</p>
+<p>Every night the job <code>sim</code> runs <code>sim-check --obstacle</code> (headless) on Linux, on Ravensim.
+GitHub's computers have no GPU, so the pictures are drawn in software, through
+<code>tools/software_gl.sh</code>, with the clock waiting for each one (camera lockstep, 16 Nov). A
+failure there doesn't fail the night yet (<code>continue-on-error</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Pictures drawn by</th>
+<th>Since</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. <code>sim-check --obstacle</code>, with the cameras</td>
+<td>Mesa's lavapipe (Vulkan), in lockstep</td>
+<td>16 Nov, <span class="badge b-untested">untested</span> on GitHub yet</td>
+</tr>
+<tr>
+<td>2. <code>sim-check --no-cameras --obstacle</code></td>
+<td>none</td>
+<td>14 Nov</td>
+</tr>
+<tr>
+<td>3. the cameras' picture tests (<code>tests/render.rs</code>)</td>
+<td>lavapipe</td>
+<td>15 Nov, <span class="badge b-untested">untested</span> on GitHub yet</td>
+</tr>
+</tbody>
+</table></div>
+<p>Gazebo's step went with Gazebo (16 Nov): its last nights in <a href="../history/gazebo-as-it-was.md">Gazebo, as it
+was</a>.</p>
 <h3 id="reading-a-ci-failure-without-signing-in">Reading a CI failure without signing in</h3>
 <p>A job's log needs a GitHub sign-in. Its <strong>annotations</strong> don't: when the test step fails,
 <code>tools/ci_annotate.py</code> prints one annotation per failing test, with its error message.</p>
@@ -778,7 +832,7 @@ doesn't fail the night yet (<code>continue-on-error</code>).</p>
 <p>Without a sign-in GitHub allows 60 of these calls an hour, so don't poll fast. A step keeps
 at most 10 annotations: 9 failing tests, then the rest by name, or the log's last 40 lines.</p>
 <p>The <code>sim</code> job's annotations (<code>ci_annotate.py --sim</code>): each <code>FAIL</code> line of sim-check, then
-the launch log's last errors (Gazebo's crash, a node that died). Its whole logs (sim-check's
+the launch log's last errors (a simulator crash, a node that died). Its whole logs (sim-check's
 output, the launch log, every node's ROS log) are kept 14 days as the artifact <code>sim-logs</code>.
 Anyone can list artifacts
 (<code>https://api.github.com/repos/AAV-2025-2026/ecolo-av/actions/artifacts</code>), but downloading one
@@ -816,6 +870,10 @@ code, lives in <code>vendor/</code>, which git doesn't track: <code>pixi run get
 <tr>
 <td>The audits of the inherited code, the firmware and the live system</td>
 <td><code>docs/history/audit-2026-10-10-*.md</code></td>
+</tr>
+<tr>
+<td>The audits at the car (16 Oct, 21 Oct, 6 Nov)</td>
+<td><code>docs/history/audit-*-car.md</code></td>
 </tr>
 <tr>
 <td>What's next</td>

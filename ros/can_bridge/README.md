@@ -19,7 +19,8 @@ feedback comes back as `/vehicle/*`. Only one of these runs at a time.
 |---|---|
 | [aav_spine_bridge](./aav_spine_bridge/README.md) | the default `spine_bridge`, in Rust (rclrs); packs frames with the firmware's `spine-core`. Logic crate: [spine-bridge](./aav_spine_bridge/crates/spine-bridge/README.md) |
 | [aav_spine](./aav_spine/README.md) | the Python twin of `spine_bridge`, `arm_when_open`, and `spine.launch.py` (`bridge:=rust|python`) |
-| [aav_legacy](./aav_legacy/README.md) | the interim backend for the 2025-26 hardware: `legacy_uart_bridge` (ESP32 over UART) and `encoder_udp` (UDP wheel encoder) |
+| [aav_legacy](./aav_legacy/README.md) | the interim backend for the 2025-26 hardware: `legacy_uart_bridge` (ESP32 over UART; the Python fall-back, `legacy_impl:=python`), `encoder_udp` (UDP wheel encoder) and `legacy.launch.py` |
+| [aav_legacy_rs](./aav_legacy_rs/README.md) | the default `legacy_uart_bridge`, in Rust (rclrs, since 17 Nov); packs frames with the firmware's `legacy-link` |
 
 ## Invariants
 
@@ -36,7 +37,8 @@ feedback comes back as `/vehicle/*`. Only one of these runs at a time.
 - `legacy_uart_bridge` with `frame_version: 1` (no board watchdog) says true on
   `/safety/legacy_uart_bridge/lock`: twist_mux's no-timeout lock (60) holds every
   program; only people and the actuator tests drive.
-- The Python and Rust bridges behave the same, topic for topic.
+- The Python and Rust bridges behave the same, topic for topic (both pairs: `spine_bridge`
+  and `legacy_uart_bridge`).
 
 ## Side Effects
 

@@ -5,7 +5,8 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
       [perception:=false] [lane:=false|true|fake] [hud:=false] [arm:=true] [foxglove:=false]
       [start_y:=0.0] [start_yaw:=0.0] [bend_radius:=] [obstacle:=false]
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
-      [bridge:=rust|python] [speed_loop:=default|smooth|lqi] [geofence_radius:=100.0]
+      [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [geofence_radius:=100.0]
+      [stop_sign_impl:=rust|python]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
   pixi run -e ml bench perception:=true     (adds YOLO and the stop-sign watcher)
@@ -13,7 +14,7 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
   pixi run bench lidar:=true obstacle:=true (the roof lidar, through its real driver)
 
 Above the hardware, everything is the car's own: spine_bridge and its CAN frames, the
-EKFs with GPS, twist_mux, ego, the drivers and Nav2. Below it, stand-ins, on the same
+EKFs with GPS, twist_mux, ego, the drivers and navigation. Below it, stand-ins, on the same
 topics and frames as the real devices:
 
   spine_sim                 the spine board and actuators: the firmware's own logic
@@ -22,13 +23,13 @@ topics and frames as the real devices:
   mock_battery, mock_camera,
   mock_radar                the radar sees the bench world's obstacles (obstacle:=true);
                             radar_clusters (aav_radar_clusters, Rust) clusters its points,
-                            and Nav2's local costmap marks them (navigation.launch.py
+                            and our local costmap marks them (navigation.launch.py
                             radar:=true)
   mock_lidar                with lidar:=true: the roof's VLP-16, as UDP packets of the
                             bench world (its boxes and the ground) to 127.0.0.1:2369.
                             Below the driver: the stock velodyne driver (aav_sensors
                             sensors.launch.py lidar:=true, as on the car) reads them, and
-                            Nav2's costmap and collision_monitor read its points
+                            our costmap and the stop zone read its points
 
 camera_obstacles:=true adds aav_detector's camera_obstacles (the detectors' boxes as points on
 the road, from mock_camera's lens) and the local costmap's camera layer. The bench camera
@@ -39,8 +40,9 @@ of a straight road; start_y and start_yaw move it. A stop sign stands 25 m ahead
 right; obstacle:=true puts a 1 m box in the lane 15 m ahead (aav_bench/config/bench.yaml).
 lane:=true runs lane keeping: lane_finder reads the pretend camera, control_interface
 steers on /drivers/ai/cmd_vel. lane:=fake feeds control_interface a pretend straight lane instead.
+lane_finder_impl:=python runs the Python lane_finder in the Rust one's place (the default).
 
-arm:=true arms the spine after 12 s, once Nav2 is up, the way `ros2 service call
+arm:=true arms the spine after 12 s, once navigation is up, the way `ros2 service call
 /spine/arm std_srvs/srv/SetBool "{data: true}"` does: aav_spine's arm_when_open asks
 each second until the output mux says OPEN, since spine_bridge refuses to arm while the
 safety gate is shut (Ben, 24 Oct). Arming earlier, while everything starts, risks a gap
@@ -90,15 +92,19 @@ def launch_setup(context):
     with open(os.path.join(share('aav_localization'), 'config', 'navsat.yaml')) as f:
         datum = yaml.safe_load(f)['navsat_transform']['ros__parameters']['datum']
 
+    speed_loop = vehicle.check_speed_loop(LaunchConfiguration('speed_loop').perform(context))
     actions = [
         # The car's own software, as car.launch.py starts it.
         include('aav_description', 'description.launch.py'),
         include('aav_command_mux', 'mux.launch.py', geofence_lock='true'),
-        include('aav_ego', 'ego.launch.py'),
+        # spine_sim's speed loop, so ego's trace predicts the car it drives (TODO 163).
+        include('aav_ego', 'ego.launch.py', speed_loop=speed_loop),
         # ego's commands go to spine_bridge (source bench) only while everything is BENCH.
         include('aav_io_mux', 'io_mux.launch.py', target='bench', source='bench'),
         include('aav_scripted', 'scripted.launch.py'),
-        include('aav_drive_to_point', 'drive_to_point.launch.py'),
+        include('aav_drive_to_point', 'drive_to_point.launch.py',
+                drive_to_point_impl=vehicle.check_drive_to_point_impl(
+                    LaunchConfiguration('drive_to_point_impl').perform(context))),
         Node(package='imu_filter_madgwick', executable='imu_filter_madgwick_node',
              name='imu_filter_madgwick',
              parameters=[os.path.join(share('aav_sensors'), 'config', 'imu_filter.yaml')],
@@ -107,7 +113,7 @@ def launch_setup(context):
                          ('imu/mag', '/sensors/imu/mag')]),
         include('aav_localization', 'localization.launch.py', gps='true'),
         Node(package=bridges.package(LaunchConfiguration('bridge').perform(context)),
-             executable=bridges.EXECUTABLE, name='spine_bridge',
+             executable=bridges.EXECUTABLE, name='spine_bridge', namespace='/',
              parameters=[os.path.join(share('aav_spine'), 'config', 'spine.yaml'),
                          vehicle.spine_params(v),
                          # /system/source: the spine is spine_sim, not the real board.
@@ -118,7 +124,7 @@ def launch_setup(context):
              parameters=[{'wheelbase': float(v['wheelbase']), 'track': float(v['track']),
                           'wheel_radius': float(v['wheel_diameter']) / 2,
                           'max_steering': float(v['max_steering_angle']),
-                          'speed_loop': LaunchConfiguration('speed_loop').perform(context),
+                          'speed_loop': speed_loop,
                           **start}]),
         Node(package='aav_bench', executable='mock_imu', name='mock_imu',
              parameters=[bench_config]),
@@ -141,17 +147,20 @@ def launch_setup(context):
                     lidar='true', lidar_ip='127.0.0.1', lidar_port='2369'),
         ]
     if flag['nav']:
-        # mock_radar always runs, so Nav2's local costmap always reads the radar.
+        # mock_radar always runs, so our local costmap always reads the radar.
         actions.append(include('aav_navigation', 'navigation.launch.py',
                                map=os.path.join(share('aav_navigation'), 'maps', 'empty.yaml'),
                                radar='true', lidar=str(flag['lidar']).lower(),
                                camera_obstacles=flag['camera_obstacles'],
                                reversing=str(flag['reversing']).lower(),
-                               plan_around=str(flag['plan_around']).lower()))
-    # The sensor watchdog guards Nav2 and the AI slot (lane keeping) as on the car, always:
+                               plan_around=str(flag['plan_around']).lower(),
+                               speed_loop=speed_loop))
+    # The sensor watchdog guards navigation and the AI slot (lane keeping) as on the car, always:
     # the mux's sensors lock needs its heartbeat (aav_command_mux mux.launch.py sensor_lock).
     actions.append(include('aav_safety', 'watchdog.launch.py',
                            inputs='odom,imu,gps,local,global,radar'))
+    # The goal leash (TODO 116): a laptop driver that goes quiet loses its goals, as on the car.
+    actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash'))
     # The geofence holds every program near its edge, as on the car, always: the mux's
     # geofence lock needs its heartbeat (mux.launch.py geofence_lock).
     actions.append(include('aav_safety', 'geofence.launch.py', backend='spine',
@@ -168,7 +177,9 @@ def launch_setup(context):
     if flag['perception']:
         actions += [
             include('aav_detector', 'detector.launch.py', labels='stop sign'),
-            Node(package='aav_detector', executable='stop_sign_watcher', name='stop_sign_watcher'),
+            Node(package=vehicle.STOP_SIGN_IMPLS[vehicle.check_stop_sign_impl(
+                LaunchConfiguration('stop_sign_impl').perform(context))],
+                executable='stop_sign_watcher', name='stop_sign_watcher'),
         ]
     if flag['camera_obstacles']:
         actions.append(Node(package='aav_detector', executable='camera_obstacles',
@@ -179,7 +190,9 @@ def launch_setup(context):
         actions.append(include('aav_lane_geometry', 'lane_follower.launch.py',
                                fake=str(lane == 'fake').lower()))
     if lane == 'true':
-        actions.append(include('aav_lane_finder', 'lane_finder.launch.py'))
+        actions.append(include('aav_lane_finder', 'lane_finder.launch.py',
+                               lane_finder_impl=vehicle.check_lane_finder_impl(
+                                   LaunchConfiguration('lane_finder_impl').perform(context))))
     if flag['hud']:
         actions.append(include('aav_hud', 'hud.launch.py'))
     if flag['foxglove']:
@@ -196,22 +209,41 @@ def launch_setup(context):
     if flag['arm']:
         # Once the safety gate is OPEN: spine_bridge refuses before.
         actions.append(TimerAction(period=12.0, actions=[Node(
-            package='aav_spine', executable='arm_when_open', name='arm_when_open',
+            package=vehicle.ARM_WHEN_OPEN_IMPLS[vehicle.check_arm_when_open_impl(
+                LaunchConfiguration('arm_when_open_impl').perform(context))],
+            executable='arm_when_open', name='arm_when_open',
             output='screen')]))
     return actions
 
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('nav', default_value='true', description='Nav2'),
+        DeclareLaunchArgument('nav', default_value='true',
+                              description='navigation (ours: the planner, follower, costmaps, '
+                                          'stop zone)'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer; '
                                           'stand_in: the joystick path, a script plays '
                                           'the pad (no joy_node)'),
         DeclareLaunchArgument('rviz', default_value='false'),
+        DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
+                              description='rust (aav_stop_sign_rs) or python (aav_detector): '
+                                          'the stop-sign watcher, with perception'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher '
                                           '(the ml environment)'),
+        DeclareLaunchArgument('drive_to_point_impl',
+                              default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
+                              description='rust or python: which point_driver drives to a '
+                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
+        DeclareLaunchArgument('arm_when_open_impl',
+                              default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
+                              description='rust or python: which arm_when_open arms the spine '
+                                          "(aav_spine_bridge's, or aav_spine's)"),
+        DeclareLaunchArgument('lane_finder_impl',
+                              default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
+                              description='rust or python: which lane_finder finds the lane '
+                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
         DeclareLaunchArgument('lane', default_value='false',
                               description='true: lane keeping (lane_finder and control_interface, '
                                           'on /drivers/ai/cmd_vel); fake: the same on a '
@@ -237,14 +269,13 @@ def generate_launch_description():
                                           'pretend radar sees'),
         DeclareLaunchArgument('lidar', default_value='false',
                               description="the roof lidar: mock_lidar's packets through the "
-                                          'stock velodyne driver, into Nav2'),
+                                          'stock velodyne driver, into the costmap'),
         DeclareLaunchArgument('camera_obstacles', default_value='false',
                               description="the detectors' boxes into the local costmap"),
         DeclareLaunchArgument('reversing', default_value='true',
-                              description='Nav2 may drive backwards, as on the car '
-                                          '(docs/learn-nav2.md)'),
+                              description='the car may drive backwards, as on the car'),
         DeclareLaunchArgument('plan_around', default_value='true',
-                              description="true: Nav2's planner plans round what the radar "
+                              description='true: the planner plans round what the radar '
                                           'and lidar see; false: the map only, so the car '
                                           'stops for it (bench-check --obstacle)'),
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,

@@ -7,8 +7,8 @@ our own: a launch file and its config files.
 
 | Node | Gives | Used by |
 |---|---|---|
-| `ekf_local` | TF `odom → base_link`: smooth, never jumps, slowly drifts | Nav2's controller and local costmap |
-| `ekf_global` | TF `map → odom`: GPS-anchored, can jump | Nav2's planner, global costmap, goals |
+| `ekf_local` | TF `odom → base_link`: smooth, never jumps, slowly drifts | the path follower and local costmap |
+| `ekf_global` | TF `map → odom`: GPS-anchored, can jump | the planner, global costmap, goals |
 | `navsat_transform` | each GPS fix as a map-frame position | `ekf_global` |
 | `gps_heading` ([aav_gps_heading](../aav_gps_heading/README.md)) | the heading from the GPS velocity | `ekf_global` |
 
@@ -28,8 +28,12 @@ The two EKFs never read each other's topic. They meet only in TF.
 |---|---|---|
 | `gps` | true | false (bench, indoors): only `ekf_local`, and a static identity `map → odom` |
 | `gps_heading` | true | false leaves out `gps_heading` |
+| `global_ekf` | true | false: no `ekf_global`; a test, sim only (`sim.launch.py truth_pose:=true`: `aav_sim_models`'s `truth_localizer` gives `map → odom` from the simulator's truth) |
 | `kiss_ekf` | false | a trial: `ekf_local` also takes KISS-ICP's twist (`/localization/kiss_icp/odom`: vx, vyaw; never its pose), with `config/ekf_local_kiss.yaml` on top. `sim.launch.py kiss_ekf:=true` starts KISS-ICP too |
 | `ndt_ekf` | false | a trial: `ekf_global` also takes NDT's pose (`/localization/ndt/pose`: x, y, yaw), with `config/ekf_global_ndt.yaml` on top. `sim.launch.py ndt_ekf:=true` starts NDT too |
+| `lane_pose`, `lane_map` | false, empty | a trial (TODO 155): `lane_pose` ([aav_lane_pose](../aav_lane_pose/README.md)) runs on `lane_map` (a lanes.yaml), and `ekf_global` takes its x and y, with `config/ekf_global_lane.yaml` on top (`pose1` after NDT's). `sim.launch.py lane_pose:=true` starts the lane finder too |
+| `health` | true | false leaves out `localization_health` |
+| `localization_health_impl` | rust | [aav_localization_health_rs](../aav_localization_health_rs/README.md) (Ben, 16 Nov); `python`: aav_localization_health instead, the same node name, topics and answers |
 | `start_x`, `start_y`, `start_yaw` | 0, 0, 0 | where the car starts: m east and north of the datum, rad counter-clockwise from east |
 | `use_sim_time` | false | |
 
@@ -38,7 +42,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 | Node | In | Out |
 |---|---|---|
 | ekf_local | `/vehicle/odom` (vx, vy, vyaw), `/sensors/imu/data` (yaw rate); with `kiss_ekf:=true`, `/localization/kiss_icp/odom` (vx, vyaw) | `/localization/odom/local`, TF |
-| ekf_global | the same, plus `/localization/gps/odom` (x, y), `/localization/gps/heading` (yaw); with `ndt_ekf:=true`, `/localization/ndt/pose` (x, y, yaw) | `/localization/odom/global`, TF |
+| ekf_global | the same, plus `/localization/gps/odom` (x, y), `/localization/gps/heading` (yaw); with `ndt_ekf:=true`, `/localization/ndt/pose` (x, y, yaw); with `lane_pose:=true`, `/localization/lane/pose` (x, y: sure across the lane only) | `/localization/odom/global`, TF |
 | navsat_transform | `/sensors/gps/fix`, `/sensors/imu/data`, `/localization/odom/global`, TF `base_link → gps_link` | `/localization/gps/odom`, `/localization/gps/fix` |
 
 ### Services
@@ -56,6 +60,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 | `config/ekf_global.yaml` | 30 Hz, `world_frame: map`; GPS fixes refused past 10 sigma (`odom1_pose_rejection_threshold`); yaw process noise 0.01; x, y start 100 m unsure, so the first fix decides them |
 | `config/ekf_local_kiss.yaml` | only with `kiss_ekf:=true`: `odom1` = KISS-ICP's twist, vx and vyaw; refused past 5 sigma; `smooth_lagged_data` with 1 s of history (its twists carry the cloud's stamp) |
 | `config/ekf_global_ndt.yaml` | only with `ndt_ekf:=true`: `pose0` = NDT's pose, x, y, yaw; refused past 5 sigma; `smooth_lagged_data` with 1 s of history (NDT's poses carry the cloud's stamp, so they come late) |
+| `config/ekf_global_lane.yaml` | only with `lane_pose:=true`: `pose0` = the lane pose, x and y; refused past 5 sigma; `smooth_lagged_data` (the picture's stamp) |
 | `config/navsat.yaml` | `wait_for_datum: true`; `datum` [45.3860, -75.6960, 0] is a placeholder near Carleton (TODO: the test site) |
 
 ## Invariants
@@ -66,7 +71,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 - No magnetometer: the start heading comes from `start_yaw`; then the gyro carries it,
   and GPS corrects it while moving.
 - A GPS fix more than 10 sigma off (a 20 m jump) is refused, except the first; the sensor
-  watchdog holds Nav2 for a jump meanwhile.
+  watchdog holds navigation for a jump meanwhile.
 - Antenna offset comes from TF (`vehicle.yaml`), so its place there matters.
 - Parameter names checked against robot_localization 3.8.3's source.
 
@@ -79,11 +84,11 @@ The two EKFs never read each other's topic. They meet only in TF.
 
 This package has no tests of its own (config only); `aav_bringup`'s
 `test_sim_launch.py` checks `ndt_ekf` and `ekf_global_ndt.yaml`, `kiss_ekf` and
-`ekf_local_kiss.yaml`.
+`ekf_local_kiss.yaml`, `lane_pose` and `ekf_global_lane.yaml`.
 
 ```sh
 pixi run build && colcon test --packages-select aav_localization && colcon test-result --verbose
-pixi run sim-check        # Gazebo: compares /localization/odom/global with the truth
+pixi run sim-check        # Ravensim: compares /localization/odom/global with the truth
 pixi run tools/ros.sh --local python3 tools/heading_check.py    # the global EKF's heading, forward and reversing
 ```
 

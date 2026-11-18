@@ -20,6 +20,7 @@ pub struct TickTiming {
 
 impl TickTiming {
     /// `period_us`: how often a tick is due.
+    #[must_use]
     pub const fn new(period_us: u32) -> Self {
         TickTiming {
             period_us,
@@ -42,11 +43,13 @@ impl TickTiming {
     }
 
     /// The longest gap between two ticks since boot, in microseconds; 0 before the second.
+    #[must_use]
     pub const fn worst_gap_us(&self) -> u32 {
         self.worst_gap_us
     }
 
     /// How many ticks came more than [`LATE_US`] late.
+    #[must_use]
     pub const fn overruns(&self) -> u32 {
         self.overruns
     }

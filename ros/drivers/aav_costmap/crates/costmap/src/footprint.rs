@@ -20,6 +20,7 @@ pub fn parse(text: &str) -> Option<Vec<(f64, f64)>> {
 }
 
 /// Each corner moved `padding` m further out along x and y (Nav2's `padFootprint`).
+#[must_use]
 pub fn padded(points: &[(f64, f64)], padding: f64) -> Vec<(f64, f64)> {
     let out = |v: f64| {
         if v > 0.0 {
@@ -35,6 +36,7 @@ pub fn padded(points: &[(f64, f64)], padding: f64) -> Vec<(f64, f64)> {
 
 /// The inscribed and circumscribed radii from base_link, m (Nav2's
 /// `calculateMinAndMaxDistances`: the nearest and furthest corner or edge).
+#[must_use]
 pub fn radii(points: &[(f64, f64)]) -> (f64, f64) {
     let mut near = f64::INFINITY;
     let mut far: f64 = 0.0;
@@ -60,12 +62,14 @@ fn distance_to_segment(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
 }
 
 /// The outline at `pose`, in the pose's parent frame.
+#[must_use]
 pub fn placed(points: &[(f64, f64)], pose: &Pose2) -> Vec<(f64, f64)> {
     points.iter().map(|&p| pose.apply(p)).collect()
 }
 
 /// The indices of the cells under a convex outline: its edges' cells and every cell whose
 /// centre is inside. Empty if a corner is off the grid (Nav2 then clears nothing).
+#[must_use]
 pub fn cells_under(grid: &Grid, outline: &[(f64, f64)]) -> Vec<usize> {
     let Some(corners) = outline
         .iter()

@@ -7,9 +7,13 @@
 <!-- Generated from docs/stopping.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>How the car stops</h1>
-<div class="meta">12 min read · 4 sections</div></header>
+<div class="meta">20 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -114,7 +126,7 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#1-the-stopping-law">1. The stopping law</a><a href="#2-the-behaviour-planner">2. The behaviour planner</a><a href="#3-where-the-car-really-stops">3. Where the car really stops</a><a href="#4-a-heavier-car-the-adaptive-brake">4. A heavier car: the adaptive brake</a></nav>
-<div class="lead"><p>One stopping law for every planned stop, a behaviour planner that uses it to slow Nav2,
+<div class="lead"><p>One stopping law for every planned stop, a behaviour planner that uses it to slow navigation,
 and a check of where the car really stops. Ben, 7 Nov: "we can use that to say if we have
 turned enough or slowing down enough". The designs:
 <a href="../designs/2026-11-05_how-the-car-stops.md">how the car stops</a>,
@@ -243,7 +255,7 @@ the pretend car. <code>loop=None</code> gives the design's ρ 0.35.</p>
 </tr>
 </tbody>
 </table></div>
-<h3 id="point-driver-pretend-car-ego-and-gazebos-actuator-model">Point driver, pretend car (ego and Gazebo's actuator model)</h3>
+<h3 id="point-driver-pretend-car-ego-and-the-sims-actuator-model">Point driver, pretend car (ego and the sim's actuator model)</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -285,12 +297,12 @@ the pretend car. <code>loop=None</code> gives the design's ρ 0.35.</p>
 </tr>
 </tbody>
 </table></div>
-<p>Gentler at speed, 5 cm further past B. Not yet run in Gazebo.</p>
+<p>Gentler at speed, 5 cm further past B. Not yet run in the simulator.</p>
 </section>
 <section class="card"><h2 id="2-the-behaviour-planner">2. The behaviour planner</h2>
 <p><code>aav_behaviour</code> (a trial, <strong>off by default</strong>): <code>pixi run sim world:=road behaviour:=true</code>.
-It knows why the car should slow, and sends Nav2 a speed cap. <strong>It can't stop the car</strong>:
-a lock or Nav2's goal check makes every final stop.</p>
+It knows why the car should slow, and sends navigation a speed cap. <strong>It can't stop the car</strong>:
+a lock or the navigator's goal check makes every final stop.</p>
 <pre class="highlight"><code class="language-text"> DRIVE ─► APPROACH ─► STOPPED ─► WAIT ─► GO ─► DRIVE
   (no cap)  (cap falls)  (lock on,  (lock on)  (cap rises)
                          still)        │
@@ -315,6 +327,11 @@ a lock or Nav2's goal check makes every final stop.</p>
 <td>collision_monitor, then the <code>stop_zone</code> lock</td>
 </tr>
 <tr>
+<td>A moving thing (<code>things:=true</code>)</td>
+<td>to the thing, in the lane now <strong>or walking into it</strong> before the car gets there (below)</td>
+<td>the <code>stop_zone</code> lock</td>
+</tr>
+<tr>
 <td>The fence</td>
 <td>along the plan to where the geofence would say NEAR</td>
 <td>the geofence's lock</td>
@@ -322,10 +339,201 @@ a lock or Nav2's goal check makes every final stop.</p>
 <tr>
 <td>The goal</td>
 <td>along the plan to its end</td>
-<td>Nav2's goal check</td>
+<td>the navigator's goal check</td>
 </tr>
 </tbody>
 </table></div>
+<h3 id="someone-walking-into-the-lane-todo-194">Someone walking into the lane (TODO 194)</h3>
+<p>With <code>things:=true</code>, a thing moving at 0.3 m/s or more counts when:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>It is</th>
+<th>It counts if</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>in the lane now</td>
+<td>always</td>
+</tr>
+<tr>
+<td>beside the lane, walking towards it (0.2 m/s or more across)</td>
+<td>at its speed it is in the lane before the car reaches it + 2 s, and within 6 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>Before 15 Nov only "in the lane now" counted. A person crossing was seen about 1 m from the
+bumper: too late to slow, and only the stop zone stopped the car (<code>behaviour.py</code>
+<code>moving_ahead</code>, <code>Crossing</code>).</p>
+<h3 id="anything-moving-near-stop-and-wait-17-nov">Anything moving near: stop and wait (17 Nov)</h3>
+<p>Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just
+stop."</p>
+<pre class="highlight"><code class="language-text"> a thing moving 0.3 m/s or more  ──┬── within 10 m of the car ─────────────┐
+ (/world/things, aav_things)       └── on the road ahead within 3 s ───────┤
+                                                                           ▼
+                        WAIT (moving): the road ahead ends at the car, ego holds it at 0
+                                                                           │
+                        gone, or standing still, for 1 s (release_hold) ───► GO</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Number</th>
+<th>Parameter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>it moves</td>
+<td>0.3 m/s or more over the ground</td>
+<td><code>moving_speed</code></td>
+</tr>
+<tr>
+<td>and keeps moving</td>
+<td>1.5 s, the run started on a thing seen (not coasting) and not growing (a building coming into view); once sure, it stays sure while it coasts in the blind zone</td>
+<td><code>moving_settle</code></td>
+</tr>
+<tr>
+<td>near</td>
+<td>10 m from the car (its centre, less half its narrow side)</td>
+<td><code>moving_radius</code></td>
+</tr>
+<tr>
+<td>on the road ahead</td>
+<td>within half the lane + half its narrow side of <code>/world/road_ahead</code>'s line, checked every 0.25 s for 3 s at its speed</td>
+<td><code>moving_within</code></td>
+</tr>
+<tr>
+<td>go again</td>
+<td>1 s after the last one has gone or stood still</td>
+<td><code>release_hold</code></td>
+</tr>
+<tr>
+<td>off</td>
+<td><code>moving_hold:=false</code> (the node's parameter)</td>
+<td><code>moving_hold</code></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Only a still thing is passed</strong> (the planner's lane pass, <code>pass.rs</code>). Anything moving is
+  waited for: an oncoming car, a person on the pavement, cross traffic.</li>
+<li><strong>How it stops the car:</strong> a stop called <code>moving</code> at 0 m on the road ahead, so its end is
+  the car and ego allows 0 m/s. The cap goes to the floor at once, as in any WAIT.</li>
+<li><strong>Never over the e-stop or ASK:</strong> the e-stop's WAIT stays the e-stop's; ASK and a lock's
+  WAIT don't go to GO while something moves near.</li>
+<li>It needs the things (<code>things:=true</code>). <code>stack:=ours</code> turns them on since 17 Nov, where
+  nav and the lidar run (<code>stacks.yaml</code>'s behaviour level).</li>
+<li>
+<p><strong>Why 1.5 s, and not growing:</strong> the things' tracker gives still things a speed for a
+  while (<code>MovingFor</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Seen</th>
+<th>Its speed</th>
+<th>For</th>
+<th>Without the rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the parked box, as the car passes</td>
+<td>0.5-0.9 m/s</td>
+<td>0.1-0.6 s</td>
+<td>8 holds passing it</td>
+</tr>
+<tr>
+<td>new tracks, coasting off</td>
+<td>0.5-1.8 m/s</td>
+<td>seen 3-7 times</td>
+<td>(in those 8)</td>
+</tr>
+<tr>
+<td>buildings coming into view at 2 m/s, growing 1 → 9 m</td>
+<td>1-2 m/s</td>
+<td>2-3 s</td>
+<td>not growing: never</td>
+</tr>
+<tr>
+<td>the lot's thin posts, a low patch of grass</td>
+<td>1.5-11 m/s</td>
+<td>1-1.4 s</td>
+<td>3 holds in 7 runs at 1 s, none at 1.5 s; the posts gone since the tracker's gates (17 Nov, TODO 222): 0 holds in 3 lot tours</td>
+</tr>
+<tr>
+<td>a person, a car really moving</td>
+<td>0.8-3 m/s</td>
+<td>9-42 s</td>
+<td>held, every time</td>
+</tr>
+<tr>
+<td>- <strong>Known limit:</strong> a person walking beside the car the same way, within 10 m, holds it</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>as long as they walk. That is the rule as asked.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+</ul>
+<p><code>behaviour.py</code> <code>moving_near</code>, <code>Nearby</code>, <code>MovingFor</code>; Rust <code>paths::moving_near</code>,
+<code>MovingFor</code>. <code>mppi_lag</code> waits too: while the road ahead says WAIT (moving) its progress
+check starts again, so a long hold is not "no progress" (it failed the path after 10 s).</p>
+<p><strong>In our simulator</strong> (17 Nov, the road world, 2 runs each, <code>pixi run sim-check --movers
+--moving --behaviour-things</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Held</th>
+<th>Clear of it ahead of the moving car</th>
+<th>Then</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>an oncoming car, 3 m to the left, 2 m/s</td>
+<td>11.6 s</td>
+<td>2.4, 3.5 m</td>
+<td>reached the goal 2/2</td>
+</tr>
+<tr>
+<td>a person on the roadside, 5 m right, walking towards the car</td>
+<td>20.3 s</td>
+<td>6.6, 6.8 m</td>
+<td>goal 1/2</td>
+</tr>
+<tr>
+<td>cross traffic, 22 m ahead, 3 m/s</td>
+<td>2.0 s</td>
+<td>19 m</td>
+<td>goal 1/2</td>
+</tr>
+<tr>
+<td>a person crossing ahead (<code>--moving</code>)</td>
+<td>APPROACH, then 17.7 s</td>
+<td>1.9 m</td>
+<td>goal 1/2</td>
+</tr>
+<tr>
+<td>the parked box (<code>--behaviour-things</code>)</td>
+<td>never</td>
+<td>passed 1.0 m clear</td>
+<td>goal 1/1</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every miss was the computer, not the rule: two simulators at a load of 15-20, the
+odometry or the costmap late ("no costmap yet", the sensor watchdog's lock), the goal
+aborted. Each held every time.</p>
 <h3 id="the-cap">The cap</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -340,8 +548,8 @@ a lock or Nav2's goal check makes every final stop.</p>
 <td>the stopping law, above</td>
 </tr>
 <tr>
-<td>0.0, or between 0.3 m/s and Nav2's top speed</td>
-<td>Nav2 reads 0.0 as <strong>no limit</strong></td>
+<td>0.0, or between 0.3 m/s and the top speed</td>
+<td>0.0 reads as <strong>no limit</strong></td>
 </tr>
 <tr>
 <td>Falls no faster than 2 m/s²</td>
@@ -372,9 +580,9 @@ a lock or Nav2's goal check makes every final stop.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>/drivers/nav/speed_limit</code></td>
-<td><code>nav2_msgs/SpeedLimit</code>, 20 Hz</td>
-<td>controller_server reads it with <code>behaviour:=true</code></td>
+<td><code>/world/road_ahead</code></td>
+<td><code>aav_interfaces/RoadAhead</code>, 10 Hz</td>
+<td>the cap is in its limits (none above it; TODO 233, 17 Nov): ego holds every follower to them. Before, <code>/drivers/nav/speed_limit</code>, read only by Nav2's controller</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/behaviour/state</code></td>
@@ -411,7 +619,74 @@ a lock or Nav2's goal check makes every final stop.</p>
 </tr>
 <tr>
 <td>Stop sign (<code>-e ml ... --perception</code>)</td>
-<td>the lock stopped the car 3.5 m before the sign, but the behaviour <strong>never entered APPROACH(sign)</strong>: still to find out why</td>
+<td>the lock stopped the car 3.5 m before the sign, but the behaviour <strong>never entered APPROACH(sign)</strong>: cause not found (see 14 Nov)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="in-gazebo-again-14-nov-a-mac-pixi-run-e-ml-sim-check-simulator-gazebo-behaviour-only-perception">In Gazebo again (14 Nov, a Mac, <code>pixi run -e ml sim-check --simulator gazebo --behaviour-only --perception</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stop</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stop sign</td>
+<td><strong>passed</strong>: APPROACH(sign) 2.0 m out, the lock fired at 0.50 m/s, the bumper 4.0 m before the sign. One run</td>
+</tr>
+<tr>
+<td>After the sign's hold</td>
+<td>its old point came back as APPROACH(sign) at the floor, until "sign lost": <strong>fixed</strong>, a sign already stopped for is dropped (<code>test_a_sign_stopped_for_never_brings_the_approach_back</code>)</td>
+</tr>
+<tr>
+<td>Obstacle</td>
+<td>the car went round the box: no stop to score</td>
+</tr>
+<tr>
+<td>Goal</td>
+<td>passed: APPROACH, lowest cap 0.47 m/s</td>
+</tr>
+</tbody>
+</table></div>
+<p>The 8 Nov miss didn't come back. Ruled out: the sign's camera frame (<code>camera_left_link</code>
+is in <code>/tf</code>), the lookup at the picture's stamp (220 of 220 found, parked), and the cap
+(the node keeps the sign in <code>odom</code>, so <code>left</code> keeps falling between pictures). A dropped
+picture now logs <code>stop sign dropped: &lt;why&gt;</code>.</p>
+<h3 id="the-obstacle-leg-a-wall-across-the-road-15-nov-todo-162">The obstacle leg: a wall across the road (15 Nov, TODO 162)</h3>
+<p><strong>Why it failed:</strong> <code>plan_around:=false</code> hides the box only from the planner. The path
+follower's own local costmap (<code>mppi_lag</code>; Nav2's MPPI then) still sees it, and
+steers round a 1 m box when there is room. At 1 m/s the stopping law's cap binds only in
+the last 2 m, so by then the car was already beside the box: no APPROACH(obstacle), no stop
+zone. It went round 2 of 4 runs on 8 Nov, and on 14 Nov; it stopped on 15 Nov. A coin toss.</p>
+<p><strong>What the leg expects now:</strong> the design says a parked box is passed and a person is
+waited for. Passing a parked box is <code>--behaviour-things</code>' leg. So <code>--behaviour</code> puts a
+<strong>wall across the road</strong> (10 m wide): nothing to go round. The car must slow
+(APPROACH(obstacle)), the stop zone must stop it, and it drives on once the wall is gone.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run (our simulator, 15 Nov)</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ours, the 1 m box (before)</td>
+<td>passed: stop zone at 0.43 m/s, 0.91 m before it</td>
+</tr>
+<tr>
+<td>ours, a box in a walled lane (tried)</td>
+<td>stopped at the box, but then stopped again for a wall it faced at an angle after rocking: goal aborted. Dropped</td>
+</tr>
+<tr>
+<td>ours, the wall across</td>
+<td><strong>passed</strong>: stop zone at 0.45 m/s, 0.94 m before it, goal reached</td>
+</tr>
+<tr>
+<td>stock (Nav2, its last runs), the wall across</td>
+<td><strong>passed</strong>: stop zone at 0.33 m/s, 1.04 m before it, goal reached</td>
 </tr>
 </tbody>
 </table></div>
@@ -427,15 +702,11 @@ a lock or Nav2's goal check makes every final stop.</p>
 <tbody>
 <tr>
 <td>The <code>patient</code> progress checker</td>
-<td>a stock tree edit; holds over 10 s still look stuck to Nav2</td>
+<td>holds over 10 s still look stuck to the navigator's progress check</td>
 </tr>
 <tr>
 <td>ASK's reply (<code>/hud/ask/answer</code>)</td>
 <td>the HUD has no reply path</td>
-</tr>
-<tr>
-<td>The trial trackers reading the cap</td>
-<td>they ignore <code>/drivers/nav/speed_limit</code></td>
 </tr>
 <tr>
 <td>The car</td>
@@ -472,7 +743,7 @@ a lock or Nav2's goal check makes every final stop.</p>
 </tr>
 <tr>
 <td>5</td>
-<td>scored against Gazebo's truth and the global EKF</td>
+<td>scored against the simulator's truth and the global EKF</td>
 </tr>
 </tbody>
 </table></div>
@@ -628,7 +899,7 @@ force. We don't want to overwhelm the brakes though."</p>
 <td>the same, with it on</td>
 </tr>
 <tr>
-<td><code>ros2 param set /gazebo_adapter payload 90</code></td>
+<td><code>ros2 param set /sim_adapter payload 90</code></td>
 <td>change the load while it runs</td>
 </tr>
 <tr>

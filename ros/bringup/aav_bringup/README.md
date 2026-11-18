@@ -3,7 +3,7 @@
 ## Overview
 
 Starts the whole stack. One launch file per **profile**: who plays the car (turtlesim,
-Gazebo, the bench's stand-ins, CARLA or the real car). Above the backend, every profile
+Ravensim, the bench's stand-ins, CARLA or the real car). Above the backend, every profile
 runs the car's own nodes and configs. This package holds only launch files, machine
 files, foxglove_bridge's settings and RViz layouts: no nodes of its own.
 
@@ -14,7 +14,7 @@ files, foxglove_bridge's settings and RViz layouts: no nodes of its own.
 | Profile | Launch file | Command | Who plays the car | Source | Clock |
 |---|---|---|---|---|---|
 | turtle | `turtle.launch.py` | `pixi run turtle` | turtlesim (`aav_turtlesim`) | SIM | wall |
-| sim | `sim.launch.py` | `pixi run sim world:=road` | our simulator (`aav_simulator`, the default since 8 Nov) or Gazebo (`simulator:=gazebo`), both through `aav_gazebo`; with `spine:=true`, `spine_bridge` + `spine_sim` in the loop | SIM | simulated |
+| sim | `sim.launch.py` | `pixi run sim world:=road` | Ravensim (`aav_simulator`, `aav_sim_cameras` and `aav_sim_models`; `simulator:=ravensim`, the only one since Gazebo went, 16 Nov); with `spine:=true`, `spine_bridge` + `spine_sim` in the loop | SIM | simulated |
 | bench | `bench.launch.py` | `pixi run bench` | `spine_sim` and mock sensors (`aav_bench`, `aav_spine_sim`) | BENCH | wall |
 | car | `car.launch.py machine:=<m>` | `pixi run car orin` | the real car: `legacy_uart_bridge` (`actuators:=uart`, today) or `spine_bridge` (`actuators:=can`) | REAL | wall |
 | carla | `carla.launch.py host:=<ip>` | `pixi run carla-car host:=...` | CARLA (`aav_carla`'s `carla_adapter`) | SIM | CARLA's |
@@ -24,21 +24,23 @@ Two helpers:
 
 | File | Does |
 |---|---|
-| `stack.launch.py target:=turtle\|gazebo\|bench\|car\|carla [source:=]` | one launch for every target; refuses a `source:=` that isn't the target's own |
+| `stack.launch.py target:=turtle\|ravensim\|bench\|car\|carla [source:=]` (`gazebo` still means ravensim) | one launch for every target; refuses a `source:=` that isn't the target's own |
 | `foxglove.launch.py` | foxglove_bridge for Foxglove or Lichtblick: `foxglove_address`, `foxglove_port` (8765), `foxglove_control`, `foxglove_topics` (`wifi` or `all`), `foxglove_preview` |
 
 Each launch file's docstring lists all its arguments. The common ones:
 
 | Argument | Profiles | Does |
 |---|---|---|
-| `nav`, `teleop`, `rviz`, `foxglove` | sim, bench, carla | Nav2, the joystick, RViz, foxglove_bridge |
-| `perception`, `lane`, `camera_obstacles` | sim, bench | the object detector and the stop-sign watcher; lane keeping; boxes into Nav2's costmap |
+| `nav`, `teleop`, `rviz`, `foxglove` | sim, bench, carla | navigation (our stack), the joystick, RViz, foxglove_bridge |
+| `perception`, `lane`, `camera_obstacles` | sim, bench | the object detector and the stop-sign watcher; lane keeping; boxes into the costmap |
 | `hud` | sim, bench | the HUD window (`aav_hud`, raylib); needs a screen |
 | `bridge:=rust\|python` | sim, bench, car | which `spine_bridge` (`aav_spine.bridges`) |
-| `reversing` | car, sim, bench, carla | may Nav2 back up (at 0.5 m/s at most). `true` everywhere; on the car only where the lidar watches behind. Until the wheels tell direction (H5), the sign is the last command's |
+| `io_mux_impl:=rust\|python` | sim, car (the others pass it through) | which sensor mux and output mux: `aav_io_mux_rs` (the default since 17 Nov) or `aav_io_mux` |
+| `reversing` | car, sim, bench, carla | may navigation back up (at 0.5 m/s at most). `true` everywhere; on the car only where the lidar watches behind. Until the wheels tell direction (H5), the sign is the last command's |
 | `max_speed`; `sim_speed` | car; sim, carla | the top speed, m/s |
 | `start_y` (m), `start_yaw` (rad); the car and sim also `start_x` | car, sim, bench | where the car starts in the map frame. `world:=campus` starts in lot P4 unless told otherwise |
 | `arm` | sim (`spine:=true`), bench | `arm_when_open` arms the spine after 12 s |
+| `pose`, `path`, `steer`, `lanes` | sim | one level's option by its name in `stacks.yaml` (`path:=hybrid_rs`), over `stack:=`'s pick; a single switch given by hand still wins (`docs/league.md`) |
 | `watch_screens` | sim | screens whose heartbeat commands need, such as `dev_window,hw_panel`. A test: the real car refuses it (`docs/simulation.md`) |
 
 ### Machine files (`config/machines/`)
@@ -98,6 +100,7 @@ The parts are listed in `PARTS` in `car.launch.py` and its docstring.
 pixi run build && colcon test --packages-select aav_bringup && colcon test-result --verbose
 ```
 
-The tests (`test/`) load each launch file and check what it starts. `pixi run test`
+The tests (`test/`) load each launch file and check what it starts; `test_rust_overrides.py`
+starts ego, the legacy bridge and the output mux and reads launch's values back. `pixi run test`
 runs every package's tests. Against a running profile: `pixi run check <profile>`,
 `pixi run bench-check`, `pixi run sim-check`.

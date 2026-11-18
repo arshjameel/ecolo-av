@@ -1,19 +1,19 @@
-//! spine_sim: the spine, on a laptop (bench mode), or in Gazebo (the spine profile).
+//! spine_sim: the spine, on a laptop (bench mode), or in Ravensim (the spine profile).
 //!
 //! The firmware's real logic (spine-core) runs here on the CAN frames spine_bridge sends,
 //! and drives a car instead of motors. It answers with the frames the real spine sends, so
 //! nothing above it can tell the difference. Which car is the `car` parameter:
 //!
 //!   model   (the bench) a model of the car, in bench-car, on this computer's clock
-//!   gazebo  (sim.launch.py spine:=true) Gazebo's car: the spine's outputs go to
-//!           gazebo_adapter's actuator model, which moves Gazebo's car and sends back what
-//!           it measured. The spine runs on Gazebo's clock (use_sim_time), 10 ms a tick.
+//!   ravensim(sim.launch.py spine:=true) Ravensim's car: the spine's outputs go to
+//!           sim_adapter's actuator model, which moves Ravensim's car and sends back what
+//!           it measured. The spine runs on Ravensim's clock (use_sim_time), 10 ms a tick.
 //!
 //! Subscribes  /can/tx                       can_msgs/Frame    what spine_bridge puts on the bus
 //!             /vehicle/bench/hw_estop       std_msgs/Bool     true = the hardware e-stop is pressed
 //!             /vehicle/bench/driver_faults  std_msgs/UInt16   pretend a driver failed (fault bits)
-//!             car:=gazebo only:
-//!             /vehicle/sim/wheels        aav_interfaces/WheelSpeeds   Gazebo's wheels: the
+//!             car:=ravensim only:
+//!             /vehicle/sim/wheels        aav_interfaces/WheelSpeeds   Ravensim's wheels: the
 //!                                           front two for the wheel nodes, the rear two's mean
 //!                                           for the spine's measured speed (its encoder)
 //!             /vehicle/sim/steering      aav_interfaces/ActuatorState the model's angle
@@ -23,12 +23,12 @@
 //!             car:=model only:
 //!             /vehicle/bench/truth          nav_msgs/Odometry where the model car really is (map
 //!                                                             frame, 50 Hz), for the pretend sensors
-//!             car:=gazebo only:
+//!             car:=ravensim only:
 //!             /vehicle/sim/spine_outputs aav_interfaces/SpineOutputs  throttle, brake, reverse
 //!                                           and steering target, every tick (100 Hz)
 //! Parameters  car (model), wheelbase, track, wheel_radius (m), max_steering (rad), start_x,
 //!             start_y (m), start_yaw (rad), speed_loop (default: the spine's speed loop
-//!             profile, default, smooth or lqi: spine-core SpeedLoopProfile, TODO 27, TODO 3)
+//!             profile, default, smooth, lqi or firm: spine-core SpeedLoopProfile, TODO 27, 3, 163)
 //!
 //! A thread runs the spine at 100 Hz, like the board's main loop; the main thread spins.
 
@@ -54,22 +54,24 @@ use ros_env::std_msgs::msg::{Bool, UInt16};
 
 /// The spine's tick, as on the board (ms).
 const TICK_MS: u32 = 10;
-/// Gazebo's clock: more than this many ticks behind is a stall or a reset, not catch-up.
+/// Ravensim's clock: more than this many ticks behind is a stall or a reset, not catch-up.
 const MAX_CATCH_UP: i64 = 10;
 
 /// Which car the spine drives.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CarKind {
     Model,
-    Gazebo,
+    Ravensim,
 }
 
 impl CarKind {
     fn parse(name: &str) -> Result<Self> {
         match name {
             "model" => Ok(CarKind::Model),
-            "gazebo" => Ok(CarKind::Gazebo),
-            other => bail!("car:={other}: use model (the bench) or gazebo"),
+            "ravensim" => Ok(CarKind::Ravensim),
+            // car:=gazebo, the name before Gazebo was removed (16 Nov): for one release.
+            "gazebo" => Ok(CarKind::Ravensim),
+            other => bail!("car:={other}: use model (the bench) or ravensim"),
         }
     }
 }
@@ -117,7 +119,11 @@ fn main() -> Result<()> {
         speed_loop: profile.config(),
         ..SpineConfig::default()
     };
-    log_info!(node.logger(), "The speed loop's profile: {}", profile.name());
+    log_info!(
+        node.logger(),
+        "The speed loop's profile: {}",
+        profile.name()
+    );
     let mut wheels = BENCH_WHEELS;
     wheels.wheel_radius = param("wheel_radius", 0.15)? as f32;
     let bad_wheels = |e| anyhow!("bad wheel settings: {e:?}");
@@ -156,13 +162,13 @@ fn main() -> Result<()> {
             })?;
             (handle, keep)
         }
-        CarKind::Gazebo => {
+        CarKind::Ravensim => {
             let car = MeasuredCar::new(plant.ticks_per_metre);
             let bench = Bench::with_car(spine, car, wheels).map_err(bad_wheels)?;
             log_info!(
                 node.logger(),
-                "The spine's firmware logic, driving Gazebo's car through the actuator model, \
-                 on Gazebo's clock. Arm it with /spine/arm, as on the real car."
+                "The spine's firmware logic, driving Ravensim's car through the actuator model, \
+                 on Ravensim's clock. Arm it with /spine/arm, as on the real car."
             );
             let bench = Arc::new(Mutex::new(bench));
             let mut keep = switches(&node, &bench)?;
@@ -202,6 +208,9 @@ fn main() -> Result<()> {
 /// Subscriptions that must live as long as the node.
 type Keep = Vec<Box<dyn std::any::Any>>;
 
+/// A poisoned lock means the spine loop panicked while holding it: nothing to go on with.
+const POISONED: &str = "the bench's lock: the spine loop panicked while holding it";
+
 /// The bus and the bench's switches: the same for every car.
 fn switches<C: Car + Send + 'static>(node: &Node, bench: &Arc<Mutex<Bench<C>>>) -> Result<Keep> {
     let frames_in = {
@@ -209,46 +218,50 @@ fn switches<C: Car + Send + 'static>(node: &Node, bench: &Arc<Mutex<Bench<C>>>) 
         node.create_subscription::<Frame, _>("/can/tx", move |f: Frame| {
             if !f.is_extended && !f.is_rtr && !f.is_error && f.id <= 0x7FF {
                 let len = (f.dlc as usize).min(8);
-                bench.lock().unwrap().receive(f.id as u16, &f.data[..len]);
+                bench
+                    .lock()
+                    .expect(POISONED)
+                    .receive(f.id as u16, &f.data[..len]);
             }
         })?
     };
     let estop = {
         let bench = Arc::clone(bench);
         node.create_subscription::<Bool, _>("/vehicle/bench/hw_estop", move |m: Bool| {
-            bench.lock().unwrap().set_hw_estop(m.data);
+            bench.lock().expect(POISONED).set_hw_estop(m.data);
         })?
     };
     let faults = {
         let bench = Arc::clone(bench);
         node.create_subscription::<UInt16, _>("/vehicle/bench/driver_faults", move |m: UInt16| {
-            bench.lock().unwrap().set_driver_faults(m.data);
+            bench.lock().expect(POISONED).set_driver_faults(m.data);
         })?
     };
     Ok(vec![Box::new(frames_in), Box::new(estop), Box::new(faults)])
 }
 
-/// What Gazebo's car measured, from gazebo_adapter.
+/// What Ravensim's car measured, from sim_adapter.
 fn measurements(node: &Node, bench: &Arc<Mutex<Bench<MeasuredCar>>>) -> Result<Keep> {
     let wheels = {
         let bench = Arc::clone(bench);
-        node.create_subscription::<WheelSpeeds, _>(
-            "/vehicle/sim/wheels",
-            move |w: WheelSpeeds| {
-                let mut b = bench.lock().unwrap();
-                let car = b.car_mut();
-                car.measure_front_wheels([w.front_left, w.front_right]);
-                // The rear axle's speed: what the motor's encoder sees.
-                car.measure_speed((w.rear_left + w.rear_right) / 2.0);
-            },
-        )?
+        node.create_subscription::<WheelSpeeds, _>("/vehicle/sim/wheels", move |w: WheelSpeeds| {
+            let mut b = bench.lock().expect(POISONED);
+            let car = b.car_mut();
+            car.measure_front_wheels([w.front_left, w.front_right]);
+            // The rear axle's speed: what the motor's encoder sees.
+            car.measure_speed((w.rear_left + w.rear_right) / 2.0);
+        })?
     };
     let steering = {
         let bench = Arc::clone(bench);
         node.create_subscription::<ActuatorState, _>(
             "/vehicle/sim/steering",
             move |s: ActuatorState| {
-                bench.lock().unwrap().car_mut().measure_steering(s.measured);
+                bench
+                    .lock()
+                    .expect(POISONED)
+                    .car_mut()
+                    .measure_steering(s.measured);
             },
         )?
     };
@@ -260,7 +273,7 @@ fn measurements(node: &Node, bench: &Arc<Mutex<Bench<MeasuredCar>>>) -> Result<K
 enum Pacing {
     /// This computer's clock: a steady 100 Hz; a late tick doesn't catch up.
     Wall,
-    /// The node's clock (Gazebo's, with use_sim_time): one tick per 10 ms of it, catching
+    /// The node's clock (Ravensim's, with use_sim_time): one tick per 10 ms of it, catching
     /// up as it runs; nothing while it stands still.
     NodeClock,
 }
@@ -286,7 +299,7 @@ where
         let mut next = Instant::now() + period;
         let mut last_ns: Option<i64> = None;
         let mut tick = |stamp: Time| -> Result<()> {
-            let mut b = bench.lock().unwrap();
+            let mut b = bench.lock().expect(POISONED);
             for (id, data) in b.tick(TICK_MS) {
                 frames_out.publish(frame(id, data, stamp.clone()))?;
             }

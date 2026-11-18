@@ -17,7 +17,7 @@ These are the same rules as CARLA's own ROS bridge (carla-simulator/ros-bridge,
 carla_common/transforms.py, MIT).
 
 The map frame: map (0, 0) is navsat.yaml's datum, x east, and the car starts there facing
-east, on the bench and in Gazebo alike (the EKFs start at the origin, facing east, and
+east, on the bench and in Ravensim alike (the EKFs start at the origin, facing east, and
 the IMU has no compass). A CARLA car starts at a town's spawn point instead, so SpawnFrame
 moves and turns CARLA's world until the spawn point is the origin, facing east. GPS and
 the truth are made in that frame; GPS then turns it into latitude and longitude around
@@ -113,7 +113,7 @@ class SpawnFrame:
     Move and turn CARLA's world so a chosen point is our map's origin.
 
     CARLA's world (already in ROS axes) moved and turned so the spawn point is the origin,
-    facing east: where the car starts on the bench and in Gazebo.
+    facing east: where the car starts on the bench and in Ravensim.
 
     x0, y0: the spawn point (m, ROS axes); yaw0: the car's heading there (rad, ROS).
     """

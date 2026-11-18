@@ -9,7 +9,7 @@ Plain-English driving (`docs/plain-english.md`). Two parts:
 
 ```
 you -> talk (local model plans) -> drive server (MCP stdio) -> language_drive node
-   -> /scripted_drive (aav_scripted) or /follow_gps_waypoints (Nav2) -> twist_mux -> ego
+   -> /scripted_drive (aav_scripted) or /follow_gps_waypoints (the navigator) -> twist_mux -> ego
 ```
 
 ## Overview
@@ -45,7 +45,7 @@ MCP tools (`drive_server.py`):
 | `drive(distance_m, speed_mps, direction, curvature, wait)` | the whole distance, ramps included |
 | `turn(angle_deg, radius_m, direction, speed_mps, wait)` | an arc |
 | `stop()`, `estop()` | cancel this server's drive (it slows to a stop; never refused); set the e-stop (never clears it) |
-| `go_to_gps(lat, lon, wait)` | one Nav2 GPS waypoint, at most 200 m away |
+| `go_to_gps(lat, lon, wait)` | one GPS waypoint for the navigator, at most 200 m away |
 | `wait(seconds)`, `check(tool, arguments)` | pause; would that call be refused? |
 
 ROS node `language_drive` (`ros_backend.py`):
@@ -53,7 +53,7 @@ ROS node `language_drive` (`ros_backend.py`):
 | Item | What |
 |---|---|
 | Subscribes | `/localization/odom/local` (`nav_msgs/Odometry`); `/sensors/gps/fix` (`sensor_msgs/NavSatFix`, best effort); `/safety/estop` (`std_msgs/Bool`); `/vehicle/status` (`aav_interfaces/VehicleStatus`); every twist_mux input and lock from `aav_command_mux`'s `twist_mux.yaml` (arrival times only, to tell who drives); `/diagnostics` (twist_mux's lock report); `/tf`, `/tf_static`; `/safety/geofence/fence` (`geometry_msgs/PolygonStamped`, latched) |
-| Publishes | `/safety/estop` (`std_msgs/Bool`): only true, five times in 0.5 s |
+| Publishes | `/safety/estop` (`std_msgs/Bool`): only true, five times in 0.5 s; `/drivers/language/heartbeat` (`std_msgs/UInt64`, 5 Hz; 0 = goodbye on close): the car's `goal_leash` (`aav_safety`) cancels this driver's goals if the beats stop for 1 s, so a laptop dropping off mid-drive doesn't leave the car driving (TODO 116) |
 | Calls | actions `/scripted_drive` (`aav_interfaces/action/ScriptedDrive`), `/follow_gps_waypoints` (`nav2_msgs/action/FollowGPSWaypoints`); `/ego/get_parameters` |
 
 Default caps (`safety.Caps`), tightened to ego's own limits at start:
@@ -89,7 +89,7 @@ Modules:
   (`legacy_uart_bridge`, `encoder_udp`, `socket_can_*`, or `spine_bridge` without `spine_sim`).
 - Nothing moves while the e-stop is on, or while twist_mux's report is silent. A move is
   refused while a lock holds the driver that would carry it (`holding_locks`): the
-  stop-sign and sensor locks (30) hold Nav2 (20), so `go_to_gps`, but not the scripted
+  stop-sign and sensor locks (30) hold navigation (20), so `go_to_gps`, but not the scripted
   driver (50), so not `drive` or `turn`. It publishes only `true` on `/safety/estop`; a
   person clears it.
 - A drive, turn or GPS goal that would end outside `/safety/geofence/fence` is refused
@@ -103,6 +103,7 @@ Modules:
 - `drive()` covers the whole distance: if too short to reach the speed, the top speed
   drops so both ramps fit.
 - When the app that started the server goes away (stdin closes), it cancels any drive.
+  If the whole laptop goes (WiFi, battery), the car's `goal_leash` cancels them instead.
 - Models are meant to run on this computer: MLX in this process, or a server at
   `127.0.0.1:8080` by default. Nothing enforces it: `OpenAiChat` and `tools/ros.sh python3 -m aav_language.run_eval --base-url`
   take any URL (and `OpenAiChat` an API key).

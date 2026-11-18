@@ -10,13 +10,18 @@ use thiserror::Error;
 /// The trackers, in key order: 1 pure pursuit, 2 Stanley, 3 LQR, 4 MPC.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tracker {
+    /// Pure pursuit (key 1).
     PurePursuit,
+    /// Stanley (key 2).
     Stanley,
+    /// LQR (key 3).
     Lqr,
+    /// MPC (key 4).
     Mpc,
 }
 
 impl Tracker {
+    /// Every tracker, in key order.
     pub const ALL: [Tracker; 4] = [
         Tracker::PurePursuit,
         Tracker::Stanley,
@@ -25,6 +30,7 @@ impl Tracker {
     ];
 
     /// aav_track's name for it (its `tracker` parameter).
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Self::PurePursuit => "pure_pursuit",
@@ -35,6 +41,7 @@ impl Tracker {
     }
 
     /// The tracker on key `digit` (1 to 4).
+    #[must_use]
     pub fn on_key(digit: u8) -> Option<Self> {
         Self::ALL.get(usize::from(digit.checked_sub(1)?)).copied()
     }
@@ -43,14 +50,20 @@ impl Tracker {
 /// Why a swap isn't asked for.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum Refused {
+    /// `/system/source` hasn't been heard.
     #[error("no /system/source yet: swaps only in the simulator")]
     NoSource,
+    /// Some data isn't simulated: what it is.
     #[error("{0} data: trackers swap only in the simulator")]
     NotSim(&'static str),
 }
 
 /// Whether a swap may be asked for: only when `/system/source` has been heard and every
 /// sensor it lists is simulated.
+///
+/// # Errors
+///
+/// [`Refused`] with no `/system/source` yet, or any sensor not simulated.
 pub fn allowed(origins: &Origins) -> Result<(), Refused> {
     let mut entries = origins.entries().peekable();
     if entries.peek().is_none() {
@@ -73,6 +86,7 @@ pub struct Reply {
 
 impl Reply {
     /// The panel's line.
+    #[must_use]
     pub fn line(&self) -> String {
         match &self.outcome {
             Ok(()) => format!("swapped to {}", self.asked),
@@ -89,7 +103,7 @@ mod tests {
     fn origins(list: &[Origin]) -> Origins {
         let mut o = Origins::default();
         o.apply(Announcement {
-            announcer: "gazebo".into(),
+            announcer: "ravensim".into(),
             entries: list
                 .iter()
                 .enumerate()

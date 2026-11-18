@@ -42,6 +42,7 @@ use std::{
 
 use anyhow::{bail, Context as _, Result};
 use ndt_core::{
+    chunks::ChunkedPoints,
     cloud::{read_xyz, BodyBox, CloudView, Field},
     localizer::{raw_covariance, Outcome, Poor, Skip},
     pcd, Ground, Localizer, LocalizerSettings, MapSettings, MatchSettings, Matcher, Mount, Pose2,
@@ -64,21 +65,50 @@ fn main() -> Result<()> {
     let node = executor.create_node("ndt")?;
     let params = Params::declare(&node)?;
 
-    let map_path = params.map.get();
     let started = Instant::now();
-    let map = pcd::read(File::open(&*map_path).with_context(|| format!("map:={map_path}"))?)
-        .with_context(|| format!("map:={map_path}"))?;
     let cubes = params.cubes.get();
     let settings = params.match_settings();
-    let matcher = Matcher::new(&map, &cubes, MapSettings::with_cube, settings)
-        .with_context(|| format!("the cubes of {map_path}"))?;
-    log_info!(
-        node.logger(),
-        "{map_path}: {} points; cubes (m, curves) {:?}; ready in {:.1} s",
-        map.len(),
-        matcher.levels().collect::<Vec<_>>(),
-        started.elapsed().as_secs_f64()
-    );
+    let chunk_dir = params.map_chunks.get();
+    let (matcher, chunks) = if chunk_dir.is_empty() {
+        let map_path = params.map.get();
+        let map = pcd::read(File::open(&*map_path).with_context(|| format!("map:={map_path}"))?)
+            .with_context(|| format!("map:={map_path}"))?;
+        let matcher = Matcher::new(&map, &cubes, MapSettings::with_cube, settings)
+            .with_context(|| format!("the cubes of {map_path}"))?;
+        log_info!(
+            node.logger(),
+            "{map_path}: {} points; cubes (m, curves) {:?}; ready in {:.1} s",
+            map.len(),
+            matcher.levels().collect::<Vec<_>>(),
+            started.elapsed().as_secs_f64()
+        );
+        (matcher, None)
+    } else {
+        // The map in 64 m chunks (ndt-chunks writes them; the grid is chunks.yaml beside
+        // the folder): only the 3 x 3 round the car is held, rebuilt as it drives.
+        let dir = std::path::Path::new(&*chunk_dir);
+        let grid = map_chunks::files::read_grid(dir.parent().unwrap_or(dir))
+            .with_context(|| format!("map_chunks:={chunk_dir}"))?;
+        let mut chunks = ChunkedPoints::new(dir, grid);
+        let near = (!params.start_from_global.get())
+            .then(|| map_chunks::Point::new(params.start_x.get(), params.start_y.get()));
+        if let Some(near) = near {
+            chunks
+                .update(near)
+                .with_context(|| format!("map_chunks:={chunk_dir}"))?;
+        }
+        let matcher =
+            Matcher::new_or_empty(&chunks.points(), &cubes, MapSettings::with_cube, settings)
+                .with_context(|| format!("the cubes of {chunk_dir}"))?;
+        log_info!(
+            node.logger(),
+            "{chunk_dir}: the map in chunks, {} loaded; cubes (m, curves) {:?}; ready in {:.2} s",
+            chunks.loaded().count(),
+            matcher.levels().collect::<Vec<_>>(),
+            started.elapsed().as_secs_f64()
+        );
+        (matcher, Some(chunks))
+    };
     let mut localizer = Localizer::new(matcher, params.localizer_settings()?);
     if !params.start_from_global.get() {
         let start = Pose2::new(
@@ -92,6 +122,10 @@ fn main() -> Result<()> {
 
     let state = State {
         localizer,
+        chunks,
+        cubes,
+        search: settings,
+        near: None,
         period: seconds("cloud_period", params.cloud_period.get())?,
         last_cloud: None,
         dropped: 0,
@@ -114,8 +148,9 @@ fn main() -> Result<()> {
     let _global = worker.create_subscription(
         "localization/odom/global",
         |s: &mut State, odom: Odometry| {
-            s.localizer
-                .global(duration(&odom.header.stamp), pose2(&odom.pose.pose));
+            let pose = pose2(&odom.pose.pose);
+            s.near.get_or_insert((pose.x, pose.y));
+            s.localizer.global(duration(&odom.header.stamp), pose);
         },
     )?;
     let _initial = worker.create_subscription(
@@ -123,6 +158,7 @@ fn main() -> Result<()> {
         |s: &mut State, msg: PoseWithCovarianceStamped| {
             let start = pose2(&msg.pose.pose);
             log_info!(&s.logger, "starting again from {start:?}");
+            s.near = Some((start.x, start.y));
             s.localizer
                 .set_start(start, Some(duration(&msg.header.stamp)));
         },
@@ -138,6 +174,12 @@ fn main() -> Result<()> {
 /// The worker's payload.
 struct State {
     localizer: Localizer,
+    /// The map in chunks (map_chunks:=), or None: the whole map, built once.
+    chunks: Option<ChunkedPoints>,
+    cubes: Arc<[f64]>,
+    search: MatchSettings,
+    /// Where the car is, for the chunks: the newest fit, else the global pose or a start.
+    near: Option<(f64, f64)>,
     /// The lidar's period: a longer gap between clouds means some were dropped.
     period: Duration,
     last_cloud: Option<Duration>,
@@ -185,10 +227,17 @@ impl State {
                 return;
             }
         };
+        // The chunks follow where this match starts: after a restart from ekf_global that
+        // can be far from the last good fit (15 Nov: 28 s with no pose on the campus).
+        if let Some(guess) = self.localizer.guess(stamp) {
+            self.near = Some((guess.x, guess.y));
+        }
+        self.load_chunks();
         let started = Instant::now();
         let report = self.localizer.cloud(stamp, points);
         let match_ms = started.elapsed().as_secs_f64() * 1e3;
         if let Outcome::Pose(fit) = &report.outcome {
+            self.near = Some((fit.pose.x, fit.pose.y));
             let msg = PoseWithCovarianceStamped {
                 header: Header {
                     stamp: cloud.header.stamp.clone(),
@@ -214,6 +263,42 @@ impl State {
                 self.logger.throttle(WARN_EVERY),
                 "/localization/ndt/status: {e}"
             );
+        }
+    }
+}
+
+impl State {
+    /// With the map in chunks: load the 3 x 3 round the car, and match on them from now.
+    fn load_chunks(&mut self) {
+        let (Some(chunks), Some((x, y))) = (self.chunks.as_mut(), self.near) else {
+            return;
+        };
+        let read = Instant::now();
+        match chunks.update(map_chunks::Point::new(x, y)) {
+            Ok(false) => {}
+            Ok(true) => {
+                let read_ms = read.elapsed().as_secs_f64() * 1e3;
+                let started = Instant::now();
+                match Matcher::new_or_empty(
+                    &chunks.points(),
+                    &self.cubes,
+                    MapSettings::with_cube,
+                    self.search,
+                ) {
+                    Ok(matcher) => {
+                        log_info!(
+                            &self.logger,
+                            "the chunks round ({x:.0}, {y:.0}): cubes (m, curves) {:?}; \
+                             read in {read_ms:.0} ms, built in {:.0} ms",
+                            matcher.levels().collect::<Vec<_>>(),
+                            started.elapsed().as_secs_f64() * 1e3
+                        );
+                        self.localizer.set_matcher(matcher);
+                    }
+                    Err(e) => log_warn!(self.logger.throttle(WARN_EVERY), "the chunks: {e}"),
+                }
+            }
+            Err(e) => log_warn!(self.logger.throttle(WARN_EVERY), "the chunks: {e}"),
         }
     }
 }
@@ -352,6 +437,7 @@ struct Params {
     start_yaw: ReadOnlyParameter<f64>,
     start_from_global: ReadOnlyParameter<bool>,
     cloud_period: ReadOnlyParameter<f64>,
+    map_chunks: ReadOnlyParameter<Arc<str>>,
 }
 
 impl Params {
@@ -408,6 +494,10 @@ impl Params {
                 .default(false)
                 .read_only()?,
             cloud_period: number("cloud_period", 0.1)?,
+            map_chunks: node
+                .declare_parameter("map_chunks")
+                .default("".into())
+                .read_only()?,
         })
     }
 

@@ -19,7 +19,9 @@ use crate::scene::{Ray, Scene};
 pub struct Ground {
     /// m: the highest step a wheel rolls up. Higher stops the car.
     pub max_step: f64,
+    /// m: rear axle to front axle.
     pub wheelbase: f64,
+    /// m: left wheel to right wheel.
     pub track: f64,
 }
 
@@ -40,6 +42,7 @@ const LOOK_DOWN: f64 = 2.0;
 impl Ground {
     /// The wheels' contact points in base_link: rear right, rear left, front right,
     /// front left.
+    #[must_use]
     pub fn wheels(&self) -> [Vec3; 4] {
         let (half, wb) = (self.track / 2.0, self.wheelbase);
         [
@@ -51,6 +54,10 @@ impl Ground {
     }
 
     /// The four wheels' heights with the car at (x, y, yaw), each from its last height.
+    ///
+    /// # Errors
+    ///
+    /// [`Blocked`] if a wheel meets a step higher than `max_step`.
     pub fn settle(
         &self,
         scene: &Scene,
@@ -83,6 +90,7 @@ impl Ground {
     }
 
     /// base_link on the ground under the rear axle, tilted to the four wheels.
+    #[must_use]
     pub fn pose(&self, x: f64, y: f64, yaw: f64, h: [f64; 4]) -> Pose {
         let rear = (h[0] + h[1]) / 2.0;
         let front = (h[2] + h[3]) / 2.0;

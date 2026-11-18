@@ -18,6 +18,8 @@ from dataclasses import dataclass
 import math
 from typing import List, Optional, Sequence, Tuple
 
+from aav_description.road_ahead import along_of, limit_at
+
 Point = Tuple[float, float]
 
 OK, WARN, BAD = 0, 1, 2   # diagnostic_msgs/DiagnosticStatus levels: green, amber, red
@@ -204,3 +206,26 @@ def describe(gap_m: Optional[float], level: int, stop_m: Optional[float],
         parts.append(f'{room_m:.1f} m before an obstacle' if room_m >= 0
                      else f'HITS an obstacle ({-room_m:.1f} m short)')
     return f'{head} - {", ".join(parts)}'
+
+
+@dataclass(frozen=True)
+class Road:
+    """What the road ahead (/world/road_ahead) says where the car is."""
+
+    limit: float            # m/s: the speed it allows here (0: none)
+    room: float             # m left to its end (0 or less: there)
+    why: str                # why it ends there: the nearest stop's reason ('' for none)
+
+
+def road(strip, x: float, y: float) -> Optional[Road]:
+    """
+    Return the road ahead at the car (x, y, the strip's frame); None with no strip.
+
+    The writer's own limit (no curve): the screens show what the road says, ego trims by it.
+    """
+    if strip is None or len(strip) == 0:
+        return None
+    s, _ = along_of(strip, x, y)
+    ahead = [stop for stop in strip.stops if stop.along >= s - strip.spacing]
+    why = min(ahead, key=lambda stop: stop.along).reason if ahead else ''
+    return Road(limit_at(strip, x, y), strip.end - s, why)

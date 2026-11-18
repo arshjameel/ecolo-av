@@ -115,14 +115,21 @@ impl Display for RcReady<'_> {
 /// the Jrk answered at boot and has no fault now (the C++: it answered at boot).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CppStatus {
+    /// -1..1 of full lock, positive left.
     pub steering: f32,
+    /// The throttle, -1..1, negative in reverse.
     pub speed: f32,
+    /// The brake, -1..0.
     pub accel: f32,
+    /// The steering Jrk answered at boot and has no fault now.
     pub steer_ok: bool,
+    /// The brake Jrk answered at boot and has no fault now.
     pub brake_ok: bool,
 }
 
 impl CppStatus {
+    /// The line for this tick's outputs.
+    #[must_use]
     pub fn new(out: &Outputs, max_steering_angle: f32, check: &DeviceCheck) -> Self {
         let answered = |device| check.iter().any(|f| f.device == device && f.answered);
         let steering = if max_steering_angle > 0.0 {
@@ -165,8 +172,11 @@ impl Display for CppStatus {
 /// valid signal - SAFE STOP`, `JRK SAFE STOP`); this one line covers them all.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FaultChange {
+    /// When (ms since boot).
     pub now_ms: u32,
+    /// The fault bits before.
     pub was: u16,
+    /// The fault bits now.
     pub now: u16,
 }
 
@@ -199,7 +209,9 @@ fn names(f: &mut Formatter<'_>, bits: u16) -> fmt::Result {
 /// Which Jrk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Jrk {
+    /// The steering Jrk.
     Steering,
+    /// The brake Jrk.
     Brake,
 }
 
@@ -207,8 +219,11 @@ pub enum Jrk {
 /// flags=0x0004`, `cleared` when they go back to none, `unread` when the read failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JrkErrorLine {
+    /// Which Jrk.
     pub jrk: Jrk,
+    /// When (ms since boot).
     pub now_ms: u32,
+    /// Its flags now; `None` if the read failed.
     pub flags: Option<ErrorFlags>,
 }
 
@@ -228,6 +243,7 @@ impl Display for JrkErrorLine {
 }
 
 /// The name `/scan` gives an address, as `handleScan()` labelled it; `None` for any other.
+#[must_use]
 pub const fn scan_label(address: u8, a: &Addresses) -> Option<&'static str> {
     if address == a.steering {
         Some("JRK steer")
@@ -245,7 +261,9 @@ pub const fn scan_label(address: u8, a: &Addresses) -> Option<&'static str> {
 /// One address a scan found, as `handleScan()` printed it: `Found: 0x05 <- JRK steer`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScanFound {
+    /// The address that answered.
     pub address: u8,
+    /// Its name ([`scan_label`]), if it is one of ours.
     pub label: Option<&'static str>,
 }
 

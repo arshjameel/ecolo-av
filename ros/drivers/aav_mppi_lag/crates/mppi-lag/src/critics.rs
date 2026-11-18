@@ -11,13 +11,16 @@
 //! | `GoalAngleCritic` | the mean heading error to the goal's, within `threshold` (ours 2.5 m) | 3.0 |
 //! | `PathAlignCritic` | the mean distance (and heading, ours) from the path at the same distance along | 10.0, offset 20, step 4 |
 //! | `PathFollowCritic` | the end's distance to a path point 6 past the furthest reached | 5.0 |
-//! | `PathAngleCritic` | the end's heading error to a path point 4 past the furthest, when over 45 degrees | 2.2 |
+//! | `PathAngleCritic` | the end's heading error to a path point 4 past the furthest, when over 45 degrees; nose first (mode 0), either end (1), or the way the path faces, tail first on a reversing stretch (2) | 2.2 |
 //! | `PreferForwardCritic` | time spent reversing | 5.0 |
+//! | `LaneCritic` (ours) | the outline past the lane's soft edges (squared), and past its hard edges | 100 soft, 1000 hard |
 //!
 //! Where ours differs: the speeds and yaw rates are the model's (with lag), not the
-//! commands'; `PathAngleCritic` has only its forward mode (ours never reverses).
+//! commands'. Reversing: as Nav2's, the path ends at its next change of direction
+//! ([`crate::path`]), so `PathAlignCritic` never matches across a cusp.
 
 use crate::costmap::{Costmap, INSCRIBED, LETHAL, NO_INFORMATION};
+use crate::lane::Lane;
 use crate::model::{wrap, Command, Pose};
 
 /// One sample: its commands and the future the model gave them.
@@ -39,6 +42,7 @@ pub struct Rollout {
 
 impl Rollout {
     /// A rollout with room for `steps` steps.
+    #[must_use]
     pub fn with_steps(steps: usize) -> Self {
         Self {
             controls: vec![Command::default(); steps],
@@ -78,6 +82,8 @@ pub struct CriticData<'a> {
     pub vx_min: f64,
     /// m: the tightest turn (wheelbase / tan(full lock)).
     pub min_turning_r: f64,
+    /// The road ahead's lane, in the same frame as the poses, if one is known.
+    pub lane: Option<&'a Lane>,
 }
 
 /// (raw x weight)^power, or raw x weight for power 1 (Nav2's every critic).
@@ -197,6 +203,7 @@ impl Default for CostCritic {
 }
 
 /// Nav2's inflation cost at `distance` m from an obstacle (InflationLayer::computeCost).
+#[must_use]
 pub fn inflation_cost(distance: f64, inscribed: f64, cost_scaling_factor: f64) -> f64 {
     if distance <= 0.0 {
         f64::from(LETHAL)
@@ -327,6 +334,7 @@ impl GoalAngleCritic {
 
 /// The index after `dist` m along (Nav2's findClosestPathPt): the closer of the two
 /// path points either side of `dist`, searching from `init`.
+#[must_use]
 pub fn closest_path_point(along: &[f64], dist: f64, init: usize) -> usize {
     let mut before = if init != 0 { along[init] } else { 0.0 };
     for (i, &here) in along.iter().enumerate().skip(init + 1) {
@@ -477,8 +485,45 @@ impl PathFollowCritic {
     }
 }
 
-/// `PathAngleCritic` (forward preference): when the path point ahead is over
-/// `max_angle_to_furthest` off the car's nose, end facing it.
+/// How `PathAngleCritic` judges the angle to the path point ahead (Nav2's `mode`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PathAngleMode {
+    /// 0: the point should be ahead of the nose (forward only).
+    #[default]
+    ForwardPreference,
+    /// 1: ahead of the nose or of the tail, whichever is nearer.
+    NoDirectionalPreference,
+    /// 2: the way the path's own heading says: ahead of the nose on a forward stretch,
+    /// of the tail on a reversing one (the planner's poses face the car's way).
+    ConsiderFeasiblePathOrientations,
+}
+
+impl PathAngleMode {
+    /// Nav2's number for the mode; `None` for one it doesn't have.
+    #[must_use]
+    pub fn from_number(n: i64) -> Option<Self> {
+        match n {
+            0 => Some(Self::ForwardPreference),
+            1 => Some(Self::NoDirectionalPreference),
+            2 => Some(Self::ConsiderFeasiblePathOrientations),
+            _ => None,
+        }
+    }
+}
+
+/// The angle (rad, 0..pi) from `yaw` to the bearing `bearing`, or to the bearing turned
+/// round where that is nearer (`flip`).
+fn off_by(yaw: f64, bearing: f64, flip: bool) -> f64 {
+    let ahead = wrap(bearing - yaw).abs();
+    if flip {
+        ahead.min(wrap(bearing + std::f64::consts::PI - yaw).abs())
+    } else {
+        ahead
+    }
+}
+
+/// `PathAngleCritic`: when the path point ahead is over `max_angle_to_furthest` off the
+/// car's nose (or tail, by `mode`), end facing it that way.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PathAngleCritic {
     /// cost_weight.
@@ -491,6 +536,8 @@ pub struct PathAngleCritic {
     pub offset_from_furthest: usize,
     /// rad: on only when the point is further off the nose than this.
     pub max_angle_to_furthest: f64,
+    /// Which way the car should face the point.
+    pub mode: PathAngleMode,
 }
 
 impl Default for PathAngleCritic {
@@ -501,25 +548,57 @@ impl Default for PathAngleCritic {
             threshold: 0.5,
             offset_from_furthest: 4,
             max_angle_to_furthest: std::f64::consts::FRAC_PI_4,
+            mode: PathAngleMode::ForwardPreference,
         }
     }
 }
 
 impl PathAngleCritic {
+    /// The mode it runs in: no directional preference only if the car may reverse (as
+    /// Nav2, which falls back to forward preference with `vx_min` 0).
+    fn mode(&self, d: &CriticData) -> PathAngleMode {
+        if self.mode == PathAngleMode::NoDirectionalPreference && d.vx_min >= 0.0 {
+            PathAngleMode::ForwardPreference
+        } else {
+            self.mode
+        }
+    }
+
+    /// The angle from a car at `pose` to the point `target`, as the mode counts it.
+    fn angle(mode: PathAngleMode, pose: &Pose, target: &Pose) -> f64 {
+        let bearing = (target.y - pose.y).atan2(target.x - pose.x);
+        match mode {
+            PathAngleMode::ForwardPreference => off_by(pose.yaw, bearing, false),
+            PathAngleMode::NoDirectionalPreference => off_by(pose.yaw, bearing, true),
+            PathAngleMode::ConsiderFeasiblePathOrientations => {
+                // The way the path goes there: along its heading, or against it (reversing).
+                let forwards = wrap(bearing - target.yaw).abs() < std::f64::consts::FRAC_PI_2;
+                let way = if forwards {
+                    bearing
+                } else {
+                    wrap(bearing + std::f64::consts::PI)
+                };
+                off_by(pose.yaw, way, false)
+            }
+        }
+    }
+
     fn target(&self, d: &CriticData) -> Option<Pose> {
         if d.path.is_empty() || within(&d.pose, &d.goal, self.threshold) {
             return None;
         }
         let idx = (d.furthest + self.offset_from_furthest).min(d.path.len() - 1);
         let goal = d.path[idx];
-        let bearing = (goal.y - d.pose.y).atan2(goal.x - d.pose.x);
-        (wrap(d.pose.yaw - bearing).abs() >= self.max_angle_to_furthest).then_some(goal)
+        (Self::angle(self.mode(d), &d.pose, &goal) >= self.max_angle_to_furthest).then_some(goal)
     }
 
-    fn score(&self, target: &Pose, r: &Rollout) -> f64 {
+    fn score(&self, d: &CriticData, target: &Pose, r: &Rollout) -> f64 {
         r.poses.last().map_or(0.0, |end| {
-            let bearing = (target.y - end.y).atan2(target.x - end.x);
-            weighted(wrap(bearing - end.yaw).abs(), self.weight, self.power)
+            weighted(
+                Self::angle(self.mode(d), end, target),
+                self.weight,
+                self.power,
+            )
         })
     }
 }
@@ -555,6 +634,103 @@ impl PreferForwardCritic {
     }
 }
 
+/// `LaneCritic` (ours; Nav2 has none): keep the car's outline inside the lane, from the
+/// road ahead's edges ([`crate::lane`]).
+///
+/// For every `trajectory_point_step`th pose, each corner of the outline is put beside the
+/// lane. The furthest any corner goes past a soft edge (a lane line), squared, and whether
+/// any goes past a hard edge (a kerb), averaged over the poses checked:
+///
+/// | Part | Adds |
+/// |---|---|
+/// | soft | (mean of past_soft² x `soft_weight`)^`power`: smooth, nothing inside the lines |
+/// | hard | mean of (1 + past_hard) x `hard_weight`: a sample over the kerb loses |
+///
+/// No lane (no road ahead, or all its edges NaN), or an edge not known: 0 for that edge.
+/// A kerb is not a collision: a car already over one (a lane map off by a metre) still
+/// gets a plan back in, rather than Nav2's NoValidControl.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LaneCritic {
+    /// Per m² past a soft edge (a pose 0.3 m over costs 9 at 100).
+    pub soft_weight: f64,
+    /// Per pose with the outline past a hard edge (plus per m past it).
+    pub hard_weight: f64,
+    /// cost_power, on the soft part.
+    pub power: u32,
+    /// Every nth pose is checked.
+    pub trajectory_point_step: usize,
+}
+
+impl Default for LaneCritic {
+    fn default() -> Self {
+        Self {
+            soft_weight: 100.0,
+            hard_weight: 1000.0,
+            power: 1,
+            trajectory_point_step: 2,
+        }
+    }
+}
+
+/// m past an edge `limit` m to the side, for a point `out` m out that way (0 inside, or
+/// not known).
+fn past(out: f64, limit: Option<f64>) -> f64 {
+    limit.map_or(0.0, |l| (out - l).max(0.0))
+}
+
+impl LaneCritic {
+    /// (m past a soft edge, m past a hard edge, or -1 if inside) for one pose's outline.
+    fn over(lane: &Lane, footprint: &[(f64, f64)], pose: &Pose, hint: usize) -> (f64, f64) {
+        let (s, c) = pose.yaw.sin_cos();
+        let centre = [(0.0, 0.0)];
+        let corners = if footprint.is_empty() {
+            &centre[..]
+        } else {
+            footprint
+        };
+        let mut soft = 0.0f64;
+        let mut hard = -1.0f64;
+        for &(fx, fy) in corners {
+            let b = lane.beside(pose.x + c * fx - s * fy, pose.y + s * fx + c * fy, hint);
+            let e = b.edges;
+            soft = soft
+                .max(past(b.lateral, e.left_soft))
+                .max(past(-b.lateral, e.right_soft));
+            for (out, limit) in [(b.lateral, e.left_hard), (-b.lateral, e.right_hard)] {
+                if let Some(l) = limit {
+                    if out > l {
+                        hard = hard.max(out - l);
+                    }
+                }
+            }
+        }
+        (soft, hard)
+    }
+
+    fn score(&self, d: &CriticData, start: usize, r: &Rollout) -> f64 {
+        let Some(lane) = d.lane else {
+            return 0.0;
+        };
+        let step = self.trajectory_point_step.max(1);
+        let mut hint = start;
+        let (mut soft, mut hard, mut n) = (0.0, 0.0, 0usize);
+        for pose in r.poses.iter().step_by(step) {
+            hint = lane.beside(pose.x, pose.y, hint).index;
+            let (s, h) = Self::over(lane, d.footprint, pose, hint);
+            soft += s * s;
+            if h >= 0.0 {
+                hard += 1.0 + h;
+            }
+            n += 1;
+        }
+        if n == 0 {
+            return 0.0;
+        }
+        let n = n as f64;
+        weighted(soft / n, self.soft_weight, self.power) + hard / n * self.hard_weight
+    }
+}
+
 /// One critic, by Nav2's name.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Critic {
@@ -574,9 +750,15 @@ pub enum Critic {
     PathAngle(PathAngleCritic),
     /// `PreferForwardCritic`.
     PreferForward(PreferForwardCritic),
+    /// `LaneCritic` (ours).
+    Lane(LaneCritic),
 }
 
-/// The names `Critic::by_name` knows: nav2.yaml's list.
+/// Our own critics, which Nav2 doesn't have: `Critic::by_name` knows them too, but they
+/// run only when the critics list names them.
+pub const OWN: [&str; 1] = ["LaneCritic"];
+
+/// Nav2's names `Critic::by_name` knows: nav2.yaml's list.
 pub const NAMES: [&str; 8] = [
     "ConstraintCritic",
     "CostCritic",
@@ -590,6 +772,7 @@ pub const NAMES: [&str; 8] = [
 
 impl Critic {
     /// The critic called `name` (Nav2's plugin name), with Nav2's defaults.
+    #[must_use]
     pub fn by_name(name: &str) -> Option<Self> {
         Some(match name {
             "ConstraintCritic" => Self::Constraint(ConstraintCritic::default()),
@@ -600,11 +783,13 @@ impl Critic {
             "PathFollowCritic" => Self::PathFollow(PathFollowCritic::default()),
             "PathAngleCritic" => Self::PathAngle(PathAngleCritic::default()),
             "PreferForwardCritic" => Self::PreferForward(PreferForwardCritic::default()),
+            "LaneCritic" => Self::Lane(LaneCritic::default()),
             _ => return None,
         })
     }
 
     /// Nav2's name for it.
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Self::Constraint(_) => "ConstraintCritic",
@@ -615,6 +800,7 @@ impl Critic {
             Self::PathFollow(_) => "PathFollowCritic",
             Self::PathAngle(_) => "PathAngleCritic",
             Self::PreferForward(_) => "PreferForwardCritic",
+            Self::Lane(_) => "LaneCritic",
         }
     }
 }
@@ -628,11 +814,14 @@ pub struct Prepared<'a> {
     align: bool,
     follow: Option<Pose>,
     angle: Option<Pose>,
+    /// The lane segment beside the car now: where each sample's search starts.
+    lane_start: usize,
 }
 
 impl<'a> Prepared<'a> {
     /// Work out the per-tick parts: PathAlign's distances along, PathFollow's and
-    /// PathAngle's targets.
+    /// PathAngle's targets, where the car is beside the lane.
+    #[must_use]
     pub fn new(critics: &'a [Critic], data: CriticData<'a>) -> Self {
         let mut along = Vec::new();
         let mut align = false;
@@ -655,6 +844,9 @@ impl<'a> Prepared<'a> {
                 _ => {}
             }
         }
+        let lane_start = data
+            .lane
+            .map_or(0, |lane| lane.nearest(data.pose.x, data.pose.y));
         Self {
             critics,
             data,
@@ -662,10 +854,12 @@ impl<'a> Prepared<'a> {
             align,
             follow,
             angle,
+            lane_start,
         }
     }
 
     /// Every critic's score for one sample, added up.
+    #[must_use]
     pub fn score(&self, r: &Rollout) -> Score {
         let d = &self.data;
         let mut total = Score::default();
@@ -680,8 +874,9 @@ impl<'a> Prepared<'a> {
                 }
                 Critic::PathAlign(_) => 0.0.into(),
                 Critic::PathFollow(c) => self.follow.map_or(0.0, |t| c.score(&t, r)).into(),
-                Critic::PathAngle(c) => self.angle.map_or(0.0, |t| c.score(&t, r)).into(),
+                Critic::PathAngle(c) => self.angle.map_or(0.0, |t| c.score(d, &t, r)).into(),
                 Critic::PreferForward(c) => c.score(d, r).into(),
+                Critic::Lane(c) => c.score(d, self.lane_start, r).into(),
             };
             total.cost += s.cost;
             total.collided |= s.collided;
@@ -692,6 +887,7 @@ impl<'a> Prepared<'a> {
 
 /// The furthest path index any sample's end comes nearest to (Nav2's
 /// findPathFurthestReachedPoint: each sample searches from the furthest so far).
+#[must_use]
 pub fn furthest_reached(path: &[Pose], rollouts: &[Rollout]) -> usize {
     let mut furthest = 0usize;
     for end in rollouts.iter().filter_map(|r| r.poses.last()) {
@@ -709,6 +905,7 @@ pub fn furthest_reached(path: &[Pose], rollouts: &[Rollout]) -> usize {
 
 /// For each path pose but the last: clear of obstacles (Nav2's findPathCosts). Without a
 /// costmap, all clear.
+#[must_use]
 pub fn path_clear(path: &[Pose], costmap: Option<&Costmap>, tracking_unknown: bool) -> Vec<bool> {
     let n = path.len().saturating_sub(1);
     let Some(map) = costmap else {
@@ -729,6 +926,7 @@ pub fn path_clear(path: &[Pose], costmap: Option<&Costmap>, tracking_unknown: bo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lane::{Edges, LanePoint};
 
     const DT: f64 = 0.05;
 
@@ -766,6 +964,7 @@ mod tests {
             vx_max: 1.0,
             vx_min: 0.0,
             min_turning_r: 2.86,
+            lane: None,
         }
     }
 
@@ -872,7 +1071,55 @@ mod tests {
         let target = c.target(&d).expect("over 45 degrees off");
         let facing = rollout(0.0, 0.0, 0.0, 3);
         let away = rollout(0.0, 0.0, 1.2, 3);
-        assert!(c.score(&target, &facing) < c.score(&target, &away));
+        assert!(c.score(&d, &target, &facing) < c.score(&d, &target, &away));
+    }
+
+    #[test]
+    fn path_angle_follows_a_reversing_path_tail_first() {
+        // The path goes west, the car facing east along it (the planner's poses face the
+        // car's way): a reversing stretch.
+        let path: Vec<Pose> = (0..=60)
+            .map(|i| Pose::new(-f64::from(i) * 0.05, 0.0, 0.0))
+            .collect();
+        let valid = vec![true; path.len() - 1];
+        let goal = Pose::new(-30.0, 0.0, 0.0);
+        let mut d = data(&path, &valid, Pose::default(), goal);
+        d.vx_min = -0.5;
+        d.furthest = 0;
+        let forward = PathAngleCritic::default();
+        assert!(
+            forward.target(&d).is_some(),
+            "forward only: the point is behind"
+        );
+        let feasible = PathAngleCritic {
+            mode: PathAngleMode::ConsiderFeasiblePathOrientations,
+            ..PathAngleCritic::default()
+        };
+        assert!(
+            feasible.target(&d).is_none(),
+            "tail first: already lined up"
+        );
+        let either = PathAngleCritic {
+            mode: PathAngleMode::NoDirectionalPreference,
+            ..PathAngleCritic::default()
+        };
+        assert!(either.target(&d).is_none());
+        // Turned 1.2 rad: on; ending tail-first scores better than turning round.
+        let mut turned = data(&path, &valid, Pose::new(0.0, 0.0, 1.2), goal);
+        turned.vx_min = -0.5;
+        turned.furthest = 0;
+        let target = feasible.target(&turned).expect("off the tail");
+        let tail_first = rollout(-0.5, 0.0, 0.0, 3);
+        let nose_first = rollout(0.5, 0.0, std::f64::consts::PI, 3);
+        assert!(
+            feasible.score(&turned, &target, &tail_first)
+                < feasible.score(&turned, &target, &nose_first)
+        );
+        // Without reversing, no directional preference falls back to forward (as Nav2).
+        turned.vx_min = 0.0;
+        assert_eq!(either.mode(&turned), PathAngleMode::ForwardPreference);
+        assert_eq!(PathAngleMode::from_number(2), Some(feasible.mode));
+        assert_eq!(PathAngleMode::from_number(3), None);
     }
 
     #[test]
@@ -949,9 +1196,88 @@ mod tests {
 
     #[test]
     fn every_name_builds_its_critic() {
-        for name in NAMES {
-            assert_eq!(Critic::by_name(name).map(|c| c.name()), Some(name));
+        for name in NAMES.iter().chain(&OWN) {
+            assert_eq!(Critic::by_name(name).map(|c| c.name()), Some(*name));
         }
         assert!(Critic::by_name("TwirlingCritic").is_none());
+    }
+
+    /// A straight lane along y = 0 from x = -5 to 35 m with these edges.
+    fn road_lane(edges: Edges) -> Lane {
+        Lane::new((0..=80).map(|i| LanePoint {
+            x: f64::from(i) * 0.5 - 5.0,
+            y: 0.0,
+            edges,
+        }))
+        .expect("a lane")
+    }
+
+    /// The road world's: lines 1.75 m either side, kerbs 2.25 m.
+    fn road_edges() -> Edges {
+        Edges::from_numbers(2.25, 2.25, 1.75, 1.75)
+    }
+
+    /// The car's outline, padded (vehicle.yaml's, as the node gets it).
+    const OUTLINE: [(f64, f64); 4] = [(1.85, 0.55), (1.85, -0.55), (-0.25, -0.55), (-0.25, 0.55)];
+
+    /// LaneCritic's cost for a sample driving straight along y = `y0`.
+    fn lane_cost(lane: Option<&Lane>, y0: f64) -> f64 {
+        let path = straight_path();
+        let valid = vec![true; path.len() - 1];
+        let mut d = data(&path, &valid, Pose::default(), Pose::new(30.0, 0.0, 0.0));
+        d.footprint = &OUTLINE;
+        d.lane = lane;
+        let critics = [Critic::Lane(LaneCritic::default())];
+        Prepared::new(&critics, d)
+            .score(&rollout(1.0, y0, 0.0, 56))
+            .cost
+    }
+
+    #[test]
+    fn lane_critic_is_silent_inside_the_lines() {
+        let lane = road_lane(road_edges());
+        assert_eq!(lane_cost(Some(&lane), 0.0), 0.0);
+        // The outline's side at 1.75 m: on the line, not over it.
+        assert_eq!(lane_cost(Some(&lane), 1.2), 0.0);
+        assert_eq!(lane_cost(Some(&lane), -1.2), 0.0);
+    }
+
+    #[test]
+    fn lane_critic_charges_the_soft_edge_smoothly() {
+        let lane = road_lane(road_edges());
+        // 0.2 m over the left line all along: 0.2² x 100.
+        let over = lane_cost(Some(&lane), 1.4);
+        assert!((over - 4.0).abs() < 1e-9, "{over}");
+        // Twice as far over, four times the cost (squared): smooth at the line.
+        let further = lane_cost(Some(&lane), 1.6);
+        assert!((further - 16.0).abs() < 1e-9, "{further}");
+        // The right side the same.
+        assert!((lane_cost(Some(&lane), -1.4) - 4.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn lane_critic_charges_the_hard_edge_far_more() {
+        let lane = road_lane(road_edges());
+        // 0.1 m over the kerb (the outline at 2.35 m): 0.6² x 100 soft, (1 + 0.1) x 1000 hard.
+        let kerb = lane_cost(Some(&lane), 1.8);
+        assert!((kerb - (36.0 + 1100.0)).abs() < 1e-6, "{kerb}");
+        // The outline counts, not the centre: the centre is 0.45 m inside the kerb.
+        assert!(kerb > 30.0 * lane_cost(Some(&lane), 1.6));
+    }
+
+    #[test]
+    fn lane_critic_is_silent_without_a_lane_or_its_edges() {
+        assert_eq!(lane_cost(None, 1.8), 0.0);
+        let nan = Edges::from_numbers(f64::NAN, f64::NAN, f64::NAN, f64::NAN);
+        let points = (0..10).map(|i| LanePoint {
+            x: f64::from(i),
+            y: 0.0,
+            edges: nan,
+        });
+        assert!(Lane::new(points).is_none(), "NaN edges: no lane to keep to");
+        // Only the kerbs known: the lines cost nothing, the kerb still does.
+        let kerbs = road_lane(Edges::from_numbers(2.25, 2.25, f64::NAN, f64::NAN));
+        assert_eq!(lane_cost(Some(&kerbs), 1.6), 0.0);
+        assert!(lane_cost(Some(&kerbs), 1.8) > 1000.0);
     }
 }

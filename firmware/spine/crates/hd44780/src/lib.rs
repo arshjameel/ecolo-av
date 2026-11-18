@@ -13,17 +13,27 @@
 //! and home 1.52 ms; E must stay high 450 ns. Plain `no_std` Rust against
 //! `embedded-hal` 1.0, so it runs on any board.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 
 /// The six pins. One type for all, as a HAL's plain output pin.
+#[derive(Debug)]
 pub struct Pins<P> {
+    /// Register select: low for a command, high for a character.
     pub rs: P,
+    /// Enable: the display latches a nibble as it falls.
     pub e: P,
+    /// Data bit 4 (the nibble's lowest).
     pub d4: P,
+    /// Data bit 5.
     pub d5: P,
+    /// Data bit 6.
     pub d6: P,
+    /// Data bit 7 (the nibble's highest).
     pub d7: P,
 }
 
@@ -34,14 +44,20 @@ pub enum Lines {
     /// 16x2, 20x2, 40x2.
     Two,
     /// 20x4: lines 2 and 3 continue lines 0 and 1 in the controller's memory.
-    Four { columns: u8 },
+    Four {
+        /// Characters on a line.
+        columns: u8,
+    },
 }
 
 /// The cursor and blinking, for [`Hd44780::set_display`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Cursor {
+    /// No cursor.
     Hidden,
+    /// An underline under the next character.
     Underline,
+    /// An underline and a blinking block.
     Blinking,
 }
 
@@ -66,6 +82,7 @@ const COMMAND_US: u32 = 50;
 const CLEAR_US: u32 = 2_000;
 
 /// One HD44780 display.
+#[derive(Debug)]
 pub struct Hd44780<P, D> {
     pins: Pins<P>,
     delay: D,
@@ -80,6 +97,10 @@ impl<P: OutputPin, D: DelayNs> Hd44780<P, D> {
 
     /// Wakes the controller into 4-bit mode from any state (datasheet, Figure 24), then
     /// clears it, with the display on and no cursor.
+    ///
+    /// # Errors
+    ///
+    /// The pin's error, if setting a pin fails.
     pub fn init(&mut self) -> Result<(), P::Error> {
         self.pins.rs.set_low()?;
         self.pins.e.set_low()?;
@@ -97,6 +118,10 @@ impl<P: OutputPin, D: DelayNs> Hd44780<P, D> {
     }
 
     /// Blank the display, and put the cursor at the top left.
+    ///
+    /// # Errors
+    ///
+    /// The pin's error, if setting a pin fails.
     pub fn clear(&mut self) -> Result<(), P::Error> {
         self.command(cmd::CLEAR)?;
         self.delay.delay_us(CLEAR_US);
@@ -104,6 +129,10 @@ impl<P: OutputPin, D: DelayNs> Hd44780<P, D> {
     }
 
     /// The cursor to the top left, the text unchanged.
+    ///
+    /// # Errors
+    ///
+    /// The pin's error, if setting a pin fails.
     pub fn home(&mut self) -> Result<(), P::Error> {
         self.command(cmd::HOME)?;
         self.delay.delay_us(CLEAR_US);
@@ -111,6 +140,10 @@ impl<P: OutputPin, D: DelayNs> Hd44780<P, D> {
     }
 
     /// The display on or off (the text is kept), and the cursor.
+    ///
+    /// # Errors
+    ///
+    /// The pin's error, if setting a pin fails.
     pub fn set_display(&mut self, on: bool, cursor: Cursor) -> Result<(), P::Error> {
         let mut c = cmd::DISPLAY;
         if on {
@@ -125,6 +158,10 @@ impl<P: OutputPin, D: DelayNs> Hd44780<P, D> {
     }
 
     /// Move the cursor to `column` of `line`, both from 0.
+    ///
+    /// # Errors
+    ///
+    /// The pin's error, if setting a pin fails.
     pub fn set_cursor(&mut self, column: u8, line: u8) -> Result<(), P::Error> {
         let start = match (self.lines, line) {
             (_, 0) => 0x00,
@@ -138,11 +175,19 @@ impl<P: OutputPin, D: DelayNs> Hd44780<P, D> {
 
     /// Characters from the cursor on: ASCII shows as itself; the display's own font maps
     /// the rest.
+    ///
+    /// # Errors
+    ///
+    /// The pin's error, if setting a pin fails.
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), P::Error> {
         bytes.iter().try_for_each(|&b| self.write(true, b))
     }
 
     /// A whole line, from its first column.
+    ///
+    /// # Errors
+    ///
+    /// The pin's error, if setting a pin fails.
     pub fn write_line(&mut self, line: u8, bytes: &[u8]) -> Result<(), P::Error> {
         self.set_cursor(0, line)?;
         self.write_bytes(bytes)

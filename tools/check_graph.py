@@ -71,9 +71,8 @@ def main():
         else:
             print(f'-     {name}')
     extra = sorted(set(running) - set(spec['topics']) - IGNORE)
-    # Costmap internals, the topics ROS makes inside every action, turtlesim's own, and
-    # Gazebo's (between its bridges and gazebo_adapter).
-    internal = ('/local_costmap/', '/global_costmap/', '/turtle1/', '/gazebo/')
+    # Costmap internals, the topics ROS makes inside every action, and turtlesim's own.
+    internal = ('/local_costmap/', '/global_costmap/', '/turtle1/')
     extra = [n for n in extra if not n.startswith(internal) and '/_action/' not in n]
     if extra:
         print('\nRunning but not in docs/interfaces.yaml:')

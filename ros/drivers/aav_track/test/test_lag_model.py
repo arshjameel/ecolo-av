@@ -112,7 +112,7 @@ def test_it_works_on_columns_as_on_one_state():
         assert out[:, i] == pytest.approx(one)
 
 
-@pytest.mark.parametrize('profile', ['default', 'smooth'])
+@pytest.mark.parametrize('profile', ['default', 'smooth', 'firm'])
 def test_the_speed_loop_is_gazebos(profile):
     # The same set speeds and measured speeds into both: the same throttle and brake.
     rng = np.random.default_rng(3)
@@ -135,7 +135,7 @@ def test_it_gives_the_shared_car_models_states_step_for_step():
     # targets that make every branch work - speeding up, coasting, braking, the stop's
     # hold, the steering's rate, its deadband, full lock.
     rng = np.random.default_rng(7)
-    for profile in ('default', 'smooth'):
+    for profile in ('default', 'smooth', 'firm'):
         car = replace(car_model.ActuatorConfig(), throttle_deadband=0.05, steer_offset=0.01)
         loop_cfg = lm.speed_loop(profile)
         theirs, loop = car_model.CarState(), SpeedLoop(loop_cfg)

@@ -19,18 +19,22 @@ const DISARM_FRAMES: u8 = 3;
 /// The car's shape, in metres (aav_description's vehicle.yaml).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Geometry {
+    /// Front axle to rear axle.
     pub wheelbase: f64,
+    /// Between the front wheels' centres.
     pub track: f64,
 }
 
 impl Geometry {
     /// The yaw rate (rad/s) of base_link at `speed` (m/s) and a centre steering angle.
+    #[must_use]
     pub fn yaw_rate(&self, speed: f64, steering_angle: f64) -> f64 {
         speed * steering_angle.tan() / self.wheelbase
     }
 
     /// The left and right front wheels' angles (rad) for a centre steering angle
     /// (Ackermann).
+    #[must_use]
     pub fn wheel_angles(&self, steering_angle: f64) -> [f64; 2] {
         if steering_angle.abs() < 1e-6 {
             return [0.0, 0.0];
@@ -61,6 +65,7 @@ impl Role {
     pub const NAMES: [&'static str; 2] = ["spine", "sensors"];
 
     /// The bridge sends frames on the bus: DRIVE_CMD and ESTOP_CMD.
+    #[must_use]
     pub fn sends(self) -> bool {
         self == Role::Spine
     }
@@ -102,7 +107,9 @@ impl fmt::Display for Role {
 /// The bridge's settings: its ROS parameters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Settings {
+    /// The whole spine, or only the wheel sensors.
     pub role: Role,
+    /// The car's shape.
     pub geometry: Geometry,
     /// Stop sending DRIVE_CMD when ego's last command is older.
     pub cmd_timeout: Duration,
@@ -118,9 +125,13 @@ pub struct Settings {
 /// ego's command (ackermann_msgs/AckermannDrive): m/s, rad (+ left), m/s², rad/s.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Command {
+    /// m/s, negative in reverse.
     pub speed: f32,
+    /// rad, + left.
     pub steering_angle: f32,
+    /// m/s²; 0: the spine's default.
     pub acceleration: f32,
+    /// rad/s; 0: the spine's default.
     pub steering_angle_velocity: f32,
 }
 
@@ -138,7 +149,9 @@ pub enum Drive {
 /// The answer to /spine/arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Arming {
+    /// The spine was asked to arm.
     Armed,
+    /// The spine was asked to disarm.
     Disarmed,
 }
 
@@ -154,6 +167,7 @@ impl fmt::Display for Arming {
 /// Why /spine/arm refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArmError {
+    /// The e-stop is on: clear it first.
     EstopActive,
     /// The output mux isn't OPEN for this bridge's target, or has gone quiet (Ben, 24 Oct):
     /// armed now, the spine would only latch again, with no commands coming.
@@ -187,7 +201,9 @@ impl From<GateShut> for ArmError {
 /// A received frame that failed its checks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BadFrame {
+    /// Its CAN ID.
     pub id: u16,
+    /// What was wrong.
     pub error: FrameError,
     /// Bad frames since the bridge started, this one included.
     pub so_far: u64,
@@ -224,8 +240,11 @@ pub struct Motion {
 /// The spine's state, from VEHICLE_STATUS: /vehicle/status, throttle and brake.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Status {
+    /// Who drives.
     pub mode: Mode,
+    /// The spine is armed.
     pub armed: bool,
+    /// An e-stop is on.
     pub estop_active: bool,
     /// 0..1 of full throttle.
     pub throttle: f32,
@@ -235,14 +254,18 @@ pub struct Status {
     pub faults: u16,
     /// From the last VEHICLE_FEEDBACK, if any: m/s and rad.
     pub speed: Option<f32>,
+    /// The last VEHICLE_FEEDBACK's steering (rad, + left), if any.
     pub steering_angle: Option<f32>,
 }
 
 /// What a received frame gives the ROS side to publish.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Update {
+    /// From VEHICLE_FEEDBACK.
     Motion(Motion),
+    /// From VEHICLE_STATUS.
     Status(Status),
+    /// Both front wheels, from WHEEL_SPEED_L and _R.
     Wheels(Reading),
 }
 
@@ -275,6 +298,8 @@ pub struct Bridge {
 }
 
 impl Bridge {
+    /// A bridge with these settings, not armed, nothing heard.
+    #[must_use]
     pub fn new(settings: Settings) -> Self {
         Self {
             settings,
@@ -320,6 +345,11 @@ impl Bridge {
     /// Arming always sends a few armed=0 frames first: the spine arms only on that edge,
     /// and it also clears latches the bridge can't see (a hardware e-stop, a command
     /// timeout, a driver fault, a spine reboot).
+    ///
+    /// # Errors
+    ///
+    /// [`ArmError::EstopActive`] while the e-stop is on; [`ArmError::GateShut`] while
+    /// the output mux isn't open for this bridge.
     pub fn arm(&mut self, arm: bool, now: Instant) -> Result<Arming, ArmError> {
         if arm && self.estop {
             return Err(ArmError::EstopActive);
@@ -370,6 +400,10 @@ impl Bridge {
     /// One frame from the bus (/can/rx), at `now`. Frames for other IDs are not ours:
     /// `Ok(None)`, as is a wheel frame that waits for its partner. In [`Role::Sensors`]
     /// only the wheel nodes' frames count: a spine's are `Ok(None)` too.
+    ///
+    /// # Errors
+    ///
+    /// [`BadFrame`] for a frame of ours that fails its length or CRC.
     pub fn receive(
         &mut self,
         id: u16,
@@ -438,6 +472,7 @@ impl Bridge {
     }
 
     /// Bad frames since the start.
+    #[must_use]
     pub fn bad_frames(&self) -> u64 {
         self.bad_frames
     }

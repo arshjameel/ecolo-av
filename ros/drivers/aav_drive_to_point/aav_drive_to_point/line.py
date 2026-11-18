@@ -17,13 +17,24 @@ on the ground under the rear axle, which is where pure pursuit's maths puts the 
    circles (`reachable`), or it would circle B for ever.
 2. **Line**: once lined up, A is where the car was, and it follows the line A -> B. The
    carrot runs on past B, so the car keeps its heading while it stops.
+
+The **fence** (`Fence`) is a limit of its own, independent of Nav2 and of the steering: a
+car that leaves it stops, whatever the reason (a wrong steering sign, a bad position).
+
+```text
+        start                                       max_off_line
+          o . . . . . . . . . . . . . . . . . . . . . . . . . .
+            A ===================================== B ===|  max_overrun past B
+          o . . . . . . . . . . . . . . . . . . . . . . . . . .
+   and never further from the start than max(|AB|, 2 R) + max_overrun
+```
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Tuple
+from typing import Optional, Tuple
 
 Point = Tuple[float, float]
 
@@ -110,6 +121,53 @@ class Line:
         if abs(cross) < lookahead:
             along += math.sqrt(lookahead * lookahead - cross * cross)
         return self.a[0] + along * ux, self.a[1] + along * uy
+
+
+@dataclass(frozen=True)
+class Fence:
+    """
+    Where a drive to B may go. Distances in m.
+
+    start: where the drive started. turn_radius: the car's tightest turn (min_radius).
+    While it turns towards B there is no line yet: only the circle round the start, which
+    a turn round (up to 2 R from the start) stays inside. Once lined up, also a corridor
+    of max_off_line either side of the line it follows, ending max_overrun past B.
+    """
+
+    start: Point
+    target: Point
+    turn_radius: float
+    max_off_line: float = 3.0
+    max_overrun: float = 2.0
+
+    def __post_init__(self):
+        for name in ('turn_radius', 'max_off_line', 'max_overrun'):
+            value = getattr(self, name)
+            if not (math.isfinite(value) and value > 0):
+                raise ValueError(f'{name} must be above 0 (got {value})')
+
+    @property
+    def reach(self) -> float:
+        """Return how far from the start the car may ever be."""
+        ab = math.hypot(self.target[0] - self.start[0], self.target[1] - self.start[1])
+        return max(ab, 2.0 * self.turn_radius) + self.max_overrun
+
+    def breach(self, p: Point, line: Optional[Line] = None) -> Optional[str]:
+        """Return why the car at p is outside the fence, or None. line: the one it follows."""
+        if line is not None:
+            left, cross = line.progress(p)
+            if abs(cross) > self.max_off_line:
+                side = 'left' if cross > 0 else 'right'
+                return (f'outside the fence: {abs(cross):.1f} m {side} of the line to B, '
+                        f'over max_off_line {self.max_off_line:g} m')
+            if -left > self.max_overrun:
+                return (f'outside the fence: {-left:.1f} m past B, over max_overrun '
+                        f'{self.max_overrun:g} m')
+        far = math.hypot(p[0] - self.start[0], p[1] - self.start[1])
+        if far > self.reach:
+            return (f'outside the fence: {far:.1f} m from the start, over {self.reach:.1f} m '
+                    '(the distance to B, or a turn round, plus max_overrun)')
+        return None
 
 
 def pursuit_curvature(pose: Pose, point: Point, max_curvature: float) -> float:

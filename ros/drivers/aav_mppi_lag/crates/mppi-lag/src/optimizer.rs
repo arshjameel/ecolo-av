@@ -8,13 +8,20 @@
 //!    (`noise_correlation`, AR(1); Nav2's is white, 0): a lagging actuator smooths white
 //!    noise away, so its samples would all drive alike and MPPI would learn nothing
 //!    (colored-noise MPPI; see docs/mppi-lag.md). Ego's ramps are not clipped here: they are part of the model
-//!    ([`crate::ego::Driven`]).
+//!    ([`crate::ego::Driven`]). Above `steer_std_speed` the steering noise shrinks with
+//!    the speed squared ([`Settings::steer_std_at`]), so the futures spread as far
+//!    sideways at 2.5 m/s as at 1 m/s (ours; Nav2's wz noise shrinks as 1 / speed).
 //! 2. **Roll out**: each sample through the model from the car's state now: its pose
 //!    and speed, ego's output, the actuators' levels and the commands still in their
 //!    dead time. This is where the lag comes in; Nav2's own model has none. Split across
 //!    threads.
-//! 3. **Score**: the critics, plus Nav2's control cost
-//!    gamma / std² x sum(u x (u_sample - u)).
+//! 3. **Score**: the critics, plus Nav2's control cost gamma x u' Σ⁻¹ (u_sample - u),
+//!    Σ the noise's covariance ([`control_cost`]). White noise (Nav2's): Σ⁻¹ = 1 / std²,
+//!    so gamma / std² x sum(u x (u_sample - u)), Nav2's own. Correlated noise: Σ⁻¹ is
+//!    AR(1)'s, so the cost sees only each step's fresh part of the noise. Until 14 Nov
+//!    ours used the white form on correlated noise: its spread grew 3x (at 0.8) and
+//!    swamped the critics, so MPPI pulled the speed and steering towards 0 and the car
+//!    stood still beside a cusp (docs/mppi-lag.md, Cusps).
 //! 4. **Weigh**: softmax of -(cost - min) / temperature; the new sequence is the
 //!    weighted mean of the samples, held to the limits again.
 //!
@@ -26,6 +33,7 @@
 
 use crate::costmap::Costmap;
 use crate::critics::{furthest_reached, path_clear, Critic, CriticData, Prepared, Rollout};
+use crate::lane::Lane;
 use crate::model::{CarModel, Command, Pose};
 use crate::rng::Rng;
 use crate::smoothing::{savitzky_golay, History};
@@ -45,10 +53,30 @@ pub struct Settings {
     pub temperature: f64,
     /// The control cost's weight.
     pub gamma: f64,
+    /// The steering's control cost weight, if not `gamma` (None: `gamma`, as Nav2). The
+    /// cost leans each sample toward smaller commands; on the steering alone it damps the
+    /// sampling jitter (TODO 168, docs/mppi-lag.md "The jitter that was left"), where a
+    /// larger `gamma` also slowed the car and dithered at cusps.
+    pub steer_gamma: Option<f64>,
+    /// m/s: `steer_gamma` holds from this speed up; slower, the weight eases back toward
+    /// `gamma` in proportion (at a stop, `gamma`), so a cusp and a backing turn steer as
+    /// before (0: `steer_gamma` at every speed).
+    pub steer_gamma_speed: f64,
     /// m/s: the speed noise's spread (Nav2's vx_std).
     pub speed_std: f64,
-    /// rad: the steering noise's spread (Nav2 samples wz instead; ours samples the angle).
+    /// rad: the steering noise's spread (Nav2 samples wz instead; ours samples the angle),
+    /// up to `steer_std_speed`.
     pub steer_std: f64,
+    /// m/s: faster than this, the steering noise shrinks as (steer_std_speed / speed)², so
+    /// the sampled futures spread no further sideways as the car speeds up (a steering
+    /// offset moves a future's end by v² x the angle). 0: `steer_std` at every speed, as
+    /// until 15 Nov, when the softmax rested on a handful of futures, each tick a
+    /// different handful, and the steering wiggled (TODO 168, docs/mppi-lag.md).
+    pub steer_std_speed: f64,
+    /// rad: the steering noise never shrinks below this. With less, MPPI can't move its
+    /// steering fast enough to follow a bend (at 2.5 m/s, 0.009 rad cut a 5 m corner by
+    /// 0.5 m).
+    pub steer_std_min: f64,
     /// 0..1: how much each step's noise carries the last step's (AR(1); 0: white, as
     /// Nav2). The spread stays `speed_std` and `steer_std` either way.
     pub noise_correlation: f64,
@@ -77,8 +105,12 @@ impl Default for Settings {
             iteration_count: 1,
             temperature: 0.15,
             gamma: 0.015,
+            steer_gamma: None,
+            steer_gamma_speed: 1.0,
             speed_std: 0.4,
             steer_std: 0.15,
+            steer_std_speed: 1.0,
+            steer_std_min: 0.024,
             noise_correlation: 0.8,
             vx_max: 1.0,
             vx_min: 0.0,
@@ -88,6 +120,77 @@ impl Default for Settings {
             seed: 42,
         }
     }
+}
+
+impl Settings {
+    /// rad: the steering noise's spread with the car at `speed` m/s (either way):
+    /// `steer_std` up to `steer_std_speed`, then x (steer_std_speed / |speed|)², but never
+    /// under `steer_std_min` (nor over `steer_std`).
+    #[must_use]
+    pub fn steer_std_at(&self, speed: f64) -> f64 {
+        let fast = speed.abs();
+        if self.steer_std_speed > 0.0 && fast > self.steer_std_speed {
+            let shrunk = self.steer_std * (self.steer_std_speed / fast).powi(2);
+            shrunk.max(self.steer_std_min.min(self.steer_std))
+        } else {
+            self.steer_std
+        }
+    }
+
+    /// The steering's control cost weight with the car at `speed` m/s (either way):
+    /// `steer_gamma` from `steer_gamma_speed` up, easing linearly to `gamma` at a stop;
+    /// `gamma` when there is no `steer_gamma`.
+    #[must_use]
+    pub fn steer_gamma_at(&self, speed: f64) -> f64 {
+        let Some(steer) = self.steer_gamma else {
+            return self.gamma;
+        };
+        let share = if self.steer_gamma_speed > 0.0 {
+            (speed.abs() / self.steer_gamma_speed).min(1.0).powi(2)
+        } else {
+            1.0
+        };
+        self.gamma + (steer - self.gamma) * share
+    }
+}
+
+/// MPPI's control cost of one sample: gamma x u' Σ⁻¹ (sample - u), summed over speed and
+/// steering, with Σ the covariance of the noise the samples were drawn with.
+///
+/// The noise is AR(1) with correlation a and spread std (white for a = 0), so
+/// Σ⁻¹ = 1 / (std² (1 - a²)) x tridiag(-a, [1, 1 + a², ..., 1 + a², 1], -a), and
+///
+/// ```text
+/// u' Σ⁻¹ e = ((1 - a²) u₀ e₀ + Σₜ (uₜ - a uₜ₋₁)(eₜ - a eₜ₋₁)) / (std² (1 - a²))
+/// ```
+///
+/// For a = 0 that is Nav2's gamma / std² x Σ u e. The white form on correlated noise
+/// weighs each sample's whole drift, not its fresh part: at a = 0.8 its spread is 3x
+/// Nav2's (9x the right one), and it outweighed the critics.
+#[must_use]
+pub fn control_cost(settings: &Settings, sequence: &[Command], sample: &[Command]) -> f64 {
+    let a = settings.noise_correlation.clamp(0.0, 0.999);
+    let fresh = 1.0 - a * a;
+    let pairs = || sequence.iter().zip(sample);
+    let along = |part: fn(&Command) -> f64, std: f64, gamma: f64| {
+        let first = pairs()
+            .next()
+            .map_or(0.0, |(u, c)| fresh * part(u) * (part(c) - part(u)));
+        let rest: f64 = pairs()
+            .zip(pairs().skip(1))
+            .map(|((u0, c0), (u1, c1))| {
+                let (e0, e1) = (part(c0) - part(u0), part(c1) - part(u1));
+                (part(u1) - a * part(u0)) * (e1 - a * e0)
+            })
+            .sum();
+        gamma * (first + rest) / (std * std * fresh)
+    };
+    along(|c| c.speed, settings.speed_std, settings.gamma)
+        + along(
+            |c| c.steer,
+            settings.steer_std,
+            settings.steer_gamma.unwrap_or(settings.gamma),
+        )
 }
 
 /// Every sample ran into something, even after a reset (Nav2's NoValidControl).
@@ -128,6 +231,8 @@ pub struct Scene<'a> {
     pub footprint: &'a [(f64, f64)],
     /// Unknown cells are drivable.
     pub tracking_unknown: bool,
+    /// The road ahead's lane, in the poses' frame (odom), if one is known: for `LaneCritic`.
+    pub lane: Option<&'a Lane>,
 }
 
 /// MPPI over a car model.
@@ -205,39 +310,52 @@ impl<M: CarModel> Optimizer<M> {
         let threads = self.threads().min(self.rollouts.len()).max(1);
         let chunk = self.rollouts.len().div_ceil(threads);
         let seeds: Vec<u64> = (0..threads).map(|_| self.rng.next_u64()).collect();
-        let (model, settings, sequence) = (&self.model, &self.settings, &self.sequence);
+        // This round's steering noise, for the car's speed now; the control cost weighs
+        // the samples by the same spread they were drawn with.
+        // The steering's control cost weight, too, for the speed now.
+        let speed = self.model.speed(state);
+        let now = Settings {
+            steer_std: self.settings.steer_std_at(speed),
+            steer_gamma: Some(self.settings.steer_gamma_at(speed)),
+            ..self.settings.clone()
+        };
+        let (model, settings, sequence) = (&self.model, &now, &self.sequence);
 
         // 1 and 2: sample and roll out.
-        std::thread::scope(|scope| {
-            for (part, seed) in self.rollouts.chunks_mut(chunk).zip(&seeds) {
-                scope.spawn(move || {
-                    let mut rng = Rng::new(*seed);
-                    let a = settings.noise_correlation.clamp(0.0, 0.999);
-                    let fresh = (1.0 - a * a).sqrt();
-                    for r in part {
-                        let (mut nv, mut ns) = (rng.normal(), rng.normal());
-                        for (c, base) in r.controls.iter_mut().zip(sequence) {
-                            *c = Command::new(
-                                base.speed + settings.speed_std * nv,
-                                base.steer + settings.steer_std * ns,
-                            );
-                            nv = a * nv + fresh * rng.normal();
-                            ns = a * ns + fresh * rng.normal();
+        {
+            span!("mppi.rollout");
+            std::thread::scope(|scope| {
+                for (part, seed) in self.rollouts.chunks_mut(chunk).zip(&seeds) {
+                    scope.spawn(move || {
+                        let mut rng = Rng::new(*seed);
+                        let a = settings.noise_correlation.clamp(0.0, 0.999);
+                        let fresh = (1.0 - a * a).sqrt();
+                        for r in part {
+                            let (mut nv, mut ns) = (rng.normal(), rng.normal());
+                            for (c, base) in r.controls.iter_mut().zip(sequence) {
+                                *c = Command::new(
+                                    base.speed + settings.speed_std * nv,
+                                    base.steer + settings.steer_std * ns,
+                                );
+                                nv = a * nv + fresh * rng.normal();
+                                ns = a * ns + fresh * rng.normal();
+                            }
+                            Self::constrain(settings, &mut r.controls);
+                            let mut s = state.clone();
+                            for (t, c) in r.controls.iter().enumerate() {
+                                model.step(&mut s, *c, settings.model_dt);
+                                r.poses[t] = model.pose(&s);
+                                r.speeds[t] = model.speed(&s);
+                                r.steerings[t] = model.steering(&s);
+                            }
                         }
-                        Self::constrain(settings, &mut r.controls);
-                        let mut s = state.clone();
-                        for (t, c) in r.controls.iter().enumerate() {
-                            model.step(&mut s, *c, settings.model_dt);
-                            r.poses[t] = model.pose(&s);
-                            r.speeds[t] = model.speed(&s);
-                            r.steerings[t] = model.steering(&s);
-                        }
-                    }
-                });
-            }
-        });
+                    });
+                }
+            });
+        }
 
         // 3: the critics, on what this round's samples reached.
+        span!("mppi.critics");
         let furthest = furthest_reached(scene.path, &self.rollouts);
         let valid = path_clear(scene.path, scene.costmap, scene.tracking_unknown);
         let data = CriticData {
@@ -253,27 +371,16 @@ impl<M: CarModel> Optimizer<M> {
             vx_max: settings.vx_max,
             vx_min: settings.vx_min,
             min_turning_r: model.wheelbase() / settings.max_steer.tan(),
+            lane: scene.lane,
         };
         let prepared = Prepared::new(&self.critics, data);
-        let (gv, gs) = (
-            settings.gamma / settings.speed_std.powi(2),
-            settings.gamma / settings.steer_std.powi(2),
-        );
         std::thread::scope(|scope| {
             for part in self.rollouts.chunks_mut(chunk) {
                 let prepared = &prepared;
                 scope.spawn(move || {
                     for r in part {
                         let score = prepared.score(r);
-                        let control: f64 = r
-                            .controls
-                            .iter()
-                            .zip(sequence)
-                            .map(|(c, u)| {
-                                gv * u.speed * (c.speed - u.speed)
-                                    + gs * u.steer * (c.steer - u.steer)
-                            })
-                            .sum();
+                        let control = control_cost(settings, sequence, &r.controls);
                         r.cost = score.cost + control;
                         r.collided = score.collided;
                     }
@@ -284,6 +391,7 @@ impl<M: CarModel> Optimizer<M> {
 
     /// 4: weigh the samples into a new sequence.
     fn update(&mut self) {
+        span!("mppi.weigh");
         let min = self
             .rollouts
             .iter()
@@ -307,7 +415,12 @@ impl<M: CarModel> Optimizer<M> {
     }
 
     /// One tick: the command to send now, from the car's state `state`.
+    ///
+    /// # Errors
+    ///
+    /// [`NoValidControl`] if every sample ran into something, even after a reset.
     pub fn evaluate(&mut self, state: &M::State, scene: &Scene) -> Result<Plan, NoValidControl> {
+        span!("mppi.tick");
         let mut attempts = 0;
         loop {
             for _ in 0..self.settings.iteration_count.max(1) {
@@ -331,7 +444,10 @@ impl<M: CarModel> Optimizer<M> {
         let collided =
             self.rollouts.iter().filter(|r| r.collided).count() as f64 / self.rollouts.len() as f64;
 
-        savitzky_golay(&mut self.sequence, &mut self.history);
+        {
+            span!("mppi.smooth");
+            savitzky_golay(&mut self.sequence, &mut self.history);
+        }
         let command = self.sequence[0];
         let mut s = state.clone();
         let poses = self
@@ -378,6 +494,140 @@ mod tests {
             .collect()
     }
 
+    /// u' Σ⁻¹ e the long way: Σ = std² a^|i-j| (AR(1)), solved by Gaussian elimination.
+    fn brute_force(u: &[f64], e: &[f64], std: f64, a: f64) -> f64 {
+        let n = u.len();
+        let mut m: Vec<Vec<f64>> = (0..n)
+            .map(|i| {
+                let mut row: Vec<f64> = (0..n)
+                    .map(|j| std * std * a.powi((i as i32 - j as i32).abs()))
+                    .collect();
+                row.push(e[i]);
+                row
+            })
+            .collect();
+        for col in 0..n {
+            let pivot = m[col].clone();
+            for row in m.iter_mut().skip(col + 1) {
+                let f = row[col] / pivot[col];
+                for (cell, p) in row.iter_mut().zip(&pivot).skip(col) {
+                    *cell -= f * p;
+                }
+            }
+        }
+        let mut x = vec![0.0; n];
+        for row in (0..n).rev() {
+            let known: f64 = (row + 1..n).map(|k| m[row][k] * x[k]).sum();
+            x[row] = (m[row][n] - known) / m[row][row];
+        }
+        u.iter().zip(&x).map(|(a, b)| a * b).sum()
+    }
+
+    #[test]
+    fn control_cost_is_u_times_the_noises_precision_times_e() {
+        let u = [0.5, 0.6, 0.4, -0.2, 0.1];
+        let e = [0.1, -0.3, 0.2, 0.05, -0.1];
+        let sequence: Vec<Command> = u.iter().map(|&v| Command::new(v, 0.0)).collect();
+        let sample: Vec<Command> = u
+            .iter()
+            .zip(&e)
+            .map(|(&v, &n)| Command::new(v + n, 0.0))
+            .collect();
+        for a in [0.0, 0.5, 0.8] {
+            let s = Settings {
+                noise_correlation: a,
+                ..Settings::default()
+            };
+            let want = s.gamma * brute_force(&u, &e, s.speed_std, a);
+            let got = control_cost(&s, &sequence, &sample);
+            assert!((got - want).abs() < 1e-12, "a {a}: {got} vs {want}");
+        }
+        // White noise: Nav2's own, gamma / std² x sum(u e).
+        let white = Settings {
+            noise_correlation: 0.0,
+            ..Settings::default()
+        };
+        let nav2: f64 = u.iter().zip(&e).map(|(u, e)| u * e).sum::<f64>() * white.gamma
+            / white.speed_std.powi(2);
+        assert!((control_cost(&white, &sequence, &sample) - nav2).abs() < 1e-12);
+    }
+
+    #[test]
+    fn steer_gamma_holds_from_its_speed_and_eases_to_gamma_at_a_stop() {
+        let s = Settings {
+            steer_gamma: Some(0.05),
+            ..Settings::default()
+        };
+        for v in [1.0, -1.0, 2.5] {
+            assert!((s.steer_gamma_at(v) - 0.05).abs() < 1e-12, "{v}");
+        }
+        assert!((s.steer_gamma_at(0.0) - s.gamma).abs() < 1e-12);
+        // Half the speed, a quarter of the way.
+        let half = s.gamma + 0.25 * (0.05 - s.gamma);
+        assert!((s.steer_gamma_at(-0.5) - half).abs() < 1e-12);
+        // None: gamma at every speed; 0 m/s: steer_gamma at every speed.
+        assert_eq!(Settings::default().steer_gamma_at(2.0), s.gamma);
+        let flat = Settings {
+            steer_gamma_speed: 0.0,
+            ..s.clone()
+        };
+        assert!((flat.steer_gamma_at(0.1) - 0.05).abs() < 1e-12);
+    }
+
+    #[test]
+    fn steer_gamma_weighs_the_steering_alone() {
+        let u = [0.5, 0.6, 0.4, -0.2, 0.1];
+        let e = [0.1, -0.3, 0.2, 0.05, -0.1];
+        let sequence: Vec<Command> = u.iter().map(|&v| Command::new(v, 0.5 * v)).collect();
+        let sample: Vec<Command> = u
+            .iter()
+            .zip(&e)
+            .map(|(&v, &n)| Command::new(v + n, 0.5 * (v + n)))
+            .collect();
+        let nav2 = Settings::default();
+        let calm = Settings {
+            steer_gamma: Some(0.05),
+            ..Settings::default()
+        };
+        let a = nav2.noise_correlation;
+        let speed = nav2.gamma * brute_force(&u, &e, nav2.speed_std, a);
+        let half = |v: &[f64; 5]| v.map(|x| 0.5 * x);
+        let steer = brute_force(&half(&u), &half(&e), nav2.steer_std, a);
+        let got = control_cost(&calm, &sequence, &sample);
+        assert!((got - (speed + 0.05 * steer)).abs() < 1e-12, "{got}");
+        // None: the steering's weight is gamma, as Nav2's.
+        let same = control_cost(&nav2, &sequence, &sample);
+        assert!(
+            (same - (speed + nav2.gamma * steer)).abs() < 1e-12,
+            "{same}"
+        );
+    }
+
+    #[test]
+    fn steering_noise_keeps_the_same_sideways_spread_above_its_speed() {
+        let s = Settings::default();
+        // Up to 1 m/s, either way: steer_std as it is (backing up keeps it).
+        for v in [0.0, 0.5, -0.5, 1.0, -1.0] {
+            assert_eq!(s.steer_std_at(v), s.steer_std, "{v}");
+        }
+        // Faster: v² x the spread stays what it is at 1 m/s ...
+        for v in [1.5, 2.0, -2.0, 2.5] {
+            let spread = v * v * s.steer_std_at(v);
+            assert!((spread - s.steer_std).abs() < 1e-12, "{v}: {spread}");
+        }
+        assert!((s.steer_std_at(2.5) - 0.024).abs() < 1e-12);
+        // ... down to the floor (from 2.5 m/s).
+        for v in [3.0, -3.0, 5.0] {
+            assert!((s.steer_std_at(v) - s.steer_std_min).abs() < 1e-12, "{v}");
+        }
+        // 0: the same spread at every speed, as before.
+        let flat = Settings {
+            steer_std_speed: 0.0,
+            ..Settings::default()
+        };
+        assert_eq!(flat.steer_std_at(2.5), flat.steer_std);
+    }
+
     #[test]
     fn constrain_holds_the_range_and_full_lock() {
         let s = Settings::default();
@@ -416,6 +666,7 @@ mod tests {
             costmap: None,
             footprint: &[],
             tracking_unknown: false,
+            lane: None,
         };
         let state = model.at_rest(Pose::default(), 0.5);
         opt.reset(Command::new(0.5, 0.0));
@@ -449,6 +700,7 @@ mod tests {
             costmap: None,
             footprint: &[],
             tracking_unknown: false,
+            lane: None,
         };
         let state = model.at_rest(Pose::default(), 1.0);
         opt.reset(Command::new(1.0, 0.0));
@@ -477,6 +729,7 @@ mod tests {
             costmap: None,
             footprint: &[],
             tracking_unknown: false,
+            lane: None,
         };
         let state = model.at_rest(Pose::default(), 0.5);
         let mut a = Optimizer::new(model, settings.clone(), critics());

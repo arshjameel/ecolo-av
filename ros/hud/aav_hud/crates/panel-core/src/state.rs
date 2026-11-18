@@ -31,19 +31,31 @@ use crate::{
 /// A row of the panel: one sensor or actuator, from its own topic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Row {
+    /// `/vehicle/status`.
     Vehicle,
+    /// The steering actuator.
     Steering,
+    /// The throttle.
     Throttle,
+    /// The brake actuator.
     Brake,
+    /// The wheel speeds.
     Wheels,
+    /// The IMU.
     Imu,
+    /// The GPS receiver.
     Gps,
+    /// The lidar.
     Lidar,
+    /// The radar.
     Radar,
+    /// The camera.
     Camera,
+    /// The battery.
     Battery,
     /// twist_mux's output, `/control/cmd_vel`.
     Mux,
+    /// The geofence's lock.
     GeofenceLock,
     /// `/vehicle/steering_actuator/raw`: the calibration page's position.
     SteeringRaw,
@@ -62,6 +74,8 @@ impl Row {
         Row::Vehicle,
     ];
 
+    /// Its name on the screen.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Vehicle => "vehicle",
@@ -87,6 +101,7 @@ impl Row {
 pub enum Speed {
     /// m/s, fresh.
     Measured(f64),
+    /// Not known, and why.
     Unknown(SpeedUnknown),
 }
 
@@ -114,12 +129,15 @@ impl fmt::Display for SpeedUnknown {
 /// One actuator's state (aav_interfaces/ActuatorState): asked and done. NaN = unknown.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Actuator {
+    /// What was asked.
     pub command: f32,
+    /// What was measured.
     pub measured: f32,
 }
 
 impl Actuator {
     /// What it did, if known.
+    #[must_use]
     pub fn measured(self) -> Option<f32> {
         self.measured.is_finite().then_some(self.measured)
     }
@@ -128,31 +146,45 @@ impl Actuator {
 /// Each wheel's speed, m/s; NaN = not measured.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Wheels {
+    /// m/s.
     pub front_left: f32,
+    /// m/s.
     pub front_right: f32,
+    /// m/s.
     pub rear_left: f32,
+    /// m/s.
     pub rear_right: f32,
 }
 
 /// One IMU message: m/s² and rad/s, x y z.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ImuReading {
+    /// m/s², x y z.
     pub accel: [f64; 3],
+    /// rad/s, x y z.
     pub gyro: [f64; 3],
 }
 
 /// One piece of news.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Update {
+    /// `/vehicle/status`.
     Vehicle(VehicleStatus),
+    /// `/vehicle/steering`.
     Steering(Actuator),
+    /// `/vehicle/throttle`.
     Throttle(Actuator),
+    /// `/vehicle/brake`.
     Brake(Actuator),
+    /// `/vehicle/wheels`.
     Wheels(Wheels),
+    /// The IMU.
     Imu(ImuReading),
+    /// The GPS receiver's fix.
     Gps(Fix),
     /// A big message (lidar, radar, camera) arrived: only counted.
     Counted(Row),
+    /// `/vehicle/battery`.
     Battery(Battery),
     /// `/system/source`.
     Source(Announcement),
@@ -160,7 +192,9 @@ pub enum Update {
     Estop(bool),
     /// `/control/cmd_vel`: twist_mux's output.
     Mux(Command),
+    /// The geofence's lock.
     GeofenceLock(bool),
+    /// The legacy bridge's lock (no command timeout).
     NoTimeoutLock(bool),
     /// The E-STOP button's message went out: to this many subscribers (None: failed).
     EstopSent(Option<usize>),
@@ -185,7 +219,9 @@ pub enum Update {
 pub enum Esp32News {
     /// Trying to reach this address.
     Connecting(String),
+    /// Connected.
     Connected,
+    /// One status line.
     Line(StatusLine),
     /// A line that couldn't be read, and why.
     Unreadable(String),
@@ -196,19 +232,26 @@ pub enum Esp32News {
 /// The ESP32's WebSocket, as the panel sees it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Esp32Link {
+    /// Trying to reach this address.
     Connecting(String),
+    /// Connected.
     Connected,
+    /// The connection failed or ended, and why.
     Lost(String),
 }
 
 /// What the ESP32's status lines said last.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Esp32Seen {
+    /// The connection.
     pub link: Esp32Link,
+    /// The last status line, and when.
     pub status: Option<(Instant, Box<Status>)>,
+    /// The last heartbeat, and when.
     pub heartbeat: Option<(Instant, Heartbeat)>,
     /// Lines that couldn't be read, and the last one's why.
     pub unreadable: u64,
+    /// Why the last unreadable line couldn't be read.
     pub last_problem: Option<String>,
 }
 
@@ -221,14 +264,23 @@ pub struct PanelState {
     stale_after: Duration,
     seen: HashMap<Row, LastSeen>,
     arrivals: HashMap<Row, VecDeque<Instant>>,
+    /// The car's last status.
     pub vehicle: Option<VehicleStatus>,
+    /// The steering actuator's last state.
     pub steering: Option<Actuator>,
+    /// The throttle's last state.
     pub throttle: Option<Actuator>,
+    /// The brake actuator's last state.
     pub brake: Option<Actuator>,
+    /// The last wheel speeds.
     pub wheels: Option<Wheels>,
+    /// The last IMU reading.
     pub imu: Option<ImuReading>,
+    /// The GPS receiver's last fix.
     pub gps: Option<Fix>,
+    /// The battery's last state.
     pub battery: Option<Battery>,
+    /// Where each sensor's data comes from.
     pub origins: Origins,
     /// Whether anyone announced on `/system/source` yet.
     announced: bool,
@@ -236,10 +288,13 @@ pub struct PanelState {
     pub estop: Option<bool>,
     /// twist_mux's last output, and when.
     pub mux: Option<(Instant, Command)>,
+    /// The geofence's lock, last heard.
     pub geofence_lock: Option<bool>,
+    /// The legacy bridge's lock, last heard.
     pub no_timeout_lock: Option<bool>,
     /// The E-STOP button's last message: sent to how many (None: failed).
     pub estop_sent: Option<Option<usize>>,
+    /// The last raw steering message.
     pub steering_raw: Option<Raw>,
     /// The bridge's last calibration line, and when.
     pub calibration_line: Option<(Instant, String)>,
@@ -250,6 +305,8 @@ pub struct PanelState {
 }
 
 impl PanelState {
+    /// Nothing heard yet; a topic this quiet shows STALE.
+    #[must_use]
     pub fn new(stale_after: Duration) -> Self {
         Self {
             stale_after,
@@ -389,6 +446,7 @@ impl PanelState {
     }
 
     /// One row's health at `now`.
+    #[must_use]
     pub fn health(&self, row: Row, now: Instant) -> Health {
         self.seen
             .get(&row)
@@ -398,6 +456,7 @@ impl PanelState {
     }
 
     /// Messages a second over the last 2 s, by arrival.
+    #[must_use]
     pub fn rate(&self, row: Row, now: Instant) -> Option<f64> {
         let times = self.arrivals.get(&row)?;
         let recent: Vec<Instant> = times
@@ -411,6 +470,7 @@ impl PanelState {
     }
 
     /// What `/system/source` says we're driving (safety.py's rules).
+    #[must_use]
     pub fn kind(&self) -> Kind {
         if !self.announced {
             return Kind::Unknown;
@@ -419,11 +479,13 @@ impl PanelState {
     }
 
     /// The e-stop is on: `/safety/estop` said true last, or `/vehicle/status` says so.
+    #[must_use]
     pub fn estop_on(&self) -> bool {
         self.estop == Some(true) || self.vehicle.is_some_and(|v| v.estop_active)
     }
 
     /// The geofence's lock holds the buttons (51 is above their 45).
+    #[must_use]
     pub fn geofence_holds(&self, now: Instant) -> bool {
         self.geofence_lock == Some(true) && self.health(Row::GeofenceLock, now).is_ok()
     }
@@ -431,6 +493,7 @@ impl PanelState {
     /// The speed `/vehicle/status` gives: measured, or why it isn't known. NaN is
     /// unknown, never stopped: the legacy ESP32's uplink has no wheel speed, so its
     /// bridge sends NaN all the time (review 2, M5).
+    #[must_use]
     pub fn speed(&self, now: Instant) -> Speed {
         let Some(v) = self.vehicle else {
             return Speed::Unknown(SpeedUnknown::Never);
@@ -447,6 +510,7 @@ impl PanelState {
     }
 
     /// The measured speed, m/s (`/vehicle/status`), while fresh and a number.
+    #[must_use]
     pub fn seen_speed(&self, now: Instant) -> Option<f64> {
         match self.speed(now) {
             Speed::Measured(v) => Some(v),
@@ -455,6 +519,7 @@ impl PanelState {
     }
 
     /// The measured steering, rad (`/vehicle/steering`), while fresh.
+    #[must_use]
     pub fn seen_steer(&self, now: Instant) -> Option<f64> {
         let m = self.steering?.measured()?;
         self.health(Row::Steering, now)
@@ -463,6 +528,7 @@ impl PanelState {
     }
 
     /// The raw position message, while fresh.
+    #[must_use]
     pub fn fresh_raw(&self, now: Instant) -> Option<Raw> {
         self.steering_raw
             .filter(|_| self.health(Row::SteeringRaw, now).is_ok())
@@ -470,6 +536,7 @@ impl PanelState {
 
     /// What the calibration page needs to know to be allowed. `still_confirmed`: a
     /// person pressed ON STANDS, STILL (the page's [`crate::calibration::CalPage`]).
+    #[must_use]
     pub fn calibration_situation(&self, now: Instant, still_confirmed: bool) -> CalSituation {
         CalSituation {
             estop: self.estop_on(),
@@ -568,6 +635,7 @@ impl PanelState {
 
 /// The wheel note on stands: the measured wheels when they aren't the driven ones
 /// ("front, not driven"; TODO 49b).
+#[must_use]
 pub fn wheels_note(stands: bool, kind: Kind, wheels: Option<&SpeedWheels>) -> Option<String> {
     let measured = wheels?;
     (stands && kind.is_real() && !measured.are_driven()).then(|| format!("{measured}, not driven"))
@@ -636,7 +704,7 @@ mod tests {
         let t = Instant::now();
         let mut s = state();
         assert_eq!(s.kind(), Kind::Unknown);
-        s.apply(announce("gazebo_adapter", Origin::Sim), t);
+        s.apply(announce("sim_adapter", Origin::Sim), t);
         assert_eq!(s.kind(), Kind::Sim);
         s.apply(announce("legacy_uart_bridge", Origin::Real), t);
         assert_eq!(s.kind(), Kind::Real);

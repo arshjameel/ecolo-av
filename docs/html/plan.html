@@ -7,9 +7,13 @@
 <!-- Generated from docs/plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The plan: the proposal as a to-do list</h1>
-<div class="meta">26 min read · 7 sections</div></header>
+<div class="meta">28 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a class="here" href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -121,12 +133,13 @@ into a todo list that we can work through", and "we do want to put mppi in there
 tracker. Only the <strong>MPPI track</strong> (M1-M9) is new. The 15 October plan's S and C items are at
 the end, mapped to these numbers.</p>
 <blockquote>
+<p><strong>Checked 14 November.</strong> The percentages and most "Next" cells below were judged on 22-25 Oct and not judged again. Since then: releases 0.2 (3 Nov) and 0.3 (9 Nov); the car drove on 13 Nov with only the localization update installed, not the full suite. The day-to-day list is <code>TODO.md</code>; what works is <a href="status.html">Status</a>. Two designs are proposed, not built: <a href="../designs/2026-11-13_one-shape.md">one shape</a> and <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>.</p>
 <p><strong>The short version</strong></p>
 <ul>
 <li><strong>Software, built and tested in simulation: about 43%</strong> of the committed tasks. <strong>Proven on the car: about 5%</strong> (the audits).</li>
-<li><strong>Ahead:</strong> the drivers, ego, the muxes, Gazebo, Nav2, A to B, the HUD. <strong>Behind:</strong> everything that needs the car or new parts: power, calibration, the closed loop.</li>
-<li><strong>Next gate, 30 Oct (Know the car):</strong> the car isn't measured yet. That's the most urgent job.</li>
-<li><strong>MPPI:</strong> Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by <code>pixi run measure controllers</code> (<code>controller:=rpp</code> for the old one; <a href="path-followers.html">controllers</a>). It steers round an obstacle the sensors see.</li>
+<li><strong>Ahead:</strong> the drivers, ego, the muxes, the simulator, navigation, A to B, the HUD. <strong>Behind:</strong> everything that needs the car or new parts: power, calibration, the closed loop.</li>
+<li><strong>Gate 1, 30 Oct (Know the car): not passed.</strong> The wheelbase and track are measured (1 Nov); the steering limit, the weight and the actuators aren't. Still the most urgent job. <strong>Next gate: 27 Nov (Safe to move).</strong></li>
+<li><strong>MPPI:</strong> the default since 22 Oct, tuned for the car in Gazebo (Nav2's then; ours, <code>mppi_lag</code>, since 14 Nov), and scored by <code>pixi run measure controllers</code> (<a href="path-followers.html">controllers</a>). It steers round an obstacle the sensors see.</li>
 <li><strong>Status:</strong> ✅ done · 🧪 done in simulation only · 🔧 started · ⬜ not started · 🎯 stretch.</li>
 </ul>
 </blockquote></div>
@@ -232,13 +245,13 @@ work that runs in Gazebo or on the bench; "on the car" counts only what ran on t
 <td>1. Know the car</td>
 <td>30 Oct</td>
 <td>audit written up; every dimension measured, with its method</td>
-<td>🔧 audits done 16 and 21 Oct (<a href="../history/audit-2026-10-21-car.md">car audit</a>); <strong>nothing measured yet</strong> (<a href="measure-the-car.html">the sheet</a>)</td>
+<td>🔧 audits done 16 and 21 Oct (<a href="../history/audit-2026-10-21-car.md">car audit</a>); the wheelbase, track, and the lidar's and GPS's heights measured (Betsi, 1 Nov); the rest not yet (<a href="measure-the-car.html">the sheet</a>, <a href="know-the-car.html">Know the car</a>)</td>
 </tr>
 <tr>
 <td>2. Safe to move</td>
 <td>27 Nov</td>
 <td>the timeout brakes within 100 ms and latches; both e-stops stop the car</td>
-<td>🔧 the Rust spine has the 100 ms timeout (spine-core: 84 tests); in QEMU (24 Oct) it brakes 111-120 ms after the last frame and latches (<a href="esp32-bench.html#before-the-board-the-emulator">emulator</a>): 100 ms of silence, then the next 10 ms tick. Since 24 Oct the heartbeat comes from the Orin (TODO 50): it brakes 111-120 ms after the Orin's counter stops, though the Motor Pi still sends (<a href="rust-firmware.html#the-heartbeat-version-2-of-the-serial-frame-24-oct">the heartbeat</a>). Never flashed; today's ESP32 firmware has no timeout</td>
+<td>🔧 the Rust spine has the 100 ms timeout (spine-core: 84 tests); in QEMU (24 Oct) it brakes 111-120 ms after the last frame and latches (<a href="esp32-bench.html#before-the-board-the-emulator">emulator</a>): 100 ms of silence, then the next 10 ms tick. Since 24 Oct the heartbeat comes from the Orin (TODO 50): it brakes 111-120 ms after the Orin's counter stops, though the Motor Pi still sends (<a href="rust-firmware.html#the-heartbeat-version-2-of-the-serial-frame-24-oct">the heartbeat</a>). QEMU again on 3 Nov: 112-119 ms, 6 of 6. Never flashed; today's ESP32 firmware has no timeout, so a twist_mux lock keeps programs off it (26 Oct)</td>
 </tr>
 <tr>
 <td>3. Closed loop</td>
@@ -250,7 +263,7 @@ work that runs in Gazebo or on the bench; "on the car" counts only what ran on t
 <td>4. Drives itself</td>
 <td>26 Feb</td>
 <td>GPS A to B, within 1 m, five runs, no takeover</td>
-<td>🧪 in Gazebo: every stop within 0.4 m of B</td>
+<td>🧪 in Gazebo (15 Oct): every stop within 0.4 m of B. On the car: it drove on 13 Nov, not yet A to B with our stack</td>
 </tr>
 <tr>
 <td>5. Handover</td>
@@ -298,7 +311,7 @@ work that runs in Gazebo or on the bench; "on the car" counts only what ran on t
 </tr>
 <tr>
 <td>Simulation</td>
-<td>TurtleSim; Gazebo with the whole car (cameras, radar, lidar, GPS, IMU, wheel speed, actuator model); the bench with the real CAN messages</td>
+<td>TurtleSim; our own simulator in Rust (Ravensim: the default since 8 Nov, the only one since Gazebo went on 16 Nov), with the whole car (cameras, radar, lidar, GPS, IMU, wheel speed, actuator model); the campus world; the bench with the real CAN messages</td>
 <td><code>pixi run turtle</code>, <code>sim</code>, <code>bench</code></td>
 </tr>
 <tr>
@@ -308,17 +321,22 @@ work that runs in Gazebo or on the bench; "on the car" counts only what ran on t
 </tr>
 <tr>
 <td>Drivers</td>
-<td>joystick, keyboard, scripted, replay, GPS A to B, Nav2, plain English (local model), street routes</td>
+<td>joystick, keyboard, scripted, replay, GPS A to B, navigation, plain English (local model), street routes</td>
 <td><code>ros/drivers</code></td>
 </tr>
 <tr>
-<td>Nav2</td>
-<td>Smac Hybrid-A<em>, </em><em>MPPI</em>* (the default) or Regulated Pure Pursuit, collision monitor, ghost obstacles</td>
+<td>Navigation</td>
+<td>ours in Rust (Nav2 until 17 Nov): the State Lattice planner (Hybrid-A<em> too), </em><em>MPPI with lag</em>*, our costmap, navigator, smoother and stop zone; ghost obstacles</td>
 <td><code>ros/drivers/aav_navigation</code></td>
 </tr>
 <tr>
+<td>Challengers</td>
+<td>trial followers; a diffusion planner; a behaviour planner</td>
+<td><code>ros/drivers</code>, <a href="switches.html">Switches</a></td>
+</tr>
+<tr>
 <td>Safety</td>
-<td>a sensor watchdog (14 faults, the HUD's heartbeat among them, stop the car in Gazebo; frozen wheels 25 of 25 since 24 Oct); the collision monitor; the spine's timeout (not flashed)</td>
+<td>a sensor watchdog (14 faults, the HUD's heartbeat among them, stop the car in the simulator; frozen wheels 25 of 25 since 24 Oct); the stop zone; the spine's timeout (not flashed)</td>
 <td><code>ros/safety</code>, <code>firmware/spine</code></td>
 </tr>
 <tr>
@@ -338,7 +356,7 @@ work that runs in Gazebo or on the bench; "on the car" counts only what ran on t
 </tr>
 <tr>
 <td>Docs</td>
-<td>77 pages for a dyslexic reader, as HTML and PDF</td>
+<td>about 100 pages for a dyslexic reader, as HTML and PDF</td>
 <td><code>docs/</code></td>
 </tr>
 </tbody>
@@ -714,7 +732,7 @@ the next concrete step.</p>
 <td>27 Nov</td>
 <td>🔧</td>
 <td style="text-align: right;">75</td>
-<td>jerk limit done 22 Oct (<code>max_jerk</code> 2.0 m/s³, speeding up only; <code>sim-check --obstacle</code> passes). Left: move the stop-at-distance curve from the A-to-B driver into ego, or agree it stays (D4)</td>
+<td>jerk limit done 22 Oct (<code>max_jerk</code> 2.0 m/s³, speeding up only; <code>sim-check --obstacle</code> passes). Left: move the stop-at-distance curve from the A-to-B driver into ego, or agree it stays (D4). Since 7 Nov one stopping law (<code>aav_description</code> <code>stop_law.py</code>) is shared: the point driver can use it (<code>stop_law:=hybrid</code>)</td>
 </tr>
 <tr>
 <td>T5.4</td>
@@ -916,7 +934,7 @@ the next concrete step.</p>
 </tr>
 <tr>
 <td>T7.8</td>
-<td>Nav2 on the car</td>
+<td>Navigation on the car</td>
 <td>26 Mar</td>
 <td>⬜</td>
 <td style="text-align: right;">0</td>
@@ -1171,7 +1189,7 @@ too". It shares the car's model with ego, as the proposal says (section 8.3).</p
 <td>M7</td>
 <td>MPPI on the car</td>
 <td>⬜</td>
-<td>after Nav2 passes on the car (T7.8); MPPI is the default now</td>
+<td>after navigation passes on the car (T7.8); MPPI is the default now</td>
 </tr>
 <tr>
 <td>M8</td>
@@ -1221,7 +1239,7 @@ too". It shares the car's model with ego, as the proposal says (section 8.3).</p
 <tr>
 <td>D4</td>
 <td>The stop-at-distance planner inside ego (T5.3)</td>
-<td>inside the A-to-B driver (<code>aav_drive_to_point</code>)</td>
+<td>inside the A-to-B driver (<code>aav_drive_to_point</code>); since 7 Nov also one shared stopping law (<code>stop_law.py</code>), which ego logs and the behaviour planner caps Nav2 with</td>
 <td>either; ego is where the proposal promises it</td>
 </tr>
 <tr>

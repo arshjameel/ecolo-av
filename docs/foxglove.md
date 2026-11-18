@@ -36,7 +36,7 @@ Open → Open ([Your Mac](mac.md#watch-without-ros-lichtblick)).
 
 | Layout | File | Shows |
 |---|---|---|
-| **Driving** | `tools/foxglove/driving.json` | 3D view following the car: its model, the lidar's scan, the local costmap, Nav2's plan and goal, the radar and its clusters, the camera's obstacles, the stop zone. The camera preview. Speed and steering, measured against commanded. E-stop, the sensor watchdog, the output gate |
+| **Driving** | `tools/foxglove/driving.json` | 3D view following the car: its model, the lidar's scan, the local costmap, the plan and goal, the radar and its clusters, the camera's obstacles, the stop zone. The camera preview. Speed and steering, measured against commanded. E-stop, the sensor watchdog, the output gate |
 | **Sensors health** | `tools/foxglove/sensors-health.json` | every `/diagnostics` status: the watchdog's per sensor with its **rate (Hz) and longest gap**; EKFs, twist_mux, the camera streams. Whether every sensor comes from the right source. A timeline of stops and e-stops |
 | **Map** | `tools/foxglove/map.json` | the car on a street map: the EKF's position (blue) and the raw GPS (orange); fix or no fix; the street route's status |
 | **Cockpit** (the Drive screen) | `tools/foxglove/cockpit.json` | everything for driving on one screen, and which algorithms run ([below](#cockpit)) |
@@ -50,9 +50,9 @@ Open → Open ([Your Mac](mac.md#watch-without-ros-lichtblick)).
 **The Drive screen** (Ben, 3 Nov: "the gazeboo with nav2 selection with cubes and stuff
 all as a single screen and then hardware as a seperate screen. Just the stuff we
 control."). Every driving detail on one screen, like Foxglove's nuScenes demo. For
-Gazebo, the bench, a replayed bag, and the car (watch only).
+Ravensim, the bench, a replayed bag, and the car (watch only).
 
-![The cockpit in Lichtblick, live in Gazebo's test lot: the Algorithms table, the localizers, the cubes](img/cockpit-drive.jpg)
+![The cockpit in Lichtblick, live in Gazebo's test lot, 3 Nov: the Algorithms table, the localizers, the cubes](img/cockpit-drive.jpg)
 
 *3 Nov, in Lichtblick, live: `pixi run sim world:=test_lot foxglove:=true voxels:=true
 ndt:=true kiss_icp:=true amcl:=true`, driving to a goal 18 m ahead.*
@@ -74,10 +74,10 @@ ndt:=true kiss_icp:=true amcl:=true`, driving to a goal 18 m ahead.*
 | Panel | Shows | Topic |
 |---|---|---|
 | Front camera | the front left camera, small, once a second | `/perception/camera/front_left/preview/compressed` |
-| Chase camera | Gazebo's picture from behind the car (sim only) | `/vehicle/sim/chase_camera/compressed` |
+| Chase camera | the simulator's picture from behind the car (sim only) | `/vehicle/sim/chase_camera/compressed` |
 | Status | e-stop, sensor watchdog, localization health (word and text), output gate, `/diagnostics` warnings | `/vehicle/status`, `/safety/...`, `/localization/health`, `/diagnostics` |
 | Map | the EKF (blue) and the raw GPS (orange) | `/localization/gps/fix`, `/sensors/gps/fix` |
-| 3D | the car, lidar scan, voxel cubes, local costmap, Nav2's `/map`, plan, goal, radar, stop zone | as in Driving, plus `/perception/voxels/cubes`, `/map` |
+| 3D | the car, lidar scan, voxel cubes, local costmap, the map (`/map`), plan, goal, radar, stop zone | as in Driving, plus `/perception/voxels/cubes`, `/map` |
 | 3D: localizers | each one's pose: local EKF blue, global EKF green (arrows over the roof), NDT purple, AMCL orange (with their covariance); NDT's scan (purple dots: the scan where NDT puts the car) | `/localization/odom/local`, `.../global`, `/localization/ndt/pose`, `/localization/amcl/pose` |
 | **Algorithms** | which planner, path follower, obstacles, EKF inputs, NDT, KISS-ICP and AMCL this run uses | `/system/algorithms` ([aav_run_info](../ros/bringup/aav_run_info/README.md)) |
 | Speed plot | the wheels, the local EKF and KISS-ICP (the lidar's own speed) against the asked speed | `/vehicle/odom`, `/localization/odom/local`, `/localization/kiss_icp/odom`, `/control/cmd_vel` |
@@ -96,16 +96,20 @@ ndt:=true kiss_icp:=true amcl:=true`, driving to a goal 18 m ahead.*
 
 ### Where this is heading
 
-| Screen | 0.2 (now) | 0.3 |
+Written for 0.2 (3 Nov). **Changed 5 Nov (Ben):** the debug screen goes into the Bevy
+developer window (`pixi run dev-window`, [design](designs/2026-11-05_one-window.md)), not
+into this cockpit. 0.3 merged on 9 Nov with the cockpit as it was.
+
+| Screen | 0.2 | The 3 Nov plan for 0.3 |
 |---|---|---|
-| **Drive** (this cockpit) | Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run | absorbs the debug screen: NDT's map and match, the kept cubes |
+| **Drive** (this cockpit) | the simulator's view, the goal, the cubes, the localizers, which algorithms run | absorbs the debug screen: NDT's map and match, the kept cubes (dropped 5 Nov: above) |
 | **Hardware** (the [hardware panel](hud.md#the-hardware-panel)) | every sensor, simple buttons, the steering's ends | stays separate: the lowest level, wired |
 | **HUD** and **map** | in the car | stay in the car ([The car's screens](car-screens.md)) |
 
 ### Send a goal (sim, bench)
 
 In the 3D panel: the **Publish** tool (top right), set to **Pose**, then click and drag
-on the road. It sends `/goal_pose`; Nav2 plans and drives. The car's bridge is watch
+on the road. It sends `/goal_pose`; our navigator plans and drives. The car's bridge is watch
 only: the click does nothing there.
 
 ### Swap the tracker (sim only)
@@ -116,13 +120,14 @@ only: the click does nothing there.
 | 2 | In the Tracker panel, write the one you want in `string_value`: `pure_pursuit`, `stanley`, `lqr`, `mpc` or `mpc_full` |
 | 3 | Press **Set the tracker**. The answer says `successful: true` |
 
-`none` (Nav2's own MPPI) is a launch switch: with it, there is no `/track` to call. The
+`mppi_lag` (the default) is its own node: with it, there is no `/track` to call. The
 car refuses a swap (`live_swap` is on only in `sim.launch.py`).
 
 ### The chase camera
 
-A camera fixed 7 m behind the car and 3.5 m up, looking down at the road ahead. Gazebo's
-only, in the worlds that render sensors (road, test_lot): `chase_camera:=false` drops it.
+A camera fixed 7 m behind the car and 3.5 m up, looking down at the road ahead. Simulators
+only (`aav_sim_cameras` for Ravensim; Gazebo's until 16 Nov), in the worlds that render
+sensors (road, test_lot, campus): `chase_camera:=false` drops it. The numbers below are Gazebo's.
 
 | | Without | With |
 |---|---|---|
@@ -164,9 +169,9 @@ list leaves these out:
 | raw cameras, `.../image_raw`, and their JPEGs | 93 MB/s; 4.5 MB/s | `/perception/camera/front_left/preview/compressed`: 320 px, once a second, a few kB |
 | the detector's and lane finder's pictures | raw pictures | the preview (the car's has the boxes drawn on) |
 | the lidar's points and packets | ~7 MB/s | `/sensors/lidar/scan`, 3 kB |
-| Nav2's costmap layers one by one | 40-640 kB each | `/local_costmap/costmap`, all layers in one |
+| the costmap's layers one by one | 40-640 kB each | `/drivers/nav/costmap/local`, all layers in one |
 
-Measured, 24 Oct, in Gazebo's road world, while Nav2 drove: **all three layouts open at
+Measured, 24 Oct, in Gazebo's road world, while Nav2 (then) drove: **all three layouts open at
 once: 170 kB/s (1.4 Mbit/s)**. The costmap is the biggest part (64 kB/s), then the odometry
 and the scan. On a cable, `ros2 launch aav_bringup foxglove.launch.py foxglove_topics:=all`
 lets everything through.
@@ -186,7 +191,7 @@ pixi run python3 tools/layout_check.py ws://192.168.1.140:8765 --data   # the ca
 | A goal sent through the bridge (as Lichtblick's 3D panel does) | Nav2 planned and the car drove 20 m |
 | `pixi run bench foxglove:=true` | 22 of 26 served; the bench has no lidar unless `lidar:=true` |
 | A watch-only bridge (the car's settings) | publishing refused: "Server does not support clientPublish" |
-| The layouts in the Lichtblick app | the setting names were checked against Lichtblick 1.29's own code; not yet opened in the app by a person |
+| The layouts in the Lichtblick app | the setting names were checked against Lichtblick 1.29's own code; not yet opened in the app by a person (24 Oct; the cockpit was opened live on 3 Nov, [above](#cockpit)) |
 | The cockpit, 1 Nov, road world, `foxglove:=true tracker:=pure_pursuit voxels:=true` | `python3 tools/layout_check.py`: every topic served but the GPS route and the scan (`voxels:=true` replaces it) and `/localization/gps/fix` (early); `/track/set_parameters` advertised; the chase camera 10 Hz, 200 kB/s. Opened in Lichtblick, but the Mac was locked: **no screenshot**, and the tracker panel and the switch list are **untested in the app** |
 | The Drive cockpit, 3 Nov, test lot, `voxels:=true ndt:=true kiss_icp:=true amcl:=true` (two runs) | `python3 tools/layout_check.py`: every topic served (only the street route, the ghost and the tracker service off, as asked); `/system/algorithms` right for the run. Seen live in Lichtblick: the Algorithms table, KISS-ICP's speed against the wheels', the lights **NDT: OK** and **KISS-ICP: OK**, NDT TRACKING. **Not seen**: the EKFs' arrows and NDT's scan (the two layout scripts; Lichtblick shows 6 alerts, not yet read: a person needs to open Alerts), and the frame labels still show (`transforms.showLabel` ignored) |
 | The car | **untested** |

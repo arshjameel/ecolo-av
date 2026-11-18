@@ -18,6 +18,9 @@
 //! - [`Role`]: `Spine` does all of that. `Sensors` only listens to the wheel nodes and
 //!   never sends, for a car driven another way (today's: the ESP32, through the Motor
 //!   Pi's UART; docs/can-plan.md).
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 mod bridge;
 mod gate;
@@ -27,6 +30,6 @@ pub use bridge::{
     ArmError, Arming, BadFrame, Bridge, Command, Drive, Geometry, Motion, Role, Settings, Status,
     UnknownRole, Update,
 };
-pub use gate::{GateShut, OutputGate, Target, UnknownTarget, GATE_SHUT};
+pub use gate::{try_again, GateShut, OutputGate, Target, UnknownTarget, GATE_SHUT};
 pub use spine_core::protocol::{DriveCmd, EstopCmd, Mode, DRIVE_CMD_ID, ESTOP_CMD_ID};
 pub use wheels::{Direction, Reading, Side};

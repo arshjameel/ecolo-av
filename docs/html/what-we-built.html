@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What we built: the AAV software, 0.4-rc1 · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/what-we-built.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>What we built: the AAV software, 0.4-rc1</h1>
+<div class="meta">16 min read · 9 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a class="here" href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#in-one-line">In one line</a><a href="#the-headline-numbers">The headline numbers</a><a href="#the-picture">The picture</a><a href="#how-to-read-the-tables">How to read the tables</a><a href="#the-areas">The areas</a><a href="#what-we-replaced">What we replaced</a><a href="#whats-next">What&#x27;s next</a><a href="#who-built-it">Who built it</a><a href="#read-more">Read more</a></nav>
+<div class="lead"><p>The software for Carleton's autonomous car (AAV), built by the 2026-27 capstone team,
+as it stands on 17 Nov 2026. It takes about 10 minutes to read.</p>
+<div class="admonition warning">
+<p class="admonition-title">Almost all of it has run only in our simulator</p>
+<p>Every number on this page comes from <strong>Ravensim</strong> (our simulator), bench mode, QEMU
+or unit tests, unless it says "car". The real car drove on 13 Nov with only the
+localization update installed (<a href="status.html#on-the-car">Status</a>).</p>
+</div></div>
+<section class="card"><h2 id="in-one-line">In one line</h2>
+<p><strong>A self-driving stack of our own, mostly in Rust, that drives a simulated Carleton
+campus end to end, and beat Nav2 (the standard ROS navigation stack) on the same routes.</strong></p>
+</section>
+<section class="card"><h2 id="the-headline-numbers">The headline numbers</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Ours</th>
+<th>The yardstick</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Legs reached, 3 tours (lot, campus, University Drive), in Ravensim</td>
+<td><strong>30 of 30</strong> (3 runs)</td>
+<td>Nav2: 14 of 20 (2 runs)</td>
+<td><a href="league-results-2026-11-16.html#nav2s-last-yardstick">League, 16 Nov</a></td>
+</tr>
+<tr>
+<td>Off the path, on average, campus tour</td>
+<td><strong>0.17 m</strong></td>
+<td>Nav2: 0.83 m</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>Time over the centre line, University Drive</td>
+<td><strong>0 %</strong></td>
+<td>Nav2: 13 %; other planners 45-74 %</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>A 0.3 m kerb across the road, in Ravensim</td>
+<td>seen 8.4 m out, <strong>stopped 0.80-0.82 m before it</strong></td>
+<td>before: drove into it</td>
+<td><a href="kerbs.html">Kerbs</a></td>
+</tr>
+<tr>
+<td>The stop zone, ours against Nav2's, in shadow</td>
+<td><strong>24 of 24</strong> of Nav2's stops, never later</td>
+<td>-</td>
+<td><a href="../history/nav2-as-it-was.md#the-swap-of-the-stop-zone">Nav2, as it was</a></td>
+</tr>
+<tr>
+<td>ego in Rust against Python (CPU of one core)</td>
+<td><strong>2.4 %</strong></td>
+<td>17 %</td>
+<td><code>TODO.md</code> 185</td>
+</tr>
+<tr>
+<td>The behaviour planner in Rust against Python</td>
+<td><strong>1.3 %</strong></td>
+<td>9.0 %</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>Lidar cubes in Rust: one turn of 28,800 points</td>
+<td><strong>0.53 ms</strong></td>
+<td>4.29 ms in Python</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>RavenTiles: the global costmap's memory, campus</td>
+<td><strong>145 MB</strong></td>
+<td>474 MB, one whole map</td>
+<td><code>TODO.md</code> 175</td>
+</tr>
+<tr>
+<td>RavenTiles: NDT ready at start-up</td>
+<td><strong>0.02 s</strong></td>
+<td>2.5 s, one whole map</td>
+<td><a href="release-0.4.html">Release 0.4</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-picture">The picture</h2>
+<pre class="highlight"><code class="language-text">                        SENSORS  lidar · radar · cameras · IMU · GPS · wheels
+                           │          (on the car, or Ravensim in their place)
+                           ▼
+  LOCALIZATION   two EKFs + GPS ── lane pose ── NDT on map chunks ── (KISS-ICP trial)
+                           │
+  PERCEPTION     lidar cubes · kerb step finder · RF-DETR camera detector
+                 lane finder · radar clusters · the things tracker
+                           │
+  MAPS           three levels on 64 m chunks (RavenTiles)
+                 route: Lanelet2 / street graph ─ path: ~100 m ahead ─ close up: costmap
+                           │
+  BEHAVIOUR      drive · approach · wait · go: stop signs, anything moving, parked things
+                           │
+  PLANNING       the lane's centre (path:=lane) · lattice / Hybrid-A* in Rust
+                           │
+  CONTROL        MPPI that knows the lag ──► twist_mux ──► ego (+ the pedal, speed loops)
+                           │
+  SAFETY LOCKS   e-stop · stop zone · watchdog · geofence · stop hold  (never swapped)
+                           │
+  FIRMWARE       the spine (Rust, Embassy) · today's ESP32 · Picos
+                           ▼
+                 THE CAR  (or Ravensim: the same topics, so nothing above can tell)</code></pre>
+<p>Every box talks only through ROS topics fixed in <code>docs/interfaces.yaml</code>. So any box can
+be swapped for another that gives the same topics: a new algorithm, or the simulator in
+place of the car. More: <a href="how-it-fits.html">How it fits</a>.</p>
+<p><img alt="The developer window, driving our stack live" src="../img/dev-window-ours-live.png" /></p>
+</section>
+<section class="card"><h2 id="how-to-read-the-tables">How to read the tables</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Mark</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅</td>
+<td>the champion: the default in <code>stack:=ours</code></td>
+</tr>
+<tr>
+<td>⚔️</td>
+<td>a challenger: runs beside the champion, takes over only if it wins on the same routes</td>
+</tr>
+<tr>
+<td>sim</td>
+<td>works in Ravensim</td>
+</tr>
+<tr>
+<td>built</td>
+<td>in the repo with its tests, not yet driven in the simulator</td>
+</tr>
+<tr>
+<td>car</td>
+<td>has worked on the real car</td>
+</tr>
+</tbody>
+</table></div>
+<p>Who built what is in <a href="features.html">Features</a>. Nearly everything here is Ben's; the other
+names are in <a href="#who-built-it">Who</a>.</p>
+</section>
+<section class="card"><h2 id="the-areas">The areas</h2>
+<h3 id="ravensim-our-simulator">Ravensim: our simulator</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>Algorithms we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plays the car: world, car, lidar, radar, IMU, GPS, wheels, clock, on the car's own topics</td>
+<td>✅ Ravensim (<code>aav_simulator</code>); reads the same SDF worlds Gazebo did</td>
+<td>Rust</td>
+<td>sim</td>
+<td>passed every <code>sim-check</code> leg Gazebo passed (8 Nov)</td>
+</tr>
+<tr>
+<td>Cameras</td>
+<td>✅ <code>aav_sim_cameras</code> (Bevy, no window); <strong>camera lockstep</strong>: with no GPU the clock waits for each picture; <strong><code>graphics:=pretty</code></strong> (17 Nov): grain, a sky, haze, painted stop lines</td>
+<td>Rust</td>
+<td>sim</td>
+<td>640 x 360, Gazebo's lens and rate</td>
+</tr>
+<tr>
+<td>Faults on purpose</td>
+<td><code>pixi run sim-fault</code>, <code>sim-check --faults</code>, <code>--actuator-faults</code></td>
+<td>Python</td>
+<td>sim</td>
+<td>14 sensor faults; 6 of 6 actuator faults</td>
+</tr>
+<tr>
+<td>Wheels that slip, kerbs that stop the car</td>
+<td>seeded wheel noise and slip; each wheel finds the ground</td>
+<td>Rust</td>
+<td>sim</td>
+<td>a 0.3 m kerb stops the car</td>
+</tr>
+<tr>
+<td>Big maps</td>
+<td><strong>RavenTiles</strong>: a map cut into 64 m chunks</td>
+<td>data</td>
+<td>sim</td>
+<td>the campus in 625 chunks a detail</td>
+</tr>
+</tbody>
+</table></div>
+<p>What the car's cameras see on the campus, before and after <code>graphics:=pretty</code>
+(<a href="own-simulator.html#looks-graphicspretty-17-nov">Looks</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="The campus, before" src="../img/ravensim-campus-before.png" /></td>
+<td><img alt="The campus, after" src="../img/ravensim-campus-after.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="screens">Screens</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>What we built</th>
+<th>Language</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>In-car HUD, on the Pi</td>
+<td>✅ the HUD, with a SIMULATED banner, GO / STOP, the squiggly line ahead, themes</td>
+<td>Rust (raylib)</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Every sensor's number, OK / STALE / NEVER</td>
+<td>✅ the hardware panel, with steering calibration and graphs pages</td>
+<td>Rust (raylib)</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>The street map, offline, with place search</td>
+<td>✅ the map window</td>
+<td>Rust (raylib)</td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Everything at once on a laptop: scene, console, lanes, chunks</td>
+<td>✅ the developer window</td>
+<td>Rust (Bevy)</td>
+<td>built</td>
+</tr>
+</tbody>
+</table></div>
+<p>A frozen screen stops the car: each screen sends a heartbeat, STALE within 1 s
+(<a href="safety-case.html">Safety case</a>).</p>
+<h3 id="localization-where-am-i">Localization: where am I</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>Algorithms we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Smooth pose from wheels and IMU, plus GPS</td>
+<td>✅ two EKFs (stock <code>robot_localization</code>), a GPS outlier gate, heading from the gyro and from GPS</td>
+<td>Python</td>
+<td>sim</td>
+<td>parked, the global EKF stays within 0.2 m</td>
+</tr>
+<tr>
+<td>Sideways correction from the painted lines</td>
+<td>✅ <strong>lane pose</strong> (<code>aav_lane_pose</code>), the default since 17 Nov where there is a camera and a lane map</td>
+<td>Python</td>
+<td>sim</td>
+<td>University Drive sideways error 9.2-9.9 → <strong>6.9-7.8 cm</strong></td>
+</tr>
+<tr>
+<td>Pose from a saved lidar map</td>
+<td>⚔️ NDT (<code>aav_ndt</code>), loading only the 3 x 3 chunks round the car; ⚔️ NDT into the global EKF (<code>ndt_ekf</code>)</td>
+<td>Rust</td>
+<td>sim</td>
+<td><code>ndt_ekf</code> is calmer on every tour, but stopped once in 2 of 3 runs: "recommended next"</td>
+</tr>
+<tr>
+<td>Lidar odometry, no map</td>
+<td>⚔️ KISS-ICP (stock, MIT) into the local EKF</td>
+<td>Python</td>
+<td>sim</td>
+<td>a trial</td>
+</tr>
+<tr>
+<td>Health checks</td>
+<td>✅ localization health</td>
+<td>Rust (Python twin)</td>
+<td>sim</td>
+<td>1.5 % of a core against 9.4 %</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="perception-what-is-around">Perception: what is around</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>Algorithms we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lidar as cubes (voxels)</td>
+<td>✅ <code>aav_voxels_rs</code> (the Python twin kept)</td>
+<td>Rust</td>
+<td>built</td>
+<td>25 % → 6 % of a core</td>
+</tr>
+<tr>
+<td>Kerbs</td>
+<td>✅ the <strong>step finder</strong> with a 10 s memory</td>
+<td>Rust</td>
+<td>sim</td>
+<td>0.3 m kerb seen 8.4 m out; 0.15 m kerb from 4.7 m</td>
+</tr>
+<tr>
+<td>Objects in the cameras</td>
+<td>✅ RF-DETR Nano; YOLO as an option; Core ML on a Mac</td>
+<td>Python (ONNX)</td>
+<td>sim</td>
+<td>saw a stop sign from 20 m (YOLO11n: 10 m)</td>
+</tr>
+<tr>
+<td>Lane lines</td>
+<td>✅ the lane finder</td>
+<td>Python</td>
+<td>sim</td>
+<td>lane keeping on a 171 m campus road, mean error 4 cm</td>
+</tr>
+<tr>
+<td>Radar</td>
+<td>✅ radar clusters</td>
+<td>Rust</td>
+<td>sim</td>
+<td>ported from the 2025-26 team's C++</td>
+</tr>
+<tr>
+<td>Things that move</td>
+<td>✅ <strong>the things tracker</strong> (<code>aav_things</code>), cubes on the map's walls dropped</td>
+<td>Python</td>
+<td>sim</td>
+<td>9.9 things to 1.7; every walker found within 0.2 s</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="maps-three-levels-on-fixed-chunks">Maps: three levels on fixed chunks</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>What we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The map in 64 m squares, loading only those near the car and along the route</td>
+<td>✅ <strong>RavenTiles</strong> (<code>map-chunks</code>), each chunk on its own core</td>
+<td>Rust</td>
+<td>sim</td>
+<td>costmap 474 → 145 MB, 12 → 4 % CPU; planner 403 → 65 MB</td>
+</tr>
+<tr>
+<td>Zoomed out: which roads</td>
+<td>✅ the street graph; ⚔️ <strong>Lanelet2 in Rust</strong> (our own reader and router)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>the campus: 998 lanes, 98 stop lines; routes in under 1 ms</td>
+</tr>
+<tr>
+<td>Middle: the path about 100 m ahead</td>
+<td>✅ the planner on the chunks, far goals in steps</td>
+<td>Rust</td>
+<td>sim</td>
+<td>20 of 20 legs, the same as the whole map</td>
+</tr>
+<tr>
+<td>Close up: what is in the way</td>
+<td>✅ our costmap (<code>ours_chunks</code>)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>the same drive as the whole map, a third of the memory</td>
+</tr>
+<tr>
+<td>Carleton itself</td>
+<td>✅ the campus from OpenStreetMap (<code>pixi run campus</code>)</td>
+<td>Python</td>
+<td>sim</td>
+<td>no Google data</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="behaviour-the-rules-of-the-road">Behaviour: the rules of the road</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>What we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One state machine: DRIVE, APPROACH, STOPPED, WAIT, GO, ASK</td>
+<td>✅ the behaviour planner (Python twin kept)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>1.3 % of a core against 9.0 %</td>
+</tr>
+<tr>
+<td>One law for every planned stop</td>
+<td>✅ the stopping law S(v), from the car model</td>
+<td>Python and Rust</td>
+<td>built</td>
+<td>every number a guess until the car tests</td>
+</tr>
+<tr>
+<td>Stop for anything moving</td>
+<td>✅ hold while a thing moves 0.3 m/s or more within 10 m</td>
+<td>Rust</td>
+<td>sim</td>
+<td>held for a car, a person crossing, cross traffic, every run; the parked box never</td>
+</tr>
+<tr>
+<td>Stop signs</td>
+<td>✅ the stop-sign lock, stops about 4.7 m before the sign</td>
+<td>Python</td>
+<td>sim</td>
+<td>missed 1 in 8 runs</td>
+</tr>
+<tr>
+<td>The road ahead: the line, edges, limits, the end</td>
+<td>✅ <code>/world/road_ahead</code></td>
+<td>Rust</td>
+<td>sim</td>
+<td>ego holds every follower to it</td>
+</tr>
+<tr>
+<td>Pass something parked</td>
+<td>✅ the pass (<code>pass.rs</code>)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>over the line 5-5.5 s, back in lane 8.6-9.6 m after</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="planning-the-path">Planning: the path</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>Algorithms we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Follow the right lane's centre on mapped road</td>
+<td>✅ <strong><code>path:=lane</code></strong></td>
+<td>Rust</td>
+<td>sim</td>
+<td><strong>0 %</strong> over the centre line; others 45-74 %</td>
+</tr>
+<tr>
+<td>Plan on open ground (the lot)</td>
+<td>✅ the lattice (Nav2's idea, our code); ⚔️ Hybrid-A*</td>
+<td>Rust</td>
+<td>sim</td>
+<td>Hybrid-A* sways least, but in the wrong lane</td>
+</tr>
+<tr>
+<td>Fewer changes of gear</td>
+<td>✅ a price on each cusp (<code>cusp_penalty</code>)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>three-point turn, 6.5 m street: 9 → <strong>4</strong> changes of direction</td>
+</tr>
+<tr>
+<td>A model draws the path</td>
+<td>⚔️ the diffusion planner (ONNX)</td>
+<td>Python</td>
+<td>sim</td>
+<td>a trial for the lot, not the road</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="control-steering-and-pedals">Control: steering and pedals</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>Algorithms we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Follow the path, knowing the actuators lag</td>
+<td>✅ <strong><code>mppi_lag_calm</code></strong> (MPPI with the car's lag)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>the calmest that reverses; a tick 3.4-5.3 ms</td>
+</tr>
+<tr>
+<td>The same, as an optimiser</td>
+<td>⚔️ lag-aware MPC (<code>mpc_lag_rs</code>)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>2-7 times closer to the path, a tick 0.7-0.9 ms; sways, can't reverse yet</td>
+</tr>
+<tr>
+<td>Turn a wish into what the car can do</td>
+<td>✅ <strong>ego</strong>: Ackermann, jerk limit, body model, lag lead, the 2 s trace (Python twin kept)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>2.4 % of a core against 17 %</td>
+</tr>
+<tr>
+<td>The pedal and the speed loop</td>
+<td>✅ <code>default</code> loop; ⚔️ <code>smooth</code>, <code>firm</code>, <code>lqi</code></td>
+<td>Rust (<code>spine-core</code>)</td>
+<td>sim</td>
+<td><code>default</code> overshoots its command by 14 %; <code>firm</code> doesn't, but sways more</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="safety-the-locks-never-swapped-out">Safety: the locks (never swapped out)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>What we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Four e-stops; one blocks every driver</td>
+<td>✅ <code>/safety/estop</code> in twist_mux, the spine's flag</td>
+<td>Python, Rust</td>
+<td>sim</td>
+<td>the spine brakes within 2-12 ms</td>
+</tr>
+<tr>
+<td>Stop for what is ahead or behind</td>
+<td>✅ <strong>the stop zone</strong> (<code>aav_stop_zone</code>), took the lock from Nav2 on 17 Nov</td>
+<td>Rust</td>
+<td>sim</td>
+<td>0.16-0.55 m before a post; 0.75-0.85 m before one behind</td>
+</tr>
+<tr>
+<td>Sensors and nodes alive</td>
+<td>✅ the watchdog: STUCK steering, OVERSPEED, frozen wheels (Python twin kept)</td>
+<td>Rust</td>
+<td>sim</td>
+<td>13 faults stop within 6 s; stuck steering caught in 3.6 s</td>
+</tr>
+<tr>
+<td>Stay in the area</td>
+<td>✅ the geofence</td>
+<td>Python</td>
+<td>sim</td>
+<td>stopped 1.06 m after the lock (bench)</td>
+</tr>
+<tr>
+<td>Commands lost</td>
+<td>✅ the firmware's 100 ms timeout</td>
+<td>Rust</td>
+<td>QEMU</td>
+<td>brakes 111-120 ms after</td>
+</tr>
+<tr>
+<td>One page per hazard</td>
+<td>✅ the <a href="safety-case.html">safety case</a>: 14 hazards, each with its number</td>
+<td>-</td>
+<td>-</td>
+<td>none measured on the car yet</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="firmware">Firmware</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>What we built</th>
+<th>Language</th>
+<th>Status</th>
+<th>Key number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The spine: modes, arming, watchdog, speed loop, CAN</td>
+<td>✅ <code>spine-core</code> (state machine, self-test and stop rules: Arsh)</td>
+<td>Rust (<code>no_std</code>, Embassy)</td>
+<td>sim</td>
+<td>143 tests</td>
+</tr>
+<tr>
+<td>Today's control board, no new hardware</td>
+<td>✅ the ESP32 spine, every C++ behaviour matched, updates over WiFi</td>
+<td>Rust</td>
+<td>built</td>
+<td>tested in QEMU</td>
+</tr>
+<tr>
+<td>What drives the car today</td>
+<td>the 2025-26 team's ESP32 firmware</td>
+<td>C++</td>
+<td><strong>car</strong></td>
+<td>stays until the Rust one replaces it</td>
+</tr>
+<tr>
+<td>Spine, wheel encoder and status display boards</td>
+<td>✅ Pico 2 programs</td>
+<td>Rust</td>
+<td>built</td>
+<td>a 100 ms hardware watchdog</td>
+</tr>
+<tr>
+<td>The CAN contract</td>
+<td>✅ <code>aav.dbc</code>, shared test vectors for Python and Rust</td>
+<td>-</td>
+<td>sim</td>
+<td>wheel speeds on 0x200, 0x201</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="tools">Tools</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it does</th>
+<th>What we built</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One champion per level, challengers scored on the same tours</td>
+<td>✅ <strong>the league</strong> (<code>stacks.yaml</code>, <code>stack:=ours</code>)</td>
+<td>built</td>
+</tr>
+<tr>
+<td>Score any stack on tours: legs, time, sway, off the path</td>
+<td>✅ <code>pixi run measure</code></td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Check the whole system in 2 minutes</td>
+<td>✅ <code>pixi run sim-check</code></td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Record a drive, score it later</td>
+<td>✅ <code>tools/record.sh</code>, <code>score_drive.py</code></td>
+<td>sim</td>
+</tr>
+<tr>
+<td>Let an AI assistant look, never touch</td>
+<td>✅ the read-only <a href="mcp.html">MCP server</a></td>
+<td>built</td>
+</tr>
+<tr>
+<td>Every test on every push</td>
+<td>✅ CI: Linux x86 and ARM (the car's), a Mac and Ravensim nightly</td>
+<td>built</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="what-we-replaced">What we replaced</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Replaced</th>
+<th>By</th>
+<th>Why</th>
+<th>Its last score</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nav2</strong> (deleted 17 Nov)</td>
+<td>our navigator, planner, costmap, MPPI, smoother and stop zone, all ours</td>
+<td>"We want to run everythign ourselves in rust and/or python" (Ben, 14 Nov)</td>
+<td>14 of 20 legs against our 30 of 30; gave up on University Drive both runs (<a href="../history/nav2-as-it-was.md">page</a>)</td>
+</tr>
+<tr>
+<td><strong>Gazebo</strong> (deleted 16 Nov)</td>
+<td>Ravensim</td>
+<td>Ravensim passed every leg Gazebo did; Gazebo brought 25 packages into every environment</td>
+<td>its last nightly CI run failed; a campus road: 60 m and into the other lane, against Ravensim's 171 m (<a href="../history/gazebo-as-it-was.md">page</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>We kept a few small, proven stock parts: <code>robot_localization</code>, <code>twist_mux</code> and teleop.</p>
+</section>
+<section class="card"><h2 id="whats-next">What's next</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>The car's seven blockers</strong>: the firmware timeout, the brake, wheel speed seen, clocks, the steering's centre, a truth for "1 m" (<code>TODO.md</code> 158)</td>
+<td>the hardware team, with us</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Car day</strong>: drive our stack on the real car, record it, score it (<a href="car-day.html">Car day</a>)</td>
+<td>the team</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The last heavy Python nodes to Rust, and the champions made the car's default</td>
+<td>software</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The models in ONNX</td>
+<td>software</td>
+</tr>
+<tr>
+<td>5</td>
+<td>A prettier Ravensim: grain, sky and haze done (17 Nov); more on the road world</td>
+<td>software</td>
+</tr>
+</tbody>
+</table></div>
+<p>The whole list: <code>TODO.md</code>, "What is next".</p>
+</section>
+<section class="card"><h2 id="who-built-it">Who built it</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Person</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ben</td>
+<td>nearly everything above (<a href="features.html">Features</a>)</td>
+</tr>
+<tr>
+<td>Arsh</td>
+<td>the spine's state machine, self-test, stop rules, wheel speed on the serial link; the getting-started guide, CONTRIBUTING and the merge queue</td>
+</tr>
+<tr>
+<td>Senura</td>
+<td>the IMU's measured noise; the localization Pi</td>
+</tr>
+<tr>
+<td>Betsi</td>
+<td>localization health checks; the measured wheelbase</td>
+</tr>
+<tr>
+<td>the 2025-26 and 2024-25 teams</td>
+<td>the car, its ESP32 firmware, the radar driver, lane keeping, the battery monitor</td>
+</tr>
+</tbody>
+</table></div>
+<p>Everything we learned from or copied: <a href="acknowledgements.html">Acknowledgements</a>.</p>
+</section>
+<section class="card"><h2 id="read-more">Read more</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="release-0.4.html">0.4-rc1</a></td>
+<td>the release, one command per job</td>
+</tr>
+<tr>
+<td><a href="league-results-2026-11-16.html">The league's scores</a></td>
+<td>every option, scored</td>
+</tr>
+<tr>
+<td><a href="how-it-fits.html">How it fits</a></td>
+<td>each box in detail</td>
+</tr>
+<tr>
+<td><a href="status.html">Status</a></td>
+<td>what works, what doesn't yet</td>
+</tr>
+<tr>
+<td><a href="safety-case.html">Safety case</a></td>
+<td>every hazard and its number</td>
+</tr>
+<tr>
+<td><a href="kerbs.html">Kerbs</a>, <a href="stopping.html">Stopping</a></td>
+<td>two safety stories in full</td>
+</tr>
+<tr>
+<td><a href="own-planner.html">Our planner</a>, <a href="own-costmap.html">Our costmap</a></td>
+<td>planning in Rust</td>
+</tr>
+<tr>
+<td><a href="own-simulator.html">Ravensim</a>, <a href="own-simulator-cameras.html">its cameras</a></td>
+<td>the simulator</td>
+</tr>
+<tr>
+<td><a href="../designs/2026-11-15_three-levels.md">Three levels</a></td>
+<td>the map chunks' design</td>
+</tr>
+<tr>
+<td><a href="decisions.html">Decisions</a></td>
+<td>what we decided, and why</td>
+</tr>
+<tr>
+<td><a href="features.html">Features</a></td>
+<td>every feature, its reason, and who built it</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="index.html"><small>Previous</small>← Start here</a>
+<a class="next" href="overview.html"><small>Next</small>Overview →</a></nav>
+</main>
+<footer>Source: <code>docs/what-we-built.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

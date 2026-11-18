@@ -9,6 +9,9 @@
 //!
 //! Times use a free-running millisecond counter that may wrap.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 /// A change of the cleaned-up level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,12 +54,14 @@ pub struct Debouncer {
 
 impl Debouncer {
     /// The same time in both directions.
+    #[must_use]
     pub const fn new(initial: bool, stable_ms: u32) -> Self {
         Debouncer::with_times(initial, stable_ms, stable_ms)
     }
 
     /// `to_high_ms`: how long the input must stay high before the output goes high;
     /// `to_low_ms` the same for low. 0 means at once.
+    #[must_use]
     pub const fn with_times(initial: bool, to_high_ms: u32, to_low_ms: u32) -> Self {
         Debouncer {
             to_high_ms,
@@ -83,6 +88,7 @@ impl Debouncer {
     }
 
     /// The cleaned-up level.
+    #[must_use]
     pub fn level(&self) -> bool {
         self.level
     }
@@ -100,6 +106,8 @@ pub struct Lockout {
 }
 
 impl Lockout {
+    /// Starts at `initial`, free to change at once.
+    #[must_use]
     pub const fn new(initial: bool, lockout_ms: u32) -> Self {
         Lockout {
             lockout_ms,
@@ -124,6 +132,7 @@ impl Lockout {
     }
 
     /// The level after the last change that counted.
+    #[must_use]
     pub fn level(&self) -> bool {
         self.level
     }

@@ -24,6 +24,7 @@ const FAR: f64 = 1e20;
 
 impl Inflation {
     /// Nav2's `computeCost`: the cost `cells` cells from an obstacle.
+    #[must_use]
     pub fn cost(&self, cells: f64, resolution: f64) -> u8 {
         if cells == 0.0 {
             LETHAL

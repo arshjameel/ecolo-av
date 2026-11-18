@@ -1,6 +1,8 @@
 # The proposal: what we plan to do this year, and what's already done
 
 > **A snapshot from 15 October 2026.** What's true now: [Status](status.md) and [The plan](plan.md).
+>
+> **Nav2 and Gazebo, named below, are gone**: Gazebo on 16 Nov, Nav2 on 17 Nov. Today: Ravensim and our stack (`stack:=ours`). What each was: [Nav2, as it was](history/nav2-as-it-was.md), [Gazebo, as it was](history/gazebo-as-it-was.md).
 
 Written 15 October 2026, for the team (Ben: "a file called proposal that lists
 everything we have talked about that we think we can get working"). This is the **draft**

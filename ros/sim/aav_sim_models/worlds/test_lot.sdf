@@ -1,0 +1,137 @@
+<?xml version="1.0"?>
+<!--
+  The example lot: the same walls, building and parked cars as
+  aav_navigation/maps/example_lot.spec.yaml, so the map and the world agree.
+  Ravensim reads it (SDF 1.9, as Gazebo did until 16 Nov). The world is named "aav" in
+  every file.
+
+  The ravensim::sensors plugin draws the car's three cameras, its radar stand-in and the
+  roof lidar here too (15 Oct, Ben), so they see the walls, the building and the parked cars.
+
+  spherical_coordinates puts the world origin on the Earth: it MUST match the datum in
+  aav_localization/config/navsat.yaml, so world (x, y) = map (x, y), x east, y north.
+-->
+<sdf version="1.9">
+  <world name="aav">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <!-- Ravensim draws the cameras and casts the lidar and radar here (worlds.has_sensors). -->
+    <plugin filename="ravensim" name="ravensim::sensors"/>
+
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <world_frame_orientation>ENU</world_frame_orientation>
+      <latitude_deg>45.3860</latitude_deg>
+      <longitude_deg>-75.6960</longitude_deg>
+      <elevation>70.0</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>400 400</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>400 400</size></plane></geometry>
+          <material><ambient>0.5 0.5 0.5 1</ambient><diffuse>0.5 0.5 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_south">
+      <static>true</static>
+      <pose>30 -9.5 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>80 1 1.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>80 1 1.5</size></box></geometry>
+          <material><ambient>0.6 0.3 0.2 1</ambient><diffuse>0.6 0.3 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_north">
+      <static>true</static>
+      <pose>30 49.5 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>80 1 1.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>80 1 1.5</size></box></geometry>
+          <material><ambient>0.6 0.3 0.2 1</ambient><diffuse>0.6 0.3 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_east">
+      <static>true</static>
+      <pose>69.5 20 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1 60 1.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1 60 1.5</size></box></geometry>
+          <material><ambient>0.6 0.3 0.2 1</ambient><diffuse>0.6 0.3 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_west_a">
+      <static>true</static>
+      <pose>-9.5 -2.5 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1 15 1.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1 15 1.5</size></box></geometry>
+          <material><ambient>0.6 0.3 0.2 1</ambient><diffuse>0.6 0.3 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_west_b">
+      <static>true</static>
+      <pose>-9.5 29.5 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1 41 1.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1 41 1.5</size></box></geometry>
+          <material><ambient>0.6 0.3 0.2 1</ambient><diffuse>0.6 0.3 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="building">
+      <static>true</static>
+      <pose>30 27.5 2 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>20 15 4</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>20 15 4</size></box></geometry>
+          <material><ambient>0.6 0.3 0.2 1</ambient><diffuse>0.6 0.3 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="parked_cars">
+      <static>true</static>
+      <pose>51 15 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2 30 1.5</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2 30 1.5</size></box></geometry>
+          <material><ambient>0.6 0.3 0.2 1</ambient><diffuse>0.6 0.3 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

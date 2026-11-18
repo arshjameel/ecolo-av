@@ -38,11 +38,14 @@ pub struct LatLon {
 }
 
 impl LatLon {
+    /// A place from its latitude and longitude (degrees).
+    #[must_use]
     pub const fn new(lat: f64, lon: f64) -> Self {
         Self { lat, lon }
     }
 
     /// On the globe: finite, |lat| <= 90, |lon| <= 180.
+    #[must_use]
     pub fn is_valid(self) -> bool {
         self.lat.is_finite()
             && self.lon.is_finite()
@@ -54,13 +57,16 @@ impl LatLon {
 /// A UTM zone: its number (1 to 60) and its hemisphere.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UtmZone {
+    /// 1 to 60.
     pub number: u8,
+    /// North of the equator.
     pub north: bool,
 }
 
 impl UtmZone {
     /// The standard zone of a place (6 degrees wide; Norway's and Svalbard's exceptions
     /// are left out: they are far from Ottawa).
+    #[must_use]
     pub fn of(p: LatLon) -> Self {
         let number = (((p.lon + 180.0) / 6.0).floor() as i32).clamp(0, 59) + 1;
         Self {
@@ -86,8 +92,11 @@ impl UtmZone {
 /// A point in UTM, with the projection's local properties there.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Utm {
+    /// The zone.
     pub zone: UtmZone,
+    /// m east, from the zone's false origin.
     pub easting: f64,
+    /// m north, from the equator (or its false northing in the south).
     pub northing: f64,
     /// The meridian convergence, radians: the bearing of grid north, clockwise from true
     /// north (GeographicLib's gamma).
@@ -133,6 +142,7 @@ impl Series {
 }
 
 /// A place in UTM, in a given zone (navsat_transform keeps the datum's zone).
+#[must_use]
 pub fn to_utm(p: LatLon, zone: UtmZone) -> Utm {
     let s = Series::wgs84();
     let phi = p.lat.to_radians();
@@ -160,6 +170,7 @@ pub fn to_utm(p: LatLon, zone: UtmZone) -> Utm {
 }
 
 /// The opposite of [`to_utm`].
+#[must_use]
 pub fn from_utm(easting: f64, northing: f64, zone: UtmZone) -> LatLon {
     let s = Series::wgs84();
     let xi = (northing - zone.false_northing()) / s.k0a;
@@ -186,10 +197,13 @@ pub fn from_utm(easting: f64, northing: f64, zone: UtmZone) -> LatLon {
 /// Why a datum can't be used.
 #[derive(Debug, Error)]
 pub enum DatumError {
+    /// The text isn't a navsat_transform parameters file with a datum.
     #[error("not a navsat_transform parameters file with a datum: {0}")]
     Yaml(#[from] serde_yaml_ng::Error),
+    /// The datum isn't three numbers.
     #[error("the datum must be [lat, lon, yaw]: {0:?}")]
     Shape(Vec<f64>),
+    /// The datum isn't a place on the Earth.
     #[error("the datum isn't on the globe: {0:?}")]
     OffTheGlobe(LatLon),
 }
@@ -202,6 +216,7 @@ pub const BUILT_IN_NAVSAT_YAML: &str =
 /// The map frame's anchor on the Earth: map (0, 0) is the datum, x east, y north.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Datum {
+    /// Map (0, 0) on the Earth.
     pub origin: LatLon,
     zone: UtmZone,
     easting: f64,
@@ -229,12 +244,20 @@ struct NavsatParams {
 
 impl Datum {
     /// A datum at `origin`, with the map's x axis east (yaw 0).
+    ///
+    /// # Errors
+    ///
+    /// [`DatumError::OffTheGlobe`] if `origin` isn't a place on the Earth.
     pub fn new(origin: LatLon) -> Result<Self, DatumError> {
         Self::with_yaw(origin, 0.0)
     }
 
     /// A datum with navsat_transform's third number, the yaw (radians): it turns the map
     /// frame. Our navsat.yaml keeps it 0.
+    ///
+    /// # Errors
+    ///
+    /// [`DatumError::OffTheGlobe`] if `origin` isn't a place on the Earth, or `yaw` isn't a number.
     pub fn with_yaw(origin: LatLon, yaw: f64) -> Result<Self, DatumError> {
         if !(origin.is_valid() && yaw.is_finite()) {
             return Err(DatumError::OffTheGlobe(origin));
@@ -254,6 +277,10 @@ impl Datum {
 
     /// From navsat_transform's parameters file (`navsat.yaml`):
     /// `navsat_transform: ros__parameters: datum: [lat, lon, yaw]`.
+    ///
+    /// # Errors
+    ///
+    /// [`DatumError`] if the file has no datum, it isn't three numbers, or it isn't on the Earth.
     pub fn from_navsat_yaml(text: &str) -> Result<Self, DatumError> {
         let file: NavsatFile = serde_yaml_ng::from_str(text)?;
         match file.navsat_transform.params.datum.as_slice() {
@@ -264,12 +291,14 @@ impl Datum {
     }
 
     /// A place on the map, in metres from the datum.
+    #[must_use]
     pub fn to_map(&self, p: LatLon) -> Point {
         let u = to_utm(p, self.zone);
         Point::new(u.easting - self.easting, u.northing - self.northing).rotated(-self.turn)
     }
 
     /// A map point on the Earth: the opposite of [`Datum::to_map`].
+    #[must_use]
     pub fn to_lat_lon(&self, p: Point) -> LatLon {
         let grid = p.rotated(self.turn);
         from_utm(grid.x + self.easting, grid.y + self.northing, self.zone)
@@ -277,6 +306,7 @@ impl Datum {
 }
 
 /// Web Mercator (the tiles' projection): x and y from 0 to 1 across the world, y down.
+#[must_use]
 pub fn to_web_mercator(p: LatLon) -> (f64, f64) {
     let lat = p.lat.clamp(-85.051_128_78, 85.051_128_78).to_radians();
     let x = (p.lon + 180.0) / 360.0;
@@ -285,6 +315,7 @@ pub fn to_web_mercator(p: LatLon) -> (f64, f64) {
 }
 
 /// The opposite of [`to_web_mercator`].
+#[must_use]
 pub fn from_web_mercator(x: f64, y: f64) -> LatLon {
     let lat = (PI * (1.0 - 2.0 * y)).sinh().atan().to_degrees();
     LatLon::new(lat, x * 360.0 - 180.0)

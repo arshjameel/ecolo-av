@@ -11,7 +11,7 @@
 //!                                       the stamp, cubes)
 //! ```
 //!
-//! Nav2's cubes (`voxels_cubes_topic`, the voxels trial's, already in base_link) go the
+//! The costmap's cubes (`voxels_cubes_topic`, the voxels trial's, already in base_link) go the
 //! same way through a pair of slots of their own and a thread called "nav2_cubes", and
 //! are placed the same way: with the local EKF's pose at their stamp.
 //!
@@ -21,7 +21,7 @@
 //!
 //! QoS:
 //! - the lidar: reliable, keep last 1 (as Gazebo's bridge and velodyne send it; a slow
-//!   window gets the newest cloud, not a backlog); Nav2's cubes the same, as aav_voxels
+//!   window gets the newest cloud, not a backlog); the costmap's cubes the same, as aav_voxels
 //!   publishes them;
 //! - `/tf`: reliable, depth 100; `/tf_static`: reliable, transient local, depth 100, so
 //!   a late window still gets robot_state_publisher's frames;
@@ -151,7 +151,7 @@ impl Pipe {
 struct Shared {
     /// The lidar's clouds, into the screen's own cubes.
     lidar: Pipe,
-    /// Nav2's cubes (the voxels trial's).
+    /// The costmap's cubes (the voxels trial's).
     nav2: Pipe,
     poses: Mutex<PoseBuffer>,
     statics: Mutex<StaticFrames>,
@@ -404,7 +404,7 @@ fn place(
     )
 }
 
-/// Nav2's cubes: centres in base_link, moved into odom with the pose at their stamp.
+/// The costmap's cubes: centres in base_link, moved into odom with the pose at their stamp.
 fn place_nav2(
     m: &PointCloud2,
     base: &str,
@@ -443,7 +443,7 @@ fn spin(
         let shared = Arc::clone(shared);
         move |m: PointCloud2| shared.lidar.clouds.put(m)
     })?;
-    // Nav2's cubes: as aav_voxels publishes them (reliable, depth 1).
+    // The costmap's cubes: as aav_voxels publishes them (reliable, depth 1).
     let nav2_qos = QoSProfile::topics_default().reliable().keep_last(1);
     let _nav2_cubes =
         node.create_subscription(topic(Topic::VoxelsCubes).as_str().qos(nav2_qos), {
@@ -1090,7 +1090,7 @@ mod tests {
             "no map -> odom"
         );
 
-        // Nav2's cubes: one centre 2 m ahead in base_link, at the same stamp (x = 0.25):
+        // The costmap's cubes: one centre 2 m ahead in base_link, at the same stamp (x = 0.25):
         // x = 2.25 in odom, not snapped again. And the health checks' word.
         cloud.header.frame_id = "base_link".into();
         cloud.data = [2.0_f32, 0.0, 0.875]
@@ -1113,7 +1113,7 @@ mod tests {
                 })
             });
         }
-        let cubes = cubes.context("no Nav2 cubes")?;
+        let cubes = cubes.context("none of the costmap's cubes")?;
         let [x, _, z] = cubes.cubes[0].centre;
         assert!(
             (x - 2.25).abs() < 1e-4 && (z - 0.875).abs() < 1e-6,

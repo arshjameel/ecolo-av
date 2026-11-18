@@ -36,7 +36,7 @@ Inputs (`config/twist_mux.yaml`), all `TwistStamped`, timeout 0.5 s:
 | buttons | `/drivers/buttons/cmd_vel` | 45 | the hardware panel's buttons (`aav_hud` `hw_panel`), only while GO is held |
 | replay | `/drivers/replay/cmd_vel` | 40 | `tools/replay_commands.sh` |
 | point | `/drivers/point/cmd_vel` | 25 | `aav_drive_to_point` |
-| nav | `/drivers/nav/cmd_vel` | 20 | Nav2 (`aav_navigation`) |
+| nav | `/drivers/nav/cmd_vel` | 20 | navigation (`aav_navigation`: ours, in Rust) |
 | ai | `/drivers/ai/cmd_vel` | 10 | a learned driver; today the lane keeping |
 
 Locks (`std_msgs/Bool`; a lock holds every input below its priority):
@@ -46,16 +46,16 @@ Locks (`std_msgs/Bool`; a lock holds every input below its priority):
 | estop | `/safety/estop` | 255 | 0 (never on silence) | the backends also brake on it directly |
 | geofence | `/safety/geofence/lock` | 51 | 1.0 s | `aav_safety`'s `geofence`: holds every program (the buttons too) near the fence's edge or with no trusted pose; silence locks too |
 | no_timeout | `/safety/legacy_uart_bridge/lock` | 60 | 0 | `aav_legacy`: true with `frame_version: 1` (firmware with no command timeout); holds every program (the buttons too), not people or the actuator tests |
-| stop_sign | `/perception/stop_sign` | 30 | 0 | `aav_detector`; holds point, Nav2 and AI |
+| stop_sign | `/perception/stop_sign` | 30 | 0 | `aav_detector`; holds point, navigation and AI |
 | sensors | `/safety/sensor_watchdog/lock` | 30 | 1.0 s | `aav_safety`; silence locks too |
-| stop_zone | `/safety/stop_hold/lock` | 21 | 0 | `aav_safety`'s `stop_hold`: holds collision_monitor's stops until the zone stays clear 1 s; holds Nav2 and AI only |
+| stop_zone | `/safety/stop_hold/lock` | 21 | 0 | `aav_safety`'s `stop_hold`: holds the stop zone's stops until the zone stays clear 1 s; holds navigation and AI only |
 
 Launch arguments:
 
 | Name | Default | Meaning |
 |---|---|---|
 | `geofence_lock` | **required** | `true`: every program needs the geofence's heartbeat. `false` (no geofence: the turtle, CARLA): loads `config/no_geofence_lock.yaml` after the others, geofence timeout 0 |
-| `sensor_lock` | `true` | `true`: Nav2, the point driver and AI need the watchdog's heartbeat. `false` (no watchdog, the turtle): loads `config/no_sensor_lock.yaml`, sensors timeout 0 |
+| `sensor_lock` | `true` | `true`: navigation, the point driver and AI need the watchdog's heartbeat. `false` (no watchdog, the turtle): loads `config/no_sensor_lock.yaml`, sensors timeout 0 |
 | `use_sim_time` | `false` | the simulator's clock |
 
 ## Invariants
@@ -64,14 +64,14 @@ Launch arguments:
 - Highest fresh priority wins; freshness is arrival time, header stamps are ignored.
 - No fresh input: nothing is published, and ego stops after its own timeout.
 - Locks never hold a person (100, 95, 90); estop holds everyone.
-- `no_timeout` (60) holds every program (scripted 50, buttons 45, replay 40, point, Nav2, AI) while
+- `no_timeout` (60) holds every program (scripted 50, buttons 45, replay 40, point, navigation, AI) while
   the car's firmware has no command timeout. The actuator tests (60) still pass: a person
   runs them. Timeout 0: without the legacy bridge it never locks.
 - `stop_sign` and `sensors` (30) never hold a test (60, 50, 40) or the buttons (45).
-- `stop_zone` (21) holds only Nav2 (20) and AI (10): collision_monitor guards only Nav2.
-  Timeout 0: profiles without collision_monitor never send it.
+- `stop_zone` (21) holds only navigation (20) and AI (10): the stop zone guards only navigation.
+  Timeout 0: profiles without the stop zone never send it.
 - `sensors` is fail-safe: the watchdog sends false 10 times a second, so 1 s of silence
-  locks Nav2, the point driver and AI.
+  locks navigation, the point driver and AI.
 - `geofence` (51) holds every program (the buttons, 45, too), never a person or the actuator tests (60), and
   is fail-safe like `sensors`. `geofence_lock` has no default, so every profile says it.
 - `sensor_lock` and `geofence_lock` must be `true` or `false`; anything else raises.
@@ -86,7 +86,15 @@ Launch arguments:
 
 ## Verification
 
-No tests of its own. Others check its files:
+```sh
+pixi run build && colcon test --packages-select aav_command_mux && colcon test-result --verbose
+```
+
+| Test | Covers |
+|---|---|
+| `test_mux_runtime.py` | priority selection and input timeouts at runtime |
+
+Other tests that check its files:
 
 | Test | Checks |
 |---|---|

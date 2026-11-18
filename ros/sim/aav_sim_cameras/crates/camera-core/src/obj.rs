@@ -7,6 +7,7 @@ use std::fmt;
 /// Triangles, three corners each, in the mesh's own frame.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TriMesh {
+    /// Three corners for each triangle.
     pub positions: Vec<[f32; 3]>,
     /// One per corner: the file's, or the face's own if the file has none.
     pub normals: Vec<[f32; 3]>,
@@ -17,7 +18,9 @@ pub struct TriMesh {
 /// Why an OBJ file can't be read.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ObjError {
+    /// The file's line, from 1.
     pub line: usize,
+    /// What's wrong with it.
     pub why: String,
 }
 
@@ -64,6 +67,10 @@ type Corner = (usize, Option<usize>, Option<usize>);
 
 impl TriMesh {
     /// Reads an OBJ file's text.
+    ///
+    /// # Errors
+    ///
+    /// [`ObjError`] with the line if a line can't be read.
     pub fn from_obj(text: &str) -> Result<Self, ObjError> {
         let (mut v, mut vt, mut vn) = (Vec::new(), Vec::new(), Vec::new());
         let mut mesh = TriMesh::default();
@@ -106,11 +113,13 @@ impl TriMesh {
     }
 
     /// How many triangles.
+    #[must_use]
     pub fn triangles(&self) -> usize {
         self.positions.len() / 3
     }
 
     /// Scaled along each axis (SDF's `<scale>`); the normals follow.
+    #[must_use]
     pub fn scaled(mut self, s: [f32; 3]) -> Self {
         for p in &mut self.positions {
             *p = [p[0] * s[0], p[1] * s[1], p[2] * s[2]];
@@ -175,7 +184,7 @@ mod tests {
 
     #[test]
     fn the_stop_signs_plate() {
-        let text = include_str!("../../../../aav_gazebo/models/stop_sign/meshes/stop_sign.obj");
+        let text = include_str!("../../../../aav_sim_models/models/stop_sign/meshes/stop_sign.obj");
         let m = TriMesh::from_obj(text).unwrap();
         // Two faces of eight triangles each, at least.
         assert!(m.triangles() >= 16, "{}", m.triangles());

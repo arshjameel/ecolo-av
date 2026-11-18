@@ -3,7 +3,8 @@ The track node with ROS: FollowPath goals in, cmd_vel_nav out, on a pretend car.
 
 Runs only where the workspace is built (colcon test), on a free domain. The pretend car
 is the plain bicycle model, moved by the node's own commands, and published as
-/localization/odom/local. A path in odom needs no TF.
+/localization/odom/local. A path in odom needs no TF; a path in map gets a map -> odom
+from the test.
 """
 
 import math
@@ -15,7 +16,7 @@ import pytest
 try:
     from aav_io_mux.domains import free_domain
     from aav_track.track_node import Track
-    from geometry_msgs.msg import PoseStamped, TwistStamped
+    from geometry_msgs.msg import PoseStamped, TransformStamped, TwistStamped
     from nav2_msgs.action import FollowPath
     from nav_msgs.msg import Odometry
     import rclpy
@@ -24,6 +25,7 @@ try:
     from rclpy.executors import SingleThreadedExecutor
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from std_msgs.msg import Bool
+    from tf2_ros import TransformBroadcaster
     HAVE_ROS = True
 except ImportError:      # tools/test.sh, outside pixi's ROS
     HAVE_ROS = False
@@ -79,7 +81,9 @@ def ros(request):
     # This computer only, on a domain nobody else is using (CLAUDE.md: shared machines).
     os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
     rclpy.init(domain_id=free_domain())
-    overrides = [Parameter('live_swap', value=True)] if request.param else []
+    # map_correction on, as these tests were written (TODO 186: off by default since 15 Nov).
+    overrides = [Parameter('map_correction', value=True)]
+    overrides += [Parameter('live_swap', value=True)] if request.param else []
     node = Track(parameter_overrides=overrides)
     helper = rclpy.create_node('track_test')
     executor = SingleThreadedExecutor()
@@ -132,6 +136,41 @@ def test_a_newer_path_replaces_the_last_without_stopping(ros):
     cancel = second.cancel_goal_async()
     assert run(cancel.done, 5.0)
     assert run(lambda: car.v == 0.0, 5.0)
+
+
+def test_a_map_path_by_the_held_map_to_odom(ros):
+    # TODO 186: a path in map, map -> odom 2 m east; then it jumps 0.3 m north. The held
+    # one moves toward it at most 0.1 m/s, and the car still ends on the path.
+    node, car, client, run = ros
+    broadcaster = TransformBroadcaster(car.node)
+    shift = [0.0]
+
+    def tick_tf():
+        t = TransformStamped()
+        t.header.stamp = car.node.get_clock().now().to_msg()
+        t.header.frame_id, t.child_frame_id = 'map', 'odom'
+        t.transform.translation.x, t.transform.translation.y = 2.0, shift[0]
+        t.transform.rotation.w = 1.0
+        broadcaster.sendTransform(t)
+    car.node.create_timer(0.05, tick_tf)
+    assert run(lambda: node.tf.can_transform('map', 'odom', rclpy.time.Time()), 5.0)
+    g = goal(10.0, y=0.5)
+    g.path.header.frame_id = 'map'
+    handle = send(client, run, g)
+    assert run(lambda: node.job is not None and node.job.in_map, 5.0)
+    assert node.slow.held == pytest.approx((2.0, 0.0, 0.0))
+    run(lambda: False, 1.0)
+    shift[0] = 0.3
+    start = time.monotonic()
+    run(lambda: False, 1.0)
+    moved = node.slow.held[1]
+    assert 0.0 < moved <= 0.1 * (time.monotonic() - start) + 0.02
+    result = handle.get_result_async()
+    assert run(result.done, 40.0)
+    assert result.result().status == 4                 # SUCCEEDED
+    # In map the car is near the path's end (x 10, y 0.5) by the held map -> odom.
+    held = node.slow.held
+    assert abs(car.x + held[0] - 10.0) < 1.5 and abs(car.y + held[1] - 0.5) < 0.3
 
 
 def test_an_empty_path_is_refused(ros):

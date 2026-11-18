@@ -1,7 +1,7 @@
 # The geofence
 
-An area the computer's drivers may not leave. It works **without Nav2**: it stops the
-point driver, a script, a replay and the language server the same way it stops Nav2.
+An area the computer's drivers may not leave. It works **without navigation**: it stops the
+point driver, a script, a replay and the language server the same way it stops navigation.
 
 People are never held. The safety driver on the joystick can always drive.
 
@@ -26,7 +26,7 @@ The lock closes when any **stopping path** of the car brings a corner within the
 |---|---|---|
 | joystick, RC, keyboard | 100, 95, 90 | **never** |
 | actuator tests | 60 | no: they **stop themselves** on its state |
-| scripted, replay, point, Nav2, AI | 50 … 10 | **yes** |
+| scripted, replay, point, navigation, AI | 50 … 10 | **yes** |
 
 ## The stopping path
 
@@ -113,7 +113,7 @@ A site drawn on another datum is refused at start-up.
 | where it stopped | its furthest corner 9.3 m from the start: inside the 12 m fence, in NEAR |
 | a person backs it in (keyboard) | not held: 3.4 m back, then OK |
 
-Not yet run: Gazebo with a fence you can reach, and the real car.
+Not yet run: Ravensim with a fence you can reach, and the real car.
 
 ## Try it
 

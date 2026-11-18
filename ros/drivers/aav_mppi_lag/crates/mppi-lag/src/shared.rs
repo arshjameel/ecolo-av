@@ -4,12 +4,67 @@
 //! [`SharedModel`] is the 0.3 merge of [`crate::LagModel`]: the same rules (exact lags, dead
 //! times, the steering motor, the mid-step bicycle), with the spine's own speed loop
 //! (`spine-core`, f32) instead of a copy of its `default` profile, so any profile
-//! (`default`, `smooth`, `lqi`) can be planned with. A state holds the car model's state
-//! and its speed loop; MPPI clones it once per sample.
+//! (`default`, `smooth`, `lqi`, `firm`) can be planned with. A state holds the car model's
+//! state and its speed loop; MPPI clones it once per sample.
+//!
+//! [`crate::SpeedLoop::from_profile`] gives the lag model the same profiles' PIs, in f64.
+
+use core::fmt;
 
 use car_model::{ActuatorConfig, CarState, SpeedLoop, SpeedLoopProfile};
+use spine_core::speed_loop::{AntiWindup, SpeedLaw};
 
+use crate::lag::{LagModel, SpeedLoop as LagLoop};
 use crate::model::{wrap, CarModel, Command, Observation, Pose};
+
+/// A profile the lag model's PI can't stand for: the LQI (one signed acceleration). The
+/// shared model ([`SharedModel`]) runs it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NotPi(pub SpeedLoopProfile);
+
+impl fmt::Display for NotPi {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "the speed loop {:?} isn't a PI: the lag model has only the PI's law",
+            self.0.name()
+        )
+    }
+}
+
+impl std::error::Error for NotPi {}
+
+/// An f32 setting as the decimal it was written as (0.3, not 0.30000001192...): the lag
+/// model's `default` loop is then exactly its own.
+fn decimal(x: f32) -> f64 {
+    x.to_string().parse().unwrap_or(f64::from(x))
+}
+
+impl LagLoop {
+    /// The lag model's loop for one of spine-core's profiles: its PI's numbers, in f64.
+    /// [`SpeedLoopProfile::Default`] gives [`LagLoop::default`] exactly.
+    ///
+    /// # Errors
+    ///
+    /// [`NotPi`] for the LQI.
+    pub fn from_profile(profile: SpeedLoopProfile) -> Result<Self, NotPi> {
+        let c = profile.config();
+        if c.law != SpeedLaw::Pi {
+            return Err(NotPi(profile));
+        }
+        Ok(Self {
+            kp: decimal(c.kp),
+            ki: decimal(c.ki),
+            integral_limit: decimal(c.integral_limit),
+            setpoint_weight: decimal(c.setpoint_weight),
+            clamp_windup: c.anti_windup == AntiWindup::Clamp,
+            brake_gain: decimal(c.brake_gain),
+            coast_band: decimal(c.coast_band),
+            stopped_speed: decimal(c.stopped_speed),
+            hold_brake: decimal(c.hold_brake),
+        })
+    }
+}
 
 /// The shared car model, for MPPI.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -35,8 +90,53 @@ impl Default for SharedModel {
 /// The car model's state and its speed loop.
 #[derive(Debug, Clone)]
 pub struct SharedState {
+    /// The car model's state.
     pub car: CarState,
+    /// The spine's speed loop, as the car runs it.
     pub speed_loop: SpeedLoop,
+}
+
+impl SharedModel {
+    /// The shared model with a lag model's numbers (its actuators, wheelbase and steering
+    /// limit; `ActuatorConfig`'s mass and payload) and the spine's `profile`: for a loop
+    /// the lag model can't run (the LQI).
+    #[must_use]
+    pub fn like(lag: &LagModel, profile: SpeedLoopProfile) -> Self {
+        let a = &lag.actuators;
+        Self {
+            car: ActuatorConfig {
+                max_accel: a.max_accel,
+                throttle_deadband: a.throttle_deadband,
+                throttle_lag: a.throttle_lag,
+                max_brake: a.max_brake,
+                brake_lag: a.brake_lag,
+                drag: a.drag,
+                steer_rate: a.steer_rate,
+                steer_lag: a.steer_lag,
+                steer_offset: a.steer_offset,
+                steer_deadband: a.steer_deadband,
+                max_steering: lag.max_steering_angle,
+                throttle_dead_time: a.throttle_dead_time,
+                brake_dead_time: a.brake_dead_time,
+                steer_dead_time: a.steer_dead_time,
+                wheelbase: lag.wheelbase,
+                ..ActuatorConfig::default()
+            },
+            profile,
+            max_step: lag.max_step,
+        }
+    }
+
+    /// Put the loop in the gear a car moving at `speed` is in (none while stopped). The
+    /// loop's gear is its own: it changes only on a call that finds the car stopped with
+    /// a target the other way, so ask once as if stopped, for no time (nothing integrates
+    /// over 0 s).
+    fn in_gear(&self, speed_loop: &mut SpeedLoop, speed: f64) {
+        if speed.abs() >= f64::from(self.profile.config().stopped_speed) {
+            let way = if speed < 0.0 { -1.0 } else { 1.0 };
+            speed_loop.update(way, 0.0, 0.0);
+        }
+    }
 }
 
 impl CarModel for SharedModel {
@@ -45,6 +145,8 @@ impl CarModel for SharedModel {
     fn at_rest(&self, pose: Pose, speed: f64) -> SharedState {
         // Steering straight: the linkage holds minus the offset, as the lag model's does.
         let straight = -self.car.steer_offset;
+        let mut speed_loop = SpeedLoop::new(self.profile.config());
+        self.in_gear(&mut speed_loop, speed);
         SharedState {
             car: CarState {
                 x: pose.x,
@@ -57,7 +159,7 @@ impl CarModel for SharedModel {
                 steer_linkage: straight,
                 ..CarState::default()
             },
-            speed_loop: SpeedLoop::new(self.profile.config()),
+            speed_loop,
         }
     }
 
@@ -67,8 +169,8 @@ impl CarModel for SharedModel {
         }
         let n = (dt / self.max_step.max(1e-4)).ceil().max(1.0);
         let h = dt / n;
-        // Forward only: a negative speed is a stop (the trackers never reverse).
-        let asked = car_model::Command::speed(command.speed.max(0.0), command.steer);
+        // A negative speed reverses: the spine's loop changes gear only while stopped.
+        let asked = car_model::Command::speed(command.speed, command.steer);
         for _ in 0..n as usize {
             match self
                 .car
@@ -85,6 +187,7 @@ impl CarModel for SharedModel {
         state.car.y = seen.pose.y;
         state.car.yaw = seen.pose.yaw;
         state.car.v = seen.speed;
+        self.in_gear(&mut state.speed_loop, seen.speed);
         if let Some(angle) = seen.steering.filter(|a| a.is_finite()) {
             state.car.steer = angle;
             state.car.steer_linkage = angle - self.car.steer_offset;
@@ -121,7 +224,7 @@ impl CarModel for SharedModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lag::{Actuators, LagModel};
+    use crate::lag::Actuators;
 
     /// The lag model with the shared model's numbers.
     fn twin(car: &ActuatorConfig) -> LagModel {
@@ -162,11 +265,14 @@ mod tests {
     fn it_drives_as_the_lag_model_does() {
         // Speed up, turn, slow, stop: the shared model (the spine's f32 loop) and the lag
         // model (its f64 copy of the default profile) agree to a centimetre.
-        let commands: Vec<Command> = (0..200)
+        let commands: Vec<Command> = (0..320)
             .map(|i| match i {
                 0..=59 => Command::new(1.0, 0.0),
                 60..=119 => Command::new(1.5, 0.3),
                 120..=159 => Command::new(0.5, -0.2),
+                160..=199 => Command::new(0.0, 0.0),
+                // Then backwards, turning, and a stop again.
+                200..=279 => Command::new(-0.5, 0.25),
                 _ => Command::new(0.0, 0.0),
             })
             .collect();
@@ -192,6 +298,82 @@ mod tests {
                 assert!((va - vb).abs() < 0.01 && (sa - sb).abs() < 1e-6);
             }
         }
+    }
+
+    #[test]
+    fn each_pi_profile_drives_as_the_shared_model_does() {
+        // The lag model with a profile's PI (f64) against the spine's own loop (f32): the
+        // same speeds and poses, for every PI profile; firm and smooth differ from default.
+        let commands: Vec<Command> = (0..240)
+            .map(|i| match i {
+                0..=79 => Command::new(1.0, 0.0),
+                80..=139 => Command::new(0.6, 0.2),
+                140..=179 => Command::new(0.0, 0.0),
+                _ => Command::new(-0.4, -0.2),
+            })
+            .collect();
+        let car = ActuatorConfig::default();
+        let mut ends = Vec::new();
+        for profile in [
+            SpeedLoopProfile::Default,
+            SpeedLoopProfile::Smooth,
+            SpeedLoopProfile::Firm,
+        ] {
+            let shared = drive(
+                &SharedModel {
+                    car,
+                    profile,
+                    ..SharedModel::default()
+                },
+                &commands,
+            );
+            let lag = drive(
+                &LagModel {
+                    speed_loop: LagLoop::from_profile(profile).expect("a PI"),
+                    ..twin(&car)
+                },
+                &commands,
+            );
+            for ((a, va, _), (b, vb, _)) in shared.iter().zip(&lag) {
+                assert!(a.distance(b) < 0.01, "{profile:?}: {a:?} {b:?}");
+                assert!((va - vb).abs() < 0.01, "{profile:?}: {va} {vb}");
+            }
+            ends.push(lag[100].1);
+        }
+        assert!(
+            (ends[0] - ends[2]).abs() > 1e-3,
+            "firm drives as default: {ends:?}"
+        );
+    }
+
+    #[test]
+    fn the_default_profile_is_the_lag_models_own_loop_and_the_lqi_is_refused() {
+        assert_eq!(
+            LagLoop::from_profile(SpeedLoopProfile::Default),
+            Ok(LagLoop::default())
+        );
+        let firm = LagLoop::from_profile(SpeedLoopProfile::Firm).expect("a PI");
+        assert_eq!((firm.brake_gain, firm.setpoint_weight), (2.0, 0.75));
+        assert!(firm.clamp_windup);
+        assert_eq!(
+            LagLoop::from_profile(SpeedLoopProfile::Lqi),
+            Err(NotPi(SpeedLoopProfile::Lqi))
+        );
+    }
+
+    #[test]
+    fn like_takes_the_lag_models_numbers() {
+        let car = ActuatorConfig {
+            steer_dead_time: 0.04,
+            wheelbase: 1.6,
+            max_steering: 0.45,
+            ..ActuatorConfig::default()
+        };
+        let lag = twin(&car);
+        let shared = SharedModel::like(&lag, SpeedLoopProfile::Lqi);
+        assert_eq!(shared.car, car);
+        assert_eq!(shared.profile, SpeedLoopProfile::Lqi);
+        assert_eq!(shared.max_step, lag.max_step);
     }
 
     #[test]

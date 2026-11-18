@@ -6,6 +6,7 @@ pub struct MetresPerSecond(pub f32);
 
 impl MetresPerSecond {
     /// The same speed in kilometres per hour.
+    #[must_use]
     pub fn to_km_per_hour(self) -> f32 {
         self.0 * 3.6
     }
@@ -17,6 +18,7 @@ pub struct Radians(pub f32);
 
 impl Radians {
     /// The same angle in degrees, for people.
+    #[must_use]
     pub fn to_degrees(self) -> f32 {
         self.0.to_degrees()
     }
@@ -28,6 +30,7 @@ pub struct Fraction(f32);
 
 impl Fraction {
     /// A level, clamped to 0..=1. NaN counts as 0: nothing measured, nothing shown.
+    #[must_use]
     pub fn new(value: f32) -> Self {
         if value.is_nan() {
             Self(0.0)
@@ -37,6 +40,7 @@ impl Fraction {
     }
 
     /// The level, from 0 to 1.
+    #[must_use]
     pub fn get(self) -> f32 {
         self.0
     }

@@ -33,6 +33,7 @@ pub enum NdtState {
 
 impl NdtState {
     /// From the message's first word.
+    #[must_use]
     pub fn from_word(word: &str) -> Option<Self> {
         match word {
             "WAITING" => Some(Self::Waiting),
@@ -42,6 +43,8 @@ impl NdtState {
         }
     }
 
+    /// Its word, as the message says it.
+    #[must_use]
     pub fn word(self) -> &'static str {
         match self {
             Self::Waiting => "WAITING",
@@ -64,6 +67,7 @@ pub enum Fit {
 
 impl Fit {
     /// diagnostic_msgs' levels: 0 OK, 1 WARN, 2 ERROR (3 STALE counts as lost).
+    #[must_use]
     pub fn from_level(level: u8) -> Self {
         match level {
             0 => Self::Good,
@@ -76,6 +80,7 @@ impl Fit {
 /// What the panel shows of NDT.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NdtStatus {
+    /// How the last cloud went.
     pub fit: Fit,
     /// `None` if the message's first word is none of NDT's.
     pub state: Option<NdtState>,
@@ -87,9 +92,11 @@ pub struct NdtStatus {
     pub match_ms: Option<f64>,
     /// The share of the scan's points that landed in map cubes.
     pub overlap: Option<f64>,
+    /// The match's iterations.
     pub iterations: Option<u64>,
     /// Points matched, after the filters.
     pub points: Option<u64>,
+    /// Poor fits in a row.
     pub poor_in_row: Option<u64>,
     /// Restarts from ekf_global after LOST.
     pub restarts: Option<u64>,
@@ -140,6 +147,7 @@ impl NdtStatus {
     }
 
     /// The panel's big word: TRACKING, WAITING, LOST, or the message itself.
+    #[must_use]
     pub fn headline(&self) -> &'static str {
         match (self.fit, self.state) {
             (Fit::Lost, _) | (_, Some(NdtState::Lost)) => "LOST",
@@ -149,6 +157,7 @@ impl NdtStatus {
     }
 
     /// The numbers, in one short line: "3.41 per point   12.3 ms".
+    #[must_use]
     pub fn numbers(&self) -> String {
         let mut parts = Vec::new();
         if let Some(s) = self.score_per_point {
@@ -161,6 +170,7 @@ impl NdtStatus {
     }
 
     /// The smaller numbers: overlap, iterations, restarts, dropped clouds.
+    #[must_use]
     pub fn details(&self) -> String {
         let mut parts = Vec::new();
         if let Some(o) = self.overlap {
@@ -184,15 +194,21 @@ impl NdtStatus {
 pub enum MapFile {
     /// No file at the path: say how to make one.
     Missing {
+        /// The file looked for.
         path: String,
     },
     /// The file is there but can't be read.
     Unreadable {
+        /// The file.
         path: String,
+        /// Why it can't be read.
         why: String,
     },
+    /// The map is read.
     Loaded {
+        /// The file.
         path: String,
+        /// Its occupied cells.
         cells: MapCells,
     },
 }
@@ -203,6 +219,7 @@ impl MapFile {
         "make it with pixi run ndt-map drive (about 6 min), then pixi run demo --debug";
 
     /// Reads `path` (a PCD) into cells of `size` metres. An empty path is missing.
+    #[must_use]
     pub fn read(path: &str, size: f64) -> Self {
         let owned = path.to_owned();
         if path.trim().is_empty() || !Path::new(path).is_file() {
@@ -220,6 +237,8 @@ impl MapFile {
         }
     }
 
+    /// The cells, once the map is read.
+    #[must_use]
     pub fn cells(&self) -> Option<&MapCells> {
         match self {
             Self::Loaded { cells, .. } => Some(cells),
@@ -247,6 +266,7 @@ impl fmt::Display for MapFile {
 pub struct MapCells {
     /// One cell's edge, metres.
     pub size: f32,
+    /// Each occupied cell's centre, map frame (m).
     pub centres: Vec<[f32; 3]>,
     /// The map from above: its points, thinned, and each column's ellipse.
     pub footprint: Footprint,
@@ -332,6 +352,7 @@ pub struct Footprint {
 impl Footprint {
     /// Whether `p` (map frame) falls in one of the map's columns: a scan point that
     /// lands on the map.
+    #[must_use]
     pub fn covers(&self, p: Point) -> bool {
         self.size > 0.0
             && self
@@ -412,15 +433,20 @@ impl MapCells {
         }
     }
 
+    /// How many cells.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.centres.len()
     }
 
+    /// True if there are no cells.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.centres.is_empty()
     }
 
     /// At most `max` cells, the nearest `to` (map frame, seen from above).
+    #[must_use]
     pub fn nearest(&self, to: Point, max: usize) -> Vec<[f32; 3]> {
         let mut v = self.centres.clone();
         cubes::keep_nearest_by(&mut v, |c| *c, to, max);

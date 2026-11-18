@@ -9,21 +9,21 @@ request's "accelerate / hold / stop" demo, and the first step to GPS point-to-po
 > - **`pixi run drive-to-point --lat .. --lon ..`** drives to B and stops there, slowing at **half the measured braking**.
 > - A straight drive in an empty lot needs **no costmap and no map**: only "where am I" and "where is B".
 > - The hard part isn't the driving. It's **knowing where the car is and which way it faces** at the start.
-> - Test it on the turtle, then the bench, then Gazebo, then the car on stands, then the car.
+> - Test it on the turtle, then the bench, then Ravensim, then the car on stands, then the car.
 > - **`pixi run measure atob`** scores a recorded run: speeding up, holding, the stop on B ([Scoring a run](#scoring-a-run)).
 
 ## 1. The three ways
 
-| | 1. Scripted drive | 2. Nav2 to a GPS point | 3. The point driver (`aav_drive_to_point`) |
+| | 1. Scripted drive | 2. Navigation to a GPS point | 3. The point driver (`aav_drive_to_point`) |
 |---|---|---|---|
-| Idea | drive a speed profile: speed up, hold for a distance, stop | give Nav2 point B as latitude/longitude; it plans and steers | drive the straight line from A to B, holding the line, and stop at B |
+| Idea | drive a speed profile: speed up, hold for a distance, stop | give the navigator point B as latitude/longitude; it plans and steers | drive the straight line from A to B, holding the line, and stop at B |
 | Needs GPS? | no | yes | yes |
 | Steers to stay on the line? | **no**: wheels straight, it drifts | yes | yes |
-| Stops exactly at B? | no: after a distance from the start | yes, within Nav2's goal tolerance | yes |
-| Speed profile you choose? | **yes**: acceleration, speed, deceleration | roughly: Nav2's limits (1 m/s, 1 m/s²) | **yes** |
+| Stops exactly at B? | no: after a distance from the start | yes, within the navigator's goal tolerance | yes |
+| Speed profile you choose? | **yes**: acceleration, speed, deceleration | roughly: navigation's limits (1 m/s, 1 m/s²) | **yes** |
 | Avoids obstacles? | no | **yes** (costmap, collision_monitor) | no: an open lot, a safety driver |
-| Exists today? | ✅ `aav_scripted` | ✅ Nav2 + `navsat_transform` | ✅ `aav_drive_to_point` (15 Oct) |
-| Tested | turtle, bench | Gazebo (goals of 8 m and 9.5 m), bench (40 m) | Gazebo: 10-60 m, any angle, 1 and 3 m/s ([section 4](#4-way-3-the-point-driver)) |
+| Exists today? | ✅ `aav_scripted` | ✅ our navigator + `navsat_transform` | ✅ `aav_drive_to_point` (15 Oct) |
+| Tested | turtle, bench | Gazebo with Nav2 (goals of 8 m and 9.5 m), bench (40 m) | Gazebo: 10-60 m, any angle, 1 and 3 m/s ([section 4](#4-way-3-the-point-driver)) |
 | Best for | the first drive on the car | point-to-point with obstacles | **the main goal**: GPS A to B with a smooth stop |
 
 **Recommendation:** start with **1** on the car on stands, then on the ground. Then **3**
@@ -61,12 +61,12 @@ ros2 action send_goal /scripted_drive aav_interfaces/action/ScriptedDrive \
 - **Limits:** with wheels straight but no correction, a slightly-off steering centre makes it curve. Until the KTC-100 gives real steering feedback, expect drift.
 - **Or in plain English:** `pixi run -e llm talk`, then type "drive 10 m forward". A local model plans the goal (the whole 10 m, ramps included), shows it, and drives only after you type yes. Stand-ins only for now: [docs/plain-english.md](plain-english.md).
 
-## 3. Way 2: Nav2 to a GPS point (today)
+## 3. Way 2: navigation to a GPS point (today)
 
-Nav2 plans a path from where the car is to B and steers along it.
+Our stack (`stack:=ours`) plans a path from where the car is to B and steers along it.
 
 ```text
- B (lat, lon) ─► /fromLL ─► B (x, y on the map) ─► Nav2 plans ─► Nav2 steers ─► stops at B
+ B (lat, lon) ─► /fromLL ─► B (x, y on the map) ─► planner plans ─► mppi_lag steers ─► stops at B
 ```
 
 ```bash
@@ -76,8 +76,8 @@ ros2 action send_goal /follow_gps_waypoints nav2_msgs/action/FollowGPSWaypoints 
 ```
 
 - `street_router` ([Street routes](routes.md)) and the language tools use this same action.
-- On an **empty map** (the default, 200 m × 200 m, all free), Nav2's plan is close to a straight line; the planner only respects the car's turning circle.
-- Nav2's speed: up to 1.0 m/s, speeding up at up to 1.0 m/s², slowing near the goal (`nav2.yaml`).
+- On an **empty map** (the default, 200 m × 200 m, all free), the plan is close to a straight line; the planner only respects the car's turning circle.
+- Navigation's speed: up to 1.0 m/s, speeding up at up to 1.0 m/s², slowing near the goal (`nav2.yaml`).
 - The radar and the roof lidar still fill the local costmap, and collision_monitor still stops for something ahead.
 
 ## 4. Way 3: the point driver
@@ -94,7 +94,7 @@ ros2 action send_goal /follow_gps_waypoints nav2_msgs/action/FollowGPSWaypoints 
 
 | Part | Does | File |
 |---|---|---|
-| Speed | speed up gently (0.5 m/s²), hold the cruise speed, then slow down **by the distance left**: v = √(2·a·d), with a = **half of `max_brake`** | `approach.py` |
+| Speed | speed up gently (0.5 m/s²), hold the cruise speed, then slow down **by the distance left**: v = √(2·a·(d − lead·v)), with a = **half of `max_brake`**. `stop_law:=hybrid` picks the stopping law instead (a trial: [How the car stops](stopping.md)) | `approach.py` |
 | Steering | turn towards B first if it is more than 20° off the nose; then pure pursuit along the straight line to B | `line.py` |
 | One drive | the two together, tick by tick (50 Hz) | `drive.py` |
 | Rules | when it may start, when it must stop, how close is close (1 m with RTK, 2 m without) | `rules.py` |
@@ -112,9 +112,9 @@ ros2 action send_goal /follow_gps_waypoints nav2_msgs/action/FollowGPSWaypoints 
 Slowing by the distance left, not by the clock, corrects itself: if the car slows a little
 late, the distance shrinks faster and the command drops to match.
 
-### Why a line driver, and not Nav2 or the scripted drive
+### Why a line driver, and not navigation or the scripted drive
 
-| Question | Line driver (point) | Nav2 | Scripted |
+| Question | Line driver (point) | Navigation | Scripted |
 |---|---|---|---|
 | Stops **at B**, wherever it started? | yes: speed from the distance left | yes, within its goal tolerance | no: after a distance |
 | Slows at **half the measured braking**? | yes: one number from `vehicle.yaml` | no: its controller and smoother have their own limits | yes, but not ending at B |
@@ -122,7 +122,7 @@ late, the distance shrinks faster and the command drops to match.
 | Parts that must work | the global EKF and the GPS | maps, costmaps, planner, controller, behaviour tree | the local EKF |
 | Obstacles | ❌ none: open lot, safety driver | ✅ | ❌ |
 
-So: **the line driver for the open-lot demo, Nav2 for anything with obstacles.**
+So: **the line driver for the open-lot demo, navigation for anything with obstacles.**
 `speed_profile.py` (the scripted drive's maths) doesn't fit: it slows at a fixed rate from
 wherever it is, so the stop doesn't land on B. `approach.py` explains it at the top.
 
@@ -130,7 +130,7 @@ wherever it is, so the stop doesn't land on B. `approach.py` explains it at the 
 
 | It | How |
 |---|---|
-| Has its own twist_mux slot | priority **25**: below every person, test and script; above Nav2; held by the stop-sign and watchdog locks (30) |
+| Has its own twist_mux slot | priority **25**: below every person, test and script; above navigation; held by the stop-sign and watchdog locks (30) |
 | Stops at once | Ctrl-C (cancels the goal), the e-stop, the watchdog's lock **or its silence**, a stale position (0.5 s) or GPS fix (2 s), someone else driving, or the car not moving though asked |
 | Refuses | a B over **200 m** away, no position, a B inside the car's tightest turn (it can't reverse) |
 | Obeys ego | asks ego for its caps (1 m/s on the car) and plans with them |
@@ -139,12 +139,12 @@ wherever it is, so the stop doesn't land on B. `approach.py` explains it at the 
 ### Run it
 
 ```bash
-pixi run sim                                               # Gazebo, in one terminal
+pixi run sim                                               # the simulator, in one terminal
 pixi run drive-to-point --sim --ahead 20                   # 20 m ahead of the car
 pixi run drive-to-point --sim --ahead 30 --left 10         # ... and 10 m to its left
 pixi run drive-to-point --sim --x 30 --y 5                 # a map point (x east, y north, metres)
 pixi run drive-to-point --lat 45.38630 --lon -75.69580     # the real car: a GPS point; it asks first
-pixi run sim-check --drive-to-point-only                   # the Gazebo proof below (8 minutes)
+pixi run sim-check --drive-to-point-only                   # the proof below (then in Gazebo) (8 minutes)
 ```
 
 Or the action itself: `ros2 action send_goal /drive_to_point aav_interfaces/action/DriveToPoint "{x: 20.0, y: 0.0}" --feedback`.
@@ -165,7 +165,7 @@ Untested on the bench and on the car: the car needs the brake test (4.3) for `ma
 ### Scoring a run
 
 `pixi run measure atob` turns one recorded run into numbers: how well the car sped up, held
-its speed, and stopped on B. The same numbers for Gazebo and for the car.
+its speed, and stopped on B. The same numbers for the simulator and for the car.
 
 ```bash
 pixi run measure atob bags/<run>                              # B from the point driver's feedback
@@ -194,11 +194,11 @@ The stop error is measured on the line from A to B:
 | First slowing to stopped | from the last moment at 90 % of the set speed to standing still | s |
 | Rolled after the command hit 0 | the brakes' share of the stop | m |
 | The last metre took; crept in it | a slow creep up to B shows here (under 0.15 m/s) | s; m |
-| Stop: past B, left of the line | where it stopped, by the EKF, the truth (Gazebo) or the tape (car) | m |
+| Stop: past B, left of the line | where it stopped, by the EKF, the truth (the simulator) or the tape (car) | m |
 | Furthest past B | the worst moment, even if it rolled back | m |
 | GPS part | real (tape or truth) − the EKF's view | m |
 
-The speeds come from Gazebo's truth in the sim, from the wheels (`/vehicle/odom`) on the
+The speeds come from the simulator's truth, from the wheels (`/vehicle/odom`) on the
 car. `tools/atob_score.py`'s header says which topic gives each number.
 
 ### Why tape the stop on the car
@@ -213,12 +213,12 @@ The EKF's stop error says how well the **controller** did: the car stopped where
 
 So at the car: mark B on the ground, drive, and tape the stop from the mark (along the
 line, then across it). `--taped ALONG ACROSS` gives the scorer the real answer, and it
-splits the two errors. In Gazebo the truth does the tape's job. The B mark is only as
+splits the two errors. In the simulator the truth does the tape's job. The B mark is only as
 good as the GPS that placed it: average the fix for 30 s (section 5).
 
 To record a run: `tools/record.sh` records the EKF, the wheels and `/control/cmd_vel`.
 For B from the point driver's feedback, also record `/drive_to_point/_action/feedback` (a hidden topic:
-`ros2 bag record --include-hidden-topics`), `/drivers/point/cmd_vel`, and in Gazebo
+`ros2 bag record --include-hidden-topics`), `/drivers/point/cmd_vel`, and in the simulator
 `/vehicle/sim/truth`.
 
 ## 5. "Where am I?" is the hard part
@@ -252,8 +252,8 @@ car moves; then the ZED-F9R's heading if that isn't enough.
 | For | Needs |
 |---|---|
 | Way 1 (scripted) | nothing: no GPS, no map |
-| Way 2 (Nav2) | the empty map (exists) + the datum at the test site + the sensors for obstacles |
-| Way 3 (point driver) | the datum, A and B; no costmap. ⚠️ collision_monitor guards only Nav2's commands, not the point driver's |
+| Way 2 (navigation) | the empty map (exists) + the datum at the test site + the sensors for obstacles |
+| Way 3 (point driver) | the datum, A and B; no costmap. ⚠️ the stop zone guards only navigation's commands, not the point driver's |
 | Later: a route with curbs and lanes | a map of the test site (`tools/make_map.py`), or a lane layer |
 
 To make a map of the test lot: drive the edges, record GPS points, and draw them into a
@@ -265,8 +265,8 @@ map with `tools/make_map.py` (it already makes `empty` and `example_lot`).
 |---|---|---|---|
 | 1 | Turtle | `pixi run turtle`, then the scripted goal above | the speed profile and the action |
 | 2 | Bench | `pixi run bench`, then the scripted goal; `pixi run bench-check` | the same through the real CAN frames and the spine logic |
-| 3 | Gazebo | `pixi run sim`, then the GPS goal above; `pixi run sim-check --drive-to-point` | GPS, both EKFs, Nav2, stopping at B; the point driver's stop |
-| 3b | Gazebo, the whole picture | `pixi run demo`: Gazebo, RViz, the HUD and the map window in one go. Give a goal with RViz's "2D Goal Pose", or the map window's search, then DRIVE HERE and CONFIRM. With a box in the lane and the screens: `pixi run sim obstacle:=true hud:=true map:=true` | Nav2 planning round things, the screens, a goal set by a person |
+| 3 | Ravensim | `pixi run sim`, then the GPS goal above; `pixi run sim-check --drive-to-point` | GPS, both EKFs, navigation, stopping at B; the point driver's stop |
+| 3b | Ravensim, the whole picture | `pixi run demo`: Ravensim, RViz, the HUD and the map window in one go. Give a goal with RViz's "2D Goal Pose", or the map window's search, then DRIVE HERE and CONFIRM. With a box in the lane and the screens: `pixi run sim obstacle:=true hud:=true map:=true` | Nav2 planning round things, the screens, a goal set by a person |
 | 4 | Car on stands | `pixi run car orin` + `motor_pi`; the scripted goal at 0.3 m/s | the signs, the speed loop, the e-stops |
 | 5 | Car, empty lot | scripted at 0.5 m/s, 10 m; then `pixi run drive-to-point --lat .. --lon ..` | the real thing, with a safety driver |
 
@@ -278,4 +278,4 @@ map with `tools/make_map.py` (it already makes `empty` and `example_lot`).
 | 2 | Pick the test lot; measure its datum | the team |
 | 3 | A "mark this spot" tool: average `/sensors/gps/fix` and print lat/lon | small, ours |
 | 4 | The point driver (way 3) | ✅ built 15 Oct; on the car after the brake test (4.3) gives `max_brake` |
-| 5 | A Gazebo world shaped like the test lot | ours |
+| 5 | A simulator world shaped like the test lot | ours |

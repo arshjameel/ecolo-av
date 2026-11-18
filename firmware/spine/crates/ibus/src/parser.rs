@@ -7,6 +7,7 @@
 
 use crate::frame::{decode, Channels, FRAME_LEN, HEADER};
 
+/// Finds whole, checked frames in a stream of serial bytes, one byte at a time.
 #[derive(Debug, Clone)]
 pub struct Parser {
     buf: [u8; FRAME_LEN],
@@ -20,6 +21,8 @@ impl Default for Parser {
 }
 
 impl Parser {
+    /// An empty parser, waiting for a header.
+    #[must_use]
     pub const fn new() -> Self {
         Parser {
             buf: [0; FRAME_LEN],

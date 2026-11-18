@@ -1,6 +1,6 @@
 //! Pretend data for `--demo`: a walled lot with boxes, a car driving a loop, a 16-beam
 //! lidar ray-cast against it, and the localizers a little apart (NDT too, LOST for a
-//! moment every 30 s), AMCL's particles, and the lot itself as NDT's map; Nav2's cubes
+//! moment every 30 s), AMCL's particles, and the lot itself as NDT's map; the costmap's cubes
 //! (the voxels trial's 0.25 m cubes from the same sweep, the road taken as flat for a
 //! moment every 20 s) and the localization health checks (WARN for 5 s every 25 s). No
 //! ROS.
@@ -212,7 +212,7 @@ fn ndt_status(t: f64) -> NdtStatus {
     )
 }
 
-/// Nav2's cubes as aav_voxels makes them, roughly: the sweep's points in base_link, from
+/// The costmap's cubes as aav_voxels makes them, roughly: the sweep's points in base_link, from
 /// 0.3 m to 2.0 m up and within 30 m, one centre per `size` cube.
 fn nav2_centres(points: &[[f32; 3]], size: f64) -> Vec<[f32; 3]> {
     let cells: HashSet<[i32; 3]> = points
@@ -312,7 +312,7 @@ pub struct Demo {
     last_scan: Option<Instant>,
     last_news: Option<Instant>,
     last_nav2: Option<Instant>,
-    /// How many of Nav2's cubes the last cloud had, for the status.
+    /// How many of the costmap's cubes the last cloud had, for the status.
     nav2_count: usize,
     settings: CubeSettings,
     voxels: VoxelSettings,

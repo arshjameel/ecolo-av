@@ -12,7 +12,7 @@ from aav_drive_to_point.approach import Approach, planned_deceleration, TURN
 from aav_drive_to_point.drive import Drive, Steering
 from aav_drive_to_point.line import min_radius, Pose
 from aav_ego.ackermann import Limits
-from aav_gazebo.actuator_model import ActuatorConfig
+from aav_sim_models.actuator_model import ActuatorConfig
 from fake_car import drive_to
 import pytest
 

@@ -7,9 +7,13 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">42 min read · 14 sections</div></header>
+<div class="meta">61 min read · 17 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a class="here" href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,7 +125,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#decided-from-26-october-to-14-november">Decided from 26 October to 14 November</a><a href="#decided-on-17-november">Decided on 17 November</a><a href="#proposed-in-november-bens-to-decide">Proposed in November: Ben&#x27;s to decide</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
 <div class="lead"><p>What the team has decided, what's still open, and the 34 numbered questions. The source
 is the team design doc, <em>AAV 2026–27 Autonomy Stack — Architecture &amp; Plan</em> (a Claude Doc,
 revision 61 on 10 October 2026). This page is a short copy, so you don't have to hunt.
@@ -170,7 +182,7 @@ answer.</p>
 </tr>
 <tr>
 <td>3</td>
-<td>Stock ROS packages: robot_localization (two EKFs), Nav2, nav2_costmap_2d, twist_mux</td>
+<td>Stock ROS packages: robot_localization (two EKFs), Nav2, nav2_costmap_2d, twist_mux (Nav2 and its costmaps replaced by our Rust ports, 17 Nov: below)</td>
 <td>They replace the previous team's own estimator, planner, costmaps and command picking, where most of its bugs were</td>
 </tr>
 <tr>
@@ -195,7 +207,7 @@ answer.</p>
 </tr>
 <tr>
 <td>8</td>
-<td>Languages: Python for the ROS nodes we write; Rust for the firmware, the drivers and the ports of the inherited C++; no C++ of our own (Ben, 10 Oct)</td>
+<td>Languages: Python for the ROS nodes we write (since 16 Nov: Rust for new ones, below); Rust for the firmware, the drivers and the ports of the inherited C++; no C++ of our own (Ben, 10 Oct)</td>
 <td>Our nodes run at 50 Hz or less, and the hard timing lives in the firmware. The spine logic is already Rust (<code>spine-core</code>)</td>
 </tr>
 <tr>
@@ -223,7 +235,7 @@ answer.</p>
 </tr>
 <tr>
 <td>GPS gives the global position; the model is unknown</td>
-<td>Whether it uses RTK corrections decides how precise GPS A→B can be</td>
+<td>Whether it uses RTK corrections decides how precise GPS A→B can be. Ben, 5 Nov: no RTK; NDT against a map of the lot is to replace the GPS's offset (a trial, not on the car)</td>
 <td>Q18, Q19</td>
 </tr>
 <tr>
@@ -279,7 +291,7 @@ answer.</p>
 </tr>
 <tr>
 <td>A car-safe Nav2: SmacPlannerHybrid with Regulated Pure Pursuit (or MPPI's Ackermann model), and no Spin in the behaviour tree</td>
-<td>A car can't turn on the spot. The config already does this. (MPPI is the default since 22 Oct: see below)</td>
+<td>A car can't turn on the spot. The config already does this. (MPPI is the default follower since 22 Oct, the State Lattice the default planner since 1 Nov: see below. Since 17 Nov our ports do the same: no Spin, the lattice, <code>mppi_lag</code>)</td>
 </tr>
 <tr>
 <td>The RC transmitter stays the top-priority override, in hardware</td>
@@ -360,7 +372,11 @@ answer.</p>
 </tr>
 <tr>
 <td>Simulators</td>
-<td>Gazebo and bench mode every day; CARLA for the cameras, once the NVIDIA computer runs it (Q31, reopened 15 Oct)</td>
+<td>our own simulator (the default since 8 Nov) and bench mode every day; Gazebo until 16 Nov; CARLA for the cameras, once the NVIDIA computer runs it (Q31, reopened 15 Oct)</td>
+</tr>
+<tr>
+<td>Trials</td>
+<td>a new idea is its own package beside the default, chosen by a switch, scored on the same routes; it becomes the default only once it wins (Ben, 29 Oct, 5 Nov)</td>
 </tr>
 </tbody>
 </table></div>
@@ -518,7 +534,7 @@ answer.</p>
 <td>Ben, 23 Oct: "yes lets do it"</td>
 </tr>
 <tr>
-<td><strong>MPPI is Nav2's default path follower</strong>; Regulated Pure Pursuit stays as <code>controller:=rpp</code></td>
+<td><strong>MPPI is Nav2's default path follower</strong>; Regulated Pure Pursuit stays as <code>controller:=rpp</code> (both went with Nav2 on 17 Nov; our <code>mppi_lag</code> follows)</td>
 <td>In every lot run in Gazebo it did at least as well. It reached the first goal cleanly in 4 of 4 runs; Pure Pursuit looped there in 2 of 3, as it aims at a point and arrives facing the wrong way (<a href="path-followers.html">Path followers</a>)</td>
 <td>Ben, 22 Oct: "I thought we decided to go mppi"</td>
 </tr>
@@ -540,7 +556,7 @@ answer.</p>
 <tr>
 <td><em>Tentative, until the hardware lead confirms:</em> <strong>today's car is driven through the Motor Pi's UART</strong>, and <strong>the Orin reads its CAN bus for sensors only</strong> (<code>car.launch.py actuators:=uart</code>, the default; <code>spine_bridge role:=sensors</code>). The CAN spine stays one argument away (<code>actuators:=can</code>)</td>
 <td>Ben's picture of the wiring: the actuators on the ESP32, with the Motor Pi as its network interface; the CAN bus straight to the Orin, with the wheel sensors. A <code>role</code> on <code>spine_bridge</code>, not a new node: the wheel decoding is already there and tested, and the sensors role has no way to send (<a href="can-plan.html#todays-wiring-23-october">Today's wiring</a>)</td>
-<td>Ben, 23 Oct: "the motor controllers are on the esp32 with a pi as its network interface"</td>
+<td>Ben, 23 Oct: "the motor controllers are on the esp32 with a pi as its network interface". Seen on 6 Nov: the Motor Pi's bridge holds the ESP32's UART (<code>history/audit-2026-11-06-car.md</code>); the wire itself isn't checked</td>
 </tr>
 <tr>
 <td><strong>The cameras stream to the Orin with MediaMTX, compressed (H.264) on the Pi</strong>; the Orin unpacks them with NVIDIA's video hardware, then OpenCV and the object detector (RF-DETR Nano, in TensorRT) run on them, in one program per camera</td>
@@ -591,7 +607,7 @@ answer.</p>
 <td>Ben, 24 Oct: "aav detector yes"</td>
 </tr>
 <tr>
-<td><strong>A HUD that drops out holds Nav2 until a person clears it</strong> (latched, <code>hud LOST</code>). One dropout within 5 s of its first beat is forgiven; any other latches, even once it beats again. A person checks the screen, then <code>pixi run clear watchdog</code> (the same service as a GPS jump)</td>
+<td><strong>A HUD that drops out holds navigation until a person clears it</strong> (latched, <code>hud LOST</code>). One dropout within 5 s of its first beat is forgiven; any other latches, even once it beats again. A person checks the screen, then <code>pixi run clear watchdog</code> (the same service as a GPS jump)</td>
 <td>The safety drivers rely on the screen. A HUD that crashed once may crash again; driving on by itself after systemd restarts it hides that. A window's slow first frames shouldn't need a person, so start-up gets one free dropout. The watchdog's own stalls never latch it (<a href="hud.html#the-heartbeat">HUD</a>)</td>
 <td>Ben, 24 Oct</td>
 </tr>
@@ -692,9 +708,350 @@ answer.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Nav2 keeps its path for the last 8 m to a goal</strong> (<code>navigate_to_pose_car*.xml</code>): it replans every second elsewhere, but near the goal only if the path is blocked, for another goal, or 20 s old. 8 m = <code>vehicle.final_approach</code>, 2 of the planner's turning radii</td>
+<td><strong>Nav2 keeps its path for the last 8 m to a goal</strong> (<code>navigate_to_pose_car*.xml</code>; our navigator does the same since): it replans every second elsewhere, but near the goal only if the path is blocked, for another goal, or 20 s old. 8 m = <code>vehicle.final_approach</code>, 2 of the planner's turning radii</td>
 <td>Replanning there made the car circle goals: a new path from a little behind on the last bend is a 21-25 m loop for a car, and each new path resets Nav2's goal checker. Gazebo, first leg, 12 runs each way: loop plans in 10 before, none after; 3 loops driven before, none after (<a href="path-followers.html#circling-a-goal-found-and-fixed-29-october-todo-17">Path followers</a>)</td>
 <td>TODO 17, from the Gazebo runs</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="decided-from-26-october-to-14-november">Decided from 26 October to 14 November</h2>
+<p>Short; the words are in <code>docs/history/messages-*.md</code>, the work in <code>TODO.md</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>When</th>
+<th>Decision</th>
+<th>By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>26 Oct</td>
+<td><code>aav_goto</code> becomes <code>aav_drive_to_point</code> (action <code>/drive_to_point</code>, slot <code>point</code>): the name says the job</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>29 Oct</td>
+<td><strong>Trials beside defaults:</strong> new nodes or plugins run beside the main ones and replace them only if they win (<a href="trials.html">Trials</a>)</td>
+<td>Ben: "test and then replace the main ones if they work"</td>
+</tr>
+<tr>
+<td>1 Nov</td>
+<td><strong>The State Lattice is the default planner</strong> where the car may reverse, the car too; Hybrid-A<em> forward only. </em><em>Reversing and the U-turn are on, on the car</em>* (TODO 59, 62)</td>
+<td>Ben: "reverse and uturn should be in"</td>
+</tr>
+<tr>
+<td>1 Nov</td>
+<td><strong>0.2 = sim-complete, car-ready; 0.3 = it drove.</strong> Car day is split: Day A destroys nothing, Day B upgrades; every idea is kept for later</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>1 Nov</td>
+<td>Fewer <code>pixi run</code> commands (89 → 45), families with one word after, no aliases</td>
+<td>Ben: "Less is more"</td>
+</tr>
+<tr>
+<td>2 Nov</td>
+<td>Initial D red and black on all four screens; the diffusion planner in 0.2 as a trial, off by default, behind its guard</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>3 Nov</td>
+<td><strong>No default switched for 0.2:</strong> NDT-EKF was closer (0.018 m against 0.174 m) but needs the lot's map; the cubes were slower and once drove into a post (<a href="switches.html">Switches</a>)</td>
+<td>from the Gazebo runs</td>
+</tr>
+<tr>
+<td>3 Nov</td>
+<td>One screen per concept: <strong>Drive</strong> and <strong>Hardware</strong> ("just the stuff we control"); the HUD and the map stay in the car</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>4 Nov</td>
+<td>Picked from the <a href="../designs/2026-11-04_weak-links.md">weak links</a>: the clocks, the fence and the site file (TODO 100); the brake follows a wish (101); a behaviour state machine (102); research A, the car identifies itself (104). The tracker (103) paused 5 Nov; shadow mode (108) not picked</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>5 Nov</td>
+<td><strong>Our own algorithms:</strong> for each area a new best hybrid from papers, known algorithms and current code, how the car stops first. Stock stays the default until ours wins; every algorithm stays. "One car" is for down the road</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>5 Nov</td>
+<td><strong>Everything is a drop-in:</strong> Gazebo, our simulator and the real sensors give the same topics; <code>pixi run drop-in</code> checks</td>
+<td>Ben: "just swap out and test"</td>
+</tr>
+<tr>
+<td>5 Nov</td>
+<td><strong>Screens by computer:</strong> the HUD and the street map stay raylib, on the Pi; laptop screens can be Bevy; the Orin runs no graphics and no simulator</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>5 Nov</td>
+<td>A drive only suggests map changes; a person accepts them. No RTK (above)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>0.3:</strong> one car model shared by ego, the simulators and the Rust drivers; algorithms that know the lag (MPPI in Rust, the lag-aware MPC); the behaviour planner and the stop-point check; directions on the campus</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>Gazebo merged into Rust:</strong> our own simulator, every sensor, beside Gazebo until it wins</td>
+<td>Ben: "merge in everything from gazebo so its standalone in rust"</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>Diffusion on the car only as a trial:</strong> <code>diffusion_trial:=true</code>, 0.5 m/s at most, the guard and every lock as always</td>
+<td>Ben: "We want diffusion"</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>The Rust ESP32 keeps every C++ behaviour at a minimum</strong> (<a href="esp32-cpp-parity.html">parity</a>); its WiFi pages as JSON, read only, off by default</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>7 Nov</td>
+<td><strong>One forward speed limit, 1.0 m/s, for ego and the spine</strong>, with a test that fails if they differ; the spine's stop rules: every lost input is a hard stop (T3.6)</td>
+<td>Arsh</td>
+</tr>
+<tr>
+<td>8 Nov</td>
+<td><strong>Our own simulator is the default</strong> (<code>simulator:=own</code>); <code>simulator:=gazebo</code> for computers with no GPU (until 16 Nov: the camera lockstep took that job)</td>
+<td>Ben, after the head-to-head runs</td>
+</tr>
+<tr>
+<td>8 Nov</td>
+<td><strong>Off Nav2 one piece at a time</strong> (costmap, planner, navigator, smoother), each beside Nav2 until it wins; <strong>Nav2 stays the default and on the car</strong> (until 17 Nov: below)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>8 Nov</td>
+<td><strong>On the car, 0.3 keeps the defaults:</strong> the new pieces are off or simulator-only (<a href="rollout.html">Rolling out</a>)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>8 Nov</td>
+<td>The adaptive brake, a sim trial: brake harder when the car slows too little, never past the brake's safe maximum</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>The lane map is a plain <code>lanes.yaml</code></strong> (W5), the campus's own format: each road's centre line, width, lanes, one way. Lanelet2 (RoboStack 1.2.3, BSD-3-Clause) was tried first: it installs, but on a Mac its Python modules are <code>.dylib</code> files that don't import, and loading them by hand hangs (a second libpython). Not added to <code>pixi.toml</code>; try again with a newer build</td>
+<td>Ben, W5: "try it; else grow <code>lanes.yaml</code>"</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>The release is 0.4-rc1</strong>, not 1.0: "We are still in beta stages". Must-haves: reverse, and no oscillation</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>Three levels with fixed map chunks</strong>: the route planner (zoomed out), the path planner (middle), the local planner (close up), the behaviour planner across all three; the saved voxel map as the background for tracking (TODO 175)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>Behaviour is a feature type of its own</strong></td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td>The sensor watchdog <strong>warns only</strong> about our own nodes; respawn and the age checks stop the car</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td>Our simulator's wheels get <strong>noise and slip, seeded, off by default</strong></td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>Steering-rate-aware lattice moves</strong>, a trial beside today's lattice (no oscillation)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td>The smooth moves are made for <strong>1 m/s</strong> (<code>smooth</code>, ego's top speed) and <strong>2.5 m/s</strong> (<code>smooth_fast</code>, the campus), at 1/1.25 of ego's 0.6 rad/s; with them the lattice's <strong>smoother is off</strong> (its Dubins ends put the jumps back)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>Hybrid-A* in our Rust planner now</strong>, another option beside the lattice</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>14 Nov</td>
+<td><strong>We run our own stack; Nav2 and Gazebo leave</strong>: "I would like to remove nav2 and gazeboo ... run everythign ourselves in rust and/or python". <code>stack:=ours</code> and our simulator become the default now; Nav2 and Gazebo stay only as yardsticks until 0.4-rc1 is scored, then are deleted. robot_localization, twist_mux and teleop_twist_* stay for now. CLAUDE.md's rules changed to match</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>No freeze on new challengers</strong> (the whole-car design's W6: no): "We want to build the best version ... that might inlcude reading papers or merging ideas together that we already have"</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>The order</strong>: the 0.4-rc1 list first (the sway, 170, 174, 182-185), then the whole-car design's gaps (the planner inside the road ahead's edges, the soft edge to pass, following at a gap, the things' critic), then 155 and 156</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>Lanelet2 in Rust</strong> (our own reader, TODO 175) now, after the sway work</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td>The old <code>wip/</code> branches (7 Nov): checked against <code>next</code>, anything useful taken, then archived</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>Map correction stays <code>newest</code></strong>; <code>slow</code> (TODO 186) is a challenger: it won offline, not yet in the simulator (later that day it won in the sim: the <code>ours</code> stack takes it, below)</td>
+<td>Ben's rule (5 Nov), applied at night</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>Our planner prices a change of gear</strong> (<code>cusp_penalty: 4.0</code>, TODO 174): a three-point turn in a 6.5 m street went from 9 changes of direction to 4 (2 runs), the lot and campus tours no worse. Nav2's planner ignores it; 0 gives Nav2's way back</td>
+<td>Ben's rule (5 Nov): it won on the same routes</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>The radar clears our costmap inside its view</strong> where it sees nothing (TODO 193), so a thing taken away is forgotten</td>
+<td>Ben's night orders</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>32 lattice headings: no win</strong>; 16 stays (TODO 190)</td>
+<td>Ben's night orders</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>D2, lane costs</strong>: the one-shape design's proposal taken (a ramp, lowest at the right lane's centre, against <code>path:=lane</code>); the go-ahead to finish Fable's designs and the rc1 list</td>
+<td>Ben: "lets try to get all of these things finished and merged and tested"</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>Everything goes into the next release (0.4-rc1)</strong>: nothing is held back for a later one</td>
+<td>Ben: "Nothing is going into a future rekease we want everything in the next release"</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>One folder on Ben's Mac</strong>, <code>~/Code/ecolo-av</code> on <code>main</code>: the night's worktrees (<code>ecolo-next</code>, <code>ecolo-night</code>) merged and removed; the old <code>~/Code/aav</code> and <code>aav-wt</code> deleted (its one uncommitted edit kept in <code>docs/history/leftovers/</code>)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td>The fork's branches (<code>one-shape</code>, <code>review-13nov</code>, <code>setup-localization</code>, <code>whole-car</code>) merged into its <code>main</code>, then deleted; their last commits: 0f0a1094, b7ed1837, 566ef0c0, 726bff44</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>A laptop driver that drops off loses its goals</strong> (TODO 116): the car's goal leash cancels the language driver's goals after 1 s without its beat, a normal stop, not an e-stop (in line with 5 Nov: a laptop dropping off is no reason to brake hard on the road; screens still never stop the real car)</td>
+<td>Ben ("keep working through the list"; the cautious choice taken)</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>The pedal in ego</strong> for people (joy, rc, keyboard): the stick's position sets how hard ego slows (let go: 1.0 m/s²; full back: 2.0 m/s²), then reverses at 0. Computer drivers keep plain speeds; the AI may join as a challenger</td>
+<td>Ben (asked "Everyone", and "a similar concept for the ai too? what do you think?"; advised: people only, since a planner's own slowing must be followed at once, or the car rolls past its stop line)</td>
+</tr>
+<tr>
+<td>15 Nov</td>
+<td><strong>The sim's <code>ours</code> stack takes the three sway fixes</strong> (TODO 168): <code>plan_smoothing:=strong</code> (path <code>lattice_rs_strong</code>), and <code>map_correction:=slow</code> with <code>mppi_lag_steer_gamma:=0.05</code> (steer <code>mppi_lag_calm</code>). Scored in the sim, 2 runs each: sway at Nav2's on the lot (0.021 against 0.018 m/s²) and under it on the campus (0.099 against 0.131), every leg, closer to the path. The champions, the car and <code>stack:=stock</code> are unchanged; each old setting stays a switch (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
+<td>Ben's rule (5 Nov): a challenger that wins on the same routes</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong>The sim's <code>ours</code> plans the lane's centre</strong> (<code>path:=lane</code>, TODO 148): 3 clean runs each of the <code>university</code> tour, no worse on any column than as now or the ramp (9/9 legs each, the same 512 s; sway 0.055 against 0.087-0.090 m/s², never over the centre line against 61 % and 1 %). Off the lane map it is the lattice, as before. The champions, the car and <code>stack:=stock</code> are unchanged (<a href="own-planner.html#the-swap-16-nov-3-clean-runs-each">why</a>)</td>
+<td>Ben's rule (5 Nov): a challenger that wins on the same routes; the swap asked for in TODO 148</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong>The sim's <code>ours</code> builds its global costmap from map chunks</strong> (<code>costmap:=ours_chunks</code>, TODO 175): only the chunks round the car and along the route, each read and inflated on its own core (rayon); a goal off them planned in steps. Lot, campus and University Drive, 2 runs each: 20/20 legs as the whole map, the same time and sway, the costmap 474 to 145 MB. Nav2's costmap, <code>costmap:=ours</code>, the champions and the car are unchanged (<a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">why</a>)</td>
+<td>Ben: "Lets turn on chunking for sure"; no worse on legs and driving</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong><code>ours</code> passes something parked on the lane</strong> (TODO 208): only the blocked stretch moves left, the least that clears it plus 0.5 m, never past the kerb, then back; the planner's lidar layer marks to 18 m (was 12). University Drive with a 1 m box, 3 runs each: over the centre line 4.8 s against 13.2, back in 9 m against 18.5, no stops; a person crossing still waited for; no worse with no obstacles. <code>lane_pass:=false</code> keeps the old way (<a href="own-planner.html#passing-something-parked-16-nov">why</a>)</td>
+<td>Ben: "stick to the right side of the lane unless we need to for obstical avoidance"</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong>Rust is the default on the car too</strong> for ego + look_ahead, behaviour, the sensor watchdog and localization_health (<code>aav_ego_rs</code>, <code>aav_behaviour_rs</code>, <code>aav_watchdog_rs</code>, <code>aav_localization_health_rs</code>). The Python stays installed, one switch each (<code>*_impl:=python</code>), until a car day proves the Rust (<a href="car-day.html#4f-the-rust-nodes-are-the-ones-running">car day, 4f</a>)</td>
+<td>Ben: "watchdog in rust sure"; the same answers as the Python, in the simulator first</td>
+</tr>
+<tr>
+<td>16 Nov</td>
+<td><strong>New ROS nodes are Rust</strong> (rclrs), replacing decision 8's "Python for the ROS nodes we write". Still Python: ML on the GPU (train in PyTorch; inference later through ONNX), launch files, tools and tests</td>
+<td>Ben: "lets remove python were possible. I trust rust more then python"</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="decided-on-17-november">Decided on 17 November</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+<th>By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Gazebo deleted; our simulator is Ravensim</strong> (16 Nov, TODO 184, 183): <code>simulator:=ravensim</code>, the only one (<code>own</code> works for one release); its chunked maps are RavenTiles. Gazebo's shared nodes and models moved to <code>aav_sim_models</code>; its topics are <code>/vehicle/sim/*</code>. Without a GPU the cameras draw in software and the clock waits for each picture (camera lockstep). CARLA stays. Last scores: <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a></td>
+<td>Ravensim passed every <code>sim-check</code> leg Gazebo did (8 Nov); Gazebo's last job was the cameras with no GPU, and lockstep does that now</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Nav2 deleted; ours everywhere</strong> (TODO 184): the simulator, the bench and the car run our navigator, planner, costmaps, <code>mppi_lag</code>, smoother, stop zone and map server. Kept: <code>nav2_msgs</code>, and <code>nav2_amcl</code> for the AMCL trial (<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>)</td>
+<td>Ben, 16 Nov: "Now". Every Nav2 server had its port, scored on 16 Nov (<a href="league-results-2026-11-16.html">the league</a>)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Our stop zone is the stop zone</strong> (<code>aav_stop_zone</code>, TODO 182)</td>
+<td>Ben, 16 Nov: "shadow run, then swap". In shadow on every obstacle check, 3 rounds, it stopped on the same command all 24 times Nav2's did, never later</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>The EKFs take the car's command, to slow only</strong> (robot_localization's control term, TODO 207)</td>
+<td>With the wheels quiet the EKFs ran on at their last speed, and <code>map -&gt; odom</code> jumped 9-10 m when the wheels came back; <code>sim-check --faults</code> 14 of 14, three runs in a row</td>
+<td>Ben</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="proposed-in-november-bens-to-decide">Proposed in November: Ben's to decide</h2>
+<p>Designs, <strong>nothing of them built</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Design</th>
+<th>What it proposes</th>
+<th>Waits on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../designs/2026-11-13_one-shape.md">One shape</a> (13 Nov; reviewed: go, with changes)</td>
+<td>nine levels, one world model, one boss (the behaviour planner), the league (<code>stack:=</code>), 36 switches down to 8, lane lines as soft costs</td>
+<td>D1-D7 (TODO 147-152)</td>
+</tr>
+<tr>
+<td><a href="../designs/2026-11-14_the-whole-car.md">The whole car</a> (14 Nov)</td>
+<td>every design merged: one picture of the world, one car model, one scorecard, and what's missing</td>
+<td>W1-W7 (TODO 153-160)</td>
+</tr>
+<tr>
+<td><a href="../designs/2026-11-07_esp32-debug-link_brief.md">The hardware debug plan</a> (7 Nov)</td>
+<td>debug one part of the car at a time; the order chosen by Ben</td>
+<td>the hardware people: a USB cable, the current limits, the return wire (TODO 126)</td>
+</tr>
+<tr>
+<td>Where the CBF safety filter goes (K1), a live shadow lock (S1), reversing on long drives (TODO 122)</td>
+<td>see each design</td>
+<td>Ben</td>
 </tr>
 </tbody>
 </table></div>
@@ -716,7 +1073,7 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 <tr>
 <td><strong>Q1</strong></td>
 <td>Dimensions</td>
-<td>Wheelbase, track, overall size, steering limit, top speed? The old code disagrees: 1.3–1.57 m wheelbase</td>
+<td>Wheelbase, track, overall size, steering limit, top speed? The old code disagrees: 1.3–1.57 m wheelbase. <strong>Partly answered</strong> (Betsi, 1 Nov): wheelbase 1.561 m, track 0.65 m front and 0.85 m rear, the lidar's and GPS's heights. The steering limit, the weight and the wheel diameter are still open</td>
 </tr>
 <tr>
 <td><strong>Q2</strong></td>
@@ -803,12 +1160,12 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 <tr>
 <td>Q16</td>
 <td>Watchdog</td>
-<td>How long without a command before it acts, how hard it brakes, and what the steering does</td>
+<td>How long without a command before it acts, how hard it brakes, and what the steering does. <strong>Built as:</strong> 100 ms, full brake, latched (CAN v0.2.0, 15 Oct; the Rust ESP32's heartbeat, 24 Oct). The steering's part is still open (below)</td>
 </tr>
 <tr>
 <td>Q17</td>
 <td>Wireless updates</td>
-<td>Keep them? If so, how are they authenticated?</td>
+<td>Keep them? If so, how are they authenticated? <strong>Built, off by default</strong> (7 Nov): only while parked, with a password, a checked image; never in the car-day build</td>
 </tr>
 </tbody>
 </table></div>
@@ -949,8 +1306,8 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 <td>restart a sensor driver when it dies?</td>
 </tr>
 <tr>
-<td>Nav2's lookahead (N7)</td>
-<td>its turn command flips sign about once a second in the sim</td>
+<td>The follower's lookahead (N7; Nav2's then)</td>
+<td>its turn command flips sign about once a second in the sim. Still open: "the wiggle" (TODO 124, 149); the single-goal tree's replanning at 1 Hz is the suspect</td>
 </tr>
 <tr>
 <td>Package renames</td>
@@ -958,11 +1315,11 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 </tr>
 <tr>
 <td>A <code>vendor/</code> folder</td>
-<td>keep downloaded source out of git, with a list to fetch it again</td>
+<td>done: downloaded source stays out of git, <code>pixi run get vendor</code> fetches it again</td>
 </tr>
 <tr>
 <td>Stop signs as a twist_mux lock</td>
-<td>priority 30: it holds Nav2 and the AI slot, never a person or a test script; 4 s stop, then 10 s to drive past. Built and working on the bench (Proposed)</td>
+<td>priority 30: it holds navigation and the AI slot, never a person or a test script; 4 s stop, then 10 s to drive past. Built and working on the bench (Proposed)</td>
 </tr>
 <tr>
 <td>The steering on an e-stop</td>

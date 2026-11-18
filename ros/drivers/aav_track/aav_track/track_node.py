@@ -1,15 +1,28 @@
 """
-track: a trial path follower in controller_server's place (docs/trials.md).
+track: a trial path follower in mppi_lag's place (docs/trials.md).
 
-Action      follow_path                 nav2_msgs/action/FollowPath: bt_navigator's, a new
+Action      follow_path                 nav2_msgs/action/FollowPath: the navigator's, a new
                                         goal each time the planner replans (the newest
                                         replaces the last without stopping)
 Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): where the car is in
                                         odom, its speed and yaw rate
-            /tf, /tf_static             map -> odom, to move each new path into odom
+            /tf, /tf_static             map -> odom, held (slow_frame.py, TODO 186: follow
+                                        in odom, correct slowly): a map path stays in map,
+                                        and the car's odometry is brought there by the
+                                        held map -> odom, which moves toward the newest at
+                                        most map_correction_speed m/s and
+                                        map_correction_turn_rate rad/s (a gap over
+                                        map_correction_snap_distance m or _snap_angle rad
+                                        is taken at once). map_correction false (the
+                                        launch's map_correction:=newest) or rates 0: the
+                                        newest, once a path
+            world/road_ahead            aav_interfaces/RoadAhead (road_ahead_topic; empty,
+                                        the default: off): with a lane map, its soft edges;
+                                        each new path is kept inside them (lane.py, TODO
+                                        169) while it is 0.5 s fresh
 Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped (Twist with stamped:=
                                         false), at rate_hz while a path runs: (v, v tan(steer)
-                                        / L), to Nav2's velocity smoother, collision_monitor,
+                                        / L), to our velocity smoother, the stop zone,
                                         then /drivers/nav/cmd_vel. v from the shared
                                         speed policy (speed.py), or mpc_full's own plan
             drivers/nav/track/status    diagnostic_msgs/DiagnosticStatus, every tick: the
@@ -25,10 +38,10 @@ Parameters  tracker can be changed while it runs, only with live_swap:=true (sim
             is built between ticks (one thread), takes the path and its place on it,
             starts its steering from the last command, and the loop statistics reset.
 
-navigation.launch.py tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag starts it; renames
-controller_server's own action follow_path_unused, so bt_navigator's FollowPath comes here.
-Everything after cmd_vel_nav (the smoother, collision_monitor, twist_mux's slot 20, the
-locks) is unchanged. The checks are Nav2's own (checks.py, with nav2.yaml's numbers):
+navigation.launch.py tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag starts it in
+mppi_lag's place, so the navigator's FollowPath comes here. Everything after cmd_vel_nav
+(the smoother, the stop zone, twist_mux's slot 20, the locks) is unchanged. The checks are
+Nav2's own (checks.py, with nav2.yaml's numbers):
 
 | Result | When |
 |---|---|
@@ -37,7 +50,7 @@ locks) is unchanged. The checks are Nav2's own (checks.py, with nav2.yaml's numb
 | TF_ERROR | the path's frame can't be moved into odom (transform_tolerance) |
 | INVALID_PATH | an empty path, or one that isn't numbers |
 | UNKNOWN | no odometry for odom_timeout s |
-| canceled | bt_navigator cancelled it (zero command sent) |
+| canceled | the navigator cancelled it (zero command sent) |
 """
 
 import math
@@ -46,10 +59,13 @@ import time
 
 from aav_description import vehicle as vehicle_file
 from aav_ego.vehicle_model import from_config
+from aav_interfaces.msg import RoadAhead
 from aav_track import trackers
 from aav_track.checks import GoalCheck, ProgressCheck
 from aav_track.lag_model import CarParams
-from aav_track.path import moved, Path, wrap
+from aav_track.lane import keep_in_lane, LinePoint
+from aav_track.path import Path, wrap
+from aav_track.slow_frame import into_map, SlewLimits, SlowFrame
 from aav_track.speed import SpeedPolicy
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Twist, TwistStamped
@@ -89,11 +105,12 @@ def yaw_of(q):
 
 
 class Job:
-    """One FollowPath goal: its handle, its path in odom, and how it ended."""
+    """One FollowPath goal: its handle, its path, and how it ended."""
 
-    def __init__(self, handle, path, started):
+    def __init__(self, handle, path, started, in_map=False):
         self.handle = handle
-        self.path = path
+        self.path = path              # in odom, or in map (in_map) for the held map -> odom
+        self.in_map = in_map
         self.started = started        # s: no odometry yet is only an error odom_timeout after
         self.done = Future()          # (outcome, error code, message)
         self.hint = 0
@@ -117,7 +134,12 @@ class Track(Node):
             ('lookahead_min', 1.5), ('lookahead_max', 4.0), ('lookahead_time', 1.5),
             ('xy_goal_tolerance', 1.0), ('yaw_goal_tolerance', 0.75),
             ('progress_radius', 0.5), ('progress_angle', 0.5), ('progress_time', 10.0),
-            ('wheelbase', 1.57), ('max_steering_angle', 0.5), ('max_steering_rate', 0.6))}
+            ('wheelbase', 1.57), ('max_steering_angle', 0.5), ('max_steering_rate', 0.6),
+            ('road_ahead_topic', ''), ('lane_margin', 0.1),
+            ('map_correction_speed', SlewLimits.speed),
+            ('map_correction_turn_rate', SlewLimits.turn_rate),
+            ('map_correction_snap_distance', SlewLimits.snap_distance),
+            ('map_correction_snap_angle', SlewLimits.snap_angle))}
         self.p = p
         name = p['tracker']
         if name not in TRACKER_PARAMS:
@@ -136,6 +158,17 @@ class Track(Node):
         self.progress = ProgressCheck(p['progress_radius'], p['progress_angle'],
                                       p['progress_time'])
         self.period = 1.0 / p['rate_hz']
+        # The held map -> odom (TODO 186): moved toward the newest at a bounded rate.
+        # map_correction (the launch's switch, never in track.yaml: a node's own file wins
+        # over the launch's values) false: the old way, whatever the rates say.
+        slew = bool(self.declare_parameter('map_correction', False).value)
+        self.slow = SlowFrame(SlewLimits(
+            speed=float(p['map_correction_speed']) if slew else 0.0,
+            turn_rate=float(p['map_correction_turn_rate']),
+            snap_distance=float(p['map_correction_snap_distance']),
+            snap_angle=float(p['map_correction_snap_angle'])))
+        self.corrected = None         # s: when the held map -> odom last moved on
+        self.map_frame = 'map'        # the frame the last map path came in
 
         self.job = None
         self.odom = None              # (x, y, yaw, v, yaw rate), odom frame
@@ -157,6 +190,11 @@ class Track(Node):
         self.lag_aware = self.create_publisher(Bool, 'drivers/nav/lag_aware', latched)
         self.say_lag_aware()
         self.create_subscription(Odometry, p['odom_topic'], self.on_odom, 10)
+        # The lane (TODO 169): the road ahead's edges, newest only.
+        self.road = None              # (frame, [LinePoint], when it came)
+        self.half_width = vehicle_file.load()['vehicle']['body']['width'] / 2.0
+        if p['road_ahead_topic']:
+            self.create_subscription(RoadAhead, p['road_ahead_topic'], self.on_road, 1)
         self.server = ActionServer(
             self, FollowPath, 'follow_path', execute_callback=self.execute,
             goal_callback=lambda _: GoalResponse.ACCEPT,
@@ -250,34 +288,81 @@ class Track(Node):
             self.odom = values
             self.odom_time = self.seconds()
 
+    def on_road(self, msg):
+        edges = zip(msg.x, msg.y, msg.heading, msg.left_soft, msg.right_soft)
+        line = [LinePoint(*v) for v in edges]
+        self.road = (msg.header.frame_id.lstrip('/'), line, self.seconds())
+
+    def lane(self, frame):
+        """Return the road ahead's line in `frame`, if it is fresh (0.5 s); else None."""
+        if self.road is None:
+            return None
+        road_frame, line, when = self.road
+        fresh = self.seconds() - when <= 0.5
+        return line if fresh and road_frame == frame.lstrip('/') else None
+
+    def odom_in_map(self, frame):
+        """Return the newest odom pose in `frame` (x, y, yaw), or raise TransformException."""
+        # Without waiting: a wait here would hold the one thread that receives /tf.
+        # ekf_global sends it at 30 Hz.
+        t = self.tf.lookup_transform(frame, self.p['odom_frame'], Time())
+        age = self.seconds() - Time.from_msg(t.header.stamp).nanoseconds * 1e-9
+        if age > self.p['transform_tolerance'] + 1.0:
+            raise tf2_ros.TransformException(f'map -> odom is {age:.1f} s old')
+        r = t.transform
+        return (r.translation.x, r.translation.y, yaw_of(r.rotation))
+
     def path_in_odom(self, msg):
-        """Return the goal's path moved into odom, or raise (ValueError: bad, else TF)."""
+        """
+        Return the goal's path and whether it stays in map, or raise (ValueError, TF).
+
+        A map path stays in map; the car is brought there by the held map -> odom
+        (`car_pose`). The same as moving the path into odom by it.
+        """
         poses = [(s.pose.position.x, s.pose.position.y, yaw_of(s.pose.orientation))
                  for s in msg.poses]
         if not poses:
             raise ValueError('the path is empty')
         frame = msg.header.frame_id or self.p['odom_frame']
-        if frame.lstrip('/') != self.p['odom_frame']:
-            # The newest map -> odom, without waiting: a wait here would hold the one
-            # thread that receives /tf. ekf_global sends it at 30 Hz.
-            t = self.tf.lookup_transform(self.p['odom_frame'], frame, Time())
-            age = self.seconds() - Time.from_msg(t.header.stamp).nanoseconds * 1e-9
-            if age > self.p['transform_tolerance'] + 1.0:
-                raise tf2_ros.TransformException(f'map -> odom is {age:.1f} s old')
-            r = t.transform
-            poses = moved(poses, (r.translation.x, r.translation.y, yaw_of(r.rotation)))
-        return Path(poses)
+        line = self.lane(frame)
+        if line:
+            poses = keep_in_lane(poses, line, self.half_width, self.p['lane_margin'])
+        in_map = frame.lstrip('/') != self.p['odom_frame']
+        if in_map:
+            newest = self.odom_in_map(frame.lstrip('/'))
+            driving = self.job is not None and self.job.in_map
+            self.slow.for_new_path(newest, driving)
+            self.map_frame = frame.lstrip('/')
+            self.corrected = self.seconds()
+        return Path(poses), in_map
+
+    def car_pose(self, job, x, y, yaw, now):
+        """Return the car's pose in the job's path frame: map by the held map -> odom."""
+        if not job.in_map:
+            return x, y, yaw
+        try:
+            newest = self.odom_in_map(self.map_frame)
+        except tf2_ros.TransformException:
+            newest = None             # keep the held one
+        since, self.corrected = self.corrected, now
+        if newest is not None:
+            dt = self.period if since is None else now - since
+            if self.slow.update(newest, (x, y, yaw), dt) == 'snapped':
+                self.get_logger().warning(
+                    'map -> odom moved over the snap limits at the car: a relocalisation, '
+                    'taken at once')
+        return into_map((x, y, yaw), self.slow.held)
 
     # --- the action ----------------------------------------------------------------------
 
     async def execute(self, handle):
         try:
-            path = self.path_in_odom(handle.request.path)
+            path, in_map = self.path_in_odom(handle.request.path)
         except ValueError as e:
             return self.end(handle, 'abort', Code.INVALID_PATH, str(e))
         except tf2_ros.TransformException as e:
             return self.end(handle, 'abort', Code.TF_ERROR, f'no map -> odom: {e}')
-        job = Job(handle, path, self.seconds())
+        job = Job(handle, path, self.seconds(), in_map)
         old, self.job = self.job, job
         if old is not None:
             # The planner replanned: the newest path carries on, with no stop between.
@@ -334,6 +419,7 @@ class Track(Node):
             return self.stop(job, 'abort', Code.UNKNOWN,
                              f'no odometry on {self.p["odom_topic"]}')
         x, y, yaw, v, yaw_rate = self.odom
+        x, y, yaw = self.car_pose(job, x, y, yaw, now)
         path = job.path
         foot = path.project((x, y), job.hint)
         job.hint = foot.index

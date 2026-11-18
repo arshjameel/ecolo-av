@@ -70,11 +70,11 @@ I term, so it can't grow huge while the car is stuck.
 
 | Loop | Measures | Moves | Runs on | Rate |
 |---|---|---|---|---|
-| **Path** | where the car is (`ekf_local`) vs the plan | speed and turn rate | Orin #1: Nav2's MPPI | 20 Hz |
+| **Path** | where the car is (`ekf_local`) vs the plan | speed and turn rate | Orin #1: MPPI with lag (`mppi_lag`) | 20 Hz |
 | **Speed** | wheel speed (KEFC: Hall wheel nodes) | throttle DAC, brake Jrk | the control board: `spine-core` | every board tick (10 ms in the Pico 2 program) |
 | **Steering angle** | the KTC-100 pot | the steering motor | inside the steering Jrk G2 | the Jrk's own loop |
 | Brake position | the actuator's own feedback, if it has one | the brake motor | inside the brake Jrk G2 | to confirm (KEFC list) |
-| Plan | the costmap and the goal | a new path | Orin: Nav2's planner | 1 Hz |
+| Plan | the costmap and the goal | a new path | Orin: our planner (`aav_planner`) | 1 Hz |
 
 **The rule:** the inner loops are fast and simple, and sit next to the motor. If the
 Orin hiccups for 50 ms, the board keeps the speed steady.
@@ -135,7 +135,7 @@ second. `ros/ego/aav_ego/aav_ego/ackermann.py`:
 | 4. Limits | speed, acceleration, steering rate (next section) |
 | 5. Reverse | changes direction only through a stop |
 
-**Example:** Nav2 asks for 2.0 m/s and 0.4 rad/s (a 5 m circle). δ = atan(1.57 × 0.4 ÷
+**Example:** navigation asks for 2.0 m/s and 0.4 rad/s (a 5 m circle). δ = atan(1.57 × 0.4 ÷
 2.0) = **0.304 rad**. ego caps the speed at 1.0 m/s but keeps 0.304 rad: still a 5 m circle,
 just slower.
 
@@ -144,7 +144,7 @@ just slower.
 Each layer has its own limits. Lower layers are a little looser, so they never lag
 behind a stop that a higher layer asked for.
 
-| Limit | ego (`ego.yaml`) | Nav2 velocity smoother | The spine (`spine.rs`) |
+| Limit | ego (`ego.yaml`) | The velocity smoother (`aav_smoother`) | The spine (`spine.rs`) |
 |---|---|---|---|
 | Top speed | **1.0 m/s** | 1.0 m/s | 3.0 m/s |
 | Reverse | 0.5 m/s (`vehicle.yaml`: one number for all three) | 0.5 m/s, with `reversing:=true`; else 0 | 0.5 m/s, RC too |
@@ -170,7 +170,7 @@ What those mean at 1.0 m/s:
 | `ego` | 0.3 s with no `/control/cmd_vel` | slows to a stop at 2.0 m/s² |
 | `spine_bridge` | 0.1 s with no command (`/control/car/actuator_cmd`) | stops sending `DRIVE_CMD` |
 | The spine's watchdog | 100 ms with no fresh command (`DRIVE_CMD`, or a UART frame) | throttle off, brake on, latched |
-| `collision_monitor` | 1.0 s with no radar or lidar (where it reads one) | stops Nav2's commands |
+| the stop zone (`aav_stop_zone`) | 1.0 s with no radar or lidar (where it reads one) | stops navigation's commands |
 
 !!! warning "Today's car has no board timeout"
     On the 2025-26 path the ESP32 firmware never times out: if commands stop, the last
@@ -214,7 +214,7 @@ does. The spine only listens to it ([Firmware](firmware.md)).
 | Today's open-loop throttle | `ros/can_bridge/aav_legacy/config/legacy.yaml` (`full_throttle_speed`) |
 | State space from zero: models, simulators, poles, Bode, shocks and roll | `tools/state_space_demo.py`, `pixi run python3 tools/state_space_demo.py` ([Learn: state space](learn-state-space.md)) |
 | The loops as transfer functions and state space: poles, margins, delays | `ros/ego/aav_ego/aav_ego/vehicle_model.py`, `pixi run python3 tools/vehicle_model.py` ([The car as a linear model](vehicle-model.md)) |
-| Nav2's controller and smoother | `ros/drivers/aav_navigation/config/nav2.yaml` |
+| The follower's and smoother's settings | `ros/drivers/aav_navigation/config/nav2.yaml` |
 | Driver timeouts and priorities | `ros/command_mux/aav_command_mux/config/twist_mux.yaml` |
 | Wheelbase, track, steering limit | `ros/bringup/aav_description/config/vehicle.yaml` |
 | The safety layers, in one table | [How it fits](how-it-fits.md) |

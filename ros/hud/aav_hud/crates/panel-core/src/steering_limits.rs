@@ -39,18 +39,26 @@ pub const GAINS_DIFFER: f64 = 0.15;
 /// The three marks, in counts, and the wheel angle at each end (degrees, if measured).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Marks {
+    /// Counts at full left.
     pub left: u16,
+    /// Counts with the wheels straight.
     pub centre: u16,
+    /// Counts at full right.
     pub right: u16,
+    /// The wheels' angle at full left (degrees), if measured.
     pub left_deg: Option<f64>,
+    /// The wheels' angle at full right (degrees), if measured.
     pub right_deg: Option<f64>,
 }
 
 /// Which mark.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Mark {
+    /// Full left.
     Left,
+    /// Straight.
     Centre,
+    /// Full right.
     Right,
 }
 
@@ -67,15 +75,26 @@ impl fmt::Display for Mark {
 /// Why the marks can't give limits.
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum MeasurementError {
+    /// A mark outside 0 to 4095 counts.
     #[error("{0} {1}: counts are 0 to {COUNTS_MAX}")]
     OutOfRange(Mark, u16),
+    /// The ends are too close: the feedback doesn't change.
     #[error(
         "the ends are {0} counts apart (less than {MIN_SPAN}): the feedback doesn't change. \
          Is the Jrk's feedback mode analog, and its sensor wired?"
     )]
     NoSpan(u16),
+    /// The centre isn't between the ends.
     #[error("the centre ({centre}) is not between the ends ({left}, {right}): mark it again")]
-    CentreNotBetween { left: u16, centre: u16, right: u16 },
+    CentreNotBetween {
+        /// The left mark (counts).
+        left: u16,
+        /// The centre mark (counts).
+        centre: u16,
+        /// The right mark (counts).
+        right: u16,
+    },
+    /// A wheel angle isn't a positive number of degrees.
     #[error("the wheel angles are positive degrees, each side")]
     Angles,
 }
@@ -84,13 +103,30 @@ pub enum MeasurementError {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Warning {
     /// The centre is this far (counts) from the middle of the travel.
-    CentreOff { centre: u16, off: f64, middle: f64 },
+    CentreOff {
+        /// The centre mark (counts).
+        centre: u16,
+        /// How far it is from the middle (counts).
+        off: f64,
+        /// The middle of the travel (counts).
+        middle: f64,
+    },
     /// One side travels much less than the other.
-    Lopsided { left: u16, right: u16 },
+    Lopsided {
+        /// Counts from the centre to the left mark.
+        left: u16,
+        /// Counts from the centre to the right mark.
+        right: u16,
+    },
     /// An end reads 0 or 4095.
     Clipped(Mark, u16),
     /// The two sides' counts a radian.
-    GainsDiffer { left: f64, right: f64 },
+    GainsDiffer {
+        /// The left side's counts a radian.
+        left: f64,
+        /// The right side's counts a radian.
+        right: f64,
+    },
 }
 
 impl fmt::Display for Warning {
@@ -127,9 +163,11 @@ impl fmt::Display for Warning {
 /// What the marks give.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Limits {
+    /// Counts with the wheels straight.
     pub centre: u16,
     /// Counts: the limits, the same distance each side of the centre.
     pub lo: u16,
+    /// Counts: the high limit.
     pub hi: u16,
     /// Counts each side of the centre.
     pub half: u16,
@@ -139,11 +177,13 @@ pub struct Limits {
     pub counts_per_rad: Option<f64>,
     /// rad at lo or hi; with both wheel angles only.
     pub max_steering_angle: Option<f64>,
+    /// What looks wrong with the marks.
     pub warnings: Vec<Warning>,
 }
 
 impl Limits {
     /// The limit on the left (full left lock's side), counts.
+    #[must_use]
     pub fn left_limit(&self) -> u16 {
         if self.sign > 0 {
             self.hi
@@ -153,6 +193,7 @@ impl Limits {
     }
 
     /// The limit on the right, counts.
+    #[must_use]
     pub fn right_limit(&self) -> u16 {
         if self.sign > 0 {
             self.lo
@@ -163,11 +204,19 @@ impl Limits {
 }
 
 /// The limits for the marks, with [`MARGIN`].
+///
+/// # Errors
+///
+/// [`MeasurementError`] if a mark is out of range, the ends are too close, the centre isn't between them, or an angle isn't positive.
 pub fn compute(m: &Marks) -> Result<Limits, MeasurementError> {
     compute_with_margin(m, MARGIN)
 }
 
 /// The limits for the marks: the module's rules.
+///
+/// # Errors
+///
+/// [`MeasurementError`] if a mark is out of range, the ends are too close, the centre isn't between them, or an angle isn't positive.
 pub fn compute_with_margin(m: &Marks, margin: f64) -> Result<Limits, MeasurementError> {
     for (mark, value) in [
         (Mark::Left, m.left),
@@ -250,6 +299,7 @@ pub fn compute_with_margin(m: &Marks, margin: f64) -> Result<Limits, Measurement
 }
 
 /// spine-board calibration.rs's `Steering` for the result: a person pastes it.
+#[must_use]
 pub fn firmware_steering(r: &Limits) -> String {
     let cpr = r.counts_per_rad.map_or_else(
         || "TODO: measure the wheel angles".to_owned(),
@@ -263,6 +313,7 @@ pub fn firmware_steering(r: &Limits) -> String {
 }
 
 /// vehicle.yaml's `max_steering_angle` line for the result.
+#[must_use]
 pub fn vehicle_yaml(r: &Limits) -> String {
     match r.max_steering_angle {
         None => "# max_steering_angle: measure the wheel angles at each end first".to_owned(),
@@ -271,6 +322,7 @@ pub fn vehicle_yaml(r: &Limits) -> String {
 }
 
 /// The result for people, in short lines: `steering_limits.py`'s `report`.
+#[must_use]
 pub fn report(r: &Limits) -> String {
     let mut lines = vec![
         format!(

@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_legacy_rs</name>
+  <version>0.1.0</version>
+  <description>legacy_uart_bridge in Rust (rclrs): the default since 17 Nov (Ben: "Rust tomorrow"), beside aav_legacy's Python one (legacy.launch.py legacy_impl:=rust|python). The same node name, topics, QoS, parameters and frames: ego's commands (/control/car/actuator_cmd), the Orin's counter and /safety/estop become the ESP32's UART frames (versions 1, 2, 3, packed by the firmware's own legacy-link), and its uplink frames become /vehicle/status, /vehicle/rc and the rest. The logic is the legacy-bridge crate, with no ROS, checked against the Python modules' answers.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>ackermann_msgs</depend>
+  <depend>aav_interfaces</depend>
+  <!-- No depend on aav_legacy: its launch file passes config/legacy.yaml, and its tests
+       run this bridge too (a test_depend there). -->
+
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

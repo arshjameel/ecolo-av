@@ -60,7 +60,9 @@ pub trait CommandLink {
 /// One tick, as the spine saw it: for a link's status frame.
 #[derive(Debug, Clone, Copy)]
 pub struct Report {
+    /// When (ms since boot).
     pub now_ms: u32,
+    /// What the spine decided.
     pub outputs: Outputs,
     /// The RC this tick, or none (silent, or its mode switch out of range).
     pub rc: Option<RcInput>,
@@ -129,6 +131,7 @@ pub struct LinkStats {
     pub counter: Option<u8>,
     /// Uplink frames sent, and writes that failed (with an uplink).
     pub uplinks: u32,
+    /// Uplink writes that failed.
     pub uplink_errors: u32,
 }
 
@@ -154,6 +157,7 @@ pub struct LastFrame {
 
 impl LastFrame {
     /// How old it is at `now_ms`.
+    #[must_use]
     pub fn age_ms(&self, now_ms: u32) -> u32 {
         now_ms.wrapping_sub(self.at_ms)
     }
@@ -177,6 +181,7 @@ impl Write for NoUplink {
     }
 }
 
+#[derive(Debug)]
 enum Decoder {
     V1(Parser),
     V2 {
@@ -226,6 +231,7 @@ enum Decoder {
 ///
 /// Version 4 frames (6 Nov) carry the car's wheel speed. It goes to the spine from every
 /// good frame, repeated counter or not: the Orin going quiet says nothing about the wheels.
+#[derive(Debug)]
 pub struct LegacyLink<U, T = NoUplink> {
     uart: U,
     tx: Option<T>,
@@ -288,6 +294,7 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
     /// clear, the steering calibration) still cuts it at once, as the C++ cut it for a
     /// brake demand; so do a change of direction and every stop the spine makes. Off by
     /// default: the board's `cpp-throttle-ramp` feature.
+    #[must_use]
     pub fn with_cpp_ramp(mut self) -> Self {
         self.ramp = Some(DacRamp::new());
         self

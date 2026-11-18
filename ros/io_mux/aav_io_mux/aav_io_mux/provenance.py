@@ -11,6 +11,7 @@ The sensor mux (sensor_mux.py) and the output mux (output_mux.py) ask these func
 | Any announcement that isn't the source this run asked for | foreign |
 | Each sensor: one publisher, from the source asked for | check_sensors |
 | What the ROS graph suggests counts once it lasts (discovery takes a moment) | Hold |
+| A missing announcement counts only after the start-up grace (a busy computer) | Hold |
 | Pass the target's commands on, wait, or latch a stop | Gate |
 
 Every rule errs towards "this is the real car, and something is wrong": an unknown source
@@ -170,6 +171,9 @@ class Check:
     graph suggests (two publishers on a sensor, one nobody announces): discovery and a
     late announcement can show these for a moment, so Hold turns a doubt into a problem
     only once it lasts. The output mux latches on a problem, and waits on a doubt.
+
+    pending: the doubts a late announcement would settle (a sensor nobody announces, an
+    announcer not heard yet). Hold gives them the start-up grace as well.
     """
 
     source: int                     # what source:= asked for
@@ -177,6 +181,7 @@ class Check:
     problems: Tuple[str, ...]
     doubts: Tuple[str, ...]
     sensors: Tuple[Sensor, ...]     # the watched topics that have a publisher
+    pending: Tuple[str, ...] = ()   # the doubts an announcement on its way would settle
 
 
 def check_sensors(expected: int, entries: Sequence[Entry],
@@ -194,6 +199,7 @@ def check_sensors(expected: int, entries: Sequence[Entry],
     """
     problems = foreign(entries, expected)
     doubts = list(unheard)
+    pending = list(unheard)
     sensors = []
     for name, topic in watched:
         pubs = tuple(sorted(set(publishers.get(topic, ()))))
@@ -206,27 +212,44 @@ def check_sensors(expected: int, entries: Sequence[Entry],
         if not kinds:
             kind = REAL
             if expected != REAL:
-                doubts.append(f'{name}: {topic} from {", ".join(pubs)}, which nobody '
-                              'announces on /system/source: a real driver?')
+                doubt = (f'{name}: {topic} from {", ".join(pubs)}, which nobody '
+                         'announces on /system/source: a real driver?')
+                doubts.append(doubt)
+                pending.append(doubt)
         else:
             # One that isn't the source asked for is already a problem (foreign, above).
             kind = expected if kinds == {expected} else min(kinds - {expected})
         sensors.append(Sensor(name, topic, kind, pubs))
     return Check(expected, not problems and not doubts, tuple(problems), tuple(doubts),
-                 tuple(sensors))
+                 tuple(sensors), tuple(pending))
 
 
 @dataclass
 class Hold:
-    """Turn a doubt into a problem once it has lasted `hold` s (the sensor mux's memory)."""
+    """
+    Turn a doubt into a problem once it has lasted `hold` s (the sensor mux's memory).
+
+    A pending doubt (an announcement may still be on its way) also waits for
+    `grace_until` (s, the same steady clock): at start-up, on a busy computer, discovery
+    can show a simulator's sensors 10 s before the node that announces them (TODO 234).
+    Until then it stays a doubt, so the output mux holds WAIT, closed: nothing drives.
+    After it, a doubt that has lasted `hold` s latches as before. An announcement of
+    another source never waits for either.
+    """
 
     hold: float = 5.0
+    grace_until: float = 0.0
     since: Dict[str, float] = field(default_factory=dict)
+
+    def in_grace(self, now: float, check: Check) -> bool:
+        """Whether a pending doubt is being given the start-up grace now."""
+        return bool(check.pending) and now < self.grace_until
 
     def judge(self, now: float, check: Check) -> Check:
         """Return the check with each doubt that has lasted long enough as a problem."""
         self.since = {d: self.since.get(d, now) for d in check.doubts}
-        lasting = tuple(d for d in check.doubts if now - self.since[d] >= self.hold)
+        lasting = tuple(d for d in check.doubts if now - self.since[d] >= self.hold
+                        and (d not in check.pending or now >= self.grace_until))
         doubts = tuple(d for d in check.doubts if d not in lasting)
         problems = check.problems + lasting
         return replace(check, ok=not problems and not doubts, problems=problems,

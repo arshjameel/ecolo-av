@@ -11,19 +11,23 @@ to ego. A person always outranks the computer.
 | Package | Driver | Topic | Priority |
 |---|---|---|---|
 | [aav_teleop](./aav_teleop/README.md) | joystick (stock joy + teleop_twist_joy), keyboard, e-stop button | `/drivers/joy/cmd_vel`, `/drivers/keyboard/cmd_vel` | 100, 90 |
-| [aav_rc](./aav_rc/README.md) | the RC transmitter, through ROS | `/drivers/rc/cmd_vel` | 95 |
+| [aav_rc](./aav_rc/README.md) | the RC transmitter, through ROS (Python: the fall-back, `rc_impl:=python`) | `/drivers/rc/cmd_vel` | 95 |
+| [aav_rc_rs](./aav_rc_rs/README.md) | the same `rc_driver` in Rust, the default since 17 Nov | `/drivers/rc/cmd_vel` | 95 |
 | [aav_actuator_tests](./aav_actuator_tests/README.md) | stage-3 and stage-4 actuator tests | `/drivers/tests/cmd_vel` | 60 |
 | [aav_scripted](./aav_scripted/README.md) | `/scripted_drive`: one speed profile | `/drivers/scripted/cmd_vel` | 50 |
-| [aav_drive_to_point](./aav_drive_to_point/README.md) | `/drive_to_point`: drive to one GPS or map point and stop | `/drivers/point/cmd_vel` | 25 |
-| [aav_navigation](./aav_navigation/README.md) | Nav2 (Smac Lattice planner, Hybrid-A* forward only; MPPI), behaviour trees, maps | `/drivers/nav/cmd_vel` | 20 |
-| [aav_track](./aav_track/README.md) | trial path followers (pure pursuit, Stanley, LQR, MPC, MPC with speed) in controller_server's place: `tracker:=` (`docs/trials.md`) | `cmd_vel_nav`, inside Nav2's slot | (20) |
-| [aav_mppi_lag](./aav_mppi_lag/README.md) | a trial follower: Nav2's MPPI in Rust, its model with the actuators' lag, in controller_server's place: `tracker:=mppi_lag` ([page](../../docs/mppi-lag.md)); says `/drivers/nav/lag_aware` | `cmd_vel_nav`, inside Nav2's slot | (20) |
-| [aav_costmap](./aav_costmap/README.md) | a trial: our own local and global costmaps in Rust, Nav2's layers ported, beside Nav2's: `costmap:=own`; `mppi_lag` then reads ours ([page](../../docs/own-costmap.md)) | `/drivers/nav/costmap/*`, inside Nav2's slot | (20) |
-| [aav_planner](./aav_planner/README.md) | a trial planner: Nav2's State Lattice in Rust, beside Nav2's; the behaviour trees call it: `planner:=own` ([page](../../docs/own-planner.md)) | `/plan`, inside Nav2's slot | (20) |
-| [aav_navigator](./aav_navigator/README.md) | a trial: our own navigator in Rust (the trees' plan, follow, replan, recover; through-poses; waypoints and GPS waypoints by the datum) in bt_navigator's and waypoint_follower's place: `navigator:=own`; with `planner:=own costmap:=own tracker:=mppi_lag`, no Nav2 server navigates ([page](../../docs/own-navigator.md)) | `/drivers/nav/navigator/*` actions, inside Nav2's slot | (20) |
-| [aav_diffusion_planner](./aav_diffusion_planner/README.md) | a trial planner: a model draws the path, a guard checks it, the lattice's path if it fails: `planner:=diffusion` (`docs/trials.md`) | `/plan`, inside Nav2's slot | (20) |
-| [aav_behaviour](./aav_behaviour/README.md) | a trial: the behaviour states and a speed cap on Nav2 from the stopping law, for a stop sign, an obstacle ahead, the fence and the goal: `behaviour:=true` ([page](../../docs/stopping.md)) | `/drivers/nav/speed_limit`, inside Nav2's slot | (20) |
-| [aav_routes](./aav_routes/README.md) | street routes (Valhalla or OSRM) as Nav2 GPS waypoints; directions on the campus by a place's name (its own road graph) | `/drivers/nav/route/*` | — |
+| [aav_drive_to_point](./aav_drive_to_point/README.md) | `/drive_to_point`: drive to one GPS or map point and stop (Python: the fall-back, `drive_to_point_impl:=python`) | `/drivers/point/cmd_vel` | 25 |
+| [aav_drive_to_point_rs](./aav_drive_to_point_rs/README.md) | the same `point_driver` and `drive_to_point` client in Rust, the default since 18 Nov | `/drivers/point/cmd_vel` | 25 |
+| [aav_navigation](./aav_navigation/README.md) | navigation for a car: the launch file and settings (`nav2.yaml`, in Nav2's layout) that start our map server, costmaps, planner, navigator, follower, smoother and stop zone; the maps. Nav2 itself went on 17 Nov ([as it was](../../docs/history/nav2-as-it-was.md)) | `/drivers/nav/cmd_vel` | 20 |
+| [aav_track](./aav_track/README.md) | trial path followers (pure pursuit, Stanley, LQR, MPC, MPC with speed) in `mppi_lag`'s place: `tracker:=` (`docs/trials.md`) | `cmd_vel_nav`, inside navigation's slot | (20) |
+| [aav_mppi_lag](./aav_mppi_lag/README.md) | the path follower: Nav2's MPPI ported to Rust, its model with the actuators' lag: `tracker:=mppi_lag`, the default ([page](../../docs/mppi-lag.md)); says `/drivers/nav/lag_aware` | `cmd_vel_nav`, inside navigation's slot | (20) |
+| [aav_mpc_lag](./aav_mpc_lag/README.md) | a trial follower: `aav_track`'s lag-aware MPC (`mpc_lag`) in Rust, a challenger beside the Python one, in `mppi_lag`'s place: `tracker:=mpc_lag_rs`; says `/drivers/nav/lag_aware` | `cmd_vel_nav`, inside navigation's slot | (20) |
+| [aav_costmap](./aav_costmap/README.md) | our local and global costmaps in Rust, Nav2's layers ported, and the map server: `costmap:=own`, the only one ([page](../../docs/own-costmap.md)) | `/drivers/nav/costmap/*`, `/map` | (20) |
+| [aav_planner](./aav_planner/README.md) | the planner: Nav2's State Lattice ported to Rust, and its Hybrid-A* (`planner_search:=hybrid`), and the lane-centre planner (`path:=lane`); the navigator calls it: `planner:=own` ([page](../../docs/own-planner.md)) | `/plan` | (20) |
+| [aav_navigator](./aav_navigator/README.md) | the navigator in Rust (plan, follow, replan, recover; through-poses; waypoints and GPS waypoints by the datum), in Nav2's bt_navigator's and waypoint_follower's old place: `navigator:=own`, the only one ([page](../../docs/own-navigator.md)) | Nav2's action names (`/navigate_to_pose`...) | (20) |
+| [aav_smoother](./aav_smoother/README.md) | the velocity smoother in Rust (Nav2's `velocity_smoother` for a car: the steering's rate and full lock): `smoother:=own`, the only one ([page](../../docs/own-smoother.md)) | `/control/cmd_vel_smoothed` or `/drivers/nav/cmd_vel` | (20) |
+| [aav_diffusion_planner](./aav_diffusion_planner/README.md) | a trial planner: a model draws the path, a guard checks it, the lattice's path if it fails: `planner:=diffusion` (`docs/trials.md`) | `/plan` | (20) |
+| [aav_behaviour](./aav_behaviour/README.md) | a trial: the behaviour states and a speed cap from the stopping law, in the road ahead, for a stop sign, an obstacle ahead, the fence and the goal: `behaviour:=true` ([page](../../docs/stopping.md)) | `/drivers/nav/speed_limit` | (20) |
+| [aav_routes](./aav_routes/README.md) | street routes (Valhalla or OSRM) as GPS waypoints for the navigator; directions on the campus by a place's name (its own road graph) | `/drivers/nav/route/*` | — |
 | [aav_language](./aav_language/README.md) | plain-English driving: MCP drive tools and a local-model agent | uses the actions above | — |
 
 The lane follower on the AI slot (priority 10) lives in `ros/perception/aav_lane_geometry`.

@@ -1,7 +1,7 @@
 # Each wheel's speed along the ground, in m/s (its spin times its radius), negative in
 # reverse. NaN means that wheel isn't measured, or its reading is stale.
 # Published on /vehicle/wheels by the backend:
-#   - gazebo_adapter: all four, from the wheel joints;
+#   - sim_adapter: all four, from the wheel joints;
 #   - spine_bridge: the front two, from the CAN wheel nodes (0x200 WHEEL_SPEED_L,
 #     0x201 WHEEL_SPEED_R, firmware/can/aav.dbc), about 100 Hz; the rear two NaN.
 

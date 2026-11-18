@@ -1,6 +1,8 @@
 # What's new: 22 October to 1 November
 
 > **Frozen on 1 November, as history.** From 0.2 on, what's new goes in [the release notes](release-notes.md).
+>
+> **Nav2 and Gazebo, named below, are gone**: Gazebo on 16 Nov, Nav2 on 17 Nov. Today: Ravensim and our stack (`stack:=ours`). What each was: [Nav2, as it was](history/nav2-as-it-was.md), [Gazebo, as it was](history/gazebo-as-it-was.md).
 
 Everything the last few pull requests added (#13 to #19, and the branch after), by area;
 then the best version to take to the car, what's left for CARLA, and which Ubuntu each

@@ -32,14 +32,15 @@ only once the evidence has gone. Doubt only holds it shut, and it reopens by its
 `settle` s of all clear: a sensor mux not heard yet or quiet for `stale_after` s, its
 doubts, or a node on /system/source whose announcement hasn't arrived yet. An
 announcement heard before its node shows in the graph counts at once
-(provenance.Announcers). Its clock is a steady one, not simulated time.
+(provenance.Announcers). Its clock is a steady one, not simulated time. This node's
+work, without ROS, is muxes.OutputMuxLogic.
 """
 
 import signal
 import time
 
 from aav_interfaces.msg import DataSource, Heartbeat, SourceCheck
-from aav_io_mux import heartbeat, provenance
+from aav_io_mux import heartbeat, muxes, provenance
 from aav_io_mux.sensor_mux import ANNOUNCEMENTS, announcers_alive, entries_of
 from ackermann_msgs.msg import AckermannDriveStamped
 import rclpy
@@ -56,83 +57,69 @@ class OutputMux(Node):
         super().__init__('output_mux')
         self.target = self.declare_parameter('target', 'car').value
         topic = provenance.command_topic(self.target)
-        self.gate = provenance.Gate(self.target,
-                                    settle=self.declare_parameter('settle', 2.0).value,
-                                    stale_after=self.declare_parameter('stale_after', 3.0).value,
-                                    screens=tuple(n.strip() for n in self.declare_parameter(
-                                        'screens', '').value.split(',') if n.strip()))
-        self.announcers = provenance.Announcers()
-        self.last_state = None
+        self.logic = muxes.OutputMuxLogic(
+            self.target, settle=self.declare_parameter('settle', 2.0).value,
+            stale_after=self.declare_parameter('stale_after', 3.0).value,
+            screens=muxes.screen_names(self.declare_parameter('screens', '').value))
         self.out = self.create_publisher(AckermannDriveStamped, topic, 10)
         self.state_pub = self.create_publisher(String, 'safety/output_mux/state', 10)
-        self.counter = heartbeat.Counter()
         self.heartbeat = self.create_publisher(Heartbeat, heartbeat.heartbeat_topic(self.target),
                                                10)
         self.create_subscription(AckermannDriveStamped, 'ego/actuator_cmd', self.on_cmd, 10)
         self.create_subscription(SourceCheck, 'system/sensor_mux/state', self.on_check, 10)
         self.create_subscription(DataSource, 'system/source', self.on_source, ANNOUNCEMENTS)
-        for screen in self.gate.screens:
+        for screen in self.logic.gate.screens:
             self.create_subscription(
                 UInt64, f'hud/{screen}/heartbeat',
-                lambda _msg, name=screen: self.gate.beat(name, time.monotonic()), 10)
+                lambda _msg, name=screen: self.logic.beat(name, time.monotonic()), 10)
         self.create_service(Trigger, 'safety/output_mux/clear', self.on_clear)
         # Little work beside the commands, so a command never waits long behind it: the
         # graph (who still announces) twice a second, and the state with it.
         steady = Clock(clock_type=ClockType.STEADY_TIME)
         self.create_timer(0.5, self.tick_and_publish, clock=steady)
         self.get_logger().info(f'target:={self.target}: ego/actuator_cmd -> {topic}, while '
-                               f'every source is {provenance.kind_name(self.gate.expected)}')
+                               f'every source is '
+                               f'{provenance.kind_name(self.logic.gate.expected)}')
 
     def on_check(self, msg):
-        self.gate.report = provenance.Report(time.monotonic(), msg.source, msg.ok,
-                                             tuple(msg.problems), tuple(msg.doubts))
-        self.tick()
-        self.publish_state(changes_only=True)
+        self.say(self.logic.check(time.monotonic(), announcers_alive(self), msg.source,
+                                  msg.ok, msg.problems, msg.doubts))
 
     def on_source(self, msg):
-        self.announcers.hear(msg.announcer, entries_of(msg), time.monotonic())
-        self.tick()
-        self.publish_state(changes_only=True)
-
-    def tick(self):
-        """Re-judge: the live announcements, any not heard yet, the sensor mux's age."""
-        now = time.monotonic()
-        alive = announcers_alive(self)
-        self.gate.entries = self.announcers.entries(alive, now)
-        self.gate.unheard = self.announcers.unheard(alive)
-        self.gate.update(now)
+        self.say(self.logic.source(time.monotonic(), announcers_alive(self), msg.announcer,
+                                   entries_of(msg)))
 
     def tick_and_publish(self):
-        self.tick()
-        self.publish_state()
+        self.say(self.logic.timer(time.monotonic(), announcers_alive(self)))
 
     def on_cmd(self, msg):
-        if self.gate.is_open(time.monotonic()):
+        counter = self.logic.command(time.monotonic())
+        if counter is not None:
             self.out.publish(msg)
-            self.heartbeat.publish(Heartbeat(header=msg.header, counter=self.counter.beat()))
+            self.heartbeat.publish(Heartbeat(header=msg.header, counter=counter))
 
     def on_clear(self, request, response):
-        self.tick()
-        response.success, response.message = self.gate.clear(time.monotonic())
+        response.success, response.message, state = self.logic.clear(
+            time.monotonic(), announcers_alive(self))
         # Two call sites: rclpy refuses one that logs at two severities.
         if response.success:
             self.get_logger().warning(f'clear: {response.message}')
         else:
             self.get_logger().error(f'clear: {response.message}')
-        self.publish_state(changes_only=True)
+        self.say(state)
         return response
 
-    def publish_state(self, changes_only=False):
-        state = self.gate.state(time.monotonic())
-        if changes_only and state == self.last_state:
+    def say(self, published):
+        """Publish the state line muxes.OutputMuxLogic gives, and log a change."""
+        if published is None:
             return
-        if state != self.last_state:
-            if state.startswith('STOP'):
-                self.get_logger().error(state)
+        line, log = published
+        if log is not None:
+            if log[0] == 'error':
+                self.get_logger().error(log[1])
             else:
-                self.get_logger().info(state)
-            self.last_state = state
-        self.state_pub.publish(String(data=state))
+                self.get_logger().info(log[1])
+        self.state_pub.publish(String(data=line))
 
 
 def main(args=None):

@@ -24,7 +24,7 @@ feed-forward alone. Its PI compares the car with ego's speed delayed by `respons
 The **smooth stop** (Autoware's design, Apache-2.0, our own code): when ego reaches 0 the car
 keeps slowing as it was, then the slowing fades with the speed, so it stops without a
 jolt; stopped, the brake rises gently to `stopped_brake` and holds.
-In Gazebo: `pixi run sim esp32:=true`, the C++ firmware standing in (`aav_gazebo`). The design: `docs/designs/2026-10-27_control-plan.md`, step 1.
+In Ravensim: `pixi run sim esp32:=true`, the C++ firmware standing in (`aav_sim_models`). The design: `docs/designs/2026-10-27_control-plan.md`, step 1.
 
 ### The no-timeout lock
 
@@ -124,14 +124,27 @@ ros2 run aav_legacy steering_limits --left 3420 --centre 1890 --right 480 --left
 
 ### Launch
 
-`legacy.launch.py [uart:=true] [encoder:=true] [rc:=true]`: the bridge, the encoder,
-and `aav_rc`'s `rc_driver` beside the bridge.
+`legacy.launch.py [uart:=true] [encoder:=true] [rc:=true] [legacy_impl:=rust] [rc_impl:=rust]
+[port:=] [frame_version:=]`: the bridge, the encoder, and `rc_driver` beside the bridge.
+`port` and `frame_version` (empty: `legacy.yaml`'s) change one run without editing the file,
+in both languages: the bridge has `namespace='/'`, so launch's values beat the YAML in Rust
+too (`docs/languages.md`, "Launch overrides"; `aav_bringup`'s `test_rust_overrides.py`).
+
+| Switch | `rust` (the default since 17 Nov, Ben: "Rust tomorrow") | `python` (the fall-back) |
+|---|---|---|
+| `legacy_impl` | `aav_legacy_rs`'s `legacy_uart_bridge` | this package's |
+| `rc_impl` | `aav_rc_rs`'s `rc_driver` | `aav_rc`'s |
+
+The same node names, topics, parameters and frames: `aav_legacy_rs`'s vectors check every
+frame byte for byte. The chain tests (`test_heartbeat_chain.py`, `test_uplink_chain.py`,
+`test_no_timeout_lock.py`, `test_steering_calibration_chain.py`) run each test with both
+(`test/conftest.py`'s `impl`); the heartbeat chain's Rust run uses the Rust muxes too.
 
 ### Modules
 
 | Module | ROS? | Holds |
 |---|---|---|
-| `legacy_uart_bridge.py`, `encoder_udp.py` | yes | the nodes |
+| `legacy_uart_bridge.py`, `encoder_udp.py` | yes | the nodes (the bridge's Rust twin, the default: `aav_legacy_rs`) |
 | `legacy_protocol.py` | no | the frames: `pack_frame` (v1, 13 bytes), `pack_frame_v2` (17 bytes), `pack_frame_v3` (20 bytes), `unpack_uplink` (35 or 40 bytes), `UplinkParser`, `to_legacy`, `from_pedals`, `stop_command`, `EncoderSpeed` |
 | `uart_relay.py` | no | `Relay`: what to write each tick; `programs_locked`: the no-timeout lock |
 | `speed_control.py` | no | `SpeedControl`: feed-forward from ego's speed profile plus PI on the wheel speed, out as throttle or brake; the smooth stop |

@@ -14,10 +14,13 @@ pub enum Page {
     Overview,
     /// Steering, speed and acceleration, as commanded.
     Drive,
+    /// The steering Jrk: OK or not, its flags in hex.
     SteeringJrk,
+    /// The brake Jrk: OK or not, its flags in hex.
     BrakeJrk,
     /// The steering Jrk's error flags, one by one.
     SteeringFlags,
+    /// The brake Jrk's error flags, one by one.
     BrakeFlags,
     /// The throttle DAC.
     Throttle,
@@ -29,6 +32,7 @@ pub enum Page {
     Computers,
     /// Which ROS nodes are up.
     Nodes,
+    /// Latitude and longitude.
     Gps,
     /// The car's error code.
     Error,
@@ -56,6 +60,7 @@ impl Page {
     pub const HOME: Page = Page::Overview;
 
     /// The page `steps` on (back, if negative), round the end.
+    #[must_use]
     pub fn turn(self, steps: i8) -> Page {
         let n = Page::ALL.len() as i32;
         let here = self as i32;
@@ -63,6 +68,7 @@ impl Page {
     }
 
     /// What it shows, from the latest packet (or a waiting message before the first).
+    #[must_use]
     pub fn render(self, telemetry: Option<&Telemetry>, pinned: bool) -> Screen {
         let Some(t) = telemetry else {
             return Screen {

@@ -19,6 +19,7 @@ import signal
 import subprocess
 import time
 
+from conftest import ros_nodes, RustNode
 import pytest
 
 try:
@@ -40,7 +41,7 @@ SPEED = {'joy': 0.1, 'tests': 0.2, 'scripted': 0.3, 'nav': 0.5}
 class Run:
     """The bridge in this process, twist_mux in its own process group, and a test node."""
 
-    def __init__(self, version, allow=False):
+    def __init__(self, version, allow=False, impl='python'):
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
         self.domain = random.randint(150, 230)
         self.master, self.slave = os.openpty()
@@ -51,14 +52,15 @@ class Run:
                 '-p', f'legacy_uart_bridge:allow_programs_without_timeout:={allow}']
         rclpy.init(args=args, domain_id=self.domain)
         self.executor = SingleThreadedExecutor()
-        self.bridge = LegacyUartBridge()
+        self.bridge = (RustNode('aav_legacy_rs', 'legacy_uart_bridge', args, self.domain)
+                       if impl == 'rust' else LegacyUartBridge())
         self.test = rclpy.create_node('no_timeout_lock_test')
         self.pubs = {name: self.test.create_publisher(TwistStamped, f'/drivers/{name}/cmd_vel',
                                                       10) for name in SPEED}
         self.out = []
         self.test.create_subscription(TwistStamped, '/control/cmd_vel',
                                       lambda m: self.out.append(m.twist.linear.x), 100)
-        for n in (self.bridge, self.test):
+        for n in ros_nodes((self.bridge, self.test)):
             self.executor.add_node(n)
         self.mux = None
 
@@ -118,8 +120,8 @@ class Run:
         os.close(self.slave)
 
 
-def started(version, allow=False):
-    r = Run(version, allow)
+def started(version, allow=False, impl='python'):
+    r = Run(version, allow, impl)
     r.spin(1.0)          # the bridge's latched lock goes out before the mux exists
     r.start_mux()
     # The joystick shows the mux is up: then a silence below is the lock, not a slow start.
@@ -129,8 +131,8 @@ def started(version, allow=False):
 
 
 @pytest.fixture
-def run(request):
-    r = started(**request.param)
+def run(request, impl):
+    r = started(**request.param, impl=impl)
     yield r
     r.close()
 

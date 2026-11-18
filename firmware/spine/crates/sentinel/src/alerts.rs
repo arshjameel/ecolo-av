@@ -5,7 +5,9 @@ use crate::telemetry::{ErrorCode, Telemetry};
 /// One tone: the buzzer on, then quiet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tone {
+    /// How long the buzzer sounds (ms).
     pub on_ms: u16,
+    /// How long it is quiet after (ms).
     pub off_ms: u16,
 }
 
@@ -46,6 +48,8 @@ pub enum Beep {
 }
 
 impl Beep {
+    /// The beep's tones, in order.
+    #[must_use]
     pub fn tones(self) -> &'static [Tone] {
         const BOOT: &[Tone] = &[SHORT, SHORT, SHORT];
         const READY: &[Tone] = &[tone(800, 0)];
@@ -96,6 +100,8 @@ pub struct Alerts {
 }
 
 impl Alerts {
+    /// No packet seen yet, no alert sounding.
+    #[must_use]
     pub const fn new() -> Self {
         Alerts {
             last_packet_ms: None,
@@ -154,6 +160,7 @@ impl Alerts {
     }
 
     /// No packet for 3 s, after at least one.
+    #[must_use]
     pub fn comms_lost(&self) -> bool {
         self.lost
     }

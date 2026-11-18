@@ -35,6 +35,7 @@ impl Checker {
     /// `outline`: the padded footprint, m, in base_link. `possible_collision_cost`: the
     /// inflation's cost at the circumscribed radius (None if the inflation is smaller
     /// than the car).
+    #[must_use]
     pub fn new(
         outline: &[(f64, f64)],
         possible_collision_cost: Option<u8>,
@@ -57,6 +58,7 @@ impl Checker {
     }
 
     /// The car at (x, y) in cells (continuous: cell (0, 0) spans [0, 1)), facing yaw.
+    #[must_use]
     pub fn fit(&self, grid: &Grid, x: f64, y: f64, yaw: f64) -> Fit {
         if x < 0.0 || y < 0.0 || x >= grid.width as f64 || y >= grid.height as f64 {
             return Fit::Blocked;
@@ -91,21 +93,27 @@ impl Checker {
 
 /// The highest cost under the outline's edges at (wx, wy); lethal if a corner is off the
 /// grid (Nav2's `FootprintCollisionChecker::footprintCost`).
+///
+/// No allocation: it runs about a million times a long campus plan (TODO 152), so each
+/// corner is found as its edge is traced, and the first one kept to close the outline.
 fn outline_cost(grid: &Grid, turned: &[(f64, f64)], wx: f64, wy: f64) -> u8 {
-    let Some(corners) = turned
-        .iter()
-        .map(|&(x, y)| grid.cell(wx + x, wy + y))
-        .collect::<Option<Vec<_>>>()
-    else {
+    let corner = |&(x, y): &(f64, f64)| grid.cell(wx + x, wy + y);
+    let Some(first) = turned.first().map(corner) else {
+        return 0;
+    };
+    let Some(mut a) = first else {
         return LETHAL;
     };
     let mut worst = 0;
-    for (i, &a) in corners.iter().enumerate() {
-        let b = corners[(i + 1) % corners.len()];
+    for next in turned[1..].iter().map(corner).chain(std::iter::once(first)) {
+        let Some(b) = next else {
+            return LETHAL;
+        };
         grid.raytrace(a, b, usize::MAX, 0, |c| worst = worst.max(grid.data[c]));
         if worst == LETHAL {
             return LETHAL;
         }
+        a = b;
     }
     worst
 }

@@ -12,7 +12,7 @@
       },
       "topics": {
         "/robot_description": {"visible": true},
-        "/local_costmap/costmap": {"visible": true, "colorMode": "costmap", "alpha": 0.5},
+        "/drivers/nav/costmap/local": {"visible": true, "colorMode": "costmap", "alpha": 0.5},
         "/sensors/lidar/scan": {"visible": true, "pointSize": 4, "colorMode": "flat",
                                 "flatColor": "#00e5ff"},
         "/sensors/radar/points": {"visible": true, "pointSize": 6, "colorMode": "flat",
@@ -23,7 +23,7 @@
         "/plan": {"visible": true, "lineWidth": 0.15, "color": "#2196f3"},
         "/goal_pose": {"visible": true, "type": "arrow"},
         "/drivers/nav/route/path": {"visible": true, "lineWidth": 0.1, "color": "#9c27b0"},
-        "/safety/collision_monitor/stop_zone": {"visible": true},
+        "/safety/stop_zone/box": {"visible": true},
         "/safety/ghost/marker": {"visible": true}
       }
     },
@@ -44,7 +44,7 @@
       "fallbackColor": "#2e7d32",
       "fallbackLabel": "Sensors OK (or no watchdog yet)",
       "rules": [{"operator": "=", "rawValue": "true", "color": "#c62828",
-                 "label": "STOP: a sensor Nav2 needs has failed"}]
+                 "label": "STOP: a sensor the navigation needs has failed"}]
     },
     "RawMessages!gate": {
       "topicPath": "/safety/output_mux/state.data",

@@ -6,14 +6,11 @@ Publish the car's frames: robot_state_publisher from the URDF.
 
 joint_state_publisher fills in the joints nobody measures (wheel spin) and merges
 the measured steering angles that aav_spine publishes on /vehicle/joint_states.
-In Gazebo, the simulator publishes /joint_states itself, so turn it off there.
-lidar:=true (with sim:=true) simulates the roof lidar on lidar_link, which is always there.
-chase_camera:=true (with sim:=true) adds Gazebo's chase camera, behind and above the car.
-With sim:=true, Gazebo's steering_limit comes from vehicle.yaml through
-vehicle.gazebo_steering_limit: given max_steering_angle itself, Gazebo steers short.
+In Ravensim, the simulator publishes /joint_states itself, so turn it off there.
+sim, lidar and chase_camera added Gazebo's plugins and sensors to the URDF; Gazebo went on
+16 Nov, and Ravensim reads vehicle.yaml itself. They are still taken, and change nothing.
 """
 
-from aav_description import vehicle
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
@@ -28,21 +25,19 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     xacro_file = PathJoinSubstitution(
         [FindPackageShare('aav_description'), 'urdf', 'aav.urdf.xacro'])
-    steering_limit = vehicle.gazebo_steering_limit(vehicle.load()['vehicle'])
     robot_description = ParameterValue(
         Command(['xacro ', xacro_file, ' sim:=', sim,
                  ' lidar:=', LaunchConfiguration('lidar'),
-                 ' chase_camera:=', LaunchConfiguration('chase_camera'),
-                 f' gz_steering_limit:={steering_limit:.6f}']), value_type=str)
+                 ' chase_camera:=', LaunchConfiguration('chase_camera')]), value_type=str)
 
     return LaunchDescription([
         DeclareLaunchArgument('sim', default_value='false',
-                              description='Add the Gazebo plugins to the URDF'),
+                              description='ignored since Gazebo went (16 Nov)'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('lidar', default_value='false',
-                              description='With sim: the simulated roof lidar'),
+                              description='ignored since Gazebo went (16 Nov)'),
         DeclareLaunchArgument('chase_camera', default_value='false',
-                              description="With sim: Gazebo's chase camera, behind the car"),
+                              description='ignored since Gazebo went (16 Nov)'),
         DeclareLaunchArgument('joint_state_publisher', default_value='true',
                               description='Publish joints nobody else publishes'),
         Node(

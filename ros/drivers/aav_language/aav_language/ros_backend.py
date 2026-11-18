@@ -17,10 +17,13 @@ Subscribes  /localization/odom/local  nav_msgs/Odometry (speed, odom pose)
                                       clear it: this never calls /safety/geofence/clear
 Publishes   /safety/estop             std_msgs/Bool: ONLY true, five times in 0.5 s (estop()).
                                       Never false: a person clears the e-stop
+            /drivers/language/heartbeat  std_msgs/UInt64, reliable: 1, 2, 3... at 5 Hz, and 0
+                                      (goodbye) on close: the car's goal_leash (aav_safety)
+                                      cancels this driver's goals if the beats stop (TODO 116)
 Calls       /scripted_drive           aav_interfaces/action/ScriptedDrive (drive, turn, stop)
-            /follow_gps_waypoints     nav2_msgs/action/FollowGPSWaypoints (go_to_gps); with
-                                      the parameter navigator: own, aav_navigator's
-                                      /drivers/nav/navigator/follow_gps_waypoints
+            /follow_gps_waypoints     nav2_msgs/action/FollowGPSWaypoints (go_to_gps):
+                                      Nav2's waypoint_follower, or our navigator
+                                      (aav_navigator) in its place, under the same name
             /ego/get_parameters       ego's limits: max_speed, wheelbase, steering...
 
 The rules live in drive_tools.py and safety.py; this file only moves messages.
@@ -51,7 +54,7 @@ from rclpy.executors import SingleThreadedExecutor
 from rclpy.qos import DurabilityPolicy, qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import NavSatFix
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, UInt64
 import tf2_ros
 import yaml
 
@@ -124,16 +127,18 @@ class RosBackend:
                                       lambda m, name=lk.name: self._locked(name, m.data),
                                       reliable)
         self.estop_pub = n.create_publisher(Bool, '/safety/estop', reliable)
+        # The goal leash (aav_safety goal_leash, TODO 116): beats while this runs, so the car
+        # cancels this driver's goals if the laptop drops off; 0 says goodbye on close().
+        self.beat_pub = n.create_publisher(UInt64, '/drivers/language/heartbeat', reliable)
+        self.beats = itertools.count(1)
+        n.create_timer(0.2, lambda: self.beat_pub.publish(UInt64(data=next(self.beats))))
         self.scripted = ActionClient(n, ScriptedDrive, '/scripted_drive')
         self.gps_action = None
         try:
             from nav2_msgs.action import FollowGPSWaypoints
             self.gps_type = FollowGPSWaypoints
-            # navigator: nav2 (waypoint_follower) or own (aav_navigator, navigator:=own).
-            navigator = n.declare_parameter('navigator', 'nav2').value
-            name = ('/drivers/nav/navigator/follow_gps_waypoints' if navigator == 'own'
-                    else '/follow_gps_waypoints')
-            self.gps_action = ActionClient(n, FollowGPSWaypoints, name)
+            # Our navigator serves Nav2's name (Nav2's own went, 17 Nov).
+            self.gps_action = ActionClient(n, FollowGPSWaypoints, '/follow_gps_waypoints')
         except ImportError:
             self.gps_type = None
         self.ego_params = n.create_client(GetParameters, '/ego/get_parameters')
@@ -340,6 +345,9 @@ class RosBackend:
 
     def close(self):
         try:
+            # Goodbye: this driver cancelled its own goals; the leash need not.
+            self.beat_pub.publish(UInt64(data=0))
+            time.sleep(0.1)
             self.executor.shutdown(timeout_sec=1.0)
             self.node.destroy_node()
             rclpy.try_shutdown()

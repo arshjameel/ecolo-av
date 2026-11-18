@@ -81,7 +81,7 @@ def test_arming_again_sends_the_edge_again(bridge):
 
 def test_the_safety_gate_shut_refuses_arming(bridge):
     # Ben, 24 Oct: never armed while the output mux withholds the commands.
-    stop = 'STOP - target car needs REAL - imu is SIM (gazebo_adapter) - latched: ...'
+    stop = 'STOP - target car needs REAL - imu is SIM (sim_adapter) - latched: ...'
     fresh_command(bridge)
     for gate, says in ((None, '/safety/output_mux/state'),
                        ('WAIT - car: all REAL, settling for 2 s', 'settling'),

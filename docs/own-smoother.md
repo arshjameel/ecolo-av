@@ -1,7 +1,8 @@
 # Our own velocity smoother
 
 Ben, 8 Nov: a velocity smoother that **knows it drives a car**, beside Nav2's, as the
-challenger. Nav2 stays the default, and stays on the car.
+challenger at first. The default since 17 Nov, when Nav2's went
+([as it was](history/nav2-as-it-was.md)); the comparisons with Nav2's below are the record.
 
 > **The short version**
 > - **Switch:** `smoother:=own`. Package `aav_smoother` (Rust).
@@ -31,7 +32,7 @@ the tighter of the steering actuator's (`actuators.steer_rate`) and ego's ramp.
 ## How it fits
 
 ```
-follower (MPPI, mppi_lag, ...) ─▶ cmd_vel_nav ─▶ velocity_smoother ─▶ collision_monitor ─▶ /drivers/nav/cmd_vel
+follower (MPPI, mppi_lag, ...) ─▶ cmd_vel_nav ─▶ velocity_smoother ─▶ stop zone ─▶ /drivers/nav/cmd_vel
                                                   (Nav2's, or ours
                                                    under its name)
 ```
@@ -39,7 +40,7 @@ follower (MPPI, mppi_lag, ...) ─▶ cmd_vel_nav ─▶ velocity_smoother ─�
 | Name | Type | For |
 |---|---|---|
 | `cmd_vel_nav` | TwistStamped | in: the follower's command |
-| `/control/cmd_vel_smoothed` or `/drivers/nav/cmd_vel` | TwistStamped | out: to collision_monitor, or to twist_mux |
+| `/control/cmd_vel_smoothed` or `/drivers/nav/cmd_vel` | TwistStamped | out: to the stop zone, or to twist_mux |
 
 **How the swap works.** `navigation.launch.py smoother:=own` starts `car_smoother` with
 Nav2's node name, `velocity_smoother`, so it reads the same block of the tuned
@@ -100,7 +101,7 @@ test lot at 1 m/s, **3 runs each**, behind Nav2's smoother and behind ours.
 - **Not run yet** (cut short for car day, 9 Nov): the campus at 2.5 m/s, and
   `tracker:=mppi_lag` under Nav2's navigator. `--stacks own --smoothers nav2 own
   --tours campus --speed 2.5 --runs 2` and `--trackers mppi_lag --smoothers nav2 own`.
-- Nav2 stays the default; the car always runs Nav2's.
+- Ours is the only smoother since 17 Nov, in the sim and on the car.
 
 ## Where it came from
 

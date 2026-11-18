@@ -25,18 +25,17 @@ KISS_PYTHON = '.pixi/envs/kiss/bin/python'
 
 # What to start: the pixi task (and its flag), and what it is.
 PROGRAMS = [
-    ('demo --debug', 'Gazebo, RViz, the HUD, the map window and the debug HUD (cubes, NDT)'),
-    ('demo', 'Gazebo, RViz, the HUD and the map window'),
-    ('sim', 'Gazebo and the car only (add windows yourself)'),
+    ('demo --debug', 'Ravensim, RViz, the HUD, the map window and the debug HUD (cubes, NDT)'),
+    ('demo', 'Ravensim, RViz, the HUD and the map window'),
+    ('sim', 'Ravensim and the car only (add windows yourself)'),
 ]
 
-# Who steers along Nav2's path: Nav2's own controller, or one of our trial trackers.
+# Who steers along the path: ours (mppi_lag, the champion; Nav2's own controllers went on
+# 17 Nov), or one of our trial trackers.
 # (value, plain words, the launch arguments it sets)
 FOLLOWERS = [
-    ('mppi', "Nav2's MPPI: tries 1,000 wiggles, keeps the good ones (default)",
-     ['controller:=mppi', 'tracker:=none']),
-    ('rpp', "Nav2's Regulated Pure Pursuit: steer at a point ahead, slow in bends",
-     ['controller:=rpp', 'tracker:=none']),
+    ('mppi_lag', "ours: Nav2's MPPI in Rust, knowing the steering and pedals lag (default)",
+     ['tracker:=mppi_lag']),
     ('pure_pursuit', 'ours: steer at a point ahead (finished 12 of 12 legs)',
      ['tracker:=pure_pursuit', 'reversing:=false']),
     ('stanley', 'ours: fix the distance off the path and the heading (12 of 12)',
@@ -49,26 +48,18 @@ FOLLOWERS = [
      ['tracker:=mpc_full', 'reversing:=false']),
     ('mpc_lag', "ours: MPC that knows the car's lags (plans speed and steering)",
      ['tracker:=mpc_lag', 'reversing:=false']),
-    ('mppi_lag', "ours: Nav2's MPPI in Rust, knowing the steering and pedals lag",
-     ['tracker:=mppi_lag', 'reversing:=false']),
+    ('mpc_lag_rs', 'ours: the same MPC in Rust, a challenger (about 7 times faster)',
+     ['tracker:=mpc_lag_rs', 'reversing:=false']),
 ]
 
-# Who draws the route: Nav2's planner (planner:=). Gazebo, the lot tour, MPPI: hybrid
-# and lattice 30 Oct, reversing on, 4 runs each; the grid planners 29 Oct, forward only.
+# Who draws the route (planner:=): ours (Nav2's planners went on 17 Nov), or the diffusion
+# trial.
 PLANNERS = [
-    ('lattice', "State Lattice: our car's own moves (default; every leg, 184 s a tour)",
-     ['planner:=lattice']),
-    ('hybrid', "Hybrid-A*: routes a car can drive (the car's default; 213 s a tour)",
-     ['planner:=hybrid']),
-    ('smac2d', 'grid A*: ignores the turning circle (2 of 4)', ['planner:=smac2d']),
-    ('navfn', 'NavFn, the classic: ignores the turning circle (not tried in Gazebo)',
-     ['planner:=navfn']),
-    ('theta_star', 'Theta*: straight lines, ignores the turning circle (not tried)',
-     ['planner:=theta_star']),
+    ('own', "our own planner: Nav2's lattice in Rust (default)", ['planner:=own']),
+    ('own_hybrid', 'our planner running Hybrid-A* (a challenger)',
+     ['planner:=own', 'planner_search:=hybrid']),
     ('diffusion', 'a model draws it, a guard checks it, the lattice if it fails (a trial)',
      ['planner:=diffusion']),
-    ('own', "our own planner: Nav2's lattice in Rust, beside Nav2's (a trial)",
-     ['planner:=own']),
 ]
 
 # Where-am-I finders that run beside the EKF and are scored (they never steer yet); with
@@ -91,7 +82,7 @@ LOCALIZERS = [
      ['ndt:=false', 'ndt_ekf:=false', 'amcl:=false', 'kiss_icp:=true', 'kiss_ekf:=true']),
 ]
 
-# How Nav2 sees obstacles: the flat lidar scan, or the lidar as cubes (aav_voxels).
+# How the costmap sees obstacles: the flat lidar scan, or the lidar as cubes (aav_voxels).
 OBSTACLES = [
     ('scan', 'the flat lidar scan (default)', ['voxels:=false']),
     ('cubes', 'the lidar as 0.25 m cubes (trial: stopped 0.44 m before a post, 4 of 4 legs)',
@@ -160,7 +151,7 @@ def questions(read=input, say=print):
         say('  note: NDT and AMCL need the test lot; switching the world to it')
         rows[0] = WORLDS[0]
     rows.append(where)
-    rows.append(ask('How does Nav2 see obstacles?', OBSTACLES, read, say))
+    rows.append(ask('How does the costmap see obstacles?', OBSTACLES, read, say))
     rows.append(ask('Which speed loop?', SPEED_LOOPS, read, say))
     return command(program, rows)
 

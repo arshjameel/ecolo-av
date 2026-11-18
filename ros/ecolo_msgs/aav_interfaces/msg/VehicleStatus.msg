@@ -1,6 +1,6 @@
 # State of the car as reported by the backend that drives it.
 # Published on /vehicle/status by every backend (docs/interfaces.yaml):
-# spine_bridge, gazebo_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge
+# spine_bridge, sim_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge
 # (that one only with uplink true).
 # On the spine it comes from CAN 0x181 VEHICLE_STATUS, with speed and steering from
 # 0x180 VEHICLE_FEEDBACK; the DBC in firmware/can/aav.dbc is the source of truth for

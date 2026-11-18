@@ -12,12 +12,15 @@ use crate::{colour, Cluster, Point};
 /// The `sensor_msgs/PointField` datatypes this module reads or writes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Datatype {
+    /// UINT32 (6).
     Uint32,
+    /// FLOAT32 (7).
     Float32,
 }
 
 impl Datatype {
     /// The number PointField uses for it.
+    #[must_use]
     pub const fn code(self) -> u8 {
         match self {
             Self::Uint32 => 6,
@@ -26,6 +29,7 @@ impl Datatype {
     }
 
     /// The datatype a PointField number stands for, if it is one of these.
+    #[must_use]
     pub fn from_code(code: u8) -> Option<Self> {
         [Self::Uint32, Self::Float32]
             .into_iter()
@@ -36,6 +40,7 @@ impl Datatype {
 /// A field of every point, as `sensor_msgs/PointField` describes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Field<'a> {
+    /// `x`, `y`, `intensity`...
     pub name: &'a str,
     /// Where it starts in each point, in bytes.
     pub offset: u32,
@@ -48,12 +53,19 @@ pub struct Field<'a> {
 /// The parts of a `sensor_msgs/PointCloud2` this module needs: its layout and its bytes.
 #[derive(Clone, Debug)]
 pub struct CloudView<'a> {
+    /// What each point holds.
     pub fields: Vec<Field<'a>>,
+    /// Points in a row.
     pub width: u32,
+    /// Rows.
     pub height: u32,
+    /// Bytes a point.
     pub point_step: u32,
+    /// Bytes a row.
     pub row_step: u32,
+    /// The numbers are big-endian.
     pub is_bigendian: bool,
+    /// The points' bytes.
     pub data: &'a [u8],
 }
 
@@ -67,7 +79,12 @@ pub enum CloudError {
     /// The field doesn't fit inside a point: its offset is past `point_step`.
     OutsidePoint(&'static str),
     /// The cloud says it has more points than its bytes hold.
-    TooShort { points: usize, bytes: usize },
+    TooShort {
+        /// Points the cloud says it has.
+        points: usize,
+        /// Bytes it has.
+        bytes: usize,
+    },
 }
 
 impl fmt::Display for CloudError {
@@ -91,6 +108,10 @@ impl fmt::Display for CloudError {
 impl Error for CloudError {}
 
 /// Reads every point of `cloud`, row by row. Intensity and velocity are 0 if it has none.
+///
+/// # Errors
+///
+/// [`CloudError`] if x, y or z is missing or not a float32, or the bytes are too few.
 pub fn read_points(cloud: &CloudView<'_>) -> Result<Vec<Point>, CloudError> {
     let required = |name| float_field(cloud, name)?.ok_or(CloudError::MissingField(name));
     let position = [required("x")?, required("y")?, required("z")?];
@@ -192,6 +213,7 @@ const fn float32(name: &'static str, offset: u32) -> Field<'static> {
 ///
 /// `clusters` come from [`crate::cluster`] on these `points`; an index past the end of
 /// `points` (which it never makes) is skipped.
+#[must_use]
 pub fn write_clusters(points: &[Point], clusters: &[Cluster]) -> Vec<u8> {
     clusters
         .iter()

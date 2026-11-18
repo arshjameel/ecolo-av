@@ -10,12 +10,17 @@ use crate::math::{Pose, Vec3};
 /// One triangle, in the world frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Triangle {
+    /// The first corner.
     pub a: Vec3,
+    /// The second corner.
     pub b: Vec3,
+    /// The third corner.
     pub c: Vec3,
 }
 
 impl Triangle {
+    /// A triangle from its three corners.
+    #[must_use]
     pub fn new(a: Vec3, b: Vec3, c: Vec3) -> Self {
         Self { a, b, c }
     }
@@ -64,11 +69,13 @@ impl Triangle {
 /// A shape made of triangles, in its own frame.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Mesh {
+    /// Its triangles, in its own frame.
     pub triangles: Vec<Triangle>,
 }
 
 impl Mesh {
     /// A box centred on the origin, `size` across.
+    #[must_use]
     pub fn cuboid(size: Vec3) -> Mesh {
         let (x, y, z) = (size.x / 2.0, size.y / 2.0, size.z / 2.0);
         let c = |i: usize| {
@@ -100,6 +107,7 @@ impl Mesh {
     }
 
     /// An upright cylinder centred on the origin, as `sides` flat faces and two caps.
+    #[must_use]
     pub fn cylinder(radius: f64, length: f64, sides: usize) -> Mesh {
         let h = length / 2.0;
         let rim = |i: usize, z: f64| {
@@ -122,6 +130,7 @@ impl Mesh {
     }
 
     /// A flat rectangle on z = 0, `x` by `y`, facing up (SDF's `<plane>` with normal 0 0 1).
+    #[must_use]
     pub fn plane(x: f64, y: f64) -> Mesh {
         let (hx, hy) = (x / 2.0, y / 2.0);
         let c = [
@@ -140,6 +149,10 @@ impl Mesh {
 
     /// A Wavefront OBJ file's faces: `v` and `f` lines; polygons as fans. Normals,
     /// textures and materials don't matter to a ray.
+    ///
+    /// # Errors
+    ///
+    /// A message with the line number if a `v` or `f` line can't be read.
     pub fn from_obj(text: &str) -> Result<Mesh, String> {
         let mut vertices = Vec::new();
         let mut triangles = Vec::new();
@@ -177,6 +190,7 @@ impl Mesh {
     }
 
     /// The mesh scaled along each axis (SDF's `<scale>`).
+    #[must_use]
     pub fn scaled(mut self, s: Vec3) -> Mesh {
         let k = |v: Vec3| Vec3::new(v.x * s.x, v.y * s.y, v.z * s.z);
         for t in &mut self.triangles {
@@ -186,6 +200,7 @@ impl Mesh {
     }
 
     /// The mesh moved into its parent's frame.
+    #[must_use]
     pub fn transformed(&self, pose: &Pose) -> Mesh {
         Mesh {
             triangles: self.triangles.iter().map(|t| t.transformed(pose)).collect(),
@@ -203,7 +218,9 @@ fn obj_index(word: &str, count: usize) -> Option<usize> {
 /// A ray: where it starts, and its direction (a unit vector).
 #[derive(Debug, Clone, Copy)]
 pub struct Ray {
+    /// Where the ray starts.
     pub origin: Vec3,
+    /// Which way it goes: a unit vector.
     pub direction: Vec3,
 }
 
@@ -266,6 +283,7 @@ pub struct Bvh {
 }
 
 impl Bvh {
+    /// The tree over these triangles.
     pub fn new(triangles: Vec<Triangle>) -> Self {
         let mut bvh = Bvh {
             triangles,
@@ -279,10 +297,14 @@ impl Bvh {
         bvh
     }
 
+    /// How many triangles it holds.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.triangles.len()
     }
 
+    /// True if it holds no triangles.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.triangles.is_empty()
     }
@@ -331,6 +353,7 @@ impl Bvh {
     }
 
     /// The nearest hit closer than `limit`, along the ray.
+    #[must_use]
     pub fn cast(&self, ray: &Ray, limit: f64) -> Option<f64> {
         if self.nodes.is_empty() {
             return None;
@@ -388,6 +411,8 @@ pub struct Scene {
 }
 
 impl Scene {
+    /// A scene of these fixed triangles, nothing placed yet.
+    #[must_use]
     pub fn new(triangles: Vec<Triangle>) -> Self {
         Self {
             fixed: Bvh::new(triangles),
@@ -396,6 +421,7 @@ impl Scene {
     }
 
     /// How many triangles the fixed world has.
+    #[must_use]
     pub fn triangle_count(&self) -> usize {
         self.fixed.len()
     }
@@ -427,22 +453,30 @@ impl Scene {
     }
 
     /// The distance to the nearest surface along the ray, if one is closer than `limit`.
+    #[must_use]
     pub fn cast(&self, ray: &Ray, limit: f64) -> Option<f64> {
-        let mut best = self.fixed.cast(ray, limit);
+        self.cast_named(ray, limit).map(|(d, _)| d)
+    }
+
+    /// As [`Scene::cast`], with the placed object's name if the ray hit one (`None`: the
+    /// fixed world).
+    #[must_use]
+    pub fn cast_named(&self, ray: &Ray, limit: f64) -> Option<(f64, Option<&str>)> {
+        let mut best = self.fixed.cast(ray, limit).map(|d| (d, None));
         let inverse = Vec3::new(
             1.0 / ray.direction.x,
             1.0 / ray.direction.y,
             1.0 / ray.direction.z,
         );
         for p in &self.placed {
-            let reach = best.unwrap_or(limit);
+            let reach = best.map_or(limit, |(d, _)| d);
             if p.bounds.entry(ray.origin, inverse, reach).is_none() {
                 continue;
             }
             for t in &p.triangles {
                 if let Some(d) = t.hit(ray) {
-                    if d < best.unwrap_or(limit) {
-                        best = Some(d);
+                    if d < best.map_or(limit, |(b, _)| b) {
+                        best = Some((d, Some(p.name.as_str())));
                     }
                 }
             }

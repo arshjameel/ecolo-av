@@ -21,7 +21,7 @@
 //! |---|---|
 //! | An e-stop, a driver fault, the RC gear switch on brake | a hard stop |
 //! | A lost input: commands, RC or wheel speed (once a link has sent one) | a hard stop, latched |
-//! | Past `max_speed + overspeed_margin` | throttle off and `overspeed_brake` until under `max_speed`; still over it after [`OVERSPEED_WINDOW_MS`]: a hard stop, latched |
+//! | Past `max_speed + overspeed_margin` | throttle off and `overspeed_brake` until under `max_speed`; still over it after [`OVERSPEED_WINDOW_MS`](crate::fsm::OVERSPEED_WINDOW_MS): a hard stop, latched |
 //! | RC direct with the throttle stick at zero | `rc_stop_brake` for `rc_stop_ms`, then the stop brake |
 //!
 //! RC direct has no arming, so its own latch (`rc_hold`) stays until the signal and the
@@ -53,15 +53,25 @@ use crate::watchdog::Watchdog;
 
 /// Fault bits, same values as aav_interfaces/VehicleStatus FAULT_*.
 pub mod faults {
+    /// No valid DRIVE_CMD for 100 ms.
     pub const CMD_TIMEOUT: u16 = 1;
+    /// A frame failed its CRC.
     pub const BAD_CHECKSUM: u16 = 2;
+    /// A frame repeated or skipped its counter.
     pub const BAD_COUNTER: u16 = 4;
+    /// The steering Jrk isn't answering, or is in error.
     pub const STEERING_DRIVER: u16 = 8;
+    /// The brake Jrk isn't answering, or is in error.
     pub const BRAKE_DRIVER: u16 = 16;
+    /// The throttle DAC isn't answering.
     pub const THROTTLE_DAC: u16 = 32;
+    /// No wheel ticks while the car should be moving.
     pub const WHEEL_ENCODER: u16 = 64;
+    /// CAN error passive, or bus off.
     pub const CAN_BUS: u16 = 128;
+    /// The RC receiver is silent in RC mode.
     pub const RC_SIGNAL_LOST: u16 = 256;
+    /// The measured speed is over the firmware's limit.
     pub const OVERSPEED: u16 = 512;
 
     /// Faults that stop the car and latch it, like a command timeout.
@@ -159,12 +169,14 @@ pub enum SpeedFeedback {
     },
 }
 
+/// Everything the spine runs with: the limits, the timeouts, the team's choices.
 #[derive(Debug, Clone, Copy)]
 pub struct SpineConfig {
     /// No valid DRIVE_CMD for this long while driving = stop (ms).
     pub cmd_timeout_ms: u32,
     /// The firmware's own speed caps (m/s), applied after ego's.
     pub max_speed: f32,
+    /// The reverse cap (m/s).
     pub max_reverse_speed: f32,
     /// Steering range (rad), from the car's measurements.
     pub max_steering_angle: f32,
@@ -173,6 +185,7 @@ pub struct SpineConfig {
     /// Slowing down is capped separately, and harder than ego's 2.0 m/s^2, so the
     /// firmware never lags behind a stop that ego asked for.
     pub max_decel: f32,
+    /// The steering-rate cap (rad/s).
     pub max_steer_rate: f32,
     /// Measured speed this far over the cap trips the overspeed rule (m/s). Above the
     /// speed loop's overshoot of about 15%, so normal driving at the cap doesn't trip it.
@@ -185,14 +198,17 @@ pub struct SpineConfig {
     /// the stop brake. 0.33 gives about 1 m/s^2 with vehicle.yaml's guessed `max_brake`,
     /// so about 1 s from 1 m/s. GUESS: tune in test 4.3.
     pub rc_stop_brake: f32,
+    /// How long `rc_stop_brake` holds (ms).
     pub rc_stop_ms: u32,
     /// Brake for stops, and brake in manual mode (0..1).
     pub stop_brake: f32,
+    /// The brake while nobody drives (0..1): [`IDLE_BRAKE`].
     pub idle_brake: f32,
     /// The steering on a stop: [`ESTOP_STEERING`].
     pub estop_steering: EstopSteering,
     /// The RC gear switch's brake position: [`RC_GEAR_BRAKE`].
     pub rc_gear_brake: RcGearBrake,
+    /// The closed speed loop's law and gains.
     pub speed_loop: SpeedLoopConfig,
     /// The wheel speed, or none: [`SpeedFeedback`].
     pub speed_feedback: SpeedFeedback,
@@ -230,6 +246,7 @@ impl SpineConfig {
     /// then the throttle is cut while the car is at or over the limit instead.
     ///
     /// The spine caps each command with this; the board's settings line reports it.
+    #[must_use]
     pub fn open_loop_throttle_cap(&self, reverse: bool) -> Option<f32> {
         let limit = if reverse {
             self.max_reverse_speed
@@ -345,10 +362,12 @@ pub struct Inputs {
     pub hw_estop: bool,
     /// None when the RC receiver has been silent too long.
     pub rc: Option<RcInput>,
+    /// The board's wheel speed (m/s), used with [`SpeedFeedback::Wheel`].
     pub measured_speed: f32,
     /// The speed a link sent since the last tick. Used only with [`SpeedFeedback::None`].
     /// A link that has never sent one leaves the overspeed and lost-speed rules off.
     pub speed_report: Option<SpeedReport>,
+    /// The steering's position (rad, positive left).
     pub measured_steering: f32,
     /// Driver faults found by the board: STEERING_DRIVER, BRAKE_DRIVER,
     /// THROTTLE_DAC, WHEEL_ENCODER, CAN_BUS.
@@ -358,6 +377,7 @@ pub struct Inputs {
 /// What the board writes to the hardware this tick.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Outputs {
+    /// Who drives.
     pub mode: Mode,
     /// 0..1, to the throttle DAC.
     pub throttle: f32,
@@ -367,11 +387,16 @@ pub struct Outputs {
     pub reverse: bool,
     /// rad, positive left; the board converts it to a Jrk G2 target.
     pub steering_target: f32,
+    /// The spine is armed.
     pub armed: bool,
+    /// An e-stop is on.
     pub estop_active: bool,
+    /// The fault bits ([`faults`]).
     pub faults: u16,
 }
 
+/// The spine's whole state: feed it inputs, and each tick gives the outputs.
+#[derive(Debug)]
 pub struct Spine {
     cfg: SpineConfig,
     watchdog: Watchdog,
@@ -412,6 +437,8 @@ pub struct Spine {
 }
 
 impl Spine {
+    /// A spine just booted, running with `cfg`.
+    #[must_use]
     pub fn new(cfg: SpineConfig) -> Self {
         Spine {
             cfg,
@@ -461,6 +488,7 @@ impl Spine {
     }
 
     /// All five regions, as the latest tick left them.
+    #[must_use]
     pub fn state(&self) -> State {
         State {
             lifecycle: self.lifecycle,
@@ -951,11 +979,14 @@ impl Spine {
         frame
     }
 
+    /// Who drives now.
+    #[must_use]
     pub fn mode(&self) -> Mode {
         self.authority.mode()
     }
 
     /// The rate-limited speed the speed loop is chasing (m/s).
+    #[must_use]
     pub fn speed_setpoint(&self) -> f32 {
         self.speed_setpoint
     }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NDT's map of Gazebo's test lot: the lidar's clouds, laid down where the car truly was.
+NDT's map of the simulator's test lot: the lidar's clouds, laid down where the car truly was.
 
     pixi run ndt-map drive              start the test lot headless, drive the mapping route,
                                         record the lidar and the truth, build the map (~6 min)
@@ -26,7 +26,7 @@ dropped; all of it is thinned to one point per 10 cm cube. A box flush with the 
 the lidar's noise through: the roof's corners and the front cameras drew a ghost double
 line 1.5 m up along the whole route (found 30 Oct).
 
-The truth is used only here, offline: aav_ndt's node never reads it (aav_gazebo's rule).
+The truth is used only here, offline: aav_ndt's node never reads it (aav_sim_models's rule).
 The mapping route is not one of the tours of pixi run measure controllers, and has no obstacle.
 Gazebo's lidar noise isn't seeded by us, so two drives give maps a few millimetres apart.
 
@@ -320,7 +320,10 @@ def drive(bag):
     with open(log_path, 'w') as log:
         sim = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
                                 'world:=test_lot', 'gui:=false', 'rviz:=false',
-                                'lidar:=true', 'reversing:=false'],
+                                'lidar:=true', 'reversing:=false',
+                                # The champions' stack (best; Nav2's until it went, 17
+                                # Nov): cc.Recorder() sends the goals to /navigate_to_pose.
+                                'stack:=best'],
                                cwd=ROOT, env=dict(os.environ), stdout=log,
                                stderr=subprocess.STDOUT, start_new_session=True)
         record = None
@@ -359,7 +362,7 @@ def drive(bag):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     sub = parser.add_subparsers(dest='command', required=True)
-    d = sub.add_parser('drive', help='drive the mapping route in Gazebo, then build')
+    d = sub.add_parser('drive', help='drive the mapping route in Ravensim, then build')
     d.add_argument('--keep-bag', action='store_true', help='keep the recorded bag')
     b = sub.add_parser('build', help='build the map from a bag')
     b.add_argument('bag', type=Path)

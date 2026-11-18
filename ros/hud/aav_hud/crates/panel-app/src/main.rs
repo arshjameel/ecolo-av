@@ -52,7 +52,7 @@
 //!
 //! usage: hw_panel [--demo [--demo-bind COUNTS]] [--stands] [--fullscreen] [--monitor NAME|N]
 //!                 [--list-monitors] [--config FILE] [--vehicle FILE]
-//!                 [--page drive|calibration|graphs] [--esp32 ws://HOST:PORT/]
+//!                 [--page drive|calibration|graphs|measure] [--esp32 ws://HOST:PORT/]
 //!                 [--screenshot FILE [--after S]] [--self-test SPEED:SECONDS]
 //!                 [--cal-self-test] [--robot-now] [--ros-args ...]
 
@@ -83,6 +83,7 @@ use panel_core::{
     easter_egg::{self, PassWatch},
     gate::{self, Caps, Gate, Situation},
     graphs::Freezer,
+    measure::{self, Entry, Odometer},
     rules::Kind,
     state::{self as panel_state, PanelState, Update},
     steering_limits::Mark,
@@ -101,13 +102,13 @@ use crate::{
 const USAGE: &str = "\
 usage: hw_panel [--demo [--demo-bind COUNTS]] [--stands] [--fullscreen] [--monitor NAME|N]
                 [--list-monitors] [--config FILE] [--vehicle FILE]
-                [--page drive|calibration|graphs] [--esp32 ws://HOST:PORT/]
+                [--page drive|calibration|graphs|measure] [--esp32 ws://HOST:PORT/]
                 [--screenshot FILE [--after S]] [--self-test SPEED:SECONDS]
                 [--cal-self-test] [--robot-now] [--ros-args ...]
 
   --demo             a pretend car: no ROS, no car
   --demo-bind COUNTS the demo's steering has a stiff spot there (the check finds it)
-  --page PAGE        open on this page: drive, calibration (steering) or graphs
+  --page PAGE        open on this page: drive, calibration (steering), graphs or measure
   --esp32 URL        also read the ESP32's status lines from its WebSocket, such as
                      ws://192.168.4.1:81/ (read only: the GRAPHS page; esp32_url too)
   --stands           the car's wheels are off the ground (the speed buttons stay off on
@@ -193,7 +194,10 @@ impl Options {
                         "calibration" => Page::Calibration,
                         "drive" => Page::Drive,
                         "graphs" => Page::Graphs,
-                        other => bail!("--page: drive, calibration or graphs, not {other:?}"),
+                        "measure" => Page::Measure,
+                        other => {
+                            bail!("--page: drive, calibration, graphs or measure, not {other:?}")
+                        }
                     })
                 }
                 "--esp32" => {
@@ -427,6 +431,10 @@ struct Panel {
     saved: Option<String>,
     /// The GRAPHS page's FREEZE.
     freezer: Freezer,
+    /// The MEASURE page: distance since RESET, the tape typed in, the file once saved.
+    odometer: Odometer,
+    tape: Entry,
+    measure_saved: Option<String>,
 }
 
 impl Panel {
@@ -451,6 +459,9 @@ impl Panel {
             cal: CalPage::new(config.calibration()),
             saved: None,
             freezer: Freezer::default(),
+            odometer: Odometer::default(),
+            tape: Entry::default(),
+            measure_saved: None,
         }
     }
 
@@ -501,13 +512,40 @@ impl Panel {
             return;
         };
         let text = calibration::result_file(&limits, marks, self.cal.checked());
-        self.saved = Some(match write_result(&text) {
+        self.saved = Some(match write_result(CALIBRATION_DIR, "steering", &text) {
             Ok(path) => {
                 println!("hw_panel: the steering calibration, saved to {path}:\n{text}");
                 path
             }
             Err(e) => {
                 eprintln!("hw_panel: couldn't save the steering calibration: {e:#}\n{text}");
+                format!("NOT saved ({e}); the lines are in the log")
+            }
+        });
+    }
+
+    /// The MEASURE page's RESET: the odometer and the tape back to zero.
+    fn reset_measure(&mut self) {
+        self.odometer.reset();
+        self.tape.clear();
+        self.measure_saved = None;
+    }
+
+    /// The MEASURE page's SAVE: what was measured, in a file of its own; never vehicle.yaml.
+    fn save_measure(&mut self) {
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        let when = calibration::utc_stamp(secs);
+        let diameter = self.vehicle.wheel_diameter;
+        let text = measure::report(&self.odometer, self.tape.value(), diameter, &when);
+        self.measure_saved = Some(match write_result(MEASURE_DIR, "measure", &text) {
+            Ok(path) => {
+                println!("hw_panel: the measurements, saved to {path}:\n{text}");
+                path
+            }
+            Err(e) => {
+                eprintln!("hw_panel: couldn't save the measurements: {e:#}\n{text}");
                 format!("NOT saved ({e}); the lines are in the log")
             }
         });
@@ -651,9 +689,11 @@ fn run(
         let mouse_down = rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT);
         let held = under.filter(|_| mouse_down);
         let on_cal = panel.page == Page::Calibration;
+        let on_measure = panel.page == Page::Measure;
+        // The measure page types numbers: the drive keys are off there.
         let mut presses: Vec<Press> = PRESS_KEYS
             .iter()
-            .filter(|(k, _)| !on_cal && rl.is_key_pressed(*k))
+            .filter(|(k, _)| !on_cal && !on_measure && rl.is_key_pressed(*k))
             .map(|&(_, p)| p)
             .collect();
         let mut cal_presses: Vec<CalPress> = CAL_KEYS
@@ -675,8 +715,27 @@ fn run(
         if on_graphs && (clicked == Some(Button::Freeze) || rl.is_key_pressed(KeyboardKey::KEY_P)) {
             panel.freezer.toggle(now, &panel.state.graphs);
         }
-        let save =
-            on_cal && (clicked == Some(Button::Save) || rl.is_key_pressed(KeyboardKey::KEY_W));
+        let save_key = clicked == Some(Button::Save) || rl.is_key_pressed(KeyboardKey::KEY_W);
+        let save = on_cal && save_key;
+        // The measure page: the tape typed in, RESET, SAVE; the odometer on every page.
+        while let Some(c) = rl.get_char_pressed() {
+            if on_measure {
+                panel.tape.push(c);
+            }
+        }
+        if on_measure {
+            if rl.is_key_pressed(KeyboardKey::KEY_BACKSPACE) {
+                panel.tape.pop();
+            }
+            if clicked == Some(Button::Reset) || rl.is_key_pressed(KeyboardKey::KEY_R) {
+                panel.reset_measure();
+            }
+            if save_key {
+                panel.save_measure();
+            }
+        }
+        let seen = panel.state.seen_speed(now);
+        panel.odometer.update(seen, now);
         if let Some(script) = &mut cal_script {
             let position = panel.position(now);
             cal_presses.extend(script.frame(now, &panel.cal, position));
@@ -707,6 +766,7 @@ fn run(
             Page::Drive => 0,
             Page::Calibration => 1,
             Page::Graphs => 2,
+            Page::Measure => 3,
         };
         let watch = easter_egg::watch(
             &panel.state,
@@ -735,6 +795,10 @@ fn run(
             hide_keys: matches!(show, Show::Drive { .. }),
             freezer: &panel.freezer,
             stale_after: config.stale_after(),
+            odometer: &panel.odometer,
+            tape: &panel.tape,
+            wheel_diameter: panel.vehicle.wheel_diameter,
+            measure_saved: panel.measure_saved.as_deref(),
         };
         let mut d = rl.begin_drawing(&thread);
         let room = ui.draw(&mut d, &panel.state, &frame);
@@ -768,26 +832,30 @@ fn run(
     Ok(())
 }
 
-/// Where SAVE writes: `$XDG_DATA_HOME/aav/steering-calibration/`, or
-/// `~/.local/share/aav/steering-calibration/`.
-fn results_dir() -> Result<PathBuf> {
+/// The calibration page's SAVE folder, under `$XDG_DATA_HOME/aav/`.
+const CALIBRATION_DIR: &str = "steering-calibration";
+/// The measure page's.
+const MEASURE_DIR: &str = "measurements";
+
+/// Where SAVE writes: `$XDG_DATA_HOME/aav/<folder>/`, or `~/.local/share/aav/<folder>/`.
+fn results_dir(folder: &str) -> Result<PathBuf> {
     let base = match std::env::var_os("XDG_DATA_HOME").filter(|v| !v.is_empty()) {
         Some(dir) => PathBuf::from(dir),
         None => {
             PathBuf::from(std::env::var_os("HOME").context("HOME isn't set")?).join(".local/share")
         }
     };
-    Ok(base.join("aav/steering-calibration"))
+    Ok(base.join("aav").join(folder))
 }
 
-/// Writes the result to a new file of its own; returns its path.
-fn write_result(text: &str) -> Result<String> {
-    let dir = results_dir()?;
+/// Writes `text` to a new file of its own, `<prefix>-<time>.txt`; returns its path.
+fn write_result(folder: &str, prefix: &str, text: &str) -> Result<String> {
+    let dir = results_dir(folder)?;
     std::fs::create_dir_all(&dir).with_context(|| format!("making {}", dir.display()))?;
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
-    let path = dir.join(format!("steering-{}.txt", calibration::utc_stamp(secs)));
+    let path = dir.join(format!("{prefix}-{}.txt", calibration::utc_stamp(secs)));
     std::fs::write(&path, text).with_context(|| format!("writing {}", path.display()))?;
     Ok(path.display().to_string())
 }
@@ -872,7 +940,7 @@ mod tests {
     /// --nocapture gazebo_self_test`, beside a running sim on the same domain.
     #[cfg(feature = "ros")]
     #[test]
-    #[ignore = "needs a running Gazebo on this ROS domain"]
+    #[ignore = "needs a running Ravensim on this ROS domain"]
     fn gazebo_self_test() -> Result<()> {
         let spec = std::env::var("HW_PANEL_SELF_TEST").unwrap_or_else(|_| "0.3:8".into());
         let mut test = SelfTest::parse(&spec)?;
@@ -921,7 +989,7 @@ mod tests {
 
     fn announce(origin: hud_core::origin::Origin) -> Update {
         Update::Source(hud_core::origin::Announcement {
-            announcer: "gazebo_adapter".into(),
+            announcer: "sim_adapter".into(),
             entries: vec![hud_core::origin::Entry {
                 name: "imu".into(),
                 topic: "/sensors/imu/data".into(),

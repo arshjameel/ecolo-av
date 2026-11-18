@@ -39,9 +39,9 @@ pixi install --locked -e kiss
 | `voxel_size` | 0 | 0: `max_range / 100` (KISS-ICP's rule: 1 m) |
 | `max_points_per_voxel` | 20 | KISS-ICP's default |
 | `threads` | 4 | KISS-ICP's threads |
-| `deskew` | true | only where the cloud has a `time` field (the VLP-16; Gazebo's has none) |
+| `deskew` | true | only where the cloud has a `time` field (the VLP-16; the simulator's has none) |
 | `lidar_period` | 0.1 s | for counting clouds dropped |
-| `twist_linear_sd`, `twist_angular_sd` | 0.15 m/s, 0.01 rad/s | the twist's covariance (1 sigma), measured against Gazebo's truth, 1 Nov |
+| `twist_linear_sd`, `twist_angular_sd` | 0.15 m/s, 0.01 rad/s | the twist's covariance (1 sigma), measured against Gazebo's truth (the simulator then), 1 Nov |
 | `lidar_xyz`, `lidar_rpy`, `body_min`, `body_max` | from `vehicle.yaml` | set by the launch file |
 
 ### Launch
@@ -80,7 +80,7 @@ pixi install --locked -e kiss
 ```sh
 cd ros/localization/aav_kiss_icp && python3 -m pytest -q   # the maths, the pipe, the worker
 pixi run build && colcon test --packages-select aav_kiss_icp && colcon test-result --verbose
-pixi run measure controllers --kiss-icp --tours lot --controllers mppi   # Gazebo, scored
+pixi run measure controllers --kiss-icp --tours lot --controllers mppi   # Ravensim, scored
 ```
 
 The worker test runs only where the kiss env is installed.

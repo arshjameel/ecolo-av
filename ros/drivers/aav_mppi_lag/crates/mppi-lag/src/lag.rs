@@ -10,7 +10,7 @@
 //! | Stage | Rule (vehicle.yaml `actuators:`) |
 //! |---|---|
 //! | throttle, brake | each level moves 1 - exp(-dt / lag) of the way to its demand |
-//! | acceleration | max_accel x throttle (above throttle_deadband) - max_brake x brake - drag x v; braking and drag stop the car, never reverse it |
+//! | acceleration | max_accel x throttle (above throttle_deadband) along the gear, - max_brake x brake - drag x v; braking and drag stop the car, never reverse it |
 //! | steering | the motor moves toward the target at most steer_rate x dt, and only for a change over steer_deadband; the wheels lag the motor by steer_lag; + steer_offset, clamped to full lock |
 //! | pose | bicycle: x' = v cos yaw, y' = v sin yaw, yaw' = v tan(steer) / wheelbase |
 //! | dead time | each actuator's demand is delayed floor(dead_time / dt + 0.5) steps |
@@ -20,10 +20,13 @@
 //! setpoint, the new speed and angle with the mid-step heading. At its merge, its model
 //! implements [`CarModel`] in this one's place.
 //!
-//! Speed commands: the spine's speed loop is modelled as aav_gazebo's `SpeedLoop` does
-//! with its `default` profile (spine-core `speed_loop.rs`: a PI on the throttle, the
-//! brake for overspeed past a coast band, a hold brake at a stop). Forward only: a
-//! negative speed is a stop (the trackers never reverse). The car is stepped in steps
+//! Speed commands: the spine's speed loop is modelled as aav_sim_models's `SpeedLoop` does,
+//! with any of spine-core's PI profiles (`speed_loop.rs`: a PI with a setpoint weight on
+//! the throttle, the brake for overspeed past a coast band, a hold brake at a stop; the
+//! `default` one unless told, the node's `speed_loop` parameter, TODO 163), both ways as
+//! spine-core's loop runs: a negative speed asks for reverse; the gear changes only while
+//! stopped (until then the loop brakes); the loop works along the gear, so reversing uses
+//! the same law as going forward. The car is stepped in steps
 //! of at most `max_step` (the spine's loop runs at 50 Hz: 0.02 s), so a 0.05 s MPPI step
 //! is three Euler steps.
 
@@ -84,15 +87,23 @@ impl Default for Actuators {
     }
 }
 
-/// The spine's speed loop: spine-core's `default` profile (aav_gazebo `SpeedLoopConfig()`).
+/// The spine's speed loop, its PI law: by default spine-core's `default` profile
+/// (aav_sim_models `SpeedLoopConfig()`); `SpeedLoop::from_profile` (feature `shared`) gives
+/// any of its PI profiles.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SpeedLoop {
     /// Throttle per m/s of error.
     pub kp: f64,
     /// Throttle per (m/s x s).
     pub ki: f64,
-    /// The most throttle the integral may add.
+    /// The most throttle the integral may add, beyond the share of the target the P term
+    /// leaves to it, `(1 - setpoint_weight) x kp x target`.
     pub integral_limit: f64,
+    /// The share of the target the P term sees (`b`, 0..1): 1 is a plain PI.
+    pub setpoint_weight: f64,
+    /// true: no integrating while the throttle is pinned (full, or none) the error's way
+    /// (spine-core `AntiWindup::Clamp`); false: only the integral's bounds (`Bounds`).
+    pub clamp_windup: bool,
     /// Brake per m/s of overspeed past `coast_band`.
     pub brake_gain: f64,
     /// m/s too fast that coasting handles.
@@ -109,6 +120,8 @@ impl Default for SpeedLoop {
             kp: 0.3,
             ki: 0.1,
             integral_limit: 0.3,
+            setpoint_weight: 1.0,
+            clamp_windup: false,
             brake_gain: 0.5,
             coast_band: 0.2,
             stopped_speed: 0.05,
@@ -153,6 +166,7 @@ pub struct DelayLine {
 
 impl DelayLine {
     /// A line that has held `value` for ever.
+    #[must_use]
     pub fn filled(value: f64) -> Self {
         Self {
             values: [value; MAX_DELAY_STEPS],
@@ -166,6 +180,39 @@ impl DelayLine {
         self.values[self.head] = value;
         let back = steps.min(MAX_DELAY_STEPS - 1);
         self.values[(self.head + MAX_DELAY_STEPS - back) % MAX_DELAY_STEPS]
+    }
+}
+
+/// Which way the throttle pushes: the spine's direction output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Gear {
+    /// The throttle pushes the car forwards.
+    #[default]
+    Forward,
+    /// The throttle pushes the car backwards.
+    Reverse,
+}
+
+impl Gear {
+    /// The gear a speed asks for; `None` for 0 (a stop keeps the gear).
+    #[must_use]
+    pub fn of(speed: f64) -> Option<Self> {
+        if speed > 0.0 {
+            Some(Self::Forward)
+        } else if speed < 0.0 {
+            Some(Self::Reverse)
+        } else {
+            None
+        }
+    }
+
+    /// +1 forward, -1 reverse: a speed along the gear is this times the signed speed.
+    #[must_use]
+    pub fn sign(self) -> f64 {
+        match self {
+            Self::Forward => 1.0,
+            Self::Reverse => -1.0,
+        }
     }
 }
 
@@ -188,6 +235,8 @@ pub struct LagState {
     pub wheels: f64,
     /// The speed loop's integral (throttle).
     pub integral: f64,
+    /// The gear: [`Gear::Reverse`] pushes the car backwards. Changes only while stopped.
+    pub gear: Gear,
     /// Throttle demands in their dead time.
     pub throttle_delay: DelayLine,
     /// Brake demands in their dead time.
@@ -216,11 +265,27 @@ fn steps(time: f64, dt: f64) -> usize {
 }
 
 impl LagModel {
-    /// The spine's speed loop: target and measured speed in, (throttle, brake) out.
+    /// The spine's speed loop: target and measured speed in, (throttle, brake) out, the
+    /// throttle along `s.gear` (spine-core `SpeedLoop::update`, its PI law).
     fn demand(&self, s: &mut LagState, target: f64, dt: f64) -> (f64, f64) {
         let c = &self.speed_loop;
-        let measured = s.speed;
-        let stopped = measured.abs() < c.stopped_speed;
+        let stopped = s.speed.abs() < c.stopped_speed;
+        // The gear changes only while stopped; until then, brake.
+        if let Some(wanted) = Gear::of(target).filter(|g| *g != s.gear) {
+            s.integral = 0.0;
+            if stopped {
+                s.gear = wanted;
+            } else {
+                let brake = c
+                    .hold_brake
+                    .max(c.brake_gain * s.speed.abs())
+                    .clamp(0.0, 1.0);
+                return (0.0, brake);
+            }
+        }
+        // Along the direction of travel, so both directions use one law.
+        let sign = s.gear.sign();
+        let (target, measured) = (target * sign, s.speed * sign);
         if target <= 0.0 {
             s.integral = 0.0;
             let brake = if stopped {
@@ -233,8 +298,17 @@ impl LagModel {
             return (0.0, brake);
         }
         let error = target - measured;
-        let proportional = c.kp * error;
-        s.integral = (s.integral + c.ki * error * dt).clamp(0.0, c.integral_limit.max(0.0));
+        // The P term sees b x target; the integral holds the rest on top of its own limit.
+        // With b = 1 and no clamping, both are the plain PI.
+        let proportional = c.kp * (c.setpoint_weight * target - measured);
+        let ceiling = c.integral_limit + (1.0 - c.setpoint_weight) * c.kp * target;
+        let integral = (s.integral + c.ki * error * dt).clamp(0.0, ceiling.max(0.0));
+        let demand = proportional + integral;
+        let pinned =
+            c.clamp_windup && ((demand > 1.0 && error > 0.0) || (demand < 0.0 && error < 0.0));
+        if !pinned {
+            s.integral = integral;
+        }
         let overspeed = -error - c.coast_band;
         if overspeed > 0.0 {
             s.integral = 0.0;
@@ -247,11 +321,12 @@ impl LagModel {
     fn euler(&self, s: &mut LagState, command: Command, dt: f64) {
         let a = &self.actuators;
         let (throttle, brake) = self.demand(s, command.speed, dt);
-        let throttle = s
+        // The gear rides with the throttle through its dead time (as the shared model's).
+        let signed = s
             .throttle_delay
-            .push(throttle, steps(a.throttle_dead_time, dt));
+            .push(throttle * s.gear.sign(), steps(a.throttle_dead_time, dt));
         let brake = s.brake_delay.push(brake, steps(a.brake_dead_time, dt));
-        s.throttle = lagged(s.throttle, throttle, a.throttle_lag, dt);
+        s.throttle = lagged(s.throttle, signed.abs(), a.throttle_lag, dt);
         s.brake = lagged(s.brake, brake, a.brake_lag, dt);
 
         let pushing = if s.throttle > a.throttle_deadband {
@@ -259,7 +334,8 @@ impl LagModel {
         } else {
             0.0
         };
-        let v = s.speed + pushing * a.max_accel * dt;
+        let way = if signed < 0.0 { -1.0 } else { 1.0 };
+        let v = s.speed + way * pushing * a.max_accel * dt;
         // The brake and drag oppose the motion: they stop the car, never reverse it.
         let resist = (s.brake * a.max_brake + a.drag * v.abs()) * dt;
         s.speed = if v > 0.0 {
@@ -304,6 +380,7 @@ impl CarModel for LagModel {
             motor: steer,
             wheels: steer,
             integral: 0.0,
+            gear: Gear::of(speed).unwrap_or_default(),
             throttle_delay: DelayLine::filled(0.0),
             brake_delay: DelayLine::filled(0.0),
             // Before any command, the steering holds where it is.
@@ -325,6 +402,10 @@ impl CarModel for LagModel {
     fn observe(&self, state: &mut LagState, seen: &Observation) {
         state.pose = seen.pose;
         state.speed = seen.speed;
+        // A car seen moving is in the gear it moves in.
+        if seen.speed.abs() >= self.speed_loop.stopped_speed {
+            state.gear = Gear::of(seen.speed).unwrap_or(state.gear);
+        }
         if let Some(angle) = seen.steering.filter(|a| a.is_finite()) {
             // Measured after the offset; the linkage's state is before it.
             state.wheels = angle - self.actuators.steer_offset;
@@ -394,7 +475,7 @@ mod tests {
     }
 
     #[test]
-    fn braking_stops_without_reversing() {
+    fn braking_stops_without_reversing_the_car() {
         let m = LagModel::default();
         let mut s = run(&m, Command::new(2.0, 0.0), 10.0, 0.05);
         for _ in 0..200 {
@@ -402,6 +483,52 @@ mod tests {
             assert!(s.speed >= 0.0);
         }
         assert_eq!(s.speed, 0.0);
+    }
+
+    #[test]
+    fn reverses_and_settles_near_a_negative_command() {
+        let m = LagModel::default();
+        let s = run(&m, Command::new(-0.5, 0.0), 20.0, 0.05);
+        assert_eq!(s.gear, Gear::Reverse);
+        assert!((s.speed + 0.5).abs() < 0.05, "{}", s.speed);
+        assert!(s.pose.x < -5.0, "backwards: {:?}", s.pose);
+        assert!(s.pose.yaw.abs() < 1e-12, "still facing forward");
+    }
+
+    #[test]
+    fn a_change_of_direction_stops_first() {
+        // Forward at 1 m/s, then asked to reverse: the loop brakes to a stop, the gear
+        // changes, then it reverses.
+        let m = LagModel::default();
+        let mut s = run(&m, Command::new(1.0, 0.0), 10.0, 0.05);
+        let mut stopped_forward = false;
+        for _ in 0..200 {
+            m.step(&mut s, Command::new(-0.5, 0.0), 0.05);
+            if s.gear == Gear::Forward {
+                assert!(s.speed >= 0.0, "braking, never reversing in forward gear");
+                stopped_forward |= s.speed < m.speed_loop.stopped_speed;
+            }
+        }
+        assert!(stopped_forward);
+        assert_eq!(s.gear, Gear::Reverse);
+        assert!(s.speed < -0.4, "{}", s.speed);
+    }
+
+    #[test]
+    fn a_car_seen_reversing_is_in_reverse() {
+        let m = LagModel::default();
+        let mut s = m.at_rest(Pose::default(), 0.0);
+        m.observe(
+            &mut s,
+            &Observation {
+                speed: -0.4,
+                ..Observation::default()
+            },
+        );
+        assert_eq!(s.gear, Gear::Reverse);
+        m.step(&mut s, Command::new(-0.4, 0.0), 0.05);
+        assert!(s.speed < -0.3, "keeps reversing, no stop: {}", s.speed);
+        assert_eq!(m.at_rest(Pose::default(), -0.3).gear, Gear::Reverse);
     }
 
     #[test]

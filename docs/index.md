@@ -14,27 +14,31 @@ moves the car.**
 | Step | What happens |
 |---|---|
 | 1. Sense | Sensors publish raw data. Two filters (EKFs) work out where the car is. |
-| 2. Propose | Each driver proposes a speed and a turn rate: joystick, keyboard, script or Nav2. |
+| 2. Propose | Each driver proposes a speed and a turn rate: joystick, keyboard, script or navigation (a route, a plan, a path follower). |
 | 3. Pick | `twist_mux` passes on the highest-priority driver. `/safety/estop` blocks them all. |
 | 4. Convert | **ego**, the virtual car, turns that into a speed and steering angle the car can do. |
-| 5. Move | One backend moves something: the real car, Gazebo, or a turtle on the screen. |
+| 5. Move | One backend moves something: the real car, Ravensim (our simulator), CARLA, or a turtle on the screen. |
 
 ## New here?
 
 | You are | Start with |
 |---|---|
+| after what we built, on one page to share | [What we built](what-we-built.md) |
+| after the release we are working toward | [0.4-rc1: start here](release-0.4.md) |
 | after everything on one page | [Overview](overview.md) |
 | after what this version does, at a glance | [Release notes](release-notes.md) |
+| after what works today, and what's next | [Status](status.md); the work list is `TODO.md` |
+| after where it's heading | two designs, proposed, not built: [one shape](designs/2026-11-13_one-shape.md), [the whole car](designs/2026-11-14_the-whole-car.md) |
 | new to the team | [Getting started](getting-started.md) (30 minutes), then [Your first day](first-day.md) and your card in [Starting points](team.md) |
 | making a change | [CONTRIBUTING.md](../CONTRIBUTING.md): fork, branch, pull request, merge queue |
 | new to the car, or to ROS | [The car, box by box](learn-car.md), then [A command's journey](learn-journey.md); words in the [Glossary](glossary.md) |
 | a professor, or anyone with a question | [Questions people ask](faq.md) |
 | going to the car | [Car day](car-day.md): the runbook, session by session, and `pixi run car-day-check` |
 | looking for what the car audit found (16 Oct) | [The hardware audit](audit-friday.md) |
-| putting the whole thing together | [Infrastructure](infrastructure.md), then [Work](work.md) and [Decisions](decisions.md) |
+| putting the whole thing together | [Infrastructure](infrastructure.md), then [The plan](plan.md) and [Decisions](decisions.md) |
 | looking for what a package does | [Packages](packages.md); the deeper cards in [Every module](modules.md) |
 | writing a driver, or drawing a map | [Build a driver](howto-driver.md), [Costmaps](costmaps.md) |
-| testing the car's software without the car | [Bench mode](bench.md) |
+| testing the car's software without the car | [Simulation](simulation.md), [Bench mode](bench.md); every swappable part: [Switches](switches.md) |
 | working on cameras, the detector, stop signs or lanes | [Perception](perception.md) |
 | bringing in the previous teams' code | [The older code](older-code.md) |
 | connecting Claude or another AI app | [AI apps (MCP)](mcp.md) |
@@ -53,7 +57,7 @@ our car uses it.
 | Lidar: points, cubes, the costmap, named objects, NDT | [Learn: lidar](learn-lidar.md) |
 | Control: feedback loops, PID, steering geometry, safe stops | [Learn: control](learn-control.md) |
 | State space: from a drawing to a car simulator; poles, Bode, roll | [Learn: state space](learn-state-space.md) |
-| Nav2: planning a path and steering along it | [Learn: Nav2](learn-nav2.md) |
+| Navigation: planning a path and steering along it | [Learn: navigation](learn-nav2.md) |
 | CAN: the wire for steering, brake and throttle | [Learn: CAN](learn-can.md) |
 
 ## Read these, in order
@@ -62,7 +66,7 @@ our car uses it.
 
 ## Try it in five minutes
 
-The full hour, with rqt_graph, Gazebo and a Nav2 goal, is [Your first day](first-day.md).
+The full hour, with rqt_graph, Ravensim and a goal, is [Your first day](first-day.md).
 On a Mac or on Linux, once [pixi is installed](run.md):
 
 ```bash

@@ -9,7 +9,11 @@
 <h1>Path followers: Regulated Pure Pursuit and MPPI</h1>
 <div class="meta">23 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a class="here" href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -114,17 +126,25 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#what-each-one-does">What each one does</a><a href="#switch-between-them">Switch between them</a><a href="#compare-them">Compare them</a><a href="#circling-a-goal-found-and-fixed-29-october-todo-17">Circling a goal: found and fixed, 29 October (TODO 17)</a><a href="#after-the-fixes-night-of-22-october">After the fixes, night of 22 October</a><a href="#with-reversing-three-point-turns-22-october-0435">With reversing: three-point turns, 22 October, 04:35</a><a href="#results-22-october-first-runs">Results, 22 October, first runs</a><a href="#making-mppi-drive">Making MPPI drive</a><a href="#found-on-the-way">Found on the way</a><a href="#limits-of-this-comparison">Limits of this comparison</a></nav>
-<div class="lead"><p>Nav2's planner draws a path; a <strong>controller</strong> turns it into a speed and a turn, 20 times a
-second. We have two, and a script that compares them on the same drives in Gazebo.</p>
+<div class="lead"><p>The planner draws a path; a <strong>path follower</strong> (a controller) turns it into a speed and a
+turn, 20 times a second.</p>
+<div class="admonition note">
+<p class="admonition-title">A record from 22-29 Oct, with Nav2 and Gazebo</p>
+<p>This page is how we chose MPPI over Regulated Pure Pursuit, in Nav2's
+<code>controller_server</code>, in Gazebo. Both are gone: Gazebo on 16 Nov, Nav2 on 17 Nov
+(<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>, <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>).
+Today the follower is ours, in Rust: <strong>MPPI with the actuators' lag</strong> (<code>aav_mppi_lag</code>,
+<a href="mppi-lag.html">page</a>), in Ravensim. Pure pursuit, Stanley, LQR and MPC are trials
+(<code>tracker:=</code>, <a href="trials.html">Trials</a>). The lessons below still hold.</p>
+</div>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
-<li><strong>MPPI</strong> is the default (since 22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer.</li>
-<li><strong>Regulated Pure Pursuit (RPP)</strong> is the other choice: it chases a point 2-4 m ahead on the path. Simple and light, but it aims only at a point, so it often arrives at a goal facing the wrong way.</li>
-<li><strong>Switch:</strong> <code>controller:=rpp</code> on <code>sim.launch.py</code> or <code>navigation.launch.py</code>.</li>
-<li><strong>Compare:</strong> <code>pixi run measure controllers</code> (about 25 min, headless, on this computer only; <code>--legs 1</code> for a quick check).</li>
-<li><strong>Results, night of 22 Oct (Gazebo's lot, four runs):</strong> after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI uses twice the CPU (20% of a Mac core).</li>
-<li><strong>No more circling goals (29 Oct, TODO 17):</strong> Nav2 planned a new path every second, also in the last metres, where a new path is often a loop for a car. Now it keeps its path for the last 8 m (<a href="#circling-a-goal-found-and-fixed-29-october-todo-17">below</a>).</li>
+<li><strong>MPPI</strong> won (22 Oct): it tries 2000 possible futures every cycle through a model of the car, and picks the best blend. It turns to a goal's heading; it costs more computer. Ours (<code>mppi_lag</code>) is it, ported, with the lag in its model.</li>
+<li><strong>Regulated Pure Pursuit (RPP)</strong> chased a point 2-4 m ahead on the path. Simple and light, but it aimed only at a point, so it often arrived at a goal facing the wrong way. Our pure pursuit trial: <code>tracker:=pure_pursuit</code>.</li>
+<li><strong>Compare today:</strong> <code>pixi run measure controllers</code> (Ravensim, headless, on this computer only; <code>--legs 1</code> for a quick check).</li>
+<li><strong>Results, night of 22 Oct (Gazebo's lot, four runs):</strong> after five fixes (below), MPPI reached the first goal in 29-30 s in every run; Pure Pursuit looped there in two of three. In the best run both reached all 4 goals. MPPI used twice the CPU (20% of a Mac core).</li>
+<li><strong>No more circling goals (29 Oct, TODO 17):</strong> Nav2 planned a new path every second, also in the last metres, where a new path is often a loop for a car. It then kept its path for the last 8 m; our navigator does the same (<a href="#circling-a-goal-found-and-fixed-29-october-todo-17">below</a>).</li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="what-each-one-does">What each one does</h2>
@@ -170,25 +190,24 @@ second. We have two, and a script that compares them on the same drives in Gazeb
 </tbody>
 </table></div>
 <p>Both read the same costmap and send the same message to the same velocity smoother,
-collision monitor, twist_mux and ego. Everything after the controller is the same.</p>
+stop zone, twist_mux and ego. Everything after the controller is the same.</p>
 </section>
 <section class="card"><h2 id="switch-between-them">Switch between them</h2>
-<pre class="highlight"><code class="language-bash">pixi run sim world:=test_lot controller:=rpp       # Gazebo, Pure Pursuit following the path
-ros2 launch aav_navigation navigation.launch.py controller:=rpp</code></pre>
-<p><code>controller:=</code> takes <code>mppi</code> (the default) or <code>rpp</code>. For MPPI, the launch file copies the <code>MPPI</code> block
-of <code>nav2.yaml</code> under the name the behaviour trees ask for, <code>FollowPath</code>, and sets its
-turning radius, its reverse speed and its top speed from <code>vehicle.yaml</code>
-(<code>aav_description/vehicle.py</code>, <code>nav2_tuned</code>).</p>
+<pre class="highlight"><code class="language-bash">pixi run sim world:=test_lot tracker:=pure_pursuit   # Ravensim, pure pursuit following the path</code></pre>
+<p><code>controller:=</code> takes only <code>mppi</code> now (<code>mppi_lag</code>); <code>controller:=rpp</code> went with Nav2. The
+launch file reads the <code>MPPI</code> block of <code>nav2.yaml</code> and sets its turning radius, its reverse
+speed and its top speed from <code>vehicle.yaml</code> (<code>aav_description/vehicle.py</code>).</p>
 </section>
 <section class="card"><h2 id="compare-them">Compare them</h2>
-<pre class="highlight"><code class="language-bash">pixi run measure controllers                    # both controllers, both tours
+<pre class="highlight"><code class="language-bash">pixi run measure controllers                    # the follower, both tours
 pixi run measure controllers --tours obstacle   # only the box in the lane
 pixi run measure controllers --controllers mppi --speed 2
 pixi run measure controllers --trackers lqr mpc --runs 3   # the trial trackers (docs/trials.md)</code></pre>
-<p>For each tour and controller the script starts Gazebo's test lot with no windows, on a ROS
+<p>For each tour and controller the script starts the test lot with no windows (Ravensim;
+Gazebo before 8 Nov), on a ROS
 domain of its own (this computer only), sends the same goals, and records where the car
-really was (Gazebo's ground truth). Forward only by default; <code>--reversing</code> lets Nav2 back
-up, as it may on the car since 22 Oct. The results go to
+really was (the simulator's ground truth). Forward only by default; <code>--reversing</code> lets the car back
+up, as it does by default in the sim and on the car. The results go to
 <code>log/controller-compare/&lt;time&gt;/</code>:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -616,8 +635,9 @@ failed for both again, as in run j: each swung wide and stopped facing the east 
 only, a U-turn in a 14 m lane is still about a coin toss; backing up makes it reliable.</p>
 <p><img alt="Run s, forward only, after the EKF fix: both make the U-turn as a loop; MPPI's is wider. In run t MPPI's loop met the north wall" src="../img/controllers-lot-forward-ekf.svg" /></p>
 <p>Still to do: MPPI drives on east a few metres before it backs up, where the plan backs
-up at once. The car may reverse since 22 Oct (Ben), where the lidar watches behind it; off by
-default on the car since 26 Oct, until the wheels tell direction (H5).</p>
+up at once. The car may reverse since 22 Oct (Ben), where the lidar watches behind it. It was
+off by default on the car from 26 Oct; on again since 1 Nov (<code>car.launch.py</code>
+<code>reversing:=true</code>), with the lattice as the planner.</p>
 </section>
 <section class="card"><h2 id="results-22-october-first-runs">Results, 22 October, first runs</h2>
 <p>Gazebo's test lot on Ben's Mac (M4 Max), headless, 1 m/s, forward only, with MPPI's

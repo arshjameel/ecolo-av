@@ -29,7 +29,7 @@ from aav_detector.boxes import normal_label
 CLEAR, STOPPING, PASSING = 'clear', 'stopping', 'passing'
 
 # A stop sign's height, flat to flat: Ontario's and the US's standard road sign (750 mm),
-# and Gazebo's (aav_gazebo models/stop_sign).
+# and Gazebo's (aav_sim_models models/stop_sign).
 SIGN_HEIGHT_M = 0.75
 # Gazebo's front camera and the bench camera: 640x360, focal length 343 px (one lens,
 # aav.sensors.gazebo.xacro). For a camera with no CameraInfo yet.
@@ -121,4 +121,25 @@ def biggest_sign(boxes: Iterable[Tuple[str, float, float, float]],
         if normal_label(label) == 'stop sign' and score >= min_score and height > 0 and (
                 best is None or height > best[1]):
             best = (centre, height)
+    return best
+
+
+def lidar_sign(camera_xy: Tuple[float, float],
+               things: Iterable[Tuple[str, float, float]],
+               gate_m: float = 3.0) -> Optional[Tuple[float, float]]:
+    """
+    Return the lidar's place for the sign the camera sees, or None (TODO 192 step 2).
+
+    camera_xy: where the box's height puts the sign; things: (kind, x, y) from the things
+    node with names on, in the same frame. The thing named stop sign nearest the camera's
+    guess, within gate_m, wins: the lidar measures its distance; the pixel height only
+    guesses it (a sign 10 % smaller than 0.75 m reads 10 % nearer).
+    """
+    best, best_d = None, gate_m
+    for kind, x, y in things:
+        if normal_label(kind) != 'stop sign':
+            continue
+        d = ((x - camera_xy[0]) ** 2 + (y - camera_xy[1]) ** 2) ** 0.5
+        if d <= best_d:
+            best, best_d = (x, y), d
     return best

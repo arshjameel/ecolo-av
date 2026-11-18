@@ -28,6 +28,12 @@ Orin ─────────────────────────
     0x200, 0x201)
 ```
 
+Seen on the car, 6 Nov ([audit](history/audit-2026-11-06-car.md)): the Pi called CORTEX holds
+the ESP32's UART (`/dev/ttyAMA0`), so it does the Motor Pi's job; the wire itself wasn't
+checked. **The Orin's `can0` and `can1` were down**, so nothing read the wheel sensors
+that evening. Whether `can0` should be up, and at what speed, is a question for the
+hardware people.
+
 | | Today's wiring | The KEFC plan (below) |
 |---|---|---|
 | Who drives the actuators | the ESP32, reached through the **Motor Pi** (probably serial) | the ESP32, on **CAN** |
@@ -106,10 +112,10 @@ Orin #1 ── CAN Pal (40-pin header) ──┬──────────�
 |---|---|---|
 | `aav.dbc` | v0.2.0: add `WHEEL_SPEED_L` 0x200 and `WHEEL_SPEED_R` 0x201, node `WHEEL_L`, `WHEEL_R`; the timeout to 100 ms; the spine node is the ESP32 board | done |
 | `can_codec.py`, `protocol.rs`, test vectors | the two new frames, as `CLAUDE.md` says | done |
-| `spine_bridge` | the two wheel speeds into `/vehicle/odom`, and `/vehicle/wheels` (the front two; the same topic Gazebo fills) | done |
+| `spine_bridge` | the two wheel speeds into `/vehicle/odom`, and `/vehicle/wheels` (the front two; the same topic Ravensim fills) | done |
 | `spine-core` | stays: it has no chip in it. A new board crate for the ESP32 (`esp-hal`, Embassy, the TWAI CAN driver) beside the Pico 2 one | done: `boards/esp32-umod --features can`; its CAN pins are unknown |
 | Wheel nodes | a small Rust program for the ESP32-CAN-X2 | not written: the hardware lead's Arduino sends the frames (23 Oct) |
-| Gazebo, bench | the bench's spine simulator sends the two wheel frames too | done |
+| Ravensim, bench | the bench's spine simulator sends the two wheel frames too | done |
 
 !!! note "Rust on an ESP32"
     The ESP32 and ESP32-S3 use Xtensa cores. Rust needs Espressif's toolchain

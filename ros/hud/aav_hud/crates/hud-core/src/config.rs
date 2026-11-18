@@ -25,12 +25,19 @@ pub const NODE_NAME: &str = "hud";
 /// Each topic the HUD listens to or sends on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Topic {
+    /// The car's status (`/vehicle/status`).
     VehicleStatus,
+    /// The GPS receiver's own fix.
     Gps,
+    /// The EKF's position, as a GPS fix.
     GpsFiltered,
+    /// Whether the camera sees a stop sign.
     StopSign,
+    /// The battery.
     Battery,
+    /// The camera's picture.
     Camera,
+    /// `/safety/estop`, sent by the e-stop button.
     Estop,
     /// `/system/source`: where the data comes from. Not listed under TOPICS: it's
     /// latched and sent once, so its age means nothing.
@@ -49,6 +56,11 @@ pub enum Topic {
     StopPoint,
     /// Its numbers: the gap, the room, the goal.
     Ahead,
+    /// The things near the car (`/world/things`, odom), named by the camera: drawn in
+    /// AHEAD (hud_core::things).
+    Things,
+    /// The car's pose in odom (the local EKF), to place the things in AHEAD.
+    Odom,
 }
 
 impl Topic {
@@ -64,8 +76,8 @@ impl Topic {
 
     /// The topics that aren't listed: the e-stop and the heartbeat (sent), the source
     /// (latched), the watchdog (a banner of its own) and the output mux (its own panel).
-    /// The squiggly line's four have their own panel, AHEAD.
-    pub const UNLISTED: [Topic; 9] = [
+    /// The squiggly line's four, the things and the car's pose have their own panel, AHEAD.
+    pub const UNLISTED: [Topic; 11] = [
         Topic::Estop,
         Topic::Source,
         Topic::Watchdog,
@@ -75,9 +87,12 @@ impl Topic {
         Topic::PlanAhead,
         Topic::StopPoint,
         Topic::Ahead,
+        Topic::Things,
+        Topic::Odom,
     ];
 
     /// The ROS parameter that holds this topic's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::VehicleStatus => "vehicle_status_topic",
@@ -95,6 +110,8 @@ impl Topic {
             Self::PlanAhead => "plan_ahead_topic",
             Self::StopPoint => "stop_point_topic",
             Self::Ahead => "ahead_topic",
+            Self::Things => "things_topic",
+            Self::Odom => "odom_topic",
         }
     }
 }
@@ -102,21 +119,40 @@ impl Topic {
 /// The settings.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct HudConfig {
+    /// [`Topic::VehicleStatus`]'s topic.
     pub vehicle_status_topic: String,
+    /// [`Topic::Gps`]'s topic.
     pub gps_topic: String,
+    /// [`Topic::GpsFiltered`]'s topic.
     pub gps_filtered_topic: String,
+    /// [`Topic::StopSign`]'s topic.
     pub stop_sign_topic: String,
+    /// [`Topic::Battery`]'s topic.
     pub battery_topic: String,
+    /// [`Topic::Camera`]'s topic.
     pub camera_topic: String,
+    /// [`Topic::Estop`]'s topic.
     pub estop_topic: String,
+    /// [`Topic::Source`]'s topic.
     pub source_topic: String,
+    /// [`Topic::Watchdog`]'s topic.
     pub watchdog_topic: String,
+    /// [`Topic::OutputMux`]'s topic.
     pub output_mux_topic: String,
+    /// [`Topic::Heartbeat`]'s topic.
     pub heartbeat_topic: String,
+    /// [`Topic::Trace`]'s topic.
     pub trace_topic: String,
+    /// [`Topic::PlanAhead`]'s topic.
     pub plan_ahead_topic: String,
+    /// [`Topic::StopPoint`]'s topic.
     pub stop_point_topic: String,
+    /// [`Topic::Ahead`]'s topic.
     pub ahead_topic: String,
+    /// [`Topic::Things`]'s topic.
+    pub things_topic: String,
+    /// [`Topic::Odom`]'s topic.
+    pub odom_topic: String,
     /// Seconds without a message before a topic shows STALE.
     pub stale_after: f64,
     /// m/s: the car's forward cap, ego's `max_speed`. The arcade gauge's redline starts
@@ -130,10 +166,13 @@ pub struct HudConfig {
 /// Why a settings file can't be used.
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    /// The text isn't a HUD parameters file.
     #[error("not a HUD settings file (it needs hud: ros__parameters: ...): {0}")]
     Yaml(#[from] serde_yaml_ng::Error),
+    /// `stale_after` isn't a positive number of seconds.
     #[error("stale_after must be a positive number of seconds, not {0}")]
     StaleAfter(f64),
+    /// `max_speed` can't make a gauge.
     #[error(transparent)]
     MaxSpeed(#[from] BadMaxSpeed),
 }
@@ -151,6 +190,10 @@ struct NodeSection {
 
 impl HudConfig {
     /// Reads a ROS parameters file whose top key is `hud`. Every setting must be there.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] if the text isn't a HUD parameters file, or a number can't work.
     pub fn from_yaml(text: &str) -> Result<Self, ConfigError> {
         let file: ParamsFile = serde_yaml_ng::from_str(text)?;
         let config = file.hud.params;
@@ -159,6 +202,10 @@ impl HudConfig {
     }
 
     /// Checks the numbers. Call it after changing a setting by hand.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] if `stale_after` or `max_speed` can't work.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if !(self.stale_after.is_finite() && self.stale_after > 0.0) {
             return Err(ConfigError::StaleAfter(self.stale_after));
@@ -168,16 +215,22 @@ impl HudConfig {
     }
 
     /// [`HudConfig::max_speed`] in its type.
+    #[must_use]
     pub fn max_speed(&self) -> MetresPerSecond {
         MetresPerSecond(self.max_speed as f32)
     }
 
     /// The arcade gauge's scale, for [`HudConfig::max_speed`].
+    ///
+    /// # Errors
+    ///
+    /// [`BadMaxSpeed`] if `max_speed` isn't a positive number.
     pub fn gauge(&self) -> Result<Scale, BadMaxSpeed> {
         Scale::for_max_speed(self.max_speed())
     }
 
     /// The name of one topic.
+    #[must_use]
     pub fn topic(&self, topic: Topic) -> &str {
         match topic {
             Topic::VehicleStatus => &self.vehicle_status_topic,
@@ -195,6 +248,8 @@ impl HudConfig {
             Topic::PlanAhead => &self.plan_ahead_topic,
             Topic::StopPoint => &self.stop_point_topic,
             Topic::Ahead => &self.ahead_topic,
+            Topic::Things => &self.things_topic,
+            Topic::Odom => &self.odom_topic,
         }
     }
 
@@ -216,11 +271,14 @@ impl HudConfig {
             Topic::PlanAhead => &mut self.plan_ahead_topic,
             Topic::StopPoint => &mut self.stop_point_topic,
             Topic::Ahead => &mut self.ahead_topic,
+            Topic::Things => &mut self.things_topic,
+            Topic::Odom => &mut self.odom_topic,
         };
         *slot = name;
     }
 
     /// [`HudConfig::stale_after`] as a Duration.
+    #[must_use]
     pub fn stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.stale_after)
     }

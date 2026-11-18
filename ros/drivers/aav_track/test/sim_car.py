@@ -1,7 +1,7 @@
 """
 A pretend car for the trackers' tests: ego's model, then the shared car model, a flat plane.
 
-The same chain as aav_drive_to_point's fake_car.py (ego -> gazebo_adapter's actuator model
+The same chain as aav_drive_to_point's fake_car.py (ego -> sim_adapter's actuator model
 -> the car), driven the way the node drives it: a tracker and the speed policy at 20 Hz,
 ego and the car at 100 Hz in between. No ROS, no Gazebo.
 """

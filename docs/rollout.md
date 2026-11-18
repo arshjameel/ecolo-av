@@ -4,6 +4,12 @@ How our code goes onto the car: the names, the order, and each computer's steps.
 The full steps, with sign-offs: [Car day](car-day.md), [Car setup](car-setup.md) and
 [The ESP32 on the bench](esp32-bench.md). **Back up first, every time.**
 
+!!! note "Where the car is (checked 14 Nov)"
+    Written 8 Nov, for Monday 9 Nov. **The repo has no record of that day.** By the
+    records, only the **localization Pi** has our kit (by 11 Nov), and the car drove on
+    13 Nov with only that update. The ESP32 (the C++, seen 6 Nov), the Motor Pi and the
+    Orin still run the 2025-26 software: steps 1-5 below are still to do.
+
 ## The names
 
 One name per computer: its **role** (what `car_setup.sh` and the docs call it) is also its
@@ -29,7 +35,7 @@ name in `/etc/hosts`, reboot. Then update the Keychain entry's name and `hosts.t
 
 | Computer | Plugged in | Runs | Machine file |
 |---|---|---|---|
-| Orin | the lidar (network), CAN | the brain: ego, Nav2, localization, perception | `machines/orin.yaml` |
+| Orin | the lidar (network), CAN | the brain: ego, navigation, localization, perception | `machines/orin.yaml` |
 | Motor Pi | the ESP32 (UART) | the bridge to the ESP32 | `machines/motor_pi.yaml`; alone: `motor_pi_alone.yaml` |
 | Localization Pi | the IMU, the GPS (USB) | their drivers only; the Orin does the maths | `machines/localization.yaml` |
 | Camera Pis | the front cameras | video streams, no ROS (Pi OS) | none |
@@ -41,7 +47,7 @@ name in `/etc/hosts`, reboot. Then update the Keychain entry's name and `hosts.t
 
 ## The order
 
-Monday: **the ESP32 and the Motor Pi first.** One step at a time; each has a way back.
+The plan for Monday 9 Nov, still the order: **the ESP32 and the Motor Pi first.** One step at a time; each has a way back.
 
 | # | Step | Where it's written | The way back |
 |---|---|---|---|
@@ -67,8 +73,8 @@ stay as they were.** The new pieces are off, or run only in the simulator.
 | ESP32 firmware | Same behaviour (one line changed, for the car model) | `CONFIG` line at boot |
 | Motor Pi setup | No change | `car_setup.sh motor_pi check` |
 | Ego (Orin) | **New:** the lag lead, the 2 s trace ahead, the stop point | `/ego/trace`, `/ego/stop_point` |
-| Nav2 | Still the default: costmap, planner, navigator, smoother | |
-| Our costmap, planner, navigator, smoother, MPPI with lag, MPC with lag | Simulator switches only | [Switches](switches.md) |
+| Navigation | Ours since 17 Nov: costmap, planner, navigator, `mppi_lag`, smoother, stop zone (Nav2 deleted) | [Nav2, as it was](history/nav2-as-it-was.md) |
+| MPC with lag, the other trials | Simulator switches only | [Switches](switches.md) |
 | Diffusion planner | **Locked off.** `diffusion_trial:=true` turns it on, capped at 0.5 m/s | [A12](car-day.md#a12-the-diffusion-planners-trial) |
 | Adaptive brake | Refused with the ESP32 (the firmware brakes). Needs A7's brake limits first | [Stopping](stopping.md) |
 
@@ -96,7 +102,7 @@ bash ~/car-kit/car_setup.sh <role>                 # a dry run: read what it wil
 bash ~/car-kit/car_setup.sh <role> --apply         # do it: backup, upgrade, install, services, check
 ```
 
-**The Motor Pi on Monday** takes only three steps:
+**The Motor Pi, the first time,** takes only three steps:
 `bash ~/car-kit/car_setup.sh motor_pi backup install check --apply`.
 
 - No `upgrade`: it keeps Ubuntu 22.04 until the Rust ESP32 has passed car day's session 6

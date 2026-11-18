@@ -36,6 +36,7 @@ impl From<u8> for Origin {
 
 impl Origin {
     /// The short tag beside a topic.
+    #[must_use]
     pub fn tag(self) -> &'static str {
         match self {
             Self::Real => "REAL",
@@ -47,6 +48,7 @@ impl Origin {
     }
 
     /// The banner's word; None for real data, which needs no banner.
+    #[must_use]
     pub fn banner(self) -> Option<&'static str> {
         match self {
             Self::Real => None,
@@ -57,6 +59,8 @@ impl Origin {
         }
     }
 
+    /// True for real data.
+    #[must_use]
     pub fn is_real(self) -> bool {
         self == Self::Real
     }
@@ -75,6 +79,7 @@ pub struct Entry {
     pub name: String,
     /// Its main topic; empty if it has none.
     pub topic: String,
+    /// Where its data comes from.
     pub origin: Origin,
 }
 
@@ -83,6 +88,7 @@ pub struct Entry {
 pub struct Announcement {
     /// The node that says so.
     pub announcer: String,
+    /// Each sensor it speaks for.
     pub entries: Vec<Entry>,
 }
 
@@ -106,6 +112,7 @@ impl Origins {
     /// The banner's text: each kind of data that isn't real, in a fixed order
     /// ("SIMULATED", "BENCH + REPLAY"...). None when everything heard is real, or nothing
     /// has been heard.
+    #[must_use]
     pub fn banner(&self) -> Option<String> {
         let mut kinds: Vec<Origin> = self
             .entries()
@@ -120,6 +127,7 @@ impl Origins {
 
     /// Where one topic's data comes from, if anyone said. If two announcers disagree,
     /// the less real one wins: a banner too many is safer than one too few.
+    #[must_use]
     pub fn of_topic(&self, topic: &str) -> Option<Origin> {
         self.entries()
             .filter(|e| !e.topic.is_empty() && e.topic == topic)
@@ -172,7 +180,7 @@ mod tests {
     fn gazebo_says_simulated() {
         let mut o = Origins::default();
         o.apply(says(
-            "gazebo_adapter",
+            "sim_adapter",
             &[
                 ("imu", "/sensors/imu/data_raw", 1),
                 ("gps", "/sensors/gps/fix", 1),

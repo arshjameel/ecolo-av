@@ -5,7 +5,7 @@ A long lane drive in the simulator, scored by its truth.
 How far the car strays from its lane's centre, how often the camera loses the lane, how
 fast it goes.
 
-    pixi run measure lane                                   # the road world, on Gazebo
+    pixi run measure lane                                   # the road world, on Ravensim
     pixi run measure lane --simulator own                   # the same on our simulator
     pixi run measure lane --world campus --road "Library Road" [--from 20] [--seconds 120]
 
@@ -16,9 +16,17 @@ road from maps/campus/lanes.yaml, `pixi run campus`). It records /vehicle/sim/tr
 /perception/lane/geometry for `--seconds` of simulated time from when the car moves, or
 until it leaves the road for 3 s, then prints the numbers (tools/lane_score.py) and stops.
 
-On its own ROS domain (AAV_SIM_DOMAIN, else a free one) and Gazebo partition, this computer
-only. The launch log goes to /tmp/aav-lane-drive.log (AAV_SIM_LOG moves it).
-Subscribes: /vehicle/sim/truth, /perception/lane/geometry, /vehicle/odom. Publishes nothing.
+It also scores the global EKF against the truth, sideways and along the car, and the
+sideways error's jitter (lane_score.pose_error). The EKF doesn't steer here (the lane
+follower drives by the camera), so this is the pose alone. With --lane-pose the run adds
+lane_pose:=true (TODO 155): the lane finder into ekf_global as a sideways correction.
+
+    pixi run tools/ros.sh --local python3 tools/lane_drive.py --lane-pose   # against without
+
+On its own ROS domain (AAV_SIM_DOMAIN, else a free one), this computer only. The launch
+log goes to /tmp/aav-lane-drive.log (AAV_SIM_LOG moves it).
+Subscribes: /vehicle/sim/truth, /perception/lane/geometry, /localization/odom/global.
+Publishes nothing.
 """
 
 import argparse
@@ -38,11 +46,9 @@ else:
     DOMAIN = str(free_domain())
 os.environ['ROS_DOMAIN_ID'] = DOMAIN
 os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-os.environ['GZ_IP'] = '127.0.0.1'
-os.environ['GZ_PARTITION'] = os.environ.get('AAV_SIM_PARTITION', f'lane_drive_{DOMAIN}')
 
-from aav_gazebo.worlds import DEFAULT_SIMULATOR  # noqa: E402
 from aav_lane_geometry.msg import LaneGeometry  # noqa: E402
+from aav_sim_models.worlds import DEFAULT_SIMULATOR  # noqa: E402
 import lane_score  # noqa: E402
 from nav_msgs.msg import Odometry  # noqa: E402
 import rclpy  # noqa: E402
@@ -72,8 +78,9 @@ class Recorder(Node):
 
     def __init__(self):
         super().__init__('lane_drive')
-        self.track, self.lanes, self.speeds = [], [], []
+        self.track, self.lanes, self.speeds, self.poses = [], [], [], []
         self.create_subscription(Odometry, '/vehicle/sim/truth', self.on_truth, 50)
+        self.create_subscription(Odometry, '/localization/odom/global', self.on_pose, 50)
         self.create_subscription(LaneGeometry, '/perception/lane/geometry', self.on_lane, 10)
 
     def on_truth(self, m):
@@ -82,6 +89,10 @@ class Recorder(Node):
         t = m.header.stamp.sec + 1e-9 * m.header.stamp.nanosec
         self.track.append((t, p.x, p.y, yaw))
         self.speeds.append(math.hypot(m.twist.twist.linear.x, m.twist.twist.linear.y))
+
+    def on_pose(self, m):
+        t = m.header.stamp.sec + 1e-9 * m.header.stamp.nanosec
+        self.poses.append((t, m.pose.pose.position.x, m.pose.pose.position.y))
 
     def on_lane(self, m):
         t = m.header.stamp.sec + 1e-9 * m.header.stamp.nanosec
@@ -101,6 +112,8 @@ def main():
     parser.add_argument('--speed', default='', help='sim_speed:= (m/s), the top speed')
     parser.add_argument('--offset', type=float, default=0.3,
                         help='m left of the lane centre to start (the road world)')
+    parser.add_argument('--lane-pose', action='store_true',
+                        help='lane_pose:=true: the lane finder into the global EKF (a trial)')
     args = parser.parse_args()
     if args.world == 'road':
         roads = lane_score.road_world()
@@ -122,6 +135,8 @@ def main():
                    f'start_x:={x:.3f}', f'start_y:={y:.3f}', f'start_yaw:={yaw:.4f}']
     if args.speed:
         launch_args.append(f'sim_speed:={args.speed}')
+    if args.lane_pose:
+        launch_args.append('lane_pose:=true')
     print(f'Lane drive: {args.world} ({args.simulator}), from ({x:.1f}, {y:.1f}) facing '
           f'{math.degrees(yaw):.0f} deg, on ROS domain {DOMAIN}; log {log_path}', flush=True)
     log = open(log_path, 'w')
@@ -173,6 +188,9 @@ def drive(rec, roads, args):
     lanes = [m for m in rec.lanes if m[0] >= t0]
     got = lane_score.score(roads, track, lanes)
     print(f'lane drive ({args.world}, {args.simulator}): {got.line()}')
+    pose = lane_score.pose_error(track, [p for p in rec.poses if p[0] >= t0])
+    which = 'lane_pose on' if args.lane_pose else 'lane_pose off'
+    print(f'global EKF ({which}): {pose.line() if pose else "no pose matched the truth"}')
     return 0
 
 

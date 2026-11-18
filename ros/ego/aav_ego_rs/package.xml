@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_ego_rs</name>
+  <version>0.1.0</version>
+  <description>ego and look_ahead in Rust (rclrs), one process with both nodes: the default since 16 Nov (Ben), beside aav_ego's Python (ego.launch.py ego:=rust). The same node names, topics, QoS and parameters: /control/cmd_vel in, /ego/actuator_cmd, /ego/trace and /ego/stop_point out (ego); /ego/plan_ahead and /ego/ahead (look_ahead). The maths is the ego-core crate, with no ROS, checked against the Python modules' answers.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>ackermann_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>tf2_msgs</depend>
+  <depend>aav_interfaces</depend>
+  <!-- vehicle.yaml, found on AMENT_PREFIX_PATH when vehicle_yaml is empty. -->
+  <exec_depend>aav_description</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+  <test_depend>launch_testing</test_depend>
+  <test_depend>launch_testing_ros</test_depend>
+  <!-- aav_ego (its launch file, the Python twin) depends on this package, not the other way. -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

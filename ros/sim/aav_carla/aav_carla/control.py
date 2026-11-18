@@ -127,7 +127,7 @@ class SpeedLoop:
     """
     Hold a speed with throttle and brake: a PI loop.
 
-    A PI speed loop for the pedals mode: the stand-in for the spine's, as in Gazebo.
+    A PI speed loop for the pedals mode: the stand-in for the spine's, as in Ravensim.
     Throttle (0..1) to speed up, brake (0..1) to slow; in reverse below zero.
     """
 

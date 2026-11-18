@@ -7,9 +7,13 @@
 <!-- Generated from docs/esp32-safety.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The ESP32&#x27;s safety rules</h1>
-<div class="meta">21 min read · 9 sections</div></header>
+<div class="meta">22 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a class="here" href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -123,7 +135,7 @@ against the code; the proofs are in the last table.</p>
 <li><strong>The car runs the 2025-26 C++ today</strong> (<code>legacy.yaml</code>: <code>frame_version: 1</code>). It has
   none of the timeouts below. What it does instead: <a href="#8-the-2025-26-c-and-open-questions">section 8</a>.</li>
 <li>Sections 2 to 7 are the <strong>Rust firmware</strong> (<code>firmware/spine/boards/esp32-umod</code>).
-  <span class="badge b-untested">untested</span> on the car: <strong>never flashed yet</strong>. Proven in <code>cargo test</code> and in the
+  <span class="badge b-untested">untested</span> on the car: <strong>no record of a flash</strong> (the board ran the C++ on 6 Nov). Proven in <code>cargo test</code> and in the
   emulator (QEMU) only.</li>
 </ul>
 </div></div>
@@ -132,7 +144,7 @@ against the code; the proofs are in the last table.</p>
  keyboard ─┤
  hw_panel ─┤  slot 45, only while GO is held
  RC via ROS┤  slot 95 (rc_driver, from the uplink)
- Nav2 ...  ┘
+ nav ...   ┘
      │
      ▼
  twist_mux ──► ego ──────► output mux ──────────────► legacy_uart_bridge ──UART──► ESP32 ──I2C──► steering Jrk
@@ -175,6 +187,10 @@ against the code; the proofs are in the last table.</p>
 </tr>
 </tbody>
 </table></div>
+<p><strong>Rust by default</strong> (Ben, 17 Nov: "Rust tomorrow"): the output mux (<code>aav_io_mux_rs</code>),
+the bridge (<code>aav_legacy_rs</code>) and <code>rc_driver</code> (<code>aav_rc_rs</code>) run in Rust; each
+<code>*_impl:=python</code> falls back. The bridge packs its frames with the firmware's own
+<code>legacy-link</code>, so the Pi and the ESP32 share one copy of the bytes.</p>
 <p><strong>The heartbeat is the output mux's counter.</strong> Wherever the output mux runs (the Orin,
 or the Motor Pi with <code>machine:=motor_pi_alone</code>), that machine is the heartbeat.</p>
 </section>
@@ -263,7 +279,7 @@ or the Motor Pi with <code>machine:=motor_pi_alone</code>), that machine is the 
 with 1.0 until the team decides (section 8).</p>
 </section>
 <section class="card"><h2 id="3-what-releases-the-brake">3. What releases the brake</h2>
-<h3 id="computer-joystick-keyboard-nav2-through-ros">Computer (joystick, keyboard, Nav2 through ROS)</h3>
+<h3 id="computer-joystick-keyboard-navigation-through-ros">Computer (joystick, keyboard, navigation through ROS)</h3>
 <pre class="highlight"><code class="language-text"> boot ─► latched ─► a STOP frame with a new counter ─► unlatched ─► a DRIVE frame, new counter ─► drives
                     (ego says stand still: the hold                   (speed asked, no brake:
                      brake, or the armed flag clear)                   the brake lets go)</code></pre>
@@ -665,7 +681,7 @@ ESP32 brakes on its own only when ego, the mux, the Pi or the wire stops.</p>
 </tr>
 <tr>
 <td>What a laptop can do</td>
-<td>drive (<code>pixi run keyboard</code>), watch (<code>pixi run hw-panel stands:=true</code>), e-stop</td>
+<td>drive (<code>pixi run keyboard</code>), watch (<code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code>; not <code>pixi run hw-panel</code>, which stays on the laptop), e-stop</td>
 </tr>
 <tr>
 <td>hw_panel's speed buttons on the real car</td>
@@ -693,7 +709,7 @@ ESP32 brakes on its own only when ego, the mux, the Pi or the wire stops.</p>
 </tr>
 <tr>
 <td>the laptop (to watch)</td>
-<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run hw-panel stands:=true</code></td>
+<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code> (<code>pixi run hw-panel</code> is localhost-only: it never sees the car)</td>
 </tr>
 </tbody>
 </table></div>
@@ -835,7 +851,10 @@ joystick is for stands only.</p>
 <section class="card"><h2 id="where-its-proved">Where it's proved</h2>
 <p><code>spine.rs</code>, <code>fsm.rs</code>: <code>firmware/spine/crates/spine-core/src/</code>. <code>link.rs</code>, <code>health.rs</code>,
 <code>actuators.rs</code>, <code>spine_board.rs</code>, <code>calibration.rs</code>: <code>firmware/spine/crates/spine-board/src/</code>.
-<code>legacy_uart_bridge.py</code>, <code>legacy_protocol.py</code>: <code>ros/can_bridge/aav_legacy/aav_legacy/</code>.</p>
+<code>legacy_uart_bridge.py</code>, <code>legacy_protocol.py</code>: <code>ros/can_bridge/aav_legacy/aav_legacy/</code> (the Python
+fall-back). <code>relay.rs</code>: <code>ros/can_bridge/aav_legacy_rs/crates/legacy-bridge/src/</code>; <code>main.rs</code>:
+<code>ros/can_bridge/aav_legacy_rs/crates/legacy-node/src/</code> (the Rust bridge, the default). The
+two give the same frames, byte for byte: <code>legacy-bridge</code>'s <code>tests/vectors.rs</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -952,7 +971,7 @@ joystick is for stands only.</p>
 </tr>
 <tr>
 <td>The bridge leaves 5 stop frames as it ends</td>
-<td><code>legacy_uart_bridge.py:350-358</code></td>
+<td><code>main.rs</code> (<code>leave_braked</code>); <code>legacy_uart_bridge.py:350-358</code></td>
 <td></td>
 </tr>
 <tr>
@@ -962,13 +981,13 @@ joystick is for stands only.</p>
 </tr>
 <tr>
 <td>The bridge copies, never makes, the counter</td>
-<td><code>ros/can_bridge/aav_legacy/aav_legacy/uart_relay.py:93</code>, <code>:164-185</code></td>
-<td><code>test_the_counter_moves_only_when_the_orin_sends_one</code>; <code>test_when_ego_goes_quiet_it_sends_stops_with_the_last_counter</code></td>
+<td><code>relay.rs</code> (<code>heartbeat</code>, <code>frame</code>); <code>ros/can_bridge/aav_legacy/aav_legacy/uart_relay.py:93</code>, <code>:164-185</code></td>
+<td><code>the_counter_is_relayed_never_made_up</code>; <code>test_the_counter_moves_only_when_the_orin_sends_one</code>; <code>test_when_ego_goes_quiet_it_sends_stops_with_the_last_counter</code></td>
 </tr>
 <tr>
 <td>The bridge reads only <code>/control/car/heartbeat</code></td>
-<td><code>legacy_uart_bridge.py:150</code></td>
-<td></td>
+<td><code>main.rs</code> (<code>control/car/heartbeat</code>); <code>legacy_uart_bridge.py:150</code></td>
+<td><code>test_heartbeat_chain.py</code> (both bridges; the Rust one with the Rust muxes)</td>
 </tr>
 <tr>
 <td>The car refuses <code>screens:=</code></td>

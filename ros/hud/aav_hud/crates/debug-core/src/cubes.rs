@@ -5,12 +5,14 @@
 //! EKF's pose at the cloud's stamp, [`crate::poses`]). A cube is there if any point fell
 //! in it: one `HashSet` of cube indices per scan. Heights are above base_link: the EKF
 //! is 2D (no roll or pitch), so a pitched car tilts the cubes. The VLP-16's 0.1 s sweep
-//! is ignored (Gazebo's lidar has none).
+//! is ignored (Gazebo's lidar has none). Flat ground a little higher than the road (the
+//! lidar's rings on raised grass) is ground too ([`crate::flat`]).
 
 use std::collections::HashSet;
 
 use map_core::geom::{Point, Pose};
 
+use crate::flat;
 use crate::frames::{Stamp, Transform3, Vec3};
 
 /// A length, in metres.
@@ -38,17 +40,21 @@ pub struct CubeSettings {
 /// trail behind the car (30 Oct).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OwnBox {
+    /// The rear-right corner (x, y).
     pub min: [f64; 2],
+    /// The front-left corner (x, y).
     pub max: [f64; 2],
 }
 
 impl OwnBox {
     /// Is this base_link point inside, seen from above?
+    #[must_use]
     pub fn contains(&self, p: Vec3) -> bool {
         (self.min[0]..=self.max[0]).contains(&p[0]) && (self.min[1]..=self.max[1]).contains(&p[1])
     }
 
     /// Reads `x_min,y_min,x_max,y_max` (m), as `--own-box` takes it.
+    #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         let v: Vec<f64> = text
             .split(',')
@@ -69,7 +75,8 @@ impl OwnBox {
 /// How high a cube is above base_link: its colour on the screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Band {
-    /// Below `ground_height`: the ground, drawn darker.
+    /// Below `ground_height`, or flat raised ground ([`crate::flat`]): hidden unless
+    /// key G shows it.
     Ground,
     /// Up to 0.75 m: kerbs, cones, a box.
     Knee,
@@ -95,6 +102,7 @@ impl Band {
     ];
 
     /// The band of a cube whose centre is `height` above base_link.
+    #[must_use]
     pub fn of(height: Metres, ground: Metres) -> Self {
         let h = height.0;
         if h < ground.0 {
@@ -113,6 +121,7 @@ impl Band {
     }
 
     /// The legend's words.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Ground => "ground",
@@ -128,7 +137,9 @@ impl Band {
 /// One cube: its centre in odom (metres) and its band.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Cube {
+    /// m, in odom.
     pub centre: [f32; 3],
+    /// How high it is above base_link.
     pub band: Band,
 }
 
@@ -139,6 +150,7 @@ pub struct CubeScan {
     pub stamp: Stamp,
     /// Where base_link was at that stamp, in odom.
     pub car: Pose,
+    /// The cubes.
     pub cubes: Vec<Cube>,
     /// The edge of every cube, metres.
     pub size: f32,
@@ -192,6 +204,7 @@ pub fn build(
         })
         .collect();
     let cut = keep_nearest(&mut cubes, car, settings.max_cubes);
+    flat::ground_the_flat(&mut cubes, &[], flat::FlatRule::default());
     CubeScan {
         stamp,
         car,

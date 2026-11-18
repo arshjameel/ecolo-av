@@ -16,7 +16,7 @@
 //! check every pair against WCAG's contrast ratios.
 //!
 //! The debug screen's localizers keep their colours too (local blue, global green, truth
-//! white, AMCL orange, NDT purple; Nav2's cubes red, the plan yellow). The tests check
+//! white, AMCL orange, NDT purple; the costmap's cubes red, the plan yellow). The tests check
 //! they stand out on the 3D view and stay apart from each other ([`Rgba::difference`]).
 //!
 //! `config/hud.yaml`, `map.yaml`, `debug_hud.yaml` and `hw_panel.yaml` each choose one:
@@ -35,18 +35,24 @@ use thiserror::Error;
 /// A colour: red, green, blue and alpha (0 = see-through, 255 = solid), 0-255 each.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Rgba {
+    /// Red.
     pub r: u8,
+    /// Green.
     pub g: u8,
+    /// Blue.
     pub b: u8,
+    /// Alpha: 0 see-through, 255 solid.
     pub a: u8,
 }
 
 impl Rgba {
     /// Solid black and white, for mixing.
     pub const BLACK: Rgba = Rgba::hex(0x000000);
+    /// Solid white.
     pub const WHITE: Rgba = Rgba::hex(0xffffff);
 
     /// A solid colour from its web code: `Rgba::hex(0x1e1e2e)` is `#1e1e2e`.
+    #[must_use]
     pub const fn hex(rgb: u32) -> Self {
         Self {
             r: ((rgb >> 16) & 0xff) as u8,
@@ -57,12 +63,14 @@ impl Rgba {
     }
 
     /// The same colour, `alpha` see-through (0-255).
+    #[must_use]
     pub const fn alpha(self, alpha: u8) -> Self {
         Self { a: alpha, ..self }
     }
 
     /// `percent` of the way from this colour to `other` (0 = this, 100 = other). The
     /// alpha is this colour's.
+    #[must_use]
     pub const fn mix(self, other: Rgba, percent: u8) -> Self {
         const fn channel(a: u8, b: u8, t: u16) -> u8 {
             let t = if t > 100 { 100 } else { t };
@@ -78,6 +86,7 @@ impl Rgba {
     }
 
     /// What this colour looks like painted over a solid `back`: its alpha blended away.
+    #[must_use]
     pub fn over(self, back: Rgba) -> Rgba {
         let k = f64::from(self.a) / 255.0;
         let blend = |f: u8, b: u8| (f64::from(f) * k + f64::from(b) * (1.0 - k)).round() as u8;
@@ -90,6 +99,7 @@ impl Rgba {
     }
 
     /// WCAG 2's relative luminance: 0 for black, 1 for white. Alpha ignored.
+    #[must_use]
     pub fn luminance(self) -> f64 {
         let lin = |c: u8| {
             let c = f64::from(c) / 255.0;
@@ -104,6 +114,7 @@ impl Rgba {
 
     /// WCAG 2's contrast ratio, 1 to 21: 4.5 or more for text, 3 or more for large text
     /// and shapes. Both solid (use [`Rgba::over`] first for a see-through one).
+    #[must_use]
     pub fn contrast(self, other: Rgba) -> f64 {
         let (a, b) = (self.luminance(), other.luminance());
         (a.max(b) + 0.05) / (a.min(b) + 0.05)
@@ -111,6 +122,7 @@ impl Rgba {
 
     /// The colour in OKLab (<https://bottosson.github.io/posts/oklab/>): lightness, then
     /// green-red, then blue-yellow, spaced as eyes see them. Alpha ignored.
+    #[must_use]
     pub fn oklab(self) -> [f64; 3] {
         let lin = |c: u8| {
             let c = f64::from(c) / 255.0;
@@ -134,6 +146,7 @@ impl Rgba {
     /// How different two colours look: the distance between them in OKLab. 0 is the same
     /// colour, about 0.02 the least an eye notices, 0.1 or more plainly two colours;
     /// black to white is 1. Alpha ignored.
+    #[must_use]
     pub fn difference(self, other: Rgba) -> f64 {
         let (a, b) = (self.oklab(), other.oklab());
         a.iter()
@@ -171,6 +184,7 @@ impl ThemeName {
     ];
 
     /// The name as written in the settings.
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Mocha => "mocha",
@@ -181,6 +195,7 @@ impl ThemeName {
     }
 
     /// The theme's colours.
+    #[must_use]
     pub fn theme(self) -> &'static Theme {
         match self {
             Self::Mocha => &MOCHA,
@@ -216,32 +231,49 @@ impl FromStr for ThemeName {
 /// Nav2's occupancy grid, as a picture: free, occupied and unknown cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GridColours {
+    /// A free cell.
     pub free: Rgba,
+    /// An occupied cell.
     pub occupied: Rgba,
+    /// An unknown cell.
     pub unknown: Rgba,
 }
 
 /// The street map (OpenStreetMap) under Nav2's map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StreetColours {
+    /// Land: the background.
     pub land: Rgba,
+    /// Parks and grass.
     pub green: Rgba,
+    /// The campus.
     pub campus: Rgba,
+    /// Lakes and rivers.
     pub water: Rgba,
+    /// Buildings.
     pub building: Rgba,
+    /// Streams and canals, as lines.
     pub waterway: Rgba,
     /// The edge under the major roads and highways.
     pub casing: Rgba,
+    /// Street and place names.
     pub label: Rgba,
+    /// The halo round a name.
     pub label_halo: Rgba,
     /// Each road class, from the least: path, rail, service, minor, medium, major,
     /// highway.
     pub path: Rgba,
+    /// Rail lines.
     pub rail: Rgba,
+    /// Service roads.
     pub service: Rgba,
+    /// Minor roads.
     pub minor: Rgba,
+    /// Medium roads.
     pub medium: Rgba,
+    /// Major roads.
     pub major: Rgba,
+    /// Highways.
     pub highway: Rgba,
 }
 
@@ -269,7 +301,9 @@ pub struct SceneColours {
     pub back: Rgba,
     /// The ground's lines: every metre, and every 5 m.
     pub grid: Rgba,
+    /// The 5 m lines.
     pub grid_major: Rgba,
+    /// Each localizer's colour.
     pub localizers: LocalizerColours,
     /// Nav2's plan: yellow.
     pub plan: Rgba,
@@ -285,9 +319,11 @@ pub struct SceneColours {
     pub ndt_cell: Rgba,
     /// The latest scan from above: on a map cell (green), off the map (red).
     pub scan_on: Rgba,
+    /// A scan point off the map.
     pub scan_off: Rgba,
-    /// Nav2's cubes (the voxels trial's): red wireframes; dimmer once STALE.
+    /// The costmap's cubes (the voxels trial's): red wireframes; dimmer once STALE.
     pub nav2_cube: Rgba,
+    /// A cube once STALE.
     pub nav2_cube_stale: Rgba,
     /// The cubes' height ramp, lowest first: ground, knee, waist, head, high, above.
     /// Teal, standing further from `back` the higher it is.
@@ -326,7 +362,9 @@ impl Tone {
 /// A pill's colours: its fill, and its words.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Pill {
+    /// The pill.
     pub fill: Rgba,
+    /// Its words.
     pub ink: Rgba,
 }
 
@@ -348,6 +386,7 @@ impl Style {
     /// A corner in this style, from the glass style's: a radius in pixels, or raylib's
     /// roundness (0 to 1). The same in glass; under a third in arcade, so its panels,
     /// pills and buttons are sharp.
+    #[must_use]
     pub fn corner(self, glass: f32) -> f32 {
         match self {
             Style::Glass => glass,
@@ -369,9 +408,11 @@ pub struct Arcade {
     pub redline: Rgba,
     /// The digital boxes (the speed, the gear): their fill and edge.
     pub readout: Rgba,
+    /// Their edge.
     pub readout_edge: Rgba,
     /// A lit segment, and an unlit one (faint, as a real display's glass).
     pub segment_on: Rgba,
+    /// An unlit segment.
     pub segment_off: Rgba,
     /// The car's lines in the background: faint, see-through.
     pub silhouette: Rgba,
@@ -381,6 +422,7 @@ impl Arcade {
     /// The car's lines where words sit straight on the window, with no panel over the
     /// car (the hardware panel): as faint as the car under a panel of `glass`, so the
     /// words read as well as they do on a panel.
+    #[must_use]
     pub fn silhouette_under(self, glass: Rgba) -> Rgba {
         let seen = u16::from(self.silhouette.a) * u16::from(255 - glass.a) / 255;
         self.silhouette.alpha(u8::try_from(seen).unwrap_or(u8::MAX))
@@ -394,14 +436,21 @@ impl Arcade {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
     // The window behind everything: a soft gradient, and two faint glows.
+    /// The gradient's top.
     pub background: Rgba,
+    /// The gradient's bottom.
     pub background_low: Rgba,
+    /// The first glow.
     pub glow_a: Rgba,
+    /// The second glow.
     pub glow_b: Rgba,
 
     // Frosted glass: the panels, see-through, with a soft edge and a shine on top.
+    /// A panel.
     pub panel: Rgba,
+    /// A panel's edge.
     pub glass_edge: Rgba,
+    /// The shine on a panel's top.
     pub glass_shine: Rgba,
     /// Glass over the map: the chips, the north arrow, the scale bar.
     pub overlay: Rgba,
@@ -413,58 +462,81 @@ pub struct Theme {
     pub camera_back: Rgba,
 
     // Words.
+    /// Words.
     pub text: Rgba,
+    /// Captions: quieter words.
     pub caption: Rgba,
     /// Old news, and nothing yet.
     pub dim: Rgba,
 
     // Status, as words or lines on a panel.
+    /// Good.
     pub good: Rgba,
+    /// A warning.
     pub warn: Rgba,
+    /// Bad.
     pub bad: Rgba,
     /// A topic's SIM / BENCH / REPLAY tag.
     pub not_real_text: Rgba,
 
     // Status, as filled shapes with words on them.
+    /// GO's fill.
     pub go_fill: Rgba,
+    /// Words on GO's fill.
     pub go_ink: Rgba,
+    /// WAIT's fill.
     pub wait_fill: Rgba,
+    /// Words on WAIT's fill.
     pub wait_ink: Rgba,
     /// STOP, the stop-sign banner, the e-stop button.
     pub stop_fill: Rgba,
     /// The same, blinking, and under the pointer.
     pub stop_fill_alt: Rgba,
+    /// Words on the stop fill.
     pub stop_ink: Rgba,
     /// The SIMULATED / BENCH / REPLAY band.
     pub not_real: Rgba,
+    /// Words on the band.
     pub not_real_ink: Rgba,
 
     // The map window.
     /// Nav2's plan, the search box while typing, the Enter key.
     pub accent: Rgba,
+    /// Words on the accent.
     pub accent_ink: Rgba,
     /// Under the plan, so it shows on any colour.
     pub plan_casing: Rgba,
     /// street_router's street route.
     pub street_route: Rgba,
+    /// The goal.
     pub goal: Rgba,
     /// The place picked in the search.
     pub picked: Rgba,
     /// CONFIRM: stop and read.
     pub confirm: Rgba,
+    /// Words on CONFIRM.
     pub confirm_ink: Rgba,
+    /// The car's body.
     pub car_body: Rgba,
     /// The edge of the car, the goal and the pin.
     pub marker_edge: Rgba,
+    /// The row picked in a list.
     pub selected_row: Rgba,
+    /// A key on the keyboard.
     pub key: Rgba,
+    /// A command key (Enter, Back...).
     pub key_command: Rgba,
+    /// A key held down.
     pub key_down: Rgba,
+    /// Nav2's map.
     pub grid: GridColours,
     /// Nav2's map over the streets: see-through.
     pub grid_over_streets: GridColours,
+    /// The map's grid lines.
     pub grid_line: Rgba,
+    /// The grid lines over the streets.
     pub grid_line_over_streets: Rgba,
+    /// The street map.
     pub streets: StreetColours,
 
     // The debug screen and the hardware panel.
@@ -472,10 +544,13 @@ pub struct Theme {
     pub section: Rgba,
     /// An Idle pill: NEVER, DISARMED.
     pub idle_fill: Rgba,
+    /// Words on an Idle pill.
     pub idle_ink: Rgba,
     /// The hardware panel's buttons: ready, held, and off (greyed out).
     pub button: Rgba,
+    /// A button held.
     pub button_down: Rgba,
+    /// A button that's off.
     pub button_off: Rgba,
     /// The debug screen's 3D view and top-downs.
     pub scene: SceneColours,
@@ -486,6 +561,7 @@ pub struct Theme {
 
 impl Theme {
     /// A pill's fill and words for `tone`.
+    #[must_use]
     pub fn pill(&self, tone: Tone) -> Pill {
         let (fill, ink) = match tone {
             Tone::Go => (self.go_fill, self.go_ink),
@@ -506,56 +582,102 @@ pub mod catppuccin {
     /// Mocha: the dark one.
     pub mod mocha {
         use super::Rgba;
+        /// Mocha's Red.
         pub const RED: Rgba = Rgba::hex(0xf38ba8);
+        /// Mocha's Maroon.
         pub const MAROON: Rgba = Rgba::hex(0xeba0ac);
+        /// Mocha's Peach.
         pub const PEACH: Rgba = Rgba::hex(0xfab387);
+        /// Mocha's Yellow.
         pub const YELLOW: Rgba = Rgba::hex(0xf9e2af);
+        /// Mocha's Green.
         pub const GREEN: Rgba = Rgba::hex(0xa6e3a1);
+        /// Mocha's Teal.
         pub const TEAL: Rgba = Rgba::hex(0x94e2d5);
+        /// Mocha's Sky.
         pub const SKY: Rgba = Rgba::hex(0x89dceb);
+        /// Mocha's Blue.
         pub const BLUE: Rgba = Rgba::hex(0x89b4fa);
+        /// Mocha's Lavender.
         pub const LAVENDER: Rgba = Rgba::hex(0xb4befe);
+        /// Mocha's Mauve.
         pub const MAUVE: Rgba = Rgba::hex(0xcba6f7);
+        /// Mocha's Pink.
         pub const PINK: Rgba = Rgba::hex(0xf5c2e7);
+        /// Mocha's Text.
         pub const TEXT: Rgba = Rgba::hex(0xcdd6f4);
+        /// Mocha's Subtext 1.
         pub const SUBTEXT1: Rgba = Rgba::hex(0xbac2de);
+        /// Mocha's Subtext 0.
         pub const SUBTEXT0: Rgba = Rgba::hex(0xa6adc8);
+        /// Mocha's Overlay 2.
         pub const OVERLAY2: Rgba = Rgba::hex(0x9399b2);
+        /// Mocha's Overlay 1.
         pub const OVERLAY1: Rgba = Rgba::hex(0x7f849c);
+        /// Mocha's Overlay 0.
         pub const OVERLAY0: Rgba = Rgba::hex(0x6c7086);
+        /// Mocha's Surface 2.
         pub const SURFACE2: Rgba = Rgba::hex(0x585b70);
+        /// Mocha's Surface 1.
         pub const SURFACE1: Rgba = Rgba::hex(0x45475a);
+        /// Mocha's Surface 0.
         pub const SURFACE0: Rgba = Rgba::hex(0x313244);
+        /// Mocha's Base.
         pub const BASE: Rgba = Rgba::hex(0x1e1e2e);
+        /// Mocha's Mantle.
         pub const MANTLE: Rgba = Rgba::hex(0x181825);
+        /// Mocha's Crust.
         pub const CRUST: Rgba = Rgba::hex(0x11111b);
     }
 
     /// Latte: the light one.
     pub mod latte {
         use super::Rgba;
+        /// Latte's Red.
         pub const RED: Rgba = Rgba::hex(0xd20f39);
+        /// Latte's Maroon.
         pub const MAROON: Rgba = Rgba::hex(0xe64553);
+        /// Latte's Peach.
         pub const PEACH: Rgba = Rgba::hex(0xfe640b);
+        /// Latte's Yellow.
         pub const YELLOW: Rgba = Rgba::hex(0xdf8e1d);
+        /// Latte's Green.
         pub const GREEN: Rgba = Rgba::hex(0x40a02b);
+        /// Latte's Teal.
         pub const TEAL: Rgba = Rgba::hex(0x179299);
+        /// Latte's Sky.
         pub const SKY: Rgba = Rgba::hex(0x04a5e5);
+        /// Latte's Blue.
         pub const BLUE: Rgba = Rgba::hex(0x1e66f5);
+        /// Latte's Lavender.
         pub const LAVENDER: Rgba = Rgba::hex(0x7287fd);
+        /// Latte's Mauve.
         pub const MAUVE: Rgba = Rgba::hex(0x8839ef);
+        /// Latte's Pink.
         pub const PINK: Rgba = Rgba::hex(0xea76cb);
+        /// Latte's Text.
         pub const TEXT: Rgba = Rgba::hex(0x4c4f69);
+        /// Latte's Subtext 1.
         pub const SUBTEXT1: Rgba = Rgba::hex(0x5c5f77);
+        /// Latte's Subtext 0.
         pub const SUBTEXT0: Rgba = Rgba::hex(0x6c6f85);
+        /// Latte's Overlay 2.
         pub const OVERLAY2: Rgba = Rgba::hex(0x7c7f93);
+        /// Latte's Overlay 1.
         pub const OVERLAY1: Rgba = Rgba::hex(0x8c8fa1);
+        /// Latte's Overlay 0.
         pub const OVERLAY0: Rgba = Rgba::hex(0x9ca0b0);
+        /// Latte's Surface 2.
         pub const SURFACE2: Rgba = Rgba::hex(0xacb0be);
+        /// Latte's Surface 1.
         pub const SURFACE1: Rgba = Rgba::hex(0xbcc0cc);
+        /// Latte's Surface 0.
         pub const SURFACE0: Rgba = Rgba::hex(0xccd0da);
+        /// Latte's Base.
         pub const BASE: Rgba = Rgba::hex(0xeff1f5);
+        /// Latte's Mantle.
         pub const MANTLE: Rgba = Rgba::hex(0xe6e9ef);
+        /// Latte's Crust.
         pub const CRUST: Rgba = Rgba::hex(0xdce0e8);
     }
 }
@@ -568,7 +690,7 @@ const ESTOP_RED: Rgba = catppuccin::latte::RED;
 const ESTOP_RED_ALT: Rgba = ESTOP_RED.mix(Rgba::hex(0xff2050), 30);
 const ESTOP_INK: Rgba = Rgba::WHITE;
 
-/// Nav2's cubes in Mocha: half way from Mocha's pink-red to the e-stop's red, so they
+/// The costmap's cubes in Mocha: half way from Mocha's pink-red to the e-stop's red, so they
 /// read as red, not as NDT's purple or AMCL's orange.
 const MOCHA_NAV2_RED: Rgba = catppuccin::mocha::RED.mix(ESTOP_RED, 50);
 
@@ -827,6 +949,25 @@ pub const LATTE: Theme = {
 /// only this constant: the tests check its contrast the same way.
 pub const CALM: Theme = MOCHA;
 
+/// The things' colours (`hud_core::things`, TODO 192): the same in every theme, and the
+/// same as the RViz markers' (aav_things `looks.py`): person yellow, vehicle blue, stop
+/// sign red, any other name green, unknown orange. Their words are drawn in the theme's
+/// own ink, so these only colour shapes.
+#[must_use]
+pub fn thing_colour(kind: crate::things::Kind) -> Rgba {
+    use crate::things::Kind;
+    match kind {
+        Kind::Person => Rgba::hex(0xffd91a),
+        Kind::Vehicle => Rgba::hex(0x408cff),
+        Kind::StopSign => Rgba::hex(0xe61a1a),
+        Kind::Other => Rgba::hex(0x4dd966),
+        Kind::Unknown => Rgba::hex(0xff9900),
+    }
+}
+
+/// A thing not seen in the last cloud (coasting): grey, in every theme.
+pub const THING_COASTING: Rgba = Rgba::hex(0x999999);
+
 /// Carleton's red: the "Red" swatch, RGB 233, 28, 36, in the RGB logo files of
 /// Carleton's Logo Guide 2023
 /// (<https://carleton.ca/brand/wp-content/uploads/sites/155/22-307-Carleton-Logo-Guide-2023.pdf>).
@@ -843,7 +984,7 @@ pub const CARLETON_RED: Rgba = Rgba::hex(0xe91c24);
 ///
 /// The map: a night street map in greys, highways dark red, Carleton's campus a faint
 /// red; Nav2's plan white, the street route red. The debug screen: a grey ground grid,
-/// the cubes teal on black, Nav2's cubes Carleton's red. Only the localizers keep
+/// the cubes teal on black, the costmap's cubes Carleton's red. Only the localizers keep
 /// Mocha's colours (blue, green, orange, purple, yellow), so a picture means the same
 /// in every theme. Nothing else comes from Catppuccin.
 pub const INITIAL_D: Theme = {
@@ -1196,8 +1337,8 @@ mod tests {
         out
     }
 
-    /// The marks that must be told apart on the debug screen: each localizer, Nav2's
-    /// plan and its cubes.
+    /// The marks that must be told apart on the debug screen: each localizer, the
+    /// plan and the costmap's cubes.
     fn marks(s: &SceneColours) -> [(&'static str, Rgba); 7] {
         let l = s.localizers;
         [
@@ -1206,8 +1347,8 @@ mod tests {
             ("truth", l.truth),
             ("AMCL", l.amcl),
             ("NDT", l.ndt),
-            ("Nav2's plan", s.plan),
-            ("Nav2's cubes", s.nav2_cube.alpha(255)),
+            ("the plan", s.plan),
+            ("the costmap's cubes", s.nav2_cube.alpha(255)),
         ]
     }
 
@@ -1285,7 +1426,12 @@ mod tests {
             1.05,
         );
         want("NDT's map in 3D", scene.ndt_map, back, SHOWS);
-        want("Nav2's stale cubes", scene.nav2_cube_stale, back, 1.5);
+        want(
+            "the costmap's stale cubes",
+            scene.nav2_cube_stale,
+            back,
+            1.5,
+        );
         out
     }
 
@@ -1369,7 +1515,10 @@ mod tests {
             assert!(l.amcl.r > l.amcl.g && l.amcl.g > l.amcl.b, "{name}: AMCL");
             assert!(l.ndt.r > l.ndt.g && l.ndt.b > l.ndt.g, "{name}: NDT");
             let red = s.nav2_cube;
-            assert!(red.r > red.g && red.r > red.b, "{name}: Nav2's cubes");
+            assert!(
+                red.r > red.g && red.r > red.b,
+                "{name}: the costmap's cubes"
+            );
             assert!(
                 s.plan.r > s.plan.b && s.plan.g > s.plan.b,
                 "{name}: the plan"
@@ -1563,7 +1712,7 @@ mod tests {
         // The map's red marks and the cubes are Carleton's red.
         for (what, c) in [
             ("the street route", t.street_route),
-            ("Nav2's cubes", scene.nav2_cube.alpha(255)),
+            ("the costmap's cubes", scene.nav2_cube.alpha(255)),
             ("the scan off the map", scene.scan_off),
         ] {
             assert_eq!(c, CARLETON_RED, "initial_d: {what}");
@@ -1607,13 +1756,21 @@ mod tests {
 /// white glint. Kept apart from [`Theme`]'s fields so a theme needs nothing new.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RobotColours {
+    /// The treads.
     pub tread: Rgba,
+    /// The treads' cleats.
     pub cleat: Rgba,
+    /// The body.
     pub body: Rgba,
+    /// The body's side, in shade.
     pub body_side: Rgba,
+    /// The neck.
     pub neck: Rgba,
+    /// The eye shells.
     pub eye: Rgba,
+    /// The dark glass.
     pub lens: Rgba,
+    /// The white glint.
     pub glint: Rgba,
     /// A thin edge round the map's robot, so it shows on any street colour.
     pub edge: Rgba,
@@ -1621,6 +1778,7 @@ pub struct RobotColours {
 
 impl RobotColours {
     /// The colour of one part.
+    #[must_use]
     pub fn of(&self, part: crate::robot::Part) -> Rgba {
         use crate::robot::Part;
         match part {
@@ -1638,6 +1796,7 @@ impl RobotColours {
 
 impl Theme {
     /// The little robot's colours in this theme.
+    #[must_use]
     pub fn robot(&self) -> RobotColours {
         RobotColours {
             tread: self.idle_fill.mix(Rgba::BLACK, 45),

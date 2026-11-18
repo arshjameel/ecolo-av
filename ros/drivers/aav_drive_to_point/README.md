@@ -16,23 +16,31 @@ pixi run drive-to-point -> /drive_to_point goal -> point_driver
 It speeds up gently, holds a cruise speed, then slows down by the distance left, so it
 stops at B. It steers by pure pursuit: first it turns towards B, then it follows the
 straight line to it. Priority 25 puts it below every person, test and script, above
-Nav2. It drives on GPS, so the stop-sign and sensor locks (30) hold it.
+navigation. It drives on GPS, so the stop-sign and sensor locks (30) hold it.
 
 ```sh
-pixi run drive-to-point --sim --ahead 20                # Gazebo, 20 m ahead of the car
+pixi run drive-to-point --sim --ahead 20                # Ravensim, 20 m ahead of the car
 pixi run drive-to-point --sim --x 30 --y 5              # a map point (x east, y north)
 pixi run drive-to-point --lat 45.38630 --lon -75.69580  # the real car: asks you to type "drive"
 ```
 
 ## Interface
 
-**`point_driver`**: `ros2 launch aav_drive_to_point drive_to_point.launch.py [use_sim_time:=false] [watchdog:=true]`
+**`point_driver`**: `ros2 launch aav_drive_to_point drive_to_point.launch.py [use_sim_time:=false] [watchdog:=true] [drive_to_point_impl:=rust]`
+
+| Switch | `rust` (the default since 18 Nov) | `python` (the fall-back) |
+|---|---|---|
+| `drive_to_point_impl` | [`aav_drive_to_point_rs`](../aav_drive_to_point_rs/README.md)'s `point_driver` | this package's |
+| `tools/drive_to_point.sh` (`pixi run drive-to-point`) | its `drive_to_point` | `--python`: this package's `point_cli` |
+
+The same node name, action, topics, parameters and answers: the Rust replays this package's modules' vectors.
 
 | Item | What |
 |---|---|
 | Action server | `/drive_to_point` (`aav_interfaces/action/DriveToPoint`): lat/lon or x/y, `cruise_speed`, `acceleration`, `deceleration` (0 = default), `confirmed` |
 | Subscribes | `/localization/odom/global` (`nav_msgs/Odometry`), `/sensors/gps/fix` (`sensor_msgs/NavSatFix`, best effort), `/safety/estop` (`std_msgs/Bool`), `/safety/sensor_watchdog/lock` (`std_msgs/Bool`), `/safety/geofence/fence` (`geometry_msgs/PolygonStamped`, latched: refuse a B outside it), `/system/source` (`aav_interfaces/DataSource`, latched), `/control/cmd_vel` (`geometry_msgs/TwistStamped`) |
 | Publishes | `/drivers/point/cmd_vel` (`geometry_msgs/TwistStamped`) at `rate_hz` while a goal runs |
+| | `/drivers/point/plan` (`nav_msgs/Path`, map, latched): the line A -> B while a drive runs, empty after. With `behaviour:=true` the road ahead is made from it, so the obstacle check, the sign and ego's limit hold this driver too |
 | Calls | `/fromLL` (`robot_localization/srv/FromLL`), for a lat/lon goal; `/ego/get_parameters`, for ego's caps |
 
 Feedback: phase (turn, accelerate, hold, decelerate, stopping), distance left, cross
@@ -57,10 +65,11 @@ Parameters (`config/drive_to_point.yaml`; `max_brake`, `wheelbase`, `max_steerin
 | `require_gps` | true | false only where no GPS runs |
 | `watchdog_timeout` | 1.0 s | stop when the watchdog's lock is silent; `watchdog:=false` sets 0 |
 | `stuck_time`, `still_speed`, `still_time` | 5.0 s, 0.05 m/s, 1.0 s | stuck; standing still; at B before it reports |
+| `max_off_line`, `max_overrun` | 3.0 m, 2.0 m | the drive's corridor (`line.Fence`): either side of the line to B; past B |
 | `rate_hz` | 50 Hz | command rate |
 
 **`drive_to_point`** (`point_cli.py`; `tools/drive_to_point.sh`): `--lat/--lon`, `--x/--y`, or `--ahead [--left]`;
-`--speed`; `--sim` (this computer only, Gazebo's clock). Reads `/system/source` and
+`--speed`; `--sim` (this computer only, the simulator's clock). Reads `/system/source` and
 `/localization/odom/global`; calls `/drive_to_point`. Ctrl-C cancels the goal.
 
 Modules (all but the two nodes have no ROS):
@@ -68,14 +77,15 @@ Modules (all but the two nodes have no ROS):
 | Module | Holds |
 |---|---|
 | `approach.py` | `Approach.step`: the speed, `v = sqrt(2 a (d - lead v))`; `planned_deceleration`, `stopping_distance` |
-| `line.py` | `Pose`, `Line`, `pursuit_curvature`, `reachable`, `min_radius`, `turn_speed_limit` |
+| `line.py` | `Pose`, `Line`, `pursuit_curvature`, `reachable`, `min_radius`, `turn_speed_limit`; `Fence`, the drive's corridor |
 | `drive.py` | `Drive`, `Steering`, `Command`: speed and steering together, one tick |
 | `rules.py` | `check_numbers`, `refuse_start`, `refuse_target`, `refuse_outside` (the geofence), `stop_reason`, `not_moving`, `tolerance`, `confirmed` |
+| `run.py` | `plan` (ego's caps), `Run.tick` (one tick: stops, limits, the corridor, the end), `Run.outcome` (the result) |
 | `point_driver.py`, `point_cli.py` | the action server and its client |
 
 ## Invariants
 
-- `approach.py`, `line.py`, `drive.py`, `rules.py` have no ROS imports.
+- `approach.py`, `line.py`, `drive.py`, `rules.py`, `run.py` have no ROS imports.
 - One goal at a time.
 - Refuses B over `max_distance` away, under 0.5 m away (it is there already), or inside
   the car's tightest turn (it would circle B for ever), or outside the geofence's fence. Refuses REPLAY. On REAL (or nobody announcing) it needs `confirmed`; the client asks the
@@ -84,6 +94,9 @@ Modules (all but the two nodes have no ROS):
 - Stops at once (5 zero commands; ego's own deceleration) on: cancel, e-stop, the
   watchdog's lock or its silence, a stale position or fix, someone else driving
   (twist_mux passing another command for 0.3 s), or the car not moving though asked to.
+- Stops when the car leaves the drive's corridor (`line.Fence`, TODO 187), apart from the
+  geofence and navigation: over `max_off_line` from the line to B, over `max_overrun` past B, or
+  further from the start than B or a turn round, plus `max_overrun`. Not once it stands at B.
 - Also stops when the drive runs past its limits:
 
   | Limit | Over |
@@ -107,7 +120,7 @@ pixi run build && colcon test --packages-select aav_drive_to_point && colcon tes
 ```
 
 Quick, without ROS: `cd ros/drivers/aav_drive_to_point && python3 -m pytest -q` (`tools/test.sh`
-runs it). `pixi run test` runs everything. In Gazebo: `pixi run sim-check --drive-to-point`.
+runs it). `pixi run test` runs everything. In Ravensim: `pixi run sim-check --drive-to-point`.
 
 | Test | Covers |
 |---|---|
@@ -115,3 +128,5 @@ runs it). `pixi run test` runs everything. In Gazebo: `pixi run sim-check --driv
 | `test_line.py` | pure pursuit, reachable |
 | `test_drive.py` | whole drives on a fake car, with brake lag |
 | `test_rules.py` | refusals and stop reasons |
+| `test_run.py` | the plan from ego's caps; a drive's stop, cancel and stuck car |
+| `test_rust_vectors.py` | these modules still give `aav_drive_to_point_rs`'s vectors |

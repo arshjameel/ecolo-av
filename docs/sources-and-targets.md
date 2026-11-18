@@ -7,7 +7,8 @@ everything is real. Package `aav_io_mux`, built 23 Oct.
 
 !!! note "The short version"
     - **Source:** where the sensor data comes from: `real`, `sim`, `bench` or `replay`.
-    - **Target:** who plays the car: `car`, `gazebo`, `bench`, `turtle` or `carla`.
+    - **Target:** who plays the car: `car`, `sim` (any simulator: Ravensim), `bench`,
+      `turtle` or `carla`. (`stack.launch.py` spells the sim profile `target:=ravensim` (the mux's target: `sim`); the old `target:=gazebo` works until after 0.4-rc1, TODO 241.)
     - Every backend reads only its own target's topic, `/control/<target>/actuator_cmd`.
       Nothing reads `/ego/actuator_cmd` directly any more.
     - The real car's topic carries commands only while **every** source is REAL. One SIM
@@ -23,10 +24,10 @@ everything is real. Package `aav_io_mux`, built 23 Oct.
  sources                       checked by                    targets
  ───────                       ──────────                    ───────
  real drivers ─┐                                       ┌─► /control/car/... ──► spine_bridge
- Gazebo        ├─► /sensors/... ──► sensor_mux         │                        legacy_uart_bridge
+ Ravensim      ├─► /sensors/... ──► sensor_mux         │                        legacy_uart_bridge
  bench mocks   │   /vehicle/...      │ /system/sensor_mux/state
  a bag (replay)┘   /system/source ───┤ (ok? which source?)
-                                     ▼                 ├─► /control/sim/.. ──► gazebo_adapter
+                                     ▼                 ├─► /control/sim/.. ──► sim_adapter
  drivers ─► twist_mux ─► ego ─► output_mux ────────────┤   /control/bench/... ──► spine_bridge (bench)
                     /ego/actuator_cmd  (target:=car)   └─► /control/turtle/.. ──► turtlesim_adapter
 ```
@@ -40,7 +41,7 @@ everything is real. Package `aav_io_mux`, built 23 Oct.
 
 Both forget an announcement once the node that made it has gone. The real car's stock
 drivers (u-blox, Velodyne, usb_cam) can't announce, so an unannounced sensor counts as
-REAL. Every stand-in announces (Gazebo, the bench's mocks, `spine_bridge` off the car, a
+REAL. Every stand-in announces (Ravensim, the bench's mocks, `spine_bridge` off the car, a
 replay), so it can't pass for real.
 
 ## Open, wait, stop
@@ -57,9 +58,9 @@ Evidence and doubt:
 |---|---|---|
 | `/system/source` says SIM, BENCH or REPLAY (on the car) | evidence, at once | a stand-in says so itself |
 | Two publishers on one sensor topic | doubt; evidence once it lasts 5 s | discovery can show a node before its name |
-| In a simulator, a sensor nobody announces | doubt; evidence once it lasts 5 s | a node can publish before its announcement arrives |
+| In a simulator, a sensor nobody announces | doubt; evidence once it lasts 5 s **and** the start-up grace (30 s) has passed | a node can publish before its announcement arrives: on a busy computer, 10 s before (TODO 234) |
 | The sensor mux quiet for 3 s | doubt | a busy computer can delay it; it never latches |
-| A node on `/system/source` whose announcement hasn't arrived | doubt; evidence once it lasts 5 s | the graph can show it before its message (up to 30 ms across processes, measured 24 Oct); the message may say SIM |
+| A node on `/system/source` whose announcement hasn't arrived | doubt; evidence once it lasts 5 s and the start-up grace has passed | the graph can show it before its message (up to 30 ms across processes, measured 24 Oct); the message may say SIM |
 | An announcement whose node isn't in the graph yet | counts at once (for up to 10 s) | the message can come first; only once its node has been seen and gone is it forgotten |
 
 ## Arming waits for OPEN
@@ -73,39 +74,39 @@ gate is shut (Ben, 24 Oct), and says why.
 | says `OPEN` for this bridge's target, within 1.5 s | `armed` |
 | says `WAIT` or `STOP` | refused: `the safety gate is shut: <its line>; arm once it says OPEN` |
 | hasn't been heard, or is quiet for 1.5 s (`gate_timeout`) | refused: no word, or quiet for so long |
-| says `OPEN` for another target (`gazebo`, on the car) | refused: not this bridge's gate |
+| says `OPEN` for another target (`sim`, on the car) | refused: not this bridge's gate |
 | says anything, during an e-stop | refused: the e-stop first |
 
 | The bridge's `source:=` | Its target | Its gate |
 |---|---|---|
 | `real` | `car` | `OPEN - car: ...` |
 | `bench` | `bench` | `OPEN - bench: ...` |
-| `sim` (Gazebo, `spine:=true`) | `gazebo` | `OPEN - sim: ...` |
+| `sim` (the simulator, `spine:=true`) | `sim` | `OPEN - sim: ...` |
 
 - Disarming always works.
 - Both bridges, Rust and Python, say the same words (`spine-bridge`'s `gate.rs`,
-  `aav_spine/output_gate.py`). Their clock for "quiet" is a steady one, not Gazebo's.
+  `aav_spine/output_gate.py`). Their clock for "quiet" is a steady one, not the simulator's.
 - `role:=sensors` has no `/spine/arm`, so nothing to refuse.
 - `legacy_uart_bridge` (today's car, through the Motor Pi) has no arm step: the output
   mux's silence makes it brake after 0.3 s.
-- The bench and Gazebo (`arm:=true`) start `arm_when_open` (`aav_spine`) after 12 s. It
+- The bench and Ravensim (`arm:=true`) start `arm_when_open` (`aav_spine`) after 12 s. It
   asks each second until the gate opens, then exits. It gives up after 120 s, or at once
   on an e-stop. `bench_check.py` and `sim_check.py` also wait for OPEN before they arm.
 
 When it sends nothing, each backend's own timeout brakes, as when ego stops: `spine_bridge`
-after 0.1 s (then the spine's 100 ms watchdog), `legacy_uart_bridge` after 0.3 s, Gazebo
+after 0.1 s (then the spine's 100 ms watchdog), `legacy_uart_bridge` after 0.3 s, Ravensim
 after 0.2 s. The clear service refuses while anything is still wrong, and says what.
 
 ## One launch, `target:=`
 
 ```text
-ros2 launch aav_bringup stack.launch.py target:=gazebo world:=road
+ros2 launch aav_bringup stack.launch.py target:=ravensim world:=road
 ```
 
 | `target:=` | Starts | Source |
 |---|---|---|
 | `turtle` | `turtle.launch.py` | sim |
-| `gazebo` | `sim.launch.py` | sim |
+| `ravensim` (`gazebo`, its old name, until after 0.4-rc1) | `sim.launch.py` (our simulator by default; the mux's target is `sim`) | sim |
 | `bench` | `bench.launch.py` | bench |
 | `car` | `car.launch.py` (with `machine:=`) | real |
 | `carla` | `carla.launch.py` | sim |
@@ -123,7 +124,7 @@ instead, and let each launch start only the chosen source:
 |---|---|---|
 | Cameras and point clouds | twice the bandwidth, and a hop of delay | nothing extra: the data isn't touched |
 | A stray publisher on `/sensors/...` | still gets through, beside the copy | caught: two publishers |
-| If the mux dies | the sensors stop (the watchdog stops Nav2) | the output mux stops the car within 3 s |
+| If the mux dies | the sensors stop (the watchdog stops navigation) | the output mux stops the car within 3 s |
 | Picks a source while running | yes | no: the launch picks it (`target:=`, `source:=`) |
 
 The output mux itself is one more hop for ego's commands. Measured on the bench (23 Oct,
@@ -156,7 +157,7 @@ own. The frame: [the heartbeat](rust-firmware.md#the-heartbeat-version-2-of-the-
 
 - A stand-in that announces nothing and runs **instead of** the real driver (one
   publisher, unannounced): it looks real. Every stand-in of ours announces.
-- Ghost obstacles: they only add an obstacle to Nav2's view, never a sensor, so they're
+- Ghost obstacles: they only add an obstacle to navigation's view, never a sensor, so they're
   allowed on the car ([ghost obstacles](ghost-obstacles.md)).
 - The first 4 s after start: the sensor mux stays quiet 2 s while discovery settles, and
   the output mux waits 2 s more. Nothing drives in that time.

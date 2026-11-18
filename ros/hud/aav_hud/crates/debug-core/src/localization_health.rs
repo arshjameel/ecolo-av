@@ -35,6 +35,7 @@ impl Verdict {
     }
 
     /// The panel's big word.
+    #[must_use]
     pub fn word(&self) -> &'static str {
         match self {
             Self::Ok => "OK",
@@ -44,6 +45,7 @@ impl Verdict {
     }
 
     /// The checks that aren't OK, by name only: "gyro_bias, tf".
+    #[must_use]
     pub fn names(&self) -> String {
         match self {
             Self::Ok => String::new(),
@@ -57,6 +59,7 @@ impl Verdict {
     }
 
     /// One line for the panel: "OK", or "WARN: gyro_bias, tf".
+    #[must_use]
     pub fn line(&self) -> String {
         match self {
             Self::Ok => "OK".to_owned(),

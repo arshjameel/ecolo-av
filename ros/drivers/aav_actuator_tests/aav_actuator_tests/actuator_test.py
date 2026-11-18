@@ -663,7 +663,7 @@ def parse(argv):
     p.add_argument('--list', action='store_true', help='list the tests')
     where = p.add_mutually_exclusive_group()
     where.add_argument('--sim', action='store_true',
-                       help='Gazebo: simulated time, this computer only (pixi run sim first)')
+                       help='Ravensim: simulated time, this computer only (pixi run sim first)')
     where.add_argument('--bench', action='store_true',
                        help='bench mode, this computer only (pixi run bench first)')
     p.add_argument('--skip', nargs='+', default=[], metavar='SENSOR',

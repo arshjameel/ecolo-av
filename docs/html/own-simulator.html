@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Our own simulator · AAV 2026–27</title>
+<title>Ravensim · AAV 2026–27</title>
 <link rel="stylesheet" href="style.css">
 </head><body>
 <!-- Generated from docs/own-simulator.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
-<h1>Our own simulator</h1>
-<div class="meta">10 min read · 8 sections</div></header>
+<h1>Ravensim</h1>
+<div class="meta">16 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,25 +125,67 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#what-it-gives">What it gives</a><a href="#the-worlds">The worlds</a><a href="#the-car">The car</a><a href="#plug-in-points">Plug-in points</a><a href="#head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben&#x27;s Mac, quiet: load 4-15)</a><a href="#results-7-nov-bens-mac-other-agents-running-load-30-40">Results (7 Nov, Ben&#x27;s Mac, other agents running: load 30-40)</a><a href="#not-there-yet">Not there yet</a></nav>
-<div class="lead"><p>Ben, 7 Nov: "merge in everything from gazebo so its standalone in rust". This page is the
-simulator's <strong>core</strong>: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
+<nav class="toc"><span>On this page:</span><a href="#watch-it">Watch it</a><a href="#in-one-picture">In one picture</a><a href="#what-it-gives">What it gives</a><a href="#the-worlds">The worlds</a><a href="#looks-graphicspretty-17-nov">Looks: graphics:=pretty (17 Nov)</a><a href="#the-car">The car</a><a href="#plug-in-points">Plug-in points</a><a href="#head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben&#x27;s Mac, quiet: load 4-15)</a><a href="#results-7-nov-bens-mac-other-agents-running-load-30-40">Results (7 Nov, Ben&#x27;s Mac, other agents running: load 30-40)</a><a href="#no-gpu-15-nov">No GPU (15 Nov)</a><a href="#not-there-yet">Not there yet</a></nav>
+<div class="lead"><p><strong>Ravensim</strong> is our own simulator, in Rust (Ben named it, 16 Nov). Ben, 7 Nov: "merge in
+everything from gazebo so its standalone in rust". This page is the simulator's <strong>core</strong>: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
 and the clock. The cameras are their own program (<a href="own-simulator-cameras.html">its page</a>),
-started beside it. The plan: <a href="../designs/2026-11-05_own-simulator.md">the design</a>.</p>
-<pre class="highlight"><code class="language-sh">pixi run sim world:=test_lot gui:=false rviz:=false     # ours: the default since 8 Nov
-pixi run sim-check                                     # the road world's checks, on ours
-pixi run sim simulator:=gazebo world:=test_lot         # Gazebo, as before</code></pre>
-<p><strong>Ours is the default since 8 Nov</strong>: it passed every <code>sim-check</code> leg Gazebo passes (below).
-Gazebo stays, as <code>simulator:=gazebo</code>: to compare, and on a computer with no GPU (GitHub's
-CI, oirp-spss), where our cameras can't draw (<code>sim_cameras</code> says "no GPU to draw with")
-but Gazebo's can, in software (<code>tools/software_gl.sh</code>).</p></div>
+started beside it. The plan: <a href="../designs/2026-11-05_own-simulator.md">the design</a>.
+Every argument, the worlds and <code>sim-check</code>: <a href="simulation.html">Simulation</a>.</p>
+<pre class="highlight"><code class="language-sh">pixi run sim world:=test_lot rviz:=false               # Ravensim (simulator:=ravensim)
+pixi run sim-check                                     # the road world's checks
+tools/software_gl.sh pixi run sim-check                # no GPU: the cameras in lockstep</code></pre></div>
+<section class="card"><h2 id="watch-it">Watch it</h2>
+<p>One command starts Ravensim and the developer window on it (scene and console on the left;
+lidar, map with RavenTiles, keys and algorithms on the right):</p>
+<pre class="highlight"><code class="language-sh">pixi run ravensim                    # pixi run sim's world
+pixi run ravensim world:=campus      # Carleton, with its RavenTiles and lanes</code></pre>
+<p>Any <code>sim.launch.py</code> switch (<code>name:=value</code>) goes to the sim. It runs on this computer only.
+Ctrl-C, or closing the window, stops both. RViz stays off (<code>rviz:=false</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Package</th>
+<th>Language</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the world, the car, the rays, the IMU, GPS, wheels, clock</td>
+<td><code>aav_simulator</code> (<code>sim-core</code>, <code>sim-node</code>)</td>
+<td>Rust</td>
+</tr>
+<tr>
+<td>the cameras</td>
+<td><code>aav_sim_cameras</code> (Bevy, offscreen)</td>
+<td>Rust</td>
+</tr>
+<tr>
+<td>the worlds, models, <code>ravensim.launch.py</code>, the car's nodes (<code>sim_adapter</code>, <code>sim_imu</code>...) and the shared sim models</td>
+<td><code>aav_sim_models</code></td>
+<td>Python</td>
+</tr>
+<tr>
+<td>big maps in 64 m chunks: <strong>RavenTiles</strong></td>
+<td><code>maps/&lt;place&gt;/chunks/</code> (<code>pixi run campus</code>)</td>
+<td>data</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The default since 8 Nov, the only simulator since 16 Nov</strong>: it passed every <code>sim-check</code>
+leg Gazebo passed (below); Gazebo was removed then (<a href="../history/gazebo-as-it-was.md">Gazebo, as it
+was</a>). <code>simulator:=own</code>, its old name, works for one release.</p>
+<p><strong>No GPU:</strong> the cameras draw in software, on Mesa's lavapipe, and the clock waits for each
+picture (<strong>camera lockstep</strong>, 16 Nov): <code>tools/software_gl.sh pixi run sim-check</code>. See
+<a href="#no-gpu-15-nov">No GPU</a> below.</p>
+</section>
 <section class="card"><h2 id="in-one-picture">In one picture</h2>
-<pre class="highlight"><code class="language-text"> ego ─&gt; output mux ─&gt; gazebo_adapter ──/gazebo/cmd_vel──&gt; simulator (Rust)
-                      (actuator model)                      │ world: Gazebo's .sdf files
+<pre class="highlight"><code class="language-text"> ego ─&gt; output mux ─&gt; sim_adapter ──/vehicle/sim/cmd_vel──&gt; simulator (Rust)
+                      (actuator model)                      │ world: SDF files      
                                                             │ car, rays, IMU, GPS, clock
- gazebo_imu, gazebo_gps, gazebo_radar, gazebo_adapter &lt;─────┘ Gazebo's topics, rates, QoS
-   └─&gt; /sensors/*, /vehicle/*  ─&gt; localization, Nav2, safety: unchanged</code></pre>
-<p>It replaces <code>gz sim</code> <strong>and</strong> its bridges. Every node above them is the same one Gazebo uses.</p>
+ sim_imu, sim_gps, sim_radar, sim_adapter &lt;─────┘ /vehicle/sim/*: Gazebo's rates, QoS
+   └─&gt; /sensors/*, /vehicle/*  ─&gt; localization, navigation, safety: unchanged</code></pre>
+<p>It replaced <code>gz sim</code> <strong>and</strong> its bridges. Every node above them is the one Gazebo used.</p>
 </section>
 <section class="card"><h2 id="what-it-gives">What it gives</h2>
 <div class="table-wrap"><table>
@@ -139,7 +193,7 @@ but Gazebo's can, in software (<code>tools/software_gl.sh</code>).</p></div>
 <tr>
 <th>Topic</th>
 <th>Rate</th>
-<th>Same as Gazebo?</th>
+<th>Same as Gazebo was?</th>
 </tr>
 </thead>
 <tbody>
@@ -149,17 +203,17 @@ but Gazebo's can, in software (<code>tools/software_gl.sh</code>).</p></div>
 <td>yes: one per step</td>
 </tr>
 <tr>
-<td><code>/gazebo/odom</code>, <code>/vehicle/sim/truth</code></td>
+<td><code>/vehicle/sim/odom</code>, <code>/vehicle/sim/truth</code></td>
 <td>50 Hz</td>
-<td>yes</td>
+<td>yes; the wheels' odometry can also drift: <code>wheel_noise:=0.05</code> (m/s on each reading) and <code>wheel_slip:=0.02</code> (2 % too far), seeded by <code>noise_seed:=</code>, off by default (TODO 179)</td>
 </tr>
 <tr>
-<td><code>/gazebo/imu</code></td>
+<td><code>/vehicle/sim/imu</code></td>
 <td>50 Hz, noise 0.02 rad/s, 0.2 m/s²</td>
 <td>yes (the xacro's)</td>
 </tr>
 <tr>
-<td><code>/gazebo/navsat</code></td>
+<td><code>/vehicle/sim/navsat</code></td>
 <td>5 Hz, noise 4.5e-6° (0.5 m)</td>
 <td>yes; exact WGS84 from the world's datum</td>
 </tr>
@@ -174,9 +228,9 @@ but Gazebo's can, in software (<code>tools/software_gl.sh</code>).</p></div>
 <td>yes: packed as Gazebo's, organised, <code>inf</code> misses</td>
 </tr>
 <tr>
-<td><code>/gazebo/radar/points</code></td>
+<td><code>/vehicle/sim/radar/points</code></td>
 <td>10 Hz, 61 x 3, 0.3-8.4 m, 5 cm</td>
-<td>yes</td>
+<td>yes; and better: a person walking gets their own Doppler speed (a <code>speed</code> field Gazebo's cloud lacks; <code>sim_radar</code> adds it). Gazebo's radar says everything stands still (TODO 194)</td>
 </tr>
 <tr>
 <td>the three car cameras, the chase camera</td>
@@ -198,7 +252,7 @@ but Gazebo's can, in software (<code>tools/software_gl.sh</code>).</p></div>
 <tbody>
 <tr>
 <td><code>empty</code>, <code>road</code>, <code>test_lot</code></td>
-<td><code>aav_gazebo/worlds/*.sdf</code>, with <code>model://stop_sign</code></td>
+<td><code>aav_sim_models/worlds/*.sdf</code>, with <code>model://stop_sign</code></td>
 <td>2 to 118</td>
 </tr>
 <tr>
@@ -211,6 +265,141 @@ but Gazebo's can, in software (<code>tools/software_gl.sh</code>).</p></div>
 <p>The rays see what Gazebo's lidar sees: the <strong>visuals</strong>. One roof-lidar scan takes 1.7 ms in the
 test lot and 15 ms on the campus (Ben's Mac, 4 threads).</p>
 </section>
+<section class="card"><h2 id="looks-graphicspretty-17-nov">Looks: <code>graphics:=pretty</code> (17 Nov)</h2>
+<p>Ben, 16 Nov: "its pretty ugly and flat looking" (TODO 244). The cameras now draw more:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Before (<code>graphics:=simple</code>)</th>
+<th>After (<code>graphics:=pretty</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="The road world, before" src="../img/ravensim-road-before.png" /></td>
+<td><img alt="The road world, after" src="../img/ravensim-road-after.png" /></td>
+</tr>
+<tr>
+<td><img alt="The campus, before" src="../img/ravensim-campus-before.png" /></td>
+<td><img alt="The campus, after" src="../img/ravensim-campus-after.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Added</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Grain on grass, asphalt, concrete and paint</td>
+<td>small pictures made from noise in code (<code>camera_core::pretty</code>), laid in metres; each keeps its surface's average colour</td>
+</tr>
+<tr>
+<td>A sky</td>
+<td>haze at the horizon, bluer overhead, a glow round the sun (a skybox, made in code)</td>
+</tr>
+<tr>
+<td>Haze far off</td>
+<td>none nearer than 50 m; a fifth at the cameras' 150 m edge</td>
+</tr>
+<tr>
+<td>Light</td>
+<td>a warm sun, a blue-grey sky light, sharper shadows out to 120 m</td>
+</tr>
+<tr>
+<td>The campus's bumps</td>
+<td>its bump maps (<code>normal_map</code> in the SDF), drawn at last</td>
+</tr>
+<tr>
+<td>Stop lines on the campus</td>
+<td>a white bar where the Lanelet2 map's stop line is (<code>pixi run campus</code> again)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The campus already had OpenStreetMap's building heights, roofs, trees and lane lines.
+No downloads: every picture is made in code.</p>
+<p><strong>Only the cameras change.</strong> The lidar and radar read the same shapes. Pretty or simple,
+the pictures keep the lens, size, rate and noise.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>graphics:=</code></th>
+<th>Draws</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auto</code></td>
+<td>pretty on a GPU, simple drawn in software (<code>tools/software_gl.sh</code>, CI)</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>pretty</code></td>
+<td>all of the above</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>simple</code></td>
+<td>plain colours, a flat sky: as Gazebo drew</td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>pixi run sim-cameras --graphics simple|pretty</code> draws either one without ROS.</p>
+<p>Checked (17 Nov, Ben's Mac, pretty unless it says):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Simple</th>
+<th>Pretty</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sim-check --obstacle --lane</code> (road)</td>
+<td>passed before</td>
+<td>all pass; stopped 0.80 m from the box</td>
+</tr>
+<tr>
+<td>The lane finder, from the truth</td>
+<td>1.0 cm; both lines in 299 of 299</td>
+<td><strong>0.8 cm</strong>; 299 of 299</td>
+</tr>
+<tr>
+<td>Stop sign, RF-DETR, 7 to 20 m</td>
+<td>0.75 to 0.93</td>
+<td>0.88 to 0.92</td>
+</tr>
+<tr>
+<td>Stop sign, YOLO, 7 to 15 m</td>
+<td>0.41 to 0.92</td>
+<td>0.44 to 0.93</td>
+</tr>
+<tr>
+<td>4 cameras, one round, GPU (road / campus)</td>
+<td>14.7 / 19.4 ms</td>
+<td>22.7 / 27.2 ms</td>
+</tr>
+<tr>
+<td>4 cameras, one round, software (lavapipe, road)</td>
+<td>44.5 ms</td>
+<td>105 ms: so <code>auto</code> draws simple there</td>
+</tr>
+<tr>
+<td><code>tools/software_gl.sh --force pixi run sim-check --obstacle</code></td>
+<td>all pass; cameras 10 Hz in sim time, real-time factor 0.98-1.00 (lockstep)</td>
+<td>not drawn: <code>auto</code> is simple there</td>
+</tr>
+</tbody>
+</table></div>
+<p>The stop sign 25 m off and the lane lines sit inside the 50 m with no haze, so the
+detectors see the same red and white. The lane finder did a little better on real grain.</p>
+</section>
 <section class="card"><h2 id="the-car">The car</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -222,11 +411,11 @@ test lot and 15 ms on the campus (Ben's Mac, 4 threads).</p>
 <tbody>
 <tr>
 <td>Today</td>
-<td><code>gazebo_adapter</code>'s actuator model, then Gazebo's AckermannSteering (±10 m/s², the wheels steer at once), then the bicycle</td>
+<td><code>sim_adapter</code>'s actuator model, then <code>TwistFollower</code> (Gazebo's AckermannSteering, copied: ±10 m/s², the wheels steer at once), then the bicycle</td>
 </tr>
 <tr>
 <td>Hitting things</td>
-<td>the outline (<code>vehicle.yaml</code> <code>body:</code>) stops at what it meets, at 0.35, 0.8 and 1.3 m up, as Gazebo's physics does. The log says "the car hit something"</td>
+<td>the outline (<code>vehicle.yaml</code> <code>body:</code>) stops at what it meets, at 0.35, 0.8 and 1.3 m up, as Gazebo's physics did. The log says "the car hit something"</td>
 </tr>
 <tr>
 <td>The ground (8 Nov)</td>
@@ -275,9 +464,16 @@ test lot and 15 ms on the campus (Ben's Mac, 4 threads).</p>
 </tr>
 </tbody>
 </table></div>
-<p>With <code>simulator:=own</code>, <code>gazebo.launch.py</code> starts the cameras (<code>sim_cameras --ros --pose truth
---world &lt;the world&gt;</code>) and sets <code>gazebo_adapter</code>'s <code>cameras</code> to true, so <code>/system/source</code>
-announces them, as with Gazebo.</p>
+<p><code>ravensim.launch.py</code> starts the cameras (<code>sim_cameras --ros --pose truth --world &lt;the
+world&gt;</code>) and sets <code>sim_adapter</code>'s <code>cameras</code> to true, so <code>/system/source</code> announces them.</p>
+<h3 id="camera-lockstep-16-nov">Camera lockstep (16 Nov)</h3>
+<p>With <code>camera_lockstep:=true</code> (or <code>auto</code> under <code>tools/software_gl.sh</code>) the clock waits for
+the pictures, as Gazebo's sensors did:</p>
+<pre class="highlight"><code class="language-text"> sim_cameras ──/vehicle/sim/cameras/free_until (the next picture's sim time)──&gt; simulator
+ simulator: at each truth (50 Hz) stamped that late, hold /clock until a later one comes
+            (10 s with no word: run free until the cameras speak again)</code></pre>
+<p>The logic is <code>sim-core</code> <code>lockstep.rs</code> (<code>CameraGate</code>), tested without ROS. Measured: <a href="own-simulator-cameras.html#camera-lockstep-16-nov">the
+cameras' page</a>.</p>
 </section>
 <section class="card"><h2 id="head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben's Mac, quiet: load 4-15)</h2>
 <p>The same <code>sim-check</code> legs on both, one run after the other, nothing else running.</p>
@@ -401,7 +597,7 @@ time (<code>simulator:=</code>).</p>
 <td>pass (5 Nov)</td>
 </tr>
 <tr>
-<td>A Nav2 goal, (14, 0) in the test lot</td>
+<td>A goal (then Nav2's), (14, 0) in the test lot</td>
 <td>succeeded; the truth 0.4 m short, 0.9 m aside</td>
 <td>succeeded (5 Nov)</td>
 </tr>
@@ -443,6 +639,62 @@ time (<code>simulator:=</code>).</p>
 </tbody>
 </table></div>
 </section>
+<section class="card"><h2 id="no-gpu-15-nov">No GPU (15 Nov)</h2>
+<p>The cameras are the only part that draws; the rest of Ravensim never needed a GPU.
+Their own page has the details: <a href="own-simulator-cameras.html">the cameras, with no GPU</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Works?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The cameras on Mesa's lavapipe (software Vulkan), a Mac, forced (<code>software_gl.sh --force</code>)</td>
+<td>yes: 4 cameras at 10 Hz in the road world, pictures as the GPU's</td>
+</tr>
+<tr>
+<td><code>sim-check</code> (road world), the cameras in software, a Mac (<code>software_gl.sh --force</code>)</td>
+<td><strong>pass</strong>, every leg: all 3 cameras at 10.0 Hz, EKF vs truth 0.10 m</td>
+</tr>
+<tr>
+<td><code>sim-check --obstacle</code>, the same way</td>
+<td><strong>pass</strong>: the stop zone stopped the car 0.92 m from the box; the goal reached after</td>
+</tr>
+<tr>
+<td>The same on Linux, no GPU (CI, oirp-spss)</td>
+<td><span class="badge b-untested">untested</span>: CI's nightly <code>sim</code> job runs it, in lockstep since 16 Nov</td>
+</tr>
+<tr>
+<td>The campus world in software</td>
+<td>no: 1.3 s a picture round. Campus needs a GPU</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tools/software_gl.sh pixi run sim-check</code></td>
+<td>Linux, no GPU: our cameras on lavapipe</td>
+</tr>
+<tr>
+<td><code>tools/software_gl.sh --force pixi run sim-check</code></td>
+<td>a Mac or a Linux computer with a GPU: CI's way</td>
+</tr>
+<tr>
+<td><code>pixi run sim-check --no-cameras</code></td>
+<td>anywhere: no pictures at all</td>
+</tr>
+</tbody>
+</table></div>
+</section>
 <section class="card"><h2 id="not-there-yet">Not there yet</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -462,11 +714,11 @@ time (<code>simulator:=</code>).</p>
 </tr>
 <tr>
 <td>The Bevy window drawing ours</td>
-<td>the window reads the same topics, so it works as with Gazebo; not run yet</td>
+<td><code>pixi run ravensim</code> starts it on Ravensim (17 Nov); a person still has to look it over</td>
 </tr>
 <tr>
 <td><code>ActuatorCar</code> driving the node</td>
-<td>the Python actuator model stays in front, as with Gazebo</td>
+<td>the Python actuator model stays in front</td>
 </tr>
 </tbody>
 </table></div></section>

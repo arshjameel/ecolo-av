@@ -101,7 +101,7 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
   --keyboard         start with the search box open and the on-screen keyboard showing
                      (as after a tap on the box; for screenshots)
   --send-goal TEXT   once the map and the car are known: search TEXT, send the first
-                     result inside Nav2's map as the goal, say so on the terminal (tests)
+                     result inside the map as the goal, say so on the terminal (tests)
   --screenshot FILE  save the window as a PNG after 4 s, then quit (for the docs)
   --bench SECONDS    draw as fast as it can for SECONDS, print the frame rate, then quit
                      (the frosted glass's test: 60 fps or more)

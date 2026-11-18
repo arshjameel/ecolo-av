@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Python, C++ and Rust · AAV 2026–27</title>
+<title>Python and Rust (and the C++ we don&#x27;t write) · AAV 2026–27</title>
 <link rel="stylesheet" href="style.css">
 </head><body>
 <!-- Generated from docs/languages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
-<h1>Python, C++ and Rust</h1>
-<div class="meta">6 min read · 6 sections</div></header>
+<h1>Python and Rust (and the C++ we don&#x27;t write)</h1>
+<div class="meta">12 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,8 +125,9 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-languages-fit-into-ros-2">How languages fit into ROS 2</a><a href="#what-we-use-and-where">What we use, and where</a><a href="#is-c-too-risky">Is C++ too risky?</a><a href="#what-if-everything-were-rust">What if everything were Rust?</a><a href="#rust-on-the-pi-and-the-esp32">Rust on the Pi and the ESP32</a><a href="#the-plan">The plan</a></nav>
-<div class="lead"><p>Our ROS nodes are Python, and the firmware and hardware drivers are Rust. The C++ we
+<nav class="toc"><span>On this page:</span><a href="#how-languages-fit-into-ros-2">How languages fit into ROS 2</a><a href="#what-we-use-and-where">What we use, and where</a><a href="#is-c-too-risky">Is C++ too risky?</a><a href="#what-if-everything-were-rust">What if everything were Rust?</a><a href="#launch-overrides-namespace-on-every-rust-node">Launch overrides: namespace=&#x27;/&#x27; on every Rust node</a><a href="#rust-on-the-pi-and-the-esp32">Rust on the Pi and the ESP32</a><a href="#the-plan">The plan</a></nav>
+<div class="lead"><p>New ROS nodes are Rust (Ben, 16 Nov: "lets remove python were possible. I trust rust more
+then python"); the older ones are Python, and the firmware and hardware drivers are Rust. The C++ we
 inherited is now Rust (Ben, 10 and 15 Oct): none of our ROS code is C++. Only today's
 ESP32 firmware still is, and the hardware lead's wheel-sensor Arduino (Ben, 23 Oct). ROS 2 lets each program pick its own language, because
 programs only meet through messages.</p></div>
@@ -138,9 +151,34 @@ programs only meet through messages.</p></div>
 </thead>
 <tbody>
 <tr>
-<td>Our ROS nodes: ego, drivers, bridges, adapters</td>
+<td>New ROS nodes</td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ben, 16 Nov: "I trust rust more then python". Exceptions: ML on the GPU (train in PyTorch; inference later through ONNX), launch files, tools and tests</td>
+</tr>
+<tr>
+<td>ego + look_ahead, behaviour, the sensor watchdog, localization_health</td>
+<td>Rust (<code>rclrs</code>): <code>aav_ego_rs</code>, <code>aav_behaviour_rs</code>, <code>aav_watchdog_rs</code>, <code>aav_localization_health_rs</code></td>
+<td>Ports of the Python nodes, the same answers. The default on the car and in the simulator since 16 Nov (Ben); <code>*_impl:=python</code> falls back until a car day proves them</td>
+</tr>
+<tr>
+<td>The sensor mux and the output mux, <code>aav_io_mux_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>aav_io_mux</code>'s nodes (Ben, 17 Nov: "Rust tomorrow"): the same answers, step by step. The default; <code>io_mux_impl:=python</code> falls back</td>
+</tr>
+<tr>
+<td>The point driver and its client, <code>aav_drive_to_point_rs</code>; arm_when_open (<code>aav_spine_bridge</code>)</td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>aav_drive_to_point</code>'s two nodes and <code>aav_spine</code>'s <code>arm_when_open</code> (18 Nov): the same answers, drive for drive. The default; <code>drive_to_point_impl:=python</code>, <code>arm_when_open_impl:=python</code> fall back</td>
+</tr>
+<tr>
+<td>The ESP32's UART bridge and rc_driver, <code>aav_legacy_rs</code>, <code>aav_rc_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>legacy_uart_bridge</code> and <code>rc_driver</code> (Ben, 17 Nov: "Rust tomorrow"): the same frames, byte for byte, packed by the firmware's own <code>legacy-link</code>. The default; <code>legacy_impl:=python</code>, <code>rc_impl:=python</code> fall back</td>
+</tr>
+<tr>
+<td>Our older ROS nodes: drivers, bridges, adapters</td>
 <td>Python</td>
-<td>Glue that runs 50 times a second or less. Quick to write and read. The same file runs on any computer, with no cross-compiling.</td>
+<td>Glue that runs 50 times a second or less. Ported to Rust where possible (Ben, 16 Nov)</td>
 </tr>
 <tr>
 <td>Launch files</td>
@@ -148,7 +186,7 @@ programs only meet through messages.</p></div>
 <td>That's how ROS 2 launch works</td>
 </tr>
 <tr>
-<td>Stock packages: Nav2, the EKFs, twist_mux</td>
+<td>Stock packages: the EKFs, twist_mux (Nav2 until 17 Nov)</td>
 <td>C++</td>
 <td>Not ours: we only configure them</td>
 </tr>
@@ -163,9 +201,19 @@ programs only meet through messages.</p></div>
 <td>A rewrite of the 2025-26 C++ node, which it replaced on 15 Oct</td>
 </tr>
 <tr>
+<td>The lidar's cubes, <code>aav_voxels_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>A port of <code>aav_voxels</code>' Python node (TODO 185, 15 Nov): the same cubes, 8 times faster. Picked with <code>voxels_impl:=rust</code>; the Python stays the default until the Rust one has run on the car</td>
+</tr>
+<tr>
+<td>The flat scan and the things, <code>aav_lidar_rs</code>, <code>aav_things_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>aav_lidar</code>'s and <code>aav_things</code>' Python nodes (TODO 185, 17 Nov): the same scan and things, at a third and a fifth of the CPU. The default in the simulator and on the car; <code>lidar_impl:=python</code>, <code>things_impl:=python</code> fall back</td>
+</tr>
+<tr>
 <td>The CAN bridge, <code>aav_spine_bridge</code></td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>A port of <code>aav_spine</code>'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car</td>
+<td>A port of <code>aav_spine</code>'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car (no record of that yet)</td>
 </tr>
 <tr>
 <td>The spine firmware, <code>firmware/spine</code></td>
@@ -173,9 +221,19 @@ programs only meet through messages.</p></div>
 <td>Memory-safe, and its logic is tested on a laptop</td>
 </tr>
 <tr>
-<td>The in-car HUD and the map window (raylib), in <code>ros/hud</code></td>
+<td>The in-car HUD and the map window, <code>aav_hud</code></td>
 <td>Rust (<code>rclrs</code>, raylib)</td>
-<td>One program that is also its ROS node (Ben, 11 Oct)</td>
+<td>One program that is also its ROS node (Ben, 11 Oct). They stay raylib, on the Pi (Ben, 5 Nov)</td>
+</tr>
+<tr>
+<td>Screens on a laptop or desktop: the developer window (<code>aav_dev_window</code>), our simulator's cameras</td>
+<td>Rust (Bevy)</td>
+<td>Bevy only off the car: the Orin runs no graphics and no simulator (Ben, 5 Nov)</td>
+</tr>
+<tr>
+<td>Our navigation (costmap, planner, navigator, smoother, MPPI with lag, stop zone) and our simulator</td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Where Rust pays off; each replaced Nav2's or Gazebo's part once it won</td>
 </tr>
 <tr>
 <td>Bench mode's spine, <code>aav_spine_sim</code></td>
@@ -185,7 +243,7 @@ programs only meet through messages.</p></div>
 <tr>
 <td>Today's ESP32 firmware</td>
 <td>C++ (Arduino, PlatformIO)</td>
-<td>Inherited. Its Rust version (<code>boards/esp32-umod</code>) replaces it once flashed and proven</td>
+<td>Inherited. Its Rust version (<code>boards/esp32-umod</code>) replaces it once flashed and proven: <a href="firmware.html">Firmware</a> says where that stands</td>
 </tr>
 <tr>
 <td>The wheel sensors' Arduino</td>
@@ -236,7 +294,7 @@ programs only meet through messages.</p></div>
 </tr>
 <tr>
 <td></td>
-<td>Nothing in Nav2 or robot_localization: they stay C++, and we'd still only configure them</td>
+<td>Nothing in robot_localization or twist_mux: they stay C++, and we only configure them</td>
 </tr>
 <tr>
 <td></td>
@@ -248,7 +306,7 @@ programs only meet through messages.</p></div>
 </tr>
 </tbody>
 </table></div>
-<p>Where Rust stands in October 2026:</p>
+<p>Where Rust stands (written October 2026):</p>
 <ul>
 <li><strong>Message crates ship with Jazzy.</strong> Our Pixi install already has them, for example
   <code>share/sensor_msgs/rust/</code>.</li>
@@ -258,6 +316,117 @@ programs only meet through messages.</p></div>
   example, <code>examples/rust-listener</code>, showed it in October; it was removed on 26 Oct,
   once these real nodes showed the same.</li>
 </ul>
+<p><strong>After adding a message type: <code>library not found for -l&lt;package&gt;__rosidl_typesupport_c</code>.</strong>
+Seen 14 Nov, when <code>RoadAhead</code> was added. rclrs's build script finds the libraries' folders
+once and keeps them until <code>ROS_DISTRO</code> changes; <code>ros-env</code> looks again whenever the messages
+change. So an old build folder links a message package without its folder. A fresh build
+(CI) never sees it. On your laptop, clear rclrs's kept answer and build again:</p>
+<pre class="highlight"><code class="language-sh">rm -rf build/*/target/release/build/rclrs-* build/*/target/release/.fingerprint/rclrs-*
+pixi run build</code></pre>
+</section>
+<section class="card"><h2 id="launch-overrides-namespace-on-every-rust-node">Launch overrides: <code>namespace='/'</code> on every Rust node</h2>
+<p><strong>The trap (found 18 Nov).</strong> rclrs 0.8 reads a parameter file's <code>/**</code> entries first, then
+the entry under the node's own name, whatever order the files came in. rclpy and rclcpp
+take the files in order. launch_ros writes a launch dict under <code>/**</code> when the Node has no
+namespace. So with a config YAML (<code>legacy_uart_bridge:</code>) and a launch dict:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who started</th>
+<th>The YAML says</th>
+<th>Launch says</th>
+<th>Python uses</th>
+<th>Rust used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>legacy_uart_bridge</code></td>
+<td><code>port: /dev/ttyAMA0</code></td>
+<td><code>port:=socket://...</code></td>
+<td>launch's</td>
+<td><strong>the YAML's</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The fix.</strong> Give the Node <code>namespace='/'</code> (the same names and topics). launch then writes
+its dicts under <code>/legacy_uart_bridge</code> too, and the later file wins in both languages.
+<code>tools/tests/test_rust_launch_params.py</code> fails a Rust Node with several parameter sources
+and no namespace; <code>aav_bringup</code>'s <code>test_rust_overrides.py</code> starts ego, the legacy bridge and
+the output mux in both languages and reads the values back.</p>
+<p><strong>Also:</strong> rclrs matches only <code>/**</code> and the exact name. A YAML key such as <code>/**/joy_alive</code>
+reaches the Python node and <strong>not</strong> the Rust one: name a Rust node in full.</p>
+<p>What the audit found (18 Nov, every launch profile run without starting anything):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Node (Rust)</th>
+<th>Key in both</th>
+<th>YAML</th>
+<th>Launch</th>
+<th>Was it lost?</th>
+<th>Now</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>legacy_uart_bridge</code></td>
+<td><code>max_steering_angle</code></td>
+<td>0.5 (legacy.yaml)</td>
+<td>vehicle.yaml's</td>
+<td>yes, hidden: both 0.5 today; a new measurement would never have reached Rust</td>
+<td><code>namespace='/'</code></td>
+</tr>
+<tr>
+<td><code>legacy_uart_bridge</code></td>
+<td><code>port</code>, <code>frame_version</code></td>
+<td>legacy.yaml</td>
+<td>new <code>port:=</code>, <code>frame_version:=</code></td>
+<td>(no launch argument before)</td>
+<td>tested both languages</td>
+</tr>
+<tr>
+<td><code>hud</code></td>
+<td><code>max_speed</code></td>
+<td>hud.yaml</td>
+<td>ego's cap, <code>max_speed:=</code></td>
+<td>yes, with <code>max_speed:=0.3</code>: the redline kept hud.yaml's 1.0</td>
+<td><code>namespace='/'</code></td>
+</tr>
+<tr>
+<td><code>ego</code> (rust), <code>point_driver</code></td>
+<td>-</td>
+<td>ego.yaml as a dict / one file per node</td>
+<td></td>
+<td>no</td>
+<td>already safe</td>
+</tr>
+<tr>
+<td><code>ndt</code>, <code>lane_finder</code></td>
+<td>-</td>
+<td></td>
+<td></td>
+<td>no: fixed before (5 and 18 Nov)</td>
+<td><code>namespace='/'</code></td>
+</tr>
+<tr>
+<td>spine_bridge, lidar_scan, voxels, things, mppi_lag, mpc_lag_rs, velocity_smoother, localization_health, sensor_watchdog, imu_node, behaviour, rc_driver, spine_sim</td>
+<td>none today</td>
+<td></td>
+<td></td>
+<td>no</td>
+<td><code>namespace='/'</code>, so a future key can't be lost</td>
+</tr>
+<tr>
+<td><code>joy_alive</code></td>
+<td>its whole YAML</td>
+<td><code>/**/joy_alive:</code></td>
+<td></td>
+<td>would have been: rclrs skips wildcards (its built-in values equal the file's)</td>
+<td>fixed 18 Nov: <code>/drivers/joy/joy_alive:</code></td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="rust-on-the-pi-and-the-esp32">Rust on the Pi and the ESP32</h2>
 <div class="table-wrap"><table>
@@ -297,16 +466,16 @@ programs only meet through messages.</p></div>
 </thead>
 <tbody>
 <tr>
-<td>Now</td>
-<td>Python for ROS nodes; Rust for the firmware (<code>spine-core</code>: 84 tests) and a few nodes</td>
+<td>Now (16 Nov)</td>
+<td>Rust for new ROS nodes, the firmware (<code>spine-core</code>, tested on a laptop) and the four ports above, the car's defaults; Python for ML, launch files, tools and tests</td>
 </tr>
 <tr>
 <td>Done</td>
-<td>four <code>rclrs</code> nodes: the IMU, the radar clustering, the CAN bridge, the HUD</td>
+<td>the first <code>rclrs</code> nodes: the IMU, the radar clustering, the CAN bridge, the HUD; since 5 Nov our own navigation (Nav2's parts ported) and our simulator</td>
 </tr>
 <tr>
 <td>Later</td>
-<td>port a node where Rust pays off, such as ego, once the car drives</td>
+<td>port the other Python nodes where possible (Ben, 16 Nov)</td>
 </tr>
 </tbody>
 </table></div></section>

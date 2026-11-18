@@ -35,9 +35,9 @@ publishes the same thing drops in, and nothing downstream changes.
 
 | Interface | Implementations |
 |---|---|
-| IMU: `sensor_msgs/Imu` on `/sensors/imu/data_raw`, frame `imu_link` | `aav_imu_yahboom`, `gazebo_imu` |
-| GPS: `sensor_msgs/NavSatFix` on `/sensors/gps/fix`, frame `gps_link` | `ublox_gps`, `nmea_navsat_driver`, `ublox_dgnss`, `gazebo_gps` |
-| Backend: `/control/<target>/actuator_cmd` in (ego's, through the output mux), `/vehicle/odom` out | `spine_bridge`, `legacy_uart_bridge`, `turtlesim_adapter`, `gazebo_adapter`, `carla_adapter` |
+| IMU: `sensor_msgs/Imu` on `/sensors/imu/data_raw`, frame `imu_link` | `aav_imu_yahboom`, `sim_imu` |
+| GPS: `sensor_msgs/NavSatFix` on `/sensors/gps/fix`, frame `gps_link` | `ublox_gps`, `nmea_navsat_driver`, `ublox_dgnss`, `sim_gps` |
+| Backend: `/control/<target>/actuator_cmd` in (ego's, through the output mux), `/vehicle/odom` out | `spine_bridge`, `legacy_uart_bridge`, `turtlesim_adapter`, `sim_adapter`, `carla_adapter` |
 
 The firmware applies the same idea one level down. `spine-core` never touches hardware:
 the board code fills an `Inputs` struct, calls `Spine::step`, and writes out the
@@ -105,12 +105,13 @@ Both sides test against the same generated frames. To change a frame:
 ## firmware/spine: the Rust code
 
 `crates/spine-core` is plain `no_std` Rust: no allocator, no dependencies, no hardware.
-`cargo test` runs its 84 tests on any laptop.
+`cargo test` runs its 143 tests on any laptop.
 
 | Module | Does |
 |---|---|
-| `spine.rs` | the priorities above: `Spine::step(&Inputs) -> Outputs`, about 100 times a second. Its `SpineConfig` holds the limits: 3.0 m/s, ±0.5 rad, 0.6 rad/s; 1.5 m/s² up, 2.5 m/s² down |
+| `spine.rs` | the priorities above: `Spine::step(&Inputs) -> Outputs`, about 100 times a second. Its `SpineConfig` holds the limits: 1.0 m/s (`MAX_SPEED`, since 6 Nov, T3.6), ±0.5 rad, 0.6 rad/s; 1.5 m/s² up, 2.5 m/s² down |
 | `protocol.rs` | encodes and decodes the six frames, with the CRC and counter checks |
+| `fsm.rs` | the five state regions the status lines report |
 | `watchdog.rs` | the 100 ms command watchdog |
 | `speed_loop.rs` | PI speed control into throttle and brake, never both at once. A stop brakes until the car is still, then holds |
 | `limits.rs` | the helpers that apply them: `slew()` and `abs()` |
@@ -125,10 +126,10 @@ and the glue between them and `spine-core`, are written too (10 October):
 | `jrk-g2` | the two Pololu Jrk G2s (steering, brake) over I2C | 15 |
 | `ad5311` | the throttle DAC over I2C | 10 |
 | `pca9555` | the I/O expander: the direction output | 6 |
-| `ibus` | the FlySky RC receiver | 25 |
+| `ibus` | the FlySky RC receiver | 26 |
 | `mcp2515` | the MCP2515 CAN controller over SPI: a Pico 2 has no CAN of its own | 34 |
-| `legacy-link` | the Motor-Pi's 13-byte UART frames, and the targets the C++ set for them (15 Oct); version 2 with the Orin's heartbeat (24 Oct, TODO 50) | 72 |
-| `spine-board` | all of them, from `spine-core`'s outputs, in a safe order; their errors become fault bits. Commands through CAN or the UART (`CommandLink`) | 79 |
+| `legacy-link` | the Motor-Pi's 13-byte UART frames, and the targets the C++ set for them (15 Oct); version 2 with the Orin's heartbeat (24 Oct, TODO 50); versions 3 and 4 since | 121 |
+| `spine-board` | all of them, from `spine-core`'s outputs, in a safe order; their errors become fault bits. Commands through CAN or the UART (`CommandLink`) | 119 |
 
 On a laptop, [Bench mode](bench.md) runs `spine-core` on the CAN frames from `spine_bridge`,
 driving a model car. The plan for all the firmware in Rust is
@@ -182,8 +183,9 @@ Copied unchanged from the 2025-26 team, as the fallback until the spine exists.
 !!! note "The ESP32's Rust replacement (15 Oct)"
     `firmware/spine/boards/esp32-umod` is `aav_umod_esp32` in Rust: the same board, pins
     and devices, and byte for byte the same UART frames (checked against the C++ itself).
-    It builds, and has never been flashed. The C++ stays here, and on the car, until the
-    Rust one is proven on the car: [Rust firmware](rust-firmware.md),
+    It builds, and runs in QEMU. The repo has no record of it flashed on the car: the
+    last check of the board (6 Nov, [the audit](history/audit-2026-11-06-car.md)) found
+    the C++. The C++ stays here, and on the car, until the Rust one is proven on the car: [Rust firmware](rust-firmware.md),
     [First flash on the bench](esp32-bench.md).
 
 | Folder | What | Talks to ROS through |
@@ -204,7 +206,8 @@ WiFi details: fine for a test build, but that board can't join the car's WiFi.
   1. **No command timeout.** If frames stop, the last throttle stays on. So the bridge
      locks every program out (twist_mux's no-timeout lock, priority 60): only people and
      the actuator tests drive. `allow_programs_without_timeout: true` lifts it, on stands only.
-  2. **The OTA update page has no password.** Anyone on the WiFi can flash the car.
+  2. **The OTA update page has no password.** Anyone on the WiFi can flash the car
+     (seen again on 6 Nov).
   3. **No feedback.** No speed, steering or faults come back.
   4. **The steering sign is unconfirmed.** Check it with the wheels off the ground.
   5. **The WiFi password was public** in the 2025-26 repositories. Change it.
@@ -241,7 +244,7 @@ reviewed these yet.**
 
 The table in full: [`spine-core`](../firmware/spine/crates/spine-core/README.md).
 
-A person stopping any other way is ego's job, and an obstacle stop is Nav2's and ego's: not
+A person stopping any other way is ego's job, and an obstacle stop is navigation's (the stop zone) and ego's: not
 built yet. The wheel speed reaches the firmware only once the Motor Pi sends frame
 version 4: until then the two speed rules stay off.
 

@@ -1,14 +1,18 @@
 # Platforms: Ubuntu, the car's computers, networking
 
-Every computer runs ROS 2 Jazzy. On the car's computers that means Ubuntu 24.04 with the
-official packages. On a Mac or any other Linux, use Pixi: see [Run it](run.md).
+Every computer runs ROS 2 Jazzy. On the car's computers the target is Ubuntu 24.04 with
+the official packages. On a Mac or any other Linux, use Pixi: see [Run it](run.md).
+
+**Today (13 Nov):** the car's computers are still on Ubuntu 22.04 (the Orin: JetPack 6)
+with the 2025-26 Humble software (21 Oct and 6 Nov audits). Our Jazzy goes on beside it
+from the car kit, one computer at a time: [Rolling out](rollout.md).
 
 ## Which computer gets Jazzy how
 
 | Computer | OS | Jazzy from |
 |---|---|---|
-| Jetson AGX Orin | JetPack 7.2 (Ubuntu 24.04) | apt. JetPack 6 is Ubuntu 22.04, so reflash first, after a backup. To try it before then: Pixi, below. |
-| Raspberry Pi 4 or 5 | Ubuntu 24.04 Server (arm64) | apt; or Pixi on today's OS, below |
+| Jetson AGX Orin | JetPack 7.2 (Ubuntu 24.04): the target. Today JetPack 6 | apt. JetPack 6 is Ubuntu 22.04, so reflash first, after a backup (not yet done). Before then: Pixi, below. |
+| Raspberry Pi 4 or 5 | Ubuntu 24.04 Server (arm64): the target. Today Ubuntu 22.04; the camera Pis stay on Pi OS, with no ROS | apt; or Pixi on today's OS, below |
 | Linux laptop | Ubuntu 24.04 | apt, or Pixi |
 | Mac | macOS 14 or newer | Pixi: [Your Mac](mac.md) |
 | oirp-spss | AlmaLinux 9 | Pixi, with no admin rights |
@@ -74,8 +78,10 @@ the ESP32, and the CAN bus goes to the Orin with the wheel sensors on it
 
 | Machine file | Runs |
 |---|---|
-| `orin.yaml` | description, mux, ego, scripted, drive_to_point, the IMU and GPS drivers, the roof lidar (Velodyne), localization, Nav2, Foxglove; the two front camera streams (`camera_stream`, RF-DETR inside each) and the stop-sign watcher; the CAN bus (`spine_bridge role:=sensors`: the wheels) |
+| `orin.yaml` | description, mux, ego, scripted, drive_to_point, the roof lidar (Velodyne), localization, navigation, Foxglove; the two front camera streams (`camera_stream`, RF-DETR inside each) and the stop-sign watcher; the CAN bus (`spine_bridge role:=sensors`: the wheels) |
 | `motor_pi.yaml` | `legacy_uart_bridge`: the ESP32 is wired to it. The 2025-26 UDP encoder (`encoder_udp`) is off: the wheels are on CAN now |
+| `motor_pi_alone.yaml` | the Motor Pi without the Orin, for the stands: mux, ego, the stop-sign watcher, the joystick, `legacy_uart_bridge`. Never beside the Orin's stack ([Rolling out](rollout.md)) |
+| `localization.yaml` | the IMU and GPS drivers only, on the localization Pi they are plugged into; the Orin does the maths |
 | `laptop.yaml` | the joystick, on the safety driver's laptop, and its own detector (`object_detector_laptop`, RF-DETR Nano) on the compressed pictures: `pixi run -e ml car laptop` |
 | `all.yaml` | everything on one computer, for the bench. Its detector is `object_detector_all` |
 
@@ -106,8 +112,9 @@ hardware: the cameras (Q22), the radar, or which USB port a device is on.
 | `detector` | the object detector (RF-DETR Nano, or YOLO), as `object_detector_<machine>`, with the model the file names ([Models](perception.md#models)). Not for a camera `camera_stream` streams |
 | `stop_signs` | the stop-sign watcher: one per car, next to the mux |
 | `radar_clusters` | the radar's clustering |
-| `camera_obstacles` | the detectors' boxes as points on the road, for Nav2's costmap ([Costmaps](costmaps.md)) |
-| `localization`, `navigation` | the two EKFs and `navsat_transform`; Nav2. Its costmap reads the `radar` and `camera_obstacles` parts on the same computer, and `collision_monitor` comes with the radar |
+| `lane` | lane keeping with the camera; off in every car machine file |
+| `camera_obstacles` | the detectors' boxes as points on the road, for the costmap ([Costmaps](costmaps.md)) |
+| `localization`, `navigation` | the two EKFs and `navsat_transform`; navigation (ours). Its costmap reads the `radar` and `camera_obstacles` parts on the same computer, and the stop zone comes with the radar |
 | `spine` | the CAN bus (Linux only): with `actuators:=uart`, the wheel sensors only (`spine_bridge role:=sensors`, no CAN sender); with `actuators:=can`, the CAN spine backend |
 | `legacy_uart`, `legacy_encoder` | today's backend, the ESP32 over UART (not with `actuators:=can`); the 2025-26 UDP wheel encoder (never beside `spine`) |
 | `foxglove` | `foxglove_bridge`, on port 8765: watch only, the WiFi topic list ([Watch from a laptop](foxglove.md)) |
@@ -124,15 +131,18 @@ They win over the machine file. With Pixi, put them after `--`:
 |---|---|
 | `gps:=false` | no GPS anywhere: no driver, and localization without it |
 | `gps_driver:=ublox` | which GPS driver: `ublox` (the default, Tentative: Q18), `nmea`, or `ublox_dgnss` (apt only, the car) |
-| `map:=`, `start_x:=`, `start_y:=`, `start_yaw:=` | Nav2's map, and where the car starts on it |
+| `map:=`, `start_x:=`, `start_y:=`, `start_yaw:=` | the navigation map, and where the car starts on it |
 | `lidar:=false` | no lidar anywhere, whatever the machine file says |
 | `actuators:=uart` | who drives the actuators: `uart` (the default: the Motor Pi's `legacy_uart_bridge`) or `can` (the CAN spine) |
 
 ## Try Jazzy on the car before the reflash
 
 Pixi also runs on the car's ARM computers, on the Ubuntu 22.04 they have now. So the
-team can try this stack on the car first, and reflash later. It resolves, but is
-untested on the car.
+team can try this stack on the car first, and reflash later. CI installs the kit offline
+on Ubuntu 22.04 ARM (the job `car-kit-22.04`). On the car: on 13 Nov the car drove with
+only the localization update installed; the full suite isn't on it yet
+([Ben's messages](history/messages-2026-11-13.md)). Which steps ran isn't written down;
+on the Orin and the Motor Pi it is untested.
 
 !!! note "No internet on the car? Use the USB kit"
     `pixi run car-kit` on a Mac makes a 1.8 GB folder that installs all of this offline,

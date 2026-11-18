@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+# stream-core: one camera's stream without ROS (aav_camera_stream's decoders.py, reader.py,
+#   latest.py, lens.py, timecode.py and models.py, ported): the decoder's command line, the
+#   child program and its pipe, the newest frame, the rates and delays, the lens and its
+#   undistortion, the time code, the preview:
+#   cargo test -p stream-core
+# stream-node: the ROS node (rclrs), binary `camera_stream`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/stream-core", "crates/stream-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# The vectors test undistorts whole pictures: build it optimised.
+[profile.test]
+opt-level = 3

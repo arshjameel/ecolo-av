@@ -2,8 +2,7 @@
 
 * **Author:** Ben (the pick), written up 5 Nov 2026
 * **Date:** 2026-11-05
-* **Status:** Proposed; awaiting Ben and the EGM review. TODO 110. The first of our own hybrids.
-  Nothing is built. The only numbers from a run are a small throwaway model, not Gazebo.
+* **Status:** Partly built (0.3, 7 Nov; checked 13 Nov): the one stopping law is `aav_description` `stop_law.py` (TODO 110, 137, 138; `docs/stopping.md`), used by the behaviour planner, the trackers and the point driver (`stop_law:=hybrid`). Not built: the filter (the bumper, before twist_mux); nothing on the car. The first of our own hybrids.
 
 Ben, 5 Nov: "lets create the best algorithms using papers, known algos, current implemntations,
 merge learnings from each and create our own algo."

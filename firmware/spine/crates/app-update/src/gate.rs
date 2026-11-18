@@ -15,6 +15,7 @@ pub const LOCKOUT_MS: u32 = 10_000;
 pub struct CarState {
     /// Nobody drives: the spine's mode is manual (not RC, the computer or a test).
     pub stopped: bool,
+    /// The car is armed: it may drive.
     pub armed: bool,
     /// 0..1, to the DAC.
     pub throttle: f32,
@@ -27,13 +28,17 @@ pub struct CarState {
 pub enum NotNow {
     /// Someone drives: the RC, the computer, or a test.
     Driving,
+    /// The car is armed.
     Armed,
+    /// The throttle isn't 0.
     Throttle,
+    /// The brake isn't full on.
     NotBraked,
 }
 
 impl NotNow {
     /// For the reply and the log.
+    #[must_use]
     pub const fn reason(self) -> &'static str {
         match self {
             NotNow::Driving => "someone is driving (RC, computer or test)",
@@ -45,6 +50,10 @@ impl NotNow {
 }
 
 /// The car is parked: stopped, not armed, no throttle, the brake full on.
+///
+/// # Errors
+///
+/// The first reason it isn't, in the order above.
 pub fn may_update(s: &CarState) -> Result<(), NotNow> {
     if !s.stopped {
         Err(NotNow::Driving)
@@ -64,14 +73,18 @@ pub fn may_update(s: &CarState) -> Result<(), NotNow> {
 pub enum PasswordError {
     /// The build's own password is too short, or the example's: updates are off.
     NotSetUp,
+    /// Not the password.
     Wrong,
     /// A wrong one came less than [`LOCKOUT_MS`] ago.
     LockedOut {
+        /// How long until a try is taken again (ms).
         ms_left: u32,
     },
 }
 
 impl PasswordError {
+    /// For the reply and the log.
+    #[must_use]
     pub const fn reason(self) -> &'static str {
         match self {
             PasswordError::NotSetUp => {
@@ -94,6 +107,7 @@ pub struct Guard<'a> {
 impl<'a> Guard<'a> {
     /// `expected`: the build's password (from the untracked secrets file). `example`: the
     /// example file's, which is never taken.
+    #[must_use]
     pub const fn new(expected: &'a str, example: &'a str) -> Self {
         Guard {
             expected,
@@ -102,7 +116,12 @@ impl<'a> Guard<'a> {
         }
     }
 
-    /// Is `given` the password, at `now_ms`?
+    /// Is `given` the password, at `now_ms`? Compared in constant time.
+    ///
+    /// # Errors
+    ///
+    /// [`PasswordError`]: updates aren't set up, the password is wrong, or a
+    /// wrong one came too lately.
     pub fn check(&mut self, given: &[u8], now_ms: u32) -> Result<(), PasswordError> {
         if self.expected.len() < MIN_PASSWORD_LEN || self.expected == self.example {
             return Err(PasswordError::NotSetUp);

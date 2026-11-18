@@ -174,25 +174,25 @@ def test_the_map_and_the_start_pose_reach_their_launch_files():
     assert default.endswith(os.path.join('maps', 'empty.yaml'))
 
 
-def test_the_lidar_runs_where_its_packets_go_and_nav2_reads_it():
-    # The Jetson (orin) gets the VLP-16's packets: its driver runs there, and Nav2 there
-    # reads it, with collision_monitor watching it.
+def test_the_lidar_runs_where_its_packets_go_and_navigation_reads_it():
+    # The Jetson (orin) gets the VLP-16's packets: its driver runs there, and navigation
+    # there reads it, with the stop zone watching it.
     sent = included(started(CAR, machine='orin'))
     assert sent['sensors.launch.py']['lidar'] == 'true'
     nav = sent['navigation.launch.py']
-    assert (nav['lidar'], nav['collision_monitor']) == ('true', 'true')
+    assert (nav['lidar'], nav['stop_zone']) == ('true', 'true')
     # lidar:=false switches it off everywhere, whatever the machine file says. The lidar is
     # the Orin's only sensor now (imu/gps are on the localization Pi), so sensors.launch.py
     # drops out entirely.
     off = included(started(CAR, machine='orin', lidar='false'))
     assert 'sensors.launch.py' not in off
     assert (off['navigation.launch.py']['lidar'],
-            off['navigation.launch.py']['collision_monitor']) == ('false', 'false')
+            off['navigation.launch.py']['stop_zone']) == ('false', 'false')
     # A machine without the part starts no driver.
     assert 'sensors.launch.py' not in included(started(CAR, machine='laptop'))
 
 
-def test_nav2_reverses_only_when_asked_and_where_the_lidar_sees_behind():
+def test_the_car_reverses_only_when_asked_and_where_the_lidar_sees_behind():
     # On by default since 1 Nov (Ben: "reverse and uturn should be in"): the roof lidar
     # watches behind.
     default = included(started(CAR, machine='orin'))['navigation.launch.py']
@@ -213,7 +213,7 @@ def test_the_rear_camera_sees_behind_only_when_its_detector_reads_it_for_people(
     assert not CAR.watches_behind(None)
 
 
-def test_the_watchdog_guards_nav2():
+def test_the_watchdog_guards_navigation():
     sent = included(started(CAR, machine='all'))
     assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,local,global,gps,hud'
     no_gps = included(started(CAR, machine='all', gps='false'))
@@ -235,7 +235,7 @@ def test_bad_values_stop_the_launch():
 def test_one_stop_sign_watcher_next_to_the_mux():
     for machine in MACHINES:
         parts = CAR.load_machine(machine)['parts']
-        watcher = ('aav_detector', 'stop_sign_watcher') in nodes(started(CAR, machine=machine))
+        watcher = ('aav_stop_sign_rs', 'stop_sign_watcher') in nodes(started(CAR, machine=machine))
         assert watcher == bool(parts.get('mux')), machine
 
 
@@ -259,14 +259,65 @@ def test_the_geofence_runs_wherever_the_mux_does():
 
 
 def test_the_sensor_watchdog_runs_wherever_the_mux_does():
-    # The mux's sensors lock needs the watchdog's heartbeat (fail-safe: silence holds Nav2),
-    # so the two always start together, whichever machine Nav2 is on.
+    # The mux's sensors lock needs the watchdog's heartbeat (fail-safe: silence holds the car),
+    # so the two always start together, whichever machine navigation is on.
     for machine in MACHINES:
         parts = CAR.load_machine(machine)['parts']
         sent = included(started(CAR, machine=machine))
         assert ('watchdog.launch.py' in sent) == bool(parts.get('mux')), machine
         if parts.get('mux'):
             assert sent['mux.launch.py'].get('sensor_lock', 'true') == 'true', machine
+
+
+def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
+    # Ben, 16 Nov: ego, behaviour, the watchdog and localization_health in Rust on the car
+    # too; each *_impl:=python falls back, one switch each (docs/car-day.md).
+    switches = {'ego.launch.py': 'ego_impl', 'navigation.launch.py': 'behaviour_impl',
+                'watchdog.launch.py': 'watchdog_impl',
+                'localization.launch.py': 'localization_health_impl',
+                # Ben, 17 Nov: both muxes too, the ESP32's heartbeat ("Rust tomorrow").
+                'io_mux.launch.py': 'io_mux_impl'}
+    # And the ESP32's UART bridge and rc_driver, wherever legacy_uart runs.
+    legacy = {'legacy_impl', 'rc_impl'}
+    sent = included(started(CAR, machine='all'))
+    for name, switch in switches.items():
+        assert sent[name][switch] == 'rust', name
+    back = included(started(CAR, machine='all', **dict.fromkeys(switches.values(), 'python')))
+    for name, switch in switches.items():
+        assert back[name][switch] == 'python', name
+    for impl in legacy:
+        assert included(started(CAR, machine='motor_pi'))['legacy.launch.py'][impl] == 'rust'
+        assert included(started(CAR, machine='motor_pi', **{impl: 'python'}))[
+            'legacy.launch.py'][impl] == 'python'
+    with pytest.raises(ValueError, match='legacy_impl'):
+        started(CAR, machine='motor_pi', legacy_impl='c')
+    with pytest.raises(ValueError, match='watchdog_impl'):
+        started(CAR, machine='all', watchdog_impl='c')
+
+
+def test_joy_alive_is_rust_by_default_and_python_one_switch_away():
+    # Ben, 17 Nov: the Motor Pi alone's joystick path in Rust too (joy_alive_impl).
+    for machine in ('motor_pi_alone', 'all'):
+        assert included(started(CAR, machine=machine))['teleop.launch.py'][
+            'joy_alive_impl'] == 'rust', machine
+    assert included(started(CAR, machine='motor_pi_alone', joy_alive_impl='python'))[
+        'teleop.launch.py']['joy_alive_impl'] == 'python'
+    with pytest.raises(ValueError, match='joy_alive_impl'):
+        started(CAR, machine='motor_pi_alone', joy_alive_impl='c')
+
+
+def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
+    # Ben, 17 Nov: the Motor Pi alone's stop_signs part in Rust too (stop_sign_impl).
+    def watcher(**args):
+        actions = started(CAR, machine='motor_pi_alone', **args)
+        found = [package for package, exe in nodes(actions) if exe == 'stop_sign_watcher']
+        assert len(found) == 1, args
+        return found[0]
+
+    assert watcher() == 'aav_stop_sign_rs'
+    assert watcher(stop_sign_impl='python') == 'aav_detector'
+    with pytest.raises(ValueError, match='stop_sign_impl'):
+        started(CAR, machine='motor_pi_alone', stop_sign_impl='c')
 
 
 def test_the_output_mux_runs_next_to_ego_for_the_real_car():
@@ -277,7 +328,8 @@ def test_the_output_mux_runs_next_to_ego_for_the_real_car():
         sent = included(started(CAR, machine=machine))
         assert ('io_mux.launch.py' in sent) == bool(parts.get('ego')), machine
         if parts.get('ego'):
-            assert sent['io_mux.launch.py'] == {'target': 'car', 'source': 'real'}, machine
+            assert sent['io_mux.launch.py'] == {'target': 'car', 'source': 'real',
+                                                'io_mux_impl': 'rust'}, machine
 
 
 def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
@@ -287,7 +339,13 @@ def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
         assert 'lane_follower.launch.py' not in included(started(CAR, machine=machine))
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {'lane': True}})
     sent = included(started(CAR, machine='orin'))
-    assert sent['lane_finder.launch.py'] == {'debug_image': 'false'}
+    # The Rust lane_finder by default (Ben, 18 Nov); lane_finder_impl:=python falls back.
+    assert sent['lane_finder.launch.py'] == {'debug_image': 'false',
+                                             'lane_finder_impl': 'rust'}
+    back = included(started(CAR, machine='orin', lane_finder_impl='python'))
+    assert back['lane_finder.launch.py']['lane_finder_impl'] == 'python'
+    with pytest.raises(ValueError, match='lane_finder_impl'):
+        started(CAR, machine='orin', lane_finder_impl='c')
     assert sent['lane_follower.launch.py'] == {'fake': 'false'}
 
 
@@ -358,6 +416,10 @@ def test_the_car_passes_its_bridge_choice_to_the_spine(monkeypatch, socketcan):
 # actuators on the ESP32, driven through the Motor Pi's UART; the CAN bus straight to the
 # Orin, with the wheel sensors on it (docs/can-plan.md).
 
+# legacy.launch.py's languages, by default: Rust since 17 Nov (Ben, "Rust tomorrow").
+RUST_LEGACY = {'legacy_impl': 'rust', 'rc_impl': 'rust'}
+
+
 def test_the_car_as_wired_today(socketcan):
     # The Orin reads its CAN bus for the wheels only...
     orin = included(started(CAR, machine='orin'))
@@ -365,12 +427,12 @@ def test_the_car_as_wired_today(socketcan):
     assert 'legacy.launch.py' not in orin
     # ...and the Motor Pi drives the ESP32, with no UDP encoder beside the CAN wheels.
     motor_pi = included(started(CAR, machine='motor_pi'))
-    assert motor_pi['legacy.launch.py'] == {'uart': 'true', 'encoder': 'false'}
+    assert motor_pi['legacy.launch.py'] == {'uart': 'true', 'encoder': 'false', **RUST_LEGACY}
     assert 'spine.launch.py' not in motor_pi
     # One computer with everything: the same two.
     everything = included(started(CAR, machine='all'))
     assert everything['spine.launch.py']['role'] == 'sensors'
-    assert everything['legacy.launch.py'] == {'uart': 'true', 'encoder': 'false'}
+    assert everything['legacy.launch.py'] == {'uart': 'true', 'encoder': 'false', **RUST_LEGACY}
 
 
 def test_actuators_can_makes_the_can_spine_the_one_backend(socketcan):
@@ -390,7 +452,7 @@ def test_the_udp_encoder_never_runs_beside_the_can_wheels(monkeypatch, socketcan
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {
         'spine': True, 'legacy_uart': True, 'legacy_encoder': True}})
     assert included(started(CAR, machine='orin'))['legacy.launch.py'] == {
-        'uart': 'true', 'encoder': 'false'}
+        'uart': 'true', 'encoder': 'false', **RUST_LEGACY}
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {
         'legacy_uart': True, 'legacy_encoder': True}})
     assert included(started(CAR, machine='orin'))['legacy.launch.py']['encoder'] == 'true'
@@ -463,7 +525,7 @@ def test_the_orin_streams_both_front_cameras_with_rfdetr_inside(orin_kit):
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     assert inputs[-2:] == ['front_left_stream', 'front_right_stream']
     # The stop-sign watcher reads the same /perception/detections.
-    assert ('aav_detector', 'stop_sign_watcher') in nodes(started(CAR, machine='orin'))
+    assert ('aav_stop_sign_rs', 'stop_sign_watcher') in nodes(started(CAR, machine='orin'))
 
 
 def test_the_orin_today_skips_the_streams_and_says_why(monkeypatch, tmp_path):
@@ -494,6 +556,12 @@ def test_detector_none_streams_without_pytorch(monkeypatch, tmp_path):
     sent = included(started(CAR, machine='orin'))
     assert sent['camera_stream.launch.py']['detector'] == 'none'
     assert 'front_left_stream' in sent['watchdog.launch.py']['inputs']
+    # The Rust camera_stream by default (Ben, 18 Nov); camera_stream_impl:=python falls back.
+    assert sent['camera_stream.launch.py']['camera_stream_impl'] == 'rust'
+    back = included(started(CAR, machine='orin', camera_stream_impl='python'))
+    assert back['camera_stream.launch.py']['camera_stream_impl'] == 'python'
+    with pytest.raises(ValueError, match='camera_stream_impl'):
+        started(CAR, machine='orin', camera_stream_impl='c')
 
 
 def test_the_stream_settings_are_checked(orin_kit, monkeypatch):
@@ -576,11 +644,12 @@ def test_the_car_day_stack_is_the_defaults():
     # docs/tests.md, "The stack for every test on the ground": the best of the Gazebo
     # trials. Change a default here and the plan changes with it.
     nav = included(started(CAR, machine='orin'))['navigation.launch.py']
-    assert nav['planner'] == 'lattice'
+    assert nav['planner'] == 'own'               # ours since Nav2 went (17 Nov)
     assert nav['reversing'] == 'true'
     assert nav['voxels'] == 'false'
     assert nav.get('controller', 'mppi') == 'mppi'
-    assert nav.get('tracker', 'none') == 'none'
+    assert nav.get('tracker', vehicle.DEFAULT_TRACKER) == 'mppi_lag'
+    assert (nav['navigator'], nav['costmap'], nav['smoother']) == ('own', 'own', 'own')
     assert nav.get('amcl', 'false') == 'false'
     loc = included(started(CAR, machine='orin'))['localization.launch.py']
     assert loc.get('ndt_ekf', 'false') == 'false' and loc.get('kiss_ekf', 'false') == 'false'

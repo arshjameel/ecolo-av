@@ -26,7 +26,10 @@ pub enum Refusal {
     /// No `/map` yet: nobody knows where Nav2 can plan.
     NoMap,
     /// Off Nav2's map: it can't plan there. How far from the map's edge.
-    OutsideMap { from_edge: Metres },
+    OutsideMap {
+        /// How far outside the edge.
+        from_edge: Metres,
+    },
     /// No position for the car: no way to say which way to face, or that it's safe.
     NoCar,
 }
@@ -34,9 +37,9 @@ pub enum Refusal {
 impl fmt::Display for Refusal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoMap => write!(f, "No Nav2 map yet: can't send a goal"),
+            Self::NoMap => write!(f, "No map yet: can't send a goal"),
             Self::OutsideMap { from_edge } => {
-                write!(f, "Outside Nav2's map: {} away", far(*from_edge))
+                write!(f, "Outside the map: {} away", far(*from_edge))
             }
             Self::NoCar => write!(f, "No car position: can't send a goal"),
         }
@@ -54,6 +57,10 @@ fn far(d: Metres) -> String {
 
 /// The goal for a place at `place` (map frame): facing from the car toward it. Refused
 /// with no map, outside the map, or with no car.
+///
+/// # Errors
+///
+/// [`Refusal`] with no map, outside the map, or with no car.
 pub fn goal_for(place: Point, car: Option<Point>, map: Option<&GridInfo>) -> Result<Pose, Refusal> {
     let map = map.ok_or(Refusal::NoMap)?;
     let from_edge = map.distance_outside(place);
@@ -92,20 +99,26 @@ pub enum Step {
 pub enum Key {
     /// `/`, or a click on the box.
     Open,
+    /// A letter typed.
     Char(char),
     /// Removes the last letter (a whole letter: é is one, though two bytes).
     Backspace,
     /// Empties the box (the on-screen keyboard's Clear).
     Clear,
+    /// Up the list.
     Up,
+    /// Down the list.
     Down,
+    /// Search, or pick the place.
     Enter,
+    /// Back, or close the box.
     Escape,
 }
 
 /// What the window must do after a key.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
+    /// Nothing to do.
     Nothing,
     /// The words changed: search again, then [`Finder::set_results`].
     Search,
@@ -128,28 +141,38 @@ pub struct Finder {
 }
 
 impl Finder {
+    /// An empty, closed search box.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Where the search is: shut, typing, picked or confirming.
+    #[must_use]
     pub fn step(&self) -> Step {
         self.step
     }
 
+    /// The words typed so far.
+    #[must_use]
     pub fn query(&self) -> &str {
         &self.query
     }
 
+    /// The places found.
+    #[must_use]
     pub fn results(&self) -> &[Place] {
         &self.results
     }
 
     /// The highlighted result (Up and Down move it).
+    #[must_use]
     pub fn selected(&self) -> usize {
         self.selected
     }
 
     /// The chosen place, while it's on the map (Picked or Confirming).
+    #[must_use]
     pub fn picked(&self) -> Option<&Place> {
         match self.step {
             Step::Picked | Step::Confirming => self.picked.as_ref(),
@@ -157,16 +180,20 @@ impl Finder {
         }
     }
 
+    /// Why the last search failed, if it did.
+    #[must_use]
     pub fn problem(&self) -> Option<&str> {
         self.problem.as_deref()
     }
 
     /// Whether keys are letters for the box, not the map's own keys.
+    #[must_use]
     pub fn is_typing(&self) -> bool {
         self.step == Step::Typing
     }
 
     /// Whether the box takes Enter and Esc (it's open).
+    #[must_use]
     pub fn is_open(&self) -> bool {
         self.step != Step::Closed
     }
@@ -339,14 +366,14 @@ mod tests {
         );
         assert_eq!(
             far.expect_err("refused").to_string(),
-            "Outside Nav2's map: 3.2 km away"
+            "Outside the map: 3.2 km away"
         );
         assert_eq!(
             Refusal::OutsideMap {
                 from_edge: Metres(42.4)
             }
             .to_string(),
-            "Outside Nav2's map: 42 m away"
+            "Outside the map: 42 m away"
         );
         assert_eq!(
             goal_for(Point::new(5.0, 5.0), None, Some(&lot())),

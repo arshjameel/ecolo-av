@@ -1,0 +1,73 @@
+"""
+The pedal: a person's stick read as an accelerator and a brake, not a speed (Ben, 15 Nov).
+
+On the test drive the driver had to switch between speeding up, braking and reversing.
+With the pedal, one stick does all three:
+
+    | Stick, moving forward      | ego                                                  |
+    |----------------------------|------------------------------------------------------|
+    | ahead of the speed now     | speeds up to it, as before (max_acceleration, jerk)  |
+    | let off part way           | slows gently: the more let off, the harder           |
+    | let go (0)                 | slows at let_off (1.0 m/s^2), like engine braking    |
+    | pulled back                | brakes: a little softly, all the way at full brake   |
+    | still back at a standstill | holds 0 for shift_hold (1 s), then reverses          |
+
+Backwards, the same with forward and back swapped. A change of direction waits at a
+standstill (Ben, 17 Nov: "come to a complete stop and shift into drive or reverse"): ego's
+speed reaches 0 by its own model, but the wheels may still turn (the Motor Pi alone has
+no wheel speed), so ego holds 0, the brake on, for shift_hold seconds before the other
+way; and while a fresh wheel speed exists, until it is under stop_speed too.
+
+The stick's request stays a speed (TwistStamped): how far it is below the speed now, or
+against it, sets how hard ego slows.
+
+    let off to a fraction f of the speed now:  let_off x (1 - f)
+    pulled back by b (0..1 of a full stick):   let_off + b x (max_deceleration - let_off)
+
+Never weaker than asked by anything else: a stale command, the e-stop, or a turn the body
+can't take at this speed brake at max_deceleration, as without the pedal (ego_node and
+ackermann.EgoModel decide when the pedal applies). Only people use it by default (joy, rc,
+keyboard): a computer driver plans its own slowing (the stop law, speed profiles) and needs
+ego to follow its speeds at once. No ROS here.
+"""
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Pedal:
+    """The pedal's numbers."""
+
+    let_off: float = 1.0    # m/s^2: slowing with the stick let go (Ben, 15 Nov)
+    full: float = 1.0       # m/s: the speed a full stick asks for (teleop_twist_joy's scale)
+    shift_hold: float = 1.0  # s at a standstill before the other way (17 Nov; tune on stands)
+    stop_speed: float = 0.05  # m/s: a fresh wheel speed under this counts as stopped
+
+
+def slow_rate(pedal: Pedal, current: float, target: float, max_deceleration: float) -> float:
+    """
+    Return how hard (m/s^2) to slow from `current` toward `target`, both signed m/s.
+
+    Called only while slowing: |target| below |current|, or target the other way. Against
+    the motion, a target's size over `full` is how far the stick is pulled back.
+    """
+    let_off = min(pedal.let_off, max_deceleration)
+    if current == 0.0:
+        return max_deceleration
+    if target != 0.0 and (target > 0.0) != (current > 0.0):
+        back = min(1.0, abs(target) / pedal.full) if pedal.full > 0.0 else 1.0
+        return let_off + back * (max_deceleration - let_off)
+    kept = min(1.0, abs(target) / abs(current))
+    return let_off * (1.0 - kept)
+
+
+def may_shift(pedal: Pedal, held: float, wheel_speed) -> bool:
+    """
+    Return True once the car may change direction: held (s) at a standstill, and stopped.
+
+    held: how long ego's speed has been 0. wheel_speed: a fresh measured speed (m/s), or
+    None when there is none (the Motor Pi alone): then the time alone decides.
+    """
+    if held < pedal.shift_hold:
+        return False
+    return wheel_speed is None or abs(wheel_speed) < pedal.stop_speed

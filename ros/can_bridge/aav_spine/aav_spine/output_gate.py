@@ -13,7 +13,7 @@ commands, and its watchdog would only latch it again.
 | bench | bench | /control/bench/actuator_cmd |
 | sim | sim | /control/sim/actuator_cmd |
 
-Times come from a steady clock (time.monotonic), never the node's: in Gazebo that one is
+Times come from a steady clock (time.monotonic), never the node's: in the simulator that one is
 simulated, and a paused simulation must not keep an old OPEN fresh.
 
 The Rust twin is the spine-bridge crate's gate.rs; both say the same words.

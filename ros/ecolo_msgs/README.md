@@ -8,7 +8,7 @@ The team's own ROS message and action types. Everything else uses stock types wh
 
 | Package | What it holds |
 |---|---|
-| [aav_interfaces](./aav_interfaces/README.md) | 9 messages (`VehicleStatus`, `ActuatorState`, `WheelSpeeds`, `SpineOutputs`, `Heartbeat`, `RcSticks`, `SensorSource`, `DataSource`, `SourceCheck`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) |
+| [aav_interfaces](./aav_interfaces/README.md) 17 messages (`VehicleStatus`, `ActuatorState`, `WheelSpeeds`, `SpineOutputs`, `Heartbeat`, `RcSticks`, `ActuatorRaw`, `SteeringCalibration`, `LinkFrame`, `UplinkHealth`, `SensorSource`, `DataSource`, `SourceCheck`, `RoadAhead`, `StopPoint`, `Things`, `Thing`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) |
 
 ## Invariants
 

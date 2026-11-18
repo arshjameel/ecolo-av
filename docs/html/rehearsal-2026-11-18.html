@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rehearsal for 18 Nov: the Motor Pi alone, on a Mac · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/rehearsal-2026-11-18.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Rehearsal for 18 Nov: the Motor Pi alone, on a Mac</h1>
+<div class="meta">12 min read · 6 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a class="here" href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#what-ran">What ran</a><a href="#results">Results</a><a href="#fixed-tonight">Fixed tonight</a><a href="#open-problems-for-the-team">Open problems (for the team)</a><a href="#what-was-not-rehearsed">What was not rehearsed</a><a href="#the-morning-checklist">The morning checklist</a></nav>
+<div class="lead"><p>Ben's session, the night of 17 Nov. Tomorrow's path, run on a MacBook with the Rust
+ESP32 firmware in QEMU instead of the board. Then a checklist for the morning.</p>
+<div class="admonition warning">
+<p class="admonition-title">QEMU is not the car</p>
+<p>The firmware ran in Espressif's QEMU with stand-in I2C devices. No real UART, Jrk,
+DAC, joystick or RC receiver was touched. The list is in
+<a href="#what-was-not-rehearsed">What was not rehearsed</a>.</p>
+</div></div>
+<section class="card"><h2 id="what-ran">What ran</h2>
+<pre class="highlight"><code class="language-text">pretend keyboard, joystick ──► car.launch.py machine:=motor_pi_alone max_speed:=0.3
+  (this Mac's ROS, domain 207,     twist_mux ► ego ► output mux ► legacy_uart_bridge
+   LOCALHOST only)                                                    │ socket://127.0.0.1:47231
+                                                                       ▼
+iBUS frames (pretend RC) ──► QEMU UART2      QEMU UART1 ◄──► the Rust ESP32 firmware
+                                              QEMU UART0 ──► its log (EVENT, STATUS, LINK)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>As tomorrow?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The launch: <code>car.launch.py machine:=motor_pi_alone max_speed:=0.3</code></td>
+<td>yes, the same file and nodes; Rust by default</td>
+</tr>
+<tr>
+<td><code>legacy.yaml</code>: <code>frame_version: 2</code>; <code>uplink: true</code> (and once <code>false</code>)</td>
+<td>yes, but <code>port: socket://127.0.0.1:47231</code> in place of <code>/dev/ttyAMA0</code> (put back after)</td>
+</tr>
+<tr>
+<td>The firmware: <code>--features qemu,uplink</code>, the build <code>pixi run esp qemu-check</code> makes</td>
+<td>the logic, yes; the devices are QEMU's stand-ins</td>
+</tr>
+<tr>
+<td>QEMU's UART1</td>
+<td><code>-serial tcp:127.0.0.1:47231,server=on,wait=off</code>: the bridge's <code>socket://</code> reaches it</td>
+</tr>
+<tr>
+<td>The keyboard</td>
+<td><code>TwistStamped</code> on <code>/drivers/keyboard/cmd_vel</code> at 30 Hz, 0.5 m/s, as <code>teleop_twist_keyboard</code> sends</td>
+</tr>
+<tr>
+<td>The joystick</td>
+<td><code>sensor_msgs/Joy</code> on <code>/drivers/joy/joy</code> at 20 Hz: through <code>joy_alive</code> and teleop, as <code>joy_node</code> sends</td>
+</tr>
+<tr>
+<td>The RC</td>
+<td>iBUS frames into QEMU's UART2; the firmware's uplink; <code>/vehicle/rc</code>; <code>rc_driver</code></td>
+</tr>
+<tr>
+<td>The Python fall-backs</td>
+<td><code>io_mux_impl:=python legacy_impl:=python rc_impl:=python</code>, the same checks</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nothing opened <code>/dev/ttyAMA0</code> or any device: the bridge logged
+<code>serial port socket://127.0.0.1:47231 open</code>. The driving script was a one-off, not kept.</p>
+</section>
+<section class="card"><h2 id="results">Results</h2>
+<p>Times are from the moment named to the firmware's <code>EVENT</code> line saying it (its own clock).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Check</th>
+<th>Rust (default)</th>
+<th>Python fall-backs</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The stock <code>pixi run esp qemu-check</code></td>
+<td>brakes 110-115 ms after the heartbeat stops; uplink, RC modes</td>
+<td>-</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Start: the mux WAITs, then OPEN</td>
+<td>counter frozen while WAIT (199 repeats); OPEN: 190 new counters in 4 s, 0 repeats</td>
+<td>the same</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Idle, nobody driving</td>
+<td>armed, throttle 0, hold brake 0.21 (about 1050 counts)</td>
+<td>the same</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Keyboard forward (0.5 m/s asked)</td>
+<td>ego 0.3 m/s, frame speed 0.10, firmware throttle 0.10</td>
+<td>the same</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Keyboard forward-left</td>
+<td>ROS steering +0.5 rad, ESP32 -0.5 (<code>steering_sign: -1</code>)</td>
+<td>the same</td>
+<td>PASS (which way is left: on stands, Q2)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Keyboard reverse</td>
+<td><strong>0.5 m/s</strong> (throttle 0.17): the cap was forward only</td>
+<td>-</td>
+<td><strong>FAIL, fixed</strong>: now 0.3 m/s, throttle 0.10</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Let go of the key</td>
+<td>throttle 0 after 0.40 s, then the hold brake</td>
+<td>0.39 s</td>
+<td>PASS (car day 3.4 said 0.3 s: corrected)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>E-stop while driving</td>
+<td>full brake in 20 ms; stays braked while keys still ask; drives again after the clear</td>
+<td>7 ms</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Joystick: push, ease off</td>
+<td>0.3 m/s, then 0.3 m/s</td>
+<td>the same</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Joystick: pull back</td>
+<td>ego slows to 0, hold brake <strong>80 ms</strong>, then reverses</td>
+<td>the same</td>
+<td>PASS; open problem 1, <strong>fixed</strong> after: now holds 1.0 s</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Joystick: hold back</td>
+<td>reverse at 0.3 m/s (after the fix)</td>
+<td>the same</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Joystick goes silent while driving</td>
+<td><code>SILENT</code>; throttle 0 after 0.39 s</td>
+<td>0.38 s</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Joystick frozen while driving</td>
+<td><code>FROZEN</code> at 2.06 s; throttle 0 at 2.29 s</td>
+<td>the same</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>14</td>
+<td>RC via ROS, a little stick</td>
+<td><code>/vehicle/rc</code> switch 2; <code>rc_driver</code> 0.4 m/s; ego 0.3; throttle 0.10</td>
+<td><strong>no RC at all</strong> (uplink stale)</td>
+<td>Rust PASS; Python <strong>FAIL, fixed</strong>, then PASS</td>
+</tr>
+<tr>
+<td>15</td>
+<td>RC switch to computer, receiver off</td>
+<td>stands still, no fault</td>
+<td>the same</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>16</td>
+<td>The laptop stops sending while driving</td>
+<td>throttle 0 after 0.40 s</td>
+<td>0.40 s</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>17</td>
+<td>Kill the output mux (SIGKILL, by PID) while driving</td>
+<td>full brake, fault 1, in <strong>116 ms</strong>; counter frozen, frames still coming</td>
+<td>103 ms</td>
+<td>PASS against car day's 0.2 s</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Kill the bridge (SIGKILL) while driving</td>
+<td>full brake, fault 1, in 96 ms</td>
+<td>103 ms</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>19</td>
+<td>Ctrl-C the bridge while driving</td>
+<td>full brake in 114 ms (fault 1)</td>
+<td>8 ms</td>
+<td>PASS, see open problem 2</td>
+</tr>
+<tr>
+<td>20</td>
+<td>A simulator announces itself on the car</td>
+<td>mux STOP, latched; full brake in 119 ms</td>
+<td>-</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>21</td>
+<td><code>frame_version: 2</code>, <code>uplink: false</code></td>
+<td>drives, capped; bridge killed: brake in 118 ms</td>
+<td>-</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>22</td>
+<td>The hardware panel's topics</td>
+<td>all 14 of its Motor Pi topics published (sensors: none, as expected)</td>
+<td>-</td>
+<td>PASS (window not drawn)</td>
+</tr>
+<tr>
+<td>23</td>
+<td><code>car_setup.sh motor_pi</code> (dry run, Mac)</td>
+<td>one STOP: the upgrade without <code>--after-esp32</code>, as designed</td>
+<td>-</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>24</td>
+<td><code>car_setup.sh motor_pi services --machine motor_pi_alone</code> (dry run)</td>
+<td>the plan, no errors</td>
+<td>-</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>25</td>
+<td><code>car_install.sh --dry-run</code> (Mac)</td>
+<td>refuses: Darwin, arm64, no kit, as designed</td>
+<td>-</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>26</td>
+<td><code>pixi run esp walk --dry-run</code></td>
+<td>all 28 steps to "All done"</td>
+<td>-</td>
+<td>PASS</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>About "within 100 ms":</strong> the firmware brakes 100 ms after the last <em>new</em> counter, then
+waits for its next 10 ms tick. So a dead mux brakes in about 100-120 ms, never under 100.
+Car day's gate is 0.2 s.</p>
+</section>
+<section class="card"><h2 id="fixed-tonight">Fixed tonight</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Fix</th>
+<th>Why</th>
+<th>Proof</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max_speed:=</code> caps reverse too (<code>ego.launch.py</code>)</td>
+<td>on stands "the speed capped at 0.3 m/s" (car day A9), but held back the car reversed at 0.5 m/s</td>
+<td><code>test_ego_launch.py</code>; rehearsal 6 and 11 at 0.3 m/s</td>
+</tr>
+<tr>
+<td>The Python bridge reads the uplink in chunks</td>
+<td>on <code>socket://</code>, pyserial's <code>in_waiting</code> says 0 or 1: one byte each 10 ms, so the uplink went stale and RC via ROS never drove. A real UART was fine</td>
+<td><code>test_uplink_socket.py</code>: 5 of 76 frames before, all after</td>
+</tr>
+<tr>
+<td>The hardware panel from a laptop: <code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code></td>
+<td><code>pixi run hw-panel</code> is localhost-only: it never sees the Motor Pi (<code>esp32-safety.md</code> said it would)</td>
+<td>read in <code>tools/screen.sh</code></td>
+</tr>
+<tr>
+<td>Car day 3.4: "throttle off within 0.5 s"</td>
+<td>measured 0.4 s, not 0.3</td>
+<td>rehearsal 7</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="open-problems-for-the-team">Open problems (for the team)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Problem</th>
+<th>Why it matters</th>
+<th>Suggestion</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Fixed (17 Nov).</strong> Pull the stick back while moving: ego reached 0 by its <em>model</em>, held the brake 80 ms, then reversed</td>
+<td>the Motor Pi alone has no wheel speed, so the direction could flip while the rear wheels still turn (the DAC is 0 then)</td>
+<td>ego's pedal now holds 0, the brake on, for <code>pedal_shift_hold</code> (1.0 s, <code>ego.yaml</code>) before the other way; with a fresh <code>/vehicle/odom</code>, also until it reads under <code>pedal_stop_speed</code> (0.05 m/s). Python and Rust, shared vectors. On stands: time the wheels' coast-down in 3.2b and set the hold above it. Not re-rehearsed in QEMU</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The bridge's five "leave braked" frames on exit repeat the last counter</td>
+<td>with version 2 the ESP32 ignores a repeated counter, so they do nothing; its own 100 ms rule brakes it</td>
+<td>harmless; car day 3.7 "a last stop frame" really means "brakes within 0.2 s"</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A dead mux or bridge is not restarted</td>
+<td>the car stays braked (safe), but nothing drives until the whole launch restarts</td>
+<td>Ctrl-C the launch, start it again</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="what-was-not-rehearsed">What was not rehearsed</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Not tried</th>
+<th>Tomorrow's check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The real UART: <code>/dev/ttyAMA0</code>, the console off it (A7b), the wire's speed</td>
+<td>A7b L1-L5; <code>LINK frames=</code> rising, <code>bad=0</code></td>
+</tr>
+<tr>
+<td>The Jrks, the DAC, the direction pin (QEMU has stand-ins)</td>
+<td>6c, 1-7</td>
+</tr>
+<tr>
+<td>The real joystick: <code>joy_node</code>, its button and axis numbers</td>
+<td>A9b step 4</td>
+</tr>
+<tr>
+<td>The real RC receiver (iBUS), and its three-position switch (H10)</td>
+<td>6c 10-12; 6e only if H9 and H10 say yes</td>
+</tr>
+<tr>
+<td>The network: the laptop on the Pi's domain 42 (here all on one Mac)</td>
+<td><code>pixi run doctor</code>; <code>ros2 topic hz /control/car/link_frame</code> from the laptop</td>
+</tr>
+<tr>
+<td>The Pi's own CPU (Ubuntu 22.04) running all of it</td>
+<td><code>top</code> on the Pi while driving</td>
+</tr>
+<tr>
+<td>The HUD and the panel drawing on screen</td>
+<td>open them on the laptop</td>
+</tr>
+<tr>
+<td>The red button, the Kar-Tech stop</td>
+<td>6c 13, A9 3.8</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-morning-checklist">The morning checklist</h2>
+<p>One page. <strong>Never with <code>car orin</code> running too:</strong> two muxes would both drive.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Where</th>
+<th>Run</th>
+<th>Expect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Laptop</td>
+<td><code>pixi run car-day-build</code> (or the night before)</td>
+<td>QEMU check PASS</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Motor Pi</td>
+<td><code>systemctl status aav_serial_bridge</code></td>
+<td>inactive, disabled (A7b)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Laptop</td>
+<td><code>pixi run esp walk &lt;port&gt;</code></td>
+<td>the Rust flashed; first check SAFE TO GO ON</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Motor Pi</td>
+<td><code>legacy.yaml</code>: <code>frame_version: 2</code> (<code>uplink: true</code> only if H9 and H10 say yes), then <code>~/aav-jazzy/aav.sh build</code></td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Motor Pi</td>
+<td><code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=motor_pi_alone max_speed:=0.3</code></td>
+<td><code>serial port /dev/ttyAMA0 open</code>; <code>OPEN - car: every source REAL</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Motor Pi, 2nd terminal</td>
+<td><code>~/aav-jazzy/aav.sh ros2 topic hz /control/car/link_frame</code></td>
+<td>about 10 Hz</td>
+</tr>
+<tr>
+<td>7</td>
+<td>ESP32 log (laptop USB)</td>
+<td><code>LINK</code> lines</td>
+<td><code>frames=</code> rising, <code>bad=0</code>, <code>counter=</code> moving</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Laptop</td>
+<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run keyboard</code></td>
+<td>wheels turn at 0.3 m/s at most, both ways</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Laptop, to watch</td>
+<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code></td>
+<td>the panel sees the car</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Stands</td>
+<td><a href="car-day.html#session-6-the-esp32">Car day 6c</a>, then <a href="car-day.html#session-9-the-first-drive-on-stands">A9</a> 3.1-3.9, then <a href="car-day.html#a9b-the-joystick-on-stands">A9b</a></td>
+<td>each as written</td>
+</tr>
+</tbody>
+</table></div>
+<p>If a Rust node misbehaves, restart the launch with its fall-back:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Add to step 5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The muxes (output and sensor)</td>
+<td><code>io_mux_impl:=python</code></td>
+</tr>
+<tr>
+<td>The ESP32's UART bridge</td>
+<td><code>legacy_impl:=python</code></td>
+</tr>
+<tr>
+<td>The RC driver</td>
+<td><code>rc_impl:=python</code></td>
+</tr>
+<tr>
+<td>The joystick's check (joy_alive; Rust since after the rehearsal)</td>
+<td><code>joy_alive_impl:=python</code></td>
+</tr>
+<tr>
+<td>The stop-sign watcher (Rust since after the rehearsal)</td>
+<td><code>stop_sign_impl:=python</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>With <code>aav.sh car motor_pi_alone</code>, put them after <code>--</code>: <code>~/aav-jazzy/aav.sh car motor_pi_alone -- legacy_impl:=python</code>.
+Each passed the same checks tonight (the bridge's after its fix: pull tonight's commits first).</p></section>
+<nav class="prevnext"><a class="prev" href="esp32-motor-pi-runbook.html"><small>Previous</small>← Flash the ESP32, upgrade the Motor Pi</a>
+<a class="next" href="esp32-bench.html"><small>Next</small>ESP32 first flash →</a></nav>
+</main>
+<footer>Source: <code>docs/rehearsal-2026-11-18.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

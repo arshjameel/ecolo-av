@@ -19,12 +19,12 @@ sources ─▶ localization, perception ─▶ drivers ─▶ command_mux ─▶
 | [sources](./sources/README.md) | sensor drivers: IMU, GPS, radar, lidar, cameras, battery |
 | [localization](./localization/README.md) | two robot_localization EKFs: `map → odom → base_link`; GPS heading |
 | [perception](./perception/README.md) | objects, stop signs, lanes, a lidar scan, radar clusters |
-| [drivers](./drivers/README.md) | everything that proposes a command: joystick, RC, tests, scripted, drive to point, Nav2, language; and street routes as GPS waypoints (`aav_routes`) |
+| [drivers](./drivers/README.md) | everything that proposes a command: joystick, RC, tests, scripted, drive to point, navigation (ours, in Rust), language; and street routes as GPS waypoints (`aav_routes`) |
 | [command_mux](./command_mux/README.md) | twist_mux: one command for ego, plus the locks |
 | [ego](./ego/README.md) | the virtual car: `TwistStamped` in, Ackermann out, within the car's limits |
 | [io_mux](./io_mux/README.md) | exactly one backend, and the real car only on real data |
 | [can_bridge](./can_bridge/README.md) | the real car's backend: CAN to the spine, or UART to the 2025-26 ESP32 |
-| [sim](./sim/README.md) | stand-in backends: turtlesim, Gazebo, bench mode, CARLA; and `spine_sim` (`aav_spine_sim`), the spine's real logic for bench mode and `sim spine:=true` |
+| [sim](./sim/README.md) | stand-in backends: turtlesim, Ravensim, bench mode, CARLA; and `spine_sim` (`aav_spine_sim`), the spine's real logic for bench mode and `sim spine:=true` |
 | [safety](./safety/README.md) | the sensor watchdog and ghost obstacles |
 | [hud](./hud/README.md) | the in-car screens: the HUD and the map window (Rust, raylib) |
 | [bringup](./bringup/README.md) | the launch profiles, and `vehicle.yaml`: the only place car measurements live |

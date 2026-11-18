@@ -5,17 +5,27 @@
 //! bytes on the bus. Signals are little-endian; the last byte of each frame is
 //! a CRC-8/SAE-J1850 over the ID (low byte, high byte) and the other bytes.
 
+/// ESTOP_CMD: the Orin's software e-stop.
 pub const ESTOP_CMD_ID: u16 = 0x010;
+/// DRIVE_CMD: the Orin's command.
 pub const DRIVE_CMD_ID: u16 = 0x100;
+/// VEHICLE_FEEDBACK: the spine's measured motion.
 pub const VEHICLE_FEEDBACK_ID: u16 = 0x180;
+/// VEHICLE_STATUS: the spine's state.
 pub const VEHICLE_STATUS_ID: u16 = 0x181;
+/// WHEEL_SPEED_L: the left front wheel node.
 pub const WHEEL_SPEED_L_ID: u16 = 0x200;
+/// WHEEL_SPEED_R: the right front wheel node.
 pub const WHEEL_SPEED_R_ID: u16 = 0x201;
 
+/// Why a frame was not decoded.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameError {
+    /// Not the DBC's length for its ID.
     WrongLength,
+    /// The CRC-8 doesn't match.
     BadChecksum,
+    /// An ID this side doesn't take.
     UnknownId,
 }
 
@@ -57,53 +67,73 @@ impl Mode {
 /// Software e-stop request (0x010).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EstopCmd {
+    /// Stop the car.
     pub estop_request: bool,
+    /// The rolling counter, 0..15.
     pub counter: u8,
 }
 
 /// Drive command (0x100). Speeds in m/s, angles in rad (positive left).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DriveCmd {
+    /// m/s, negative in reverse.
     pub target_speed: f32,
+    /// rad, positive left.
     pub steering_angle: f32,
     /// m/s^2; 0 means the firmware default.
     pub accel_limit: f32,
     /// rad/s; 0 means the firmware default.
     pub steer_rate_limit: f32,
+    /// The Orin wants to drive.
     pub armed: bool,
+    /// The rolling counter, 0..15.
     pub counter: u8,
 }
 
 /// Measured motion (0x180).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VehicleFeedback {
+    /// m/s, negative in reverse.
     pub measured_speed: f32,
+    /// rad, positive left.
     pub measured_steering_angle: f32,
+    /// The wheel encoder's count; wraps at 65536.
     pub wheel_ticks: u16,
+    /// The rolling counter, 0..15.
     pub counter: u8,
 }
 
 /// Spine state (0x181). Throttle and brake in percent.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VehicleStatus {
+    /// Who drives.
     pub mode: Mode,
+    /// The spine is armed.
     pub armed: bool,
+    /// An e-stop is on.
     pub estop_active: bool,
+    /// %, 0..100.
     pub throttle: f32,
+    /// %, 0..100.
     pub brake: f32,
+    /// The fault bits ([`crate::spine::faults`]).
     pub faults: u16,
+    /// The rolling counter, 0..15.
     pub counter: u8,
 }
 
 /// Which front wheel a wheel node sits on. Each has its own frame ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Wheel {
+    /// The left front wheel (0x200).
     Left,
+    /// The right front wheel (0x201).
     Right,
 }
 
 impl Wheel {
     /// The ID of this wheel's WHEEL_SPEED frame.
+    #[must_use]
     pub const fn id(self) -> u16 {
         match self {
             Wheel::Left => WHEEL_SPEED_L_ID,
@@ -112,6 +142,7 @@ impl Wheel {
     }
 
     /// The wheel a WHEEL_SPEED frame ID belongs to, if it is one.
+    #[must_use]
     pub const fn from_id(id: u16) -> Option<Wheel> {
         match id {
             WHEEL_SPEED_L_ID => Some(Wheel::Left),
@@ -132,17 +163,24 @@ pub struct WheelSpeed {
     pub pulse_count: u16,
     /// True when the sign of `wheel_speed` is measured, not assumed.
     pub direction_known: bool,
+    /// The rolling counter, 0..15.
     pub counter: u8,
 }
 
 /// Any frame the spine can receive.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Incoming {
+    /// ESTOP_CMD.
     Estop(EstopCmd),
+    /// DRIVE_CMD.
     Drive(DriveCmd),
 }
 
 /// Decode a frame addressed to the spine.
+///
+/// # Errors
+///
+/// [`FrameError::UnknownId`] for another ID; else the frame's own error.
 pub fn decode_incoming(id: u16, data: &[u8]) -> Result<Incoming, FrameError> {
     match id {
         ESTOP_CMD_ID => EstopCmd::decode(data).map(Incoming::Estop),
@@ -154,12 +192,19 @@ pub fn decode_incoming(id: u16, data: &[u8]) -> Result<Incoming, FrameError> {
 /// Any frame the Orin receives: the spine's two, and the front wheel nodes'.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Report {
+    /// VEHICLE_FEEDBACK.
     Feedback(VehicleFeedback),
+    /// VEHICLE_STATUS.
     Status(VehicleStatus),
+    /// WHEEL_SPEED_L or _R.
     WheelSpeed(WheelSpeed),
 }
 
 /// Decode a frame addressed to the Orin (spine_bridge).
+///
+/// # Errors
+///
+/// [`FrameError::UnknownId`] for another ID; else the frame's own error.
 pub fn decode_report(id: u16, data: &[u8]) -> Result<Report, FrameError> {
     match id {
         VEHICLE_FEEDBACK_ID => VehicleFeedback::decode(data).map(Report::Feedback),
@@ -184,11 +229,13 @@ fn crc8_update(mut crc: u8, byte: u8) -> u8 {
 }
 
 /// CRC-8/SAE-J1850: poly 0x1D, init 0xFF, not reflected, xorout 0xFF.
+#[must_use]
 pub fn crc8_sae_j1850(bytes: &[u8]) -> u8 {
     bytes.iter().fold(0xFF, |crc, &b| crc8_update(crc, b)) ^ 0xFF
 }
 
 /// CRC of a frame: the ID (low byte, high byte), then the body.
+#[must_use]
 pub fn frame_crc(id: u16, body: &[u8]) -> u8 {
     let crc = crc8_update(crc8_update(0xFF, (id & 0xFF) as u8), (id >> 8) as u8);
     body.iter().fold(crc, |crc, &b| crc8_update(crc, b)) ^ 0xFF
@@ -254,6 +301,8 @@ fn check<const N: usize>(id: u16, data: &[u8]) -> Result<u64, FrameError> {
 }
 
 impl EstopCmd {
+    /// The frame's 2 bytes, counter and CRC included.
+    #[must_use]
     pub fn encode(&self) -> [u8; 2] {
         let mut w = 0;
         put(&mut w, 0, 1, self.estop_request as u64);
@@ -261,6 +310,11 @@ impl EstopCmd {
         finish(ESTOP_CMD_ID, w)
     }
 
+    /// The frame from its bytes, if its length and CRC are right.
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::WrongLength`] or [`FrameError::BadChecksum`].
     pub fn decode(data: &[u8]) -> Result<Self, FrameError> {
         let w = check::<2>(ESTOP_CMD_ID, data)?;
         Ok(EstopCmd {
@@ -271,6 +325,8 @@ impl EstopCmd {
 }
 
 impl DriveCmd {
+    /// The frame's 8 bytes, counter and CRC included.
+    #[must_use]
     pub fn encode(&self) -> [u8; 8] {
         let mut w = 0;
         put(&mut w, 0, 16, raw_signed(self.target_speed, 1000.0, 16));
@@ -282,6 +338,11 @@ impl DriveCmd {
         finish(DRIVE_CMD_ID, w)
     }
 
+    /// The frame from its bytes, if its length and CRC are right.
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::WrongLength`] or [`FrameError::BadChecksum`].
     pub fn decode(data: &[u8]) -> Result<Self, FrameError> {
         let w = check::<8>(DRIVE_CMD_ID, data)?;
         Ok(DriveCmd {
@@ -296,6 +357,8 @@ impl DriveCmd {
 }
 
 impl VehicleFeedback {
+    /// The frame's 8 bytes, counter and CRC included.
+    #[must_use]
     pub fn encode(&self) -> [u8; 8] {
         let mut w = 0;
         put(&mut w, 0, 16, raw_signed(self.measured_speed, 1000.0, 16));
@@ -310,6 +373,11 @@ impl VehicleFeedback {
         finish(VEHICLE_FEEDBACK_ID, w)
     }
 
+    /// The frame from its bytes, if its length and CRC are right.
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::WrongLength`] or [`FrameError::BadChecksum`].
     pub fn decode(data: &[u8]) -> Result<Self, FrameError> {
         let w = check::<8>(VEHICLE_FEEDBACK_ID, data)?;
         Ok(VehicleFeedback {
@@ -322,6 +390,8 @@ impl VehicleFeedback {
 }
 
 impl VehicleStatus {
+    /// The frame's 8 bytes, counter and CRC included.
+    #[must_use]
     pub fn encode(&self) -> [u8; 8] {
         let mut w = 0;
         put(&mut w, 0, 2, self.mode as u64);
@@ -334,6 +404,11 @@ impl VehicleStatus {
         finish(VEHICLE_STATUS_ID, w)
     }
 
+    /// The frame from its bytes, if its length and CRC are right.
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::WrongLength`] or [`FrameError::BadChecksum`].
     pub fn decode(data: &[u8]) -> Result<Self, FrameError> {
         let w = check::<8>(VEHICLE_STATUS_ID, data)?;
         Ok(VehicleStatus {
@@ -349,6 +424,8 @@ impl VehicleStatus {
 }
 
 impl WheelSpeed {
+    /// The frame's 8 bytes, counter and CRC included (the CRC covers the ID).
+    #[must_use]
     pub fn encode(&self) -> [u8; 8] {
         let mut w = 0;
         put(&mut w, 0, 16, raw_signed(self.wheel_speed, 1000.0, 16));
@@ -360,6 +437,10 @@ impl WheelSpeed {
 
     /// Decode the frame of `wheel`. The ID is in the checksum, so a left frame decoded
     /// as a right one fails it.
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::WrongLength`] or [`FrameError::BadChecksum`].
     pub fn decode(wheel: Wheel, data: &[u8]) -> Result<Self, FrameError> {
         let w = check::<8>(wheel.id(), data)?;
         Ok(WheelSpeed {
@@ -374,6 +455,7 @@ impl WheelSpeed {
 
 /// Frames advanced since the previous counter: 1 is normal, 0 a repeat,
 /// more than 1 means frames were lost.
+#[must_use]
 pub fn counter_step(previous: Option<u8>, current: u8) -> u8 {
     match previous {
         None => 1,

@@ -37,9 +37,13 @@ use spine_core::{faults, Outputs};
 /// each a handle from `embedded-hal-bus` or `embassy-embedded-hal`.
 #[derive(Debug)]
 pub struct Devices<I2C> {
+    /// The steering Jrk.
     pub steering: JrkG2<I2C>,
+    /// The brake Jrk.
     pub brake: JrkG2<I2C>,
+    /// The throttle DAC.
     pub dac: Ad5311<I2C>,
+    /// The I/O expander: the direction pin.
     pub expander: Pca9555<I2C>,
 }
 
@@ -68,6 +72,7 @@ pub struct Positions {
     /// The same, raw: each Jrk's scaled feedback, 0 to 4095 counts in target units, not
     /// converted with the calibration (for measuring it).
     pub steering_counts: Option<u16>,
+    /// The brake's, raw.
     pub brake_counts: Option<u16>,
 }
 
@@ -83,6 +88,8 @@ pub struct Readings {
     pub faults: u16,
 }
 
+/// The spine's outputs, carried out on the four devices through the calibration; and
+/// their positions and faults read back.
 #[derive(Debug)]
 pub struct Actuators<I2C> {
     dev: Devices<I2C>,
@@ -108,6 +115,7 @@ pub struct Actuators<I2C> {
 }
 
 impl<I2C: I2c> Actuators<I2C> {
+    /// The devices, driven with `cal`. Nothing is written until the first tick.
     pub fn new(devices: Devices<I2C>, cal: Calibration) -> Self {
         Actuators {
             dev: devices,
@@ -257,6 +265,7 @@ impl<I2C: I2c> Actuators<I2C> {
         &mut self.dev
     }
 
+    /// Give the devices back.
     pub fn release(self) -> Devices<I2C> {
         self.dev
     }

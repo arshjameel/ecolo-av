@@ -21,17 +21,17 @@ build = { cmd = "colcon build --symlink-install", description = "Compile our ROS
 # test: on this computer only (LOCALHOST: on GitHub's Macs a test's ROS program on the network
 # never ended, TODO 42), and one package at a time: on one computer and one domain, two
 # packages' tests side by side heard each other's nodes (25 Oct). 1 min 55 s, not 1 min 41.
-test = { cmd = "tools/test.sh && tools/lint.sh && colcon test --parallel-workers 1 --event-handlers console_cohesion- && colcon test-result --verbose", depends-on = ["build"], env = { ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST" }, description = "All tests, and the style check, on this computer only (no network)" }
+test = { cmd = "tools/test.sh && tools/lint.sh && colcon test --parallel-workers 1 --event-handlers console_cohesion- && colcon test-result --verbose", depends-on = ["build"], env = { ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST", AAV_COLCON_TEST_FOLLOWS = "1" }, description = "All tests, and the style check, on this computer only (no network)" }
 lint = { cmd = "tools/lint.sh", description = "Check our Python against ROS's style rules" }
 
 # The car and its stand-ins. The stand-ins run on this computer only (tools/ros.sh --local).
 turtle = { cmd = "tools/ros.sh --local ros2 launch aav_bringup turtle.launch.py", description = "turtlesim as the car (this computer only)" }
-sim = { cmd = "tools/ros.sh --local ros2 launch aav_bringup sim.launch.py", description = "Gazebo as the car (this computer only)" }
+sim = { cmd = "tools/ros.sh --local ros2 launch aav_bringup sim.launch.py", description = "A simulator as the car, driven by our stack: Ravensim and stack:=ours by default (with no GPU: tools/software_gl.sh pixi run sim), stack:=best for the champions (this computer only)" }
 bench = { cmd = "tools/ros.sh --local ros2 launch aav_bringup bench.launch.py", description = "The real car's software, with stand-ins for the hardware (bench mode, this computer only)" }
 view = { cmd = "tools/ros.sh --local ros2 launch aav_description view.launch.py", description = "The car model in RViz (this computer only)" }
 carla-car = { cmd = "tools/ros.sh --local ros2 launch aav_bringup carla.launch.py", description = "CARLA as the car: pixi run carla-car host:=<the CARLA computer> [town:=Town10HD_Opt] [osm:=maps/carla/carleton.osm]. Linux x86_64 with CARLA's Python client; ROS stays on this computer, CARLA can be anywhere (docs/carla.md)" }
-car = { cmd = "tools/ros.sh ros2 launch aav_bringup car.launch.py machine:={{ machine }}", args = [{ arg = "machine", default = "all" }], description = "The real car: pixi run car orin (or motor_pi, laptop, all)" }
-demo = { cmd = "tools/ros.sh --local tools/demo_all.sh", description = "The whole simulated car in one go: Gazebo in the walled test lot, the nav screen (RViz), the HUD and the street-map window (streets and search need pixi run get street-map and get places once). --debug adds the debug HUD, with AMCL, a trial tracker and NDT; --fullscreen; any sim.launch.py name:=value. This computer only; Ctrl-C stops them all" }
+car = { cmd = "tools/ros.sh ros2 launch aav_bringup car.launch.py machine:={{ machine }}", args = [{ arg = "machine", default = "all" }], description = "The real car: pixi run car orin (or motor_pi, motor_pi_alone, localization, laptop, all)" }
+demo = { cmd = "tools/ros.sh --local tools/demo_all.sh", description = "The whole simulated car in one go: the simulator in the walled test lot, the nav screen (RViz), the HUD and the street-map window (streets and search need pixi run get street-map and get places once). --debug adds the debug HUD, with AMCL, a trial tracker and NDT; --fullscreen; any sim.launch.py name:=value. This computer only; Ctrl-C stops them all" }
 # The switches from a menu (docs/switches.md), so nobody has to remember them (Ben, 29 Oct).
 pick = { cmd = "python3 tools/pick.py", description = "A menu of the simulated car's switches (who steers, where-am-I, speed loop): prints the command, saves it, runs it. pick last: again; pick list: every switch" }
 
@@ -39,31 +39,32 @@ pick = { cmd = "python3 tools/pick.py", description = "A menu of the simulated c
 hud = { cmd = "tools/screen.sh hud", description = "The in-car screen, as the ROS node hud: pixi run hud fullscreen:=true; pixi run hud --demo for pretend data" }
 map = { cmd = "tools/screen.sh map", description = "The big screen's map window, as the ROS node map: pixi run map fullscreen:=true; pixi run map --demo for pretend data" }
 debug-hud = { cmd = "tools/screen.sh debug-hud", description = "The debug screen, as the ROS node debug_hud: the lidar's cubes, the localizers, every sensor. --demo: a walled lot, a ray-cast lidar, no ROS (--demo --bench-cubes 20000 is the drawing test)" }
-# The hardware panel drives Gazebo or the bench on this computer: localhost-only (screen.sh).
+# The hardware panel drives Ravensim or the bench on this computer: localhost-only (screen.sh).
 hw-panel = { cmd = "tools/screen.sh hw-panel", description = "The hardware panel, as the ROS node hw_panel: every sensor's number, and simple buttons (hold Space to drive) through twist_mux's buttons slot; speed only on SIM and BENCH. This computer only. [stands:=true] [fullscreen:=true]; --demo for a pretend car" }
+ravensim = { cmd = "tools/ros.sh --local tools/ravensim.sh", description = "Watch Ravensim: the simulator (pixi run sim's world, rviz:=false) and the developer window live on it, in one go; any sim.launch.py name:=value goes to the sim (world:=campus also loads the campus RavenTiles and lanes). This computer only; Ctrl-C or closing the window stops both" }
 dev-window = { cmd = "tools/dev_window.sh", description = "The developer window (Bevy): pretend data with no ROS; --live beside demo or sim on this computer (goals and e-stop, SIM only); --watch listens only, such as on the car, plugged in. Also [--cubes N] [--all-layers] [--seconds S: the speed test] [--screenshot FILE]" }
-sim-cameras = { cmd = "tools/sim_cameras.sh", description = "The simulator's cameras (Bevy, offscreen): the test world from each camera on the car. No ROS: renders and prints the timing check; --ros publishes Gazebo's camera topics (this computer only); --ros --pose truth draws where /vehicle/sim/truth says. Also [--seconds S] [--save DIR] [--bench N] [--cameras a,b]" }
+sim-cameras = { cmd = "tools/sim_cameras.sh", description = "The simulator's cameras (Bevy, offscreen): the test world from each camera on the car. No ROS: renders and prints the timing check; --ros publishes the car's camera topics (this computer only); --ros --pose truth draws where /vehicle/sim/truth says. Also [--seconds S] [--save DIR] [--bench N] [--cameras a,b]" }
 rviz = { cmd = "tools/ros.sh rviz2 -d ros/bringup/aav_bringup/rviz/drive.rviz", description = "RViz with the driving layout: map, costmaps, path, car" }
 graph = { cmd = "tools/ros.sh rqt_graph", description = "Live picture of nodes and topics" }
 
 # Drive, and test the car.
 keyboard = { cmd = "tools/ros.sh tools/keyboard.sh", description = "Drive from the keyboard (second terminal)" }
-actuator-test = { cmd = "tools/actuator_test.sh", description = "The actuator tests, stages 3-4: pixi run actuator-test --list; <test> --sim in Gazebo (this computer only); <test> [--stands] on the car. pixi run actuator-test preflight --stands: on stands before the ground, every move with every sensor checked, PASS / FAIL per line (docs/actuator-tests.md)" }
-drive-to-point = { cmd = "tools/drive_to_point.sh", description = "Drive to one point and stop there smoothly: pixi run drive-to-point --sim --ahead 20 (Gazebo, this computer only); --lat L --lon L or --x X --y Y; on the car without --sim, it asks first (docs/a-to-b.md)" }
-ghost = { cmd = "tools/ros.sh ros2 run aav_ghost ghost", description = "A pretend person in Nav2's view, with sim or car ghost:=true: pixi run ghost ahead 10 (m past the bumper), ghost at 20 0 (map x y), ghost size 0.3 1.2, ghost off; ghost --local ... for Gazebo on this computer (docs/ghost-obstacles.md)" }
-sim-fault = { cmd = "tools/ros.sh --local tools/sim_fault.sh", description = "Make a Gazebo sensor fail on purpose next to pixi run sim: sim-fault gps stop, sim-fault gps ok (gps, imu, odom, radar, camera; stop, freeze, nan, jump)" }
+actuator-test = { cmd = "tools/actuator_test.sh", description = "The actuator tests, stages 3-4: pixi run actuator-test --list; <test> --sim in Ravensim (this computer only); <test> [--stands] on the car. pixi run actuator-test preflight --stands: on stands before the ground, every move with every sensor checked, PASS / FAIL per line (docs/actuator-tests.md)" }
+drive-to-point = { cmd = "tools/drive_to_point.sh", description = "Drive to one point and stop there smoothly: pixi run drive-to-point --sim --ahead 20 (Ravensim, this computer only); --lat L --lon L or --x X --y Y; on the car without --sim, it asks first (docs/a-to-b.md)" }
+ghost = { cmd = "tools/ros.sh ros2 run aav_ghost ghost", description = "A pretend person in navigation's view, with sim or car ghost:=true: pixi run ghost ahead 10 (m past the bumper), ghost at 20 0 (map x y), ghost size 0.3 1.2, ghost off; ghost --local ... for Ravensim on this computer (docs/ghost-obstacles.md)" }
+sim-fault = { cmd = "tools/ros.sh --local tools/sim_fault.sh", description = "Make a simulated sensor fail on purpose next to pixi run sim: sim-fault gps stop, sim-fault gps ok (gps, imu, odom, radar, camera; stop, freeze, nan, jump)" }
 
 # Check and measure.
 check = { cmd = "tools/ros.sh python3 tools/check_graph.py --profile {{ profile }}", args = [{ arg = "profile", default = "turtle" }], description = "Running graph vs the contract: pixi run check [turtle|sim|road|spine|car|replay|bench]" }
 drop-in = { cmd = "tools/ros.sh python3 tools/drop_in_check.py", description = "Is what is running a true drop-in? Each stream's rate and frame against docs/interfaces.yaml's drop_in rules, beside a running system. Only listens. [--seconds S] [--measure]" }
 bench-check = { cmd = "tools/ros.sh --local python3 tools/bench_check.py", description = "Start bench mode and test the whole car graph: contract, drive, e-stops (2 min)" }
-sim-check = { cmd = "tools/ros.sh --local python3 tools/sim_check.py", description = "Start Gazebo's road world headless and test the car's whole graph in it: contract, sensors, a drive (2 min); --perception (with -e ml), --obstacle, --lidar-obstacle, --plan-around, --ghost, --faults, --lane, --stop-point, --behaviour add more; --voxels: Nav2 on the lidar's cubes" }
+sim-check = { cmd = "tools/ros.sh --local python3 tools/sim_check.py", description = "Start Ravensim's road world headless (no GPU: tools/software_gl.sh in front, the cameras in lockstep) and test the car's whole graph in it: contract, sensors, a drive (2 min); --perception (with -e ml), --obstacle, --lidar-obstacle, --plan-around, --ghost, --faults, --lane, --stop-point, --behaviour add more; --voxels: the costmap on the lidar's cubes" }
 link-check = { cmd = "tools/ros.sh python3 tools/link_check.py", description = "Did the Motor Pi's frames reach the ESP32? PASS, FAIL or NOT TESTED from a bag (tools/record.sh) and the ESP32's status lines: pixi run link-check <bag> --esp32 <file> (or --live SECONDS). Only reads (docs/hardware-debug.md)" }
 doctor = { cmd = "tools/ros.sh python3 tools/doctor.py", description = "Can this computer join the car's ROS network? Says what to fix" }
-measure = { cmd = "tools/measure.sh", description = "Measure how well it works: pixi run measure controllers (Pure Pursuit vs MPPI in Gazebo), timing (are messages on time?), stream (the camera stream end to end), atob <bags> (score A-to-B runs), lane (a long lane drive, scored), bandwidth (every topic's MB/s), diffusion (the diffusion planner's time a plan, for the Orin). Add --help for each one's options" }
-campus = { cmd = "python3 tools/campus_world.py", description = "Carleton for Gazebo, Nav2 and NDT, from OpenStreetMap, into maps/campus/; then pixi run sim world:=campus" }
+measure = { cmd = "tools/measure.sh", description = "Measure how well it works: pixi run measure controllers (the path followers in Ravensim), timing (are messages on time?), stream (the camera stream end to end), atob <bags> (score A-to-B runs), lane (a long lane drive, scored), bandwidth (every topic's MB/s), diffusion (the diffusion planner's time a plan, for the Orin). Add --help for each one's options" }
+campus = { cmd = "python3 tools/campus_world.py", description = "Carleton for Ravensim, our costmap and NDT, from OpenStreetMap (and its RavenTiles), into maps/campus/; then pixi run sim world:=campus" }
 campus-route = { cmd = "python3 tools/campus_route.py", description = "Directions on the campus, without ROS: campus-route \"Mackenzie Building\" (from P4), --from PLACE or lat,lon, --waypoints, --list (every named place). The road graph street_router uses with router:=campus (docs/routes.md)" }
-ndt-map = { cmd = "tools/ros.sh --local python3 tools/ndt_map.py", description = "NDT's map of Gazebo's test lot: ndt-map drive (headless, the mapping route, about 6 min, this computer only) or ndt-map build <bag>; the lidar laid down on the truth, ground out, 10 cm: maps/ndt/test_lot.pcd and .yaml (docs/designs/2026-10-29_ndt.md)" }
+ndt-map = { cmd = "tools/ros.sh --local python3 tools/ndt_map.py", description = "NDT's map of the sim's test lot: ndt-map drive (headless, the mapping route, about 6 min, this computer only) or ndt-map build <bag>; the lidar laid down on the truth, ground out, 10 cm: maps/ndt/test_lot.pcd and .yaml (docs/designs/2026-10-29_ndt.md)" }
 calibrate-camera = { cmd = "tools/ros.sh --local python3 tools/calibrate_camera.py", description = "Calibrate a streamed camera with ROS's camera_calibration at the car: pixi run calibrate-camera board (the checkerboard to print), then calibrate-camera front_left [--host <camera Pi>] [--square <m>]: files config/calibrations/front_left.yaml for aav_camera_stream (docs/camera-calibration.md)" }
 
 # Safety: a person sets the e-stop, and clears a latch.
@@ -77,12 +78,16 @@ car-day-build = { cmd = "tools/car_day_build.sh", description = "Before car day:
 
 # Downloads, and the firmware (docs/rust-firmware.md). flash writes a board: bench only,
 # wheels off the ground.
-diffusion = { cmd = "tools/diffusion.sh", description = "The diffusion planner trial's data and model: pixi run diffusion data (the lattice's paths on random maps, no Gazebo), train (the model, its guard score, models/diffusion/planner.onnx; needs pixi install --locked -e learn), score, replay (a Gazebo run's recorded plans, offline), export (--fp16)" }
+diffusion = { cmd = "tools/diffusion.sh", description = "The diffusion planner trial's data and model: pixi run diffusion data (the lattice's paths on random maps, no simulator), train (the model, its guard score, models/diffusion/planner.onnx; needs pixi install --locked -e learn), score, replay (a sim run's recorded plans, offline), export (--fp16)" }
 get = { cmd = "tools/get.sh", description = "Download what git doesn't keep: pixi run get vendor (ROS source, 560 MB), models, mediamtx, places, street-map, carla-osm, routes, or all" }
 pico = { cmd = "tools/pico.sh", description = "Our Rust Pico 2 boards: pixi run pico <spine|wheel|sentinel> <tools|build|flash>. tools: probe-rs (once); build: the .uf2 to drag on; flash: through a debug probe, then its logs" }
 esp = { cmd = "tools/esp32.sh", description = "The Rust firmware for today's ESP32 control board: pixi run esp tools (Espressif's Rust, once), build, flash (on the USB cable, bench only), qemu-tools (QEMU, once), qemu-check (it brakes when the heartbeat stops; docs/esp32-bench.md), first-check [port] (right after a flash: SAFE TO GO ON or STOP; --qemu on the QEMU build), walk [port] (walks the whole first flash, one step at a time, shown and spoken)" }
 
 [dependencies]
+# Python 3.12, as Jazzy on Ubuntu 24.04 (the car) and the ml environment: the build's
+# entry points carry this Python, and -e ml puts its 3.12 packages on their path. Unpinned,
+# the solver took 3.14 on 17 Nov and numpy failed to import under -e ml (TODO 243).
+python = ">=3.12,<3.13"
 ros-jazzy-desktop = ">=0.11.0,<0.12"
 ros-jazzy-turtlesim = ">=1.8.4,<2"
 ros-jazzy-teleop-twist-keyboard = ">=2.4.1,<3"
@@ -90,7 +95,11 @@ ros-jazzy-teleop-twist-joy = ">=2.6.5,<3"
 ros-jazzy-joy = ">=3.3.0,<4"
 ros-jazzy-twist-mux = ">=4.5.0,<5"
 ros-jazzy-robot-localization = ">=3.8.3,<4"
-ros-jazzy-navigation2 = ">=1.3.13,<2"
+# Nav2 went on 17 Nov (TODO 184): only its message types, and AMCL (a trial) with its
+# lifecycle manager. Its source stays in vendor/ (pixi run get vendor) to read.
+ros-jazzy-nav2-msgs = ">=1.3.13,<2"
+ros-jazzy-nav2-amcl = ">=1.3.13,<2"
+ros-jazzy-nav2-lifecycle-manager = ">=1.3.13,<2"
 ros-jazzy-imu-filter-madgwick = ">=2.1.6,<3"
 ros-jazzy-ackermann-msgs = ">=2.0.2,<3"
 ros-jazzy-xacro = ">=2.1.1,<3"
@@ -108,7 +117,10 @@ pytest = ">=9.1.1,<10"
 pyyaml = ">=6.0.3,<7"
 pyserial = ">=3.5,<4"
 ros-jazzy-joy-teleop = ">=2.0.0,<3"
-ros-jazzy-ros-gz = ">=1.0.24,<2"
+# Ravensim's services (spawn_entity, set_entity_state); came with ros_gz until Gazebo went (16 Nov).
+ros-jazzy-simulation-interfaces = ">=1.5.1,<2"
+# image_transport's plugins (compressed: the chase camera's JPEG, the recorder); also came with ros_gz.
+ros-jazzy-image-transport-plugins = ">=4.0.7,<5"
 ros-jazzy-can-msgs = ">=2.0.0,<3"
 ros-jazzy-foxglove-bridge = ">=3.6.0,<4"
 ros-jazzy-rosbridge-server = ">=2.7.1,<3"
@@ -176,6 +188,9 @@ torchvision = ">=0.28,<1"
 ultralytics = ">=8.4.175,<9"
 rfdetr = ">=1.11,<2"   # RF-DETR (Roboflow, Apache-2.0): S6, docs/model-comparison.md
 numpy = ">=2,<=2.3.5"   # Ultralytics' Core ML export fails on NumPy 2.4 and newer
+onnx = ">=1.23,<2"       # tools/export_model.py --format onnx (Apache-2.0)
+onnxruntime = ">=1.31,<2" # ONNX Runtime (MIT): the exported model's boxes against PyTorch's (docs/onnx.md)
+onnxscript = ">=0.7,<1"  # torch.onnx's exporter needs it (MIT)
 
 [feature.ml.tasks]
 detect = { cmd = "tools/ros.sh ros2 launch aav_detector detector.launch.py", description = "The object detector on the camera's images: RF-DETR, or YOLO with detector:=yolo. pixi run detect picture:=<file> to try a picture" }
@@ -233,6 +248,18 @@ pyvalhalla = "==3.9.1"
 
 [feature.routes.tasks]
 router = { cmd = "tools/router.sh", description = "Start the street router (Valhalla) on 127.0.0.1:8002, for street_route: pixi run -e routes router (pixi run get routes first)" }
+
+# Rerun (MIT/Apache-2.0, TODO 197): a recording viewer to try beside Foxglove, Lichtblick
+# and the dev window. It opens our MCAP recordings as they are (ROS 2 messages read from
+# their definitions). Laptops only, its own environment: the default one isn't re-solved.
+[feature.rerun]
+platforms = ["linux-64", "mac"]
+
+[feature.rerun.dependencies]
+rerun-sdk = "*"
+
+[feature.rerun.tasks]
+view-bag = { cmd = "rerun", description = "Open a recording in Rerun (a trial viewer): pixi run -e rerun view-bag bags/<drive>/<drive>_0.mcap" }
 
 # KISS-ICP (MIT, PRBonn): lidar odometry, a trial beside the wheels and the IMU
 # (aav_kiss_icp, docs/designs/2026-10-30_kiss-icp.md). Not in conda-forge or RoboStack;
@@ -325,4 +352,5 @@ kiss = { features = ["kiss"], no-default-feature = true }
 learn = { features = ["learn"], no-default-feature = true }
 gst = { features = ["gst"], no-default-feature = true }
 calib = { features = ["calib"], no-default-feature = true }
+rerun = { features = ["rerun"], no-default-feature = true }
 

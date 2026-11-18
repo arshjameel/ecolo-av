@@ -7,9 +7,13 @@
 <!-- Generated from docs/own-navigator.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own navigator</h1>
-<div class="meta">8 min read · 5 sections</div></header>
+<div class="meta">10 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -114,20 +126,22 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#scores-8-nov-our-simulator">Scores (8 Nov, our simulator)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
-<div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
+<div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it won. The
 order: the costmap (<a href="own-costmap.html">done</a>), the planner (<a href="own-planner.html">done</a>), then
-<strong>the navigator</strong> (this page), the last piece. Nav2 stays the default, and on the car.</p>
+<strong>the navigator</strong> (this page), the last piece. Since 14 Nov ours is the simulator's
+default (<code>stack:=ours</code>).
+Nav2 went on 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>): ours is the only one, in the sim and on the car. The comparisons with Nav2's below are the record.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
 <li><strong>Switch:</strong> <code>navigator:=own</code>. Package <code>aav_navigator</code> (Rust).</li>
 <li>
-<p><strong>What it is:</strong> what Nav2's <code>bt_navigator</code>, our behaviour trees and
+<p><strong>What it is:</strong> what Nav2's <code>bt_navigator</code>, our behaviour trees for it and
   <code>waypoint_follower</code> do for the car, as one state machine.</p>
 </li>
 <li>
-<p><strong>Drop-in:</strong> Nav2's four actions, under <code>/drivers/nav/navigator/</code>. Each goal sender
-  has a <code>navigator</code> switch.</p>
+<p><strong>Drop-in:</strong> Nav2's four actions, under Nav2's own names (<code>/navigate_to_pose</code>...),
+  in <code>bt_navigator</code>'s and <code>waypoint_follower</code>'s place. No goal sender had to change.</p>
 </li>
 <li>
 <p><strong>All ours:</strong> <code>navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code>. Then no
@@ -135,56 +149,59 @@ order: the costmap (<a href="own-costmap.html">done</a>), the planner (<a href="
 </li>
 <li>
 <p><strong>Scores:</strong> test lot 7 of 12 legs (Nav2 8); the box 3 of 3 (Nav2 3); campus 4 of 6
-  (Nav2 2); P4 to the Fieldhouse 1 of 2 (Nav2 0). Not the default yet.</p>
+  (Nav2 2); P4 to the Fieldhouse 1 of 2 (Nav2 0). The sim's default since 14 Nov
+  (Ben's choice, <code>stack:=ours</code>), not the car's.</p>
 </li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
 <pre class="highlight"><code>goal senders ──▶ navigator (ours) ──ComputePathToPose──────────▶ planner (ours or Nav2's)
  RViz, map,          │            ──ComputePathThroughPoses────▶
- street_router,      │            ──FollowPath─────────────────▶ mppi_lag (or controller_server)
+ street_router,      │            ──FollowPath─────────────────▶ mppi_lag (or a tracker)
  language_drive,     │            ──ClearEntireCostmap─────────▶ costmaps (ours or Nav2's)
  the tools           └──────────── /drivers/nav/navigator/status
-                                   mppi_lag ─▶ velocity smoother ─▶ collision_monitor ─▶ twist_mux</code></pre>
-<p>The safety locks, collision_monitor and twist_mux never change.</p>
+                                   mppi_lag ─▶ velocity smoother ─▶ stop zone ─▶ twist_mux</code></pre>
+<p>The safety locks, the stop zone and twist_mux never change.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Action (ours)</th>
-<th>Nav2's</th>
+<th>Action (Nav2's name, kept)</th>
+<th>Nav2's server it replaced</th>
 <th>Used by</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>/drivers/nav/navigator/navigate_to_pose</code></td>
 <td><code>/navigate_to_pose</code></td>
-<td>the tools, sim-check, RViz (<code>/goal_pose</code>)</td>
+<td><code>bt_navigator</code></td>
+<td>the tools, sim-check, RViz and the screens (<code>/goal_pose</code>)</td>
 </tr>
 <tr>
-<td><code>/drivers/nav/navigator/navigate_through_poses</code></td>
 <td><code>/navigate_through_poses</code></td>
+<td><code>bt_navigator</code></td>
 <td>anyone with several poses</td>
 </tr>
 <tr>
-<td><code>/drivers/nav/navigator/follow_waypoints</code></td>
 <td><code>/follow_waypoints</code></td>
+<td><code>waypoint_follower</code></td>
 <td>map waypoints</td>
 </tr>
 <tr>
-<td><code>/drivers/nav/navigator/follow_gps_waypoints</code></td>
 <td><code>/follow_gps_waypoints</code></td>
+<td><code>waypoint_follower</code></td>
 <td>street_router, language_drive</td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Who sends to which.</strong> <code>vehicle.navigator_action(navigator, name)</code> gives the name.
-<code>street_router</code> and <code>language_drive</code> have a <code>navigator</code> parameter;
-<code>measure controllers --stacks</code> and <code>sim-check --navigator</code> choose by the switch.</p>
+<p><strong>Who sends to which.</strong> Nobody chooses (since 14 Nov). With <code>navigator:=own</code>, Nav2's
+two servers don't start, and ours serves their names. So <code>street_router</code>,
+<code>language_drive</code>, <code>sim-check</code>, <code>measure controllers</code>, <code>bench-check</code> and the screens
+send to the same place whichever runs. <code>/goal_pose</code> reaches ours too.
+<code>vehicle.navigator_action(name)</code> gives the full name.</p>
 </section>
 <section class="card"><h2 id="what-it-does">What it does</h2>
-<pre class="highlight"><code>goal ─▶ plan ─▶ follow ─▶ plan again every second
-          │        │        (near the goal: keep the path, TODO 17)
+<pre class="highlight"><code>goal ─▶ plan ─▶ follow ─▶ plan again: at most every second, but keep
+          │        │        a clear path up to 10 s (near the goal: 20 s, TODO 17)
           ▼        ▼
    clear global  clear local      ◀── a failure a recovery can fix
           └────────┴─▶ in turn: clear both ─▶ wait 5 s ─▶ back up 1 m (reversing only)
@@ -200,8 +217,8 @@ order: the costmap (<a href="own-costmap.html">done</a>), the planner (<a href="
 <tbody>
 <tr>
 <td>plan</td>
-<td>every 1 s (through-poses 3 s)</td>
-<td>the same</td>
+<td>every 1 s (through-poses 3 s); a to-pose path kept up to 10 s while it ends at the goal and IsPathValid says it is clear (15 Nov, TODO 168: planning every second moved the path a few cm each time, and the car swayed twice as much)</td>
+<td>the same (the trees' KeepAValidPath, 14 Nov)</td>
 </tr>
 <tr>
 <td>the final approach</td>
@@ -238,11 +255,22 @@ order: the costmap (<a href="own-costmap.html">done</a>), the planner (<a href="
 <td>replaces the running one, on any action</td>
 <td>refused on the other navigator</td>
 </tr>
+<tr>
+<td>a goal in another frame (14 Nov)</td>
+<td><code>odom</code> and <code>base_link</code> put on the map by the latest /tf; any other refused</td>
+<td>any frame tf2 knows, at the goal's stamp</td>
+</tr>
+<tr>
+<td>a server that dies mid-goal (14 Nov)</td>
+<td>time limits: no plan in 10 s is a timeout (recovered as one); a follower silent for 4 s ends the goal (107); a clear unanswered in 5 s failed</td>
+<td>the lifecycle bond (4 s) takes the stack down</td>
+</tr>
 </tbody>
 </table></div>
 <p>Each change is in <code>ros/drivers/aav_navigator/PROVENANCE.md</code>.</p>
-<p><strong>What all ours leaves running from Nav2:</strong> <code>map_server</code> (the map), the velocity
-smoother, and collision_monitor (the command line in front of the safety locks).</p>
+<p><strong>What all ours left running from Nav2, until 17 Nov:</strong> <code>map_server</code> (the map), the
+velocity smoother, and collision_monitor. Each is ours now: <code>aav_costmap</code>'s map server,
+<code>aav_smoother</code>, <code>aav_stop_zone</code> (<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>).</p>
 </section>
 <section class="card"><h2 id="try-it">Try it</h2>
 <div class="table-wrap"><table>
@@ -255,15 +283,15 @@ smoother, and collision_monitor (the command line in front of the safety locks).
 <tbody>
 <tr>
 <td>See it</td>
-<td><code>pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag reversing:=false</code></td>
+<td><code>pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code> (reversing since 14 Nov; <code>reversing:=false</code> for forward only)</td>
 </tr>
 <tr>
-<td>Score all ours against all Nav2</td>
-<td><code>pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3</code></td>
+<td>Score all ours (against all Nav2 until 17 Nov)</td>
+<td><code>pixi run measure controllers --stacks own --tours lot obstacle --runs 3</code></td>
 </tr>
 <tr>
 <td>The campus route</td>
-<td><code>pixi run measure controllers --stacks nav2 own --tours fieldhouse --speed 2.5</code></td>
+<td><code>pixi run measure controllers --stacks own --tours fieldhouse --speed 2.5</code></td>
 </tr>
 <tr>
 <td>The graph and a goal</td>
@@ -278,8 +306,8 @@ smoother, and collision_monitor (the command line in front of the safety locks).
 </section>
 <section class="card"><h2 id="scores-8-nov-our-simulator">Scores (8 Nov, our simulator)</h2>
 <p>All ours (<code>navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code>) against all Nav2
-(<code>bt_navigator</code>, the lattice, Nav2's costmaps, MPPI). Both forward only: <code>mppi_lag</code>
-can't reverse. <code>pixi run measure controllers --stacks nav2 own</code>.</p>
+(<code>bt_navigator</code>, the lattice, Nav2's costmaps, MPPI). Both forward only: on 8 Nov
+<code>mppi_lag</code> couldn't reverse (it can since 14 Nov: <a href="mppi-lag.html#reversing">MPPI that knows the lag</a>). <code>pixi run measure controllers --stacks nav2 own</code>.</p>
 <h3 id="the-test-lot-1-ms-3-runs">The test lot, 1 m/s, 3 runs</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -432,7 +460,7 @@ once (it doesn't count "start occupied" as fixable). Ours clears the costmap and
 again. A goal a few metres past the exit would avoid it.</p>
 <h3 id="the-verdict">The verdict</h3>
 <ul>
-<li><strong>Not the sim default yet.</strong> On the lot it is as good as Nav2 (7 against 8 of 12,
+<li><strong>8 Nov: not the sim default yet</strong> (it is since 14 Nov, by Ben's choice). On the lot it is as good as Nav2 (7 against 8 of 12,
   inside the noise of the U-turn), on the box the same, on the campus better (4 against 2
   of 6; the route 1 against 0 of 2).</li>
 <li><strong>But:</strong> <code>mppi_lag</code> overshoots the campus's first goal at 2.5 m/s, and uses twice
@@ -443,13 +471,19 @@ again. A goal a few metres past the exit would avoid it.</p>
 <ul>
 <li><strong>The goal at speed:</strong> <code>mppi_lag</code> passes the campus's first goal at 2.5 m/s.</li>
 <li>
-<p><strong>Reversing:</strong> all ours is forward only (<code>mppi_lag</code>), so a car against a wall stays.</p>
+<p><strong>Reversing:</strong> since 14 Nov all ours reverses (<code>mppi_lag</code>, <a href="mppi-lag.html#reversing">page</a>);
+  not yet scored against all Nav2 with <code>--reversing</code>.</p>
 </li>
 <li>
-<p><strong>On the car:</strong> untested; <code>car.launch.py</code> always passes <code>navigator:=nav2</code>.</p>
+<p><strong>On the car:</strong> untested; <code>car.launch.py</code> runs ours (the only navigator since 17 Nov).</p>
 </li>
-<li><strong>No <code>IsPathValid</code></strong> on the final approach: the navigator reads no costmap.</li>
-<li><strong>Back up</strong> still calls Nav2's <code>behavior_server</code> (reversing only; <code>mppi_lag</code> can't reverse).</li>
+<li><strong><code>IsPathValid</code></strong> on the final approach (14 Nov): once a second it asks the planner
+  (ours, <code>aav_planner</code>); a blocked path is planned
+  again. Not yet seen in a sim run.</li>
+<li><strong>Back up</strong> calls Nav2's <code>behavior_server</code> where it runs (reversing only). All ours runs
+  none: since 14 Nov the navigator then backs up through the follower, <code>mppi_lag</code>, on a
+  straight line 1 m behind the car (it checks the costmap as it goes). Not yet seen in a
+  sim run.</li>
 </ul></section>
 <nav class="prevnext"><a class="prev" href="own-planner.html"><small>Previous</small>← Our own planner</a>
 <a class="next" href="own-smoother.html"><small>Next</small>Our own velocity smoother →</a></nav>

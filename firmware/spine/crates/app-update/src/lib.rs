@@ -13,6 +13,9 @@
 //! Plain `no_std` Rust with no dependencies: tested on a laptop. The board does the flash
 //! writes (`esp-bootloader-esp-idf`'s OTA slots) and the restart.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 mod gate;
 mod image;

@@ -55,6 +55,9 @@
 //!
 //! Version 1 goes one way only: the 2025-26 C++ sent nothing back.
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 mod frame;
 mod parser;

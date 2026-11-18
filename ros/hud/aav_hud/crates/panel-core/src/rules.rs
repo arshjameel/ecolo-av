@@ -31,15 +31,21 @@ pub const TAKEN_OVER_TOLERANCE: f64 = 1e-3;
 /// What `/system/source` says we're driving.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
+    /// The real car.
     Real,
+    /// The simulator.
     Sim,
+    /// Bench mode.
     Bench,
+    /// A bag played back.
     Replay,
     /// Nobody announced: treated as the real car.
     Unknown,
 }
 
 impl Kind {
+    /// Its word on the screen.
+    #[must_use]
     pub fn word(self) -> &'static str {
         match self {
             Self::Real => "REAL",
@@ -51,6 +57,7 @@ impl Kind {
     }
 
     /// The real car, or as good as (nobody said otherwise).
+    #[must_use]
     pub fn is_real(self) -> bool {
         matches!(self, Self::Real | Self::Unknown)
     }
@@ -127,6 +134,10 @@ impl fmt::Display for Refusal {
 /// `drive`: false for `--no-drive` (nothing moves, so nothing refused). `speed_wheels`:
 /// vehicle.yaml's. `no_timeout_lock`: the legacy bridge's lock (None: not heard).
 /// `speed_loop_mode`: the legacy bridge's `speed_loop.mode` (None: not heard).
+///
+/// # Errors
+///
+/// [`Refusal`] on the real car if the speed wheels aren't driven, the bridge has no command timeout, or the Pi runs the speed loop.
 pub fn preflight_refusal(
     kind: Kind,
     drive: bool,
@@ -152,8 +163,11 @@ pub fn preflight_refusal(
 /// One moment of driving: seconds, the command and the measured speed (m/s).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sample {
+    /// s.
     pub t: f64,
+    /// m/s asked for.
     pub commanded: f64,
+    /// m/s measured.
     pub measured: f64,
 }
 
@@ -188,6 +202,7 @@ impl fmt::Display for Unseen {
 ///
 /// On a rear-wheel-drive car whose wheel sensors are on the front, on stands, this is
 /// what happens: the motor turns the rear wheels at a speed nobody measures.
+#[must_use]
 pub fn unseen(history: &[Sample]) -> Option<Unseen> {
     let (first, last) = (history.first()?, history.last()?);
     if last.t - first.t < UNSEEN_TIME {

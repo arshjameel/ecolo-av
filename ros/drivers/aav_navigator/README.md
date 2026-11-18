@@ -1,14 +1,15 @@
 # aav_navigator
 
 Our own navigator, in Rust: what Nav2's `bt_navigator`, our behaviour trees and
-`waypoint_follower` do for the car. A trial (`navigator:=own`), **in their place**; Nav2's
-stays the default, and on the car. The page: [docs/own-navigator.md](../../../docs/own-navigator.md).
+`waypoint_follower` do for the car (`navigator:=own`), **in their place**. The simulator's default since 14 Nov (`stack:=ours`); the only
+navigator, sim and car, since Nav2 went on 17 Nov. The page: [docs/own-navigator.md](../../../docs/own-navigator.md).
 
 ```
 goal (RViz, the map window, street_router, language_drive, the tools)
-  -> navigator -> ComputePathToPose / ComputePathThroughPoses (our planner, or Nav2's)
-               -> FollowPath (mppi_lag, or controller_server)
-               -> ClearEntireCostmap (ours, or Nav2's), BackUp (behavior_server, reversing)
+  -> navigator -> ComputePathToPose / ComputePathThroughPoses (our planner)
+               -> FollowPath (mppi_lag, or a trial tracker)
+               -> ClearEntireCostmap (ours), BackUp (the follower backing
+               along a straight line; reversing)
 ```
 
 ## Overview
@@ -19,8 +20,8 @@ goal (RViz, the map window, street_router, language_drive, the tools)
 | `crates/navigator-node` | the ROS node, binary `navigator` (rclrs): messages in and out only |
 
 ```sh
-pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag reversing:=false
-pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3
+pixi run sim
+pixi run measure controllers --stacks own own_calm --tours lot obstacle --runs 3
 ```
 
 ## Interface
@@ -30,14 +31,15 @@ pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3
 
 | Item | What |
 |---|---|
-| Actions | `/drivers/nav/navigator/navigate_to_pose`, `navigate_through_poses`, `follow_waypoints`, `follow_gps_waypoints` (Nav2's types) |
-| Subscribes | `/goal_pose` (a to-pose goal); `/tf` (map -> odom -> base_link) |
+| Actions | Nav2's own names and types: `/navigate_to_pose`, `/navigate_through_poses`, `/follow_waypoints`, `/follow_gps_waypoints` (Nav2's `bt_navigator` and `waypoint_follower` served them until 17 Nov) |
+| Goals | in `map`, `odom` or `base_link` (put on the map by the latest /tf); another frame is refused |
+| Subscribes | `/goal_pose` (a to-pose goal); `/tf` (map -> odom -> base_link; older than 1 s: no car pose) |
 | Publishes | `/drivers/nav/navigator/status` (DiagnosticStatus, 2 Hz and at each goal's end) |
-| Calls | `planner_action`, `planner_through_action` (ComputePathToPose, ComputePathThroughPoses); `follow_action` (FollowPath); `clear_local`, `clear_global` (ClearEntireCostmap, comma-separated lists); `backup_action` (BackUp; empty: none) |
+| Calls | `planner_action`, `planner_through_action` (ComputePathToPose, ComputePathThroughPoses); `follow_action` (FollowPath); `clear_local`, `clear_global` (ClearEntireCostmap, comma-separated lists); `backup_action` (BackUp; empty: the follower's FollowPath on a straight line 1 m behind the car); `is_path_valid_service` (IsPathValid, `/is_path_valid`, once a second while a path is kept: on the final approach, and a to-pose path up to `keep_path_age`, 10 s, as the trees' KeepAValidPath) |
 | Parameters | `settings`: one JSON block from `aav_description`'s `vehicle.navigator_params` (the trees' numbers); the names above; `navsat_file` (the datum); the frames |
 
-A goal sender finds the action with `vehicle.navigator_action(navigator, name)`;
-`street_router` and `language_drive` take a `navigator` parameter.
+A goal sender needs no switch: it sends to Nav2's name, and our navigator
+answers (`vehicle.navigator_action(name)` gives it).
 
 ## Invariants
 
@@ -45,7 +47,8 @@ A goal sender finds the action with `vehicle.navigator_action(navigator, name)`;
 - Nav2's error codes, Nav2's message types: a drop-in for every goal sender.
 - It never drives the car itself: the follower does, through the velocity smoother,
   collision_monitor, twist_mux and its locks, which never change.
-- Back up only with `reversing:=true`, through behavior_server's BackUp.
+- Back up only with `reversing:=true`: through behavior_server's BackUp, or where none runs
+  (all ours) through the follower, which must reverse (`mppi_lag`), on `path::straight_back`.
 - No ROS in `crates/navigator`; no maths in the node. `cargo fmt` and `cargo clippy` clean.
 
 ## Side Effects

@@ -24,9 +24,9 @@ Publishes   /drivers/nav/route/waypoints     geographic_msgs/GeoPath, latched: t
                                              or why there's no route
 Serves      /drivers/nav/route/follow        std_srvs/Trigger: send the waypoints to Nav2
 Calls       the router over HTTP (router_url; not for campus), /fromLL, /toLL (navsat_transform),
-            /follow_gps_waypoints (Nav2's waypoint_follower; only on follow), or with
-                                             navigator: own, aav_navigator's
-                                             /drivers/nav/navigator/follow_gps_waypoints
+            /follow_gps_waypoints (only on follow): Nav2's waypoint_follower, or our
+                                             navigator (aav_navigator) in its place, under
+                                             the same name
 
 One thread: rclpy's MultiThreadedExecutor spins a whole core whenever a subscription gets
 messages (rclpy 7.1.12; docs/mac.md), and this node hears the GPS fix all the time. The
@@ -59,9 +59,8 @@ from std_msgs.msg import String
 from std_srvs.srv import Trigger
 
 CAMPUS = 'campus'
-# Each navigator's GPS waypoints action (navigator: parameter).
-NAVIGATORS = {'nav2': '/follow_gps_waypoints',
-              'own': '/drivers/nav/navigator/follow_gps_waypoints'}
+# Nav2's GPS waypoints action: waypoint_follower's, or our navigator's in its place.
+FOLLOW_GPS = '/follow_gps_waypoints'
 ROUTERS = osrm_route.ROUTERS + (CAMPUS,)
 # Latched: the map window, RViz or the HUD may start after the route was made.
 LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -85,12 +84,6 @@ class StreetRouter(Node):
         self.fix_max_age = param('fix_max_age', 2.0).value
         self.map_frame = param('map_frame', 'map').value
         self.follow_at_once = param('follow_at_once', False).value
-        # Whose navigator drives the route: nav2 (waypoint_follower) or own (aav_navigator,
-        # navigation.launch.py navigator:=own; aav_description vehicle.navigator_action).
-        navigator = param('navigator', 'nav2').value
-        if navigator not in NAVIGATORS:
-            raise ValueError(f'navigator must be one of {tuple(NAVIGATORS)}')
-        self.nav_action = NAVIGATORS[navigator]
         fix_topic = param('fix_topic', '/localization/gps/fix').value
         # router: campus. The site file's .osm path is from `root` (the repo, where
         # `pixi run` starts); speed is the car's, for the time the status line gives.
@@ -130,7 +123,7 @@ class StreetRouter(Node):
                             callback_group=group)
         self.from_ll = self.create_client(FromLL, '/fromLL', callback_group=group)
         self.to_ll = self.create_client(ToLL, '/toLL', callback_group=group)
-        self.nav = ActionClient(self, FollowGPSWaypoints, self.nav_action,
+        self.nav = ActionClient(self, FollowGPSWaypoints, FOLLOW_GPS,
                                 callback_group=group)
         if self.router != CAMPUS:
             self.say(f'no route yet: waiting for a destination ({self.router} at '
@@ -318,7 +311,7 @@ class StreetRouter(Node):
         if not self.route:
             return False, 'no route yet'
         if not self.nav.wait_for_server(timeout_sec=SERVICE_WAIT):
-            self.say(f'Nav2 is not running: nobody serves {self.nav_action}', error=True)
+            self.say(f'Nav2 is not running: nobody serves {FOLLOW_GPS}', error=True)
             return False, 'Nav2 is not running'
         goal = FollowGPSWaypoints.Goal()
         goal.gps_poses = [geo_pose(w) for w in self.route]

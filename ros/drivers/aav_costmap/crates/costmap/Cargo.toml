@@ -6,5 +6,16 @@ edition.workspace = true
 license.workspace = true
 publish.workspace = true
 
-# No dependencies: it builds offline, and tests on any laptop.
 [dependencies]
+# Ours (aav_description): the map's 64 m chunks, for a global costmap made of them (TODO 175).
+map-chunks = { path = "../../../../bringup/aav_description/map-chunks" }
+# MIT/Apache-2.0 (TODO 195): a fixed costmap's tiles and chunks each on its own core.
+rayon = "1"
+
+# TODO 203: benchmarks only (benches/update.rs); the car kit vendors it with the rest.
+[dev-dependencies]
+criterion = { version = "0.7", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "update"
+harness = false

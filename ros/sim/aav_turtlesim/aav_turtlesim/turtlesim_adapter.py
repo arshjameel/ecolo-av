@@ -14,7 +14,7 @@ Publishes   turtle1/cmd_vel   geometry_msgs/Twist (bicycle model: w = v tan(d) /
 
 The fastest way to test the joystick, mux, ego, scripted driver and ekf_local
 together on a laptop. One turtlesim unit counts as one metre. No command for cmd_timeout
-(0.2 s, as gazebo_adapter) stops the turtle, so a closed output mux stops it as it stops
+(0.2 s, as sim_adapter) stops the turtle, so a closed output mux stops it as it stops
 the other stand-ins.
 """
 

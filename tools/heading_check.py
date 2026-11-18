@@ -13,11 +13,11 @@ pixi run tools/ros.sh --local python3 tools/heading_check.py [options]
                         drive: how soon is it right?
     -- gps_heading:=false   anything after -- goes to sim.launch.py
 
-TODO 13. Starts Gazebo's empty world headless (no Nav2, lidar or radar: a light run) on
-a private ROS domain and Gazebo partition, drives a fixed walking-pace profile through
+TODO 13. Starts Ravensim's empty world headless (no Nav2, lidar or radar: a light run) on
+a private ROS domain, drives a fixed walking-pace profile through
 twist_mux's scripted slot (PROFILE: forward, reversing, gentle turns both ways), and
 compares the global EKF's heading (/localization/odom/global, what Nav2 steers by) with
-Gazebo's truth (/vehicle/sim/truth). It prints, for forward and for reversing, the
+Ravensim's truth (/vehicle/sim/truth). It prints, for forward and for reversing, the
 median, 95th percentile and worst heading error, in degrees, and a JSON line to collect.
 
 GPS noise is random, so one run proves little: judge over several.
@@ -99,7 +99,7 @@ def recovered_after(track, within=5.0):
 
 
 def run_once(domain, launch_args, gyro_bias, log_path, wrong_start=0.0, gps_every=1):
-    """Start Gazebo, drive the profile twice, stop it; return summarise()'s numbers or None."""
+    """Start Ravensim, drive the profile twice, stop it; return summarise()'s numbers or None."""
     import rclpy
     from geometry_msgs.msg import PoseWithCovarianceStamped
     from robot_localization.srv import SetPose
@@ -110,8 +110,7 @@ def run_once(domain, launch_args, gyro_bias, log_path, wrong_start=0.0, gps_ever
     from rclpy.parameter_client import AsyncParameterClient
     from sensor_msgs.msg import Imu
 
-    env = dict(os.environ, ROS_DOMAIN_ID=str(domain), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
-               GZ_IP='127.0.0.1', GZ_PARTITION=f'heading_check_{domain}')
+    env = dict(os.environ, ROS_DOMAIN_ID=str(domain), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update(env)
     log = open(log_path, 'w')
     launch = subprocess.Popen(
@@ -161,16 +160,16 @@ def run_once(domain, launch_args, gyro_bias, log_path, wrong_start=0.0, gps_ever
         node.create_subscription(Odometry, '/localization/odom/global',
                                  lambda m: got.setdefault('global', True), 10)
         if not spin_until(lambda: 'yaw' in truth and 'global' in got, 120.0):
-            print(f'  nothing from Gazebo or the global EKF in 120 s: see {log_path}')
+            print(f'  nothing from Ravensim or the global EKF in 120 s: see {log_path}')
             return None
         spin_until(lambda: False, 10.0)          # let ego and the filters settle
         if gyro_bias:
-            client = AsyncParameterClient(node, 'gazebo_imu')
+            client = AsyncParameterClient(node, 'sim_imu')
             client.wait_for_services(10.0)
             future = client.set_parameters([Parameter('gyro_bias', value=math.radians(gyro_bias))])
             spin_until(future.done, 10.0)
         if gps_every > 1:
-            client = AsyncParameterClient(node, 'gazebo_gps')
+            client = AsyncParameterClient(node, 'sim_gps')
             client.wait_for_services(10.0)
             future = client.set_parameters([Parameter('every', value=gps_every)])
             spin_until(future.done, 10.0)

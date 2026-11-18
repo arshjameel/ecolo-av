@@ -34,7 +34,7 @@ def test_every_switch_is_a_sim_launch_argument():
 def test_followers_match_vehicle_py():
     text = _read(VEHICLE)
     controllers = re.search(r'^CONTROLLERS = \((.*)\)', text, re.M).group(1)
-    trackers = re.search(r'^TRACKERS = \((.*)\)', text, re.M).group(1)
+    trackers = re.search(r'^TRACKERS = \((.*?)\)', text, re.M | re.S).group(1)
     for _, _, args in pick.FOLLOWERS:
         for arg in args:
             name, value = arg.split(':=')
@@ -42,7 +42,7 @@ def test_followers_match_vehicle_py():
                 assert f"'{value}'" in controllers
             if name == 'tracker':
                 assert f"'{value}'" in trackers
-    # Every tracker but 'none' is offered.
+    # Every tracker is offered.
     offered = {a.split(':=')[1] for _, _, args in pick.FOLLOWERS for a in args
                if a.startswith('tracker:=')}
     assert offered == set(re.findall(r"'(\w+)'", trackers))
@@ -63,7 +63,7 @@ def test_every_row_sets_every_localizer():
 
 
 def test_kiss_ekf_on_the_empty_world_moves_to_the_test_lot():
-    # sim, empty, hybrid, mppi, kiss_ekf, scan, default
+    # sim, empty, own, mppi_lag, kiss_ekf, scan, default
     answers = iter(['3', '3', '', '', '6', '', ''])
     said = []
     cmd = pick.questions(read=lambda _: next(answers), say=said.append)
@@ -74,8 +74,8 @@ def test_kiss_ekf_on_the_empty_world_moves_to_the_test_lot():
 def test_enter_takes_the_defaults():
     cmd = pick.questions(read=lambda _: '', say=lambda *_: None)
     assert cmd[:4] == ['pixi', 'run', 'demo', '--debug']
-    assert 'planner:=lattice' in cmd
-    assert 'controller:=mppi' in cmd and 'tracker:=none' in cmd
+    assert 'planner:=own' in cmd
+    assert 'tracker:=mppi_lag' in cmd and 'controller:=mppi' not in cmd
     # demo --debug's default: NDT and AMCL both on, so the seeing screen shows every finder.
     assert 'ndt:=true' in cmd and 'amcl:=true' in cmd
 
@@ -96,13 +96,13 @@ def test_demo_defaults_to_the_ekfs_only():
 
 
 def test_sim_with_a_localizer_moves_to_the_test_lot():
-    # sim, empty, hybrid (not the default), mpc, both, cubes, lqi
-    answers = iter(['3', '3', '2', '6', '4', '2', '2'])
+    # sim, empty, own_hybrid (not the default), mpc, both, cubes, lqi (ours come first)
+    answers = iter(['3', '3', '2', '5', '4', '2', '2'])
     said = []
     cmd = pick.questions(read=lambda _: next(answers), say=said.append)
     assert cmd[2] == 'sim'
     assert 'world:=test_lot' in cmd and 'tracker:=mpc' in cmd and 'speed_loop:=lqi' in cmd
-    assert 'planner:=hybrid' in cmd and 'voxels:=true' in cmd
+    assert 'planner_search:=hybrid' in cmd and 'voxels:=true' in cmd
     assert any('switching the world' in s for s in said)
 
 

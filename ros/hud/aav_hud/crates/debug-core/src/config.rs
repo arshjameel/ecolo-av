@@ -25,26 +25,47 @@ pub const NODE_NAME: &str = "debug_hud";
 /// Each topic the debug HUD listens to. It publishes nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Topic {
+    /// The lidar's cloud.
     Lidar,
+    /// The local EKF (odom).
     LocalOdom,
+    /// The global EKF (map).
     GlobalOdom,
+    /// Gazebo's truth, sim only.
     Truth,
+    /// AMCL's pose.
     Amcl,
+    /// AMCL's particles.
     AmclParticles,
+    /// NDT's pose.
     NdtPose,
+    /// NDT's status.
     NdtStatus,
+    /// Nav2's plan.
     Plan,
+    /// `/tf`: map to odom.
     Tf,
+    /// `/tf_static`: base_link to the sensors.
     TfStatic,
+    /// The costmap's cubes, from the voxels trial.
     VoxelsCubes,
+    /// The voxels trial's status.
     VoxelsStatus,
+    /// The localization health check.
     Health,
+    /// The IMU.
     Imu,
+    /// The GPS receiver's own fix.
     Gps,
+    /// The wheel speeds.
     Wheels,
+    /// The wheels' odometry.
     WheelOdom,
+    /// The car's status.
     VehicleStatus,
+    /// The trial tracker's status.
     TrackStatus,
+    /// `/system/source`: where the data comes from.
     Source,
 }
 
@@ -75,6 +96,7 @@ impl Topic {
     ];
 
     /// The ROS parameter that holds this topic's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::Lidar => "lidar_topic",
@@ -105,15 +127,20 @@ impl Topic {
 /// The frames, as REP-105 names them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Frame {
+    /// odom.
     Odom,
+    /// base_link.
     Base,
+    /// map.
     Map,
 }
 
 impl Frame {
+    /// Every frame.
     pub const ALL: [Frame; 3] = [Frame::Odom, Frame::Base, Frame::Map];
 
     /// The ROS parameter that holds this frame's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::Odom => "odom_frame",
@@ -126,18 +153,28 @@ impl Frame {
 /// The numbers, each a ROS parameter of the same name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Number {
+    /// `stale_after` (s).
     StaleAfter,
+    /// `cube_size` (m).
     CubeSize,
+    /// `pose_window` (s).
     PoseWindow,
+    /// `ground_height` (m).
     GroundHeight,
+    /// `keep_cubes_for` (s).
     KeepCubesFor,
+    /// `ndt_map_cell` (m).
     NdtMapCell,
+    /// `voxels_cube_size` (m).
     VoxelsCubeSize,
+    /// `health_stale_after` (s).
     HealthStaleAfter,
+    /// `easter_egg_after` (s).
     EasterEggAfter,
 }
 
 impl Number {
+    /// Every number.
     pub const ALL: [Number; 9] = [
         Number::StaleAfter,
         Number::CubeSize,
@@ -150,6 +187,8 @@ impl Number {
         Number::EasterEggAfter,
     ];
 
+    /// Its parameter's name.
+    #[must_use]
     pub fn parameter(self) -> &'static str {
         match self {
             Self::StaleAfter => "stale_after",
@@ -168,33 +207,57 @@ impl Number {
 /// The settings.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct DebugConfig {
+    /// [`Topic::Lidar`]'s topic.
     pub lidar_topic: String,
+    /// [`Topic::LocalOdom`]'s topic.
     pub local_odom_topic: String,
+    /// [`Topic::GlobalOdom`]'s topic.
     pub global_odom_topic: String,
+    /// [`Topic::Truth`]'s topic.
     pub truth_topic: String,
+    /// [`Topic::Amcl`]'s topic.
     pub amcl_topic: String,
+    /// [`Topic::AmclParticles`]'s topic.
     pub amcl_particles_topic: String,
+    /// [`Topic::NdtPose`]'s topic.
     pub ndt_pose_topic: String,
+    /// [`Topic::NdtStatus`]'s topic.
     pub ndt_status_topic: String,
+    /// [`Topic::Plan`]'s topic.
     pub plan_topic: String,
+    /// [`Topic::Tf`]'s topic.
     pub tf_topic: String,
+    /// [`Topic::TfStatic`]'s topic.
     pub tf_static_topic: String,
+    /// [`Topic::VoxelsCubes`]'s topic.
     pub voxels_cubes_topic: String,
+    /// [`Topic::VoxelsStatus`]'s topic.
     pub voxels_status_topic: String,
+    /// [`Topic::Health`]'s topic.
     pub health_topic: String,
+    /// [`Topic::Imu`]'s topic.
     pub imu_topic: String,
+    /// [`Topic::Gps`]'s topic.
     pub gps_topic: String,
+    /// [`Topic::Wheels`]'s topic.
     pub wheels_topic: String,
+    /// [`Topic::WheelOdom`]'s topic.
     pub wheel_odom_topic: String,
+    /// [`Topic::VehicleStatus`]'s topic.
     pub vehicle_status_topic: String,
+    /// [`Topic::TrackStatus`]'s topic.
     pub track_status_topic: String,
+    /// [`Topic::Source`]'s topic.
     pub source_topic: String,
     /// aav_track's parameter service, for keys 1-4 (sim only).
     pub track_parameters_service: String,
     /// NDT's map file (a PCD), for key M; relative to where the program starts.
     pub ndt_map: String,
+    /// The odom frame's name.
     pub odom_frame: String,
+    /// The car's frame's name (base_link).
     pub base_frame: String,
+    /// The map frame's name.
     pub map_frame: String,
     /// Seconds without a message before a topic shows STALE.
     pub stale_after: f64,
@@ -210,7 +273,7 @@ pub struct DebugConfig {
     pub keep_cubes_for: f64,
     /// One NDT map cube's edge, metres.
     pub ndt_map_cell: f64,
-    /// One of Nav2's cubes (the voxels trial's), metres.
+    /// One of the costmap's cubes (the voxels trial's), metres.
     pub voxels_cube_size: f64,
     /// Seconds without `/localization/health` before it shows STALE (it comes at 1 Hz).
     pub health_stale_after: f64,
@@ -230,14 +293,26 @@ pub struct DebugConfig {
 /// Why a settings file can't be used.
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    /// The text isn't a debug_hud parameters file.
     #[error("not a debug_hud settings file (it needs debug_hud: ros__parameters: ...): {0}")]
     Yaml(#[from] serde_yaml_ng::Error),
+    /// A setting that must be positive isn't.
     #[error("{name} must be a positive number, not {value}")]
-    NotPositive { name: &'static str, value: f64 },
+    NotPositive {
+        /// The setting.
+        name: &'static str,
+        /// Its value.
+        value: f64,
+    },
+    /// `max_cubes` is 0.
     #[error("max_cubes must be at least 1")]
     NoCubes,
+    /// A name that must be given is empty.
     #[error("{name} must not be empty")]
-    Empty { name: &'static str },
+    Empty {
+        /// The setting.
+        name: &'static str,
+    },
 }
 
 #[derive(Deserialize)]
@@ -253,6 +328,10 @@ struct NodeSection {
 
 impl DebugConfig {
     /// Reads a ROS parameters file whose top key is `debug_hud`. Every setting must be there.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] if the text isn't a debug_hud parameters file, or a setting can't work.
     pub fn from_yaml(text: &str) -> Result<Self, ConfigError> {
         let file: ParamsFile = serde_yaml_ng::from_str(text)?;
         let config = file.debug_hud.params;
@@ -261,6 +340,10 @@ impl DebugConfig {
     }
 
     /// Checks the numbers and names. Call it after changing a setting by hand.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError`] for the first number that isn't positive, `max_cubes` of 0, or an empty name.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if let Some(n) = Number::ALL
             .into_iter()
@@ -291,6 +374,7 @@ impl DebugConfig {
     }
 
     /// The name of one topic.
+    #[must_use]
     pub fn topic(&self, topic: Topic) -> &str {
         match topic {
             Topic::Lidar => &self.lidar_topic,
@@ -346,6 +430,7 @@ impl DebugConfig {
     }
 
     /// The name of one frame.
+    #[must_use]
     pub fn frame(&self, frame: Frame) -> &str {
         match frame {
             Frame::Odom => &self.odom_frame,
@@ -365,6 +450,7 @@ impl DebugConfig {
     }
 
     /// One number.
+    #[must_use]
     pub fn number(&self, n: Number) -> f64 {
         match n {
             Number::StaleAfter => self.stale_after,
@@ -396,21 +482,25 @@ impl DebugConfig {
     }
 
     /// [`DebugConfig::stale_after`] as a Duration.
+    #[must_use]
     pub fn stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.stale_after)
     }
 
     /// [`DebugConfig::pose_window`] as a Duration.
+    #[must_use]
     pub fn pose_window(&self) -> Duration {
         Duration::from_secs_f64(self.pose_window)
     }
 
     /// [`DebugConfig::keep_cubes_for`] as a Duration.
+    #[must_use]
     pub fn keep_cubes_for(&self) -> Duration {
         Duration::from_secs_f64(self.keep_cubes_for)
     }
 
     /// The little robot's settings.
+    #[must_use]
     pub fn easter_egg_settings(&self) -> EggSettings {
         EggSettings {
             on: self.easter_egg,
@@ -419,11 +509,13 @@ impl DebugConfig {
     }
 
     /// [`DebugConfig::health_stale_after`] as a Duration.
+    #[must_use]
     pub fn health_stale_after(&self) -> Duration {
         Duration::from_secs_f64(self.health_stale_after)
     }
 
-    /// What Nav2's cubes need.
+    /// What the costmap's cubes need.
+    #[must_use]
     pub fn voxel_settings(&self) -> VoxelSettings {
         VoxelSettings {
             size: Metres(self.voxels_cube_size),
@@ -432,6 +524,7 @@ impl DebugConfig {
     }
 
     /// What the cube grid needs.
+    #[must_use]
     pub fn cube_settings(&self) -> CubeSettings {
         CubeSettings {
             size: Metres(self.cube_size),

@@ -5,9 +5,9 @@ Regenerate the speed loop's shared examples from Gazebo's port of it.
 Writes firmware/spine/speed_loop_vectors.txt, which both copies of the speed loop check:
 
   firmware/spine/crates/spine-core/tests/speed_loop_vectors.rs   (the spine's Rust)
-  ros/sim/aav_gazebo/test/test_actuator_model.py            (Gazebo's Python port)
+  ros/sim/aav_sim_models/test/test_actuator_model.py            (Gazebo's Python port)
 
-Each case runs one profile ('default', 'smooth') from a fresh loop through a list of ticks.
+Each case runs one profile (every one in car_model.SPEED_LOOP_PROFILES) from a fresh loop through a list of ticks.
 Run it after any change to either copy's update, then `tools/test.sh`:
 
   python3 firmware/spine/gen_speed_loop_vectors.py
@@ -35,7 +35,7 @@ HEADER = """\
 #
 # Checked by:
 #   firmware/spine/crates/spine-core/tests/speed_loop_vectors.rs   (the spine's Rust, f32)
-#   ros/sim/aav_gazebo/test/test_actuator_model.py            (Gazebo's port, Python)
+#   ros/sim/aav_sim_models/test/test_actuator_model.py            (Gazebo's port, Python)
 #
 # 'case <name> <profile>' starts a fresh loop with that profile. Each line after it is a
 # tick: target and measured speed (m/s) and dt (s) in; throttle, brake (0..1) and the

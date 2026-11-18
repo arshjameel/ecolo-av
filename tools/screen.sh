@@ -8,7 +8,7 @@
 #   --demo     pretend data: no ROS, no car, no build (cargo builds the window itself);
 #              any other arguments go to the program (debug-hud --demo --bench-cubes 20000)
 #
-# The hardware panel drives Gazebo or the bench, so it runs localhost-only
+# The hardware panel drives Ravensim or the bench, so it runs localhost-only
 # (tools/ros.sh --local): it never reaches a real car on the same network.
 #
 # Portable: bash 3.2 (a Mac), no GNU-only flags.

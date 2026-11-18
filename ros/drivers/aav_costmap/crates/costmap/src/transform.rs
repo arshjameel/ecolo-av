@@ -13,6 +13,7 @@ pub struct Pose2 {
 
 impl Pose2 {
     /// A pose.
+    #[must_use]
     pub const fn new(x: f64, y: f64, yaw: f64) -> Self {
         Self { x, y, yaw }
     }
@@ -21,24 +22,28 @@ impl Pose2 {
     pub const IDENTITY: Self = Self::new(0.0, 0.0, 0.0);
 
     /// A point in this pose's frame, in the parent's.
+    #[must_use]
     pub fn apply(&self, (x, y): (f64, f64)) -> (f64, f64) {
         let (s, c) = self.yaw.sin_cos();
         (self.x + c * x - s * y, self.y + s * x + c * y)
     }
 
     /// `self` then `child`: the child's pose in this pose's parent.
+    #[must_use]
     pub fn then(&self, child: &Pose2) -> Pose2 {
         let (x, y) = self.apply((child.x, child.y));
         Pose2::new(x, y, self.yaw + child.yaw)
     }
 
     /// The parent's pose in this frame.
+    #[must_use]
     pub fn inverse(&self) -> Pose2 {
         let (s, c) = self.yaw.sin_cos();
         Pose2::new(-c * self.x - s * self.y, s * self.x - c * self.y, -self.yaw)
     }
 
     /// Between `self` (t = 0) and `other` (t = 1); the yaw the short way round.
+    #[must_use]
     pub fn lerp(&self, other: &Pose2, t: f64) -> Pose2 {
         let turn = (other.yaw - self.yaw)
             .sin()
@@ -68,6 +73,7 @@ impl Transform3 {
     };
 
     /// A pose on the ground, at z = 0.
+    #[must_use]
     pub fn from_pose2(p: &Pose2) -> Self {
         let (s, c) = (p.yaw / 2.0).sin_cos();
         Self {
@@ -77,6 +83,7 @@ impl Transform3 {
     }
 
     /// A point in the child frame, in the parent's.
+    #[must_use]
     pub fn apply(&self, v: [f64; 3]) -> [f64; 3] {
         let [qx, qy, qz, w] = self.rotation;
         let q = [qx, qy, qz];
@@ -92,6 +99,7 @@ impl Transform3 {
     }
 
     /// `self` then `child`: the child's transform in this one's parent.
+    #[must_use]
     pub fn then(&self, child: &Transform3) -> Transform3 {
         let [ax, ay, az, aw] = self.rotation;
         let [bx, by, bz, bw] = child.rotation;

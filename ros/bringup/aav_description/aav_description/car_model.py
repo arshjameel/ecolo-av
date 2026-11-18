@@ -4,8 +4,8 @@ The car model: how the car answers a command.
 Shared by ego (its lead and its trace), the simulators (Gazebo's adapter) and the drivers'
 tests. No ROS here.
 
-Moved here from aav_gazebo's actuator_model.py on 7 Nov (release 0.3), so ego and the
-simulators use one model; `aav_gazebo.actuator_model` still re-exports every name. Its Rust
+Moved here from aav_sim_models's actuator_model.py on 7 Nov (release 0.3), so ego and the
+simulators use one model; `aav_sim_models.actuator_model` still re-exports every name. Its Rust
 twin is the car-model crate beside this package (car-model/, the same maths, checked by
 the shared vectors car-model/vectors.json: gen_vectors.py writes them from this file).
 
@@ -14,7 +14,7 @@ Two ways in:
   - step(cfg, state, command, dt) -> CarState, and predict(cfg, state, commands, dt,
     horizon) -> [CarState]: the pure model, with dead times and the kinematic bicycle on
     top (x, y, yaw). ego's trace is predict's list.
-  - Actuators(cfg, loop): the same step held in an object, as gazebo_adapter steps it at
+  - Actuators(cfg, loop): the same step held in an object, as sim_adapter steps it at
     50 Hz (Gazebo's time) and sends Gazebo the speed and steering it gives
     (docs/full-simulation.md, option A):
 
@@ -178,11 +178,15 @@ SPEED_LOOP_PROFILES = {
     'smooth': SpeedLoopConfig(kp=1.0, ki=0.25, integral_limit=1.0, setpoint_weight=0.75,
                               anti_windup='clamp'),
     'lqi': SpeedLoopConfig(lqi=LQI_MODEL),
+    # TODO 163: 'smooth' with a firmer brake past a narrower coast band. On this model a set
+    # speed ramped to 0 at 1 m/s^2 is overrun by 0.68 m with smooth's brake, 0.21 m here.
+    'firm': SpeedLoopConfig(kp=1.0, ki=0.25, integral_limit=1.0, setpoint_weight=0.75,
+                            anti_windup='clamp', brake_gain=2.0, coast_band=0.05),
 }
 
 
 def speed_loop_profile(name):
-    """Return a profile's SpeedLoopConfig by name: 'default', 'smooth' or 'lqi'."""
+    """Return a profile's SpeedLoopConfig by name: 'default', 'smooth', 'lqi' or 'firm'."""
     try:
         return SPEED_LOOP_PROFILES[name]
     except KeyError:
@@ -464,15 +468,25 @@ class Actuators:
     setpoint = property(lambda self: self.state.steer_setpoint)
     wheels = property(lambda self: self.state.steer_linkage)
 
-    def step(self, speed_command, steer_command, dt):
-        """Step ego's speed and angle: the speed loop (ours, in Python), then the actuators."""
+    def step(self, speed_command, steer_command, dt, fault=None):
+        """
+        Step ego's speed and angle: the speed loop (ours, in Python), then the actuators.
+
+        fault: an actuator fault on purpose (aav_sim_models faults.ActuatorFaults.apply), a
+        function (Demand, steer) -> (Demand, steer) between the loop and the actuators. The
+        State's commands stay what was asked, its levels and angle what the car did.
+        """
         if dt <= 0.0:
             raise ValueError(f'dt must be positive, not {dt}')
         d = self.loop.update(speed_command, self.speed, dt)
         if self.brake_loop is not None:
             sent = self.brake_loop.update(d.throttle, d.brake, self.speed, dt)
             d = Demand(d.throttle, sent.brake, d.reverse)
-        return self.drive(d, steer_command, dt)
+        if fault is None:
+            return self.drive(d, steer_command, dt)
+        out = self.drive(*fault(d, steer_command), dt)
+        return replace(out, steer_command=steer_command, throttle_command=d.throttle,
+                       brake_command=d.brake)
 
     def drive(self, d, steer_command, dt):
         """Drive the actuators alone: a throttle, brake and gear Demand, and a steering target."""

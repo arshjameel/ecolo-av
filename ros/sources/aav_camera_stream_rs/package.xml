@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_camera_stream_rs</name>
+  <version>0.1.0</version>
+  <description>camera_stream in Rust (rclrs): a drop-in for aav_camera_stream's Python node with detector:=none, the default (camera_stream_impl:=python falls back; a detector or decoder:=opencv takes the Python). The same name, topics, QoS, parameters and diagnostics: the camera Pi's RTSP stream decoded by a child program (ffmpeg or gst-launch-1.0), undistorted, and published. The logic is the stream-core crate, with no ROS and no OpenCV.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>vision_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>aav_interfaces</depend>
+
+  <!-- aav_camera_stream (its launch file, cameras.yaml and, for the tests, its Python
+       modules) depends on this package, not the other way: no cycle. -->
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+  <test_depend>python3-numpy</test_depend>
+  <test_depend>python3-opencv</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

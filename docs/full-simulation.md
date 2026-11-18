@@ -1,8 +1,14 @@
-# The full simulation: the whole car in Gazebo
+# The full simulation: the whole car, first built in Gazebo
 
 Written 15 October 2026, checked 25 October. The goal (Ben, 15 Oct): "fully simulate the car inside
 Gazebo with all the sensors, and build the full pipeline." This page says what we have,
 what's missing, and how the car's measurements feed in.
+
+**This page is the 15 Oct plan and its record.** How to run the simulation today:
+[Simulation](simulation.md). What swaps between sim, bench and car: [Sim and the car](sim-and-car.md).
+Since 8 Nov `pixi run sim` starts [Ravensim](own-simulator.md), which plays
+Gazebo's part on the same topics; Gazebo was removed on 16 Nov ([Gazebo, as it
+was](history/gazebo-as-it-was.md)). The results below were measured on Gazebo.
 
 > **The short version**
 > - **Most of it exists.** Gazebo already plays the car: IMU, GPS, wheel speed, three cameras, the radar, the lidar. The same EKFs, Nav2, perception and HUD run on it.
@@ -16,13 +22,13 @@ what's missing, and how the car's measurements feed in.
 |---|---|---|
 | 1 | `/system/source` + the SIMULATED banner | ✅ built: Gazebo, turtlesim, the bench, the car's backends and replay announce; the raylib HUD shows the banner and a tag per topic |
 | 2 | `/vehicle/steering`, `/throttle`, `/brake`, `/wheels` | ✅ built: Gazebo all four; the bench and the car (spine_bridge) steering, throttle, brake; turtlesim steering |
-| 3 | The actuator model (A), guessed numbers | ✅ built: `aav_gazebo/actuator_model.py`, numbers in `vehicle.yaml` `actuators:`, on by default (`actuator_model:=false` for the old car) |
+| 3 | The actuator model (A), guessed numbers | ✅ built: `aav_sim_models/actuator_model.py`, numbers in `vehicle.yaml` `actuators:`, on by default (`actuator_model:=false` for the old car) |
 | 4 | The spine in the loop | ✅ 15 Oct: `pixi run sim spine:=true`. ego's commands go over the CAN frames to the spine's own firmware logic, then the actuator model. `pixi run sim-check --spine` passes: its timeout, both e-stops and arming stop the car ([below](#the-spine-in-the-loop-step-4)) |
 | 4b | Today's car in the loop | ✅ 29 Oct: `pixi run sim esp32:=true`. ego's commands go through the car's own UART bridge and the 2025-26 C++ ESP32 firmware's logic (its throttle ramp and brake), then the actuator model. `pixi run sim-check --drive-to-point-only --esp32 pi` passes ([below](#todays-car-in-the-loop-step-4b)) |
 | 5 | The lidar into Nav2 | ✅ 15 Oct: `lidar_scan` (`aav_lidar`) flattens the roof lidar into a 2D scan; the local costmap's `lidar_layer` and `collision_monitor` read it. `lidar:=true` in Gazebo, and on the car (the stock `velodyne` driver, since 20 Oct). With the radar off, the lidar alone stopped the car 0.16-0.55 m before a post |
 | 6 | Sensor failures on purpose | ✅ 15 Oct: `pixi run sim-fault <sensor> <fault>`, and the sensor watchdog (`aav_safety`): it stops Nav2 and the AI slot, and says why on the HUD and the map window. All 13 faults stopped the car on 15 Oct, the watchdog's own death and frozen wheels too; on 24 Oct, with the HUD's heartbeat added, all 25 checks passed three times ([the table](simulation.md#what-the-car-does-before-and-after)) |
-| 7 | The actuator test script (`tests.md` 1.10) | ✅ 15 Oct: `pixi run actuator-test <test> --sim`, all 9 tests in Gazebo; they give back the model's numbers ([docs/actuator-tests.md](actuator-tests.md)). It found Gazebo's IMU blind to the car's acceleration: fixed in `gazebo_adapter` |
-| 8-10 | the real numbers, the test lot, forces | not started |
+| 7 | The actuator test script (`tests.md` 1.10) | ✅ 15 Oct: `pixi run actuator-test <test> --sim`, all 9 tests in Gazebo; they give back the model's numbers ([docs/actuator-tests.md](actuator-tests.md)). It found Gazebo's IMU blind to the car's acceleration: fixed in `sim_adapter` |
+| 8-10 | the real numbers, the test lot, forces | not started. Beside them, since: a Carleton world from OpenStreetMap (`pixi run campus`, `world:=campus`), not a survey of the test lot; and Ravensim, whose car rides slopes and stops at kerbs (8 Nov), still with no forces |
 
 Tested (15 Oct, Ben's Mac):
 
@@ -45,7 +51,7 @@ What's where:
 |---|---|
 | The messages | `aav_interfaces`: `DataSource` + `SensorSource` (REAL, SIM, BENCH, REPLAY per sensor), `ActuatorState` (command + measured), `WheelSpeeds` |
 | The contract | `docs/interfaces.yaml`; `/system/` is a new topic area (`docs/naming.md`) |
-| The model and its tests | `ros/sim/aav_gazebo/aav_gazebo/actuator_model.py`, `test/test_actuator_model.py` |
+| The model and its tests | `ros/sim/aav_sim_models/aav_sim_models/actuator_model.py`, `test/test_actuator_model.py` |
 | How it's documented | `docs/simulation.md`, "The actuator model"; `docs/hud.md` for the banner |
 
 ## 1. The full pipeline, in one picture
@@ -56,7 +62,7 @@ What's where:
   twist_mux → ego ──────────── /ego/actuator_cmd (speed + steering)
         │
   ┌─────┴─────── spine:=false (default) ─────────────┐   ┌────── spine:=true (15 Oct) ──────┐
-  │ gazebo_adapter → a Python copy of the spine's    │   │ spine_bridge → CAN frames        │
+  │ sim_adapter → a Python copy of the spine's    │   │ spine_bridge → CAN frames        │
   │ speed loop → ACTUATOR MODEL: throttle, brake,    │   │   → the spine's real logic       │
   │ steering, as measured → Gazebo                   │   │     (timeouts, e-stop, limits)   │
   │ (no CAN, no arming, no e-stop latch; brakes      │   │   → ACTUATOR MODEL: throttle,    │
@@ -81,7 +87,7 @@ What's where:
 | The firmware's safety logic | ✅ 15 Oct, with `spine:=true`: the CAN frames, the spine's timeout, both e-stops, arming ([step 4](#the-spine-in-the-loop-step-4)). Off by default | the real CAN bus and boards: that's the car |
 | What's real and what's fake | ✅ 15 Oct: `/system/source`, and the HUD's orange SIMULATED banner | - |
 | Per-actuator readings | ✅ 15 Oct: `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake`, `/vehicle/wheels` (and still `/vehicle/status`) | the real measured values from the car |
-| The world | a test road, an empty lot | **a copy of the real test lot** |
+| The world | a test road, an empty lot, a walled test lot, Carleton from OpenStreetMap (`world:=campus`) | **a copy of the real test lot** |
 | Sensor failures | ✅ 15 Oct: `pixi run sim-fault`, and the sensor watchdog stops Nav2 (step 6) | the same on the car, on stands: pull a cable |
 
 !!! note "Why the weight hardly matters in Gazebo today"
@@ -153,7 +159,7 @@ pixi run sim-check --spine        # proves it: the normal checks, then the spine
                                                           e-stops, its speed loop)
                                                               │ throttle, brake, gear, steering
                                                               ▼
-                                gazebo_adapter: the actuator model ──► Gazebo's car
+                                sim_adapter: the actuator model ──► Gazebo's car
                                                               │ Gazebo's wheels and steering
                                                               ▼
  /vehicle/* ◄── spine_bridge ◄──CAN frames── spine_sim: VEHICLE_FEEDBACK, STATUS, wheel frames
@@ -161,7 +167,7 @@ pixi run sim-check --spine        # proves it: the normal checks, then the spine
 
 | What | How |
 |---|---|
-| One backend | `spine_bridge` alone reads ego's commands (`/control/sim/actuator_cmd`, from the output mux). `gazebo_adapter` then only drives the actuator model from the spine's outputs, and no longer publishes `/vehicle/*` |
+| One backend | `spine_bridge` alone reads ego's commands (`/control/sim/actuator_cmd`, from the output mux). `sim_adapter` then only drives the actuator model from the spine's outputs, and no longer publishes `/vehicle/*` |
 | `/system/source` | still **SIM**: `spine_bridge` says so (`source:=sim`) |
 | The clock | `spine_sim` ticks every 10 ms of Gazebo's time, so the spine's 100 ms watchdog counts Gazebo's time |
 | Arming | `arm:=true` (the default) arms it 12 s after start-up, as the bench does, once the output mux says `OPEN` (`arm_when_open` asks each second). After a stop: `ros2 service call /spine/arm std_srvs/srv/SetBool "{data: true}"`. Refused while the safety gate is shut |
@@ -173,7 +179,7 @@ pixi run sim-check --spine        # proves it: the normal checks, then the spine
 Each while driving at 0.8 m/s, Gazebo's road world, Ben's Mac, 15 Oct: three runs of
 `pixi run sim-check --spine`, the last one all green. Times are Gazebo's.
 
-| Stop | Direct path (`gazebo_adapter`) | Spine in the loop |
+| Stop | Direct path (`sim_adapter`) | Spine in the loop |
 |---|---|---|
 | Command stream lost (ego's process stopped) | brake 200-220 ms, still 1.24-1.25 s | **full** brake 195-209 ms, still 0.64-0.66 s, and **latched** until armed again |
 | `/safety/estop` | brake 460 ms (through twist_mux and ego), still 1.70 s | brake 1-12 ms (ESTOP_CMD straight to the spine), still 0.18-0.48 s, latched |
@@ -204,18 +210,18 @@ pixi run sim-check --drive-to-point-only --esp32 pi     # proves it
 ```
 
 ```text
- ego ──► output_mux ──► legacy_uart_bridge ──13-byte frames, local TCP──► gazebo_esp32
+ ego ──► output_mux ──► legacy_uart_bridge ──13-byte frames, local TCP──► sim_esp32
           (the car's own; speed_loop.mode pi or open)      (the C++ firmware's logic:
                 ▲                                           its throttle ramp, its brake)
                 │                                                   │
-          /vehicle/odom ◄── gazebo_adapter (the actuator model) ◄───┘
+          /vehicle/odom ◄── sim_adapter (the actuator model) ◄───┘
 ```
 
 | Part | What stands in for the car | Faithful to |
 |---|---|---|
 | `legacy_uart_bridge` | nothing: the car's own node, its port a TCP socket | the car |
-| `gazebo_esp32` (`esp32_firmware.py`) | the ESP32 | `ros2_handler.cpp`, `dac.cpp`: throttle ramp 6 up, 12 down per frame; brake = \|accel\| x 3500 from 400; no command timeout |
-| `gazebo_adapter` | the motor, brake, steering and wheels | the actuator model (`vehicle.yaml`, guesses) |
+| `sim_esp32` (`esp32_firmware.py`) | the ESP32 | `ros2_handler.cpp`, `dac.cpp`: throttle ramp 6 up, 12 down per frame; brake = \|accel\| x 3500 from 400; no command timeout |
+| `sim_adapter` | the motor, brake, steering and wheels | the actuator model (`vehicle.yaml`, guesses) |
 
 ### Results, 29 Oct (drive to point, Gazebo's truth)
 
@@ -231,7 +237,7 @@ pixi run sim-check --drive-to-point-only --esp32 pi     # proves it
   brake takes 0.2 s to bite, so the car falls behind ego, and the PI braked harder to catch
   up. Now the PI compares the car with ego's speed delayed by 0.3 s (`response_lag`), and
   the stop meets its plan.
-- **Without Gazebo:** `aav_gazebo/test/test_legacy_chain.py` runs the same chain (loop,
+- **Without Gazebo:** `aav_sim_models/test/test_legacy_chain.py` runs the same chain (loop,
   frames, firmware, actuator model) in a unit test.
 
 ## Sensor failures: before and after

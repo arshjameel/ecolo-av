@@ -21,12 +21,12 @@ The `car` parameter picks which car the spine drives:
 | `car` | Used by | The car |
 |---|---|---|
 | `model` | bench mode (`pixi run bench`) | `bench-car`'s `Plant`, on this computer's clock |
-| `gazebo` | `sim.launch.py spine:=true` | Gazebo's car, through `gazebo_adapter`'s actuator model, on Gazebo's clock |
+| `ravensim` | `sim.launch.py spine:=true` | Ravensim's car, through `sim_adapter`'s actuator model, on Ravensim's clock |
 
 ```
 spine_bridge ─/can/tx─> spine_sim (spine-core, 100 Hz) ─/can/rx─> spine_bridge
                            │ car:=model:  Plant ─> /vehicle/bench/truth ─> aav_bench
-                           │ car:=gazebo: /vehicle/sim/spine_outputs ─> gazebo_adapter
+                           │ car:=ravensim: /vehicle/sim/spine_outputs ─> sim_adapter
 ```
 
 ## Interface
@@ -38,14 +38,14 @@ spine_bridge ─/can/tx─> spine_sim (spine-core, 100 Hz) ─/can/rx─> spine_
 | Subscribes | `/can/tx` | `can_msgs/Frame` | always: what `spine_bridge` puts on the bus |
 | Subscribes | `/vehicle/bench/hw_estop` | `std_msgs/Bool` | always: true = hardware e-stop pressed |
 | Subscribes | `/vehicle/bench/driver_faults` | `std_msgs/UInt16` | always: pretend a driver failed (fault bits) |
-| Subscribes | `/vehicle/sim/wheels` | `aav_interfaces/WheelSpeeds` | `car:=gazebo` |
-| Subscribes | `/vehicle/sim/steering` | `aav_interfaces/ActuatorState` | `car:=gazebo` |
+| Subscribes | `/vehicle/sim/wheels` | `aav_interfaces/WheelSpeeds` | `car:=ravensim` |
+| Subscribes | `/vehicle/sim/steering` | `aav_interfaces/ActuatorState` | `car:=ravensim` |
 | Publishes | `/can/rx` | `can_msgs/Frame` | always: VEHICLE_FEEDBACK 50 Hz, VEHICLE_STATUS 10 Hz, WHEEL_SPEED_L and _R 100 Hz |
 | Publishes | `/vehicle/bench/truth` | `nav_msgs/Odometry` (`map` to `base_link`, 50 Hz) | `car:=model` |
-| Publishes | `/vehicle/sim/spine_outputs` | `aav_interfaces/SpineOutputs` (100 Hz) | `car:=gazebo` |
+| Publishes | `/vehicle/sim/spine_outputs` | `aav_interfaces/SpineOutputs` (100 Hz) | `car:=ravensim` |
 
 Parameters: `car` (model), `wheelbase`, `track`, `wheel_radius` (m), `max_steering`
-(rad), `start_x`, `start_y` (m), `start_yaw` (rad), `speed_loop` (default, smooth or lqi).
+(rad), `start_x`, `start_y` (m), `start_yaw` (rad), `speed_loop` (default, smooth, lqi or firm).
 
 ### `bench-car` (library)
 
@@ -56,14 +56,14 @@ Parameters: `car` (model), `wheelbase`, `track`, `wheel_radius` (m), `max_steeri
 | `Bench::receive(id, data)` | one frame from the bus |
 | `Bench::tick(dt_ms)` | runs `Spine::step`, moves the car, returns the frames to send |
 | `Bench::set_hw_estop`, `set_driver_faults` | the bench's switches |
-| `Bench::outputs()` | what the spine wrote to the actuators on the last tick (`car:=gazebo` publishes it) |
+| `Bench::outputs()` | what the spine wrote to the actuators on the last tick (`car:=ravensim` publishes it) |
 | `Bench::pose()` | where the model car is: the ground truth (model car only) |
 | `Bench::car()`, `car_mut()` | the car the spine drives; `car_mut` gives it new measurements |
 | `Frame` | one CAN frame: `(id, [u8; 8])` |
 | `SpeedLoopProfile`, `SpineConfig` | re-exported from `spine-core`, so a bench picks its own settings |
 | `Car` (trait) | what the spine needs of a car: speed, steering, wheel roll |
 | `Plant`, `PlantConfig`, `Pose` | the model car: steering motor, throttle, brake, encoder, pose |
-| `MeasuredCar` | a car moved elsewhere (Gazebo): `measure_speed`, `measure_steering`, `measure_front_wheels` |
+| `MeasuredCar` | a car moved elsewhere (Ravensim): `measure_speed`, `measure_steering`, `measure_front_wheels` |
 | `BENCH_WHEELS`, `FEEDBACK_PERIOD_MS`, `STATUS_PERIOD_MS`, `WHEEL_PERIOD_MS` | the wheel nodes' setup and frame periods |
 
 ## Invariants
@@ -74,7 +74,7 @@ Parameters: `car` (model), `wheelbase`, `track`, `wheel_radius` (m), `max_steeri
 - CAN ids and layouts are `firmware/can/aav.dbc`'s: 0x010 ESTOP_CMD and 0x100
   DRIVE_CMD in; 0x180 VEHICLE_FEEDBACK, 0x181 VEHICLE_STATUS, 0x200 and 0x201 wheel
   speeds out. Only standard 11-bit data frames are read.
-- The spine ticks every 10 ms, as on the board. On Gazebo's clock, more than 10 ticks
+- The spine ticks every 10 ms, as on the board. On Ravensim's clock, more than 10 ticks
   behind counts as a stall or a reset, not catch-up.
 - Wheel frames carry a magnitude only (`direction_known = 0`), like the real sensors.
 - `PlantConfig::default` numbers are guesses until the car is measured (Q1-Q5).

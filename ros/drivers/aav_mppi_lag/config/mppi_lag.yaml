@@ -8,6 +8,16 @@ mppi_lag:
                                 # ideal: without, as Nav2's MPPI does (a comparison run)
     steer_std: 0.15             # rad: the steering noise. Nav2 samples the turn rate
                                 # (wz_std 0.1 rad/s); at 1 m/s that is atan(0.1 x 1.561) = 0.155
+    steer_std_speed: 1.0        # m/s: faster, the steering noise shrinks as (1.0 / speed)^2
+                                # (0.024 rad at 2.5 m/s), so the futures spread as far sideways
+                                # as at 1 m/s. Without it (0), at 2.5 m/s they spread 6 times as
+                                # wide, MPPI's average rested on a handful of them and the
+                                # steering wiggled (TODO 168, docs/mppi-lag.md "Oscillation")
+    steer_std_min: 0.024        # rad: but never less, so above 2.5 m/s the futures still spread
+    steer_gamma_speed: 1.0      # m/s: with a steer_gamma (the launch's mppi_lag_steer_gamma:=,
+                                # TODO 168), the steering's control cost is steer_gamma from
+                                # this speed up and eases to gamma at a stop (x (speed / 1.0)²),
+                                # so the cusps and backing turns steer as before
     noise_correlation: 0.8      # each step's noise keeps 0.8 of the last step's (AR(1), about
                                 # 0.25 s). Nav2's is white (0): through a lagging steering
                                 # white noise averages away, every sample drives alike, and
@@ -16,10 +26,25 @@ mppi_lag:
                                 # rest of the stack its cores (0: one per core)
     seed: 42
     use_costmap: true           # CostCritic and the path's clear points read the local costmap
-    costmap_topic: /local_costmap/costmap_raw
-    measured_timeout: 0.5       # s: a measured steering, throttle or brake older than this is
+    # No costmap_topic here: navigation.launch.py picks Nav2's or ours (costmap:=), and an
+    # entry under this node's name would beat it (as ego.launch.py found). Until 14 Nov it
+    # was here, so with costmap:=own this node read Nav2's topic, which nobody published.
+    # No road_ahead_topic here either: navigation.launch.py names /world/road_ahead (and adds
+    # LaneCritic to the critics) only with behaviour:=true and a lane map.
+    road_ahead_timeout: 0.5     # s: an older road ahead is dropped (it comes at 10 Hz): no lane
+    measured_timeout: 0.5      # s: a measured steering, throttle or brake older than this is
                                 # dropped; the model keeps its own
     odom_timeout: 1.0           # s without odometry: give up the path
+    # Follow in odom, correct slowly (TODO 186, docs/mppi-lag.md): the held map -> odom moves
+    # toward the global EKF's newest at most this fast, measured at the car. Each new path
+    # comes into odom by the held one, and the running path moves with it. The GPS's jitter
+    # (0.09 m every 0.2 s in the sim) then never jumps the path under the car. 0: the old
+    # way (each new path by the newest). navigation.launch.py map_correction:=newest gives
+    # the node map_correction: false, the same (a bool never set here: this file would win).
+    map_correction_speed: 0.1           # m/s: odometry drifts 1-2 % (0.05 m/s at 2.5 m/s)
+    map_correction_turn_rate: 0.01745   # rad/s (1 degree/s): a GPS step turns up to 4 degrees
+    map_correction_snap_distance: 2.0   # m: a bigger gap is a relocalisation: taken at once
+    map_correction_snap_angle: 0.1745   # rad (10 degrees): likewise
     cmd_topic: cmd_vel_nav
     status_topic: /drivers/nav/track/status
     local_plan_topic: /drivers/nav/local_plan   # MPPI's chosen future, for the screens

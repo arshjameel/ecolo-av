@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The safety case · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/safety-case.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The safety case</h1>
+<div class="meta">27 min read · 19 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a class="here" href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-it">How to read it</a><a href="#the-layers-in-one-picture">The layers, in one picture</a><a href="#all-hazards-at-a-glance">All hazards at a glance</a><a href="#1-a-person-or-obstacle-ahead">1. A person or obstacle ahead</a><a href="#2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</a><a href="#3-runaway-speed-faster-than-asked">3. Runaway speed (faster than asked)</a><a href="#4-the-e-stop-software-and-hardware">4. The e-stop (software and hardware)</a><a href="#5-a-dead-or-frozen-node">5. A dead or frozen node</a><a href="#6-commands-to-the-spine-lost">6. Commands to the spine lost</a><a href="#7-steering-stuck-or-the-wrong-centre">7. Steering stuck, or the wrong centre</a><a href="#8-a-weak-brake">8. A weak brake</a><a href="#9-leaving-the-area">9. Leaving the area</a><a href="#10-a-gps-jump-or-bad-localization">10. A GPS jump, or bad localization</a><a href="#11-a-stop-sign-missed">11. A stop sign missed</a><a href="#12-the-screen-freezes">12. The screen freezes</a><a href="#13-a-kerb">13. A kerb</a><a href="#14-something-moving-near-the-car">14. Something moving near the car</a><a href="#the-biggest-gaps">The biggest gaps</a><a href="#add-a-number">Add a number</a></nav>
+<div class="lead"><p>One section per hazard: <strong>what stops it</strong>, <strong>the number</strong> that shows it works, and <strong>who
+measured it</strong>. TODO 159, from <a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>
+("What is missing", row 8) and <a href="../designs/2026-11-04_weak-links.md">weak links</a> 4.7.</p>
+<div class="admonition warning">
+<p class="admonition-title">Nothing here has been measured on the car</p>
+<p>Every number below comes from our simulator, Gazebo, bench mode, QEMU or unit tests.
+The car drove on 13 Nov "and stopped well" (Ben), with only the localization update
+installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>).</p>
+</div></div>
+<section class="card"><h2 id="how-to-read-it">How to read it</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>car</strong></td>
+<td>measured on the real car, with a date</td>
+</tr>
+<tr>
+<td><strong>bench</strong></td>
+<td><a href="bench.html">bench mode</a>: our software with stand-in hardware</td>
+</tr>
+<tr>
+<td><strong>sim</strong></td>
+<td>our simulator or Gazebo</td>
+</tr>
+<tr>
+<td><strong>QEMU</strong></td>
+<td>the real ESP32 firmware in an emulator</td>
+</tr>
+<tr>
+<td><strong>tests</strong></td>
+<td>unit tests only: the logic is right, nothing was timed</td>
+</tr>
+<tr>
+<td><strong>not measured</strong></td>
+<td>no number anywhere in the repo</td>
+</tr>
+</tbody>
+</table></div>
+<p>Who: the person who ran or recorded it (<code>docs/features.md</code>, the git log, the page named).</p>
+</section>
+<section class="card"><h2 id="the-layers-in-one-picture">The layers, in one picture</h2>
+<pre class="highlight"><code class="language-text"> a person      joystick (100), RC (95), keyboard (90) ── always outrank every program
+     │
+ hardware      Kar-Tech wireless stop, red mushroom button ── cut power, outside all software
+     │
+ firmware      ESP32 / spine: 100 ms command timeout, e-stop flag, overspeed, driver faults
+     │
+ ROS locks     twist_mux: e-stop (255), no-timeout (60), geofence (51), stop sign and
+               sensor watchdog (30), stop hold (21) ── a lock holds every slot below it
+     │
+ the planner   the stop zone (aav_stop_zone), the costmap, the behaviour planner</code></pre>
+<p>The locks are in <code>ros/command_mux/aav_command_mux/config/twist_mux.yaml</code>.</p>
+</section>
+<section class="card"><h2 id="all-hazards-at-a-glance">All hazards at a glance</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Hazard</th>
+<th>What stops it</th>
+<th>Best number</th>
+<th>Where</th>
+<th>On the car?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A person or obstacle ahead</td>
+<td>stop zone + stop hold</td>
+<td>stopped 0.16-0.55 m before a post</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>2</td>
+<td>An obstacle behind, reversing</td>
+<td>the rear stop zone</td>
+<td>stopped 0.75-0.85 m before a post</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Runaway speed</td>
+<td>ego's cap; the spine's overspeed rule; the watchdog's OVERSPEED</td>
+<td><strong>14 % over</strong> the command; throttle stuck: OVERSPEED 4.6 s after</td>
+<td>sim</td>
+<td>🟡</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The e-stop</td>
+<td><code>/safety/estop</code>; Kar-Tech; red button</td>
+<td>brake within 2-12 ms (spine)</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>5</td>
+<td>A dead or frozen node</td>
+<td>sensor watchdog; mux timeouts; respawn</td>
+<td>13 faults stop within 6 s</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Commands to the spine lost</td>
+<td>the firmware's 100 ms timeout</td>
+<td>brakes 111-120 ms after</td>
+<td>QEMU</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Steering stuck or off centre</td>
+<td>driver-fault brake; calibration</td>
+<td>stuck in a bend: the watchdog's STUCK after 3.6 s, stood after 5 s (was: nothing noticed, 3.1 m off)</td>
+<td>sim</td>
+<td>🟡</td>
+</tr>
+<tr>
+<td>8</td>
+<td>A weak brake</td>
+<td>the adaptive brake (a trial)</td>
+<td>0.87 → 0.21 m past, 150 kg; a dead brake: 9.7 m</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Leaving the area</td>
+<td>the geofence</td>
+<td>stopped 1.06 m after the lock</td>
+<td>bench</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>10</td>
+<td>A GPS jump, bad localization</td>
+<td>watchdog; geofence LOST, JUMP</td>
+<td>stops within 6 s</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>11</td>
+<td>A stop sign missed</td>
+<td>RF-DETR + the stop-sign lock</td>
+<td>missed 1 in 8 runs</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>12</td>
+<td>The screen freezes</td>
+<td>the HUD's heartbeat</td>
+<td>STALE in 1 s</td>
+<td>a Mac</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>13</td>
+<td>A kerb</td>
+<td>the step finder (<code>kerbs:=true</code>), kept 10 s; the costmap; the stop zone</td>
+<td>a 0.3 m kerb seen 8.4 m out, stopped 0.80-0.82 m before it</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Something moving near</td>
+<td>the behaviour's hold (WAIT, moving), ego, the stop zone</td>
+<td>held for an oncoming car, a person on the roadside, cross traffic and a person crossing, every run; the parked box passed without a hold</td>
+<td>sim</td>
+<td>❌</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="1-a-person-or-obstacle-ahead">1. A person or obstacle ahead</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stop zone</td>
+<td><code>aav_stop_zone</code> zeroes <code>/drivers/nav/cmd_vel</code> when the radar or lidar sees 3 points in front of the bumper, or a sensor goes silent. Nav2's <code>collision_monitor</code> until 17 Nov; ours took the lock after its shadow run (<a href="#the-stop-zones-swap-17-nov">the swap</a>)</td>
+<td><code>aav_stop_zone</code></td>
+</tr>
+<tr>
+<td>Stop hold</td>
+<td>holds the stop until the zone stays clear 1 s, so it can't flicker (twist_mux 21)</td>
+<td><code>aav_safety</code> <code>stop_hold.py</code></td>
+</tr>
+<tr>
+<td>Costmap</td>
+<td>the follower's own collision check can stop first</td>
+<td><code>aav_costmap</code>, <code>aav_mppi_lag</code></td>
+</tr>
+<tr>
+<td>Behaviour planner</td>
+<td>slows before the stop zone (a trial, off)</td>
+<td><code>aav_behaviour</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>radar's box: 0.23 m before it</td>
+<td>sim (Gazebo), 3 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>lidar alone, a post: 0.16-0.55 m before it; 0.16 m</td>
+<td>sim (Gazebo), 15 Oct; 3 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>a busy Mac: <strong>0.13 m past</strong> the post</td>
+<td>sim (Gazebo), 20 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>a ghost person: 0.21 m; 0.51 m before it</td>
+<td>sim (Gazebo), 16 Oct; 3 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>radar: 0.3-0.4 m; lidar: 0.88 m before a box</td>
+<td>bench, Oct; 20 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the cubes trial: <strong>1 of 3 drove 1.30 m into the post</strong></td>
+<td>sim (Gazebo), 3 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the cubes trial again: 0.20 and 0.19 m before the post, 2 of 2</td>
+<td>sim (ours), 15 Nov, TODO 93</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>a 0.3 m kerb across the road (<code>--kerb</code>): <strong>not seen</strong>, the car drove into it, lidar alone and with the radar</td>
+<td>sim (ours), 15 Nov, TODO 119</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the same kerb with the step finder (<code>kerbs:=true</code>): stopped 0.80-0.82 m before it (<a href="#13-a-kerb">13</a>)</td>
+<td>sim (ours), 16 Nov, TODO 119</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gaps:</strong> the stop zone and the stop hold hold only navigation and the AI slot. The point driver
+(25), scripts and replay are not stopped by an obstacle. The roof lidar can't see a 1 m
+box inside the stop zone: the radar's job (<a href="perception.html">perception</a>). The flat scan
+sees no kerb 0.3 m high or lower; the step finder does, with <code>kerbs:=true</code> (<a href="#13-a-kerb">13</a>).
+The ghost test on
+the car is written down but not run (<a href="ghost-obstacles.html#on-the-real-car">ghost obstacles</a>).</p>
+<h3 id="the-stop-zones-swap-17-nov">The stop zone's swap (17 Nov)</h3>
+<p>Ours (<code>aav_stop_zone</code>) ran in shadow beside Nav2's <code>collision_monitor</code> on every obstacle
+check, 3 rounds: <strong>Nav2 stopped 24 times; ours stopped on the same command all 24, never
+later</strong> (each node's own log of its decision). Ours also stopped alone, up to 3.7 s, at
+start-up: only extra caution. So ours took the lock, and Nav2 went
+(<a href="../history/nav2-as-it-was.md#the-swap-of-the-stop-zone">the table</a>).</p>
+</section>
+<section class="card"><h2 id="2-an-obstacle-behind-while-reversing">2. An obstacle behind, while reversing</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rear stop zone</td>
+<td>the stop zone's box behind the rear bumper, from the lidar</td>
+<td><code>aav_stop_zone</code>, <code>reversing:=true</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>stopped 0.75 m short of a post</td>
+<td>sim (Gazebo), 22 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>backing to a goal 5 m behind: ego never asked past -0.5 m/s</td>
+<td>sim (Gazebo), 15 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>0.78 m</td>
+<td>sim (Gazebo), 3 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>0.85 m, all our own nodes</td>
+<td>sim (ours), 14 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> on the car the wheels can't tell direction yet (H5): the speed's sign is the last
+command's.</p>
+</section>
+<section class="card"><h2 id="3-runaway-speed-faster-than-asked">3. Runaway speed (faster than asked)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ego</td>
+<td>one top speed for ego and the spine: 1.0 m/s (<code>max_speed:=0.3</code> on the Pi alone)</td>
+<td><code>aav_ego</code>, <code>spine-core</code></td>
+</tr>
+<tr>
+<td>Spine overspeed</td>
+<td>over 1.25 m/s: throttle 0, brake 0.5; still over after 2 s: full brake, latched</td>
+<td><code>spine-core</code> (Arsh's stop rules)</td>
+</tr>
+<tr>
+<td>ESP32 throttle cap</td>
+<td>DAC at most 700 of 1023; open-loop cap 1.0 / 3.0 (3.0 a guess)</td>
+<td><code>esp32-umod</code></td>
+</tr>
+<tr>
+<td>Actuator tests</td>
+<td>stop on a speed rising while the command falls (<code>runaway</code>)</td>
+<td><code>aav_actuator_tests</code></td>
+</tr>
+<tr>
+<td>Watchdog (OVERSPEED)</td>
+<td>the wheels over ego's speed by 0.2 m/s while not slowing (under 0.3 m/s²): OVER (a warning) after 1 s, OVERSPEED after 2 s, latched, holds the programs (TODO 207). Only fresh numbers count: a wheel speed older than the input's <code>max_age</code> (1 s), or a command after a gap longer than that, is no check; quiet wheels are odometry's own fault, STALE (16 Nov)</td>
+<td><code>aav_safety</code> <code>watchdog.py</code>, input <code>speed</code>; the sim only</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1.145 m/s against 1.0 asked: 14 % over</strong> (today's speed loop)</td>
+<td>sim (ours), 14 Nov, TODO 163</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>9-14 % over at 1 m/s, the spine in the loop</td>
+<td>sim (Gazebo), 29 Oct (<a href="controllers.html#2a-lqi-against-the-pi-results-29-oct">controllers</a>)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><code>smooth</code> loop: 1.00 m/s, no overshoot</td>
+<td>sim (ours), 14 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>a 25 m drive to a point: <code>default</code> 1.14 m/s, 7 s over the road ahead's limit; <code>firm</code> 1.00 m/s, 0 s over (but more sway on the lot tour: a challenger, TODO 163)</td>
+<td>sim (ours), 16 Nov, 2 runs each</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the overspeed rule</td>
+<td>tests only (<code>spine-core</code>)</td>
+<td>Arsh</td>
+</tr>
+<tr>
+<td>the throttle stuck at its cruise level, then the e-stop from 0.9 m/s: 1.48-1.50 m (healthy 1.18-1.20), stood in 2.2 s: the brake beats it</td>
+<td>sim (ours), 15 Nov, 3 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the throttle stuck while speeding up (at 0.4 m/s, <code>--actuator-faults</code>): the car held 1.37 m/s for 1.00 asked; the watchdog said OVER 3.6 s after, OVERSPEED 4.6 s after</td>
+<td>sim (ours), 16 Nov, 2 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>OVERSPEED never in a healthy drive or stop: every loop profile on the car model; the healthy, weak-brake and stuck-throttle e-stops in the sim</td>
+<td>the car model (tests); sim (ours), 16 Nov, 3 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Fixed 16 Nov:</strong> with the wheels quiet (<code>--faults</code>' odom stop), the watchdog kept their last 0.5 m/s against ego's 0 and latched OVERSPEED, so the ten fault cases after it found the lock already on. Now a stale wheel speed is no check: <code>sim-check --faults</code> passed all 14 fault cases and <code>--actuator-faults</code> all 6 (the Python watchdog, first run); a test in each language; the shared vectors replay it. In 4 runs since (Python and Rust watchdogs), OVERSPEED never latched after the odom stop, but 1-4 cases a run failed "Nav2 would not drive before the fault": the global EKF jumps 9 m as the wheels come back and the path follower loses its path (a navigation flake, TODO 207)</td>
+<td>sim (ours), 16 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>stuck wide open</td>
+<td>not measured</td>
+<td></td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> the speed rules are <strong>off on the car</strong>: the ESP32 gets no wheel speed yet, so it
+has no overspeed check (<a href="esp32-safety.html">ESP32 safety</a>). The stopping law assumes the car
+goes no faster than told (TODO 163).</p>
+</section>
+<section class="card"><h2 id="4-the-e-stop-software-and-hardware">4. The e-stop (software and hardware)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Software</td>
+<td>the joystick's button, <code>pixi run estop</code>, the HUD: <code>/safety/estop</code>. twist_mux locks every driver (255); ego and the bridge brake on it directly</td>
+<td><code>aav_command_mux</code>, <code>aav_ego</code></td>
+</tr>
+<tr>
+<td>Firmware</td>
+<td>the e-stop flag: full brake on the next frame, latched</td>
+<td><code>spine-core</code>, <code>esp32-umod</code></td>
+</tr>
+<tr>
+<td>Hardware</td>
+<td>the Kar-Tech wireless stop and the red mushroom button cut power</td>
+<td>the car's wiring</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>twist_mux path, no spine: brake in 0.46 s</td>
+<td>sim (Gazebo), Oct (<a href="simulation.html">simulation</a>)</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>through the spine: brake in 1-12 ms; 2 ms</td>
+<td>sim (Gazebo), 15 Oct; 3 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>a stand-in hardware e-stop: brake within 10 ms</td>
+<td>sim (Gazebo), Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the e-stop stopped the point driver</td>
+<td>sim (Gazebo), 15 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>what the Kar-Tech and the red button cut</td>
+<td><strong>not measured</strong> (S1, S2)</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> nobody has written down what the Kar-Tech or the red button cuts, or what the
+brake does with no power (<a href="esp32-safety.html">ESP32 safety</a>, row 7; tests 3.5, 3.8).</p>
+</section>
+<section class="card"><h2 id="5-a-dead-or-frozen-node">5. A dead or frozen node</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sensor watchdog</td>
+<td>a sensor stale, NaN, frozen or jumped: holds the point driver, navigation and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too</td>
+<td><code>aav_safety</code> <code>sensor_watchdog.py</code></td>
+</tr>
+<tr>
+<td>Wheels cross-check</td>
+<td>frozen wheels caught against the IMU and GPS</td>
+<td><code>aav_safety</code> <code>wheel_check.py</code></td>
+</tr>
+<tr>
+<td>twist_mux</td>
+<td>every driver counts only for 0.5 s after its last message</td>
+<td><code>twist_mux.yaml</code></td>
+</tr>
+<tr>
+<td>ego</td>
+<td>stops on 0.3 s of quiet</td>
+<td><code>aav_ego</code></td>
+</tr>
+<tr>
+<td>Joystick alive</td>
+<td><code>SILENT</code> after 0.5 s, <code>FROZEN</code> after 2 s of the same values</td>
+<td><code>aav_safety</code> <code>joy_alive.py</code></td>
+</tr>
+<tr>
+<td>Respawn</td>
+<td>our navigation nodes restart 1 s after they die (14 Nov)</td>
+<td><code>navigation.launch.py</code>, <code>test_respawn.py</code></td>
+</tr>
+<tr>
+<td>Age checks</td>
+<td><code>mppi_lag</code> and our planner refuse a stale costmap; our costmap stops on stale odometry; a <code>/tf</code> over 1 s old is no pose (14 Nov)</td>
+<td><code>aav_mppi_lag</code>, <code>aav_planner</code>, <code>aav_costmap</code>, <code>aav_navigator</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>13 faults on purpose, each stops the car within 6 s</td>
+<td>sim (Gazebo), <code>sim-check --faults</code></td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>frozen wheels: 25 of 25 caught</td>
+<td>sim (Gazebo), since 24 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><code>--faults</code> 3 of 3</td>
+<td>sim (ours), 8 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Fixed 17 Nov (TODO 207):</strong> 1-6 fault cases a run failed after <code>odom stop</code>: with the wheels quiet, both EKFs kept their last speed and acceleration, <code>ekf_local</code> ran 15 m on while the car stood, and <code>map -&gt; odom</code> jumped 9-10 m back when the wheels returned. Now the car's command may slow each EKF's speed (robot_localization's control term, never speeding it up). And the watchdog waits 10 s, not 3, after its own stall before anything latches (DDS took 7 s to bring the HUD's beats back, and the HUD latched LOST). <code>sim-check --faults</code> <strong>14 of 14, 3 runs in a row</strong> (the Rust watchdog, a computer at load 10-34)</td>
+<td>sim (ours), 17 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>a 2.5 s stall of the whole Mac flagged, then let go</td>
+<td>bench, Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>joystick alive: <code>bench-check</code> 11 of 11</td>
+<td>bench, 2 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>respawn and age checks</td>
+<td>tests only</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> device nodes have no respawn (N3). No watchdog reads our nodes' status yet (TODO 161).</p>
+</section>
+<section class="card"><h2 id="6-commands-to-the-spine-lost">6. Commands to the spine lost</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rust ESP32</td>
+<td>no fresh command (or a frozen counter) for 100 ms: full brake, throttle 0, latched</td>
+<td><code>spine-core</code>, <code>esp32-umod</code> (TODO 45)</td>
+</tr>
+<tr>
+<td>Pico 2 spine</td>
+<td>the same, plus a 100 ms hardware watchdog</td>
+<td><code>boards/pico2</code></td>
+</tr>
+<tr>
+<td>Today's C++ ESP32</td>
+<td><strong>no timeout</strong>: the last throttle stays. So the no-timeout lock (twist_mux 60) holds every program; only people drive</td>
+<td><code>legacy_uart_bridge</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>brakes 111-120 ms after the last frame</td>
+<td>QEMU, 24 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>112-119 ms, 6 of 6</td>
+<td>QEMU, 3 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>counter frozen: 113-118 ms</td>
+<td>QEMU</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the spine in the loop: full brake 195-209 ms; 202-205 ms</td>
+<td>sim (Gazebo), 15 Oct; 3 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>test 3.9, the serial cable pulled</td>
+<td><strong>not measured</strong>: fails with today's C++</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> the Rust firmware has never been flashed. This is blocker 1 (TODO 158).</p>
+</section>
+<section class="card"><h2 id="7-steering-stuck-or-the-wrong-centre">7. Steering stuck, or the wrong centre</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Boot self-test</td>
+<td>nothing arms until both Jrks and the DAC answer</td>
+<td><code>spine-core</code> (Arsh)</td>
+</tr>
+<tr>
+<td>Driver fault</td>
+<td>a Jrk error: full brake, latched</td>
+<td><code>esp32-umod</code>, <code>spine-core</code></td>
+</tr>
+<tr>
+<td>Calibration</td>
+<td>the steering actuator's ends and centre, <code>steering_limits</code></td>
+<td><a href="actuator-tests.html#find-the-steering-actuators-ends-and-centre">actuator tests</a></td>
+</tr>
+<tr>
+<td>Watchdog (STUCK)</td>
+<td>the steering asked against measured: over 0.15 rad apart for 1 s latches STUCK and holds the programs (TODO 207)</td>
+<td><code>aav_safety</code> <code>watchdog.py</code>, input <code>steering</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the centre (test 3.12: under 1°)</td>
+<td><strong>not measured</strong>: the car pulls right (TODO 67)</td>
+<td></td>
+</tr>
+<tr>
+<td>stuck in a bend (<code>--actuator-faults</code>): mppi_lag backed and turned 3 times, drove 19.3 m, up to 3.1 m off the straight to the goal, stood after 16 s; <strong>nothing reported a fault</strong>, the goal kept running</td>
+<td>sim (ours), 15 Nov, 1 run</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the same with the watchdog's STUCK (TODO 207): <strong>noticed 3.6 s after</strong>, the car stood 5 s after; drove 3.9 m, up to 1.3 m off</td>
+<td>sim (ours), 15 Nov, 1 run</td>
+<td>Ben</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> on the car today the measured side is NaN (the 2025-26 uplink has no steering
+feedback, Q2), so the check stays silent there until the steering's position is read;
+its 0.15 rad and 1 s are the sim's, not tuned on the car.</p>
+</section>
+<section class="card"><h2 id="8-a-weak-brake">8. A weak brake</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adaptive brake</td>
+<td>learns how well the brake works and brakes harder, never past <code>safe_max</code> (a trial, off)</td>
+<td><code>aav_description</code> <code>adaptive_brake.py</code></td>
+</tr>
+<tr>
+<td>Geofence <code>COASTING</code></td>
+<td>holds every program until test 4.3 measures the stop</td>
+<td><code>aav_safety</code> <code>geofence.py</code></td>
+</tr>
+<tr>
+<td>Spine</td>
+<td>the overspeed rule (section 3)</td>
+<td><code>spine-core</code></td>
+</tr>
+<tr>
+<td>Watchdog (OVERSPEED)</td>
+<td>a car that doesn't slow when told: latched, holds the programs (section 3)</td>
+<td><code>aav_safety</code>, input <code>speed</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>150 kg aboard: +0.58 m past → +0.04 m with it</td>
+<td>the car model, 8 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>150 kg: +0.87 m past → +0.21 m; the next stop +0.05 m</td>
+<td>sim (ours), 8 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the e-stop from 0.9 m/s (<code>--actuator-faults</code>): healthy 1.18-1.20 m; a weak brake (30 %) 2.05-2.08 m, 3.6 s; a dead brake 9.7 m, still rolling at 0.05 m/s after 30 s</td>
+<td>sim (ours), 15 Nov, 3 runs</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the dead brake is noticed: the watchdog's OVERSPEED (0.8 m/s for 0 asked, 2 s), 4 runs of 4</td>
+<td>sim (ours), 16 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the brake's limits (<code>released</code>, <code>full</code>, <code>safe_max</code>)</td>
+<td><strong>placeholders</strong> until car day A7</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> refused with today's ESP32. Today's car brakes only below <code>stop_speed</code>;
+<a href="geofence.html">the geofence page</a> says it rolls "about 10 m" from 1 m/s, with no record of a
+measurement.</p>
+</section>
+<section class="card"><h2 id="9-leaving-the-area">9. Leaving the area</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Geofence</td>
+<td>any stopping path within 1 m (+ the pose's spread) of the edge: holds every program (twist_mux 51); people still drive</td>
+<td><code>aav_safety</code> <code>geofence.py</code></td>
+</tr>
+<tr>
+<td>Point driver, drive server</td>
+<td>refuse a goal outside the fence</td>
+<td><code>aav_drive_to_point</code>, <code>aav_language</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lock at 1.08 m/s; stopped 1.06 m on (it allowed 1.56 m); inside a 12 m fence</td>
+<td>bench, 29 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>in a simulator with a fence you can reach</td>
+<td>not measured</td>
+<td></td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> no site polygon yet; the fence is a 30 m circle round the start spot.</p>
+</section>
+<section class="card"><h2 id="10-a-gps-jump-or-bad-localization">10. A GPS jump, or bad localization</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sensor watchdog</td>
+<td>GPS lost, NaN or jumped: holds the point driver, navigation and the AI slot</td>
+<td><code>aav_safety</code></td>
+</tr>
+<tr>
+<td>Geofence</td>
+<td><code>LOST</code> (no pose 1 s, spread over 3 m, no GPS into the EKF 2 s), <code>JUMP</code> (latched)</td>
+<td><code>aav_safety</code> <code>geofence.py</code></td>
+</tr>
+<tr>
+<td>Localization health</td>
+<td>warns only: gyro bias, GPS quality, clock skew, runaway EKFs</td>
+<td><code>aav_localization_health</code> (Betsi)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GPS lost, NaN, jump: each stops the car within 6 s</td>
+<td>sim (Gazebo), <code>sim-check --faults</code></td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>a GPS fault stopped the point driver</td>
+<td>sim (Gazebo), 15 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the health checks' thresholds</td>
+<td>tuned in Gazebo only</td>
+<td>Betsi</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="11-a-stop-sign-missed">11. A stop sign missed</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Detector</td>
+<td>RF-DETR on the front camera</td>
+<td><code>aav_detector</code></td>
+</tr>
+<tr>
+<td>Stop-sign lock</td>
+<td>holds the point driver, navigation and the AI slot about 4.7 m before the sign (twist_mux 30); a watcher that dies while true keeps the car stopped</td>
+<td><code>stop_sign</code> watcher</td>
+</tr>
+<tr>
+<td>A person</td>
+<td>the safety driver</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lock on at 20.7 m from the sign</td>
+<td>bench, 20 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>bumper 4.4 m before the sign</td>
+<td>sim (Gazebo), 24 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>stood 3.9-4.4 m before it, 3 of 3</td>
+<td>sim (ours), 8 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>the lock never came on: 1 of 8 runs</strong></td>
+<td>sim (ours), 8 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured: the Orin's TensorRT engine isn't built</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gap:</strong> a missed sign has no second layer but the person in the seat.</p>
+</section>
+<section class="card"><h2 id="12-the-screen-freezes">12. The screen freezes</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Heartbeat</td>
+<td>the HUD beats 10 Hz on <code>/hud/heartbeat</code> while it draws</td>
+<td><code>aav_hud</code></td>
+</tr>
+<tr>
+<td>Watchdog</td>
+<td>quiet or stuck 1 s: holds the point driver, navigation and the AI slot; after the first 5 s, latched (<code>hud LOST</code>)</td>
+<td><code>aav_safety</code> <code>sensor_watchdog.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>beat at 9.3 Hz; frozen or closed: <code>hud STALE</code> in 1 s</td>
+<td>a Mac, 23 Oct</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>on a Pi or the car's screen</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="13-a-kerb">13. A kerb</h2>
+<p>Ben, 15 Nov: "we don't want to hit a curb" (TODO 119; <a href="kerbs.html">kerbs</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The map</td>
+<td>every road edge on the campus is a lethal kerb line</td>
+<td><code>campus.pgm</code> and its chunks</td>
+</tr>
+<tr>
+<td>Step finder</td>
+<td>a point 0.10-0.5 m above another within 0.3 m, kept 10 s in odom (the lidar loses a kerb 3-4 m before the bumper)</td>
+<td><code>aav_voxels_rs</code>, <code>kerbs:=true</code></td>
+</tr>
+<tr>
+<td>Costmap</td>
+<td>the local costmap's <code>kerb_layer</code> marks it, and nothing clears it</td>
+<td><code>aav_costmap</code></td>
+</tr>
+<tr>
+<td>Stop zone</td>
+<td>the stop zone's <code>steps</code> source (Nav2's <code>collision_monitor</code>'s until 17 Nov)</td>
+<td><code>aav_stop_zone</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a 0.3 m kerb across the road, the flat scan only: <strong>drove into it</strong></td>
+<td>sim (ours), 15 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the step finder, no memory: 0.12 m before it (the controller); with the radar <strong>0.24 m into it</strong></td>
+<td>sim (ours), 16 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the step finder with its memory: seen 8.4 m past the bumper; the stop zone stopped the car 0.82 m (lidar) and 0.80 m (lidar and radar) before it, 1 run each</td>
+<td>sim (ours), 16 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>cast clouds: a 0.3 m kerb found from 8.6 m, a 0.15 m one from 4.7 m, a 0.10 m one never; no steps on slopes or ramps to 10°, camber, a 7.5 cm bump, grass</td>
+<td>tests</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gaps:</strong> a 0.15 m kerb is found only in the last 4.7 m: enough at 1 m/s, not at 3 m/s.
+A 0.10 m kerb is never found. The memory forgets after 10 s: a car stood longer before a
+kerb it saw only from far forgets it. Not tried on the real VLP-16.</p>
+</section>
+<section class="card"><h2 id="14-something-moving-near-the-car">14. Something moving near the car</h2>
+<p>Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just
+stop." (<a href="stopping.html#anything-moving-near-stop-and-wait-17-nov">stopping</a>)</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The things</td>
+<td>the lidar's cubes grouped and followed: each one's place and speed</td>
+<td><code>aav_things</code>, <code>things:=true</code> (on in <code>stack:=ours</code>)</td>
+</tr>
+<tr>
+<td>Behaviour planner</td>
+<td>anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still</td>
+<td><code>aav_behaviour_rs</code> (<code>aav_behaviour</code>)</td>
+</tr>
+<tr>
+<td>Ego</td>
+<td>holds the automatic drivers to the road ahead's limit: 0 at its end</td>
+<td><code>aav_ego_rs</code></td>
+</tr>
+<tr>
+<td>Stop zone</td>
+<td>still stops the car for anything in front of the bumper, moving or not</td>
+<td><code>aav_navigation</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Where, when</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sim-check --movers</code>, 2 runs each: held every time. Oncoming car 11.6 s, 2.4-3.5 m clear; a person on the roadside 20.3 s, 6.6-6.8 m clear; cross traffic 2.0 s, 19 m clear</td>
+<td>sim (ours), 17 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><code>sim-check --moving</code> (a person crossing): APPROACH, then held 17.7 s, 1.9 m clear</td>
+<td>sim (ours), 17 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><code>sim-check --behaviour-things</code> (a parked box): passed, never held, once the hold waits for 1.5 s of moving, not growing (it held 8 times before)</td>
+<td>sim (ours), 17 Nov</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td>the car</td>
+<td>not measured</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gaps:</strong> a hold needs the things, which need the lidar: the radar alone holds nothing.
+Someone walking beside the car the same way, within 10 m, holds it for as long as they
+walk. The things' speeds come from the lidar's cubes: a still thing whose shape changes as
+the car passes can look like it moves.</p>
+</section>
+<section class="card"><h2 id="the-biggest-gaps">The biggest gaps</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Hazards</th>
+<th>TODO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nothing measured on the car</strong></td>
+<td>all</td>
+<td>157, 158</td>
+</tr>
+<tr>
+<td>Today's ESP32 has no command timeout; the Rust one is unflashed</td>
+<td>6</td>
+<td>45, 158</td>
+</tr>
+<tr>
+<td>What the Kar-Tech and the red button cut</td>
+<td>4</td>
+<td>S1, S2</td>
+</tr>
+<tr>
+<td>The steering's centre, and the brake's limits</td>
+<td>7, 8</td>
+<td>67, A7</td>
+</tr>
+<tr>
+<td>A steering actuator that doesn't follow is noticed in the sim only (no feedback on the car yet); nothing but the e-stop and the drag stops a dead brake (the watchdog's OVERSPEED only notices it, in the sim)</td>
+<td>7, 8</td>
+<td>159, 207</td>
+</tr>
+<tr>
+<td>The car runs 14 % over its command in the sim</td>
+<td>3</td>
+<td>163</td>
+</tr>
+<tr>
+<td>Obstacles stop only navigation and the AI slot</td>
+<td>1</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="add-a-number">Add a number</h2>
+<ol>
+<li>Run the test; write down where (car, bench, sim), the date, and who.</li>
+<li>Put it in the hazard's table, newest last.</li>
+<li>A car number replaces nothing: keep the sim's beside it.</li>
+</ol></section>
+<nav class="prevnext"><a class="prev" href="car-model.html"><small>Previous</small>← One car model</a>
+<a class="next" href="ghost-obstacles.html"><small>Next</small>Ghost obstacles →</a></nav>
+</main>
+<footer>Source: <code>docs/safety-case.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

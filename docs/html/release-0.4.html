@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0.4-rc1: start here · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/release-0.4.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>0.4-rc1: start here</h1>
+<div class="meta">5 min read · 5 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a class="here" href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#what-04-means">What 0.4 means</a><a href="#one-command-per-job">One command per job</a><a href="#how-ours-compares-the-leagues-final-16-nov">How ours compares: the league&#x27;s final (16 Nov)</a><a href="#whats-new-since-03">What&#x27;s new since 0.3</a><a href="#not-in-04-rc1">Not in 0.4-rc1</a></nav>
+<div class="lead"><p>The first release candidate of 0.4. <strong>Beta, not 1.0</strong> (Ben, 14 Nov: "We are still in beta
+stages"). It is about refining what we have, not adding more.</p>
+<p><strong>Going to the car (Wed 18 Nov):</strong> <a href="release-0.4-rc1.html">0.4-rc1 on the car</a>: install,
+first checks, what is untested there, the seven blockers.</p></div>
+<section class="card"><h2 id="what-04-means">What 0.4 means</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Must-have</th>
+<th>Where it stands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Our own stack</strong> drives by default (<code>stack:=ours</code>)</td>
+<td>✅ since 14 Nov: our costmap, planner, navigator, follower, behaviour, all in Rust where it is heavy</td>
+</tr>
+<tr>
+<td><strong>Reverse</strong> everywhere the plan says</td>
+<td>✅ on the lot and the campus; a three-point turn in a 6.5 m street works, with 4-6 changes of direction where 3 are planned (TODO 174)</td>
+</tr>
+<tr>
+<td><strong>No oscillation</strong> (no swaying)</td>
+<td>🔧 ours swayed about 2 times more than Nav2 at their last side-by-side (15 Nov; was 3-5 times); on mapped road, <code>path:=lane</code> sways least of all (TODO 167, 168)</td>
+</tr>
+<tr>
+<td>Nav2 and Gazebo only as yardsticks</td>
+<td>✅ both deleted early: Nav2 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>), Gazebo 16 Nov (<a href="../history/gazebo-as-it-was.md">as it was</a>); TODO 184. Ravensim, ours, is the only simulator</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="one-command-per-job">One command per job</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>I want to</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>set up a new laptop</td>
+<td><a href="getting-started.html">Getting started</a> (30 minutes)</td>
+</tr>
+<tr>
+<td>drive the simulated car</td>
+<td><code>pixi run sim</code>, then <code>pixi run dev-window --live</code></td>
+</tr>
+<tr>
+<td>see everything at once</td>
+<td><code>pixi run demo</code> (<code>--debug</code> adds the seeing screen)</td>
+</tr>
+<tr>
+<td>check it all works</td>
+<td><code>pixi run sim-check</code> (2 min)</td>
+</tr>
+<tr>
+<td>compare options of our stack</td>
+<td><code>pixi run measure controllers --stacks own own_calm --reversing</code> (<a href="league.html">the league</a>)</td>
+</tr>
+<tr>
+<td>drive Carleton's campus</td>
+<td><code>pixi run campus</code>, then <code>pixi run sim world:=campus</code> (<a href="campus.html">Campus</a>)</td>
+</tr>
+<tr>
+<td>run every test</td>
+<td><code>pixi run test</code></td>
+</tr>
+<tr>
+<td>go to the car</td>
+<td><a href="car-day.html">Car day</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="how-ours-compares-the-leagues-final-16-nov">How ours compares: the league's final (16 Nov)</h2>
+<p>Nav2's last score before it was deleted, on the same three tours in Ravensim:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Ours</th>
+<th>Nav2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Legs reached (lot, campus, University Drive)</td>
+<td><strong>30 of 30</strong> (3 runs)</td>
+<td>14 of 20 (2 runs)</td>
+</tr>
+<tr>
+<td>Off the path, campus tour</td>
+<td><strong>0.17 m</strong></td>
+<td>0.83 m</td>
+</tr>
+<tr>
+<td>Time over the centre line, University Drive</td>
+<td><strong>0 %</strong></td>
+<td>13 %</td>
+</tr>
+</tbody>
+</table></div>
+<p>The final configuration: <strong>no champion changed</strong>; <code>pose:=ndt_ekf</code> is the one to try
+next (<a href="league-results-2026-11-16.html#final-configuration">the league, 16 Nov</a>).</p>
+<p>On University Drive (16 Nov, 3 runs each), ours with <code>path:=lane</code> (now its default):
+0 % of the time over the centre line (61 % before), 0.11 m off the lane centre, sway 0.055 m/s².</p>
+</section>
+<section class="card"><h2 id="whats-new-since-03">What's new since 0.3</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>New</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Driving</td>
+<td>our stack is the default; our navigator serves Nav2's action names, so no goal sender knows which runs</td>
+</tr>
+<tr>
+<td>Planning</td>
+<td>Hybrid-A* in our planner (<code>planner_search:=hybrid</code>), a challenger; smooth lattice moves tried (no win)</td>
+</tr>
+<tr>
+<td>Behaviour</td>
+<td>a new feature type: the behaviour planner, the road ahead, the stopping law (<a href="features.html#behaviour">Features</a>)</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td>the watchdog warns when one of our own nodes stops (never stops the car for it)</td>
+</tr>
+<tr>
+<td>Simulator</td>
+<td><code>/clock</code> rate (<code>clock_hz:=</code>), seeded wheel noise and slip (<code>wheel_noise:=</code>, <code>wheel_slip:=</code>), the campus widens its fence itself</td>
+</tr>
+<tr>
+<td>Credit</td>
+<td><a href="acknowledgements.html">Acknowledgements</a>: every project and paper we built on</td>
+</tr>
+<tr>
+<td>Lanes (16 Nov)</td>
+<td><code>path:=lane</code>: the plan follows the right lane's centre on mapped road (the lot falls back to the lattice); now <code>ours</code>' path</td>
+</tr>
+<tr>
+<td>Map chunks (16 Nov)</td>
+<td>NDT on the campus loads 64 m chunks (ready in 0.02 s, not 2.5 s); the things list drops low cubes on the map's walls (9.9 things to 1.7, every person still found); the dev window draws the chunks (key H)</td>
+</tr>
+<tr>
+<td>Safety (16 Nov)</td>
+<td>the watchdog latches OVERSPEED (a stuck throttle) as it does STUCK steering</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="not-in-04-rc1">Not in 0.4-rc1</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Left</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The real car</td>
+<td>needs the hardware lead's go-ahead and the seven blockers (<a href="release-0.4-rc1.html">on the car</a>; TODO 158, 173)</td>
+</tr>
+<tr>
+<td>The middle level planning far goals in chunks</td>
+<td>NDT and the things use chunks; the planner's rolling window loses far campus goals, so it stays a challenger (TODO 175)</td>
+</tr>
+<tr>
+<td>The <code>firm</code> speed loop</td>
+<td>stops on the line, but sways more on the lot: a challenger (TODO 163)</td>
+</tr>
+<tr>
+<td>More heavy Python nodes in Rust</td>
+<td>six run in Rust by default since 17 Nov (ego, behaviour, watchdog, localization_health, lidar_scan, things); the rest in TODO 185</td>
+</tr>
+</tbody>
+</table></div>
+<p>The whole list: <code>TODO.md</code>. What works today: <a href="status.html">Status</a>.</p></section>
+<nav class="prevnext"><a class="prev" href="overview.html"><small>Previous</small>← Overview</a>
+<a class="next" href="release-0.4-rc1.html"><small>Next</small>0.4-rc1 on the car →</a></nav>
+</main>
+<footer>Source: <code>docs/release-0.4.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

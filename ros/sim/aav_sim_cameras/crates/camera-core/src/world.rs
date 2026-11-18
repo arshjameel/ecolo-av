@@ -16,17 +16,23 @@ use crate::geom::{Pose, Rotation, Vec3};
 /// A linear colour, each part 0 to 1 (as SDF's).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rgb {
+    /// Red.
     pub r: f32,
+    /// Green.
     pub g: f32,
+    /// Blue.
     pub b: f32,
 }
 
 impl Rgb {
+    /// A colour from red, green and blue (0 to 1, linear).
+    #[must_use]
     pub const fn new(r: f32, g: f32, b: f32) -> Self {
         Self { r, g, b }
     }
 
     /// As a picture's bytes (sRGB, 0 to 255).
+    #[must_use]
     pub fn to_srgb8(self) -> [u8; 3] {
         let encode = |c: f32| {
             let c = c.clamp(0.0, 1.0);
@@ -45,33 +51,66 @@ impl Rgb {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Geometry {
     /// Flat, facing up its z, `x` by `y`.
-    Plane { x: f64, y: f64 },
+    Plane {
+        /// m, along x.
+        x: f64,
+        /// m, along y.
+        y: f64,
+    },
     /// A box centred on its pose.
-    Cuboid { x: f64, y: f64, z: f64 },
+    Cuboid {
+        /// m, along x.
+        x: f64,
+        /// m, along y.
+        y: f64,
+        /// m, along z.
+        z: f64,
+    },
     /// Centred on its pose, its axis along z.
-    Cylinder { radius: f64, length: f64 },
+    Cylinder {
+        /// m.
+        radius: f64,
+        /// m, along z.
+        length: f64,
+    },
     /// A flat octagon, its face looking along its +x: a stop sign's plate. `across` is
     /// flat side to flat side. A picture on it fills the square around it, its right edge
     /// to the octagon's +y (as seen from in front).
-    Octagon { across: f64, thickness: f64 },
+    Octagon {
+        /// m, flat side to flat side.
+        across: f64,
+        /// m, along x.
+        thickness: f64,
+    },
     /// An OBJ file (`crate::obj`), scaled along each axis, in its own frame: the campus's
     /// meshes, the stop sign's plate. Its picture coordinates come from the file.
-    Mesh { file: PathBuf, scale: [f64; 3] },
+    Mesh {
+        /// The OBJ file.
+        file: PathBuf,
+        /// x, y and z scale.
+        scale: [f64; 3],
+    },
 }
 
 /// How a shape looks.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Look {
+    /// Its colour (linear).
     pub colour: Rgb,
     /// A picture (PNG) laid over it, multiplied by the colour.
     pub texture: Option<PathBuf>,
+    /// Its bumps as a normal map (PNG), if it has one: drawn with `graphics:=pretty`.
+    pub normal_map: Option<PathBuf>,
 }
 
 impl Look {
+    /// A plain colour, no picture.
+    #[must_use]
     pub fn colour(r: f32, g: f32, b: f32) -> Self {
         Self {
             colour: Rgb::new(r, g, b),
             texture: None,
+            normal_map: None,
         }
     }
 }
@@ -81,9 +120,11 @@ impl Look {
 pub struct Shape {
     /// Unique in its world: the simulator moves or removes things by name.
     pub name: String,
+    /// What the shape is.
     pub geometry: Geometry,
     /// In the map frame (or in base_link, for the car's own body).
     pub pose: Pose,
+    /// How it looks.
     pub look: Look,
 }
 
@@ -104,6 +145,7 @@ pub struct SimWorld {
     pub sky: Rgb,
     /// Light from everywhere, 0 to 1 (SDF's `<scene><ambient>`, its grey level).
     pub ambient: f32,
+    /// The sun, if the world has one.
     pub sun: Option<Sun>,
     /// Fixed in the map frame.
     pub shapes: Vec<Shape>,
@@ -111,20 +153,29 @@ pub struct SimWorld {
     pub car: Vec<Shape>,
 }
 
-/// The road world's colours (`aav_gazebo/worlds/road.sdf`) and `docs/campus.md`'s looks.
+/// The road world's colours (`aav_sim_models/worlds/road.sdf`) and `docs/campus.md`'s looks.
 pub mod looks {
     use super::Rgb;
 
+    /// The sky.
     pub const SKY: Rgb = Rgb::new(0.49, 0.69, 0.80);
+    /// Grass.
     pub const GRASS: Rgb = Rgb::new(0.31, 0.51, 0.27);
+    /// The road's tarmac.
     pub const TARMAC: Rgb = Rgb::new(0.37, 0.37, 0.37);
+    /// Painted road lines.
     pub const LINE: Rgb = Rgb::new(0.92, 0.92, 0.92);
+    /// Concrete: kerbs and pavements.
     pub const CONCRETE: Rgb = Rgb::new(0.70, 0.70, 0.66);
+    /// Brick walls.
     pub const BRICK: Rgb = Rgb::new(0.30, 0.09, 0.05);
+    /// Posts.
     pub const POST: Rgb = Rgb::new(0.55, 0.55, 0.55);
     /// The stop sign's red (`tools/make_stop_sign.py`'s sRGB 193, 39, 45).
     pub const STOP_RED: Rgb = Rgb::new(0.54, 0.022, 0.027);
+    /// Our car's body.
     pub const CAR_BODY: Rgb = Rgb::new(0.02, 0.2, 0.05);
+    /// Tyres.
     pub const TYRE: Rgb = Rgb::new(0.05, 0.05, 0.05);
 }
 
@@ -141,11 +192,13 @@ fn plain(c: Rgb) -> Look {
     Look {
         colour: c,
         texture: None,
+        normal_map: None,
     }
 }
 
-/// A stop sign as `aav_gazebo/models/stop_sign`: a 0.75 m plate with its centre 2 m up,
+/// A stop sign as `aav_sim_models/models/stop_sign`: a 0.75 m plate with its centre 2 m up,
 /// on a grey post. `foot` is the post's foot; `yaw` turns the face (0 = facing +x).
+#[must_use]
 pub fn stop_sign(name: &str, foot: [f64; 2], yaw: f64, texture: Option<PathBuf>) -> Vec<Shape> {
     let r = Rotation::from_yaw(yaw);
     let at = |dx: f64, z: f64| {
@@ -168,6 +221,7 @@ pub fn stop_sign(name: &str, foot: [f64; 2], yaw: f64, texture: Option<PathBuf>)
                     looks::STOP_RED
                 },
                 texture,
+                normal_map: None,
             },
         ),
         shape(
@@ -188,6 +242,7 @@ impl SimWorld {
     /// lines, a 0.3 m concrete kerb along its right edge, a 1 m box on the left, and a red
     /// stop sign 25 m on at the right, facing the car. The car starts at the origin
     /// facing +x, as in Gazebo.
+    #[must_use]
     pub fn test_world() -> Self {
         use looks::*;
         let mut shapes = vec![
@@ -275,6 +330,10 @@ impl SimWorld {
 
     /// The car's body for the chase camera, from vehicle.yaml: a box the body's size from
     /// 0.25 m up, and four tyres.
+    ///
+    /// # Errors
+    ///
+    /// [`CarError`] if vehicle.yaml has no readable `vehicle.body`.
     pub fn with_car(mut self, vehicle_yaml: &str) -> Result<Self, CarError> {
         self.car = car_body(vehicle_yaml)?;
         Ok(self)
@@ -316,6 +375,10 @@ struct VehicleFile {
 }
 
 /// The car's body in base_link (on the ground under the rear axle).
+///
+/// # Errors
+///
+/// [`CarError`] if vehicle.yaml has no readable `vehicle.body`.
 pub fn car_body(vehicle_yaml: &str) -> Result<Vec<Shape>, CarError> {
     let v = serde_yaml_ng::from_str::<VehicleFile>(vehicle_yaml)
         .map_err(CarError)?

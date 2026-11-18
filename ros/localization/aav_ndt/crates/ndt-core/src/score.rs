@@ -27,6 +27,7 @@ pub struct Gauss {
 impl Gauss {
     /// For cubes of `side` m, when `outlier_ratio` of the points belong to no curve
     /// (Autoware's default is 0.55).
+    #[must_use]
     pub fn new(side: f64, outlier_ratio: f64) -> Self {
         let c1 = 10.0 * (1.0 - outlier_ratio);
         let c2 = outlier_ratio / side.powi(3);
@@ -37,6 +38,7 @@ impl Gauss {
     }
 
     /// The most one point can score against one cube: right on its mean.
+    #[must_use]
     pub fn best(&self) -> f64 {
         -self.d1
     }
@@ -45,6 +47,7 @@ impl Gauss {
 /// The score at one pose, and, if asked for, its derivatives.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Evaluation {
+    /// The score: higher is a better fit.
     pub score: f64,
     /// ∂score/∂(x, y, yaw).
     pub gradient: Vector3<f64>,
@@ -56,6 +59,7 @@ pub struct Evaluation {
 
 /// Scores `scan` (points in `base_link`) placed at `pose` on `map`. With `derivatives`
 /// false, only the score and `matched` (the line search's cheap call).
+#[must_use]
 pub fn evaluate(
     map: &CubeMap,
     gauss: &Gauss,

@@ -1,6 +1,7 @@
 //! Clamping and rate limiting.
 
 /// Move `current` toward `target` by at most `max_rate * dt`.
+#[must_use]
 pub fn slew(current: f32, target: f32, max_rate: f32, dt: f32) -> f32 {
     let step = max_rate * dt;
     if target > current + step {
@@ -12,6 +13,8 @@ pub fn slew(current: f32, target: f32, max_rate: f32, dt: f32) -> f32 {
     }
 }
 
+/// `x` without its sign.
+#[must_use]
 pub fn abs(x: f32) -> f32 {
     if x < 0.0 {
         -x

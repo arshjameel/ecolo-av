@@ -18,6 +18,11 @@ use crate::{
 pub struct Hz(f64);
 
 impl Hz {
+    /// A rate of `hz` frames a second.
+    ///
+    /// # Errors
+    ///
+    /// [`RigError::BadRate`] if `hz` isn't a positive number.
     pub fn new(hz: f64) -> Result<Self, RigError> {
         if hz.is_finite() && hz > 0.0 {
             Ok(Self(hz))
@@ -26,11 +31,14 @@ impl Hz {
         }
     }
 
+    /// Frames a second.
+    #[must_use]
     pub fn get(self) -> f64 {
         self.0
     }
 
     /// The time between two frames.
+    #[must_use]
     pub fn period(self) -> Duration {
         Duration::from_secs_f64(1.0 / self.0)
     }
@@ -45,35 +53,43 @@ pub struct CameraSpec {
     pub topic: String,
     /// The header's frame_id, as Gazebo's `gz_frame_id`: the link, not an optical frame.
     pub frame_id: String,
+    /// Its picture's size and focal length.
     pub lens: Lens,
+    /// How often it draws.
     pub rate: Hz,
     /// The camera's link in base_link (x ahead, z up).
     pub mount: Pose,
     /// Clip planes, metres.
     pub near: f64,
+    /// m: nothing farther is drawn.
     pub far: f64,
     /// Publishes camera_info too (Gazebo's chase camera has none).
     pub camera_info: bool,
     /// Sees the car's own body (only the chase camera).
     pub sees_car: bool,
     /// The picture on this topic instead of `<topic>/image_raw` (camera_info stays): the
-    /// faults relay, as Gazebo's bridge does it (`aav_gazebo` `faults.relayed`).
+    /// faults relay (`sim_camera_relay`, `aav_sim_models` `faults.CAMERA_RELAYED`).
     pub image_override: Option<String>,
 }
 
 impl CameraSpec {
+    /// The picture's topic.
+    #[must_use]
     pub fn image_topic(&self) -> String {
         self.image_override
             .clone()
             .unwrap_or_else(|| format!("{}/image_raw", self.topic))
     }
 
+    /// The camera_info topic.
+    #[must_use]
     pub fn info_topic(&self) -> String {
         format!("{}/camera_info", self.topic)
     }
 
     /// Where a point in the world (map) lands in this camera's picture, with the car at
     /// `car` (base_link in map). `None` behind the camera.
+    #[must_use]
     pub fn project(&self, car: &Pose, world_point: Vec3) -> Option<Pixel> {
         let camera_in_map = car.then(&self.mount);
         let in_link = camera_in_map.inverse().apply(world_point);
@@ -85,23 +101,29 @@ impl CameraSpec {
 /// Every camera, in the config's order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rig {
+    /// The cameras.
     pub cameras: Vec<CameraSpec>,
 }
 
 /// Why the rig can't be read.
 #[derive(Debug)]
 pub enum RigError {
+    /// A file isn't the YAML expected: its name and the reader's error.
     Yaml(String, serde_yaml_ng::Error),
     /// A camera's mount names a frame vehicle.yaml doesn't have.
     NoMount {
+        /// The camera.
         camera: String,
+        /// The frame it names.
         frame: String,
     },
     /// Neither `mount` nor `mount_xyz`, or both.
     MountChoice(String),
     /// Neither `focal_px` nor `horizontal_fov`, or both.
     LensChoice(String),
+    /// A camera's lens can't be made: its name and why.
     Lens(String, LensError),
+    /// A rate (Hz) that isn't a positive number.
     BadRate(f64),
 }
 
@@ -178,6 +200,10 @@ struct VehicleFile {
 impl Rig {
     /// From `config/cameras.yaml`'s text and `vehicle.yaml`'s. Cameras with
     /// `enabled: false` are left out.
+    ///
+    /// # Errors
+    ///
+    /// [`RigError`] if a file isn't the YAML expected, or a camera's mount, lens or rate can't work.
     pub fn from_yaml(cameras: &str, vehicle: &str) -> Result<Self, RigError> {
         let file: CamerasFile = serde_yaml_ng::from_str(cameras)
             .map_err(|e| RigError::Yaml("cameras.yaml".into(), e))?;
@@ -227,6 +253,7 @@ impl Rig {
     }
 
     /// Only the named cameras, in the rig's order.
+    #[must_use]
     pub fn only(mut self, names: &[&str]) -> Self {
         self.cameras.retain(|c| names.contains(&c.name.as_str()));
         self

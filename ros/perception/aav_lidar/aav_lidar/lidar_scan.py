@@ -14,7 +14,7 @@ Parameters  min_height, max_height (m above the road; navigation.launch.py sets 
             outline (its points don't count) from vehicle.yaml's body.
 
 navigation.launch.py lidar:=true starts it, with its parameters from nav2.yaml (lidar_scan:).
-The local costmap's lidar_layer and collision_monitor read the scan.
+The local costmap's lidar_layer and the stop zone read the scan.
 """
 
 import signal

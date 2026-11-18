@@ -49,11 +49,13 @@ impl EstopButton {
     }
 
     /// Whether a burst is still being sent.
+    #[must_use]
     pub fn is_sending(&self) -> bool {
         self.left > 0
     }
 
     /// How many times it was pressed since the HUD started.
+    #[must_use]
     pub fn presses(&self) -> u32 {
         self.presses
     }

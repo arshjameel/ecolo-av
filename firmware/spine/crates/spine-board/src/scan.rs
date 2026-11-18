@@ -11,6 +11,7 @@ use embedded_hal::i2c::I2c;
 /// 0x78..0x7F are reserved for 10-bit addressing. The Jrks sit at 0x04 and 0x05, inside
 /// the range the I2C spec reserves, so 0x01..0x07 are probed too.
 pub const FIRST: u8 = 0x01;
+/// The last address probed.
 pub const LAST: u8 = 0x77;
 
 /// What a scan is doing.
@@ -19,9 +20,15 @@ pub enum ScanState {
     /// Never asked for since boot.
     Idle,
     /// Probing; `next` is the next address.
-    Running { next: u8 },
+    Running {
+        /// The next address to probe.
+        next: u8,
+    },
     /// Waiting: the spine is armed. It goes on from `next` once disarmed.
-    Paused { next: u8 },
+    Paused {
+        /// The address it goes on from.
+        next: u8,
+    },
     /// Every address probed.
     Done,
 }
@@ -35,6 +42,8 @@ pub struct BusScan {
 }
 
 impl BusScan {
+    /// Not scanning; nothing found.
+    #[must_use]
     pub const fn new() -> Self {
         BusScan {
             state: ScanState::Idle,
@@ -77,6 +86,8 @@ impl BusScan {
         };
     }
 
+    /// Where the scan is.
+    #[must_use]
     pub fn state(&self) -> ScanState {
         self.state
     }

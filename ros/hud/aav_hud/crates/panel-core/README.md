@@ -20,7 +20,7 @@ the three marks ──► steering_limits ──► the lines to copy;  CHECK �
 | Module | Holds |
 |---|---|
 | `config` | `PanelConfig` from `config/hw_panel.yaml` (built in); `Topic`, `Number`, `NODE_NAME` = `hw_panel` |
-| `vehicle` | `Vehicle` from vehicle.yaml (built in): `wheelbase`, `max_steering_angle`, `speed_wheels` (`SpeedWheels`) |
+| `vehicle` | `Vehicle` from vehicle.yaml (built in): `wheelbase`, `max_steering_angle`, `speed_wheels` (`SpeedWheels`), `wheel_diameter` |
 | `rules` | `aav_actuator_tests/safety.py`, ported with its test vectors: `Kind`, `source_kind`, `preflight_refusal` (`Refusal`), `unseen` (`Sample`, `Unseen`), `taken_over` |
 | `gate` | `gate(&Situation, Caps)` -> `Gate::On { cap, watch_unseen }` or `Gate::Off(Off)`: SIM and BENCH on (1.0 m/s); REAL on stands only past the preflight's refusal and with a wheel speed seen (0.3 m/s); REAL on the ground, unannounced, REPLAY off |
 | `buttons` | `Buttons`: `press(Press)`, `set_go`, `observe_mux`, `zero(Zeroed)`, `command()` -> `Option<Command>`; `Command::from_steering` (ω = v tan δ / L) |
@@ -29,6 +29,7 @@ the three marks ──► steering_limits ──► the lines to copy;  CHECK �
 | `steering_limits` | `compute(&Marks)` -> `Limits` (equal limits, sign, gain, warnings) or `MeasurementError`; `firmware_steering`, `vehicle_yaml`, `report`: `aav_legacy`'s `steering_limits.py`, ported |
 | `easter_egg` | the little robot (hud-core's `robot`): `watch(...)` -> `Watch` (still? an e-stop or a warning? the screen's fingerprint); `PassWatch::just_passed` (a check just PASSED: it drives across) |
 | `graphs` | the GRAPHS page: `Graphs` (60 s of ego's and the mux's commands, the Pi's frames, the ESP32's `rx`, the uplink's counts, the IMU's yaw), `line()` -> `Point`s (gaps at lost lines and restarts), `Stats` (now, avg, low, high), `hops()` -> a `HopReport` per `Hop` (`Verdict`: OK, DIFFERENT, STALE, NO DATA, NOT TESTED), `counts()` (the status strip), `Freezer` (FREEZE, and at an e-stop) |
+| `measure` | the MEASURE page (TODO 71): `Odometer` (`update(speed, now)`: \|speed\| x time by the trapezoid rule, gaps over 0.5 s or an unknown speed not counted but told; `distance`, `top`, `mean()`, `reset()`), `Entry` (a number typed in), `wheel_check` -> `WheelCheck` (not yet and why, or the error, the suggested diameter, PASS within 1 %), `report` (SAVE's lines) |
 | `esp32` | the ESP32's JSON status lines (`firmware/status/`): `parse_line` -> `StatusLine` (`Heartbeat`, `Status` with `Rx`, `Event`, `Unknown`); tested on `golden.jsonl` |
 | `ws` | just enough WebSocket (RFC 6455) to read them: `Url`, `request`, `check_answer`, `Decoder` -> `Message`, `client_frame` (a pong or a close only) |
 | `sweep` | `Sweep::start`, `step()` -> the jog target, `outcome()`: `Passed`, or `Stopped` with the leg, why (`Stop`: resistance, no movement, not arrived, position lost, the firmware) and where |
@@ -59,7 +60,7 @@ It builds on [`hud-core`](../hud-core/README.md) (`health`, `origin`, `vehicle`,
 - Jog targets stay inside `jog_min`..`jog_max`; the lock-to-lock check's stay inside the computed
   limits, and it won't start with the wheels outside them.
 - The check stops, and holds where the wheels are, at the first sign of resistance.
-- Nothing here writes vehicle.yaml or the firmware: `result_file` is for a person to copy.
+- Nothing here writes vehicle.yaml or the firmware: `result_file` and `measure::report` are for a person to copy.
 - The GRAPHS page only reads. A hop is OK only when its value changed in the window and
   matched the hop before: ego and the mux pair by stamp, the Pi's frames and the ESP32's
   `rx` by counter and check byte; the Pi must follow the mux (correlation 0.5 or more).

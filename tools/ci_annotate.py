@@ -11,7 +11,7 @@ when no test case failed (tools/test.sh, lint or the build stopped first).
 
   python3 tools/ci_annotate.py [log] [build]      (defaults: test.log, build)
 
-The nightly Gazebo job (`sim`) uses --sim: one annotation per FAIL line of sim-check's own
+The nightly Ravensim job (`sim`) uses --sim: one annotation per FAIL line of sim-check's own
 output (or its end, if none), then the errors in each launch log (Gazebo's crash, a node
 that died), the last of them:
 

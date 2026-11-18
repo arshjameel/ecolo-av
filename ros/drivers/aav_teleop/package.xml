@@ -12,11 +12,22 @@
   <exec_depend>joy</exec_depend>
   <exec_depend>teleop_twist_joy</exec_depend>
   <exec_depend>joy_teleop</exec_depend>
-  <exec_depend>aav_safety</exec_depend>   <!-- joy_alive -->
+  <exec_depend>aav_safety</exec_depend>   <!-- joy_alive, joy_alive_impl:=python -->
+  <exec_depend>aav_joy_alive_rs</exec_depend>   <!-- joy_alive, the default -->
+  <exec_depend>aav_description</exec_depend>   <!-- vehicle.py: joy_alive_impl -->
   <exec_depend>teleop_twist_keyboard</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+
+  <!-- test/test_joy_chain.py: the pad -> joy_alive -> teleop -> twist_mux -> ego. -->
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>aav_command_mux</test_depend>
+  <test_depend>aav_ego</test_depend>
+  <test_depend>aav_ego_rs</test_depend>
+  <test_depend>twist_mux</test_depend>
+  <test_depend>ackermann_msgs</test_depend>
+  <test_depend>sensor_msgs</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

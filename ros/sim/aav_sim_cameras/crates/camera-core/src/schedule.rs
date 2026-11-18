@@ -17,12 +17,20 @@ pub struct Timer {
 }
 
 impl Timer {
+    /// A timer for this rate, due at its first look.
+    #[must_use]
     pub fn new(rate: Hz) -> Self {
         Self {
             period: rate.period(),
             next: None,
             last: None,
         }
+    }
+
+    /// When the next picture is due: `None` before the first look.
+    #[must_use]
+    pub fn next(&self) -> Option<Duration> {
+        self.next
     }
 
     /// Is a picture due at `now`? If so, the timer moves on to the next whole period.
@@ -65,6 +73,16 @@ mod tests {
         assert!(t.due(ms(550)));
         assert!(!t.due(ms(560)));
         assert!(t.due(ms(600)));
+    }
+
+    #[test]
+    fn says_when_the_next_picture_is_due() {
+        let mut t = Timer::new(Hz::new(10.0).unwrap());
+        assert_eq!(t.next(), None);
+        assert!(t.due(ms(0)));
+        assert_eq!(t.next(), Some(ms(100)));
+        assert!(!t.due(ms(60)));
+        assert_eq!(t.next(), Some(ms(100)));
     }
 
     #[test]

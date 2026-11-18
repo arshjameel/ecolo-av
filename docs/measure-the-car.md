@@ -3,7 +3,10 @@
 Written 15 October 2026. **Hand this to whoever measures the car.** Fill in the
 "Measured" column, photograph the filled sheet, and send it back. The numbers go into
 `ros/bringup/aav_description/config/vehicle.yaml`, the one place the software reads them from.
-Every number there today is a guess.
+Some are measured since 1 Nov (Betsi: the wheelbase, both tracks, the IMU, the lidar, the
+GPS's height); the rest are still guesses. Which is which:
+[Car measurements](car_measurements.md#what-is-measured-and-what-is-still-a-guess).
+This page is the **tape-measure sheet**; the driving tests are [Know the car](know-the-car.md).
 
 > **The short version**
 > - **Everything is measured from one spot: on the floor, under the middle of the rear axle.** We call it the **zero point**.
@@ -145,16 +148,16 @@ The route steps for these rows: [the measuring map](#the-measuring-map).
 
 | # | What | From → to | Guess today | **Measured** (cm) |
 |---|---|---|---|---|
-| M1 | **Wheelbase** | rear hub centre → front hub centre, same side. Do both sides | 157 | L: ____ R: ____ |
-| M2 | **Track, rear** | left rear tyre centre → right rear tyre centre | 77 | |
-| M2b | **Track, front** | the same, at the front | 77 | |
-| M3 | **Wheel diameter** | the floor → the top of the tyre, with the car's weight on it | 30 | |
+| M1 | **Wheelbase** | rear hub centre → front hub centre, same side. Do both sides | 156.1, measured 1 Nov: check | L: ____ R: ____ |
+| M2 | **Track, rear** | left rear tyre centre → right rear tyre centre | 85, measured 1 Nov: check | |
+| M2b | **Track, front** | the same, at the front | 65, measured 1 Nov: check | |
+| M3 | **Wheel diameter** | the floor → the top of the tyre, with the car's weight on it | 36 (tape, 1 Nov); 42 loaded | |
 | M3b | Tyre width | across the tread | 10 | |
 | M4 | **Length** | rear bumper → front bumper | 200 | |
 | M4b | **Rear overhang** | the zero point → the rear bumper (write it as a plain number) | 20 | |
 | M4c | **Width** | widest point, side to side (mirrors in, if they fold) | 100 | |
 | M4d | **Height** | the floor → the highest point of the roof, **not** counting the lidar | 150 | |
-| M4e | Ground clearance | the floor → the lowest point under the car | (none) | |
+| M4e | Ground clearance | the floor → the lowest point under the car | 22, measured 1 Nov | |
 
 ## 4. Steering
 
@@ -167,10 +170,10 @@ The route steps for these rows: [the measuring map](#the-measuring-map).
 
 !!! note "Two wheel angles, one number"
     `max_steering_angle` in `vehicle.yaml` is neither wheel: it's the **middle** of the
-    front axle (the bicycle model, which ego and Nav2 use). The inside wheel turns
+    front axle (the bicycle model, which ego and the planner use). The inside wheel turns
     further, the outside one less. To get it from M5's two angles (in radians):
     `vehicle.centre_angle(v, inside, outside)` in `aav_description/vehicle.py`.
-    Use the smaller of left and right. Gazebo's own number is worked out from it.
+    Use the smaller of left and right. The simulator's own number is worked out from it.
 
 ## 5. Where each sensor is
 
@@ -182,13 +185,13 @@ of its window** (the band that spins or glows).
 
 | # | Sensor | Measure its | Guess today x / y / z (cm) | **x** | **y** | **z** | **Pointing / tilt / lean** (°) |
 |---|---|---|---|---|---|---|---|
-| S1 | **GPS antenna** | puck centre | 0 / 0 / 150 | | | | (not needed). Ben, 23 Oct: it is **over the rear axle** already: check x is about 0, and measure its height ([why it matters](learn-gps.md#mount-the-antenna-over-the-rear-axle)) |
-| S2 | **IMU** | board centre | 50 / 0 / 40 | | | | see below |
+| S1 | **GPS antenna** | puck centre | 0 / 0 / 140 (z measured 1 Nov) | | | | (not needed). Ben, 23 Oct: it is **over the rear axle** already: check x is about 0, and measure its height ([why it matters](learn-gps.md#mount-the-antenna-over-the-rear-axle)) |
+| S2 | **IMU** | board centre | 49 / 0 / 144 (measured 1 Nov) | | | | see below |
 | S3 | **Radar** (TI mmWave, on the grill) | the middle of its flat front face | 180 / 0 / 45 | | | | 0 / __ / __ |
 | S4 | **Front left camera** | lens centre | 175 / +29 / 155 | | | | 0 / __ / __ |
 | S5 | **Front right camera** | lens centre | 175 / −29 / 155 | | | | 0 / __ / __ |
 | S6 | **Rear camera** (orange housing) | lens centre | −20 / 0 / 90 | | | | 180 / __ / __ |
-| S7 | **Lidar** (roof tripod) | the middle of its window | 90 / 0 / 180 | | | | __ / __ / __ |
+| S7 | **Lidar** (roof tripod) | the middle of its window | 49 / 0 / 152 (measured 1 Nov) | | | | __ / __ / __ |
 | S8 | Wheel-speed sensors | the front left and front right wheels (Hall sensors on the brake rotors) | (front, both) | | | | |
 | S8b | Brake rotor holes | count the holes on each front rotor | (none) | L: ____ R: ____ | | | |
 
@@ -212,7 +215,7 @@ Y). Write which way each points:
 Ben's estimate is about 400 lb (181 kg). The four corners show where the weight sits
 along the car (the **centre of mass**); M7b shows how high it sits. Ego uses both: a
 heavy load slows speeding up and braking, and a high centre of mass on the car's narrow
-track (77 cm) lowers the speed at which it could tip in a turn. The maths:
+track (75 cm in the file: 65 front, 85 rear) lowers the speed at which it could tip in a turn. The maths:
 `vehicle.centre_of_mass()` in `aav_description/vehicle.py` (docs/car_measurements.md).
 
 ## 7. Tips

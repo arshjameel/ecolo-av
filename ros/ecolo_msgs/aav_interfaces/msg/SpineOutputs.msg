@@ -3,7 +3,7 @@
 #
 # Only in simulation: on the car these go over I2C and wires, never to ROS. Published by
 # spine_sim on /vehicle/sim/spine_outputs at 100 Hz in Gazebo's spine profile
-# (sim.launch.py spine:=true), where gazebo_adapter's actuator model turns them into what
+# (sim.launch.py spine:=true), where sim_adapter's actuator model turns them into what
 # Gazebo's car does.
 
 std_msgs/Header header

@@ -1,7 +1,8 @@
 """
 A planned path as the trackers see it: where the car is along it, and how it bends.
 
-No ROS here. Odom frame (the path is moved there once, when it arrives: `moved`), metres
+No ROS here. The path's own frame: odom, or map with the car brought there by the held
+map -> odom (`slow_frame.py`, TODO 186; `moved` is the old way, map into odom), metres
 and radians. The pose is base_link's, on the ground under the rear axle.
 
 ```text

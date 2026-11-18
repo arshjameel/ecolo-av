@@ -14,6 +14,8 @@ pub struct Line {
 }
 
 impl Line {
+    /// An empty line: it shows as sixteen spaces.
+    #[must_use]
     pub const fn blank() -> Self {
         Line {
             chars: [b' '; WIDTH],
@@ -22,6 +24,7 @@ impl Line {
     }
 
     /// A line from formatted text: `Line::from_fmt(format_args!("SPD:{:.2}", v))`.
+    #[must_use]
     pub fn from_fmt(args: fmt::Arguments<'_>) -> Self {
         let mut line = Line::blank();
         // Writing to a Line never fails: the extra is dropped.
@@ -30,17 +33,20 @@ impl Line {
     }
 
     /// The 16 characters, for the display.
+    #[must_use]
     pub fn bytes(&self) -> &[u8; WIDTH] {
         &self.chars
     }
 
     /// The text, with the padding.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         // Only ASCII ever goes in (`write_str` replaces the rest).
         core::str::from_utf8(&self.chars).unwrap_or("")
     }
 
     /// Put `c` in the last column: the page's pin mark.
+    #[must_use]
     pub fn with_last(mut self, c: u8) -> Self {
         self.chars[WIDTH - 1] = c;
         self
@@ -70,7 +76,9 @@ impl fmt::Debug for Line {
 /// The two lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Screen {
+    /// The first line.
     pub top: Line,
+    /// The second line.
     pub bottom: Line,
 }
 

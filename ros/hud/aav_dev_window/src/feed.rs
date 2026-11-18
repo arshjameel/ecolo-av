@@ -17,6 +17,7 @@ use hud_core::{
     health::Health,
     origin::{Announcement, Origins},
     picture::Picture,
+    things::Thing,
     vehicle::VehicleStatus,
 };
 use map_core::{
@@ -74,8 +75,87 @@ pub enum Update {
     PlanAhead(Vec<(f64, f64)>),
     /// Where a full brake now stops the car.
     StopPoint(StopMark),
+    /// The road ahead (`/world/road_ahead`), on the map.
+    RoadAhead(RoadAhead),
     /// The squiggly line's numbers: the gap, the stop, the room.
     Ahead(Summary),
+    /// The things near the car (`/world/things`, odom), named by the camera
+    /// (`hud_core::things`: kind, words, colour).
+    Things(Vec<Thing>),
+    /// The street route (`/drivers/nav/route/path`, map): the zoomed-out level's line.
+    Route(Vec<Point>),
+}
+
+/// The road ahead (`/world/road_ahead`, the whole-car design), on the map: where the car
+/// may go, how fast, and the end it may not pass.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct RoadAhead {
+    /// The line, with the speed limit at each point (m/s).
+    pub line: Vec<(Point, f64)>,
+    /// The end: where it is, and the line's heading there (rad).
+    pub end: Option<(Point, f64)>,
+    /// Each stop: where, and why.
+    pub stops: Vec<(Point, String)>,
+}
+
+impl RoadAhead {
+    /// From the message's parts: the points, their headings and limits, the spacing
+    /// (m), the end and each stop as metres along the line.
+    pub fn from_parts(
+        points: &[(f64, f64, f64, f64)],
+        spacing: f64,
+        end: f64,
+        stops: &[(f64, String)],
+    ) -> Self {
+        let line = points
+            .iter()
+            .map(|&(x, y, _, limit)| (Point::new(x, y), limit))
+            .collect();
+        let at = |along: f64| along_line(points, spacing, along);
+        Self {
+            line,
+            end: at(end),
+            stops: stops
+                .iter()
+                .filter_map(|(along, why)| at(*along).map(|(p, _)| (p, why.clone())))
+                .collect(),
+        }
+    }
+
+    /// The fastest limit on the strip (m/s), for the colours; 0 for none.
+    pub fn top_speed(&self) -> f64 {
+        self.line.iter().map(|&(_, v)| v).fold(0.0, f64::max)
+    }
+}
+
+/// How fast a point is, 0 (stop) to 1 (the strip's top speed): the colour's share.
+pub fn speed_share(limit: f64, top: f64) -> f32 {
+    if top > 0.0 && limit.is_finite() {
+        (limit / top).clamp(0.0, 1.0) as f32
+    } else {
+        0.0
+    }
+}
+
+/// The point `along` metres down the line, and the heading there; `None` with no line.
+fn along_line(points: &[(f64, f64, f64, f64)], spacing: f64, along: f64) -> Option<(Point, f64)> {
+    let last = points.len().checked_sub(1)?;
+    if spacing <= 0.0 || !along.is_finite() {
+        return None;
+    }
+    let step = (along.max(0.0) / spacing).floor();
+    let i = if step >= last as f64 {
+        last
+    } else {
+        step as usize
+    };
+    let (x, y, heading, _) = points[i];
+    if i == last {
+        return Some((Point::new(x, y), heading));
+    }
+    let (nx, ny, _, _) = points[i + 1];
+    let t = (along.max(0.0) - i as f64 * spacing) / spacing;
+    Some((Point::new(x + t * (nx - x), y + t * (ny - y)), heading))
 }
 
 /// A base_link point, placed with the car's pose in odom or on the map.
@@ -103,6 +183,17 @@ pub trait Feed: Send + Sync {
 
     /// Sets the e-stop. Only ever sets it: clearing is `pixi run clear estop`.
     fn press_estop(&mut self) -> Result<(), String>;
+
+    /// Cancels the navigator's goal (TODO 114): Nav2's, or ours under the same action name.
+    fn cancel_goal(&mut self) -> Result<(), String> {
+        Err("this feed can't cancel a goal".to_owned())
+    }
+
+    /// Swaps `aav_track`'s follower while it drives (TODO 114): `tracker := name` on the
+    /// track node, which refuses unless started with `live_swap:=true` (the simulator).
+    fn swap_tracker(&mut self, name: &'static str) -> Result<(), String> {
+        Err(format!("this feed can't swap to {name}"))
+    }
 
     /// A frame reached the screen. A live feed's heartbeat says so, while frames keep coming.
     fn frame_drawn(&self) {}
@@ -399,6 +490,28 @@ mod tests {
             }],
         });
         origins
+    }
+
+    #[test]
+    fn the_road_ahead_places_its_end_and_stops_on_the_line() {
+        let points: Vec<_> = (0..5)
+            .map(|i| (f64::from(i), 0.0, 0.0, 1.0 - 0.25 * f64::from(i)))
+            .collect();
+        let road = RoadAhead::from_parts(&points, 1.0, 2.5, &[(2.5, "sign".into())]);
+        assert_eq!(road.end, Some((Point::new(2.5, 0.0), 0.0)));
+        assert_eq!(road.stops, vec![(Point::new(2.5, 0.0), "sign".to_string())]);
+        assert_eq!(road.top_speed(), 1.0);
+        assert_eq!(speed_share(0.5, road.top_speed()), 0.5);
+        assert_eq!(speed_share(0.5, 0.0), 0.0);
+        // Past the last point: the last point.
+        let far = RoadAhead::from_parts(&points, 1.0, 9.0, &[]);
+        assert_eq!(far.end, Some((Point::new(4.0, 0.0), 0.0)));
+    }
+
+    #[test]
+    fn an_empty_road_ahead_has_no_end() {
+        let road = RoadAhead::from_parts(&[], 0.5, 0.0, &[]);
+        assert_eq!(road, RoadAhead::default());
     }
 
     #[test]

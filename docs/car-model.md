@@ -15,10 +15,10 @@ steering, braking and acceleration ... have the algorithms know about lag".
 | Rust twin | `ros/bringup/aav_description/car-model/` (crate `car-model`) |
 | Shared test vectors | `car-model/vectors.json`, written by `car-model/gen_vectors.py` |
 | Numbers | `vehicle.yaml`: `actuators:`, `wheelbase`, `max_steering_angle` |
-| Old import path | `aav_gazebo.actuator_model` still works: the same objects |
+| Old import path | `aav_sim_models.actuator_model` still works: the same objects |
 
 Why `aav_description`: it already holds `vehicle.yaml` and `vehicle.py`, and ego and
-Gazebo both depend on it. The model is part of "what the car is".
+the simulator both depend on it. The model is part of "what the car is".
 
 ## The picture
 
@@ -119,7 +119,7 @@ it passes the winner's message on **unchanged**. So ego keeps each lag-aware dri
 
 | Slot | Who will publish it |
 |---|---|
-| `nav` | `aav_track`'s lag-aware trackers, the Rust MPPI (both drive through Nav2) |
+| `nav` | `aav_track`'s lag-aware trackers, the Rust MPPI (both drive through navigation's slot) |
 | `scripted`, `point`, `ai` | nobody yet |
 
 The slots ego watches are its `lag_aware_drivers` parameter.
@@ -145,7 +145,7 @@ into `odom` with TF at the stamp, then matches it against its plan.
 |---|---|
 | `aav_description/test/test_car_model.py` | dead times, the circle, braking, predict; the vectors are up to date |
 | `car-model/tests/vectors.rs` | the Rust gives the Python's states (1e-9; 1e-3 with a speed loop, which is f32 in Rust) |
-| `aav_gazebo/test/test_actuator_model.py` | Gazebo's car is unchanged |
+| `aav_sim_models/test/test_actuator_model.py` | the simulated car is unchanged |
 | `aav_ego/test/test_lag_lead.py` | the lead: when it runs, its limits, ego's limits after it |
 | `aav_ego/test/test_trace_ahead.py` | the trace and the twin |
 | `aav_ego/test/test_ego_node.py` | the node: `/ego/trace`; the lead off for a lag-aware driver |

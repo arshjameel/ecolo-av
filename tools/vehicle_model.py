@@ -33,7 +33,8 @@ from aav_ego import vehicle_model as vm  # noqa: E402
 import numpy as np  # noqa: E402
 
 VEHICLE_YAML = ROOT / 'ros/bringup/aav_description/config/vehicle.yaml'
-GAZEBO_XACRO = ROOT / 'ros/bringup/aav_description/urdf/aav.gazebo.xacro'
+# Ravensim's car behind the actuator model (sim-core's TwistFollower): its steering lag.
+SIM_CAR = ROOT / 'ros/sim/aav_simulator/crates/sim-core/src/car.rs'
 IMG = ROOT / 'docs' / 'img'
 
 
@@ -49,29 +50,29 @@ def table(title, rows):
     return '\n'.join(out)
 
 
-def gazebo_steer_gain(path=GAZEBO_XACRO):
-    """Gazebo's AckermannSteering steer_p_gain: its joints turn at gain x error (1/s)."""
-    found = re.search(r'<steer_p_gain>([\d.]+)</steer_p_gain>', Path(path).read_text())
-    return float(found.group(1)) if found else 1.0      # gz-sim's own default
+def sim_steer_gain(path=SIM_CAR):
+    """Ravensim's steering gain (1/s): its wheels follow at 1 / TwistFollower's steer_lag."""
+    found = re.search(r'steer_lag: ([\d.]+),', Path(path).read_text())
+    return 1.0 / float(found.group(1)) if found else 1.0
 
 
-# s: gazebo_adapter sends the model's angle 50 times a second (rate_hz); holding each for
+# s: sim_adapter sends the model's angle 50 times a second (rate_hz); holding each for
 # 20 ms delays it by half that, on average. Measured: 1/gain + 11-12 ms
-# (tools/gazebo_steering.py, TODO 52c).
+# (in Gazebo, TODO 52c; Ravensim copies its gain).
 ADAPTER_HOLD = 0.5 / 50.0
 
 
-def gazebo_extra_lag(gain=None):
-    """Return how much later than the model Gazebo's wheels steer (s): 1/gain + the hold."""
-    return 1.0 / (gain or gazebo_steer_gain()) + ADAPTER_HOLD
+def sim_extra_lag(gain=None):
+    """Return how much later than the model Ravensim's wheels steer (s): 1/gain + the hold."""
+    return 1.0 / (gain or sim_steer_gain()) + ADAPTER_HOLD
 
 
-def gazebo_rows(model):
-    """Gazebo's car against the model: its steering has one more lag (gazebo_extra_lag)."""
-    gain = gazebo_steer_gain()
-    extra = gazebo_extra_lag(gain)
-    rows = [['v m/s', 'the car (model)', f'Gazebo (+{extra * 1000:.0f} ms lag)',
-             'the car: delay left', 'Gazebo: delay left']]
+def sim_rows(model):
+    """Ravensim's car against the model: its steering has one more lag (sim_extra_lag)."""
+    gain = sim_steer_gain()
+    extra = sim_extra_lag(gain)
+    rows = [['v m/s', 'the car (model)', f'Ravensim (+{extra * 1000:.0f} ms lag)',
+             'the car: delay left', 'Ravensim: delay left']]
     for v in vm.lateral_speeds():
         ol = model.lateral_open_loop(v)
         gz = vm.series(ol, (np.array([1.0]), np.array([extra, 1.0])))
@@ -432,9 +433,9 @@ def main(argv=None):
     for title, rows in vm.summary(model):
         print(table(title, rows))
         print()
-    gain, rows = gazebo_rows(model)
-    print(table(f"Gazebo's car: steer_p_gain {gain:g} and the adapter's hold add a "
-                f'{1000 * gazebo_extra_lag(gain):.0f} ms lag after the actuator model '
+    gain, rows = sim_rows(model)
+    print(table(f"Ravensim's car: steering gain {gain:g} and the adapter's hold add a "
+                f'{1000 * sim_extra_lag(gain):.0f} ms lag after the actuator model '
                 '(typical delays)', rows))
     print()
     if args.no_figures:

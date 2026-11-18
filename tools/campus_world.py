@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Carleton's campus for Gazebo, Nav2 and NDT, from OpenStreetMap.
+Carleton's campus for Ravensim, our costmap and NDT, from OpenStreetMap.
 
     pixi run campus              download the map if it's missing, then build maps/campus/
     pixi run campus --osm FILE   build from another .osm (tools/get_carla_osm.sh makes one)
@@ -12,7 +12,8 @@ It makes, in maps/campus/ (not in git; this tool makes it again):
     meshes/, textures/    what the world draws, with bump maps
     campus.pgm, .yaml     one Nav2 map of the whole campus: only roads and lots are free
     place.yaml            where the car starts, what went in, the OpenStreetMap credit
-    lanes.yaml            the painted roads' centre lines and widths, to score lane keeping
+    lanes.yaml            the painted roads' centre lines and widths, to score lane keeping;
+                          also the lane map (aav_description lane_map.py)
 
 and maps/ndt/campus.pcd: NDT's map, **a guess** sampled from the same shapes. A real drive
 replaces it (pixi run ndt-map build); a drive suggests changes and a person accepts them.
@@ -38,6 +39,7 @@ import hashlib
 import math
 from pathlib import Path
 import random
+import shutil
 import subprocess
 import sys
 from xml.etree import ElementTree
@@ -52,6 +54,7 @@ sys.path.insert(0, str(ROOT / 'ros' / 'sim' / 'aav_carla'))
 sys.path.insert(0, str(ROOT / 'tools'))
 from aav_carla.frames import geodetic_to_enu  # noqa: E402, I100
 from aav_carla.georef import CARLETON  # noqa: E402
+import campus_lanelet  # noqa: E402, I100
 from ndt_map import write_pcd  # noqa: E402, I100
 
 NAVSAT = ROOT / 'ros' / 'localization' / 'aav_localization' / 'config' / 'navsat.yaml'
@@ -63,7 +66,7 @@ CELL = 0.25            # m: one cell of Nav2's map, the same as the test lot's
 KERB_HEIGHT = 0.30     # m: "foot tall" (Ben, 5 Nov)
 KERB_TOP = 0.30        # m wide on top: it also hides the grass's 0.25 m steps along its edge
 NDT_SPACING = 0.33     # m between the guessed map's points: 9 to a square metre of wall
-NDT_FLOOR = 0.45       # m: above the grass (aav_gazebo worlds.CAMPUS_NDT_FLOOR)
+NDT_FLOOR = 0.45       # m: above the grass (aav_sim_models worlds.CAMPUS_NDT_FLOOR)
 NDT_CEILING = 16.0     # m: the lidar's top beam (15 degrees) reaches about this at its 45 m
 START_LOT = 'P4'       # the car's first home: a lot beside the datum
 SIMPLIFY_OVER = 400    # corners: rings longer than this are simplified to SIMPLIFY_TO metres
@@ -978,14 +981,8 @@ def world_sdf(names, datum):
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>
-    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
-    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
-    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
-    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
-    <plugin filename="gz-sim-navsat-system" name="gz::sim::systems::NavSat"/>
-    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
-      <render_engine>ogre2</render_engine>
-    </plugin>
+    <!-- Ravensim draws the cameras and casts the lidar and radar here (worlds.has_sensors). -->
+    <plugin filename="ravensim" name="ravensim::sensors"/>
 
     <scene>
       <ambient>0.55 0.55 0.58 1</ambient>
@@ -1067,6 +1064,12 @@ def main():
     campus = read_osm(args.osm, project)
     box = box_round()
     meshes, solids, grid, walls, trunks, report, lots, lanes = build(campus, box)
+    # The stop lines, white, where the Lanelet2 map's are (the car stops at them).
+    bars = [bar for bar in campus_lanelet.site_stop_bars((lat0, lon0))
+            if any(in_box(p, box) for p in bar)]
+    for bar in bars:
+        meshes['edge'].flat(bar, PAINT_Z)
+    report['stop_lines'] = len(bars)
     (args.out / 'meshes').mkdir(parents=True, exist_ok=True)
     names = [name for name, mesh in meshes.items() if mesh.vertices]
     triangles = 0
@@ -1098,6 +1101,25 @@ def main():
         + yaml.safe_dump({'roads': lanes}, default_flow_style=None))
     print(f'{args.out}: {report}')
     print(f'start at {start}')
+    chunk_map(args.out / 'campus.yaml', args.out / 'chunks')
+    lanelets = campus_lanelet.write(args.out / 'campus.osm', (lat0, lon0))
+    print(f'lanelets: {lanelets} in {args.out / "campus.osm"}')
+
+
+def chunk_map(map_yaml: Path, out: Path):
+    """Cut the map, and NDT's, into 64 m chunk files (chunk-map, ndt-chunks: TODO 175)."""
+    crate = ROOT / 'ros' / 'bringup' / 'aav_description' / 'map-chunks'
+    if shutil.which('cargo') is None:
+        print('chunks: skipped (no cargo here); the whole map is written')
+        return
+    subprocess.run(['cargo', 'run', '-q', '--release', '--locked', '--bin', 'chunk-map', '--',
+                    str(map_yaml), str(out)], cwd=crate, check=True)
+    ndt = ROOT / 'maps' / 'ndt' / 'campus.pcd'
+    if ndt.exists():
+        origin = yaml.safe_load(map_yaml.read_text())['origin']
+        subprocess.run(['cargo', 'run', '-q', '--release', '--locked', '--bin', 'ndt-chunks',
+                        '--', str(ndt), str(out / 'ndt'), str(origin[0]), str(origin[1])],
+                       cwd=ROOT / 'ros' / 'localization' / 'aav_ndt', check=True)
 
 
 if __name__ == '__main__':

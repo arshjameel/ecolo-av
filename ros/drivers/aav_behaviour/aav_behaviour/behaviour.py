@@ -22,14 +22,22 @@ the stopping law's v_cap(left) (aav_description stop_law.py). The lowest one bin
 | Reason | `left` is | The final stop |
 |---|---|---|
 | `sign` | camera range to the sign − the watcher's `stop_distance_m` | the `stop_sign` lock |
-| `obstacle` | to a thing in the lane, less bumper and stop zone | the `stop_zone` lock |
+| `obstacle` | to a thing in the lane (moving, with things), less bumper and gap | `stop_zone` |
 | `fence` | along the plan to where the geofence would close NEAR | the `geofence` lock |
 | `goal` | along the plan to its end | Nav2's goal check |
+
+**Something moving near: hold** (Ben, 16 Nov: "if we see a car people or stuff moving
+around us we should likely just stop"). A moving thing (`/world/things`) within
+`Nearby.radius` of the car, or on the road ahead within `Nearby.within` s at its speed
+(`moving_near`), puts the machine in WAIT, reason `moving`, from any state but the
+e-stop's and ASK's; the node then ends the road ahead at the car (a `moving` stop at 0 m),
+so ego holds the car at 0. It goes again `release_hold` s after the last one has gone or
+stood still. Only a still thing is passed (the planner's lane pass).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -39,7 +47,15 @@ DRIVE, APPROACH, STOPPED, WAIT, GO, ASK = 'DRIVE', 'APPROACH', 'STOPPED', 'WAIT'
 STATES = (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK)
 
 # The lock that makes each reason's final stop (twist_mux's names, aav_command_mux).
-LOCK_OF = {'sign': 'stop_sign', 'obstacle': 'stop_zone', 'fence': 'geofence', 'goal': None}
+LOCK_OF = {'sign': 'stop_sign', 'obstacle': 'stop_zone', 'fence': 'geofence', 'goal': None,
+           'moving': None, 'stop_line': None}
+# A stop line on the route (Lanelet2's, TODO 220): no lock; the road ahead ends at it, and
+# StopLines takes it away once the car has stood there.
+STOP_LINE = 'stop_line'
+# The reasons whose release waits for the stop to stop binding (not a sign: its lock's).
+LETS_GO = ('obstacle', 'fence', 'goal', STOP_LINE)
+# The reason (and the road ahead's stop) while something moving near holds the car.
+MOVING_REASON = 'moving'
 LOCKS = ('estop', 'stop_sign', 'stop_zone', 'geofence', 'sensors')
 
 
@@ -56,6 +72,10 @@ class Settings:
     odom_stale: float = 0.5    # s without odometry: the cap goes to the floor
     sign_lost: float = 5.0     # s without a sign point in APPROACH for the sign: DRIVE
     passed: float = 1.0        # m past a sign's stop with no lock: DRIVE, and a warning
+    # s an obstacle must stay gone before APPROACH lets go of it (TODO 189): a thing at the
+    # lane's edge drops in and out of it tick by tick, and the car sped up and slowed again
+    # four times for one person crossing. Slowing stays at once; only the release waits.
+    release_hold: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -79,6 +99,7 @@ class World:
     sign_age: float = math.inf             # s since the last sign point
     goal_active: bool = False
     goal_aborted: bool = False             # this tick's news: Nav2 aborted the goal
+    moving: bool = False                   # something moving near (moving_near): hold
 
 
 @dataclass(frozen=True)
@@ -105,6 +126,11 @@ class Behaviour:
         self.since = -math.inf      # when the current state began
         self.cap = 0.0              # the last cap sent (0.0: no limit)
         self.last = None            # the last tick's time
+        self.sign_lock = False      # the stop_sign lock, last tick
+        self.served = -math.inf     # when the stop_sign lock last went off
+        self.gone_since = None      # APPROACH(obstacle): when the obstacle stopped binding
+        self.moving_seen = -math.inf    # when something moving near was last seen
+        self.holding = False        # this tick: held for something moving near
 
     # --- the pieces ------------------------------------------------------------------
 
@@ -145,15 +171,23 @@ class Behaviour:
         self.last = w.now
         warnings: List[str] = []
         locks = {name: bool(on) for name, on in w.locks.items() if on}
+        w = self._unserved(w, 'stop_sign' in locks)
         still = w.speed is not None and abs(w.speed) < s.still
         stop = self.binding(w.stops)
         left = stop.left if stop is not None else math.inf
+        # Something moving near, or gone or still for under release_hold s: hold.
+        if w.moving:
+            self.moving_seen = w.now
+        held = w.moving or w.now - self.moving_seen < s.release_hold
 
         # Any state: the e-stop and an aborted goal.
         if locks.get('estop'):
             self._go(WAIT, 'e-stop', w.now)
         elif w.goal_aborted:
             self._go(ASK, 'the goal was aborted', w.now)
+        elif held and self.state in (DRIVE, APPROACH, STOPPED, GO):
+            self.gone_since = None
+            self._go(WAIT, MOVING_REASON, w.now)
         elif self.state == DRIVE:
             if locks and still:
                 self._go(WAIT, ', '.join(sorted(locks)), w.now)
@@ -164,8 +198,12 @@ class Behaviour:
         elif self.state == STOPPED:
             self._go(WAIT, self.reason, w.now)
         elif self.state == WAIT:
-            if not locks:
+            if held and not locks:
+                self._go(WAIT, MOVING_REASON, w.now)
+            elif not locks:
                 self._go(GO, self.reason, w.now)
+            elif self.reason == MOVING_REASON:
+                self._go(WAIT, ', '.join(sorted(locks)), w.now)
             elif w.near and still:
                 self._go(ASK, 'the geofence is NEAR: only a person can clear it', w.now)
             elif (set(locks) != {'stop_sign'} and w.now - self.since > s.ask_after):
@@ -177,12 +215,20 @@ class Behaviour:
             elif stop is not None and self.cap_for(stop.left) <= max(self.cap, s.floor):
                 self._go(APPROACH, stop.reason, w.now)
         elif self.state == ASK:
-            if not locks:
+            if held and not locks:
+                self._go(WAIT, MOVING_REASON, w.now)
+            elif not locks:
                 self._go(GO, self.reason, w.now)
+        self.holding = self.state == WAIT and self.reason == MOVING_REASON
 
         # The cap for the state.
         if self.state == DRIVE:
             want = self.cap_for(left) if stop is not None else 0.0
+        elif self.state == APPROACH and self.gone_since is not None:
+            # Holding the release (TODO 189): keep the cap it had; a new stop still binds.
+            want = max(self.cap, s.floor)
+            if stop is not None:
+                want = min(want, max(self.cap_for(left), s.floor))
         elif self.state == APPROACH:
             mine = [x for x in w.stops if x.reason == self.reason]
             ahead = min((x.left for x in mine), default=left)
@@ -211,13 +257,31 @@ class Behaviour:
         self.cap = cap
         return Decision(self.state, self.reason, cap, left, tuple(warnings))
 
+    def _unserved(self, w: World, sign_lock: bool) -> World:
+        """
+        Return the world without a sign already stopped for.
+
+        Once the sign's lock goes off, its last point (from before the stop) is behind the
+        car's stop: it would bring APPROACH(sign) back at the floor until it went stale. Only
+        a point newer than the lock's end is a new sign (the watcher sends none while it
+        ignores signs, after a stop).
+        """
+        if self.sign_lock and not sign_lock:
+            self.served = w.now
+        self.sign_lock = sign_lock
+        if math.isfinite(self.served) and w.now - w.sign_age <= self.served:
+            return replace(w, stops=[x for x in w.stops if x.reason != 'sign'])
+        return w
+
     def _approach(self, w: World, locks: Dict[str, bool], still: bool, stop: Optional[Stop],
                   warnings: List[str]) -> None:
         s = self.s
         mine = [x for x in w.stops if x.reason == self.reason]
-        if self.reason in ('obstacle', 'fence', 'goal') and self.binding(mine) is None:
+        if self.reason in LETS_GO and self.binding(mine) is None:
             # No longer binds: a new goal's long path, or the obstacle moved further off.
             mine = []
+        if mine or self.reason != 'obstacle':
+            self.gone_since = None
         lock = LOCK_OF.get(self.reason)
         if lock is not None and locks.get(lock) and still:
             self._go(STOPPED, self.reason, w.now)
@@ -231,10 +295,32 @@ class Behaviour:
             self._go(DRIVE, '', w.now)
         elif self.reason == 'goal' and not w.goal_active:
             self._go(DRIVE, '', w.now)
-        elif self.reason in ('obstacle', 'fence', 'goal') and not mine:
-            # What we slowed for has gone (the obstacle moved, a new plan): speed up again.
+        elif self.reason in LETS_GO and not mine:
+            # What we slowed for has gone (the obstacle moved, a new plan): speed up again;
+            # an obstacle only once it has stayed gone release_hold s (TODO 189).
+            if self.reason == 'obstacle' and stop is None:
+                if self.gone_since is None:
+                    self.gone_since = w.now
+                if w.now - self.gone_since < s.release_hold:
+                    return
+            self.gone_since = None
             self._go(GO, self.reason, w.now) if stop is None else self._go(
                 APPROACH, stop.reason, w.now)
+
+
+def active_plan(point: Sequence[Tuple[float, float]], nav: Sequence[Tuple[float, float]],
+                nav_fresh: bool) -> Tuple[Sequence[Tuple[float, float]], str]:
+    """
+    Return (the plan the car is driving, whose: 'point', 'nav' or '').
+
+    A drive to a point outranks Nav2 in twist_mux (25 against 20), so its line A -> B wins
+    while it runs (a non-empty `point`); else Nav2's /plan if fresh; else nothing.
+    """
+    if len(point) >= 2:
+        return point, 'point'
+    if nav and nav_fresh:
+        return nav, 'nav'
+    return [], ''
 
 
 def path_left(points: Sequence[Tuple[float, float]], x: float, y: float) -> Tuple[float, float]:
@@ -286,6 +372,87 @@ def along_until(points: Sequence[Tuple[float, float]], x: float, y: float, bad) 
     return math.inf
 
 
+@dataclass(frozen=True)
+class StopLineSettings:
+    """When a stop line counts as stopped at. m, m/s, s."""
+
+    near: float = 1.5       # the car's stop within this of the line's: standing at it
+    still: float = 0.05     # slower than this is standing
+    dwell: float = 2.0      # s standing at it: a full stop, then go
+    off_path: float = 3.0   # a line further than this off the plan isn't on the way
+    forget: float = 30.0    # a served line this far from the car is forgotten
+    same: float = 1.0       # two lines this close are the same line
+
+
+class StopLines:
+    """
+    The stop lines on the route (TODO 220): stop at each, then go, as at a seen stop sign.
+
+    The planner sends the route's stop lines (/drivers/nav/planner/route_stops, from the
+    Lanelet2 map). Each one on the plan is a stop ('stop_line', WAIT) whose `left` puts
+    the front bumper on the line. Standing within `near` m of it for `dwell` s serves it:
+    it goes, and the car goes on (GO, gently), unless something else holds it (a person
+    crossing: the moving hold). One passed by more than `near` m is served too. A served
+    line is forgotten once the car is `forget` m from it, so the next lap stops again.
+
+        car ●──────────────▶│ line          left = along to the line - front
+                  front ◀──▶│
+    """
+
+    def __init__(self, settings: StopLineSettings = StopLineSettings()):
+        self.s = settings
+        self.lines: List[Tuple[float, float]] = []
+        self.served: List[Tuple[float, float]] = []
+        self.still_since: Optional[float] = None
+
+    def set_lines(self, lines: Sequence[Tuple[float, float]]) -> None:
+        """Take the route's stop lines (map frame, in order)."""
+        self.lines = [(float(x), float(y)) for x, y in lines]
+
+    def _served(self, line: Tuple[float, float]) -> bool:
+        return any(math.hypot(line[0] - p[0], line[1] - p[1]) < self.s.same
+                   for p in self.served)
+
+    def update(self, now: float, plan: Sequence[Tuple[float, float]],
+               car: Optional[Tuple[float, float]], speed: Optional[float],
+               front: float) -> List[float]:
+        """Return the unserved lines' `left`s (m from the car to its stop), nearest first."""
+        s = self.s
+        if car is None or len(plan) < 2:
+            self.still_since = None
+            return []
+        x, y = car
+        self.served = [p for p in self.served if math.hypot(p[0] - x, p[1] - y) <= s.forget]
+        car_left, _ = path_left(plan, x, y)
+        ahead: List[Tuple[float, Tuple[float, float]]] = []
+        for line in self.lines:
+            if self._served(line):
+                continue
+            line_left, off = path_left(plan, line[0], line[1])
+            if off > s.off_path:
+                continue
+            left = car_left - line_left - front
+            if left < -s.near:
+                self.served.append(line)    # passed it
+                continue
+            ahead.append((left, line))
+        if ahead:
+            k = min(range(len(ahead)), key=lambda i: ahead[i][0])
+            left, line = ahead[k]
+            if abs(left) <= s.near and speed is not None and abs(speed) < s.still:
+                if self.still_since is None:
+                    self.still_since = now
+                if now - self.still_since >= s.dwell:
+                    self.served.append(line)
+                    self.still_since = None
+                    del ahead[k]
+            else:
+                self.still_since = None
+        else:
+            self.still_since = None
+        return sorted(a[0] for a in ahead)
+
+
 def lane_ahead(ranges: Sequence[float], angle_min: float, angle_increment: float,
                front: float, half_width: float, reach: float = 30.0) -> float:
     """
@@ -302,6 +469,190 @@ def lane_ahead(ranges: Sequence[float], angle_min: float, angle_increment: float
         px, py = r * math.cos(a), r * math.sin(a)
         if front < px <= reach and abs(py) <= half_width:
             nearest = min(nearest, px)
+    return nearest
+
+
+@dataclass(frozen=True)
+class Seen:
+    """One thing from /world/things, in odom: centre, speed over the ground, size (m, m/s)."""
+
+    x: float
+    y: float
+    vx: float
+    vy: float
+    length: float
+    width: float
+
+
+MOVING = 0.3   # m/s over the ground: slower is parked (the planner goes round it)
+
+
+@dataclass(frozen=True)
+class Crossing:
+    """When a thing beside the lane counts as in it: it will walk in before the car comes."""
+
+    across: float = 0.2     # m/s towards the lane, at least: slower is walking along it
+    slack: float = 2.0      # s: in the lane up to this long after the car would reach it
+    horizon: float = 6.0    # s: no further ahead than this (a speed's error grows with time)
+
+
+def moving_ahead(things: Sequence[Seen], car: Tuple[float, float, float], front: float,
+                 half_width: float, reach: float = 30.0, moving: float = MOVING,
+                 speed: float = 0.0, crossing: Optional[Crossing] = Crossing()) -> float:
+    """
+    Return the nearest x (m, base_link) of a moving thing in the lane straight ahead, or inf.
+
+    car: (x, y, yaw) in odom, as the things are; speed: the car's, m/s. The lane is
+    |y| <= half_width, widened by each thing's half width, from the front bumper out to
+    `reach`. A thing slower than `moving` is parked: it is left to the planner, which plans
+    round it (the whole car, "the things"; TODO 162). What moves (a person, a car) is waited
+    for. The stop zone's lock still stops the car for anything, parked or not.
+
+    A thing beside the lane, walking into it, counts too (TODO 194): if at its speed it
+    is in the lane before the car, at its speed, has reached it (plus `crossing.slack`),
+    within `crossing.horizon`. Only what is in the lane now counted before, so a person
+    crossing was seen about a metre from the bumper: too late to slow. None: no crossing.
+    """
+    cx, cy, yaw = car
+    c, s = math.cos(yaw), math.sin(yaw)
+    nearest = math.inf
+    for t in things:
+        if math.hypot(t.vx, t.vy) < moving:
+            continue
+        dx, dy = t.x - cx, t.y - cy
+        px, py = c * dx + s * dy, -s * dx + c * dy
+        near = px - t.length / 2.0
+        if not (front < px + t.length / 2.0 and near <= reach):
+            continue
+        lane = half_width + t.width / 2.0
+        if abs(py) <= lane or (crossing is not None and _walks_in(
+                py, -s * t.vx + c * t.vy, lane, near - front,
+                speed - (c * t.vx + s * t.vy), crossing)):
+            nearest = min(nearest, max(near, front))
+    return nearest
+
+
+def _walks_in(y: float, vy: float, lane: float, gap: float, closing: float,
+              crossing: Crossing) -> bool:
+    """
+    Return whether a thing `y` m to the side, moving `vy` m/s across, is in the lane in time.
+
+    lane: the half width it is in at; gap: m from the bumper to it; closing: m/s the car
+    gains on it. In time: before the car reaches it, plus the slack, within the horizon.
+    """
+    towards = -math.copysign(1.0, y) * vy
+    if towards < crossing.across:
+        return False
+    enters = (abs(y) - lane) / towards
+    reaches = max(0.0, gap) / closing if closing > 0.0 else math.inf
+    return enters <= min(reaches + crossing.slack, crossing.horizon)
+
+
+@dataclass(frozen=True)
+class Nearby:
+    """When a moving thing holds the car (Ben, 16 Nov: "we should likely just stop")."""
+
+    radius: float = 10.0    # m from the car: a moving thing this near holds it
+    within: float = 3.0     # s: one on the road ahead, at its speed, this soon holds it
+    step: float = 0.25      # s between the places it is checked at
+    moving: float = MOVING  # m/s over the ground: slower is still (passed, not waited for)
+
+
+class MovingFor:
+    """
+    Which things have moved long enough to hold the car: `settle` s at `moving` m/s or more.
+
+    The things' tracker gives a parked box a speed for a moment as the car passes and its
+    shape changes, and a new track a guessed one (17 Nov, the road world: bursts of 0.1-0.6 s,
+    tracks seen 3-7 times coasting off at 0.5-1.8 m/s). Something really moving moves on.
+    A run starts only on a thing seen this cloud (not coasting); a sure thing stays sure
+    while it coasts (it walked into the blind zone), until it is slow or gone.
+
+    Nor while it grows: on the campus at 2 m/s, buildings and hedges coming into view grew
+    from under 1 m to 4-9 m in 2-3 s, their middles moving at 1-2 m/s (17 Nov). A run
+    starts again while its size (the longer side) goes over GROW times its smallest plus
+    GROW_SLACK; a person or a car stayed within 2 times (0.43-0.84 m, 1.03-1.35 m).
+
+    The node's `settle` is 1.5 s: at 1 s the lot's thin posts (tracks swapping between
+    them, 1.5-11 m/s), a low patch of grass and the parked box beside the car still held it
+    once a tour or so (3 holds in 7 runs, replayed from the recorded things: 0 at 1.5 s,
+    and every real mover still held).
+    """
+
+    GROW = 1.5          # its size over this times its smallest in the run: start again
+    GROW_SLACK = 0.5    # m
+
+    def __init__(self, settle: float = 1.5, moving: float = MOVING):
+        self.settle, self.moving = settle, moving
+        self.since: Dict[int, Tuple[float, float, float]] = {}   # id -> run's start, sizes
+        self.sure: set = set()               # ids that have moved `settle` s
+
+    def update(self, now: float, things: Sequence[Tuple[int, bool, Seen]]) -> List[Seen]:
+        """Return the things (id, coasting, seen) in order that count as moving at `now`."""
+        since: Dict[int, Tuple[float, float, float]] = {}
+        sure = set()
+        out = []
+        for ident, coasting, t in things:
+            start = self.since.get(ident)
+            was = ident in self.sure
+            size = max(t.length, t.width)
+            if math.hypot(t.vx, t.vy) < self.moving:
+                start, was = None, False
+            elif not coasting:
+                if start is None:
+                    start = (now, size, size)
+                else:
+                    began, low, high = start
+                    low, high = min(low, size), max(high, size)
+                    start = (began, low, high)
+                    if not was and high > self.GROW * low + self.GROW_SLACK:
+                        start = (now, size, size)
+                was = was or now - start[0] >= self.settle
+            elif not was:
+                start = None
+            if start is not None:
+                since[ident] = start
+            if was:
+                sure.add(ident)
+                out.append(t)
+        self.since, self.sure = since, sure
+        return out
+
+
+def moving_near(things: Sequence[Seen], car: Tuple[float, float, float], front: float,
+                road: Sequence[Tuple[float, float]], half_width: float,
+                nearby: Nearby = Nearby()) -> float:
+    """
+    Return the metres from the car to the nearest moving thing that holds it, or inf.
+
+    car: (x, y, yaw) in odom, as the things are; front: the front bumper, m ahead of
+    base_link (the car is the line base_link .. front). road: the road ahead's line in
+    base_link (empty: none). A thing at least `nearby.moving` m/s holds the car if it is
+    within `nearby.radius` (its centre, less half its narrow side), or if at its speed it
+    is within half_width + half its narrow side of the road's line at some time
+    0, step, ... up to `nearby.within` s (a person crossing, cross traffic, an oncoming car
+    in our lane). A still thing never holds it: the planner passes it.
+    """
+    cx, cy, yaw = car
+    c, s = math.cos(yaw), math.sin(yaw)
+    steps = int(nearby.within / nearby.step + 1e-9) if nearby.step > 0.0 else 0
+    nearest = math.inf
+    for t in things:
+        if math.hypot(t.vx, t.vy) < nearby.moving:
+            continue
+        dx, dy = t.x - cx, t.y - cy
+        px, py = c * dx + s * dy, -s * dx + c * dy
+        vx, vy = c * t.vx + s * t.vy, -s * t.vx + c * t.vy
+        size = min(t.length, t.width) / 2.0
+        gap = math.hypot(px - min(max(px, 0.0), front), py) - size
+        holds = gap <= nearby.radius
+        if not holds and road:
+            lane = half_width + size
+            holds = any(path_left(road, px + vx * k * nearby.step,
+                                  py + vy * k * nearby.step)[1] <= lane
+                        for k in range(steps + 1))
+        if holds:
+            nearest = min(nearest, max(0.0, gap))
     return nearest
 
 

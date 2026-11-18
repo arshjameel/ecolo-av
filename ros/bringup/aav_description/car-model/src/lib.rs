@@ -27,6 +27,9 @@
 //! assert_eq!(trace.len(), 100);
 //! assert!(trace[99].x > 0.0 && trace[99].y > 0.0);
 //! ```
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use std::collections::VecDeque;
 use std::fmt;
@@ -145,12 +148,21 @@ struct VehicleSection {
 impl ActuatorConfig {
     /// Read it from a `vehicle.yaml` file. Keys left out (the dead times, today) keep
     /// their defaults; keys it doesn't know are skipped.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError::Read`] if the file can't be read; [`ConfigError::Yaml`] if it
+    /// isn't the YAML expected.
     pub fn from_vehicle_yaml(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let text = std::fs::read_to_string(path).map_err(ConfigError::Read)?;
         Self::from_vehicle_yaml_str(&text)
     }
 
     /// Read it from the text of a `vehicle.yaml`.
+    ///
+    /// # Errors
+    ///
+    /// [`ConfigError::Yaml`] if it isn't the YAML expected.
     pub fn from_vehicle_yaml_str(text: &str) -> Result<Self, ConfigError> {
         let file: VehicleFile = serde_yaml_ng::from_str(text).map_err(ConfigError::Yaml)?;
         let base = file.actuators.unwrap_or_default();
@@ -164,6 +176,7 @@ impl ActuatorConfig {
 
     /// `mass / (mass + payload)`: the share of the empty car's push and braking left
     /// with a load aboard (a = F / m). 1 with no payload.
+    #[must_use]
     pub fn share(&self) -> f64 {
         self.mass / (self.mass + self.payload)
     }
@@ -174,8 +187,11 @@ impl ActuatorConfig {
 pub enum Drive {
     /// Throttle and brake (0..1), and the gear.
     Pedals {
+        /// 0..1.
         throttle: f64,
+        /// 0..1.
         brake: f64,
+        /// The gear: true for reverse.
         reverse: bool,
     },
     /// m/s, negative backwards: a speed loop turns it into the pedals.
@@ -185,12 +201,15 @@ pub enum Drive {
 /// One step's command: how to move, and the steering target (rad, + left).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Command {
+    /// The pedals, or a set speed.
     pub drive: Drive,
+    /// The steering target (rad, + left).
     pub steer: f64,
 }
 
 impl Command {
     /// Forward pedals and a steering target.
+    #[must_use]
     pub fn pedals(throttle: f64, brake: f64, steer: f64) -> Self {
         Command {
             drive: Drive::Pedals {
@@ -203,6 +222,7 @@ impl Command {
     }
 
     /// A set speed (m/s, - backwards) and a steering target.
+    #[must_use]
     pub fn speed(speed: f64, steer: f64) -> Self {
         Command {
             drive: Drive::Speed(speed),
@@ -236,8 +256,11 @@ pub struct CarState {
     pub steer_setpoint: f64,
     /// rad: after the linkage's lag, before the offset.
     pub steer_linkage: f64,
+    /// The throttle commands still in the dead time, oldest first.
     pub throttle_delay: VecDeque<f64>,
+    /// The brake commands still in the dead time, oldest first.
     pub brake_delay: VecDeque<f64>,
+    /// The steering targets still in the dead time, oldest first.
     pub steer_delay: VecDeque<f64>,
 }
 
@@ -265,6 +288,7 @@ impl fmt::Display for ModelError {
 impl std::error::Error for ModelError {}
 
 /// How many steps of `dt` a dead time waits: `floor(dead_time / dt + 0.5)`.
+#[must_use]
 pub fn delay_steps(dead_time: f64, dt: f64) -> usize {
     (dead_time / dt + 0.5).floor().max(0.0) as usize
 }
@@ -289,6 +313,7 @@ pub fn delay(line: &mut VecDeque<f64>, value: f64, steps: usize, rest: f64) -> f
 }
 
 /// First-order lag: `value` toward `target` with time constant `tau` (0: at once).
+#[must_use]
 pub fn lag(value: f64, target: f64, tau: f64, dt: f64) -> f64 {
     if tau <= 0.0 {
         return target;
@@ -303,6 +328,11 @@ fn clamp(x: f64, low: f64, high: f64) -> f64 {
 impl ActuatorConfig {
     /// Advance the car one step of `dt` seconds. A [`Drive::Speed`] command needs
     /// `speed_loop`, which this call advances.
+    ///
+    /// # Errors
+    ///
+    /// [`ModelError::NonPositiveDt`] for `dt` not above 0; [`ModelError::NoSpeedLoop`]
+    /// for a [`Drive::Speed`] without one.
     pub fn step(
         &self,
         state: &CarState,
@@ -391,6 +421,11 @@ impl ActuatorConfig {
     /// The trace: the states every `dt` for `horizon` seconds ahead, the first one `dt`
     /// ahead. One command a step, the last one held. `speed_loop` (for set speeds) is
     /// copied: the caller's own is never advanced.
+    ///
+    /// # Errors
+    ///
+    /// [`ModelError::NoCommands`] for no command; [`ModelError::NonPositiveDt`];
+    /// [`ModelError::NoSpeedLoop`] for a [`Drive::Speed`] without one.
     pub fn predict(
         &self,
         state: &CarState,
@@ -500,7 +535,9 @@ mod tests {
                 ..CarState::default()
             };
             while s.v > 0.0 {
-                s = cfg.step(&s, Command::pedals(0.0, 1.0, 0.0), 0.01, None).unwrap();
+                s = cfg
+                    .step(&s, Command::pedals(0.0, 1.0, 0.0), 0.01, None)
+                    .unwrap();
             }
             s.x
         };

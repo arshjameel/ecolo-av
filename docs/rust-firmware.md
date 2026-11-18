@@ -12,7 +12,7 @@ what's done so far.
 | The same code on the chip and on a laptop | the logic is plain `no_std` Rust, so `cargo test` checks it on any laptop, with no board |
 | Mistakes caught when it compiles | no stray pointers, no data races between an interrupt and the main loop |
 | One driver for every board | a driver written against `embedded-hal` runs on an ESP32, a Pico, an STM32, and on the Pi under Linux |
-| The spine is already Rust | `spine-core`: modes, arming, the watchdog, the speed loop, the CAN frames (84 tests), the drivers for its devices, and board programs for today's ESP32 and a Pico 2 |
+| The spine is already Rust | `spine-core`: modes, arming, the watchdog, the speed loop, the CAN frames (143 tests), the drivers for its devices, and board programs for today's ESP32 and a Pico 2 |
 
 ## What runs where
 
@@ -54,14 +54,17 @@ chip's HAL.
 Ben, 15 October: "We should port all cpp to rust." In the KEFC plan
 ([CAN plan](can-plan.md)), the ESP32 control board already on the car becomes the spine.
 `firmware/spine/boards/esp32-umod` is that board's program in Rust: the replacement for
-the 2025-26 C++ in `firmware/legacy/aav_umod_esp32`. It builds; it has **never been
-flashed** [[untested]]. Merged on 15 Oct at Ben's request; flashing waits for his go-ahead.
+the 2025-26 C++ in `firmware/legacy/aav_umod_esp32`. It builds; the repo has **no record of it flashed on
+the car** [[untested]]: a flash was planned for the 9 Nov car day ([rollout](rollout.md)),
+its result isn't written down, and the last check of the board (6 Nov) found the C++.
+Merged on 15 Oct at Ben's request; flashing waits for his go-ahead.
 Since 24 Oct it boots in Espressif's QEMU, and brakes there when the Motor-Pi's frames stop
 ([the emulator](esp32-bench.md#before-the-board-the-emulator)), and when the Orin's
 heartbeat stops though the frames still come ([the heartbeat](#the-heartbeat-version-2-of-the-serial-frame-24-oct)).
 
 !!! warning "The C++ stays"
-    The car runs `firmware/legacy/aav_umod_esp32` today. It stays in the repo, and on the
+    The car runs `firmware/legacy/aav_umod_esp32` (seen 6 Nov,
+    [the audit](history/audit-2026-11-06-car.md)). It stays in the repo, and on the
     car, until the Rust program has been flashed and proven on the car
     ([First flash on the bench](esp32-bench.md)). Only then is the C++ removed.
 
@@ -95,11 +98,11 @@ open loop.
 | The devices | `spine-board`: the same two Jrk G2s, the DAC and the PCA9555, on the same I2C bus at 100 kHz |
 | The Motor-Pi's frames | `legacy-link` (new crate): the frame, the C++'s resync, the C++'s Jrk and DAC targets |
 | The RC receiver | `ibus`, on UART2, read from its 128-byte FIFO each tick |
-| The wheel speed | none on this board (the encoder talks to the Motor-Pi): the speed loop runs **open loop**, throttle = speed / 3.0 m/s (`SpeedFeedback::None`, new in spine-core) |
+| The wheel speed | none on this board (the wheel sensors are on the Orin's CAN bus; frame version 4 can carry it down): the speed loop runs **open loop**, throttle = speed / 3.0 m/s (`SpeedFeedback::None`, new in spine-core) |
 | The chip's own watchdog | TIMG1, 100 ms, fed after every tick: a hang or a panic resets the chip |
-| The log | the USB cable, 115200 baud: a `STATUS` line every 200 ms |
+| The log | the USB cable, 115200 baud: a `STATUS` line every 200 ms; JSON lines with `json-log` (7 Nov) |
 
-Size: 132 KB image (3 % of the 4 MB flash); 9.5 KB of fixed RAM.
+Size (7 Nov, the default build): 157 KB image (4 % of the 4 MB flash); 8.7 KB of data and 10.4 KB of bss.
 
 ### The pin map
 
@@ -235,8 +238,8 @@ pseudo-terminal); `pixi run esp qemu-check` (a frozen counter, bad CRCs, silence
 
 TODO 50's next step, and TODO 48's way up. The ESP32 says what it is doing, 50 times a
 second, on **TX1 (GPIO17)**. The 2025-26 C++ set TX1 up and never sent on it, so **the wire
-is the hardware lead's to confirm** (question H9): it is built, and **off**, behind a flag
-at both ends.
+is the hardware lead's to confirm** (question H9): it is built, behind a flag at both
+ends: on in the firmware's default build, off in the bridge and in car day's `-v2.elf`.
 
 ```text
  ESP32                               Motor Pi                          Orin and laptops
@@ -249,7 +252,7 @@ at both ends.
 | End | The flag | Why |
 |---|---|---|
 | Rust firmware | `uplink`, on by default (T3.6) | the wire is assumed; if it is missing, only the status goes quiet |
-| `legacy_uart_bridge` | `uplink: true` in `legacy.yaml` | nothing to read until then |
+| `legacy_uart_bridge` | `uplink: true` in `legacy.yaml` (`false` today) | nothing to read until then |
 
 Without it, both ends work as before: version 2 or version 1 frames, nothing back.
 
@@ -329,7 +332,7 @@ With `uplink`, CH6 (the 2025-26 `RC_EN_CH`, index 5) reads three positions
 
 | CH6 | Mode | Who drives | The ESP32 |
 |---|---|---|---|
-| low (below 1301) | **computer** | Nav2, the joystick... | the Pi's frames |
+| low (below 1301) | **computer** | navigation, the joystick... | the Pi's frames |
 | middle (1301-1700) | **RC via ROS** | a person, through `rc_driver`, twist_mux (95), ego and the output mux | the Pi's frames; the sticks go up the uplink |
 | high (above 1700) | **RC direct** | a person, with no computer: the fallback | the sticks, as today |
 | no signal | — | nobody | in either RC mode: **full brake**, fault 256; via ROS also latched until a stop |
@@ -361,8 +364,8 @@ Every behaviour of `aav_umod_esp32`, and where it is now. ⚠️ = different: th
 | After a timeout, frames drive again at once | — | latched until a stop frame | ⚠️ new |
 | RC override: CH6 (index 5) between 1500 and 2200 | `main.cpp` | `ibus::RcMap::TODAY` | same; ⚠️ with `uplink`, three positions: computer, RC via ROS, RC direct ([above](#the-rcs-three-modes-todo-48-proposed)) |
 | RC sticks: CH3 throttle, CH4 steering, CH5 gear: forward < 1200 < brake < 1800 < reverse | `rc_handler.cpp` | `RcMap::TODAY` | same channels and thresholds |
-| RC throttle: stick × 1023, capped at 700 (the top third of the stick does nothing) | `rc_handler.cpp` | stick × 3.0 m/s, open loop: stick × 700, reverse capped at 0.5 m/s (`MAX_REVERSE_SPEED`, about 117) | ⚠️ the whole stick works; reverse is slower |
-| RC gear on brake: DAC ramps down, brake full | `rc_handler.cpp` | spine-core `RC_GEAR_BRAKE = SpeedZero`: speed to 0, then the hold brake (0.3) | ⚠️ open choice (`docs/firmware.md`) |
+| RC throttle: stick × 1023, capped at 700 (the top third of the stick does nothing) | `rc_handler.cpp` | stick × 1.0 m/s (`MAX_SPEED`, since 6 Nov), open loop: at most code 233 (`throttle_cap_code`), reverse capped at 0.5 m/s (`MAX_REVERSE_SPEED`, about 117) | ⚠️ the whole stick works; slower than the C++ |
+| RC gear on brake: DAC ramps down, brake full | `rc_handler.cpp` | spine-core `RC_GEAR_BRAKE = FullBrake` (Arsh, 6 Nov, T3.6): the brake full on at once | same (`docs/firmware.md`) |
 | RC stick released in forward or reverse: coast, brake released | `rc_handler.cpp` | speed to 0, then the hold brake (0.3) | ⚠️ |
 | RC sticks out of range: safe stop, steering centred | `rc_handler.cpp` | RC drives, asks for 0 speed, straight wheels | ⚠️ |
 | RC receiver silent: the last values stay (no timeout) | `IBusBM` | 100 ms: lost; full brake | ⚠️ safer: fixes bug 2 |
@@ -375,9 +378,9 @@ Every behaviour of `aav_umod_esp32`, and where it is now. ⚠️ = different: th
 | A Jrk missing at boot: skipped for good, the car still drives | `setup()` | tried every tick; its fault stops the car | ⚠️ safer: fixes bug 3 |
 | Jrk errors, DAC errors: printed | `jrk_g2.cpp`, `dac.cpp` | fault bits: the car stops until the next stop-then-drive | ⚠️ safer |
 | Hardware watchdog | none | 100 ms | ⚠️ new |
-| WiFi, the status web page, the WebSocket log, the I2C scan page | `web_handler.cpp` | gone | ⚠️ the log is on the USB cable |
-| OTA update page, no password | `main.cpp` | gone: flash on the USB cable | ⚠️ safer |
-| Status line every 200 ms | `publishStatus()` | `STATUS t=… mode=… throttle=… brake=… faults=…`, and an `EVENT` line at each change | ⚠️ another format; only `tools/esp32_qemu.py` parses it |
+| WiFi, the status web page, the WebSocket log, the I2C scan page | `web_handler.cpp` | off by default; `wifi-status` (7 Nov) serves them read only | ⚠️ the log is on the USB cable |
+| OTA update page, no password | `main.cpp` | off: flash on the USB cable. `wifi-update` (7 Nov, never in the car-day build): parked only, with a password | ⚠️ safer |
+| Status line every 200 ms | `publishStatus()` | `STATUS t=… mode=… throttle=… brake=… faults=…`, and an `EVENT` line at each change; JSON with `json-log` (`firmware/status`) | ⚠️ another format |
 | Nothing sent back to the Motor-Pi | — | nothing; with `uplink`, the status frame every 20 ms on TX1 | same by default; ⚠️ new with `uplink` ([above](#the-uplink-the-esp32s-status-back-to-the-pi-24-oct)) |
 
 ### For the team to decide
@@ -391,7 +394,7 @@ Questions 1 and 2 are wiring: the hardware lead's to answer.
 | 3 | `IDLE_BRAKE` on this board: keep the C++'s full brake, or spine-core's 0? | full brake |
 | 4 | Steering rate limit on the UART link: keep 0.6 rad/s, or pass targets at once like the C++? | 0.6 rad/s |
 | 5 | Throttle ramp: 600 codes/s up (twice the C++'s on the UART link) | 600/s |
-| 6 | The RC changes above: the gear's brake position, a released stick, reverse speed | spine-core's defaults |
+| 6 | The RC changes above: a released stick, reverse speed (the gear's brake position: decided 6 Nov, `FullBrake`) | spine-core's defaults |
 | 7 | `FULL_THROTTLE_SPEED` 3.0 m/s, the same guess as `legacy.yaml` (Q4) | 3.0 |
 | 8 | Remove the C++ once the Rust is proven on the car | kept |
 
@@ -399,7 +402,7 @@ Questions 1 and 2 are wiring: the hardware lead's to answer.
 
 | What | Why | Next |
 |---|---|---|
-| Everything on the real ESP32 | never flashed; in QEMU only (the timeout, the UART link, the drivers' bytes) | [the bench plan](esp32-bench.md) |
+| Everything on the real ESP32 | no record of a flash (13 Nov); in QEMU only (the timeout, the UART link, the drivers' bytes) | [the bench plan](esp32-bench.md) |
 | The FIFO reads keeping up | a tick takes a few ms of I2C; the FIFO holds about 28 ms of iBUS | watch for RC dropouts in the log |
 | The watchdog reset | TIMG1's watchdog, never seen to fire | hang the loop on purpose, on the bench |
 | CAN | the pins are unknown | find U7's wiring, then a USB-CAN adapter |
@@ -702,11 +705,11 @@ firmware's own `spine-core` code, so both ends of the bus share one implementati
 | | |
 |---|---|
 | Crates | `spine-bridge`: the logic, no ROS (arming edge, command timeout, e-stop, the wheel pairing, odometry). `bridge-node`: the rclrs node |
-| Commands | `/control/<target>/actuator_cmd` from the output mux, by the `source` parameter (real: `car`, bench: `bench`, sim: `gazebo`), as the Python node: never `/ego/actuator_cmd` |
-| The bus | the same `/can/tx` and `/can/rx` topics as the Python node: `ros2_socketcan` on the Orin (Linux); `spine_sim` on the bench and in Gazebo, so Macs work too |
+| Commands | `/control/<target>/actuator_cmd` from the output mux, by the `source` parameter (real: `car`, bench: `bench`, sim: `sim`), as the Python node: never `/ego/actuator_cmd` |
+| The bus | the same `/can/tx` and `/can/rx` topics as the Python node: `ros2_socketcan` on the Orin (Linux); `spine_sim` on the bench and in the simulator, so Macs work too |
 | Tests | the Python node's test cases, and the shared vectors (`firmware/can/test_vectors.json`) through the whole bridge: `cargo test -p spine-bridge` |
 | Checked, 23 Oct | `bench-check`: [[works]] with both bridges, the same results. `sim-check --spine` (Gazebo, the spine in the loop): [[works]] with the Rust one, every check (Nav2 goal, commands lost, both e-stops, not armed). `test_real_backend_guard.py` (`aav_io_mux`): neither bridge hears `/ego/actuator_cmd`, and a SIM source stops every DRIVE_CMD |
-| Default | Rust since 23 Oct, in `spine.launch.py`, the bench and Gazebo's spine profile. `bridge:=python` runs aav_spine's node, kept until the Rust one has run on the car |
+| Default | Rust since 23 Oct, in `spine.launch.py`, the bench and the simulator's spine profile. `bridge:=python` runs aav_spine's node, kept until the Rust one has run on the car |
 
 The wheel sensors are read by an Arduino (the hardware lead's board, Ben, 23 Oct), which
 sends WHEEL_SPEED_L and WHEEL_SPEED_R as `aav.dbc` says; both bridges decode them the same way.
@@ -715,18 +718,18 @@ sends WHEEL_SPEED_L and WHEEL_SPEED_R as `aav.dbc` says; both bridges decode the
 
 | Board (2025-26, C++) | Does | Rust version |
 |---|---|---|
-| `aav_umod_esp32` (ESP32) | drives the actuators: steering and brake (Jrk G2), throttle (DAC), the RC receiver | **`boards/esp32-umod`** (15 Oct): the same board in Rust, with the Motor-Pi's UART or CAN. Builds; [[untested]] on the board. The C++ stays until the Rust is proven on the car |
+| `aav_umod_esp32` (ESP32) | drives the actuators: steering and brake (Jrk G2), throttle (DAC), the RC receiver | **`boards/esp32-umod`** (15 Oct): the same board in Rust, with the Motor-Pi's UART or CAN. Builds, runs in QEMU; [[untested]] on the board (no record of a flash, 13 Nov). The C++ stays until the Rust is proven on the car |
 | The wheel encoder (Pico 2) | counts wheel spokes, sends them over Ethernet | `boards/wheel-encoder-pico2` (15 Oct). The C++ is gone from this repo; it stays on GitHub (`Wheel_Encoders` @ f824e9d805). The spine's Pico 2 can also read the sensors itself |
 | The sentinel (Pico 2) | a status display | `boards/sentinel-pico2` (15 Oct). The C++ is gone from this repo; it stays on GitHub (`AAV_cortex` @ 90de619e52) |
 
 The car's two Pico 2s still run the C++ they were flashed with, until someone flashes the
-Rust.
+Rust. The wheel encoder's Pico wasn't seen on the car's network on 21 Oct (`motor_pi.yaml`).
 
 ## Toolchains
 
 | Chip | Rust target | In Pixi? | Flashing |
 |---|---|---|---|
-| Pico 2 (RP2350, ARM) | `thumbv8m.main-none-eabihf` | [[works]] all thirteen crates and the three Pico 2 board programs build for it; `pixi run test` checks them | its USB drive (`pixi run pico spine build`, `pico wheel build`, `pico sentinel build`), or probe-rs (`pixi run pico spine tools`) |
+| Pico 2 (RP2350, ARM) | `thumbv8m.main-none-eabihf` | [[works]] all fifteen crates and the three Pico 2 board programs build for it; `pixi run test` checks them | its USB drive (`pixi run pico spine build`, `pico wheel build`, `pico sentinel build`), or probe-rs (`pixi run pico spine tools`) |
 | STM32-class ARM (Cortex-M4F, M7) | `thumbv7em-none-eabihf` | [[works]] the crates build for it too | `probe-rs` |
 | ESP32-C3, C6 (RISC-V) | `riscv32imc` / `riscv32imac` | [[missing]] not in Pixi; `rustup` has them | `espflash` |
 | Classic ESP32 (today's board) | `xtensa-esp32-none-elf` | [[works]] not in Pixi: `pixi run esp tools` installs Espressif's Rust for one user (above); `tools/test.sh` builds the board where it is | `espflash` (`pixi run esp flash`) |
@@ -741,19 +744,21 @@ Rust.
 
 | Crate | Does | Tests |
 |---|---|---|
-| `spine-core` | the spine's logic: modes, arming, watchdog, speed loop, encoder, CAN frames. Since 10 Oct, a stop brakes to a standstill instead of coasting (found on the bench). Since 11 Oct, the three open choices are one constant each. Since 15 Oct, open-loop commands (`DirectCmd`, for the UART link) and a speed loop with no wheel speed (`SpeedFeedback::None`). Since 15 Oct too, the 100 ms timeout and the wheel speed frames of CAN v0.2.0; one reverse speed, `MAX_REVERSE_SPEED`, from vehicle.yaml. Since 23 Oct, `decode_report` for the Orin's side (the Rust CAN bridge). Since 25 Oct, open-loop reverse is capped at `MAX_REVERSE_SPEED` too | 84 |
+| `spine-core` | the spine's logic: modes, arming, watchdog, speed loop, encoder, CAN frames. Since 10 Oct, a stop brakes to a standstill instead of coasting (found on the bench). Since 11 Oct, the three open choices are one constant each. Since 15 Oct, open-loop commands (`DirectCmd`, for the UART link) and a speed loop with no wheel speed (`SpeedFeedback::None`). Since 15 Oct too, the 100 ms timeout and the wheel speed frames of CAN v0.2.0; one reverse speed, `MAX_REVERSE_SPEED`, from vehicle.yaml. Since 23 Oct, `decode_report` for the Orin's side (the Rust CAN bridge). Since 25 Oct, open-loop reverse is capped at `MAX_REVERSE_SPEED` too. Since 6 Nov (T3.6), `MAX_SPEED` 1.0 m/s, the stop rules and the state regions (`fsm`) | 143 |
 | `aav-inputs` (10 Oct) | clean inputs for every board: a `Debouncer` for switches and buttons, with separate times each way (an e-stop trips at once, and must stay released before it counts), and a `Lockout` for counting fast signals such as encoder spokes | 9 |
 | `jrk-g2` (10 Oct) | the Pololu Jrk G2 over I2C: set target, stop, feedback, error flags. Checked against Pololu's guide | 15 |
 | `ad5311` (10 Oct) | the throttle DAC (an AD5311; TI's DAC101C081 takes the same bytes), capped at 700 of 1023 | 10 |
 | `pca9555` (10 Oct) | the 16-bit I/O expander: the direction output | 6 |
-| `ibus` (10 Oct) | the FlySky receiver's iBUS frames, byte by byte; a silence timeout; the map to spine-core's `RcInput`, with the gear switch's brake position | 25 |
+| `ibus` (10 Oct) | the FlySky receiver's iBUS frames, byte by byte; a silence timeout; the map to spine-core's `RcInput`, with the gear switch's brake position | 26 |
 | `mcp2515` (11 Oct) | the CAN controller a Pico 2 needs, over SPI: bit timing from the crystal, filters for our IDs, send, receive, error state and bus-off | 34 |
-| `legacy-link` (15 Oct) | the 2025-26 UART link: the Motor-Pi's 13-byte frames, the C++'s resync, and the Jrk and DAC targets the C++ set, checked against the C++ itself. Since 24 Oct, version 2: the Orin's counter, flags, a CRC-8 (TODO 50) | 72 |
-| `spine-board` (10 Oct) | the glue: throttle off before the brake, the direction only at zero throttle, I2C errors as fault bits. The `Board` trait. Since 11 Oct, two spoke sensors counted the 2025-26 way (moved to `wheel-encoder` on 15 Oct). Since 15 Oct, the `CommandLink` trait: `CanLink` or `LegacyLink`; since 24 Oct, `LegacyLink` reads version 2 frames and their heartbeat | 79 |
+| `legacy-link` (15 Oct) | the 2025-26 UART link: the Motor-Pi's 13-byte frames, the C++'s resync, and the Jrk and DAC targets the C++ set, checked against the C++ itself. Since 24 Oct, version 2: the Orin's counter, flags, a CRC-8 (TODO 50). Since 1 Nov, version 3 (the steering calibration); since 6 Nov, version 4 (the wheel speed) | 121 |
+| `spine-board` (10 Oct) | the glue: throttle off before the brake, the direction only at zero throttle, I2C errors as fault bits. The `Board` trait. Since 11 Oct, two spoke sensors counted the 2025-26 way (moved to `wheel-encoder` on 15 Oct). Since 15 Oct, the `CommandLink` trait: `CanLink` or `LegacyLink`; since 24 Oct, `LegacyLink` reads version 2 frames and their heartbeat | 119 |
 | `wheel-core` (15 Oct) | the front wheel nodes' logic: Hall sensor pulses and their times to a speed, the zero-speed timeout, the WHEEL_SPEED frame. No board: the Arduino sends the frames (23 Oct) | 9 |
 | `wheel-encoder` (15 Oct) | the two spoke sensors, shared by the spine and the wheel encoder; the wheel encoder's UDP packet, checked against examples `aav_legacy` checks too | 12 |
 | `sentinel` (15 Oct) | the status display: its I2C packet, 13 LCD pages, the knob, the beeps, the matrix, the link's watchdog | 40 |
 | `hd44780` (15 Oct) | the display's 16x2 LCD, 4-bit on GPIO pins | 5 |
+| `status-lines` (7 Nov) | the ESP32's JSON status lines (`firmware/status`), byte for byte as `golden.jsonl` | 20 |
+| `app-update` (7 Nov) | the checks around the ESP32's update over WiFi (`wifi-update`) | 7 |
 | `boards/esp32-umod` (15 Oct) | the spine on today's ESP32 control board, with Embassy (above) | builds, clippy clean; [[untested]] on a board |
 | `boards/pico2` (11 Oct) | the spine on a Pico 2, with Embassy (above) | builds; [[untested]] on a board |
 | `boards/wheel-encoder-pico2` (15 Oct) | the wheel encoder, with a W5500 (above) | builds; [[untested]] on a board |

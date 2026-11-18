@@ -7,14 +7,23 @@ bad at, what it needs, and where it would run on our car.
     - **Speed and brake:** feed-forward + PI. In the ROS bridge first, then in
       `spine-core` on the ESP32. The bridge's loop has a smooth stop (29 Oct); an LQI
       is built in `spine-core` to compare (`speed_loop:=lqi`, section 2a).
-    - **Steering, following a path:** MPC is the leading candidate. Pure pursuit until
-      it wins a trial.
+    - **Steering, following a path:** MPPI that knows the lag (`aav_mppi_lag`, Rust) is
+      the default (sim, bench and car); Nav2's MPPI was, until Nav2 went on 17 Nov.
+      Our trackers (pure pursuit, Stanley, LQR, MPC) are trials, forward only; MPC is
+      the leading candidate among them.
     - **The steering motor:** the Jrk G2's own position PID, underneath everything.
-    - **Obstacle tours (Nav2):** Hybrid-A* plans, MPPI follows. No change. Other
-      planners are on trial beside it (`planner:=`, [Planners](#planners)).
-    - **Trials:** LQR, Stanley and MPC run **beside** the defaults, picked at launch
-      (`tracker:=`), and scored on the same routes. Planned, not built yet.
-    - **Localization** has its own trial: AMCL beside today's EKF (section 8).
+    - **Obstacle tours:** the State Lattice plans (since 1 Nov; ours in Rust,
+      `aav_planner`, since 14 Nov), MPPI follows. Hybrid-A* and the diffusion planner
+      are challengers ([Planners](#planners)).
+    - **Trials:** LQR, Stanley, MPC and the lag-aware ones (`mpc_lag`, `mppi_lag`) run
+      **beside** the defaults, picked at launch (`tracker:=`), and scored on the same
+      routes. Built since 29 Oct; the scores: [Trials](trials.md), [MPPI that knows
+      the lag](mppi-lag.md).
+    - **Our own costmap, planner, navigator and smoother** (Rust, 8 Nov) are the
+      defaults since Nav2 went (17 Nov, [Nav2, as it was](history/nav2-as-it-was.md)):
+      [Switches](switches.md#the-defaults-what-runs-if-you-say-nothing).
+    - **Localization** has its own trials: AMCL, NDT and KISS-ICP beside today's EKF
+      (section 8).
     - **Every number here is a guess** until the car is measured
       ([Measure the car](measure-the-car.md), [Actuator tests](actuator-tests.md)).
 
@@ -27,10 +36,10 @@ The basics (feedback, PID, Ackermann) are in [Learn: control](learn-control.md).
 ```text
  ORIN #1                                              senses
  ┌───────────────────────────────────────────────┐
- │ Nav2 planner: Hybrid-A*         1 Hz          │  the costmap, the goal
+ │ planner: State Lattice (ours)   1 Hz          │  the costmap, the goal
  │      │ a path                                 │
  │      ▼                                        │
- │ Nav2 controller: MPPI          20 Hz          │  the pose (EKF), the costmap
+ │ follower: MPPI with lag        20 Hz          │  the pose (EKF), the costmap
  │   or our path follower (pure pursuit; MPC)    │
  │      │ speed + turn rate (TwistStamped)       │
  │      ▼                                        │
@@ -49,8 +58,8 @@ The basics (feedback, PID, Ackermann) are in [Learn: control](learn-control.md).
 
 | Loop | Runs on | How fast | Senses | Today |
 |---|---|---|---|---|
-| Plan a path | Orin: Nav2's `SmacPlannerHybrid` | 1 Hz | costmap, goal | in use |
-| Follow the path | Orin: Nav2's MPPI (`nav2.yaml`) | 20 Hz | the EKF's pose, the costmap | in use |
+| Plan a path | Orin: our planner (`aav_planner`: the State Lattice; Hybrid-A* with `planner_search:=hybrid`) | 1 Hz | costmap, goal | in use |
+| Follow the path | Orin: MPPI with lag (`aav_mppi_lag`, `nav2.yaml`'s MPPI block) | 20 Hz | the EKF's pose, the costmap | in use |
 | Turn speed + turn rate into an angle | Orin: `ego` | 50 Hz | nothing: it's maths and limits | in use |
 | Speed and brake | the bridge (50 Hz), then the ESP32 (100 Hz: a 10 ms tick) | 50 → 100 Hz | wheel speed | open loop today |
 | Steering angle | inside the steering Jrk G2 | ~1 kHz | the steering pot | to confirm (H2) |
@@ -59,7 +68,7 @@ The basics (feedback, PID, Ackermann) are in [Learn: control](learn-control.md).
 inner loops are fast and simple, and sit next to the motor. The outer controller can be
 swapped; the loops underneath stay the same, so a comparison tests only the outer one.
 
-Rates: MPPI's 20 Hz is `controller_frequency` in `nav2.yaml`; ego's 50 Hz is `rate_hz` in
+Rates: MPPI's 20 Hz is `controller_frequency` in `nav2.yaml` (the settings file our nodes read); ego's 50 Hz is `rate_hz` in
 `ego.yaml`; the bridge's 50 Hz is `legacy_uart_bridge`'s `rate_hz`; the ESP32's 10 ms is
 `TICK` in `boards/esp32-umod`. The Jrk's ~1 kHz is the control plan's figure: the Jrk's own
 PID period setting decides it, and nobody has read it yet (D6).
@@ -118,7 +127,7 @@ with `hold_brake` once stopped.
 | ❌ Weaknesses | only as good as the throttle and brake map: on the model, with a throttle 2x stronger than guessed, today's PI plus a feed-forward overshoots 88 % ([vehicle-model.md](vehicle-model.md#the-candidates-on-the-model)); needs the car measured first |
 | Needs | wheel speed (without it: feed-forward alone); the car's numbers (`max_accel`, `drag`, `max_brake` in `vehicle.yaml`); the IMU's acceleration helps while braking |
 | On our car | step 1: the ROS bridge, `aav_legacy/speed_control.py` (no ROS), 50 Hz, chosen by `speed_loop.mode: pi` in `legacy.yaml`. Step 3: `spine-core` on the ESP32, 100 Hz (the hardware lead's call) |
-| Status | **the choice.** Step 1 is written (branch `legacy-speed-loop`, merged into `thursday-29oct`; not on `main` yet), checked against a model car and Gazebo; the car stays on `mode: open` until it's tried on stands. The smooth stop is written (29 Oct): [section 2b](#2b-the-smooth-stop-results-29-oct) |
+| Status | **the choice.** Step 1 is written (on `main`), checked against a model car and Gazebo; the car stays on `mode: open` until it's tried on stands. The smooth stop is written (29 Oct): [section 2b](#2b-the-smooth-stop-results-29-oct) |
 
 On the ESP32 this loop runs inside the spine's state machine
 (`spine-core/src/fsm.rs`, Arsh's PR #15, on `main`): only while **Authority** is `Drive`
@@ -293,8 +302,8 @@ that reaches it.
 | ✅ Benefits | simple; light; one setting (the lookahead); never needs a model; damping 0.707 at every speed when the lookahead grows with speed |
 | ❌ Weaknesses | aims at a point, not a heading: it often arrives facing the wrong way; cuts corners; can't see an obstacle; the delay hurts it (phase margin 31° at 1 m/s in the worst case) |
 | Needs | the pose, the path. No model, no solver |
-| On our car | Orin. Ours: `aav_drive_to_point/line.py` (A to B). Nav2's Regulated Pure Pursuit: `controller:=rpp`. In the trials, ours again (`tracker:=pure_pursuit`): the control every challenger is scored against |
-| Status | **in use**: ours for A to B; RPP as Nav2's other choice |
+| On our car | Orin. Ours: `aav_drive_to_point/line.py` (A to B). Nav2's Regulated Pure Pursuit until 17 Nov. In the trials, ours again (`tracker:=pure_pursuit`): the control every challenger is scored against |
+| Status | **in use**: ours for A to B, and as a trial follower |
 
 Numbers ([vehicle-model.md](vehicle-model.md#closing-the-loop-pure-pursuit)): lookahead
 1.5 s × speed, from 1.5 to 4 m. Phase margin at 1 m/s: 52° with no delay, 45° typical
@@ -315,7 +324,7 @@ how far off the path you are.
 | ❌ Weaknesses | jumpy at low speed (÷ speed) unless softened; sensitive to a noisy heading, and our GPS heading is weak at walking pace; no model of the steering lag |
 | Needs | the pose at the front axle (our `base_link` is at the rear: a shift by the wheelbase), the path |
 | On our car | Orin: `ros/drivers/aav_track`, `trackers/stanley.py`, `tracker:=stanley` |
-| Status | **trial, planned.** Not built yet |
+| Status | **trial, built** (29 Oct). Gazebo, 29 Oct, 3 runs: 12 of 12 legs ([Trials](trials.md#results-29-october)) |
 
 ### LQR, scheduled by speed
 
@@ -333,7 +342,7 @@ wheel angle]. Choose weights, solve once per speed, steer with u = −K x.
 | ❌ Weaknesses | blind to limits: it can ask for more angle or angle rate than the car has; the margin shrinks with delay at speed (below); a straight-road linearisation: on a tight curve it needs feed-forward from the curvature |
 | Needs | the model (`vehicle_model.lateral()`), the pose, the path |
 | On our car | Orin: `ros/drivers/aav_track`, `trackers/lqr.py`, `tracker:=lqr` (TODO 2) |
-| Status | **trial, planned.** Not built yet. Also the yardstick for MPC: the same model, without limits |
+| Status | **trial, built** (29 Oct; rebuilt with a preview the same afternoon). Gazebo, 29 Oct: 8, then 10 of 12 legs ([Trials](trials.md#results-29-october-afternoon-lqr-rebuilt-and-mpc_full)). Also the yardstick for MPC: the same model, without limits |
 
 Example, worked out with the model (weights Q = diag(1, 1, 0), R = 1: picked for this
 page, not tuned):
@@ -380,13 +389,13 @@ the steering that keeps it closest **within the limits**, send the first step, r
 | ❌ Weaknesses | a QP every cycle: needs a solver, and time on the Orin; more settings (horizon, weights); only as good as the model; harder to prove stable than LQR |
 | Needs | the model (discrete at 20 Hz: `lateral_discrete`), a solver (scipy for the trial; in Rust, Clarabel: pure Rust, or OSQP: C with Rust bindings; both Apache-2.0), the pose, the path |
 | On our car | Orin. First the trial: `ros/drivers/aav_track`, `trackers/mpc.py` (Python, scipy), `tracker:=mpc`, horizon about 1.5 s. Only if it wins: our own Rust crate (maths with no ROS, like `spine-core`) |
-| Status | **the leading candidate for steering; trial planned.** Not built yet |
+| Status | **the leading candidate among our trackers; trial, built** (29 Oct, Python). Gazebo, 29 Oct: 12 of 12 legs. Also `mpc_full` (plans the speed too) and `mpc_lag` (7 Nov: through the car's lags; our simulator, 8 Nov: 6 of 12). All in [Trials](trials.md). Not yet in Rust |
 
 The design follows Autoware's lateral MPC (their docs): a linearised bicycle with a
 steering lag, along the reference path. We write our own (Ben, 28 Oct); we don't copy
 their code.
 
-### MPPI (Nav2)
+### MPPI
 
 Imagine 2000 possible futures, 2.8 s long, through a model of the car; score each against
 the path, the costmap and the goal; blend the best.
@@ -399,13 +408,15 @@ the path, the costmap and the goal; blend the best.
 
 | | |
 |---|---|
-| ✅ Benefits | steers round an obstacle the costmap sees; knows the car's turning radius and outline; turns to a goal's heading; no solver (sampling); it's stock Nav2 |
+| ✅ Benefits | steers round an obstacle the costmap sees; knows the car's turning radius and outline; turns to a goal's heading; no solver (sampling) |
 | ❌ Weaknesses | heavy (21-32 % of a Mac core, two to three times RPP's); many settings (noise, temperature, eight scoring rules); its model assumes the car does exactly what it's told (no lags); forward only, a U-turn in a 14 m lane is a coin toss |
-| Needs | the pose, the costmap, the path (from Hybrid-A*); a strong CPU |
-| On our car | Orin #1, Nav2's `controller_server`, 20 Hz (`nav2.yaml`: 2000 samples × 56 steps of 0.05 s) |
-| Status | **in use**: Nav2's default since 22 Oct, for the obstacle tours. Stays |
+| Needs | the pose, the costmap, the path (from the planner); a strong CPU |
+| On our car | Orin #1, `aav_mppi_lag` (Rust: Nav2's MPPI ported, with the lags), 20 Hz (`nav2.yaml`: 2000 samples × 56 steps of 0.05 s) |
+| Status | **in use** since 22 Oct (Nav2's until 14 Nov; ours, `mppi_lag`, since). Stays |
 
-Its tuning and the Gazebo runs: [Path followers](path-followers.md).
+Its tuning and the Gazebo runs: [Path followers](path-followers.md). Our Rust port with
+the actuators' lag in its model (`tracker:=mppi_lag`, the default):
+[MPPI that knows the lag](mppi-lag.md).
 
 ## 4. The steering motor: the Jrk G2's position PID
 
@@ -436,14 +447,14 @@ limit to what it really does.
 | Controller | Job | Model? | Solver? | Knows limits? | Runs on | Status |
 |---|---|---|---|---|---|---|
 | PI | speed, brake | no | no | clamps only | ESP32 (`spine-core`) | in use (sim, bench) |
-| **Feed-forward + PI** | speed, brake | a map | no | clamps only | bridge, then ESP32 | **chosen**: step 1 on a branch |
+| **Feed-forward + PI** | speed, brake | a map | no | clamps only | bridge, then ESP32 | **chosen**: step 1 written (the bridge, `mode: pi`); the car stays on `open` |
 | LQI | speed, brake | yes | once, offline | no | ESP32 (gains) | **built** (`speed_loop:=lqi`): comparison |
 | MPC | speed, brake | yes | every cycle | yes | Orin | not chosen |
-| Pure pursuit / RPP | steering | no | no | no | Orin | in use (A to B; `rpp`); the trials' control |
-| Stanley | steering | no | no | no | Orin (`aav_track`) | trial, planned |
-| LQR (by speed) | steering | yes | once, offline | no | Orin (`aav_track`) | trial, planned |
-| **MPC** | steering | yes | every cycle | yes | Orin (`aav_track`, then Rust) | **leading candidate**; trial, planned |
-| **MPPI** | path + obstacles | yes | no: sampling | yes | Orin (Nav2) | **in use: stays** |
+| Pure pursuit | steering | no | no | no | Orin | in use (A to B); the trials' control (`tracker:=pure_pursuit`) |
+| Stanley | steering | no | no | no | Orin (`aav_track`) | trial, built (`tracker:=stanley`) |
+| LQR (by speed) | steering | yes | once, offline | no | Orin (`aav_track`) | trial, built (`tracker:=lqr`) |
+| **MPC** | steering | yes | every cycle | yes | Orin (`aav_track`, then Rust) | **leading candidate**; trial, built (`tracker:=mpc`, `mpc_full`, `mpc_lag`) |
+| **MPPI with lag** (ours, Rust) | path + obstacles | yes, with the lags | no: sampling | yes | Orin (`aav_mppi_lag`) | **in use: stays** (`tracker:=mppi_lag`) |
 | **Jrk G2 PID** | steering motor | no | no | its own | the Jrk | **in use: stays** |
 
 | Controller | Computer | Settings to tune | Best at |
@@ -464,10 +475,10 @@ version of it all"), in Rust where it pays off.
 
 | Layer | Chosen | Why |
 |---|---|---|
-| Plan + obstacles | Hybrid-A* + MPPI (Nav2) | works in Gazebo; steers round obstacles; stock |
+| Plan + obstacles | the State Lattice + MPPI with lag (ours, Rust) | won in Gazebo inside Nav2, then as our ports in Ravensim; steers round obstacles |
 | Follow a path (A to B) | **MPC: the leading candidate.** Pure pursuit until it wins | knows the steering's limits; sees the curve |
 | Speed and brake | **feed-forward + PI** | acts at once on ego's acceleration; the PI only cleans up; small enough for the ESP32 |
-| Where | the bridge first (branch `legacy-speed-loop`, no firmware change), then `spine-core` on the ESP32 | start where we can test today; end next to the actuators |
+| Where | the bridge first (`aav_legacy` `speed_control.py`, no firmware change), then `spine-core` on the ESP32 | start where we can test today; end next to the actuators |
 | Steering motor | the Jrk G2's PID | already there; tune it, don't replace it |
 | LQR, Stanley | **trials** | cheap; LQR is optimal from the model but blind to limits: the yardstick for MPC |
 | Speed MPC, LQI | not chosen / comparison | nothing they give that feed-forward + PI doesn't |
@@ -488,27 +499,28 @@ the main ones if they work." A new follower doesn't replace the default. It runs
 **beside** it, picked at launch, and is scored on the same routes.
 
 ```text
- goal ──► Nav2 planner (Hybrid-A*), replans every 1 s
+ goal ──► navigator ──► planner (aav_planner, the lattice), replans every 1 s
                  │ FollowPath
      ┌───────────┴─────────────────────┐
- tracker:=none (default)        tracker:=stanley | lqr | mpc | pure_pursuit
- Nav2's MPPI (or RPP)           aav_track
+ tracker:=mppi_lag (default)    tracker:=stanley | lqr | mpc | mpc_full | mpc_lag | pure_pursuit
+ aav_mppi_lag (Rust)            aav_track        (tracker:=mpc_lag_rs: aav_mpc_lag)
      └───────────┬─────────────────────┘
                  ▼
- the same smoother ──► collision_monitor ──► twist_mux ──► ego
+ the same smoother ──► stop zone ──► twist_mux ──► ego
 ```
 
 | Rule | Why |
 |---|---|
-| Nothing in the safety path changes | the same collision_monitor, twist_mux slot and e-stops |
+| Nothing in the safety path changes | the same stop zone, twist_mux slot and e-stops |
 | One speed policy for every tracker | a steering law is compared, not a speed |
 | Our pure pursuit is the control | in the same node, so only the steering differs |
 | 3 runs per tour; loop time and missed 20 Hz ticks recorded | MPPI is random; a slow MPC mustn't look like bad maths |
 | MPC in Python (scipy) first | Rust only if it wins |
 
-Scored by `measure controllers` and `measure atob`. The design: `docs/designs/2026-10-29_trials.md`,
-on branch `trials` (Tentative; `git show trials:docs/designs/2026-10-29_trials.md`).
-**Nothing in it is built yet.**
+Scored by `measure controllers` and `measure atob`. The design:
+[`designs/2026-10-29_trials.md`](designs/2026-10-29_trials.md). **Built** (29 Oct on): every
+tracker above runs, forward only (`reversing:=false`). The runs and scores:
+[Trials](trials.md).
 
 ## Which rides best: sway
 
@@ -521,7 +533,7 @@ reached every goal first, then the least **sway**.
 | Left-right changes per 100 m | How often the car swaps its turn direction |
 
 ```bash
-pixi run measure controllers --tours campus --speed 2.5 --controllers mppi rpp \
+pixi run measure controllers --tours campus --speed 2.5 --controllers mppi \
   --trackers pure_pursuit stanley lqr mpc mpc_full
 ```
 
@@ -529,44 +541,37 @@ The campus tour runs only when asked for. Results are in `log/controller-compare
 
 ## Planners
 
-The **planner** draws the path; the **follower** (MPPI, RPP, a tracker) drives it. Nav2
-can use several planners. We pick one with `planner:=`; the State Lattice is the default since 1 Nov
-(Hybrid-A* when the car may not reverse) (`docs/trials.md`, [Planners, 30 Oct](trials.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32)).
+The **planner** draws the path; the **follower** (MPPI, a tracker) drives it. Ours is
+`aav_planner` (Rust, [Our own planner](own-planner.md)): Nav2's State Lattice and
+Hybrid-A*, ported. The lattice is the default since 1 Nov (`docs/trials.md`,
+[Planners, 30 Oct](trials.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32)).
 
 ```text
- goal ─► bt_navigator ─► planner_server: "GridBased" ─► the path ─► follower
-                                │
-             planner:=lattice (default) | hybrid | smac2d | navfn | theta_star
+ goal ─► navigator ─► planner ("compute_path_to_pose") ─► the path ─► follower
+                          │
+       planner:=own (default): planner_search:=lattice (default) | hybrid
+       planner:=diffusion  (a trial: our lattice stays behind it)
 ```
-
-The behaviour trees always ask for `GridBased`. The launch file puts the chosen planner
-behind that name, so nothing else changes.
 
 ### Each planner, in plain words
 
-| `planner:=` | Nav2's plugin | How it draws the path | Keeps to the car's turning circle? |
-|---|---|---|---|
-| `hybrid` (forward only) | SmacPlannerHybrid | searches with real car moves: straight, full left, full right; Dubins curves (Reeds-Shepp with `reversing:=true`) | **yes** |
-| `lattice` (default) | SmacPlannerLattice | joins short car moves from a ready-made list, our **primitives** (below) | **yes** |
-| `smac2d` | SmacPlanner2D | A* on the grid, 8 directions, then smoothed | no |
-| `navfn` | NavfnPlanner | Dijkstra on the grid: Nav2's oldest planner | no |
-| `theta_star` | ThetaStarPlanner | A* that cuts corners with straight lines ("any-angle") | no |
+| Switch | How it draws the path | Keeps to the car's turning circle? |
+|---|---|---|
+| `planner_search:=lattice` (default) | joins short car moves from a ready-made list, our **primitives** (below) | **yes** |
+| `planner_search:=hybrid` | searches with real car moves: straight, full left, full right; Reeds-Shepp curves to finish | **yes** |
+| `planner:=diffusion` | a model draws the path, a guard checks it, the lattice's path if it fails ([Trials](trials.md#diffusion-7-8-nov-the-u-turn-the-orin-the-car)); on the car only behind `diffusion_trial:=true`, 0.5 m/s | **yes** (the guard checks) |
 
-!!! warning "The last three ignore the turning circle"
-    They plan as if the car could turn on the spot. Their paths can have sharp corners.
-    The follower has to round each corner, so the car drives off the path there, or
-    can't make the turn. **The car refuses them**: `car.launch.py` only takes `hybrid`
-    or `lattice`, with no way round it. They are for Gazebo and the bench.
+Nav2 also had three planners that ignore the turning circle (Smac 2D, NavFn, Theta*).
+We tried them in Gazebo (29-30 Oct) and the car refused them; they went with Nav2 on
+17 Nov ([Nav2, as it was](history/nav2-as-it-was.md)).
 
 ### What each one is good and bad at
 
 | Planner | ✅ | ❌ |
 |---|---|---|
 | hybrid | paths the car can drive; reverses when allowed | slower; replans may pick a new route |
-| lattice | paths the car can drive; moves made for our car; fastest round the lot with reversing on (30 Oct) | only as good as its primitives; forward only, it gets stuck after a U-turn |
-| smac2d | fast; short paths | corners the car can't turn |
-| navfn | fast; simple | corners; hugs the costmap's low cost, not the car |
-| theta_star | the straightest paths | long straight lines with sharp corners between |
+| lattice | paths the car can drive; moves made for our car; fastest round the lot with reversing on (30 Oct) | only as good as its primitives |
+| diffusion | fast once trained; learns from the lattice's paths | needs a GPU or a good CPU; the guard refuses some turns |
 
 ### The lattice's primitives
 
@@ -581,11 +586,11 @@ pixi run python3 tools/lattice_primitives.py --headings 32   # the trial file, l
 
 | Setting | Value | From |
 |---|---|---|
-| turning radius | 3.59 m | full lock (2.87 m) × 1.25, as Hybrid uses (`vehicle.plan_turning_radius`) |
+| turning radius | 3.572 m | full lock (2.86 m) × 1.25, as Hybrid uses (`vehicle.plan_turning_radius`) |
 | cells | 0.25 m | the maps (`maps/*.yaml`); the costmap uses the map's cells |
 | headings | 16 (default); 32 (trial) | the generator's advice; `lattice_headings:=32` |
-| moves | 96; 144 | forward only; Nav2 adds the same moves backwards with `reversing:=true` |
-| size, time to make | 82 kB; 93 kB | about 2 s each |
+| moves | 96; 144 | forward only; the planner adds the same moves backwards with `reversing:=true` |
+| size, time to make | 84 kB; 95 kB | about 2 s each |
 
 The 32-heading file needs the generator to search further (`stopping_threshold` 10, not
 5). At 5 it had **no turn** off east, north, west or south: the car could only go
@@ -594,18 +599,88 @@ straight from there. `--check` now refuses a file like that.
 ![Every move in the list, from the middle: straight lines and arcs of 3.6 m or wider](img/lattice-primitives.png)
 
 The file is `ros/drivers/aav_navigation/config/lattice_ackermann.json`. If someone changes
-the wheelbase, the steering lock or a map's cells, the launch refuses `planner:=lattice`
+the wheelbase, the steering lock or a map's cells, the launch refuses the lattice (`planner:=own`)
 until the list is made again; a test fails too.
+
+### Smooth moves (a trial, 14 Nov)
+
+Nav2's moves are a straight and an arc. Where they meet, the path's curvature **jumps**
+from 0 to full lock. The steering can't jump: ego turns it at most 0.6 rad/s.
+
+```text
+ Nav2's move                       a smooth move
+ curvature                         curvature
+   ▲   ┌──────┐                      ▲      ____
+   │   │      │                      │     /    \
+   │───┘      └───                   │____/      \____
+   └──────────────▶ metres           └──────────────▶ metres
+     jumps: the follower must guess   ramps no faster than the steering turns
+```
+
+**The rule.** Curvature is tan(steering) / wheelbase. So at speed v the curvature may
+change at most `rate / (wheelbase × v)` per metre. We use 1.25 times less, for margin:
+
+| `lattice_moves:=` | Made for | Curvature change, at most | Full lock takes |
+|---|---|---|---|
+| `nav2` (default) | Nav2's generator | no limit (it jumps) | 0 m |
+| `smooth` | 1 m/s (ego's top speed) | 0.31 1/m² | 0.9 m |
+| `smooth_fast` | 2.5 m/s (the campus tours) | 0.12 1/m² | 2.3 m |
+
+From 0.6 rad/s (ego's `max_steering_rate`, tighter than the motor's 0.8) and the
+1.561 m wheelbase. Every smooth move starts and ends **straight**, so two moves always
+join without a jump. Each turn is a clothoid (a ramp), an arc no tighter than 3.572 m,
+and a ramp back. Nav2's generator can't draw ramps, so `tools/lattice_smooth.py` (ours,
+no ROS) draws them, in Nav2's file format: Nav2's lattice and ours read it unchanged.
+
+```bash
+pixi run python3 tools/lattice_smooth.py          # makes both files and their pictures
+pixi run python3 tools/lattice_smooth.py --check  # still right for vehicle.yaml and ego.yaml?
+pixi run sim planner:=own lattice_moves:=smooth
+```
+
+With smooth moves the launch turns the lattice's **smoother off**: Nav2's smoother joins
+each path's ends with Dubins curves (straight + full lock), which puts the jumps back.
+
+![Every smooth move: straights at both ends, ramps between](img/lattice-primitives-smooth.png)
+
+**Offline, 14 Nov** (`cargo run --release -p lattice-planner --example moves`: our Rust
+planner, the lot tour's four legs on `example_lot`; worst change over 0.5 m windows):
+
+| Moves, smoother | Tour m (fwd / reversing) | Plan ms | Worst change 1/m² | Metres above 0.31 |
+|---|---|---|---|---|
+| nav2, on (today) | 154 / 134 | 33 / 16 | 0.38-0.54 | 5.0 / 6.0 |
+| smooth, on | 167 / 137 | 42 / 35 | 0.39-0.50 | 7.0 / 7.5 |
+| **smooth, off** (the trial) | 168 / 138 | 39 / 35 | **0.27-0.30** | **0 / 0** |
+| smooth_fast, off | 186 / 148 | 58 / 29 | 0.12-0.47 | 1.5 / 0 |
+
+The paths keep to the steering. `smooth_fast`'s 0.47 is the last 3 m to the goal:
+the search ends on a Dubins curve there (`analytic_expansion_max_length`).
+
+**Closed loop, 14 Nov** (`cargo run --release -p mppi-lag --example follow_plan`: each
+leg's path followed by `mppi_lag` on the pretend car, ego plus the lag model, 1 m/s;
+averages over the 8 legs, forward and reversing):
+
+| Path | Time s | Off the path, mean / worst m | Steering flips /s |
+|---|---|---|---|
+| nav2 moves, smoother on | 309 | 0.067 / 0.344 | 0.40 |
+| smooth | 329 | 0.077 / 0.309 | 0.38 |
+| smooth_fast | 365 | 0.063 / 0.275 | 0.40 |
+
+**No clear win yet.** MPPI looks 2.8 s ahead, so it already rounds the jumps. The worst
+miss is smaller; the mean and the steering's flips are about the same; the tour is
+longer. With the lag-free model (as Nav2's MPPI) the smooth paths came out a little worse
+(mean 0.087 m against 0.068). The trial stays a challenger: next is the simulator, and
+followers that don't look ahead (`pure_pursuit`, `stanley`).
 
 ### Scoring them
 
 ```bash
-pixi run measure controllers --planners hybrid lattice smac2d --tours lot
-pixi run measure controllers --planners hybrid lattice lattice32 --reversing --runs 3 --tours lot
+pixi run measure controllers --planners own own_hybrid --tours lot
+pixi run measure controllers --planners own own32 --reversing --runs 3 --tours lot
 ```
 
-Each planner drives the lot tour behind MPPI. `--reversing` lets Nav2 back up, as the
-sim does by default; `lattice32` is the lattice on its 32-heading file. Before each leg, the planner alone is asked
+Each planner drives the lot tour behind MPPI. `--reversing` lets the car back up, as the
+sim does by default; `own32` is the lattice on its 32-heading file, `own_hybrid` our Hybrid-A*. Before each leg, the planner alone is asked
 for the path too, so these are measured without the follower:
 
 | Number | Means |
@@ -626,8 +701,9 @@ trials too. The basics: [Learn: localization](learn-localization.md).
 | Way | What it is | ✅ | ❌ | Status |
 |---|---|---|---|---|
 | **EKF** (`robot_localization`) | a Kalman filter: wheels + IMU + GPS, two of them, 30 Hz | stock; cheap; works anywhere | only as good as GPS: 1-3 m without RTK | **in use** |
-| **AMCL** (Nav2) | a particle filter: thousands of guesses, each lidar scan kills the unlikely ones | about 5-10 cm where the lidar sees posts, curbs, walls | needs a map first (`slam_toolbox`); a bare lot gives it little | **trial, planned** (`amcl:=true`, Gazebo's `test_lot`) |
-| **NDT** | slide the lidar scan onto a map of blobs ([how](learn-localization.md#ndt-blobs)) | centimetres without RTK; Autoware's way | needs a lidar map of the lot (KISS-ICP); a stock NDT localizer not picked yet | **planned** (research pick 2) |
+| **AMCL** (stock `nav2_amcl`, kept for the trial) | a particle filter: thousands of guesses, each lidar scan kills the unlikely ones | about 5-10 cm where the lidar sees posts, curbs, walls | needs a map first (`slam_toolbox`); a bare lot gives it little | **trial, built** (`amcl:=true`, the test lot; scored only). 29 Oct: 6-11 cm once tuned ([Trials](trials.md#29-oct-afternoon-amcl-tuned-and-why-it-was-lost)) |
+| **NDT** (`aav_ndt`, ours in Rust) | slide the lidar scan onto a map of blobs ([how](learn-localization.md#ndt-blobs)) | centimetres without RTK; Autoware's way | needs a lidar map of the lot (`pixi run ndt-map drive`) | **trial, built** (`ndt:=true`; `ndt_ekf:=true` feeds the global EKF). 30 Oct, Gazebo: the EKF 17 → 1.6 cm ([Trials](trials.md#ndt-into-the-global-ekf-30-oct)) |
+| **KISS-ICP** (stock, MIT) | how far the car moved, from the lidar alone | no map needed | drifts, as any odometry | **trial, built** (`kiss_icp:=true`; `kiss_ekf:=true` feeds the local EKF: no clear win, 1 Nov) |
 
 A localizer feeds `ekf_global` only once it wins on a bag from the real lot, not just in
 Gazebo (its map is perfect).
@@ -672,10 +748,10 @@ today's ESP32 has no wheel speed, so the 0.5 m/s exit can't fire there (TODO 0b)
 | The spine's state machine | `firmware/spine/crates/spine-core/src/fsm.rs` (Arsh, PR #15) |
 | The speed LQI, its gains | `speed_loop.rs` (`SpeedLaw::Lqi`, `LqiConfig::MODEL`); `vehicle_model.py` (`speed_lqi`), `pixi run python3 tools/vehicle_model.py --lqi` |
 | The bridge's feed-forward + PI, the smooth stop | `ros/can_bridge/aav_legacy/aav_legacy/speed_control.py` |
-| The trials' trackers (planned) | `ros/drivers/aav_track/` (not built yet) |
+| The trials' trackers | `ros/drivers/aav_track/` (`trackers/`); the Rust MPPI: `ros/drivers/aav_mppi_lag/` |
 | ego (bicycle model, limits) | `ros/ego/aav_ego/aav_ego/ackermann.py`, `config/ego.yaml` |
 | The model (speed, steering, lateral state space) | `ros/ego/aav_ego/aav_ego/vehicle_model.py` |
 | Our pure pursuit and stopping law | `ros/drivers/aav_drive_to_point/aav_drive_to_point/line.py`, `approach.py` |
-| MPPI, RPP, Hybrid-A*, the trial planners | `ros/drivers/aav_navigation/config/nav2.yaml`; `planner:=` in `navigation.launch.py`, `vehicle.check_planner` |
+| MPPI, the lattice, Hybrid-A*, the trial planners | `ros/drivers/aav_navigation/config/nav2.yaml`; `planner:=` in `navigation.launch.py`, `vehicle.check_planner` |
 | The lattice's primitives | `ros/drivers/aav_navigation/config/lattice_ackermann.json`, made by `tools/lattice_primitives.py` |
 | The plan | [Control plan](designs/2026-10-27_control-plan.md) |

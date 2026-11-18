@@ -3,7 +3,7 @@ How well the car followed Nav2's path: the numbers controller_compare.py reports
 
 No ROS here, so the tests run anywhere (tools/tests/test_drive_metrics.py).
 
-One leg is one Nav2 goal. It records, on Gazebo's clock:
+One leg is one navigation goal. It records, on the simulator's clock:
 
   truth     [(t, x, y, yaw)]        where the car really was (/vehicle/sim/truth, map frame)
   plans     [(t, [(x, y), ...])]    each path the planner sent (/plan), as it arrived
@@ -14,9 +14,9 @@ One leg is one Nav2 goal. It records, on Gazebo's clock:
                                     none while |v| < STILL): what ego had to clip
   start, end                        s: the goal sent, and its result (or the time-out)
   goal      (x, y, yaw)             where it was sent, map frame, rad
-  reached   bool                    Nav2 said it succeeded
+  reached   bool                    the navigator said it succeeded
   cpu       percent or None         the follower's share of one core over the leg:
-                                    controller_server's, or aav_track's with a tracker
+                                    mppi_lag's, or aav_track's with a tracker
   amcl      [(t, x, y, yaw)]        optional: AMCL's pose (/localization/amcl/pose), a trial
   ndt       [(t, x, y, yaw)]        optional: NDT's pose (/localization/ndt/pose), a trial
   ndt_status [(t, ok, match_ms, restarts)]  optional: NDT's status, one per cloud
@@ -661,6 +661,10 @@ def summary(leg):
             'loop_ms_max': max(max(r[1], r[2]) for r in loops),
             'missed_ticks': max(r[3] for r in loops) - min(r[3] for r in loops),
         })
+    # The wiggle: ego's steering, and the turn rate before and after the smoother.
+    row.update(wiggle(truth, {'steering': leg['steering'],
+                              **{k: leg[k] for k in ('asked_turn', 'smoothed_turn')
+                                 if leg.get(k)}}))
     if 'planned' in leg:
         row.update(plan_row(leg['planned']))
     if truth:
@@ -729,14 +733,20 @@ COLUMNS = [
     ('steer_clipped', 'Steering commands ego had to clip (its rate or full lock)', '{:.1%}'),
     ('sway_mps2', 'Sway: the sideways swing a passenger feels (m/s^2 RMS)', '{:.3f}'),
     ('sway_flips_per_100m', 'Sway: left-right changes per 100 m', '{:.1f}'),
+    ('swing_m', 'Wiggle: side to side about its own track (m RMS)', '{:.3f}'),
+    ('swing_max_m', 'Wiggle: side to side, worst (m)', '{:.2f}'),
+    ('flips_hz_steering', "Wiggle: ego's steering changed side (a second)", '{:.2f}'),
+    ('flips_hz_asked_turn', "Wiggle: the follower's turn changed side (a second)", '{:.2f}'),
+    ('flips_hz_smoothed_turn', "Wiggle: the smoother's turn changed side (a second)",
+     '{:.2f}'),
     ('stops', 'Stops', '{:d}'),
     ('reversals', 'Reversals', '{:d}'),
     ('reversed_m', 'Driven in reverse (m)', '{:.1f}'),
     ('clearance_m', 'Closest to the box (m)', '{:.2f}'),
-    ('cpu_percent', 'follower CPU (%): controller_server, or aav_track', '{:.0f}'),
+    ('cpu_percent', 'follower CPU (%): mppi_lag, or aav_track', '{:.0f}'),
     ('route_switches', 'The planner changed its route (times)', '{:d}'),
     ('plan_found', 'The planner alone: found a path', lambda v: 'yes' if v else '**no**'),
-    ('plan_ms', "The planner alone: planning time (ms, its own clock: Gazebo's)", '{:.0f}'),
+    ('plan_ms', "The planner alone: planning time (ms, its own clock: the simulator's)", '{:.0f}'),
     ('plan_wall_ms', 'The planner alone: the whole call (ms, wall clock)', '{:.0f}'),
     ('plan_m', 'The planner alone: path length (m)', '{:.1f}'),
     ('plan_cusps', 'The planner alone: changes between forward and reverse', '{:d}'),
@@ -790,7 +800,7 @@ COLUMNS = [
 ]
 
 # The numbers whose spread over runs combine() reports (design: 3 runs, mean and spread).
-SPREAD = ('time_s', 'off_path_mean_m', 'end_error_m')
+SPREAD = ('time_s', 'off_path_mean_m', 'end_error_m', 'swing_m')
 
 
 def combine(rows):
@@ -1332,3 +1342,93 @@ def starts(series, least=STILL):
     """Count the times [(t, v)] went from below `least` to `least` or more: forward starts."""
     moving = [v >= least for _, v in series]
     return sum(b and not a for a, b in zip(moving, moving[1:]))
+
+
+# The wiggle (TODO 124, 149): the car's steering flipped left-right-left about once a second
+# under Nav2. Two numbers say how much: how often each command changes side (per second,
+# while moving), and how far the car swings side to side about its own smoothed track (m).
+# scorecard.py and summary() both report them.
+
+WIGGLE_STEP = 0.1       # s: the track's spacing for the swing
+WIGGLE_DEADBAND = 0.02  # rad or rad/s: a steering angle or turn rate this small is straight
+
+
+def moving_window(track, still=STILL):
+    """Return (first, last) time the track [(t, x, y, ...)] was moving, or None."""
+    times = [b[0] for a, b in zip(track, track[1:]) if b[0] > a[0] and
+             math.hypot(b[1] - a[1], b[2] - a[2]) / (b[0] - a[0]) >= still]
+    return (times[0], times[-1]) if len(times) >= 2 else None
+
+
+def flips_per_second(series, window=None, deadband=WIGGLE_DEADBAND):
+    """
+    Return how often [(t, value)] changed sign per second, inside window (t0, t1).
+
+    sign_flips() over the window's length: a steering angle that swings left and right once
+    a second scores 2 (two flips a second). None for window: the series' own span. NaN with
+    no time.
+    """
+    if window is None and series:
+        window = (series[0][0], series[-1][0])
+    if window is None or window[1] <= window[0]:
+        return math.nan
+    inside = [s for s in series if window[0] <= s[0] <= window[1]]
+    return sign_flips(inside, deadband) / (window[1] - window[0])
+
+
+def side_offsets(track, step=WIGGLE_STEP, width=WEAVE_WIDTH):
+    """
+    Return [(t, m left)] of the track [(t, x, y, ...)] from its own smoothed track.
+
+    The smoothed track is the `width` s moving average of x and of y (smooth()); each offset
+    is the car's distance left (+) of it, across the smoothed track's direction there. Thinned
+    to `step` s first. On a bend the average cuts the corner a little; swing() takes that slow
+    part out again.
+    """
+    points = thin(track, step)
+    xs = smooth([(s[0], s[1]) for s in points], width)
+    ys = smooth([(s[0], s[2]) for s in points], width)
+    raw_x = [(s[0], s[1]) for s in points]
+    raw_y = [(s[0], s[2]) for s in points]
+    out = []
+    for i in range(1, len(xs) - 1):
+        t, x, y = xs[i][0], xs[i][1], ys[i][1]
+        dx, dy = xs[i + 1][1] - xs[i - 1][1], ys[i + 1][1] - ys[i - 1][1]
+        length = math.hypot(dx, dy)
+        if length < 1e-6:
+            continue
+        px, py = value_at(raw_x, t), value_at(raw_y, t)
+        out.append((t, ((py - y) * dx - (px - x) * dy) / length))
+    return out
+
+
+def swing(track, step=WIGGLE_STEP, width=WEAVE_WIDTH):
+    """
+    Return (RMS m, worst m): how far the car swings side to side about its smoothed track.
+
+    side_offsets() less their own `width` s average, as weave() does, so the corner a bend
+    cuts counts nothing and a wiggle counts in full. (nan, nan) if the track is too short.
+    """
+    offsets = side_offsets(track, step, width)
+    means = smooth(offsets, width)
+    if not means:
+        return math.nan, math.nan
+    swings = [value_at(offsets, t) - m for t, m in means]
+    return math.sqrt(sum(s * s for s in swings) / len(swings)), max(abs(s) for s in swings)
+
+
+def wiggle(track, commands=None):
+    """
+    Return the wiggle's numbers: the swing (m) and each command's flips a second.
+
+    track [(t, x, y, ...)]: where the car was. commands {name: [(t, value)]}: steering
+    angles or turn rates, such as 'steering' (ego's angle), 'asked' (/cmd_vel_nav's turn
+    rate, before the smoother), 'smoothed' (/drivers/nav/cmd_vel's, after it). Flips count
+    only while the car moved: {'swing_m', 'swing_max_m', 'flips_hz_<name>'...}.
+    """
+    rms_m, worst_m = swing(track)
+    window = moving_window(track)
+    out = {'swing_m': rms_m, 'swing_max_m': worst_m}
+    for name, series in sorted((commands or {}).items()):
+        out[f'flips_hz_{name}'] = flips_per_second(series, window) if window else math.nan
+    return out

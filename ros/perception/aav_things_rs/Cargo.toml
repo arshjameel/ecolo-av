@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+# things-core: the grouping, the tracker, the saved map as background, the clouds waiting
+#   for TF, the names from the cameras, the looks. No ROS (aav_things' Python modules,
+#   ported):
+#   cargo test -p things-core
+# things-node: the ROS node (rclrs), binary `things`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/things-core", "crates/things-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# The vectors test runs long tracks: build it optimised.
+[profile.test]
+opt-level = 3

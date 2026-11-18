@@ -8,7 +8,7 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
-use costmap::cost::INSCRIBED;
+use costmap::cost::{INSCRIBED, LETHAL};
 use costmap::Grid;
 
 use crate::curves::{shortest, CurveKind};
@@ -44,8 +44,11 @@ impl Ord for Entry {
 /// A cell's entry: 0 not reached yet, negative waiting (the cost so far), positive done.
 #[derive(Debug, Clone)]
 pub struct Obstacles {
+    /// The search's grid: the costmap's, or half its size each way when downsampled.
     width: usize,
     height: usize,
+    /// 1, or 2 when downsampled (Hybrid-A*'s `downsample_obstacle_heuristic`).
+    scale: usize,
     table: Vec<f32>,
     queue: BinaryHeap<Entry>,
     cost_penalty: f32,
@@ -58,16 +61,22 @@ fn straight_line(index: usize, width: usize, to: (usize, usize)) -> f32 {
 }
 
 impl Obstacles {
-    /// Start a new search from the goal's cell, aimed at the start's.
+    /// Start a new search from the goal's cell, aimed at the start's. `downsample`: search
+    /// a grid of 2 x 2 blocks, each as cheap as its cheapest cell, and double the answer
+    /// (Nav2's Hybrid-A* does, by default: a quarter of the cells, the same paths).
+    #[must_use]
     pub fn new(
         grid: &Grid,
         start: (usize, usize),
         goal: (usize, usize),
         cost_penalty: f64,
+        downsample: bool,
     ) -> Self {
-        let (width, height) = (grid.width, grid.height);
+        let scale = if downsample { 2 } else { 1 };
+        let (width, height) = (grid.width.div_ceil(scale), grid.height.div_ceil(scale));
         let mut table = vec![0.0; width * height];
-        let goal_index = goal.1 * width + goal.0;
+        // Nav2 aims the first search at the start's full-size cell, not its block.
+        let goal_index = (goal.1 / scale) * width + goal.0 / scale;
         let mut queue = BinaryHeap::new();
         queue.push(Entry {
             f: straight_line(goal_index, width, start),
@@ -77,6 +86,7 @@ impl Obstacles {
         Self {
             width,
             height,
+            scale,
             table,
             queue,
             cost_penalty: cost_penalty as f32,
@@ -85,13 +95,15 @@ impl Obstacles {
 
     /// The cost from cell (x, y) to the goal; 0 if it can't be reached.
     pub fn get(&mut self, grid: &Grid, x: usize, y: usize) -> f32 {
+        let scale = self.scale as f32;
         let (w, h) = (self.width, self.height);
+        let (x, y) = (x / self.scale, y / self.scale);
         if x >= w || y >= h {
             return 0.0;
         }
         let target = y * w + x;
         if self.table[target] > 0.0 {
-            return self.table[target];
+            return scale * self.table[target];
         }
         // Aim the waiting cells at this cell instead.
         let mut waiting = std::mem::take(&mut self.queue).into_vec();
@@ -126,7 +138,7 @@ impl Obstacles {
                     continue;
                 }
                 let next = ny as usize * w + nx as usize;
-                let cost = grid.data[next];
+                let cost = self.cost(grid, nx as usize, ny as usize);
                 if cost >= INSCRIBED {
                     continue;
                 }
@@ -147,7 +159,20 @@ impl Obstacles {
                 break;
             }
         }
-        self.table[target].max(0.0)
+        scale * self.table[target].max(0.0)
+    }
+
+    /// A search cell's cost: the costmap's, or the cheapest of its 2 x 2 block.
+    fn cost(&self, grid: &Grid, x: usize, y: usize) -> u8 {
+        if self.scale == 1 {
+            return grid.data[y * grid.width + x];
+        }
+        let (fx, fy) = (x * self.scale, y * self.scale);
+        (fy..(fy + self.scale).min(grid.height))
+            .flat_map(|cy| (fx..(fx + self.scale).min(grid.width)).map(move |cx| (cx, cy)))
+            .map(|(cx, cy)| grid.data[cy * grid.width + cx])
+            .min()
+            .unwrap_or(LETHAL)
     }
 }
 
@@ -166,6 +191,7 @@ pub struct DistanceTable {
 
 impl DistanceTable {
     /// `size_cells`: the table's width (made odd); `radius`: the turning radius in cells.
+    #[must_use]
     pub fn new(kind: CurveKind, radius: f64, headings: &[f64], size_cells: usize) -> Self {
         let size = (size_cells as i64) | 1;
         let half = size / 2;
@@ -189,13 +215,15 @@ impl DistanceTable {
         }
     }
 
-    /// The estimate from a node (whole cells, a heading) to the goal (cells, a heading).
+    /// The estimate from a node (cells, a heading) to the goal (cells, a heading). The
+    /// lattice gives its node's whole cell, Hybrid-A* its node's own pose (as Nav2's do).
     /// Off the table: the curve itself if `obstacles` is 0, else 0 (Nav2's choice).
-    pub fn get(&self, node: (usize, usize, usize), goal: (f64, f64, usize), obstacles: f32) -> f32 {
+    #[must_use]
+    pub fn get(&self, node: (f64, f64, usize), goal: (f64, f64, usize), obstacles: f32) -> f32 {
         let n = self.headings.len();
         let (s, c) = self.headings[goal.2].sin_cos();
-        let dx = node.0 as f64 - goal.0;
-        let dy = node.1 as f64 - goal.1;
+        let dx = node.0 - goal.0;
+        let dy = node.1 - goal.1;
         let rx = (dx * c + dy * s).round() as i64;
         let ry = (-dx * s + dy * c).round() as i64;
         let dh = (node.2 + n - goal.2) % n;
@@ -206,7 +234,7 @@ impl DistanceTable {
             let index = ((rx + half) * (half + 1) + ry.abs()) as usize * n + h;
             self.values[index]
         } else if obstacles == 0.0 {
-            let from = Pose::new(node.0 as f64, node.1 as f64, self.headings[node.2]);
+            let from = Pose::new(node.0, node.1, self.headings[node.2]);
             let to = Pose::new(goal.0, goal.1, self.headings[goal.2]);
             shortest(self.kind, &from, &to, self.radius).length() as f32
         } else {

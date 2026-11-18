@@ -36,6 +36,9 @@
 //! let out = s.tick(0.05, None).unwrap();
 //! assert!(out.v > 0.0 && out.v <= 0.05 + 1e-9);
 //! ```
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use std::fmt;
 
@@ -72,11 +75,13 @@ impl Default for Car {
 
 impl Car {
     /// The path's bend (1/m) for a steering angle.
+    #[must_use]
     pub fn curvature(&self, steer: f64) -> f64 {
         steer.tan() / self.wheelbase
     }
 
     /// The steering angle for a bend, within full lock.
+    #[must_use]
     pub fn steer_for(&self, curvature: f64) -> f64 {
         (self.wheelbase * curvature)
             .atan()
@@ -84,6 +89,7 @@ impl Car {
     }
 
     /// The fastest the car can turn at speed `v`: `|v| tan(max_steering) / L`.
+    #[must_use]
     pub fn max_turn_rate(&self, v: f64) -> f64 {
         v.abs() * self.curvature(self.max_steering)
     }
@@ -158,16 +164,25 @@ impl Default for Settings {
 /// Nav2's lists of three (x, y, theta), as its parameters hold them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Nav2Limits {
+    /// `max_velocity`.
     pub max_velocity: Vec<f64>,
+    /// `min_velocity`.
     pub min_velocity: Vec<f64>,
+    /// `max_accel`.
     pub max_accel: Vec<f64>,
+    /// `max_decel`.
     pub max_decel: Vec<f64>,
+    /// `deadband_velocity`.
     pub deadband_velocity: Vec<f64>,
 }
 
 impl Settings {
     /// Settings from Nav2's parameters, refused where Nav2 refuses them (the signs, the
     /// lists' length, min above max). y is ignored: a car doesn't slide sideways.
+    ///
+    /// # Errors
+    ///
+    /// [`SettingsError`] for the first setting Nav2 would refuse.
     pub fn from_nav2(
         frequency: f64,
         feedback: Feedback,
@@ -262,7 +277,9 @@ impl std::error::Error for NotFinite {}
 /// A speed and a turn rate: m/s forward, rad/s left.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Motion {
+    /// m/s, + forward.
     pub v: f64,
+    /// rad/s, + left.
     pub w: f64,
 }
 
@@ -300,6 +317,10 @@ const STILL: f64 = 1e-3;
 
 impl Smoother {
     /// A smoother at rest, the wheels straight.
+    ///
+    /// # Errors
+    ///
+    /// [`SettingsError::Car`] for a car number out of range.
     pub fn new(settings: Settings, car: Car) -> Result<Self, SettingsError> {
         let positive = [
             ("wheelbase", car.wheelbase),
@@ -327,20 +348,29 @@ impl Smoother {
         })
     }
 
+    /// The settings it runs with.
+    #[must_use]
     pub fn settings(&self) -> &Settings {
         &self.settings
     }
 
+    /// The car it smooths for.
+    #[must_use]
     pub fn car(&self) -> &Car {
         &self.car
     }
 
     /// rad: where the smoother has the wheels.
+    #[must_use]
     pub fn steer(&self) -> f64 {
         self.steer
     }
 
     /// A new command `(v, w)`, arrived or stamped at `at` s.
+    ///
+    /// # Errors
+    ///
+    /// [`NotFinite`] for a NaN or an infinity: the command is ignored.
     pub fn command(&mut self, v: f64, w: f64, at: f64) -> Result<(), NotFinite> {
         if !(v.is_finite() && w.is_finite() && at.is_finite()) {
             return Err(NotFinite);
@@ -418,8 +448,28 @@ impl Smoother {
     }
 }
 
+/// The car's measured speed (closed loop), and when it arrived.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Reading {
+    /// m/s.
+    pub speed: f64,
+    /// s: when it arrived.
+    pub at: f64,
+}
+
+impl Reading {
+    /// The speed while the reading is at most `max_age` s old; `None` once odometry has
+    /// stopped, so closed loop runs on the last speed sent (as open loop) rather than on
+    /// one reading for ever. Nav2's own smoother keeps the last reading.
+    #[must_use]
+    pub fn fresh(&self, now: f64, max_age: f64) -> Option<f64> {
+        (now - self.at <= max_age).then_some(self.speed)
+    }
+}
+
 /// Move `current` toward `target`: at most `accel * dt` getting faster (the same way),
 /// `decel * dt` otherwise. Nav2's rule (velocity_smoother.cpp `applyConstraints`).
+#[must_use]
 pub fn slew(current: f64, target: f64, accel: f64, decel: f64, dt: f64) -> f64 {
     let faster = target.abs() >= current.abs() && current * target >= 0.0;
     let step = if faster { accel } else { decel } * dt;
@@ -622,6 +672,28 @@ mod tests {
         assert!((o.v - 0.65).abs() < 1e-9);
         // No measurement yet: from the last speed sent.
         assert!((s.tick(0.1, None).unwrap().v - 0.7).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_stale_reading_is_not_used() {
+        let r = Reading {
+            speed: 0.6,
+            at: 1.0,
+        };
+        assert_eq!(r.fresh(1.5, 1.0), Some(0.6));
+        assert_eq!(r.fresh(2.0, 1.0), Some(0.6));
+        assert_eq!(r.fresh(2.01, 1.0), None);
+        // Odometry stopped at 0.6 m/s: closed loop ramps from what it sent, not 0.6.
+        let settings = Settings {
+            feedback: Feedback::ClosedLoop,
+            ..settings()
+        };
+        let mut s = Smoother::new(settings, Car::default()).unwrap();
+        s.command(1.0, 0.0, 0.0).unwrap();
+        let o = s.tick(0.05, r.fresh(0.05, 1.0)).unwrap();
+        assert!((o.v - 0.65).abs() < 1e-9);
+        let o = s.tick(3.0, r.fresh(3.0, 1.0)).unwrap();
+        assert!((o.v - 0.7).abs() < 1e-9);
     }
 
     #[test]

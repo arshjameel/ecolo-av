@@ -34,6 +34,7 @@ pub enum Light {
 /// What the panel says.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Verdict {
+    /// Its colour: green, amber, red or grey.
     pub light: Light,
     /// One or two short words, big: GO, WAIT, STOP, AUTO STOP, NO GATE.
     pub headline: &'static str,
@@ -75,6 +76,7 @@ pub enum Gate {
 
 impl Gate {
     /// Reads the output mux's line (aav_io_mux `provenance.Gate.state`).
+    #[must_use]
     pub fn parse(text: &str) -> Self {
         if let Some(rest) = text.strip_prefix("OPEN - ") {
             let what = rest
@@ -102,12 +104,18 @@ pub enum Sensors {
     /// Nothing stops the drivers (a warning may be on: the camera's banner shows it).
     Drive,
     /// Nav2 and the AI slot are held: the first input that stops them, and its state.
-    Held { input: String, state: String },
+    Held {
+        /// The input: gps, imu, lidar...
+        input: String,
+        /// Its state: STALE, SIM...
+        state: String,
+    },
 }
 
 impl Sensors {
     /// Reads the watchdog's line (aav_safety `watchdog.Watchdog.summary`: the inputs that
     /// stop come first).
+    #[must_use]
     pub fn parse(text: &str) -> Self {
         let Some(rest) = text.strip_prefix("STOP: ") else {
             return Self::Drive;
@@ -123,6 +131,7 @@ impl Sensors {
 
     /// Whether only a person clears it (`/safety/sensor_watchdog/clear`): a GPS jump,
     /// wheels that disagreed, a HUD that dropped out.
+    #[must_use]
     pub fn is_latched(&self) -> bool {
         matches!(self, Self::Held { state, .. } if ["JUMP", "DISAGREE", "LOST"].contains(&state.as_str()))
     }
@@ -133,6 +142,7 @@ impl Sensors {
 ///
 /// The order: the e-stop; the gate latched or silent (nothing reaches the car); the
 /// watchdog holding Nav2; the gate waiting; no gate heard; then GO.
+#[must_use]
 pub fn verdict(
     estop_on: bool,
     gate: (Health, Option<&str>),
@@ -256,13 +266,13 @@ mod tests {
             Gate::Open("all SIM".into())
         );
         let stop = "STOP - target car needs REAL - camera_front_left is SIM \
-                    (gazebo_adapter) - latched: /safety/output_mux/clear";
+                    (sim_adapter) - latched: /safety/output_mux/clear";
         assert_eq!(
             Gate::parse(stop),
             Gate::Stop("CAMERA FRONT LEFT is SIM".into())
         );
-        let two = "STOP - target car needs REAL - gps is SIM (gazebo_adapter); imu is SIM \
-                   (gazebo_imu) - latched: /safety/output_mux/clear";
+        let two = "STOP - target car needs REAL - gps is SIM (sim_adapter); imu is SIM \
+                   (sim_imu) - latched: /safety/output_mux/clear";
         assert_eq!(Gate::parse(two), Gate::Stop("GPS is SIM".into()));
         let wrong = "STOP - target car needs REAL - the sensor mux checks for SIM, target \
                      car needs REAL - latched: /safety/output_mux/clear";
@@ -343,7 +353,7 @@ mod tests {
 
     #[test]
     fn a_latched_gate_comes_before_the_watchdog() {
-        let stop = "STOP - target car needs REAL - gps is SIM (gazebo_adapter) - latched: x";
+        let stop = "STOP - target car needs REAL - gps is SIM (sim_adapter) - latched: x";
         let v = verdict(false, (OK, Some(stop)), (OK, Some("STOP: imu STALE (x)")));
         assert_eq!((v.light, v.headline), (Light::Stop, "STOP"));
         assert_eq!(v.reason, "GPS is SIM");

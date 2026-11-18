@@ -30,6 +30,7 @@ pub struct FrameV3 {
     pub values: Frame,
     /// The Orin's heartbeat counter, copied by the Motor-Pi.
     pub counter: u8,
+    /// Armed and e-stop.
     pub flags: Flags,
     /// What the steering actuator should do: drive, limp or jog.
     pub calibration: CalRequest,
@@ -48,13 +49,14 @@ impl From<FrameV2> for FrameV3 {
 
 impl FrameV3 {
     /// The 20 bytes, as `legacy_protocol.pack_frame_v3` sends them (without its clamp).
+    #[must_use]
     pub fn encode(&self) -> [u8; FRAME_V3_LEN] {
         let mut bytes = [0; FRAME_V3_LEN];
         bytes[0] = SYNC;
         bytes[1] = VERSION_3;
         let values = [self.values.steering, self.values.speed, self.values.accel];
-        for (chunk, value) in bytes[2..14].chunks_exact_mut(4).zip(values) {
-            chunk.copy_from_slice(&value.to_le_bytes());
+        for (chunk, value) in bytes[2..14].as_chunks_mut::<4>().0.iter_mut().zip(values) {
+            *chunk = value.to_le_bytes();
         }
         bytes[14] = self.counter;
         bytes[15] = self.flags.to_byte();
@@ -71,6 +73,11 @@ impl FrameV3 {
 
     /// A frame from 20 bytes: the sync byte, then the CRC, then the version, the flags
     /// and the calibration. The values are not checked ([`Frame::check`] does that).
+    ///
+    /// # Errors
+    ///
+    /// [`FrameError::Sync`], [`FrameError::Checksum`], [`FrameError::Version`] or
+    /// [`FrameError::Flags`]: the first that fails.
     pub fn decode(bytes: &[u8; FRAME_V3_LEN]) -> Result<FrameV3, FrameError> {
         if bytes[0] != SYNC {
             return Err(FrameError::Sync);

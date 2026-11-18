@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! dev_window [--live] [--developer] [--ndt-map FILE] [--click-goal X,Y] [--cubes N] [--all-layers]
-//!            [--seconds S] [--screenshot FILE]
+//!            [--map-whole] [--seconds S] [--screenshot FILE]
 //! ```
 //!
 //! Without `--live`: pretend data, with no ROS. `--live` (the `ros` feature) is the node
@@ -11,11 +11,15 @@
 //! e-stop, in the simulator only: `tools/dev_window.sh` is what gives it.
 //!
 //! `--seconds` is the speed test: no vsync, the frame rate printed, then it exits.
-//! `--all-layers` starts with every layer on. `--screenshot` saves one picture halfway
+//! `--all-layers` starts with every layer on (the ground too). `--map-whole` starts the
+//! map panel on the whole map (the button; F follows the car). `--screenshot` saves one picture halfway
 //! through `--seconds`. `--click-goal X,Y` is what a click and the two presses do, after
 //! `CLICK_AFTER` seconds, through the same gates: macOS blocks scripted clicks.
 
+mod chunks;
 mod feed;
+mod lanes;
+mod map_nav;
 mod panels;
 mod pretend;
 #[cfg(feature = "ros")]
@@ -43,7 +47,7 @@ use crate::feed::{Feed, Update};
 
 const USAGE: &str = "usage: dev_window [--live] [--developer] [--ndt-map FILE] \
                      [--click-goal X,Y] [--cubes N] \
-                     [--all-layers] [--seconds S] [--screenshot FILE]";
+                     [--all-layers] [--map-whole] [--seconds S] [--screenshot FILE]";
 /// One NDT map cube's edge on screen, metres: at 1 m a kerb looked as big as a building.
 const NDT_CELL: f64 = 0.5;
 /// The most outlines drawn in red. Drawing lines costs more than drawing cubes.
@@ -68,9 +72,13 @@ struct Options {
     live: bool,
     developer: bool,
     ndt_map: Option<String>,
+    lanes: Option<String>,
+    chunks: Option<String>,
     click_goal: Option<[f64; 2]>,
     cubes: u32,
     all_layers: bool,
+    /// The map panel starts with the whole map, not following the car.
+    map_whole: bool,
     seconds: Option<f32>,
     screenshot: Option<PathBuf>,
 }
@@ -81,9 +89,12 @@ impl Options {
             live: false,
             developer: false,
             ndt_map: None,
+            lanes: None,
+            chunks: None,
             click_goal: None,
             cubes: 20_000,
             all_layers: false,
+            map_whole: false,
             seconds: None,
             screenshot: None,
         };
@@ -94,6 +105,8 @@ impl Options {
                 "--live" => options.live = true,
                 "--developer" => options.developer = true,
                 "--ndt-map" => options.ndt_map = Some(value()?),
+                "--lanes" => options.lanes = Some(value()?),
+                "--chunks" => options.chunks = Some(value()?),
                 "--click-goal" => {
                     let text = value()?;
                     let parsed = text
@@ -110,6 +123,7 @@ impl Options {
                         Some(value()?.parse().map_err(|e| format!("--seconds: {e}"))?);
                 }
                 "--all-layers" => options.all_layers = true,
+                "--map-whole" => options.map_whole = true,
                 "--screenshot" => options.screenshot = Some(value()?.into()),
                 other => return Err(format!("unknown option {other}")),
             }
@@ -230,6 +244,10 @@ fn main() -> AppExit {
         Err(why) => ui_state.world.note(format!("the car's eyes: {why}")),
     }
     ui_state.layers.nav2_cubes = options.all_layers;
+    ui_state.layers.ground |= options.all_layers;
+    if options.map_whole {
+        ui_state.map.show_whole();
+    }
     ui_state.world.ndt = if options.live {
         options.ndt_map.as_deref().map(|path| {
             let file = MapFile::read(path, NDT_CELL);
@@ -240,6 +258,29 @@ fn main() -> AppExit {
         Some(Some(pretend::ndt_cells()))
     }
     .flatten();
+    if let Some(path) = options.lanes.as_deref() {
+        match lanes::read(path) {
+            Ok(lines) => {
+                ui_state
+                    .world
+                    .note(format!("{path}: {} lane lines", lines.len()));
+                ui_state.world.lanes = lines;
+            }
+            Err(why) => ui_state.world.note(format!("{path}: {why}")),
+        }
+    }
+    if let Some(path) = options.chunks.as_deref() {
+        match map_chunks::files::read_grid(std::path::Path::new(path)) {
+            Ok(grid) => {
+                ui_state
+                    .world
+                    .note(format!("{path}: {} m chunks", grid.size()));
+                ui_state.world.chunks = Some(grid);
+                ui_state.world.chunk_folder = Some(path.into());
+            }
+            Err(why) => ui_state.world.note(format!("{path}: {why}")),
+        }
+    }
 
     App::new()
         .insert_resource(ClearColor(Color::BLACK))
@@ -476,7 +517,10 @@ impl NearCells {
 /// cells, dark or lit, and only the cubes the map doesn't explain. Otherwise the raw cubes.
 fn cubes_to_show(state: &panels::UiState, near: &[usize]) -> Vec<(Vec3, f32, Look)> {
     let world = &state.world;
-    let road = state.layers.road.then_some(world.road.cubes.as_slice());
+    let ground = state.layers.ground;
+    let road = ground.then_some(world.road.cubes.as_slice());
+    // The ground (key G) and the lidar's rings on raised grass are hidden unless asked for.
+    let shown_cube = |c: &&debug_core::cubes::Cube| ground || c.band != Band::Ground;
     let raw = |c: &debug_core::cubes::Cube| (Vec3::from_array(c.centre), 1.0, Look::Band(c.band));
     let mut shown: Vec<(Vec3, f32, Look)> = Vec::new();
     match (&world.ndt, state.layers.ndt_cubes) {
@@ -503,13 +547,14 @@ fn cubes_to_show(state: &panels::UiState, near: &[usize]) -> Vec<(Vec3, f32, Loo
                     .filter_map(|&i| world.cubes.cubes.get(i))
                     .map(|c| (Vec3::from_array(c.centre), 1.0, Look::NotOnMap)),
             );
-            // Kerbs and raised grass: the lidar's waves, in their own colours.
+            // Kerbs, in their own colours; the raised grass's rings only with G.
             shown.extend(
                 world
                     .cubes
                     .cubes
                     .iter()
                     .filter(|c| c.centre[2] < panels::WAVES_TOP)
+                    .filter(shown_cube)
                     .map(raw),
             );
             shown.extend(
@@ -518,7 +563,7 @@ fn cubes_to_show(state: &panels::UiState, near: &[usize]) -> Vec<(Vec3, f32, Loo
                     .filter_map(|number| cell(number, Look::MapDark)),
             );
         }
-        _ => shown.extend(world.cubes.cubes.iter().map(raw)),
+        _ => shown.extend(world.cubes.cubes.iter().filter(shown_cube).map(raw)),
     }
     if let Some(road) = road {
         shown.extend(road.iter().map(raw));
@@ -582,6 +627,48 @@ fn draw_wireframes(state: Res<panels::UiState>, mut gizmos: Gizmos) {
             Vec3::new(odom.x as f32, odom.y as f32, 0.1)
         });
         gizmos.linestrip(line, Color::srgb(1.0, 0.85, 0.2));
+    }
+    if state.layers.plan && world.road_ahead.line.len() >= 2 {
+        // The road ahead, in the scene (odom): green where it allows the top speed, red at
+        // a stop; a red bar across its end.
+        let top = world.road_ahead.top_speed();
+        let lift = |p: Point, z: f32| {
+            let odom = feed::odom_to_map([p.x as f32, p.y as f32], world.car_map, car);
+            Vec3::new(odom.x as f32, odom.y as f32, z)
+        };
+        gizmos.linestrip_gradient(world.road_ahead.line.iter().map(|&(p, v)| {
+            let share = feed::speed_share(v, top);
+            (
+                lift(p, 0.15),
+                Color::srgb(0.92 - 0.76 * share, 0.16 + 0.66 * share, 0.24),
+            )
+        }));
+        if let Some((end, heading)) = world.road_ahead.end {
+            let (sin, cos) = heading.sin_cos();
+            let side = |s: f64| {
+                lift(
+                    Point::new(end.x - 1.5 * s * sin, end.y + 1.5 * s * cos),
+                    0.15,
+                )
+            };
+            gizmos.line(side(1.0), side(-1.0), Color::srgb(0.92, 0.16, 0.16));
+        }
+    }
+    if state.layers.things {
+        // The things near the car (odom): each an upright box in its kind's colour
+        // (hud_core::things); their names are words over the scene (panels::thing_names).
+        for thing in world.things_now(std::time::Instant::now()) {
+            let c = thing.colour();
+            gizmos.cube(
+                Transform::from_xyz(thing.x as f32, thing.y as f32, thing.height as f32 / 2.0)
+                    .with_scale(Vec3::new(
+                        thing.length.max(0.1) as f32,
+                        thing.width.max(0.1) as f32,
+                        thing.height.max(0.1) as f32,
+                    )),
+                Color::srgb_u8(c.r, c.g, c.b),
+            );
+        }
     }
     if state.layers.nav2_cubes {
         for cube in world.cubes.cubes.iter().take(MAX_OUTLINES) {

@@ -3,8 +3,10 @@
 One card for every ROS package in `ros/` and every crate and board in `firmware/`. Each
 card answers the same nine questions. [Packages](packages.md) is the short version, in
 tables; this page goes deeper. Written 15 October 2026, checked 25 October, with the
-topic names by area ([Topic areas](naming.md)). 37 packages build; seven of the newest have a
+topic names by area ([Topic areas](naming.md)). 51 packages build with colcon (counted
+14 Nov), and two more are plain cargo programs; 24 of the newest have a
 one-line entry, pointing at their own README ([below](#more-packages-see-their-readmes)).
+The cards themselves were not checked again after 25 Oct, apart from the lines changed on 14 Nov.
 
 ![How the stack fits together](img/architecture.svg)
 
@@ -29,12 +31,12 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 | Area (`ros/<area>/`) | Modules |
 |---|---|
 | [sources](#sensors) | `aav_sensors`, `aav_imu_yahboom`, `aav_battery_victron`, `aav_radar_ti`; `aav_camera_stream` ([one line](#more-packages-see-their-readmes)) |
-| [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading` |
-| [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_routes` ([one line](#more-packages-see-their-readmes)) |
+| [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading`; `aav_localization_health`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
+| [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_rc_rs`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
 | [command_mux, io_mux, ego](#mux-and-ego) | `aav_command_mux`, `aav_io_mux`, `aav_ego` |
-| [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_gazebo`, `aav_carla`; `aav_spine_bridge` ([one line](#more-packages-see-their-readmes)) |
-| [perception](#perception) | `aav_detector`, `aav_radar_clusters`, `aav_lane_finder`, `aav_lane_geometry`; `aav_lidar` ([one line](#more-packages-see-their-readmes)) |
-| [hud](#hud) | `aav_hud` |
+| [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_sim_models`, `aav_carla`; `aav_spine_bridge`, `aav_legacy_rs`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
+| [perception](#perception) | `aav_detector`, `aav_radar_clusters`, `aav_lane_finder`, `aav_lane_geometry`; `aav_lidar`, `aav_voxels`, `aav_voxels_rs` ([one line](#more-packages-see-their-readmes)) |
+| [hud](#hud) | `aav_hud`; `aav_dev_window` ([one line](#more-packages-see-their-readmes)) |
 | [sim: bench mode](#bench) | `aav_spine_sim`, `aav_bench` |
 | [ecolo_msgs, bringup](#messages-and-bringup) | `aav_interfaces`, `aav_bringup` |
 | [safety](#more-packages-see-their-readmes) | `aav_safety`, `aav_ghost` ([one line](#more-packages-see-their-readmes)) |
@@ -50,7 +52,7 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 |---|---|
 | **Does** | starts the sensor drivers (IMU, GPS, roof lidar, radar, battery, a USB camera) with the car's settings. The front cameras come by `aav_camera_stream` instead |
 | **Why** | one launch file per computer, so each sensor starts the same way everywhere |
-| **Runs on** | whichever computer the sensor is plugged into: the Orin's file turns on IMU and GPS (both still TODO: which USB?) and the lidar |
+| **Runs on** | whichever computer the sensor is plugged into: the localization Pi's file (`localization.yaml`, 8 Nov) turns on the IMU and GPS; the Orin's, the lidar |
 | **In → out** | `/dev/aav/imu`, `/dev/aav/gps`, the VLP-16's UDP packets, `/dev/aav/radar_*`, `/dev/aav/battery`, `/dev/aav/camera_*` → `/sensors/imu/data`, `/sensors/gps/fix`, `/sensors/lidar/points`, `/sensors/radar/points`, `/vehicle/battery`, `/sensors/camera/front_left/image_raw` |
 | **Origin** | ours; it starts stock drivers (`ublox_gps`, `nmea_navsat_driver`, `ublox_dgnss`, `imu_filter_madgwick`, `velodyne`, `usb_cam`). The camera calibrations are the 2024-25 `cameras` repo's |
 | **Status** | [[untested]] needs the devices |
@@ -64,7 +66,7 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 |---|---|
 | **Does** | reads the Yahboom 10-axis IMU over USB serial and publishes it, in Rust (rclrs) |
 | **Why** | ekf_local needs the turn rate; the wheels can't give it |
-| **Runs on** | the computer the IMU is plugged into (Orin, guess) |
+| **Runs on** | the localization Pi (`localization.yaml`, 8 Nov): the IMU is on its USB |
 | **In → out** | `/dev/aav/imu` → `/sensors/imu/data_raw` (Imu, `imu_link`), `/sensors/imu/mag` (raw counts, not tesla: unused) |
 | **Origin** | ours (Ben): a rewrite of the 2025-26 C++ driver (`yahboom-IMU` @ 95469f1a63), which it replaced on 11 Oct. Two crates: `yahboom-protocol` (frames, no ROS) and `imu-node` (the node) |
 | **Status** | [[works]] its protocol tests, and the C++ driver's recorded answers, bit for bit. [[untested]] on a real IMU |
@@ -91,7 +93,7 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 | | |
 |---|---|
 | **Does** | sends a config to the TI IWR6843AOP mmWave radar and publishes its points |
-| **Why** | sees obstacles ahead, for Nav2's costmap and the collision monitor |
+| **Why** | sees obstacles ahead, for the costmap and the stop zone |
 | **Runs on** | not in any machine file yet (`radar: false`) |
 | **In → out** | `/dev/aav/radar_cmd`, `/dev/aav/radar_data` → `/sensors/radar/points` (PointCloud2, `radar_link`, best effort) |
 | **Origin** | inherited: 2025-26 `Nav_Radar` @ 6242631882 |
@@ -165,8 +167,8 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 | | |
 |---|---|
 | **Does** | runs the stage-3 and stage-4 tests (steering, speed up, coast, brake, circles, straight), logs them, prints the numbers for `vehicle.yaml` |
-| **Why** | fill `vehicle.yaml`'s `actuators:` with measured numbers, so Gazebo moves like the car |
-| **Runs on** | the laptop on the car's network (or the Mac with Gazebo) |
+| **Why** | fill `vehicle.yaml`'s `actuators:` with measured numbers, so the simulator moves like the car |
+| **Runs on** | the laptop on the car's network (or a Mac with Ravensim) |
 | **In → out** | the car's readings, `/safety/estop`, `/system/source` → `/drivers/tests/cmd_vel` (priority 60) |
 | **Origin** | ours |
 | **Status** | [[works]] Gazebo, all 9 tests (15 Oct); [[untested]] on the car |
@@ -220,12 +222,12 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 
 | | |
 |---|---|
-| **Does** | Nav2 set up for a car: SmacPlannerHybrid, MPPI (or Regulated Pure Pursuit), costmaps, the collision monitor, and the maps |
+| **Does** | our navigation, set up for a car: the launch file and settings that start our map server, costmaps, planner (the State Lattice; Hybrid-A*), navigator, `mppi_lag`, smoother and stop zone, and the maps |
 | **Why** | drives to a goal or along GPS waypoints, around obstacles |
 | **Runs on** | the Orin |
 | **In → out** | `/localization/odom/local`, TF, `/map`, `/goal_pose`, `/sensors/radar/points`, `/perception/camera_obstacles` → `/drivers/nav/cmd_vel`, `/plan`, `/safety/collision_monitor/state` |
-| **Origin** | stock Nav2; our settings. Replaces 2025-26 `Navigation_PathPlanning_ObstacleAvoidance` and `Obstacle_Avoidance_logic` |
-| **Status** | [[works]] goals in Gazebo, 40 m on the bench. Open: the weave (N7) |
+| **Origin** | ours, each node a port of a Nav2 server (Nav2 itself went on 17 Nov); our settings. Replaces 2025-26 `Navigation_PathPlanning_ObstacleAvoidance` and `Obstacle_Avoidance_logic` |
+| **Status** | [[works]] goals in Ravensim (and in Gazebo with Nav2), 40 m on the bench. Open: the weave (N7) |
 | **Run alone** | part of `pixi run sim`; alone: `ros2 launch aav_navigation navigation.launch.py` |
 | **Test** | `pixi run bench-check --obstacle` |
 | **Read first** | `config/nav2.yaml`, then [Costmaps](costmaps.md) |
@@ -256,8 +258,8 @@ one-line entry, pointing at their own README ([below](#more-packages-see-their-r
 | **In → out** | `/ego/actuator_cmd`, `/system/source`, the ROS graph → `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` |
 | **Origin** | ours (the proposal's sensor and output muxes) |
 | **Status** | [[works]] in its tests and in every profile; [[untested]] on the car |
-| **Run alone** | `ros2 launch aav_io_mux io_mux.launch.py target:=car` |
-| **Test** | `test/test_provenance.py` (in `tools/test.sh`), `test/test_real_backend_guard.py` (`pixi run test`) |
+| **Run alone** | `ros2 launch aav_io_mux io_mux.launch.py target:=car` (Rust, `aav_io_mux_rs`, the default since 17 Nov; `io_mux_impl:=python` for these) |
+| **Test** | `test/test_provenance.py`, `test_vectors.py` (in `tools/test.sh`), `test/test_real_backend_guard.py` (`pixi run test`); the Rust: `cargo test -p io-mux-core` (the shared vectors) |
 | **Read first** | `aav_io_mux/provenance.py`, then [Sources and targets](sources-and-targets.md) |
 
 ### aav_ego
@@ -304,7 +306,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 | **In → out** | `/control/car/actuator_cmd`, `/control/car/heartbeat`, `/safety/estop` → serial `/dev/ttyAMA0` (use `/dev/serial0`); UDP port 10111 → `/vehicle/odom` (only with `legacy_encoder`) |
 | **Origin** | ours, written for the 2025-26 protocols (`AAV_cortex`, `Wheel_Encoders`) |
 | **Status** | [[untested]] on the car. The ESP32 has no command timeout: wheels off the ground first |
-| **Run alone** | `ros2 launch aav_legacy legacy.launch.py` (on the Motor Pi) |
+| **Run alone** | `ros2 launch aav_legacy legacy.launch.py` (on the Motor Pi; the Rust bridge, `aav_legacy_rs`, by default since 17 Nov; `legacy_impl:=python` for this one) |
 | **Test** | `test/test_legacy_protocol.py` (in `tools/test.sh`) |
 | **Read first** | `aav_legacy/legacy_protocol.py` |
 
@@ -322,25 +324,25 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 | **Test** | `pixi run check turtle` |
 | **Read first** | `aav_turtlesim/turtlesim_adapter.py` |
 
-### aav_gazebo
+### aav_sim_models
 
 | | |
 |---|---|
-| **Does** | puts Gazebo's simulated car behind the real car's topics, with an IMU and GPS; in the road world, a camera, a radar stand-in and (with `lidar:=true`) a roof lidar |
-| **Why** | Nav2 and the EKFs can be tested with the same settings as on the car |
+| **Does** | puts Ravensim's car behind the real car's topics, with an IMU and GPS; in the road world, a camera, a radar stand-in and (with `lidar:=true`) a roof lidar |
+| **Why** | navigation and the EKFs can be tested with the same settings as on the car |
 | **Runs on** | any laptop (headless on oirp-spss) |
-| **In → out** | `/control/sim/actuator_cmd`, `/gazebo/odom`, `/gazebo/imu`, `/gazebo/navsat`, `/gazebo/radar/points` → `/gazebo/cmd_vel`, `/vehicle/odom`, `/vehicle/status`, `/sensors/imu/data_raw`, `/sensors/gps/fix`, `/sensors/radar/points`. The road world's bridges add `/sensors/camera/front_left/*`, `/sensors/lidar/points` and `/vehicle/sim/truth` |
-| **Origin** | ours, on stock Gazebo Harmonic and `ros_gz` |
-| **Status** | [[works]] headless on Linux and a Mac; its window on a Mac |
-| **Run alone** | `pixi run sim` (`gui:=false` on a Mac) |
+| **In → out** | `/control/sim/actuator_cmd`, `/vehicle/sim/odom`, `/vehicle/sim/imu`, `/vehicle/sim/navsat`, `/vehicle/sim/radar/points` → `/vehicle/sim/cmd_vel`, `/vehicle/odom`, `/vehicle/status`, `/sensors/imu/data_raw`, `/sensors/gps/fix`, `/sensors/radar/points`. The road world's bridges add `/sensors/camera/front_left/*`, `/sensors/lidar/points` and `/vehicle/sim/truth` |
+| **Origin** | ours; first written for Gazebo Harmonic (until 16 Nov), now beside Ravensim (`aav_simulator`) |
+| **Status** | [[works]] headless on a Mac; on Linux with software GL [[untested]] (TODO 240) |
+| **Run alone** | `pixi run sim`; `pixi run ravensim` with the developer window |
 | **Test** | `test/test_turn_rate.py`, `test_radar.py`, `test_worlds.py` (`colcon test` only); `pixi run check sim`, `pixi run sim-check` |
-| **Read first** | `aav_gazebo/gazebo_adapter.py` |
+| **Read first** | `aav_sim_models/sim_adapter.py` |
 
 ### aav_carla
 
 | | |
 |---|---|
-| **Does** | a CARLA car as the car: the same topics as Gazebo's, from CARLA's Python client |
+| **Does** | a CARLA car as the car: the same topics as Ravensim's, from CARLA's Python client |
 | **Why** | photo-real towns and cameras; Carleton's streets from OpenStreetMap ([CARLA](carla.md)) |
 | **Runs on** | a Linux x86_64 computer that can reach a CARLA server (TCP 2000-2001); not a Mac |
 | **In → out** | `/control/carla/actuator_cmd`, `/safety/estop` → odom, status, IMU, GPS, cameras, radar, lidar, `/clock`, `/vehicle/carla/truth` |
@@ -374,7 +376,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 |---|---|
 | **Does** | groups the radar's points into objects (DBSCAN), with a box round each, in Rust (rclrs) |
 | **Why** | turns a cloud of radar points into "something is there" |
-| **Runs on** | with the radar (`radar_clusters: false` on the car for now); always on the bench and in Gazebo's road world |
+| **Runs on** | with the radar (`radar_clusters: false` on the car for now); always on the bench and in the simulator's road world |
 | **In → out** | `/sensors/radar/points` → `/perception/radar/clusters`, `/perception/radar/cluster_boxes` |
 | **Origin** | ours: a rewrite of the 2025-26 C++ node (`Nav_Radar` @ 6242631882), which it replaced on 15 Oct. Two crates: `radar-clustering` (DBSCAN, boxes, cloud bytes; no ROS) and `clusters-node` |
 | **Status** | [[works]] on the bench and in Gazebo; the C++ node's answers for 94 clouds, bit for bit. [[untested]] on the real radar |
@@ -466,7 +468,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 
 | | |
 |---|---|
-| **Does** | our own 9 messages (such as `VehicleStatus`, `DataSource`, `Heartbeat`, `WheelSpeeds`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) |
+| **Does** | our own 13 messages (such as `VehicleStatus`, `DataSource`, `Heartbeat`, `WheelSpeeds`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) |
 | **Why** | the car's state (mode, armed, e-stop, faults) has no stock message |
 | **Runs on** | every computer (it's a build dependency) |
 | **In → out** | none: definitions only |
@@ -498,11 +500,32 @@ These have no card here yet. Each package's README answers the same questions.
 |---|---|---|
 | `aav_camera_stream` | one node per front camera: the camera Pi's H.264 stream, decoded, with RF-DETR inside | `ros/sources/aav_camera_stream/README.md`, then [Camera pipeline](camera-pipeline.md) |
 | `aav_rc` | the RC transmitter on "RC via ROS" as a driver (priority 95, proposed) | `ros/drivers/aav_rc/README.md` |
-| `aav_routes` | street routes (Valhalla) as GPS waypoints for Nav2 | `ros/drivers/aav_routes/README.md`, then [Routes](routes.md) |
+| `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |
+| `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
+| `aav_routes` | street routes (Valhalla) as GPS waypoints for the navigator | `ros/drivers/aav_routes/README.md`, then [Routes](routes.md) |
 | `aav_spine_bridge` | `spine_bridge` in Rust, the default; the same node as `aav_spine`'s Python one | `ros/can_bridge/aav_spine_bridge/README.md` |
-| `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for Nav2 | `ros/perception/aav_lidar/README.md` |
+| `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | `ros/perception/aav_lidar/README.md` |
+| `aav_lidar_rs` | `lidar_scan` in Rust, the default (`lidar_impl:=`): the same scan | `ros/perception/aav_lidar_rs/README.md` |
+| `aav_things_rs` | `things` in Rust, the default (`things_impl:=`): the same things | `ros/perception/aav_things_rs/README.md` |
+| `aav_voxels_rs` | `voxels` in Rust: the lidar's cubes, the Python node's drop-in (`voxels_impl:=rust`) | `ros/perception/aav_voxels_rs/README.md` |
 | `aav_safety` | the sensor watchdog: a twist_mux lock (30) when a sensor fails | `ros/safety/aav_safety/README.md`, then [Simulation](simulation.md#the-sensor-watchdog) |
-| `aav_ghost` | ghost obstacles: a pretend person only Nav2 sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
+| `aav_ghost` | ghost obstacles: a pretend person only navigation sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
+| `aav_run_info` | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | `ros/bringup/aav_run_info/README.md` |
+| `aav_localization_health` | warn-only checks on what the EKFs read and say (`/localization/health`, `/diagnostics`) | `ros/localization/aav_localization_health/README.md` |
+| `aav_ndt` | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | `ros/localization/aav_ndt/README.md`, then [the design](designs/2026-10-29_ndt.md) |
+| `aav_kiss_icp` | KISS-ICP lidar odometry, a trial (`kiss_icp:=true`) | `ros/localization/aav_kiss_icp/README.md`, then [the design](designs/2026-10-30_kiss-icp.md) |
+| `aav_voxels` | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for the costmap | `ros/perception/aav_voxels/README.md`, then [the design](designs/2026-10-30_voxels.md) |
+| `aav_track` | trial path followers in `controller_server`'s place (`tracker:=` pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag) | `ros/drivers/aav_track/README.md`, then [Trials](trials.md) |
+| `aav_mppi_lag` | Nav2's MPPI in Rust, on a car model that knows the actuators' lag (`tracker:=mppi_lag`) | `ros/drivers/aav_mppi_lag/README.md`, then [MPPI with lag](mppi-lag.md) |
+| `aav_costmap` | our own costmap in Rust, the only one since Nav2 went (`costmap:=own`) | `ros/drivers/aav_costmap/README.md`, then [Our costmap](own-costmap.md) |
+| `aav_planner` | our own path planner in Rust, the default (`planner:=own`): Nav2's Smac State Lattice ported | `ros/drivers/aav_planner/README.md`, then [Our planner](own-planner.md) |
+| `aav_navigator` | our own navigator in Rust, the only one (`navigator:=own`), in `bt_navigator`'s old place | `ros/drivers/aav_navigator/README.md`, then [Our navigator](own-navigator.md) |
+| `aav_smoother` | our own velocity smoother in Rust, the only one (`smoother:=own`) | `ros/drivers/aav_smoother/README.md`, then [Our smoother](own-smoother.md) |
+| `aav_diffusion_planner` | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | `ros/drivers/aav_diffusion_planner/README.md`, then [the design](designs/2026-11-02_diffusion-planner.md) |
+| `aav_behaviour` | the behaviour planner, a trial (`behaviour:=true`): six states and a speed cap on navigation | `ros/drivers/aav_behaviour/README.md`, then [How the car stops](stopping.md) |
+| `aav_simulator` | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | `ros/sim/aav_simulator/README.md`, then [Ravensim](own-simulator.md) |
+| `aav_sim_cameras` | Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
+| `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |
 
 `aav_actuator_tests` has its card under [Drivers](#drivers).
 

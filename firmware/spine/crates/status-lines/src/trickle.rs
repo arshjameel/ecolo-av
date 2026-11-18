@@ -56,6 +56,8 @@ impl From<TooLong> for Dropped {
 }
 
 impl<const SLOTS: usize, const N: usize> Trickle<SLOTS, N> {
+    /// An empty queue: `SLOTS` lines of at most `N` bytes each, the newline included.
+    #[must_use]
     pub const fn new() -> Self {
         Trickle {
             slots: [Slot {
@@ -70,6 +72,10 @@ impl<const SLOTS: usize, const N: usize> Trickle<SLOTS, N> {
     }
 
     /// Queue `line`, with a newline.
+    ///
+    /// # Errors
+    ///
+    /// [`Dropped`] if the queue is full or the line too long; counted in `dropped()`.
     pub fn push(&mut self, line: &Line<'_>) -> Result<(), Dropped> {
         self.push_text(line)
     }
@@ -78,6 +84,10 @@ impl<const SLOTS: usize, const N: usize> Trickle<SLOTS, N> {
     /// newline of its own; one too long for a slot is dropped whole, as with [`push`].
     ///
     /// [`push`]: Trickle::push
+    ///
+    /// # Errors
+    ///
+    /// [`Dropped`], as [`push`](Trickle::push).
     pub fn push_text(&mut self, text: &impl Display) -> Result<(), Dropped> {
         if self.queued == SLOTS || N == 0 {
             self.dropped = self.dropped.saturating_add(1);
@@ -120,15 +130,19 @@ impl<const SLOTS: usize, const N: usize> Trickle<SLOTS, N> {
     }
 
     /// How many lines wait, the one being sent included.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.queued
     }
 
+    /// No line waits.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.queued == 0
     }
 
     /// Lines dropped since boot.
+    #[must_use]
     pub fn dropped(&self) -> u32 {
         self.dropped
     }

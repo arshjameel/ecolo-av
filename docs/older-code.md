@@ -36,9 +36,9 @@ be private (an org's private repos don't show to non-members), or not on GitHub.
 | Motor_Steering | a Pi speed controller and UART bridge, an ESP32 add-on, sims, MATLAB steering geometry | Python ROS 2, C++, MATLAB; Pi 5, ESP32 | prototype | partly: its geometry in `docs/reference/` and `vehicle.yaml` | its 250 ms link timeout idea, for today's ESP32 (but braking, not releasing) |
 | Navigation-BehaviorPlanning | a README title | none | empty | no | no |
 | Navigation-LocalPathGenerator | follows an OSRM route from GPS: the current step, a local path, a speed | Python ROS 2 | prototype; nothing feeds it | no | no: `street_router` turns a street route into Nav2 GPS waypoints ([Street routes](routes.md)) |
-| Navigation-LocalPathGenerator-rf_cpp | a C++ rewrite of the above | C++17 | prototype | no | no: Nav2 does this |
-| Navigation_PathPlanning_ObstacleAvoidance | a GPS-goal grid planner (A*, D* Lite) with lidar obstacles | C++, PCL; Orin | prototype, with a crash bug | no | no: Nav2 does this |
-| Obstacle_Avoidance_logic | a lidar costmap and braking-distance e-stop | one C++ file | can't build: no package files | no | no: Nav2's obstacle layer and collision monitor |
+| Navigation-LocalPathGenerator-rf_cpp | a C++ rewrite of the above | C++17 | prototype | no | no: our navigation does this (Nav2's, then our Rust ports) |
+| Navigation_PathPlanning_ObstacleAvoidance | a GPS-goal grid planner (A*, D* Lite) with lidar obstacles | C++, PCL; Orin | prototype, with a crash bug | no | no: our navigation does this (Nav2's, then our Rust ports) |
+| Obstacle_Avoidance_logic | a lidar costmap and braking-distance e-stop | one C++ file | can't build: no package files | no | no: the costmap's obstacle layer and the stop zone (Nav2's, then ours) |
 | Odometry | merges a SLAM pose and the IMU into `/odom` | Python ROS 2 | prototype; nothing publishes its input | no | no: robot_localization does this |
 | Real-Time-OS | a QNX layer: command picking, a SQLite logger, body control, a QNX image for a Pi 4 | C, C++; Pi 4 on QNX 8 | prototype: its own README lists the watchdog, e-stop and CAN as not done | no | no: twist_mux, the spine's watchdog and `ros2 bag` cover it ("No QNX" is Tentative, Q23) |
 | User-Interface | the in-car HUD: a Flutter app, a Flask ROS node, offline routing and place search | Dart/Flutter, Python ROS 2; the UI Pi | a working demo, on mock data | partly: ported, then archived 25 Oct to `archive/2026-27-flutter-hud/` (the app; `maincar` as `aav_hud`); its route maths lives on in `aav_routes/route.py` | **its place database `ottawa.db` (51 MB)**: the map window's place search reads it |
@@ -80,12 +80,12 @@ The five not cloned here:
 |---|---|---|
 | Sensors | a GPS driver that anything runs; a lidar driver; camera streaming and the stop-sign detector (both only on the car's Orin); steering feedback (only 2024-25's `FinalRev`); a fine enough wheel speed; magnetometer calibration | GPS: the stock driver, model unknown (Q18). Lidar: the stock `velodyne` driver (20 Oct). Cameras: `aav_camera_stream` (24 Oct). Both untested on the car |
 | Localization | a URDF, TF, a working estimator | [[works]] the EKFs and `navsat_transform`, in sim |
-| Navigation | any planner whose output reached the motors; the HUD's route into GPS waypoints; lidar or radar costmap inputs | [[works]] Nav2 in Gazebo |
+| Navigation | any planner whose output reached the motors; the HUD's route into GPS waypoints; lidar or radar costmap inputs | [[works]] our navigation in Ravensim (Nav2 in Gazebo before) |
 | Drivers | anything beyond RC and the joystick | [[works]] scripted, keyboard; the joystick is [[untested]] |
 | Ego | a command layer with limits and a timeout; calibrations from radians to the actuators' counts | [[works]] ego; the calibrations are TODO |
 | The spine | any CAN code; a watchdog that brakes; feedback frames; the hardware e-stop in code | [[works]] the logic (`spine-core`); the board programs (`boards/pico2`, `boards/esp32-umod`) are [[untested]]: never flashed |
 | HUD | real data: it only ever showed mock data | [[works]] our raylib HUD and map window read real topics, on a Mac; [[untested]] on the car. Their app was ported, then archived 25 Oct (Q29) |
-| Simulation | a whole-car simulator | [[works]] Gazebo |
+| Simulation | a whole-car simulator | [[works]] Ravensim (Gazebo until 16 Nov) |
 
 !!! warning "Back up the car before any reflash"
   Some work exists only on the car's computers: the stop-sign detector, `camera_decode`,

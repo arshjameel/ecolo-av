@@ -1,0 +1,299 @@
+//! A two-lane road, both lanes east, split at x = 20, a stop sign at x = 40 on the right lane:
+//!
+//! ```text
+//!  y = 6  7 ────────── 8 ────────── 9      top: solid
+//!         │ 201 (L1)   │ 202 (L2)   │
+//!  y = 3  4 - - - - -  5 - - - - -  6      middle: dashed (or solid, `solid_middle`)
+//!         │ 101 (R1)   │ 102 (R2)   ┃ stop line 30, sign 31 (de206)
+//!  y = 0  1 ────────── 2 ────────── 3      bottom: solid
+//!        x=0          x=20         x=40
+//! ```
+
+use super::*;
+
+fn road(middle: &str) -> String {
+    let node = |id: i64, x: f64, y: f64| {
+        format!(
+            r#"<node id="{id}" lat="0" lon="0"><tag k="local_x" v="{x}"/><tag k="local_y" v="{y}"/></node>"#
+        )
+    };
+    let way = |id: i64, nodes: &[i64], kind: &str, subtype: &str| {
+        let nds: String = nodes
+            .iter()
+            .map(|n| format!(r#"<nd ref="{n}"/>"#))
+            .collect();
+        format!(
+            r#"<way id="{id}">{nds}<tag k="type" v="{kind}"/><tag k="subtype" v="{subtype}"/></way>"#
+        )
+    };
+    let lanelet = |id: i64, left: i64, right: i64, rules: &[i64]| {
+        let reg: String = rules
+            .iter()
+            .map(|r| format!(r#"<member type="relation" role="regulatory_element" ref="{r}"/>"#))
+            .collect();
+        format!(
+            r#"<relation id="{id}"><member type="way" role="left" ref="{left}"/><member type="way" role="right" ref="{right}"/>{reg}<tag k="type" v="lanelet"/><tag k="speed_limit" v="18"/></relation>"#
+        )
+    };
+    let mut osm = String::from("<osm>");
+    for (id, x, y) in [
+        (1, 0.0, 0.0),
+        (2, 20.0, 0.0),
+        (3, 40.0, 0.0),
+        (4, 0.0, 3.0),
+        (5, 20.0, 3.0),
+        (6, 40.0, 3.0),
+        (7, 0.0, 6.0),
+        (8, 20.0, 6.0),
+        (9, 40.0, 6.0),
+        (11, 41.0, -1.0),
+        (12, 41.0, -2.0),
+    ] {
+        osm += &node(id, x, y);
+    }
+    osm += &way(21, &[1, 2], "line_thin", "solid");
+    osm += &way(22, &[2, 3], "line_thin", "solid");
+    osm += &way(23, &[4, 5], "line_thin", middle);
+    osm += &way(24, &[5, 6], "line_thin", middle);
+    osm += &way(25, &[7, 8], "line_thin", "solid");
+    osm += &way(26, &[8, 9], "line_thin", "solid");
+    osm += &way(30, &[3, 6], "stop_line", "");
+    osm += &way(31, &[11, 12], "traffic_sign", "de206");
+    osm += &lanelet(101, 23, 21, &[]);
+    osm += &lanelet(102, 24, 22, &[300]);
+    osm += &lanelet(201, 25, 23, &[]);
+    osm += &lanelet(202, 26, 24, &[]);
+    osm += r#"<relation id="300"><member type="way" role="refers" ref="31"/><member type="way" role="ref_line" ref="30"/><tag k="type" v="regulatory_element"/><tag k="subtype" v="traffic_sign"/></relation>"#;
+    osm + "</osm>"
+}
+
+fn map(middle: &str) -> LaneletMap {
+    LaneletMap::from_osm(&road(middle), Origin::default()).unwrap()
+}
+
+#[test]
+fn the_parts_are_read() {
+    let m = map("dashed");
+    assert_eq!(m.lanelets().count(), 4);
+    let r1 = m.lanelet(101).unwrap();
+    assert_eq!((r1.left, r1.right), (23, 21));
+    assert!((r1.speed_limit.unwrap() - 5.0).abs() < 1e-9); // 18 km/h
+    assert_eq!(m.line(23).unwrap().kind, LineKind::Paint { dashed: true });
+    assert_eq!(m.line(30).unwrap().kind, LineKind::StopLine);
+    assert_eq!(m.rule(300).unwrap().kind, RuleKind::Sign("de206".into()));
+    assert!(m.rule(300).unwrap().is_stop());
+}
+
+#[test]
+fn the_centre_line_runs_down_the_middle_of_the_lane() {
+    let m = map("dashed");
+    let r1 = m.lanelet(101).unwrap();
+    assert_eq!(r1.centre.first(), Some(&Point::new(0.0, 1.5)));
+    assert_eq!(r1.centre.last(), Some(&Point::new(20.0, 1.5)));
+    assert!(r1.centre.iter().all(|p| (p.y - 1.5).abs() < 1e-9));
+    assert!((r1.length() - 20.0).abs() < 1e-9);
+}
+
+#[test]
+fn lanes_follow_and_sit_beside_each_other() {
+    let m = map("dashed");
+    assert_eq!(m.following(101), &[102]);
+    assert_eq!(m.following(201), &[202]);
+    assert!(m.following(102).is_empty());
+    assert_eq!(m.beside(101), &[201]);
+    assert_eq!(m.beside(202), &[102]);
+}
+
+#[test]
+fn a_solid_line_is_never_crossed() {
+    let m = map("solid");
+    assert!(m.beside(101).is_empty());
+    assert_eq!(m.route(101, 102), Some(vec![101, 102]));
+    assert_eq!(m.route(101, 202), None);
+}
+
+#[test]
+fn a_route_changes_lanes_over_a_dashed_line() {
+    let m = map("dashed");
+    let route = m.route(101, 202).unwrap();
+    assert_eq!(route.len(), 3, "{route:?}");
+    assert_eq!((route[0], route[2]), (101, 202));
+    assert_eq!(m.route(102, 101), None); // never backwards
+}
+
+#[test]
+fn the_stop_line_on_the_way_is_found() {
+    let m = map("dashed");
+    assert_eq!(
+        m.stops_on(&[101, 102]),
+        vec![(102, 300, Point::new(40.0, 1.5))]
+    );
+    assert!(m.stops_on(&[201, 202]).is_empty());
+}
+
+#[test]
+fn the_nearest_lane_is_the_one_you_are_in() {
+    let m = map("dashed");
+    assert_eq!(m.nearest(10.0, 4.5), Some(201));
+    assert_eq!(m.nearest(30.0, 1.0), Some(102));
+}
+
+#[test]
+fn the_r_tree_finds_the_lane_the_whole_scan_finds() {
+    // TODO 201: a grid of points over and round the road, the index against every line.
+    let m = map("dashed");
+    let distance = |id: Id, x: f64, y: f64| {
+        distance_to_line(Point::new(x, y), &m.lanelet(id).expect("a lanelet").centre)
+    };
+    for i in -10..=60 {
+        for j in -12..=16 {
+            let (x, y) = (f64::from(i) * 0.97, f64::from(j) * 0.53);
+            let (fast, slow) = (m.nearest(x, y), m.nearest_by_scan(x, y));
+            let (fast, slow) = (fast.expect("a lane"), slow.expect("a lane"));
+            // Where two are as near (one ends, the next begins), either is right.
+            assert!(
+                (distance(fast, x, y) - distance(slow, x, y)).abs() < 1e-9,
+                "({x}, {y}): {fast} against {slow}"
+            );
+        }
+    }
+}
+
+#[test]
+fn an_empty_map_has_no_nearest_lane() {
+    let m = LaneletMap::from_osm("<osm></osm>", Origin::default()).expect("a map");
+    assert_eq!(m.nearest(0.0, 0.0), None);
+}
+
+#[test]
+fn lat_lon_points_go_on_the_map_round_the_origin() {
+    let osm = r#"<osm>
+        <node id="1" lat="45.386" lon="-75.696"/>
+        <node id="2" lat="45.387" lon="-75.695"/>
+    </osm>"#;
+    let origin = Origin {
+        lat: 45.386,
+        lon: -75.696,
+    };
+    let m = LaneletMap::from_osm(osm, origin).unwrap();
+    assert_eq!(m.lanelets().count(), 0);
+    // As tools/campus_world.py's geodetic_to_enu puts it: 78.316 m east, 111.139 m north.
+    let p = origin.project(45.387, -75.695);
+    assert!((p.x - 78.3156).abs() < 0.01, "{p:?}");
+    assert!((p.y - 111.1393).abs() < 0.01, "{p:?}");
+}
+
+#[test]
+fn a_broken_file_says_what_is_wrong() {
+    let bad = r#"<osm><way id="5"><nd ref="99"/></way></osm>"#;
+    assert_eq!(
+        LaneletMap::from_osm(bad, Origin::default()).unwrap_err(),
+        MapError::Unknown {
+            element: "way",
+            id: 5,
+            refers: 99
+        }
+    );
+    assert!(matches!(
+        LaneletMap::from_osm("<osm", Origin::default()),
+        Err(MapError::Xml(_))
+    ));
+}
+
+#[test]
+fn a_screen_draws_each_painted_line_once_and_the_stop_line() {
+    let m = map("dashed");
+    let ids: Vec<Id> = m.drawn_lines().iter().map(|l| l.id).collect();
+    assert_eq!(ids, vec![21, 22, 23, 24, 25, 26, 30]);
+}
+
+#[test]
+fn a_point_is_placed_on_the_lanes_near_it_nearest_first() {
+    let m = map("dashed");
+    let near = m.places_near(25.0, 2.0, 3.0);
+    let ids: Vec<Id> = near.iter().map(|p| p.lanelet).collect();
+    assert_eq!(ids, vec![102, 202]);
+    let p = near[0];
+    assert!(
+        (p.along - 5.0).abs() < 1e-9 && (p.off - 0.5).abs() < 1e-9,
+        "{p:?}"
+    );
+    assert!(p.heading.abs() < 1e-9);
+    assert_eq!(p.foot, Point::new(25.0, 1.5));
+    assert_eq!(m.half_widths(102, 5.0), Some((1.5, 1.5)));
+    assert_eq!(m.point_at(101, 7.5), Some(Point::new(7.5, 1.5)));
+}
+
+fn place(m: &LaneletMap, id: Id, x: f64, y: f64) -> Place {
+    m.place_on(id, x, y).unwrap()
+}
+
+#[test]
+fn a_route_between_two_places_on_one_lane_is_the_stretch_between() {
+    let m = map("dashed");
+    let to = place(&m, 102, 35.0, 1.5);
+    let r = m.route_between(&place(&m, 101, 2.0, 1.5), &to).unwrap();
+    assert_eq!(r.lanelets, vec![101, 102]);
+    assert_eq!(r.entries, vec![2.0, 0.0]);
+    assert!((r.cost - 33.0).abs() < 1e-9, "{r:?}");
+    let line = m.route_line(&r, &to);
+    assert_eq!(line.first(), Some(&Point::new(2.0, 1.5)));
+    assert_eq!(line.last(), Some(&Point::new(35.0, 1.5)));
+    assert!(line.iter().all(|p| (p.y - 1.5).abs() < 1e-9));
+    let same = m
+        .route_between(&place(&m, 101, 2.0, 1.5), &place(&m, 101, 9.0, 1.5))
+        .unwrap();
+    assert_eq!((same.lanelets.clone(), same.cost), (vec![101], 7.0));
+}
+
+#[test]
+fn a_goal_behind_on_a_road_with_no_loop_has_no_route() {
+    let m = map("dashed");
+    let from = place(&m, 102, 30.0, 1.5);
+    assert!(m.route_between(&from, &place(&m, 102, 25.0, 1.5)).is_none());
+    assert!(m.route_between(&from, &place(&m, 101, 5.0, 1.5)).is_none());
+}
+
+#[test]
+fn a_route_between_places_changes_lane_where_the_car_is_and_eases_across() {
+    let m = map("dashed");
+    let from = place(&m, 201, 5.0, 4.5);
+    let to = place(&m, 102, 35.0, 1.5);
+    let r = m.route_between(&from, &to).unwrap();
+    // 30 m driven and one change.
+    assert!((r.cost - 40.0).abs() < 1e-9, "{r:?}");
+    assert_eq!(r.lanelets.first(), Some(&201));
+    assert_eq!(r.lanelets.last(), Some(&102));
+    let line = m.route_line(&r, &to);
+    assert_eq!(line.first(), Some(&Point::new(5.0, 4.5)));
+    assert_eq!(line.last(), Some(&Point::new(35.0, 1.5)));
+    // Eased: never a step sideways bigger than the step along, never backwards.
+    for w in line.windows(2) {
+        assert!(
+            (w[1].y - w[0].y).abs() <= (w[1].x - w[0].x).abs() + 1e-9,
+            "{w:?}"
+        );
+        assert!(w[1].x >= w[0].x, "{w:?}");
+    }
+    // Never over a solid line.
+    let solid = map("solid");
+    let from = place(&solid, 201, 5.0, 4.5);
+    assert!(solid
+        .route_between(&from, &place(&solid, 102, 35.0, 1.5))
+        .is_none());
+}
+
+#[test]
+fn the_stop_lines_between_two_places_are_those_ahead() {
+    let m = map("dashed");
+    let to_end = place(&m, 102, 40.0, 1.5);
+    let r = m.route_between(&place(&m, 101, 1.0, 1.5), &to_end).unwrap();
+    assert_eq!(
+        m.stops_between(&r, &to_end),
+        vec![(102, 300, Point::new(40.0, 1.5))]
+    );
+    // Stopping short of the line: not met.
+    let short = place(&m, 102, 30.0, 1.5);
+    let r = m.route_between(&place(&m, 101, 1.0, 1.5), &short).unwrap();
+    assert!(m.stops_between(&r, &short).is_empty());
+}

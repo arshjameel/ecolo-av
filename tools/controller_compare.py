@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Controller comparison: Nav2's followers and the trial trackers over the same routes in Gazebo.
+Controller comparison: our followers and the trial trackers over the same routes, simulated.
+
+Nav2 went on 17 Nov (TODO 184): its last scores are in docs/league-results-2026-11-16.md,
+and every run since is on our own stack (stack:=best, the champions).
 
 Each drives the test lot, headless, and is measured against where the car really was.
 
-    pixi run measure controllers                   (both controllers, both tours: ~15 min)
+    pixi run measure controllers                   (mppi_lag, both tours: ~8 min)
     pixi run measure controllers --tours obstacle   (only the box in the lane)
-    pixi run measure controllers --controllers mppi
-    pixi run measure controllers --speed 3          (Nav2 and ego up to 3 m/s: sim_speed:=3)
+    pixi run measure controllers --speed 3          (the follower and ego up to 3 m/s)
     pixi run measure controllers --tours lot --legs 1   (only the first leg: a quick check)
-    pixi run measure controllers --reversing        (Nav2 may reverse: the car's reversing:=true)
+    pixi run measure controllers --reversing        (the car may reverse: reversing:=true)
     pixi run measure controllers --plans            (keep every plan, not just each leg's first)
     pixi run measure controllers --tours campus --speed 2.5 --trackers pure_pursuit stanley
                     Carleton's roads; every report opens with which rides best: reached every
@@ -17,10 +19,10 @@ Each drives the test lot, headless, and is measured against where the car really
 
 The trials (docs/trials.md):
     pixi run measure controllers --trackers pure_pursuit stanley lqr mpc --runs 3
-                    aav_track's trackers (tracker:=), forward only; with --trackers alone,
-                    only them: add --controllers rpp mppi for the whole-stack table too
+                    aav_track's trackers (tracker:=), forward only; add --trackers
+                    mppi_lag for the champion beside them
     pixi run measure controllers --runs 3           (each follower 3 times: the mean and spread)
-    pixi run measure controllers --trackers mpc_lag --controllers mppi rpp --lag-scale 2
+    pixi run measure controllers --trackers mpc_lag mppi_lag --lag-scale 2
                     the car's lags twice what vehicle.yaml says (sim's lag_scale:=2), the
                     followers none the wiser: how each copes with a slower car
     pixi run measure controllers --amcl             (AMCL beside the EKF, amcl:=true: scored
@@ -33,9 +35,9 @@ The trials (docs/trials.md):
     pixi run measure controllers --ndt-ekf          (the same, with NDT's pose into the global
                     EKF, ndt_ekf:=true: compare its EKF numbers with --ndt's)
     pixi run measure controllers --ndt --gps-off    (the GPS stops once the EKF has its first
-                    fix; with watchdog:=false geofence:=false, or they would hold Nav2)
+                    fix; with watchdog:=false geofence:=false, or they would hold the car)
     pixi run measure controllers --voxels --tours lot
-                    the costmap and collision_monitor read the lidar as cubes (voxels:=true,
+                    the costmap and the stop zone read the lidar as cubes (voxels:=true,
                     aav_voxels) instead of the flat scan: the same legs, and each leg's
                     note says the voxels node's ms a cloud and cubes a cloud
     pixi run measure controllers --kiss-icp         (KISS-ICP lidar odometry, kiss_icp:=true,
@@ -45,38 +47,37 @@ The trials (docs/trials.md):
     pixi run measure controllers --kiss-ekf         (the same, with KISS-ICP's twist into
                     ekf_local, kiss_ekf:=true: compare its ekf_local numbers with
                     --kiss-icp's)
-    pixi run measure controllers --planners hybrid lattice smac2d --tours lot
-                    Nav2's planners (planner:=), each with MPPI unless --controllers or
+    pixi run measure controllers --planners own own_hybrid own32 --reversing --tours lot
+                    our planner's searches and files (planner:=), each with mppi_lag unless
                     --trackers says otherwise. Before each leg it also asks the planner
-                    alone for a path (/compute_path_to_pose): its planning time, the path's
-                    length and its tightest turn against the car's full lock. Then a
-                    table of the whole tour: legs finished, time, path length, planning
-                    time, kept to the turning radius (docs/controllers.md, Planners)
-    pixi run measure controllers --planners hybrid lattice lattice32 --reversing --runs 3
-                    the same with reversing on (MPPI follows backwards too; the trackers
-                    can't), and lattice32: the lattice on its 32-heading file
-    pixi run measure controllers --planners lattice own --reversing --tours lot campus
-                    our own planner (aav_planner, planner:=own: Nav2's lattice in Rust)
-                    beside Nav2's: before each leg both plan from the same spot on the same
-                    map, and the leg's note gives Nav2's length, time and tightest turn
-    pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3
-                    all of Nav2 (bt_navigator, the lattice, Nav2's costmaps, MPPI) against
-                    all of ours (navigator:=own planner:=own costmap:=own
-                    tracker:=mppi_lag: aav_navigator, aav_planner, aav_costmap,
-                    aav_mppi_lag), forward only (mppi_lag can't reverse). Each sends
-                    goals to its own navigator's actions (docs/own-navigator.md)
-    pixi run measure controllers --stacks nav2 own --tours fieldhouse --speed 2.5
+                    alone for a path: its planning time, the path's length and its tightest
+                    turn against the car's full lock. Then a table of the whole tour: legs
+                    finished, time, path length, planning time, kept to the turning radius
+                    (docs/controllers.md, Planners); own32: the lattice's 32-heading file
+    pixi run measure controllers --planners own own_hybrid --reversing --tours lot
+                    our planner's two searches: the State Lattice (own) against Hybrid-A*
+                    (own_hybrid: planner_search:=hybrid; docs/own-planner.md)
+    pixi run measure controllers --stacks own own_calm --tours fieldhouse --speed 2.5
                     the campus route, P4 to the Fieldhouse (453 m, TODO 140): the campus
-                    graph's GPS waypoints, as street_router makes them, sent to each
-                    navigator's follow_gps_waypoints. Nav2's waypoint_follower stops and
-                    faces each one; ours passes them as one through-poses goal
-    pixi run measure controllers --stacks own --smoothers nav2 own --tours lot campus --runs 3
-                    Nav2's velocity smoother against ours (smoother:=own, aav_smoother: the
-                    turn rate from where the wheels can be), behind each follower; the
-                    row "Steering commands ego had to clip" says how often ego held the
-                    wheels back from what it was asked (docs/own-smoother.md)
-    pixi run measure controllers --planners lattice diffusion --reversing --tours lot
-                    the diffusion trial beside the lattice: each leg's note says how many
+                    graph's GPS waypoints, as street_router makes them, sent to the
+                    navigator's follow_gps_waypoints, which passes them as one
+                    through-poses goal. own is ours as it was until 15 Nov; own_calm the
+                    sim's ours stack now (plan_smoothing:=strong, map_correction:=slow,
+                    mppi_lag_steer_gamma:=0.05); own_slow and own_strong(_slow) each step.
+                    --series keeps each leg's raw series
+    pixi run measure controllers --stacks own_calm own_calm_chunks --tours lot campus
+            university --runs 2 --reversing --launch behaviour:=true lane_route:=true
+                    TODO 175: our global costmap from the map's chunks (costmap_chunks:=auto,
+                    ours' since 16 Nov) against the whole map; each leg's notes give the
+                    costmap's and planner's CPU and memory, the plan times and the plans
+                    cut at the costmap's edge
+    pixi run measure controllers --stacks own_calm --tours university --runs 2 --reversing
+            --launch behaviour:=true lane_route:=true
+                    TODO 148, path:=lane: University Drive, about 290 m of mapped road
+                    in 3 legs (the campus tour has ~30 s a leg); again with nothing more,
+                    and with lane_costs:=true; tools/lane_score.py on each results.json
+    pixi run measure controllers --planners own diffusion --reversing --tours lot
+                    the diffusion trial beside our lattice: each leg's note says how many
                     plans came from the model, how many from the lattice (the guard's
                     fallback) and why, and the guard's refusals by check.
                     diffusion_nomodel: the same with no model file (every plan the lattice's).
@@ -84,13 +85,14 @@ The trials (docs/trials.md):
                     each plan's inputs, for pixi run diffusion replay
 
 For each tour and controller it:
-1. starts sim.launch.py world:=test_lot gui:=false rviz:=false controller:=<rpp|mppi>
-   (or tracker:=<name>) [planner:=<name>] reversing:=false (forward only, unless
-   --reversing), on a ROS domain and Gazebo partition of its own, on this computer only;
-2. waits for Gazebo's truth, the global EKF and Nav2;
+1. starts sim.launch.py world:=test_lot gui:=false rviz:=false stack:=best (the
+   champions, then the piece under test on top) tracker:=<name> [planner:=<name>]
+   reversing:=false (forward only, unless --reversing), on a ROS domain of its
+   own, on this computer only;
+2. waits for the simulator's truth, the global EKF and the navigator;
 3. sends each leg's goal in turn, each from where the last one ended, and records where the
    car really was (/vehicle/sim/truth), the planner's paths (/plan), the controller's
-   speed (/cmd_vel_nav), ego's steering, the sensor watchdog and collision_monitor; with a
+   speed (/cmd_vel_nav), ego's steering, the sensor watchdog and the stop zone; with a
    tracker its tick (/drivers/nav/track/status); with --amcl, /localization/amcl/pose;
    with --ndt, /localization/ndt/pose and /localization/ndt/status; with --kiss-icp,
    /localization/kiss_icp/odom and status, and ekf_local's /localization/odom/local;
@@ -98,12 +100,12 @@ For each tour and controller it:
    (docs/path-followers.md).
 
 Tours (map frame: the car starts at 0, 0 facing east; the walls, building and parked cars
-are aav_gazebo worlds/test_lot.sdf):
+are aav_sim_models worlds/test_lot.sdf):
   lot       a left turn; round the building to the lane north of it; a turn back in that
             14 m wide lane; home
   obstacle  30 m east with the bench's 1 m box in the lane at 15.5 m (obstacle:=true).
-            Nav2's global costmap holds only the map, so the planner's path goes through the
-            box: only the controller and collision_monitor can deal with it
+            The global costmap holds only the map, so the planner's path goes through the
+            box: only the follower and the stop zone can deal with it
 
 What each number means: drive_metrics.py (COLUMNS). The results go to
 log/controller-compare/<time>/: results.md, a picture of each tour (<tour>.svg: where each
@@ -125,13 +127,12 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 # On this computer only: the comparison can't disturb a car, another laptop or someone
-# else's simulator. Each run also gets its own ROS domain and Gazebo partition (private()),
+# else's simulator. Each run also gets its own ROS domain (private()),
 # so one still shutting down can't meet the next (21 Oct: the second run never came up).
 os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-os.environ['GZ_IP'] = '127.0.0.1'
 
 from aav_description import vehicle  # noqa: E402
-from aav_gazebo import worlds  # noqa: E402
+from aav_sim_models import worlds  # noqa: E402
 from ackermann_msgs.msg import AckermannDriveStamped  # noqa: E402
 from action_msgs.msg import GoalStatus  # noqa: E402
 from diagnostic_msgs.msg import DiagnosticStatus  # noqa: E402
@@ -150,6 +151,9 @@ from std_msgs.msg import Bool, String  # noqa: E402
 from std_srvs.srv import Trigger  # noqa: E402
 import yaml  # noqa: E402
 
+# The campus tours' geofence: a 600 m circle round lot P4, as docs/routes.md runs it. The
+# sim's 200 m holds every program before the campus's further roads.
+CAMPUS_FENCE = 'geofence_radius:=600'
 # (name, x m, y m, heading deg): each leg's goal, map frame.
 TOURS = {
     'lot': {'obstacle': False, 'legs': [
@@ -162,60 +166,165 @@ TOURS = {
         ('past the box', 30.0, 0.0, 0.0),
     ]},
     # Carleton (pixi run campus): only when asked for, at the campus's speed. Long roads and real
-    # bends, where a wobble shows.
-    'campus': {'obstacle': False, 'world': worlds.CAMPUS, 'legs': [
+    # bends, where a wobble shows. Round the bend's route goes 216 m from the start: the sim's
+    # 200 m fence held the car at a junction 196.9 m out (14 Nov night), so the campus's fence.
+    'campus': {'obstacle': False, 'world': worlds.CAMPUS, 'launch': [CAMPUS_FENCE], 'legs': [
         ('out of the lot', 73.0, -38.0, 45.0),
         ('along the road', 165.0, -111.0, -40.0),
-        ('round the bend', 139.0, -190.0, -100.0),
+        # Facing the way the route arrives (109 deg, up the road; the road runs at -71 deg,
+        # measured on campus.pgm, 14 Nov). The roads don't join from the north, so the route
+        # loops round and comes up from the south: facing -71 meant a three-point turn in a
+        # 6.5 m street at the goal (TODO 174 tests that on its own).
+        ('round the bend', 139.0, -190.0, 109.0),
+    ]},
+    # TODO 148: more mapped road than the campus tour (whose middle goals are off the lane
+    # map): out of P4 onto University Drive heading south-east, down it 135 m, then round
+    # the bend south 150 m; each goal on the right lane's centre (maps/campus/lanes.yaml),
+    # facing the way the road runs there. lattice-planner's examples/lane.rs plans it too.
+    'university': {'obstacle': False, 'world': worlds.CAMPUS, 'launch': [CAMPUS_FENCE],
+                   'legs': [
+                       ('onto University Drive', 87.7, -72.6, -67.4),
+                       ('down University Drive', 139.9, -196.4, -67.0),
+                       ('round the bend south', 169.0, -337.4, -129.0),
+                   ]},
+    # Ben, 16 Nov: keep right, leave the lane only to pass. The car starts on University
+    # Drive's right lane (its straight 115 m, heading -66.9 deg), a 1 m box parked on that
+    # lane's centre 35 m ahead; the goal is the university tour's second, 90 m on. The car
+    # must pass the box (into the other lane only as needed), then come back to its lane.
+    # lane_score.py's pass_score scores it. Our simulator only (spawn_entity).
+    'university_box': {'obstacle': False, 'world': worlds.CAMPUS,
+                       'launch': [CAMPUS_FENCE, 'start_x:=104.68', 'start_y:=-113.49',
+                                  'start_yaw:=-1.1676'],
+                       'boxes': [(118.39, -145.69)],
+                       'legs': [('past the parked box', 139.9, -196.4, -67.0)]},
+    # TODO 149: the wiggle's road, in one goal from lot P4: out of the lot, then about 120 m
+    # of gently bending road (the campus tour's second leg, without its stop in between,
+    # which left the car on a cell the costmap called occupied: "Start occupied").
+    'wiggle': {'obstacle': False, 'world': worlds.CAMPUS, 'legs': [
+        ('P4 along the road', 165.0, -111.0, -40.0),
     ]},
     # TODO 140: directions on the campus, P4 to the Fieldhouse, as GPS waypoints (route:
     # from, to, by the campus graph). The leg's goal is the last waypoint, put on the map
     # by /fromLL when the run starts (None until then).
-    # The fence: a 600 m circle, as docs/routes.md runs it (200 m stops it half way).
+    # The fence: as docs/routes.md runs it (200 m stops it half way).
     'fieldhouse': {'obstacle': False, 'world': worlds.CAMPUS, 'route': ('P4', 'Fieldhouse'),
-                   'launch': ['geofence_radius:=600'],
+                   'launch': [CAMPUS_FENCE],
                    'legs': [('P4 to the Fieldhouse', None, None, None)]},
 }
-# --stacks: every navigation piece Nav2's, or every one ours (forward only: mppi_lag).
+# --stacks: every navigation piece ours (mppi_lag follows), as it was or with a trial.
 STACKS = {
-    'nav2': ('controller', vehicle.DEFAULT_CONTROLLER,
-             ['planner:=lattice', 'costmap:=nav2', 'navigator:=nav2']),
     'own': ('tracker', 'mppi_lag',
             ['planner:=own', 'costmap:=own', 'navigator:=own']),
+    # All ours on the lattice's 32-heading file: a road at an angle is less of a
+    # staircase (the sway's third source, 15 Nov). A trial against own.
+    'own32': ('tracker', 'mppi_lag',
+              ['planner:=own', 'costmap:=own', 'navigator:=own', 'lattice_headings:=32']),
+    # All ours, the follower taking the GPS's map corrections slowly (TODO 186): a
+    # challenger against own, scored in the same runs.
+    'own_slow': ('tracker', 'mppi_lag',
+                 ['planner:=own', 'costmap:=own', 'navigator:=own', 'map_correction:=slow']),
+    # The planner's smoother pulling harder (plan_smoothing:=strong, TODO 168): no
+    # staircase on a road at an angle. Alone, and with the slow map correction.
+    'own_strong': ('tracker', 'mppi_lag',
+                   ['planner:=own', 'costmap:=own', 'navigator:=own',
+                    'plan_smoothing:=strong']),
+    'own_strong_slow': ('tracker', 'mppi_lag',
+                        ['planner:=own', 'costmap:=own', 'navigator:=own',
+                         'plan_smoothing:=strong', 'map_correction:=slow']),
+    # And mppi_lag's control cost on its steering 3 times nav2.yaml's gamma
+    # (mppi_lag_steer_gamma:=0.05): less sampling jitter (TODO 168).
+    'own_calm': ('tracker', 'mppi_lag',
+                 ['planner:=own', 'costmap:=own', 'navigator:=own',
+                  'plan_smoothing:=strong', 'map_correction:=slow',
+                  'mppi_lag_steer_gamma:=0.05']),
+    # own_calm with our global costmap from the map's chunks round the car and along the
+    # route (costmap_chunks:=auto, TODO 175): the campus's; elsewhere the whole map.
+    'own_calm_chunks': ('tracker', 'mppi_lag',
+                        ['planner:=own', 'costmap:=own', 'navigator:=own',
+                         'plan_smoothing:=strong', 'map_correction:=slow',
+                         'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto']),
+    # own_calm_chunks with the kerbs (kerbs:=true, TODO 119): the step finder's kerbs in
+    # the local costmap. Against own_calm_chunks: no phantom stops?
+    'own_calm_chunks_kerbs': ('tracker', 'mppi_lag',
+                              ['planner:=own', 'costmap:=own', 'navigator:=own',
+                               'plan_smoothing:=strong', 'map_correction:=slow',
+                               'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto',
+                               'kerbs:=true']),
+    # own_calm_chunks routed on the campus's Lanelet2 map (lane_graph:=lanelet2); and that
+    # with the local costmap from the chunks too (local_chunks:=true): TODO 175.
+    'own_calm_chunks_ll2': ('tracker', 'mppi_lag',
+                            ['planner:=own', 'costmap:=own', 'navigator:=own',
+                             'plan_smoothing:=strong', 'map_correction:=slow',
+                             'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto',
+                             'lane_graph:=lanelet2']),
+    'own_calm_chunks_maps': ('tracker', 'mppi_lag',
+                             ['planner:=own', 'costmap:=own', 'navigator:=own',
+                              'plan_smoothing:=strong', 'map_correction:=slow',
+                              'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto',
+                              'lane_graph:=lanelet2', 'local_chunks:=true']),
+    'own_calm_chunks_local': ('tracker', 'mppi_lag',
+                              ['planner:=own', 'costmap:=own', 'navigator:=own',
+                               'plan_smoothing:=strong', 'map_correction:=slow',
+                               'mppi_lag_steer_gamma:=0.05', 'costmap_chunks:=auto',
+                               'local_chunks:=true']),
 }
-STACK_LABELS = {'nav2': 'all-nav2', 'own': 'all-ours'}
-BOX = 1.0               # m: the bench's obstacle, a cube (aav_gazebo models/obstacle)
-UP_TIME = 150.0         # s for Gazebo, the EKF, then Nav2, to come up
+STACK_LABELS = {'own': 'all-ours', 'own32': 'all-ours-32',
+                'own_slow': 'all-ours-slow', 'own_strong': 'all-ours-strong',
+                'own_strong_slow': 'all-ours-strong-slow', 'own_calm': 'all-ours-calm',
+                'own_calm_chunks': 'all-ours-calm-chunks',
+                'own_calm_chunks_kerbs': 'all-ours-calm-kerbs',
+                'own_calm_chunks_ll2': 'all-ours-calm-chunks-ll2',
+                'own_calm_chunks_maps': 'all-ours-calm-chunks-maps',
+                'own_calm_chunks_local': 'all-ours-calm-chunks-local'}
+BOX = 1.0               # m: the bench's obstacle, a cube (aav_sim_models models/obstacle)
+UP_TIME = 150.0         # s for the simulator, the EKF, then navigation, to come up
 SETTLE = 5.0            # s after that, before the first goal
-READY_TIME = 30.0       # s for the sensor watchdog to let Nav2 drive, before each leg
+READY_TIME = 30.0       # s for the sensor watchdog to let the car drive, before each leg
 LEG_TIME = 60.0         # s for each leg, plus 4 s for every metre at the top speed
 TRACK_EVERY = 0.5       # s between the saved track's points
+SERIES_EVERY = 0.05     # s between --series' saved samples
+REFUSED_TIME = 60.0     # s (wall) to keep asking a navigator that refuses the first goal
 # The test lot's drawing (tools/make_map.py made the map from it): the picture's background.
 MAP_SPEC = os.path.join(ROOT, 'ros', 'drivers', 'aav_navigation', 'maps',
                         'example_lot.spec.yaml')
 COLOURS = {'rpp': '#1f6fb4', 'mppi': '#e8590c', 'pure_pursuit': '#2b8a3e', 'stanley': '#862e9c',
            'lqr': '#c92a2a', 'mpc': '#e67700', 'mpc_full': '#5f3dc4',
-           'mpc_lag': '#087f5b', 'mppi_lag': '#0b7285',
+           'mpc_lag': '#087f5b', 'mppi_lag': '#0b7285', 'mpc_lag_rs': '#2f9e44',
            # --planners: a column is a planner's name when one follower drives them all.
            'hybrid': '#e8590c', 'lattice': '#1f6fb4', 'smac2d': '#2b8a3e',
            'navfn': '#862e9c', 'theta_star': '#c92a2a', 'lattice32': '#5f3dc4',
-           'own': '#0b7285', 'all-nav2': '#1f6fb4', 'all-ours': '#0b7285'}
-# --smoothers: Nav2's smoother keeps the follower's colour; ours is red.
-COLOURS.update({f'{k}+{w}-smoother': (c if w == 'nav2' else '#c92a2a')
+           'own': '#0b7285', 'all-ours': '#0b7285', 'own32': '#5f3dc4',
+           'all-ours-32': '#5f3dc4', 'all-ours-slow': '#e67700',
+           'all-ours-strong': '#c92a2a', 'all-ours-strong-slow': '#e8590c',
+           'all-ours-calm': '#2f9e44', 'all-ours-calm-chunks': '#e67700',
+           'all-ours-calm-chunks-ll2': '#1f6fb4', 'all-ours-calm-chunks-maps': '#862e9c',
+           'all-ours-calm-chunks-local': '#c92a2a'}
+# --smoothers: ours is red.
+COLOURS.update({f'{k}+{w}-smoother': '#c92a2a'
                 for k, c in list(COLOURS.items()) for w in vehicle.SMOOTHERS})
 PLAN_TIME = 15.0        # s (wall) for the planner alone to answer, before each leg
 # NDT's map of the test lot (tools/ndt_map.py; maps/ is not in git).
 NDT_MAP = os.path.join(ROOT, 'maps', 'ndt', 'test_lot.pcd')
+
+
+def ndt_map(world):
+    """Return NDT's map for a tour's world: the campus's own (pixi run campus), else the lot's."""
+    return os.path.join(ROOT, worlds.CAMPUS_NDT) if world == worlds.CAMPUS else NDT_MAP
+
+
 NDT_CONFIG = os.path.join(ROOT, 'ros', 'localization', 'aav_ndt', 'config', 'ndt.yaml')
 # The process to time for each kind of follower (its command line, in the run's group).
-PROCESS = {'controller': 'controller_server', 'tracker': 'lib/aav_track/track',
+# controller:=mppi is mppi_lag since Nav2's controller_server went (17 Nov).
+PROCESS = {'controller': 'lib/aav_mppi_lag/mppi_lag', 'tracker': 'lib/aav_track/track',
            # tracker:=mppi_lag runs aav_mppi_lag's Rust node, not aav_track's.
-           'mppi_lag': 'lib/aav_mppi_lag/mppi_lag'}
+           'mppi_lag': 'lib/aav_mppi_lag/mppi_lag',
+           # tracker:=mpc_lag_rs runs aav_mpc_lag's Rust node.
+           'mpc_lag_rs': 'lib/aav_mpc_lag/mpc_lag_rs'}
 
 
 def follower_process(kind, controller):
     """Return the command-line piece of the process to time for this follower."""
-    return PROCESS['mppi_lag'] if controller == 'mppi_lag' else PROCESS[kind]
+    return PROCESS[controller] if controller in ('mppi_lag', 'mpc_lag_rs') else PROCESS[kind]
 
 
 def seconds(stamp):
@@ -241,8 +350,19 @@ def cpu_seconds(pid):
     return total + (float(days) * 86400.0 if days else 0.0)
 
 
-def follower_pid(pgid, name='controller_server'):
-    """Return the pid of the run's follower (controller_server, or aav_track's track)."""
+# Our own nodes whose CPU and memory each leg's notes give, when they run.
+OWN_PROCESSES = ('costmap', 'planner')
+
+
+def rss_mb(pid):
+    """Return a process's resident memory (MB), from ps; 0 if gone."""
+    out = subprocess.run(['ps', '-o', 'rss=', '-p', str(pid)], capture_output=True,
+                         text=True).stdout.strip()
+    return float(out) / 1024.0 if out else 0.0
+
+
+def follower_pid(pgid, name='lib/aav_mppi_lag/mppi_lag'):
+    """Return the pid of the run's follower (mppi_lag, or aav_track's track)."""
     out = subprocess.run(['ps', '-ax', '-o', 'pid=,pgid=,command='], capture_output=True,
                          text=True).stdout
     for line in out.splitlines():
@@ -253,25 +373,29 @@ def follower_pid(pgid, name='controller_server'):
 
 
 class Recorder(Node):
-    """Where the car really is, what Nav2 planned and asked for, and the safety layers."""
+    """Where the car really is, what navigation planned and asked for, the safety layers."""
 
-    def __init__(self, navigator=vehicle.DEFAULT_NAVIGATOR):
-        # On Gazebo's clock, like every node in the sim.
+    def __init__(self):
+        # On the simulator's clock, like every node in the sim.
         super().__init__('controller_compare', parameter_overrides=[
             Parameter('use_sim_time', value=True)])
         self.recording = False
         self.watchdog = True            # False: watchdog:=false, nothing publishes its lock
         self.truth, self.plans, self.steering, self.asked = [], [], [], []
         self.wanted = []     # the steering angle ego was asked for (drive_metrics.clipped)
+        # The wiggle: the follower's turn rate before the smoother, and after it.
+        self.asked_turn, self.smoothed_turn = [], []
         self.wheelbase = float(vehicle.load()['vehicle']['wheelbase'])
         self.belief, self.amcl, self.loops = [], [], []
         self.ndt, self.ndt_status, self.ndt_fits = [], [], []
         self.voxels = []     # (ms a cloud, cubes) from the voxels trial's status
         self.kiss, self.kiss_status, self.local = [], [], []
         self.diffusion = []  # each plan's status, with planner:=diffusion
+        self.own_plans = []  # (total ms, cut) from our planner's status (planner:=own)
         self.last_truth = self.glob = None
         self.lock, self.locked, self.states = None, False, set()
         self.monitor, self.monitor_stops = None, 0
+        self.fence = set()   # the geofence's holds while driving (NEAR, OUTSIDE, ...)
         self.create_subscription(Odometry, '/vehicle/sim/truth', self.on_truth, 10)
         self.create_subscription(Odometry, '/localization/odom/global', self.on_global, 10)
         self.create_subscription(Path, '/plan', self.on_plan, 10)
@@ -293,34 +417,40 @@ class Recorder(Node):
                                  self.on_loop, 10)
         self.create_subscription(DiagnosticStatus, '/drivers/nav/diffusion/status',
                                  self.on_diffusion, 10)
+        self.create_subscription(DiagnosticStatus, '/drivers/nav/planner/status',
+                                 self.on_own_plan, 10)
         self.create_subscription(AckermannDriveStamped, '/ego/actuator_cmd', self.on_steering,
                                  10)
         self.create_subscription(TwistStamped, '/cmd_vel_nav', self.on_asked, 10)
         self.create_subscription(TwistStamped, '/control/cmd_vel', self.on_wanted, 10)
+        self.create_subscription(TwistStamped, '/drivers/nav/cmd_vel', self.on_smoothed, 10)
         self.create_subscription(Bool, '/safety/sensor_watchdog/lock', self.on_lock, 10)
         self.create_subscription(String, '/safety/sensor_watchdog/state', self.on_state, 10)
-        self.create_subscription(CollisionMonitorState, '/safety/collision_monitor/state',
+        self.create_subscription(CollisionMonitorState, '/safety/stop_zone/state',
                                  self.on_monitor, 10)
-        # Nav2's navigator's actions, or ours (--stacks own: navigator:=own).
+        self.create_subscription(String, '/safety/geofence/state', self.on_fence, 10)
+        # Our navigator serves Nav2's action names (Nav2's own went, 17 Nov).
         self.nav = ActionClient(self, NavigateToPose,
-                                vehicle.navigator_action(navigator, 'navigate_to_pose'))
+                                vehicle.navigator_action('navigate_to_pose'))
         self.gps = ActionClient(self, FollowGPSWaypoints,
-                                vehicle.navigator_action(navigator, 'follow_gps_waypoints'))
+                                vehicle.navigator_action('follow_gps_waypoints'))
         self.from_ll = self.create_client(FromLL, '/fromLL')
         self.planner = ActionClient(self, ComputePathToPose, '/compute_path_to_pose')
-        # planner:=own: ours (aav_planner), beside planner_server's lattice.
+        # planner:=own: ours (aav_planner).
         self.own_planner = ActionClient(self, ComputePathToPose, vehicle.OWN_PLANNER_ACTION)
         self.clear = self.create_client(Trigger, '/safety/sensor_watchdog/clear')
 
     def start(self):
         self.truth, self.plans, self.steering, self.asked = [], [], [], []
-        self.wanted = []
+        self.wanted, self.asked_turn, self.smoothed_turn = [], [], []
         self.belief, self.amcl, self.loops = [], [], []
         self.ndt, self.ndt_status, self.ndt_fits = [], [], []
         self.voxels = []
         self.kiss, self.kiss_status, self.local = [], [], []
         self.diffusion = []
+        self.own_plans = []
         self.locked, self.states, self.monitor_stops = False, set(), 0
+        self.fence = set()
         self.recording = True
 
     def on_truth(self, msg):
@@ -375,6 +505,14 @@ class Recorder(Node):
             except (KeyError, ValueError):
                 pass
 
+    def on_own_plan(self, msg):
+        if self.recording:
+            v = {kv.key: kv.value for kv in msg.values}
+            try:
+                self.own_plans.append((float(v['total_ms']), v.get('cut') == 'true'))
+            except (KeyError, ValueError):
+                pass
+
     def on_odometry(self, samples, msg):
         if self.recording:
             p = msg.pose.pose.position
@@ -415,6 +553,11 @@ class Recorder(Node):
     def on_asked(self, msg):
         if self.recording:
             self.asked.append((self.now(), msg.twist.linear.x))
+            self.asked_turn.append((self.now(), msg.twist.angular.z))
+
+    def on_smoothed(self, msg):
+        if self.recording:
+            self.smoothed_turn.append((self.now(), msg.twist.angular.z))
 
     def on_wanted(self, msg):
         v, w = msg.twist.linear.x, msg.twist.angular.z
@@ -429,6 +572,12 @@ class Recorder(Node):
     def on_state(self, msg):
         if self.recording and msg.data not in ('', 'OK'):
             self.states.add(msg.data[:90])
+
+    def on_fence(self, msg):
+        # 'STATE: why'. STARTING before the first leg isn't a hold while driving.
+        state = msg.data.split(':', 1)[0]
+        if self.recording and state in ('NEAR', 'OUTSIDE', 'LOST', 'JUMP', 'COASTING'):
+            self.fence.add(state)
 
     def on_monitor(self, msg):
         if self.recording and msg.action_type == CollisionMonitorState.STOP and (
@@ -476,14 +625,22 @@ class Recorder(Node):
         return None if answer is None else (answer.map_point.x, answer.map_point.y)
 
     def send(self, x, y, yaw):
-        """Send Nav2 a goal in the map frame; return its handle, or None if refused."""
+        """Send the navigator a goal in the map frame; return its handle, or None."""
         goal = NavigateToPose.Goal()
         goal.pose.header.frame_id = 'map'
         goal.pose.pose.position.x, goal.pose.pose.position.y = x, y
         goal.pose.pose.orientation.z = math.sin(yaw / 2.0)
         goal.pose.pose.orientation.w = math.cos(yaw / 2.0)
-        handle = self.wait(self.nav.send_goal_async(goal), 10.0)
-        return handle if handle is not None and handle.accepted else None
+        # The action server can answer before the navigator takes goals (its planner and
+        # follower not there yet). Ask again for up to REFUSED_TIME.
+        end = time.monotonic() + REFUSED_TIME
+        while True:
+            handle = self.wait(self.nav.send_goal_async(goal), 10.0)
+            if handle is not None and handle.accepted:
+                return handle
+            if time.monotonic() > end:
+                return None
+            self.spin_for(2.0)
 
 
 def plan_alone(rec, goal, lock_radius, client=None, name='/compute_path_to_pose'):
@@ -492,7 +649,7 @@ def plan_alone(rec, goal, lock_radius, client=None, name='/compute_path_to_pose'
 
     planned is drive_metrics' leg['planned']: the path, the planner's own time, the call's
     wall time, and the car's full-lock radius. Nothing moves. client, name: whose action
-    (None: Nav2's /compute_path_to_pose).
+    (None: /compute_path_to_pose, the diffusion planner's).
     """
     client = client or rec.planner
     x, y, yaw = goal
@@ -502,7 +659,7 @@ def plan_alone(rec, goal, lock_radius, client=None, name='/compute_path_to_pose'
     request.goal.pose.orientation.z = math.sin(yaw / 2.0)
     request.goal.pose.orientation.w = math.cos(yaw / 2.0)
     request.planner_id = 'GridBased'      # whichever planner:= runs behind it
-    request.use_start = False             # from the car, through TF, as bt_navigator asks
+    request.use_start = False             # from the car, through TF, as the navigator asks
     out = {'path': [], 'ms': None, 'wall_ms': None, 'lock_radius': lock_radius}
     if not client.wait_for_server(timeout_sec=5.0):
         return out, [f'the planner alone: no {name}']
@@ -526,7 +683,7 @@ def plan_alone(rec, goal, lock_radius, client=None, name='/compute_path_to_pose'
 
 
 def ready(rec):
-    """Wait until the sensor watchdog lets Nav2 drive; clear a latch once. Return notes."""
+    """Wait until the sensor watchdog lets the car drive; clear a latch once. Return notes."""
     if not rec.watchdog:
         return []                       # watchdog:=false (--gps-off): no lock to wait for
     if rec.spin_for(READY_TIME, lambda: rec.lock is False):
@@ -535,34 +692,26 @@ def ready(rec):
     rec.wait(rec.clear.call_async(Trigger.Request()), 5.0)
     if rec.spin_for(READY_TIME, lambda: rec.lock is False):
         return ['the sensor watchdog was latched before the goal: cleared it']
-    return ['the sensor watchdog still held Nav2 when the goal went']
+    return ['the sensor watchdog still held the car when the goal went']
 
 
-def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server',
+def drive_leg(rec, pgid, goal, speed, body, obstacle, process='lib/aav_mppi_lag/mppi_lag',
               amcl=False, ndt=False, lock_radius=None, kiss=False, own_planner=False,
               route=None):
     """
     Send one goal and record it; return (drive_metrics leg, notes).
 
     lock_radius (m, --planners): first ask the planner alone for the leg's path, and score
-    its turns against the car's full lock. own_planner (planner:=own): ask ours, then
-    Nav2's lattice (planner_server, still running beside it) for the same leg from the
-    same spot, and say Nav2's numbers in a note: the two on the same map. route: GPS
+    its turns against the car's full lock. own_planner (planner:=own): ask ours (else the
+    diffusion planner's /compute_path_to_pose). route: GPS
     waypoints (a tour's 'route'), sent to follow_gps_waypoints instead of one goal.
     """
     notes = ready(rec)
-    planned = planned_nav2 = None
+    planned = None
     if lock_radius is not None and own_planner:
         planned, more = plan_alone(rec, goal, lock_radius, rec.own_planner,
                                    vehicle.OWN_PLANNER_ACTION)
         notes += more
-        planned_nav2, more = plan_alone(rec, goal, lock_radius)
-        notes += [f"Nav2's lattice: {n}" for n in more]
-        nav2 = drive_metrics.plan_row(planned_nav2)
-        if nav2.get('plan_found'):
-            notes.append(f"Nav2's lattice on the same map: {nav2['plan_m']:.1f} m in "
-                         f"{nav2['plan_ms']:.0f} ms, {nav2['plan_cusps']} cusps, tightest "
-                         f"turn {drive_metrics.radius_cell(nav2['plan_tightest_m'])} m")
     elif lock_radius is not None:
         planned, more = plan_alone(rec, goal, lock_radius)
         notes += more
@@ -571,15 +720,18 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
     timeout = LEG_TIME + 4.0 * math.hypot(x - here.x, y - here.y) / speed
     pid = follower_pid(pgid, process)
     cpu0, wall0 = cpu_seconds(pid), time.monotonic()
+    # Our costmap's and planner's own CPU and memory (TODO 175: the chunks against /map).
+    ours = {name: follower_pid(pgid, f'lib/aav_{name}/{name}') for name in OWN_PROCESSES}
+    ours_cpu0 = {name: cpu_seconds(p) for name, p in ours.items()}
     rec.start()
     start = rec.now()
     reached = False
     handle = rec.send_route(route) if route else rec.send(x, y, yaw)
     if handle is None:
-        notes.append('Nav2 refused the goal')
+        notes.append('the navigator refused the goal')
     else:
         result = handle.get_result_async()
-        # Gazebo's time for the limit, and twice that in wall time in case it stalls.
+        # The simulator's time for the limit, and twice that in wall time in case it stalls.
         end_wall = time.monotonic() + 2.0 * timeout + 30.0
         while not result.done() and rec.now() < start + timeout and (
                 time.monotonic() < end_wall):
@@ -595,18 +747,30 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
                 reached = reached and done.result.missed_waypoints[-1].index != len(route) - 1
             if not reached:
                 why = getattr(done.result, 'error_msg', '') or f'status {done.status}'
-                notes.append(f'Nav2 gave up: {why}')
+                notes.append(f'the navigator gave up: {why}')
         else:
             rec.wait(handle.cancel_goal_async(), 5.0)
             notes.append(f'not there in {timeout:.0f} s: cancelled')
     end = rec.now()
     rec.recording = False
     cpu1, wall1 = cpu_seconds(pid), time.monotonic()
+    for name, p in ours.items():
+        c0, c1 = ours_cpu0[name], cpu_seconds(p)
+        if None not in (c0, c1) and wall1 > wall0:
+            notes.append(f'{name}: CPU {100.0 * (c1 - c0) / (wall1 - wall0):.0f} %, '
+                         f'{rss_mb(p):.0f} MB')
+    if rec.own_plans:
+        ms = sorted(m for m, _ in rec.own_plans)
+        cut = sum(1 for _, c in rec.own_plans if c)
+        notes.append(f'planner {ms[len(ms) // 2]:.0f} ms a plan median, {ms[-1]:.0f} worst, '
+                     f'{len(ms)} plans, {cut} cut at the costmap edge')
     if rec.locked:
-        notes.append('the sensor watchdog stopped Nav2' +
+        notes.append('the sensor watchdog stopped the car' +
                      (': ' + '; '.join(sorted(rec.states)) if rec.states else ''))
     if rec.monitor_stops:
-        notes.append(f'collision_monitor stopped the car {rec.monitor_stops}x')
+        notes.append(f'the stop zone stopped the car {rec.monitor_stops}x')
+    if rec.fence:
+        notes.append('the geofence held the car: ' + ', '.join(sorted(rec.fence)))
     if rec.diffusion:
         notes.append(diffusion_note(rec.diffusion))
     if rec.voxels:
@@ -617,7 +781,9 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
                      f'{sum(cubes) / len(cubes):.0f} cubes a cloud, {len(ms)} clouds')
     leg = {'truth': rec.truth, 'belief': rec.belief, 'plans': rec.plans,
            'steering': rec.steering, 'wanted': rec.wanted,
-           'asked': rec.asked, 'start': start, 'end': end, 'goal': goal, 'reached': reached,
+           'asked': rec.asked, 'asked_turn': rec.asked_turn,
+           'smoothed_turn': rec.smoothed_turn, 'start': start, 'end': end, 'goal': goal,
+           'reached': reached,
            'cpu': (100.0 * (cpu1 - cpu0) / (wall1 - wall0)
                    if None not in (cpu0, cpu1) and wall1 > wall0 else None),
            'obstacle': obstacle, 'body': body}
@@ -634,8 +800,6 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='controller_server
         leg['diffusion'] = rec.diffusion
     if planned is not None:
         leg['planned'] = planned
-    if planned_nav2 is not None:
-        leg['planned_nav2'] = planned_nav2
     return leg, notes
 
 
@@ -691,8 +855,8 @@ def ndt_calibration(results):
 
 
 def gps_off(rec):
-    """Stop the GPS (aav_gazebo faults: gazebo_gps fault.gps stop); return a note."""
-    out = subprocess.run(['ros2', 'param', 'set', '/gazebo_gps', 'fault.gps', 'stop'],
+    """Stop the GPS (aav_sim_models faults: sim_gps fault.gps stop); return a note."""
+    out = subprocess.run(['ros2', 'param', 'set', '/sim_gps', 'fault.gps', 'stop'],
                          capture_output=True, text=True, timeout=60)
     rec.spin_for(2.0)
     return ('the GPS stopped' if out.returncode == 0 and 'successful' in out.stdout.lower()
@@ -701,11 +865,10 @@ def gps_off(rec):
 
 def private(used):
     """
-    Pick an unused ROS domain and Gazebo partition, and set them, before rclpy.init.
+    Pick an unused ROS domain, and set it, before rclpy.init.
 
     The domain: AAV_SIM_DOMAIN's for the first run, the next ones up from it for the
-    later runs (never above 232: Fast DDS breaks there), else one from 150-230. The
-    partition: AAV_SIM_PARTITION (default controller_compare), then the domain.
+    later runs (never above 232: Fast DDS breaks there), else one from 150-230.
     """
     first = os.environ.get('AAV_SIM_DOMAIN')
     above = [str(d) for d in range(int(first), 233) if str(d) not in used] if first else []
@@ -715,8 +878,6 @@ def private(used):
         domain = str(random.choice([d for d in range(150, 231) if str(d) not in used]))
     used.add(domain)
     os.environ['ROS_DOMAIN_ID'] = domain
-    prefix = os.environ.get('AAV_SIM_PARTITION', 'controller_compare')
-    os.environ['GZ_PARTITION'] = f'{prefix}_{domain}'
     return domain
 
 
@@ -759,6 +920,21 @@ def campus_route(start, end):
     return waypoints, waypoints[-1]
 
 
+def place_box(name, x, y):
+    """Put the bench's 1 m box at (x, y) by our simulator's spawn_entity: what it said."""
+    model = os.path.join(ROOT, 'ros', 'sim', 'aav_sim_models', 'models', 'obstacle', 'model.sdf')
+    try:
+        done = subprocess.run(
+            ['ros2', 'service', 'call', '/vehicle/sim/spawn_entity',
+             'simulation_interfaces/srv/SpawnEntity',
+             f'{{name: "{name}", uri: "{model}", initial_pose: {{pose: {{position: '
+             f'{{x: {x}, y: {y}, z: 0.0}}}}}}}}'],
+            capture_output=True, text=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        return 'no answer in 60 s'
+    return 'placed' if 'result=1' in done.stdout else ' '.join(done.stdout.split())[-200:]
+
+
 def tour_legs(tour, args):
     """Return the tour's legs to drive: all, or only the first --legs."""
     return TOURS[tour]['legs'][:args.legs]
@@ -768,11 +944,11 @@ def followers(args):
     """
     Return [(kind, name, planner, label)]: each follower with each planner, as asked.
 
-    --stacks: [('stack', 'nav2' or 'own', None, 'all-nav2' or 'all-ours')] instead.
+    --stacks: [('stack', 'own'..., None, 'all-ours'...)] instead.
 
-    Nav2's controllers, then the trial trackers. With --planners alone, the default
-    controller (MPPI) drives behind each planner; without --planners, planner is None (the
-    launch's own default) and the label is the follower's name, as before.
+    --controllers (mppi: mppi_lag since Nav2 went), then the trackers; none of them:
+    mppi_lag alone. Without --planners, planner is None (the launch's own default) and the
+    label is the follower's name, as before.
     """
     if args.smoothers:
         # Each follower behind each smoother: a fifth item, and the label says which.
@@ -783,13 +959,9 @@ def followers(args):
         return [('stack', word, None, STACK_LABELS[word]) for word in args.stacks]
     controllers = args.controllers
     if controllers is None:
-        # --trackers alone runs only the trackers; --planners alone, Nav2's default
-        # controller; none of them: both of Nav2's, as before.
-        controllers = ([] if args.trackers else
-                       [vehicle.DEFAULT_CONTROLLER] if args.planners else
-                       list(vehicle.CONTROLLERS))
+        controllers = []
     chosen = ([('controller', c) for c in controllers] +
-              [('tracker', t) for t in args.trackers or []])
+              [('tracker', t) for t in args.trackers or []]) or [('tracker', 'mppi_lag')]
     if not args.planners:
         return [(kind, name, None, name) for kind, name in chosen]
     return [(kind, name, planner, planner if len(chosen) == 1 else f'{name}+{planner}')
@@ -797,13 +969,25 @@ def followers(args):
 
 
 # --planners words beyond vehicle.PLANNERS: the same planner on another of its files.
-# lattice32: the State Lattice on its 32-heading trial file (lattice_headings:=32).
-PLANNER_VARIANTS = {f'lattice{h}': ('lattice', [f'lattice_headings:={h}'])
+# own32: our State Lattice on its 32-heading trial file (lattice_headings:=32).
+PLANNER_VARIANTS = {f'own{h}': ('own', [f'lattice_headings:={h}'])
                     for h in vehicle.LATTICE_HEADINGS[1:]}
+# own_smooth (and _smooth_fast): ours on the smooth moves (lattice_moves:=,
+# tools/lattice_smooth.py).
+PLANNER_VARIANTS.update({f'own_{m}': ('own', [f'lattice_moves:={m}'])
+                         for m in vehicle.LATTICE_MOVES[1:]})
+# own_hybrid: our planner running Hybrid-A* (planner_search:=hybrid; the league's
+# hybrid_rs), against own, the lattice (lattice_rs).
+PLANNER_VARIANTS['own_hybrid'] = ('own', ['planner_search:=hybrid'])
 # diffusion_nomodel: the diffusion trial with no model file, so every plan must be the
 # lattice's (its guard's fallback test: docs/tests.md).
 PLANNER_VARIANTS['diffusion_nomodel'] = ('diffusion', ['diffusion_model:=/nonexistent.onnx'])
 PLANNER_WORDS = vehicle.PLANNERS + tuple(PLANNER_VARIANTS)
+
+
+def base_planner(word):
+    """Return the planner:= behind a --planners word (own for own_hybrid, own_smooth)."""
+    return PLANNER_VARIANTS.get(word, (word, []))[0]
 
 
 def planner_launch(word):
@@ -825,9 +1009,8 @@ def tracker_names(text):
     """Return the trackers in a --trackers word: comma-separated, or one."""
     names = [n.strip().lower() for n in text.split(',') if n.strip()]
     for name in names:
-        if name not in vehicle.TRACKERS or name == 'none':
-            raise argparse.ArgumentTypeError(
-                f'{name}: pick from {", ".join(t for t in vehicle.TRACKERS if t != "none")}')
+        if name not in vehicle.TRACKERS:
+            raise argparse.ArgumentTypeError(f'{name}: pick from {", ".join(vehicle.TRACKERS)}')
     return names
 
 
@@ -838,19 +1021,21 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     # --smoothers: (..., smoother, label); otherwise (..., label).
     label = follower[-1]
     smoother = follower[4] if len(follower) > 4 else None
-    extra, navigator = [], vehicle.DEFAULT_NAVIGATOR
+    extra = []
     if kind == 'stack':
         kind, controller, extra = STACKS[follower[1]]
-        navigator = 'own' if follower[1] == 'own' else vehicle.DEFAULT_NAVIGATOR
     tag = f'{label}-{run}' if args.runs > 1 else label
     log_path = os.path.join(out_dir, f'sim-{tour}-{tag}.log')
     command = ['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
                f'world:={plan.get("world", "test_lot")}',
                'gui:=false', 'rviz:=false',
+               # Every run on the champions' stack (best), then the piece under test on
+               # top: each column differs from the next only in what it names. Until 17 Nov
+               # this was Nav2's stock stack (docs/league-results-2026-11-16.md).
+               'stack:=best',
                f'tracker:={controller}' if kind == 'tracker' else f'controller:={controller}',
-               # Forward only, as on the car (the sim's default lets Nav2 reverse; MPPI
-               # then dithered between forward and back at the start, 22 Oct), unless
-               # --reversing: Nav2 may then back out of a dead end.
+               # Forward only (MPPI dithered between forward and back at the start,
+               # 22 Oct), unless --reversing: the car may then back out of a dead end.
                f'reversing:={str(args.reversing).lower()}']
     if planner:
         command += planner_launch(planner)
@@ -869,12 +1054,12 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     if args.amcl:
         command.append('amcl:=true')
     if args.ndt_ekf:
-        command += ['ndt_ekf:=true', f'ndt_map:={NDT_MAP}']
+        command += ['ndt_ekf:=true', f'ndt_map:={ndt_map(plan.get("world"))}']
     elif args.ndt:
-        command += ['ndt:=true', f'ndt_map:={NDT_MAP}']
+        command += ['ndt:=true', f'ndt_map:={ndt_map(plan.get("world"))}']
     if args.gps_off:
         # The sensor watchdog and the geofence (LOST after 2 s without a GPS position)
-        # would hold Nav2 with the GPS quiet: the drive is the test.
+        # would hold the car with the GPS quiet: the drive is the test.
         command += ['watchdog:=false', 'geofence:=false']
     if args.voxels:
         command.append('voxels:=true')
@@ -887,8 +1072,8 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     if args.speed:
         command.append(f'sim_speed:={args.speed:g}')
     if args.lag_scale != 1.0:
-        # Only Gazebo's adapter scales the car's lags (sim.launch.py refuses it otherwise).
-        command += [f'lag_scale:={args.lag_scale:g}', 'simulator:=gazebo']
+        # Only the sim's adapter scales the car's lags (sim.launch.py refuses it otherwise).
+        command += [f'lag_scale:={args.lag_scale:g}']
     domain = private(used)
     print(f'\n== {tour}, {label}' + (f' (run {run} of {args.runs})' if args.runs > 1
                                      else '') +
@@ -896,13 +1081,15 @@ def session(tour, follower, args, out_dir, body, used, run=1):
           f'(this computer only)...', flush=True)
     rows = []
     obstacle = (*worlds.OBSTACLE, BOX) if plan['obstacle'] else None
+    if plan.get('boxes'):
+        obstacle = (*plan['boxes'][0], BOX)
     # The car's full lock: tighter than this, a planned turn can't be driven as drawn.
     lock = vehicle.min_turning_radius(vehicle.load()['vehicle'])
     with open(log_path, 'w') as log:
         launch = subprocess.Popen(command, cwd=ROOT, env=dict(os.environ), stdout=log,
                                   stderr=subprocess.STDOUT, start_new_session=True)
         rclpy.init()
-        rec = Recorder(navigator)
+        rec = Recorder()
         rec.watchdog = not args.gps_off
         try:
             up = rec.spin_for(UP_TIME, lambda: rec.last_truth is not None and rec.glob)
@@ -912,6 +1099,11 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                 return [(tour, name, label, None, ['never came up'], {'run': run})
                         for name, *_ in tour_legs(tour, args)]
             rec.spin_for(SETTLE)
+            for k, (bx, by) in enumerate(plan.get('boxes', [])):
+                said = place_box(f'parked_box_{k}', bx, by)
+                print(f'   a 1 m box at ({bx:.1f}, {by:.1f}): {said}', flush=True)
+            if plan.get('boxes'):
+                rec.spin_for(3.0)          # the lidar sees it before the first goal
             if args.gps_off:
                 # After the EKF's first fix (the wait above): it knows where it started.
                 print(f'   {gps_off(rec)}', flush=True)
@@ -931,7 +1123,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                                        follower_process(kind, controller), args.amcl,
                                        args.ndt,
                                        lock if planner else None, args.kiss_icp,
-                                       planner == 'own', route)
+                                       base_planner(planner) == 'own', route)
                 row = drive_metrics.summary(leg)
                 # t, x, y, yaw: where the car was, and where the global EKF put it.
                 drawn = {'run': run, 'goal': [round(x, 2), round(y, 2)],
@@ -955,6 +1147,13 @@ def session(tour, follower, args, out_dir, body, used, run=1):
                     drawn['plans'] = [[round(t, 2), [[round(x, 2), round(y, 2)]
                                                      for x, y in pts[::4] + pts[-1:]]]
                                       for t, pts in leg['plans']]
+                if args.series:
+                    # The wiggle's raw series, every 0.05 s: to look at it again offline.
+                    drawn['series'] = {
+                        key: [[round(v, 4) for v in s]
+                              for s in drive_metrics.thin(leg[key], SERIES_EVERY)]
+                        for key in ('truth', 'belief', 'steering', 'asked_turn',
+                                    'smoothed_turn')}
                 if leg.get('planned', {}).get('path'):
                     # The planner's own path, from where the car stood (--planners): every
                     # point, so its turns and cusps can be scored again from the file.
@@ -1011,8 +1210,8 @@ def report(results, args, started):
     runs = ('One run each' if args.runs == 1 else
             f'{args.runs} runs each: every run, then the mean and its spread (SD)')
     lines = [f'# Controller comparison, {started:%Y-%m-%d %H:%M}', '',
-             f"Gazebo ({', '.join(args.tours)}), headless, on this computer; "
-             'Nav2 and ego at up to '
+             f"Ravensim ({', '.join(args.tours)}), headless, on this computer; "
+             'the follower and ego at up to '
              f'{args.speed or 1.0:g} m/s, ' +
              ('reversing allowed' if args.reversing else 'forward only') +
              (', AMCL beside the EKF' if args.amcl else '') +
@@ -1032,8 +1231,7 @@ def report(results, args, started):
               f'{vehicle.min_turning_radius(vehicle.load()["vehicle"]):.2f} m)'
               if args.planners else '') +
              f'. {runs}. The trial trackers (docs/trials.md) share one speed policy; '
-             "Nav2's "
-             'RPP and MPPI set their own. What each number means: '
+             'mppi_lag sets its own. What each number means: '
              'tools/drive_metrics.py.', '']
     for tour in args.tours if args.planners else []:
         # The whole tour, one column a follower (and run): the planners' table.
@@ -1159,22 +1357,28 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0].strip())
     parser.add_argument('--controllers', nargs='+', choices=vehicle.CONTROLLERS,
                         default=None,
-                        help="Nav2's followers (default: both, unless --trackers is given)")
+                        help='mppi (mppi_lag, the champion, since Nav2 went); the '
+                             'default when no --trackers is given')
     parser.add_argument('--trackers', nargs='+', type=tracker_names, default=None,
                         help='the trial trackers (aav_track, docs/trials.md): pure_pursuit, '
-                             'stanley, lqr, mpc, mpc_full, mpc_lag; spaces or commas between. '
+                             'stanley, lqr, mpc, mpc_full, mpc_lag, mpc_lag_rs; spaces or commas '
+                             'between. '
                              'Forward only')
     parser.add_argument('--planners', nargs='+', type=planner_names, default=None,
-                        help="Nav2's planners (planner:=): " + ', '.join(PLANNER_WORDS) +
-                             ' (lattice32: the lattice on its 32-heading file); each '
-                             'behind MPPI unless --controllers or --trackers say')
+                        help='the planners (planner:=): ' + ', '.join(PLANNER_WORDS) +
+                             ' (own32: ours on its 32-heading file); each behind '
+                             'mppi_lag unless --trackers says')
     parser.add_argument('--stacks', nargs='+', choices=list(STACKS), default=None,
-                        help="every navigation piece Nav2's (nav2) or ours (own: "
-                             'navigator, planner, costmap, mppi_lag); forward only')
+                        help='every navigation piece ours (own: '
+                             'navigator, planner, costmap, mppi_lag; own32: the same on the '
+                             "lattice's 32 headings; own_slow: map_correction:=slow; "
+                             'own_strong: plan_smoothing:=strong; '
+                             'own_strong_slow: both; own_calm: both and '
+                             'mppi_lag_steer_gamma:=0.05)')
     parser.add_argument('--smoothers', nargs='+', choices=list(vehicle.SMOOTHERS),
                         default=None,
-                        help="each follower behind Nav2's velocity smoother (nav2) and/or "
-                             'ours (own: aav_smoother, smoother:=)')
+                        help='each follower behind our velocity smoother (own: '
+                             'aav_smoother, smoother:=), the only one since Nav2 went')
     parser.add_argument('--launch', nargs='+', default=None, metavar='NAME:=VALUE',
                         help='more sim.launch.py arguments for every run, such as '
                              'lidar:=false (to find what a failure needs)')
@@ -1192,7 +1396,7 @@ def main():
                         help='stop the GPS once the EKF has its first fix (watchdog:=false '
                              'geofence:=false)')
     parser.add_argument('--voxels', action='store_true',
-                        help='the costmap and collision_monitor read the lidar as cubes '
+                        help='the costmap and the stop zone read the lidar as cubes '
                              '(voxels:=true, aav_voxels), not the flat scan')
     parser.add_argument('--kiss-icp', action='store_true',
                         help='run KISS-ICP lidar odometry (kiss_icp:=true) and score its '
@@ -1206,15 +1410,19 @@ def main():
                         help="m/s, up to 5: sim_speed:= (the car's own top speed: 1.0)")
     parser.add_argument('--lag-scale', type=float, default=1.0,
                         help="the car's throttle, brake and steering lags times this "
-                             "(sim's lag_scale:=, in Gazebo): the followers still read "
+                             "(sim's lag_scale:=): the followers still read "
                              "vehicle.yaml's")
     parser.add_argument('--reversing', action='store_true',
-                        help="let Nav2 reverse (reversing:=true; the car's own default is "
+                        help="let the car reverse (reversing:=true; the car's own default is "
                              'false until H5); forward only otherwise')
     parser.add_argument('--legs', type=int, default=None,
                         help="only each tour's first N legs (each starts where the last ended)")
     parser.add_argument('--plans', action='store_true',
                         help='save every plan of each leg in results.json, not just its first')
+    parser.add_argument('--series', action='store_true',
+                        help="save each leg's truth, EKF, steering and turn rates (before "
+                             'and after the smoother) every 0.05 s in results.json: the '
+                             "wiggle's raw data")
     parser.add_argument('--diffusion-model', default=None,
                         help='with --planners diffusion: this model (.onnx) instead of '
                              'models/diffusion/planner.onnx')
@@ -1234,16 +1442,29 @@ def main():
     if args.stacks and (args.trackers or args.controllers or args.planners):
         parser.error('--stacks sets the follower and planner: leave out --trackers, '
                      '--controllers and --planners')
-    if args.stacks and args.reversing:
-        parser.error("--stacks drive forwards only (mppi_lag can't reverse)")
-    if args.trackers and args.reversing:
-        parser.error('--trackers drive forwards only: leave out --reversing')
+    forward_only = set(args.trackers or ()) & set(vehicle.FORWARD_ONLY_TRACKERS)
+    if forward_only and args.reversing:
+        parser.error(f'--trackers {" ".join(sorted(forward_only))} drive forwards only: '
+                     'leave out --reversing')
     if args.runs < 1:
         parser.error('--runs must be 1 or more')
     args.ndt = args.ndt or args.ndt_ekf
     args.kiss_icp = args.kiss_icp or args.kiss_ekf
-    if args.ndt and not os.path.isfile(NDT_MAP):
-        parser.error(f'--ndt: no map at {NDT_MAP}; make it with pixi run ndt-map drive')
+    for tour in args.tours:
+        # The files a tour needs, before half an hour of driving finds one missing.
+        plan = TOURS[tour]
+        if args.ndt and not os.path.isfile(ndt_map(plan.get('world'))):
+            parser.error(f'--ndt: no map at {ndt_map(plan.get("world"))}; make it with '
+                         'pixi run ndt-map drive (the lot) or pixi run campus')
+        if plan.get('world') == worlds.CAMPUS and not os.path.isfile(
+                os.path.join(ROOT, worlds.CAMPUS_MAP)):
+            parser.error(f'--tours {tour}: no {worlds.CAMPUS_MAP}; make it with pixi run campus')
+        if plan.get('route'):
+            try:
+                campus_route(*plan['route'])
+            except Exception as e:  # noqa: B902 - any reason the route can't be drawn
+                parser.error(f'--tours {tour}: no route {plan["route"][0]} to '
+                             f'{plan["route"][1]}: {e}')
     started = datetime.datetime.now()
     out_dir = args.out or os.path.join(ROOT, 'log', 'controller-compare',
                                        f'{started:%Y%m%d-%H%M%S}')
@@ -1254,7 +1475,13 @@ def main():
     for tour in args.tours:
         for follower in followers(args):
             for run in range(1, args.runs + 1):
-                results += session(tour, follower, args, out_dir, body, used, run)
+                try:
+                    results += session(tour, follower, args, out_dir, body, used, run)
+                except Exception as e:  # noqa: B902 - one tour's crash must not lose the rest
+                    print(f'   {tour} crashed: {e!r}', flush=True)
+                    results += [(tour, name, follower[-1], None,
+                                 [f'crashed: {e}'], {'run': run})
+                                for name, *_ in tour_legs(tour, args)]
     # The numbers first: a report that fails must not lose them.
     with open(os.path.join(out_dir, 'results.json'), 'w') as f:
         json.dump([{'tour': t, 'leg': n, 'controller': c, 'row': row, 'notes': notes, **drawn}

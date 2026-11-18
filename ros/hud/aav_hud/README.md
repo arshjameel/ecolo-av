@@ -7,14 +7,15 @@ node (rclrs):
 
 - `hud`, the in-car screen: speed, mode, the e-stop button, GO / STOP, steering,
   throttle and brake, the GPS fix, topic health, the stop-sign alert, the camera and
-  AHEAD, the squiggly line (ego's trace, the plan, the stop bar; docs/hud.md);
-- `map`, the big screen's map window: Nav2's map over an offline street map, the car,
+  AHEAD, the squiggly line (ego's trace, the plan, the stop bar; docs/hud.md), and the
+  things near the car with their names (person, car, stop sign; TODO 192);
+- `map`, the big screen's map window: the navigation map over an offline street map, the car,
   the plan, the goal, the distance left, and a place search;
 - `debug_hud`, the debug screen, which opens as the **seeing screen**: the lidar's cubes
   in 3D (kept and fading), where each localizer puts the car (NDT too), AMCL's particles,
-  NDT's map, Nav2's plan, Nav2's own cubes (the voxels trial's, red wireframes, key V);
+  NDT's map, the plan, the costmap's cubes (the voxels trial's, red wireframes, key V);
   on the right, NDT's map from above with every car, NDT's match (its cells, the scan,
-  the score), Nav2's cubes' status and the localization health checks. Key L swaps
+  the score), the costmap's cubes' status and the localization health checks. Key L swaps
   the right side for every sensor from its own topic. It only listens;
 - `hw_panel`, the **hardware screen**: every sensor's number from its own node, and very
   simple buttons for the actuators (Speed +/-, steering, CENTRE, STOP, GO held, E-STOP),
@@ -25,7 +26,9 @@ node (rclrs):
   of hops (ego, mux, Pi wrote, ESP32 got), each OK, DIFFERENT, STALE, NO DATA or NOT
   TESTED; 60 s graphs of steering, brake and throttle (what the Pi wrote, what the ESP32
   got), FREEZE, and the counts that prove the wire. `--esp32 ws://...` reads the ESP32's
-  own status lines, read only.
+  own status lines, read only. Its fourth, **MEASURE** (TODO 71), counts speed and
+  distance since RESET; type a tape run's metres and it checks `wheel_diameter`
+  (know-the-car test 3: within 1 %, or the diameter to copy). SAVE writes a file.
 
 It was called `aav_hud_raylib` until 25 Oct, when the 2025-26 Flutter app and its Flask
 back end (then `aav_hud`) went to `archive/2026-27-flutter-hud/` and this package took
@@ -75,6 +78,8 @@ blue, global green, AMCL orange, NDT purple). docs/hud.md, "Themes".
 | sub | `trace_topic`: `/ego/trace`; `plan_ahead_topic`: `/ego/plan_ahead` (base_link) | nav_msgs/Path |
 | sub | `stop_point_topic`: `/ego/stop_point` (base_link) | geometry_msgs/PoseStamped |
 | sub | `ahead_topic`: `/ego/ahead` (the gap, the room, the body) | diagnostic_msgs/DiagnosticStatus |
+| sub | `things_topic`: `/world/things` (odom; AHEAD draws each box in its kind's colour with its name, and lists named things past the drawing: STOP SIGN 12 m) | aav_interfaces/Things |
+| sub | `odom_topic`: `/localization/odom/local` (the car's pose, to place the things) | nav_msgs/Odometry |
 | pub | `estop_topic`: `/safety/estop` (only `true`) | std_msgs/Bool |
 | pub | `heartbeat_topic`: `/hud/heartbeat` (10 Hz while it draws) | std_msgs/UInt64 |
 
@@ -92,7 +97,7 @@ Parameters `stale_after` (1.0 s): a quieter topic shows STALE; `theme` (`initial
 | sub | `watchdog_topic`: `/safety/sensor_watchdog/state` | std_msgs/String |
 
 Other parameters: `stale_after` (1.0 s), `plan_stale_after` (3.0 s; `plan_kept_for`, 25 s, within
-`final_approach`, 8 m, of the plan's end: Nav2 keeps its path there), `arrive_within`
+`final_approach`, 8 m, of the plan's end: the navigator keeps its path there), `arrive_within`
 (1.0 m), `street_map` (`maps/streets/ottawa.pmtiles`), `places` (`maps/places/ottawa.db`),
 `theme` (`initial_d`), `blur` (true: the map blurred behind the glass), `car_marker`
 (`outline`; `robot`: the car as the little robot, the easter egg).
@@ -103,7 +108,7 @@ Other parameters: `stale_after` (1.0 s), `plan_stale_after` (3.0 s; `plan_kept_f
 |---|---|---|
 | sub | `lidar_topic`: `/sensors/lidar/points` (reliable, keep last 1) | sensor_msgs/PointCloud2 |
 | sub | `voxels_cubes_topic`: `/perception/voxels/cubes` (reliable, keep last 1, base_link; red wireframes, key V) | sensor_msgs/PointCloud2 |
-| sub | `voxels_status_topic`: `/perception/voxels/status` (Nav2's cubes section: road fit, count, ms) | diagnostic_msgs/DiagnosticStatus |
+| sub | `voxels_status_topic`: `/perception/voxels/status` (the costmap's cubes section: road fit, count, ms) | diagnostic_msgs/DiagnosticStatus |
 | sub | `health_topic`: `/localization/health` (OK, or WARN and each check) | std_msgs/String |
 | sub | `local_odom_topic`: `/localization/odom/local`; `global_odom_topic`: `/localization/odom/global`; `truth_topic`: `/vehicle/sim/truth`; `wheel_odom_topic`: `/vehicle/odom` | nav_msgs/Odometry |
 | sub | `amcl_topic`: `/localization/amcl/pose`; `ndt_pose_topic`: `/localization/ndt/pose` (purple) | geometry_msgs/PoseWithCovarianceStamped |
@@ -150,7 +155,7 @@ the calibration page's `jog_step` (25 counts), `jog_min`, `jog_max` (400, 3500),
 `easter_egg` (true: the little robot peeks when all is quiet, and drives across at
 start-up and after a check passes) and `easter_egg_after` (60 s).
 SAVE writes `~/.local/share/aav/steering-calibration/steering-<time>.txt` (a person copies
-it; never vehicle.yaml).
+it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measurements/measure-<time>.txt`.
 
 ### Launch and commands
 
@@ -166,6 +171,7 @@ it; never vehicle.yaml).
 | `hw_panel --self-test 0.3:8` | for checks: Speed + to 0.3 m/s, GO held 8 s, through the same buttons and rules; prints asked and seen |
 | `map`, `hw_panel`, `debug_hud` `--demo --robot-now` | the little robot (the easter egg) at once, for screenshots (docs/hud.md, "The little robot") |
 | `hw_panel --demo --page graphs [--esp32 ws://HOST:81/]` | the GRAPHS page with a pretend path (every hop OK); with `--esp32`, the real board's lines instead of the pretend ones |
+| `hw_panel --demo --page measure` | the MEASURE page (speed and distance, the tape, the wheel diameter's check) |
 | `hw_panel --demo --page calibration [--demo-bind 2800] [--cal-self-test]` | the steering calibration page with a pretend steering actuator; the self-test limps, marks, holds and runs the lock-to-lock check (with a stiff spot it must stop) |
 
 `sim.launch.py hud:=true` and `map:=true` start them too. On the car,
@@ -182,9 +188,9 @@ it; never vehicle.yaml).
 - The e-stop button only ever publishes `true`: five, 0.1 s apart, reliable, from the
   ROS thread's 10 ms timer, so a slow frame can't delay it.
 - A heartbeat goes out only while the drawn-frame count rises: it proves the screen
-  and the e-stop timer both run. The sensor watchdog stops Nav2 without it.
+  and the e-stop timer both run. The sensor watchdog stops navigation without it.
 - `/system/source` and `/map` are read transient local, so a late window still gets them.
-- `map` publishes a goal only after DRIVE HERE then CONFIRM, and refuses one off Nav2's
+- `map` publishes a goal only after DRIVE HERE then CONFIRM, and refuses one off the navigation
   map or with no car position.
 - The logic lives in `hud-core`, `map-core`, `debug-core` and `panel-core`, tested without ROS or a screen.
 - `debug_hud` publishes nothing and never touches an actuator. Its one call swaps a
@@ -207,7 +213,7 @@ it; never vehicle.yaml).
   rules. A value that never changed is NOT TESTED: a parked car never shows OK.
 - `debug_hud`'s clouds never go through the shared queue: a newest-only slot to the
   `cubes` thread, then a newest-only slot to the screen. Each is placed with the local
-  EKF's pose at its own stamp. Nav2's cubes go the same way, through their own slots
+  EKF's pose at its own stamp. the costmap's cubes go the same way, through their own slots
   and their own thread (`nav2_cubes`).
 - Kept cubes age by the clouds' stamps, never the window's clock: when the lidar stops,
   they stop fading (and the lidar row says STALE).

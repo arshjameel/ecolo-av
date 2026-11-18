@@ -16,6 +16,7 @@ use crate::{
     health::{Health, LastSeen},
     origin::{Announcement, Origins},
     picture::Picture,
+    things::{CarPose, Thing},
     vehicle::VehicleStatus,
     watchdog,
 };
@@ -33,6 +34,7 @@ pub struct Battery {
 
 impl Battery {
     /// From the message's fields: volts, charge 0..1, amps. NaN means not measured.
+    #[must_use]
     pub fn from_message(voltage: f32, percentage: f32, current: f32) -> Self {
         let measured = |x: f32| x.is_finite().then_some(x);
         Self {
@@ -47,7 +49,10 @@ impl Battery {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EstopReport {
     /// Published; this many nodes subscribe to the e-stop topic.
-    Sent { subscribers: usize },
+    Sent {
+        /// Nodes subscribed to the e-stop topic.
+        subscribers: usize,
+    },
     /// Couldn't publish at all.
     Failed,
 }
@@ -55,14 +60,21 @@ pub enum EstopReport {
 /// One piece of news from a data source.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Update {
+    /// A `/vehicle/status` message.
     Vehicle(VehicleStatus),
+    /// The GPS receiver's own fix.
     Gps(Fix),
+    /// The EKF's position, as a fix.
     GpsFiltered(Fix),
+    /// Whether a stop sign is seen.
     StopSign(bool),
+    /// The battery.
     Battery(Battery),
+    /// A camera picture.
     Picture(Picture),
     /// The camera sent a picture the HUD can't show; why.
     BadPicture(String),
+    /// What came of an e-stop press.
     Estop(EstopReport),
     /// A node said where its data comes from (`/system/source`).
     Source(Announcement),
@@ -78,10 +90,15 @@ pub enum Update {
     StopPoint(ahead::StopMark),
     /// Its numbers.
     Ahead(ahead::Summary),
+    /// The things near the car (odom), named by the camera.
+    Things(Vec<Thing>),
+    /// The car's pose in odom: x, y (m), yaw (rad).
+    CarPose(CarPose),
 }
 
 impl Update {
     /// The topic this news came from, if any.
+    #[must_use]
     pub fn topic(&self) -> Option<Topic> {
         match self {
             Self::Vehicle(_) => Some(Topic::VehicleStatus),
@@ -96,6 +113,8 @@ impl Update {
             Self::PlanAhead(_) => Some(Topic::PlanAhead),
             Self::StopPoint(_) => Some(Topic::StopPoint),
             Self::Ahead(_) => Some(Topic::Ahead),
+            Self::Things(_) => Some(Topic::Things),
+            Self::CarPose(_) => Some(Topic::Odom),
             // Latched, sent once: its age says nothing about the data.
             Self::Estop(_) | Self::Source(_) => None,
         }
@@ -105,11 +124,17 @@ impl Update {
 /// What the screen draws.
 #[derive(Debug, Clone, Default)]
 pub struct HudState {
+    /// The settings.
     pub config: HudConfig,
+    /// The car's last status.
     pub vehicle: Option<VehicleStatus>,
+    /// The GPS receiver's last fix.
     pub gps: Option<Fix>,
+    /// The EKF's last position.
     pub gps_filtered: Option<Fix>,
+    /// A stop sign is seen.
     pub stop_sign: bool,
+    /// The battery's last state.
     pub battery: Option<Battery>,
     /// Why the last camera picture couldn't be shown; None once one could.
     pub picture_problem: Option<String>,
@@ -123,12 +148,17 @@ pub struct HudState {
     pub output_mux: Option<String>,
     /// The squiggly line, as last heard (hud_core::ahead).
     pub ahead: ahead::Ahead,
+    /// The things near the car, as last heard (odom).
+    pub things: Vec<Thing>,
+    /// The car's pose in odom, as last heard: x, y, yaw.
+    pub car_pose: Option<CarPose>,
     new_picture: Option<Picture>,
     last_seen: HashMap<Topic, LastSeen>,
 }
 
 impl HudState {
     /// A state with nothing heard yet.
+    #[must_use]
     pub fn new(config: HudConfig) -> Self {
         Self {
             config,
@@ -160,7 +190,20 @@ impl HudState {
             Update::PlanAhead(p) => self.ahead.plan = p,
             Update::StopPoint(s) => self.ahead.stop = Some(s),
             Update::Ahead(s) => self.ahead.summary = Some(s),
+            Update::Things(t) => self.things = t,
+            Update::CarPose(p) => self.car_pose = Some(p),
         }
+    }
+
+    /// The things to draw and the car's pose to place them, both fresh; None if either
+    /// is quiet (old things would sit where the car no longer is).
+    #[must_use]
+    pub fn things_now(&self, now: Instant) -> Option<(&[Thing], CarPose)> {
+        let fresh =
+            self.health(Topic::Things, now).is_ok() && self.health(Topic::Odom, now).is_ok();
+        self.car_pose
+            .filter(|_| fresh)
+            .map(|pose| (self.things.as_slice(), pose))
     }
 
     /// The e-stop button was pressed: forget the last press's report.
@@ -174,6 +217,7 @@ impl HudState {
     }
 
     /// OK / STALE / NEVER for one topic, at `now`.
+    #[must_use]
     pub fn health(&self, topic: Topic, now: Instant) -> Health {
         self.last_seen
             .get(&topic)
@@ -184,11 +228,13 @@ impl HudState {
 
     /// What the sensor watchdog says is wrong, for a banner; None when all is well
     /// ([`watchdog::alarm`]: the map window shows the same).
+    #[must_use]
     pub fn sensor_alarm(&self, now: Instant) -> Option<Alarm> {
         watchdog::alarm(self.health(Topic::Watchdog, now), self.watchdog.as_deref())
     }
 
     /// May the car move? GO / WAIT / STOP and the one main reason ([`gate::verdict`]).
+    #[must_use]
     pub fn verdict(&self, now: Instant) -> Verdict {
         let fresh = self.health(Topic::VehicleStatus, now).is_ok();
         let estop_on = fresh && self.vehicle.is_some_and(|v| v.estop_active);
@@ -241,6 +287,25 @@ mod tests {
             Health::Stale(_)
         ));
         assert_eq!(s.health(Topic::Gps, later), Health::Never);
+    }
+
+    #[test]
+    fn things_show_only_while_they_and_the_car_pose_are_fresh() {
+        let start = Instant::now();
+        let mut s = HudState::new(HudConfig::default());
+        let person = Thing {
+            id: 3,
+            name: "person".into(),
+            x: 4.0,
+            ..Thing::default()
+        };
+        s.apply(Update::Things(vec![person]), start);
+        assert!(s.things_now(start).is_none(), "no car pose yet");
+        s.apply(Update::CarPose((0.0, 0.0, 0.0)), start);
+        let (things, pose) = s.things_now(start).expect("both fresh");
+        assert_eq!(things[0].label(), "person 3");
+        assert_eq!(pose, (0.0, 0.0, 0.0));
+        assert!(s.things_now(start + Duration::from_secs(2)).is_none());
     }
 
     #[test]
@@ -355,7 +420,7 @@ mod tests {
         let mut s = HudState::new(HudConfig::default());
         assert_eq!(s.origins.banner(), None);
         let a = Announcement {
-            announcer: "gazebo_adapter".into(),
+            announcer: "sim_adapter".into(),
             entries: vec![Entry {
                 name: "vehicle".into(),
                 topic: "/vehicle/status".into(),

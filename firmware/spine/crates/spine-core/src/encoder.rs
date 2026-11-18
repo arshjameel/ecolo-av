@@ -9,6 +9,7 @@
 /// Step for each (previous AB, current AB) pair, indexed by `prev << 2 | cur`.
 const STEP: [i8; 16] = [0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0];
 
+/// A quadrature decoder: the two sensors' levels in, steps and a count out.
 #[derive(Debug, Clone, Copy)]
 pub struct Quadrature {
     last: u8,
@@ -16,6 +17,8 @@ pub struct Quadrature {
 }
 
 impl Quadrature {
+    /// Starts at count 0, from the sensors' levels now.
+    #[must_use]
     pub fn new(a: bool, b: bool) -> Self {
         Quadrature {
             last: (a as u8) << 1 | b as u8,
@@ -32,6 +35,8 @@ impl Quadrature {
         step
     }
 
+    /// The steps so far, forward minus back; wraps.
+    #[must_use]
     pub fn count(&self) -> i32 {
         self.count
     }
@@ -49,6 +54,7 @@ pub struct SpeedEstimator {
 
 impl SpeedEstimator {
     /// `timeout_us`: with no count for this long, the car counts as stopped.
+    #[must_use]
     pub fn new(metres_per_count: f32, timeout_us: u32) -> Self {
         SpeedEstimator {
             metres_per_count,
@@ -75,6 +81,7 @@ impl SpeedEstimator {
     }
 
     /// Signed speed in m/s.
+    #[must_use]
     pub fn speed(&self, now_us: u32) -> f32 {
         let (Some(last), Some(period)) = (self.last_count_us, self.period_us) else {
             return 0.0;

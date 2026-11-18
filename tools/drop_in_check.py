@@ -8,7 +8,7 @@ clock, its frame, its publishers' QoS. Only listens. Needs a sourced Jazzy insta
 usage: tools/drop_in_check.py [--seconds 10] [--measure]
        --measure  print what each sensor topic does, to write a rule from
 
-Gazebo, our simulator and the real sensors must all pass the same rules. Names and types
+Ravensim, CARLA and the real sensors must all pass the same rules. Names and types
 are `pixi run check <profile>`'s job. Exit status 1 if anything failed.
 """
 

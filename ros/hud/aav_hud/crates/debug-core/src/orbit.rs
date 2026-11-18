@@ -16,13 +16,17 @@ use map_core::geom::Pose;
 /// How the camera follows the car.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
+    /// Behind the car, turning with it.
     Chase,
+    /// On the car, its heading fixed.
     Follow,
+    /// Where it was panned to, its heading fixed.
     Free,
 }
 
 impl Mode {
     /// The next one, for the `C` key.
+    #[must_use]
     pub fn next(self) -> Self {
         match self {
             Self::Chase => Self::Follow,
@@ -31,6 +35,8 @@ impl Mode {
         }
     }
 
+    /// Its name on the screen.
+    #[must_use]
     pub fn label(self) -> &'static str {
         match self {
             Self::Chase => "CHASE",
@@ -51,6 +57,7 @@ const MAX_DISTANCE: f32 = 400.0;
 /// The camera.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Orbit {
+    /// How it follows the car.
     pub mode: Mode,
     /// The point looked at, odom, metres.
     pub target: [f32; 3],
@@ -81,6 +88,7 @@ impl Default for Orbit {
 
 impl Orbit {
     /// The heading the camera looks from (the camera sits that way from the target).
+    #[must_use]
     pub fn heading(&self) -> f32 {
         match self.mode {
             Mode::Chase => self.car_yaw + PI + self.turn,
@@ -89,6 +97,7 @@ impl Orbit {
     }
 
     /// Where the camera is, odom.
+    #[must_use]
     pub fn position(&self) -> [f32; 3] {
         let (h, e) = (self.heading(), self.elevation);
         let [x, y, z] = self.target;

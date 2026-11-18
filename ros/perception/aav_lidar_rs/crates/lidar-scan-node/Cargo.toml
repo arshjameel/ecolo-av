@@ -1,0 +1,20 @@
+[package]
+name = "lidar-scan-node"
+description = "lidar_scan: the roof lidar's cloud as a 2D LaserScan around base_link, as ROS 2 topics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "lidar_scan"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+lidar-scan = { path = "../lidar-scan" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"

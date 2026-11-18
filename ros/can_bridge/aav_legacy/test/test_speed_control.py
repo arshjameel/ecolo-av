@@ -10,7 +10,7 @@ DT = 0.02  # s: the bridge's 50 Hz
 
 
 class Car:
-    """The plant: the same shape as aav_gazebo's actuator model, with its own numbers."""
+    """The plant: the same shape as aav_sim_models's actuator model, with its own numbers."""
 
     def __init__(self, max_accel=1.5, max_brake=3.0, drag=0.1, lag=0.1):
         self.max_accel, self.max_brake, self.drag, self.lag = max_accel, max_brake, drag, lag

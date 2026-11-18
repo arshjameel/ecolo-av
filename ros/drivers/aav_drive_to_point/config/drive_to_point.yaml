@@ -29,6 +29,13 @@ point_driver:
     # s without the sensor watchdog's heartbeat (its lock): stop. twist_mux's sensors lock
     # timeout, so it stops when twist_mux holds it. The launch file sets 0 with watchdog:=false.
     watchdog_timeout: 1.0
+    # The fence (line.Fence), independent of Nav2: stop when the car is further than this
+    # from the line it follows to B, or further past B along it. Never further from the
+    # start than max(|AB|, a turn round: 2 x the tightest turn's radius) + max_overrun.
+    # Normal drives in test_drive.py stay well inside. Checked until the car stands still
+    # at B; a car rolling on past B (no brake) still trips it.
+    max_off_line: 3.0       # m either side of the line A -> B
+    max_overrun: 2.0        # m past B along the line (not the stop band: that is 0.05 m)
     stuck_time: 5.0         # s standing still though asked to move: stop (something holds it)
     still_speed: 0.05       # m/s: standing still
     still_time: 1.0         # s standing still at B before it reports

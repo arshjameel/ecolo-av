@@ -9,6 +9,14 @@ crosses, and whether that wire has room.
     gigabit cable; two don't fit. Everything else together is under 2 MB/s. Send
     pictures **compressed** over the network, and keep the lidar's points on the Orin.
 
+!!! note "Since this page (checked 13 Nov)"
+    The camera question was answered the day it was asked (Ben, 23 Oct): the camera Pi
+    sends each front camera as **H.264, 1280x720, 15 fps, 2 Mbit/s** (MediaMTX), and the
+    Orin decodes it and runs the detector in one process, so raw pictures never cross
+    the network: [Camera pipeline](camera-pipeline.md). The raw and JPEG camera rows
+    below are what that avoids, and still hold for a USB camera (`usb_cam`).
+    [[untested]] on the car. The measurements below are Gazebo's, 23-24 Oct (our simulator then; Ravensim publishes the same topics at the same rates).
+
 How sure each number is:
 
 | Mark | Means |
@@ -54,18 +62,18 @@ On the car, as planned (Q22 picks the cameras; the rates are ours or the 21 Oct 
 | Today's CAM2-PI stream (not ROS) | RTSP `cam1` | 30 | H.264 | 0.06 | 0.5 | CAM2-PI | Ethernet | nothing in ROS | audit (16 Oct) |
 | Lidar packets (VLP-16) | UDP 2368, then `/sensors/lidar/packets` | 754 pkt/s; 10 msg/s | 1.2 kB a packet | 0.94 | 7.5 | the lidar | Ethernet, lidar to Orin | lidar_driver | Velodyne's data sheet |
 | Lidar points | `/sensors/lidar/points` | 10 | ~0.7 MB | ~7 | ~56 | Orin | stays on the Orin | lidar_scan | guess (~30,000 points x 22 B) |
-| Lidar, flattened for Nav2 | `/sensors/lidar/scan` | 10 | 2.9 kB | 0.03 | 0.2 | Orin | stays | costmap, collision_monitor | measured |
-| Radar (TI IWR6843AOP) | `/sensors/radar/points` | 10 | <5 kB | <0.05 | <0.4 | the Pi it's plugged into | USB serial, then Ethernet | radar_clusters, Nav2 | guess (its serial port tops out at 0.09 MB/s) |
+| Lidar, flattened for the costmap | `/sensors/lidar/scan` | 10 | 2.9 kB | 0.03 | 0.2 | Orin | stays | costmap, the stop zone | measured |
+| Radar (TI IWR6843AOP) | `/sensors/radar/points` | 10 | <5 kB | <0.05 | <0.4 | the Pi it's plugged into | USB serial, then Ethernet | radar_clusters, the costmap and the stop zone | guess (its serial port tops out at 0.09 MB/s) |
 | IMU (Yahboom) | `/sensors/imu/data_raw`, `/data` | 200 | 324 B | 0.13 (both) | 1.0 | LOCALIZATION-PI today | USB serial, then Ethernet | the filter, the EKFs | audit (rate), measured (size) |
 | GPS (ZED-F9R) | `/sensors/gps/fix` | 10 | 128 B | 0.001 | 0.01 | LOCALIZATION-PI today | USB, then Ethernet | navsat_transform | audit (rate), measured (size) |
 | Wheel speeds | CAN 0x200, 0x201, then `/vehicle/wheels` | 100 each | 8 B a frame; 48 B | 0.005 | 0.04 | the wheel Arduino | CAN, then stays on the Orin | the EKFs, the watchdog | config (DBC) |
 | Drive command | `/ego/actuator_cmd`, then CAN 0x100 | 50 | 48 B; 8 B | 0.002 | 0.02 | Orin | CAN (Ethernet to the Motor Pi today) | the spine | config, measured |
 | Twist command | `/control/cmd_vel` | 20 | 76 B | 0.002 | 0.01 | Orin | stays | ego | measured |
-| Odometry, both EKFs | `/vehicle/odom`, `/localization/odom/*` | 50, 30, 30 | 724 B | 0.08 | 0.6 | Orin | stays | Nav2, the HUD's map | measured |
+| Odometry, both EKFs | `/vehicle/odom`, `/localization/odom/*` | 50, 30, 30 | 724 B | 0.08 | 0.6 | Orin | stays | navigation, the HUD's map | measured |
 | TF | `/tf` | 75 | 243 B | 0.02 | 0.15 | Orin | to every viewer | everyone | measured |
 | Local costmap | `/local_costmap/costmap` | 2 | 40 kB | 0.08 | 0.6 | Orin | only to a viewer | RViz, Foxglove | measured (200 x 200 cells) |
-| Global costmap | `/global_costmap/costmap` | 1 | 640 kB | 0.64 | 5.1 | Orin | only to a viewer | RViz, Foxglove | measured (Gazebo's road map; grows with the map) |
-| Nav2's plan | `/plan` | 1 | 4-7 kB | 0.007 | 0.06 | Orin | to the map screen | map window | measured |
+| Global costmap | `/drivers/nav/costmap/global` (Nav2's `/global_costmap/costmap` then) | 1 | 640 kB | 0.64 | 5.1 | Orin | only to a viewer | RViz, Foxglove | measured (Gazebo's road map; grows with the map) |
+| The plan | `/plan` | 1 | 4-7 kB | 0.007 | 0.06 | Orin | to the map screen | map window | measured |
 | Foxglove to a laptop | WebSocket, port 8765 (8766 while the 2025-26 bridge holds 8765) | | | **what you open** | | Orin | **WiFi** | Lichtblick, Foxglove | measured (Gazebo, 24 Oct): our three layouts at once, 0.17 MB/s ([Watch from a laptop](foxglove.md)) |
 
 Without the cameras, the whole car is about **2 MB/s (16 Mbit/s)**, the lidar's packets half
@@ -134,7 +142,7 @@ car). Watching over Foxglove or Lichtblick (port 8765) costs only what you open:
 | 4 | **Lower rates for people** | a screen needs 5 Hz, not 15. Foxglove and Lichtblick can subscribe to a throttled copy (`topic_tools throttle`) |
 | 5 | **Give the HUD a small picture** | the raylib HUD reads the raw front camera. Feed it a 640x360 copy at 5 Hz (3.5 MB/s raw, ~0.15 MB/s JPEG), or teach the HUD JPEG |
 | 6 | **Same computer: one process** | where a camera and its reader share the Orin, run them in one process (composable nodes), so the picture is passed, not copied |
-| 7 | **Viewers subscribe to one costmap**, not every layer | each Nav2 layer is its own 40-640 kB topic. RViz or Foxglove opening all of them is 5 MB/s |
+| 7 | **Viewers subscribe to one costmap**, not every layer | each of Nav2's layers was its own 40-640 kB topic (Gazebo days). RViz or Foxglove opening all of them is 5 MB/s |
 | 8 | **Measure on the car** with `pixi run measure bandwidth` | every "guess" above becomes a number |
 
 ### Cyclone DDS, the default from 23 Oct (Ben)
@@ -165,7 +173,7 @@ the car's), and its lidar is a 16-beam stand-in.
 | `/global_costmap/costmap` (and 7 more layers) | 0.5 | 640 kB | 0.32 each | 2.6 each |
 | `/joint_states` | 877 | 364 B | 0.32 | 2.6 |
 | `/local_costmap/costmap` (and 5 more layers) | 1.5 | 40 kB | 0.06 each | 0.5 each |
-| `/gazebo/radar/points` (Gazebo's own) | 9.2 | 6.0 kB | 0.06 | 0.5 |
+| `/vehicle/sim/radar/points` (Gazebo's own) | 9.2 | 6.0 kB | 0.06 | 0.5 |
 | `/vehicle/wheels` | 869 | 48 B | 0.04 | 0.3 |
 | `/vehicle/odom` | 46 | 724 B | 0.03 | 0.3 |
 | `/sensors/lidar/scan` | 9.2 | 2.9 kB | 0.03 | 0.2 |

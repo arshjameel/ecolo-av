@@ -4,7 +4,7 @@ gps_heading: the car's heading from the GPS receiver's velocity, for the global 
 Subscribes  sensors/gps/fix_velocity      geometry_msgs/TwistWithCovarianceStamped: the
                                           antenna's velocity, ENU (east, north, up), m/s,
                                           from the receiver's Doppler (ublox_gps; Gazebo's
-                                          gazebo_gps)
+                                          sim_gps)
             vehicle/odom                  nav_msgs/Odometry: the wheels' signed speed and
                                           the turn rate (which way the car goes, and the
                                           antenna's swing in a turn)

@@ -2,7 +2,7 @@
 
 New to the team? Start here. In about an hour you'll have ROS on your laptop, drive a
 turtle that steers like the car, see every node and topic in rqt_graph, drive the
-simulated car in Gazebo, and watch Nav2 plan a path through a costmap. Each step says what
+simulated car in Ravensim, and watch our stack plan a path through a costmap. Each step says what
 you should see.
 
 ## What you need
@@ -35,7 +35,7 @@ in: [CONTRIBUTING.md](../CONTRIBUTING.md).
 laptop is set up. If not, see [When something doesn't work](#when-something-doesnt-work).
 
 !!! note "What did that install?"
-  Pixi put ROS 2 Jazzy, Gazebo, Nav2, Python, Rust and the compilers inside the `.pixi`
+  Pixi put ROS 2 Jazzy, Python, Rust and the compilers inside the `.pixi`
   folder of the repo. Nothing else on your laptop changed, except one line in your shell
   settings so that the `pixi` command is found.
 
@@ -85,43 +85,48 @@ pixi run check turtle
 **You should see** `0 failed` at the end. The contract is `docs/interfaces.yaml`: every
 topic, its type, and who publishes and reads it.
 
-## 4. Gazebo: the simulated car (15 minutes)
+## 4. Ravensim: the simulated car (15 minutes)
 
 Stop the turtle first (Ctrl-C in each terminal).
 
 ```bash
-pixi run sim      # the same on Linux and on a Mac
+pixi run sim                        # the same on Linux and on a Mac
+tools/software_gl.sh pixi run sim   # a computer with no GPU (slower than real time)
 ```
 
 **You should see:**
-- **Gazebo:** the car, red and white, on a grey ground plane. The camera follows it.
 - **RViz:** the car model, the map, and the costmaps around the car.
 
-![The car in Gazebo, driving a left curve](img/gazebo-car.png)
-
-On a Mac, Gazebo's window runs as a separate program, and `pixi run sim` starts it for you.
-If you close it, `pixi run tools/ros.sh tools/gz_window.sh` opens it again.
+Ravensim is our own simulator, in Rust ([its page](own-simulator.md)). Watch it in RViz,
+in Lichtblick ([Foxglove](foxglove.md)), or in the developer window: `pixi run ravensim`
+starts the sim and the window together.
 
 Drive it with `pixi run keyboard --sim` in another terminal. Then run
 `pixi run check sim`: it should say `0 failed`.
 
-## 5. A Nav2 goal through a costmap (10 minutes)
+## 5. A goal through a costmap (10 minutes)
 
 In RViz:
 1. Click **2D Goal Pose** in the toolbar.
 2. Click on the map about 8 m ahead of the car, and drag to set the direction.
 
 **You should see** a planned path appear, and the car drive along it and stop at the goal.
-Any keyboard or joystick input overrides Nav2 at once.
+Any keyboard or joystick input overrides the navigator at once.
 
-The costmaps are the grids that Nav2 plans through:
-- **local**: 20 m × 20 m around the car;
-- **global**: the whole map.
+Our stack (`stack:=ours`) does it, all in Rust:
 
-For walls to plan around, start Gazebo with the test lot instead:
+| Part | Package | Job |
+|---|---|---|
+| navigator | `aav_navigator` | takes the goal, replans, recovers |
+| planner | `aav_planner` | the path, through the costmap |
+| path follower | `aav_mppi_lag` | follows the path |
+| costmap | `aav_costmap` | the grids it plans through: **local** (20 m × 20 m around the car) and **global** (the whole map) |
+
+For walls to plan around, start Ravensim with the test lot instead:
 `pixi run sim world:=test_lot`. [Costmaps](costmaps.md) explains how to draw your own.
 
 !!! note "The same goal from a terminal"
+  The navigator serves Nav2's action name and message, so goal senders stay the same:
   `pixi run tools/ros.sh ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose "{pose: {header: {frame_id: map}, pose: {position: {x: 8.0, y: 0.0}, orientation: {w: 1.0}}}}"`
 
 ## What's been tested
@@ -131,10 +136,10 @@ For walls to plan around, start Gazebo with the test lot instead:
 | 1. Install, build, test | [[works]] | [[works]] 10 Oct, on an Apple Silicon Mac |
 | 2. Turtle, and driving it the keyboard's way | [[works]] | [[works]] (the real keys are [[untested]]) |
 | 3. rqt_graph, and the graph check | [[works]] | [[works]] the check. The window opened; a person still has to look at it |
-| 4. Gazebo without its window | [[works]] | [[works]] |
-| 4. Gazebo's window | [[untested]] (no screen on oirp-spss) | [[works]] 10 Oct: the car drives in it, and the camera follows |
+| 4. Ravensim, headless (`sim-check`) | [[untested]] with software GL (TODO 240) | [[works]] |
+| 4. Ravensim with the developer window (`pixi run ravensim`) | [[untested]] (no screen on oirp-spss) | [[untested]] (new, 17 Nov) |
 | 4. RViz | [[untested]] (no screen on oirp-spss) | [[untested]] it opens; nobody has looked at it yet |
-| 5. A Nav2 goal | [[works]] | [[works]] from a terminal: 8 m in 13 s |
+| 5. A goal | [[untested]] (TODO 240) | [[works]] (`sim-check`'s drive) |
 
 ## Where next
 
@@ -155,6 +160,5 @@ For walls to plan around, start Gazebo with the test lot instead:
 | "Not built yet" | `pixi run build` |
 | A test fails | run `pixi run test` again. If it still fails, paste the last 20 lines into the team chat or into Claude |
 | The turtle doesn't move | click into the keyboard terminal and hold the key; see [when nothing moves](simulation.md#when-nothing-moves) |
-| The Gazebo window stays empty, or the car never appears | `export GZ_IP=127.0.0.1` in every terminal, then start again |
 | macOS asks whether `python3` or `rviz2` may accept connections | click Allow |
 | Two laptops see each other's robots | give each its own `ROS_DOMAIN_ID`, 0–101 (safe on Linux; Fast DDS breaks above 232) |

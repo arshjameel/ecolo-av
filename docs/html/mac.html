@@ -9,7 +9,11 @@
 <h1>Your Mac: run it, and drive the car</h1>
 <div class="meta">18 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,7 +125,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#three-ways">Three ways</a><a href="#set-up-the-mac-once">Set up the Mac (once)</a><a href="#join-the-cars-network">Join the car&#x27;s network</a><a href="#drive-and-watch-from-the-mac">Drive and watch from the Mac</a><a href="#ml-on-your-mac-against-the-bench">ML on your Mac, against the bench</a><a href="#watch-without-ros-lichtblick">Watch without ROS: Lichtblick</a><a href="#gazebo-on-a-mac">Gazebo on a Mac</a><a href="#macos-hides-one-setting-from-ros">macOS hides one setting from ROS</a><a href="#four-more-things-the-bench-found-on-a-mac">Four more things the bench found on a Mac</a><a href="#if-the-native-way-fails-ubuntu-in-utm">If the native way fails: Ubuntu in UTM</a><a href="#if-something-breaks">If something breaks</a><a href="#whats-been-tested">What&#x27;s been tested</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#three-ways">Three ways</a><a href="#set-up-the-mac-once">Set up the Mac (once)</a><a href="#join-the-cars-network">Join the car&#x27;s network</a><a href="#drive-and-watch-from-the-mac">Drive and watch from the Mac</a><a href="#ml-on-your-mac-against-the-bench">ML on your Mac, against the bench</a><a href="#watch-without-ros-lichtblick">Watch without ROS: Lichtblick</a><a href="#ravensim-on-a-mac">Ravensim on a Mac</a><a href="#macos-hides-one-setting-from-ros">macOS hides one setting from ROS</a><a href="#four-more-things-the-bench-found-on-a-mac">Four more things the bench found on a Mac</a><a href="#if-the-native-way-fails-ubuntu-in-utm">If the native way fails: Ubuntu in UTM</a><a href="#if-something-breaks">If something breaks</a><a href="#whats-been-tested">What&#x27;s been tested</a></nav>
 <div class="lead"><p>Three ways to use a Mac with the car. Use Pixi to run ROS on the Mac itself, and to
 drive. Lichtblick only watches, but needs no setup. Ubuntu in a VM is the fallback.</p></div>
 <section class="card"><h2 id="three-ways">Three ways</h2>
@@ -128,7 +140,7 @@ drive. Lichtblick only watches, but needs no setup. Ubuntu in a VM is the fallba
 <tbody>
 <tr>
 <td>1. ROS on the Mac, with Pixi</td>
-<td>everything: keyboard driving, e-stop, RViz, rqt, the turtle, Gazebo</td>
+<td>everything: keyboard driving, e-stop, RViz, rqt, the turtle, the simulators</td>
 <td>about 30 minutes and 7 GB, once</td>
 </tr>
 <tr>
@@ -167,9 +179,10 @@ Hold <code>i</code> to drive.</p>
 <section class="card"><h2 id="join-the-cars-network">Join the car's network</h2>
 <div class="admonition warning">
 <p class="admonition-title">The car must run Jazzy too</p>
-<p>Today's car runs the 2025-26 software on ROS 2 Humble, and Humble and Jazzy don't
-mix. Put this stack on the car first: <a href="platforms.html">Platforms</a> shows how, with or
-without a reflash.</p>
+<p>Today's car still runs the 2025-26 software on ROS 2 Humble, and Humble and Jazzy
+don't mix. On 13 Nov only the localization update of ours was on it, not the full
+suite. Put this stack on the car first: <a href="rollout.html">Rolling out</a>, and
+<a href="platforms.html">Platforms</a> for with or without a reflash.</p>
 </div>
 <div class="table-wrap"><table>
 <thead>
@@ -227,7 +240,8 @@ pixi run bash tools/net_map.sh --listen 30 --out ~/net-map.md</code></pre>
 <li>On a Mac, programs started by Python see an empty ARP table (Local Network privacy),
   so <code>bash tools/net_map.sh</code> reads it from bash. If the MAC column is empty, check step 4b.</li>
 <li>Tried on Ben's home network, 15 Oct: 13 machines in 25 s, and a test talker on domain
-  77 heard. <strong>Not yet tried on the car.</strong></li>
+  77 heard. At the car: the 21 Oct audit's network map
+  (<a href="../history/audit-2026-10-21-car.md">audit</a>).</li>
 </ul>
 <h3 id="the-cars-own-topics">The car's own topics</h3>
 <p><code>pixi run tools/ros.sh ros2 topic list</code> should then list the car's topics. If they don't
@@ -366,21 +380,14 @@ default) or MISSING.</p>
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="gazebo-on-a-mac">Gazebo on a Mac</h2>
-<p>On macOS, Gazebo's window has to run as a separate program from the simulator.
-<code>pixi run sim</code> starts both, and points the window's camera at the car:</p>
-<pre class="highlight"><code class="language-bash">pixi run sim               # the simulator, its window, and RViz
-pixi run tools/ros.sh tools/gz_window.sh         # opens the window again, if you closed it
-pixi run sim follow:=false # a free camera instead of one that follows the car</code></pre>
-<p>Cameras and lidars inside Gazebo can crash it on some Macs. Ours don't: in the road world
-(<code>pixi run sim world:=road</code>), the cameras, the radar stand-in and the roof
-lidar render with no window, on Metal, at their full rates (Ben's Mac, 15 Oct). The lidar
-was off by default for a while: with YOLO too it failed, but those runs shared the Mac with a stray simulator. On a quiet Mac (15 Oct afternoon) everything together passed twice, so it's on by default
-(<a href="simulation.html#the-lidar-gazebo-only">Simulation</a>). If Gazebo crashes, use the empty
-world, which renders nothing.</p>
-<p>If the window stays empty, or the car never appears, run <code>export GZ_IP=127.0.0.1</code> in both
-terminals and start again: Gazebo's two programs then find each other on the Mac itself.
-On Ben's Mac the simulator ran without it (10 Oct); it fixed the same symptom on Linux.</p>
+<section class="card"><h2 id="ravensim-on-a-mac">Ravensim on a Mac</h2>
+<p><code>pixi run sim</code> starts Ravensim, our own simulator (<a href="own-simulator.html">Ravensim</a>). It has
+no window: watch in RViz, Lichtblick or the developer window. Its cameras draw on the
+Mac's GPU (Metal), at their full rates.</p>
+<pre class="highlight"><code class="language-bash">pixi run sim world:=road                          # the simulator and RViz
+tools/software_gl.sh --force pixi run sim-check   # CI's way: the cameras in software, in lockstep</code></pre>
+<p>Gazebo ran here until 16 Nov, its window as a second program: <a href="../history/gazebo-as-it-was.md">Gazebo, as it
+was</a>.</p>
 <h3 id="why-we-use-cyclone-dds">Why we use Cyclone DDS</h3>
 <p>Cyclone DDS has been the team's middleware since 23 Oct (Ben: "yes lets do it"). Pixi sets
 it everywhere (<code>RMW_IMPLEMENTATION</code> in <code>pixi.toml</code>), so there's nothing to type.</p>
@@ -607,12 +614,12 @@ discovery stays on it, and the whole Gazebo graph starts more. On Linux the 33rd
 <td><span class="badge b-works">works</span> on Linux and the Mac. The real keyboard keys are <span class="badge b-untested">untested</span> on a Mac</td>
 </tr>
 <tr>
-<td>Gazebo without its window, and a Nav2 goal</td>
+<td>Gazebo without its window, and a Nav2 goal (until 16 Nov; Ravensim since, <span class="badge b-works">works</span>)</td>
 <td><span class="badge b-works">works</span> on the Mac, without <code>GZ_IP</code></td>
 </tr>
 <tr>
-<td>Gazebo's window on a Mac</td>
-<td><span class="badge b-works">works</span> 10 Oct: <code>pixi run sim</code> opens it; the car drives in it (pictures in <a href="first-day.html">Your first day</a>)</td>
+<td>Gazebo's window on a Mac (until 16 Nov)</td>
+<td><span class="badge b-works">works</span> 10 Oct: <code>pixi run sim</code> opened it; the car drives in it (pictures in <a href="first-day.html">Your first day</a>)</td>
 </tr>
 <tr>
 <td>Gazebo's cameras and lidar on a Mac</td>
@@ -632,7 +639,7 @@ discovery stays on it, and the whole Gazebo graph starts more. On Linux the 33rd
 </tr>
 <tr>
 <td>The Mac on the car's network</td>
-<td><span class="badge b-untested">untested</span> the car still runs Humble</td>
+<td><span class="badge b-untested">untested</span> as a ROS peer: the car still runs Humble. <code>pixi run doctor</code> ran on the car's switch on 21 Oct; on 6 Nov the Mac's <code>ros2</code> checks (Cyclone) may have upset the car's Fast DDS nodes (the audits)</td>
 </tr>
 <tr>
 <td><code>pixi run doctor</code></td>

@@ -118,10 +118,13 @@ impl TileCache {
     }
 
     /// How many tiles are kept.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.slots.len()
     }
 
+    /// True if it holds no tiles.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.slots.is_empty()
     }

@@ -18,6 +18,7 @@ impl StaticMap {
     /// The map from an `OccupancyGrid`'s values (-1 unknown, 0-100), read as Nav2 reads them
     /// with `trinary_costmap` (its default): lethal at the threshold, else free; unknown
     /// stays unknown only with `track_unknown`. `None` if the size and data disagree.
+    #[must_use]
     pub fn from_occupancy(
         origin: (f64, f64),
         resolution: f64,

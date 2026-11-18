@@ -10,7 +10,7 @@ CAMERA = '/sensors/camera/front_left/image_raw'
 
 
 def gazebo(*topics, kind=SIM):
-    return [Entry('gazebo_adapter', t.split('/')[-2], t, kind) for t in topics]
+    return [Entry('sim_adapter', t.split('/')[-2], t, kind) for t in topics]
 
 
 # --- sources and targets ---
@@ -68,7 +68,7 @@ LEGACY = [Entry('legacy_uart_bridge', 'actuators', '', REAL)]
 
 def test_an_announcement_is_forgotten_once_its_announcer_has_gone():
     a = heard(gazebo(IMU), LEGACY)
-    both = {'gazebo_adapter', 'legacy_uart_bridge'}
+    both = {'sim_adapter', 'legacy_uart_bridge'}
     assert {e.announcer for e in a.entries(both, 1.0)} == both
     # Gazebo stops: its SIM entries stop counting, so a stop can be cleared.
     assert [e.announcer for e in a.entries({'legacy_uart_bridge'}, 2.0)] == [
@@ -79,16 +79,16 @@ def test_an_announcement_is_forgotten_once_its_announcer_has_gone():
 def test_an_announcement_counts_before_the_graph_shows_its_announcer():
     # The message can come first (24 Oct): ignoring it would let a SIM source through.
     a = heard(gazebo(IMU), now=10.0)
-    assert [e.announcer for e in a.entries(set(), 10.2)] == ['gazebo_adapter']
-    assert p.foreign(a.entries(set(), 10.2), REAL) == ['imu is SIM (gazebo_adapter)']
+    assert [e.announcer for e in a.entries(set(), 10.2)] == ['sim_adapter']
+    assert p.foreign(a.entries(set(), 10.2), REAL) == ['imu is SIM (sim_adapter)']
     # Never in the graph at all: forgotten after the grace (a short-lived publisher).
     assert a.entries(set(), 10.0 + a.grace) == []
 
 
 def test_an_announcer_heard_again_is_fresh():
     a = heard(gazebo(IMU), now=0.0)
-    a.entries({'gazebo_adapter'}, 1.0)          # seen in the graph
-    a.hear('gazebo_adapter', gazebo(IMU), 50.0)   # Gazebo started again
+    a.entries({'sim_adapter'}, 1.0)          # seen in the graph
+    a.hear('sim_adapter', gazebo(IMU), 50.0)   # Gazebo started again
     assert len(a.entries(set(), 50.1)) == 1      # counts before the graph shows it again
 
 
@@ -96,18 +96,18 @@ def test_an_announcer_in_the_graph_not_heard_yet_is_a_doubt():
     # The graph can come first, by up to 30 ms across processes (24 Oct): wait for its
     # announcement, which may say SIM.
     a = heard(LEGACY)
-    alive = {'legacy_uart_bridge', 'gazebo_adapter'}
+    alive = {'legacy_uart_bridge', 'sim_adapter'}
     assert a.unheard(alive) == [
-        'gazebo_adapter publishes /system/source, its announcement not heard yet']
+        'sim_adapter publishes /system/source, its announcement not heard yet']
     check = p.check_sensors(REAL, a.entries(alive, 0.0), {}, unheard=a.unheard(alive))
     assert not check.ok and not check.problems and len(check.doubts) == 1
-    a.hear('gazebo_adapter', gazebo(IMU), 0.1)
+    a.hear('sim_adapter', gazebo(IMU), 0.1)
     assert a.unheard(alive) == []
 
 
 def test_foreign_lists_what_isnt_the_source_asked_for():
     entries = gazebo(IMU) + [Entry('spine_bridge', 'odometry', '/vehicle/odom', REAL)]
-    assert p.foreign(entries, REAL) == ['imu is SIM (gazebo_adapter)']
+    assert p.foreign(entries, REAL) == ['imu is SIM (sim_adapter)']
     assert p.foreign(entries, SIM) == ['odometry is REAL (spine_bridge)']
 
 
@@ -122,9 +122,9 @@ def test_the_car_with_its_stock_drivers_is_all_real():
 
 
 def test_gazebo_on_the_cars_network_is_caught():
-    check = p.check_sensors(REAL, gazebo(IMU), {IMU: ['gazebo_imu']})
+    check = p.check_sensors(REAL, gazebo(IMU), {IMU: ['sim_imu']})
     assert not check.ok
-    assert check.problems == ('imu is SIM (gazebo_adapter)',)
+    assert check.problems == ('imu is SIM (sim_adapter)',)
     assert check.sensors[0].kind == SIM
 
 
@@ -159,23 +159,96 @@ def test_a_doubt_that_goes_away_starts_again():
     # Discovery: a publisher seen before its announcement, for a moment.
     hold = p.Hold(hold=5.0)
     unknown = p.check_sensors(SIM, [], {IMU: ['_NODE_NAME_UNKNOWN_']})
-    known = p.check_sensors(SIM, gazebo(IMU), {IMU: ['gazebo_imu']})
+    known = p.check_sensors(SIM, gazebo(IMU), {IMU: ['sim_imu']})
     assert hold.judge(0.0, unknown).doubts
     assert hold.judge(3.0, known).ok
     assert hold.judge(4.0, unknown).doubts and hold.judge(8.9, unknown).problems == ()
     # An announcement of another source never waits.
-    assert hold.judge(9.0, p.check_sensors(REAL, gazebo(IMU), {IMU: ['gazebo_imu']})).problems
+    assert hold.judge(9.0, p.check_sensors(REAL, gazebo(IMU), {IMU: ['sim_imu']})).problems
+
+
+# --- start-up order (TODO 234): sensors seen before the announcement of what they are ---
+
+GRACE = 30.0
+
+
+def tick(hold, gate, now, expected, entries, publishers, unheard=()):
+    """One sensor mux tick, its report to the output mux; return whether the gate opens."""
+    check = hold.judge(now, p.check_sensors(expected, entries, publishers, unheard=unheard))
+    gate.report = Report(now, check.source, check.ok, check.problems, check.doubts)
+    return gate.is_open(now)
+
+
+def test_announcement_first_opens_after_settle():
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('sim', settle=2.0)
+    assert not tick(hold, gate, 0.0, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+    assert tick(hold, gate, 2.0, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+
+
+def test_sensor_first_then_its_announcement_within_the_grace_drives():
+    # A busy computer: sim_gps seen 10 s before sim_adapter (17 Nov's sessions latched).
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('sim', settle=2.0)
+    for now in range(0, 11):
+        assert not tick(hold, gate, float(now), SIM, [], {GPS: ['sim_gps']})
+        assert gate.latched == ()
+        assert gate.state(float(now)).startswith('WAIT - sim: unsure: gps:')
+    assert not tick(hold, gate, 11.0, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+    assert tick(hold, gate, 13.0, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+
+
+def test_an_announcer_heard_late_within_the_grace_drives():
+    unheard = ['sim_adapter publishes /system/source, its announcement not heard yet']
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('sim', settle=0.0)
+    assert not tick(hold, gate, 0.0, SIM, [], {}, unheard)
+    assert not tick(hold, gate, 9.0, SIM, [], {}, unheard) and gate.latched == ()
+    assert tick(hold, gate, 9.5, SIM, gazebo(GPS), {GPS: ['sim_gps']})
+
+
+def test_no_announcement_holds_wait_then_latches_after_the_grace():
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('sim', settle=0.0)
+    for now in (0.0, 5.0, 29.9):
+        assert not tick(hold, gate, now, SIM, [], {GPS: ['gps_driver']})
+        assert gate.latched == ()
+    assert not tick(hold, gate, GRACE, SIM, [], {GPS: ['gps_driver']})
+    assert gate.latched and 'nobody announces' in gate.latched[0]
+    # A late announcement no longer reopens it: only a person's clear.
+    assert not tick(hold, gate, 31.0, SIM, gazebo(GPS), {GPS: ['gps_driver']})
+
+
+def test_after_the_grace_a_new_unannounced_sensor_counts_after_hold():
+    hold = p.Hold(5.0, grace_until=GRACE)
+    late = p.check_sensors(SIM, [], {GPS: ['gps_driver']})
+    assert hold.judge(40.0, late).doubts
+    assert hold.judge(44.9, late).problems == ()
+    assert hold.judge(45.0, late).problems
+
+
+def test_a_sim_source_on_the_car_latches_at_once_even_in_the_grace():
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('car', settle=0.0)
+    assert not tick(hold, gate, 0.0, REAL, gazebo(GPS), {GPS: ['sim_gps']})
+    assert gate.latched == ('gps is SIM (sim_adapter)',)
+
+
+def test_the_grace_never_lets_an_unannounced_sim_pass_on_the_car():
+    # On the car an unannounced publisher counts as REAL (stock drivers can't announce).
+    # A simulator beside the real driver is two publishers: not pending, so no grace.
+    hold, gate = p.Hold(5.0, grace_until=GRACE), Gate('car', settle=0.0)
+    pubs = {GPS: ['ublox_gps', 'sim_gps']}
+    assert p.check_sensors(REAL, [], pubs).pending == ()
+    assert not tick(hold, gate, 0.0, REAL, [], pubs) and gate.latched == ()
+    assert not tick(hold, gate, 5.0, REAL, [], pubs)
+    assert gate.latched and 'two sources at once' in gate.latched[0]
 
 
 def test_gazebo_in_gazebo_is_fine_and_absent_sensors_are_not_faults():
     check = p.check_sensors(SIM, gazebo(IMU, GPS, CAMERA),
-                            {IMU: ['gazebo_imu'], GPS: ['gazebo_gps']})
+                            {IMU: ['sim_imu'], GPS: ['sim_gps']})
     assert check.ok
     assert [s.name for s in check.sensors] == ['imu', 'gps']
 
 
 def test_an_unannounced_sensor_in_a_simulator_is_a_real_one():
-    check = p.check_sensors(SIM, gazebo(IMU), {IMU: ['gazebo_imu'], GPS: ['ublox_gps_node']})
+    check = p.check_sensors(SIM, gazebo(IMU), {IMU: ['sim_imu'], GPS: ['ublox_gps_node']})
     assert not check.ok
     assert check.doubts == ('gps: /sensors/gps/fix from ublox_gps_node, which nobody '
                             'announces on /system/source: a real driver?',)
@@ -183,7 +256,7 @@ def test_an_unannounced_sensor_in_a_simulator_is_a_real_one():
 
 def test_a_real_actuator_in_a_simulator_is_caught():
     check = p.check_sensors(SIM, gazebo(IMU) + [Entry('legacy_uart_bridge', 'actuators', '',
-                                                      REAL)], {IMU: ['gazebo_imu']})
+                                                      REAL)], {IMU: ['sim_imu']})
     assert check.problems == ('actuators is REAL (legacy_uart_bridge)',)
 
 
@@ -231,7 +304,7 @@ def test_a_simulated_source_cant_drive_the_real_car_and_the_stop_latches():
     gate.entries = gazebo(CAMERA)
     assert not gate.is_open(2.1)
     assert gate.state(2.1) == ('STOP - target car needs REAL - front_left is SIM '
-                               '(gazebo_adapter) - latched: /safety/output_mux/clear')
+                               '(sim_adapter) - latched: /safety/output_mux/clear')
     # Gazebo goes away: still stopped, until a person clears it.
     gate.entries = []
     gate.report = ok(3.0)
@@ -249,7 +322,7 @@ def test_clearing_is_refused_while_anything_is_wrong():
     gate.entries = gazebo(IMU)
     gate.update(0.1)
     done, why = gate.clear(0.2)
-    assert not done and why == 'still wrong: imu is SIM (gazebo_adapter)'
+    assert not done and why == 'still wrong: imu is SIM (sim_adapter)'
     assert gate.latched
 
 
@@ -296,7 +369,7 @@ def test_the_sensor_mux_unsure_holds_the_gate_without_latching():
 
 
 def test_an_announcer_not_heard_yet_holds_the_gate_and_its_sim_latches():
-    unheard = 'gazebo_adapter publishes /system/source, its announcement not heard yet'
+    unheard = 'sim_adapter publishes /system/source, its announcement not heard yet'
     gate = Gate('car', settle=0.0)
     gate.report = ok(0.0)
     assert gate.is_open(0.0)
@@ -306,7 +379,7 @@ def test_an_announcer_not_heard_yet_holds_the_gate_and_its_sim_latches():
     # Its announcement arrives: SIM, a stop.
     gate.unheard, gate.entries = [], gazebo(CAMERA)
     assert not gate.is_open(0.2)
-    assert gate.latched == ('front_left is SIM (gazebo_adapter)',)
+    assert gate.latched == ('front_left is SIM (sim_adapter)',)
 
 
 def test_gazebo_refuses_a_real_backend_in_its_graph():
@@ -324,7 +397,7 @@ def test_the_bench_needs_bench_sources():
     gate.report = ok(0.0, source=BENCH)
     gate.entries = [Entry('mock_imu', 'imu', IMU, BENCH)]
     assert gate.is_open(0.0)
-    gate.entries.append(Entry('gazebo_adapter', 'gps', GPS, SIM))
+    gate.entries.append(Entry('sim_adapter', 'gps', GPS, SIM))
     assert not gate.is_open(0.1)
 
 

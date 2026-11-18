@@ -4,8 +4,16 @@ Ben, 29 Oct: "We want to make other nodes or plugins that we can test and then r
 the main ones if they work." Each trial runs **beside** today's default, chosen at launch,
 and is **scored on the same routes**. It becomes the default only once it wins.
 
+!!! note "Nav2 and Gazebo are gone"
+    Most results below were scored in Gazebo, inside Nav2's chain, before both were deleted
+    (Gazebo 16 Nov, Nav2 17 Nov: [Nav2, as it was](history/nav2-as-it-was.md),
+    [Gazebo, as it was](history/gazebo-as-it-was.md)). They stay as the record. Today every
+    trial runs in Ravensim, inside our stack (`stack:=ours`): the trackers in `mppi_lag`'s
+    place, the planners in `aav_planner`'s. Nav2's own planners (Smac 2D, NavFn, Theta*)
+    and followers (MPPI, RPP) went with it.
+
 > **The short version**
-> - **Trackers** (`aav_track`): pure pursuit, Stanley, LQR, MPC, and `mpc_full` (speed and steering together), in Nav2's own chain, in controller_server's place. `tracker:=lqr`.
+> - **Trackers** (`aav_track`): pure pursuit, Stanley, LQR, MPC, and `mpc_full` (speed and steering together), in our chain, in `mppi_lag`'s place (in controller_server's, until 17 Nov). `tracker:=lqr`.
 > - **AMCL** (stock `nav2_amcl`): a particle filter on the map and the lidar, scored against the EKF, never steering. `amcl:=true`.
 > - **NDT** (`aav_ndt`, ours in Rust): the lidar matched to a saved lidar map, scored against the EKF, never steering. `ndt:=true`.
 > - **Score:** `pixi run measure controllers --trackers pure_pursuit lqr --runs 3`.
@@ -15,7 +23,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 > - **Betsi's measurements** (1 Nov: wheelbase 1.561 m, track 0.75 m, lidar and GPS heights): the runs above used the old guesses. Rerun with hers: `sim-check` 9 of 9, `bench-check` 6 of 6, NDT's lot tour 4 of 4 legs, the EKF 1 cm off; the lattice's moves rebuilt (radius 3.572 m).
 > - **1 Nov: the lattice is the default planner** (Ben), and the car reverses again; forward only, Hybrid-A*. [Planners](#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
 > - **Afternoon:** LQR rebuilt with a preview (U-turn 2 of 3 in a quiet run; it weaved on a busy Mac), `mpc_full` 10 of 12. [Results](#results-29-october-afternoon-lqr-rebuilt-and-mpc_full).
-> - **Planners** (`planner:=`): Nav2's State Lattice (on our own primitives), Smac 2D, NavFn and Theta*, beside Hybrid-A*. 29 Oct, forward only: Hybrid-A* 4 of 4, the lattice 2 of 4. **30 Oct, reversing on, 3-4 runs: every leg for hybrid, lattice and lattice32; the lattice the fastest** (184 s a tour against 213 s). Hybrid stays the default until Ben decides. [Results](#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
+> - **Planners** (`planner:=`): Nav2's State Lattice (on our own primitives), Smac 2D, NavFn and Theta*, beside Hybrid-A*. 29 Oct, forward only: Hybrid-A* 4 of 4, the lattice 2 of 4. **30 Oct, reversing on, 3-4 runs: every leg for hybrid, lattice and lattice32; the lattice the fastest** (184 s a tour against 213 s). Ben chose the lattice on 1 Nov (above). [Results](#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
 > - **Voxels** (`voxels:=true`, 30 Oct): Nav2 reads the lidar as 0.25 m cubes. It stopped 0.44 m before the post (the scan 0.36 m), drove the lot tour 4 of 4, 6 ms a cloud. [Results](#voxels-30-oct-the-lidar-as-cubes).
 > - **KISS-ICP** (`aav_kiss_icp`, stock, MIT): lidar odometry, scored against `ekf_local`, never in an EKF yet. `kiss_icp:=true`. 30 Oct, one run: **0.04 m per 100 m** over the lot tour, against ekf_local's 0.33; about 1 ms a scan; once the ground was cut out. [Results](#30-oct-kiss-icp-beside-ekf_local-one-run-mppi-the-lot-tour). Design: `docs/designs/2026-10-30_kiss-icp.md`.
 > - **KISS-ICP into the local EKF** (`kiss_ekf:=true`), 1 Nov: its twist beside the wheels and IMU. Gazebo, 5 runs: **no clear win yet** (ekf_local 0.30-1.27 m per 100 m with it, 0.44-1.91 without; the spread is the Mac's load). Its covariance is now measured. [Results](#kiss-icp-into-the-local-ekf-1-nov).
@@ -23,6 +31,9 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 > - **Diffusion for 0.3**, 7-8 Nov: the guard refused the model mostly for turns (G5) and, at the U-turn's cusp, headings (G6). Each gear smoothed on its own, more U-turn data, the map encoded once: offline **77 → 87 %** of plans with a passing sample, G5 refusals **2,197 → 850**. In the simulator, 3 runs each: **77 → 88 %** of plans from the model (92 % in a fourth), the U-turn **40 → 72 %**, every leg, 171-175 s a tour against the lattice's 180-185 s. Allowed on the car as a gated trial (0.5 m/s). [Results](#diffusion-7-8-nov-the-u-turn-the-orin-the-car).
 > - **3 Nov, everything for 0.2** (Gazebo, 3 runs each): every switch drives a leg; diffusion every leg, **73 %** of plans from the model; NDT into the EKF **17 → 1.8 cm**, every leg; voxels slower, and once drove through the post. **No default changed.** [Results](#3-nov-everything-for-02).
 > - **7 Nov, the lag-aware MPC** (`tracker:=mpc_lag`): plans steering and speed through the car's own lags (the shared car model); tells ego to keep its lead off. Pretend car: no speed overshoot (others 14 %), and with the lags doubled the U-turn at 2 m/s off by **0.17 m** (MPC 0.36, LQR 0.27). **Our simulator, 3 runs: 6 of 12 legs** (MPPI 8, RPP 9, the Rust `mppi_lag` 11): best on the legs it drives, but it never made the U-turn by the building: it doesn't read the costmap. [Results](#lag-aware-mpc-7-nov-mpc_lag).
+> - **7-8 Nov, our own Rust pieces** (each has its page; trials then, the simulator's default since 14 Nov): MPPI with lag (`tracker:=mppi_lag`, [page](mppi-lag.md)), the costmap ([page](own-costmap.md)), the planner ([page](own-planner.md)), the navigator ([page](own-navigator.md)), the velocity smoother ([page](own-smoother.md)); the behaviour planner and the adaptive brake ([how the car stops](stopping.md)). What is the default today: [Switches](switches.md#the-defaults-what-runs-if-you-say-nothing).
+> - **14 Nov, the wiggle** (TODO 149): three tests on the campus road. A new plan every second moved Pure Pursuit and `mppi_lag`; the GPS's jitter moves Pure Pursuit; the smoother nothing; MPPI's 6-8 cm is its own. The trees now keep a valid path: RPP's swing **0.12-0.13 → 0.09 m**, `mppi_lag`'s **0.14-0.17 → 0.10 m**, no more loops at the goal. [Results](#the-wiggle-14-nov-todo-124-149).
+> - **15 Nov, the lane finder as a pose sensor** (`lane_pose:=true`, TODO 155): the painted lines and the lane map correct the global EKF sideways. Our simulator: sideways error **9-10 → 2 cm** RMS on the straight road world, **9.9 → 5.4 cm** on a campus road; jitter a third to a half. The wiggle with it steering: not shown (little paint on that tour). Off by default. [Results](#the-lane-finder-as-a-pose-sensor-15-nov-todo-155).
 > - The design: `docs/designs/2026-10-29_trials.md`.
 
 ## What is on trial
@@ -34,29 +45,30 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 | MPC steering, within the steering's limits | our pure pursuit | `tracker:=mpc` |
 | MPC speed and steering together (sets its own speed) | MPC, MPPI | `tracker:=mpc_full` |
 | MPC through the car's lags (sets its own speed; lag-aware) | MPPI, RPP, MPC | `tracker:=mpc_lag` |
-| our pure pursuit (the control) | Nav2's RPP and MPPI | `tracker:=pure_pursuit` |
+| The same MPC in Rust (`aav_mpc_lag`, 15 Nov) | the Python `mpc_lag` | `tracker:=mpc_lag_rs` |
+| our pure pursuit (the control) | `mppi_lag` (until 17 Nov, Nav2's RPP and MPPI) | `tracker:=pure_pursuit` |
 | AMCL | the global EKF | `amcl:=true` |
 | NDT on a saved lidar map | the global EKF, and AMCL | `ndt:=true` (after `pixi run ndt-map drive`) |
 | NDT's pose into the global EKF | the global EKF on GPS alone | `ndt_ekf:=true` |
 | KISS-ICP lidar odometry (how far the car moved, no map) | `ekf_local` (wheels and IMU) | `kiss_icp:=true` (after `pixi install --locked -e kiss`) |
 | KISS-ICP's twist into the local EKF | `ekf_local` on the wheels and IMU alone | `kiss_ekf:=true` |
-| State Lattice planner, our primitives | Hybrid-A* | `planner:=lattice` (`lattice_headings:=32`: the 32-heading file) |
-| Smac 2D, NavFn, Theta* planners (ignore the turning circle: sim and bench only) | Hybrid-A* | `planner:=smac2d`, `navfn`, `theta_star` |
+| State Lattice planner, our primitives | Hybrid-A* | `planner:=own` (Nav2's then, `planner:=lattice`): **won, the default since 1 Nov** (`lattice_headings:=32`: the 32-heading file, still a trial) |
+| Smac 2D, NavFn, Theta* planners (Nav2's; ignored the turning circle) | the lattice | gone with Nav2 (17 Nov) |
+| Smooth lattice moves: curvature no faster than the steering turns, the smoother off ([page](controllers.md#smooth-moves-a-trial-14-nov)) | Nav2's moves | `lattice_moves:=smooth` (1 m/s) or `smooth_fast` (2.5 m/s), with `planner:=lattice` or `own`; `measure controllers --planners lattice lattice_smooth own own_smooth` |
 | The lidar as 0.25 m cubes over the fitted road (`aav_voxels`) | the flat scan (`lidar_scan`) | `voxels:=true` |
 | A diffusion model draws the path, a guard checks it, the lattice behind it (`aav_diffusion_planner`; on the car only with `diffusion_trial:=true`, 0.5 m/s) | the lattice | `planner:=diffusion` (after `pixi install --locked -e learn`, `pixi run diffusion data`, `pixi run diffusion train`) |
 
 ## Where a tracker sits
 
 ```
-goal ─► bt_navigator ─► planner_server (Smac Hybrid-A*, replans every 1 s)
+goal ─► navigator ─► planner (aav_planner: the lattice, replans every 1 s)
               │ FollowPath ("follow_path")
               ▼
-   tracker:=none (default)          tracker:=stanley | lqr | mpc | mpc_full | pure_pursuit
-   controller_server (MPPI, RPP)    aav_track's track node; controller_server's own
-                                    action is renamed follow_path_unused
+   tracker:=mppi_lag (default)      tracker:=stanley | lqr | mpc | mpc_full | mpc_lag | pure_pursuit
+   aav_mppi_lag (Rust)              aav_track's track node
               └──────► cmd_vel_nav ◄──────┘
                             │
-        velocity_smoother → collision_monitor → /drivers/nav/cmd_vel (twist_mux 20) → ego
+        velocity_smoother → stop zone → /drivers/nav/cmd_vel (twist_mux 20) → ego
 ```
 
 Nothing after `cmd_vel_nav` changes: the same smoother, stop zone, mux slot, locks and
@@ -68,9 +80,9 @@ e-stops.
 |---|---|
 | One speed policy for every tracker: RPP's cruise speed, slower in bends, stop by distance | off-path error grows with speed |
 | `mpc_full` plans its own speed, but within the same limits: cruise, bends, planned braking | it is on trial for the speed too |
-| Nav2's own goal and progress checks (nav2.yaml: 1.0 m, 0.75 rad) | the same "done" for all |
+| One goal and progress check (nav2.yaml: 1.0 m, 0.75 rad) | the same "done" for all |
 | Track in `odom`; each path moved there once | the map pose jumps with GPS |
-| Forward only (`reversing:=false`: a tracker is refused otherwise) | the trackers drive forwards only |
+| Forward only (`reversing:=false`: `aav_track`'s trackers are refused otherwise; `mppi_lag` reverses since 14 Nov) | the trackers drive forwards only |
 | 3 runs each, mean and spread (`--runs 3`) | MPPI is random; one run names no winner |
 | Loop time and missed ticks recorded | a slow MPC mustn't look like bad maths |
 
@@ -675,6 +687,52 @@ the Mac more than the followers; kept for the record.
   aav_track tracker (`mpc`, `pure_pursuit` and `mpc_lag` all 2 of 3 legs, 8 Nov): they
   follow the planner's path and don't read the costmap.
 
+### In Rust, 15 Nov (`mpc_lag_rs`)
+
+TODO 132: the Python plan was near 50 ms a tick on the Orin (estimated): the whole 20 Hz
+tick. `aav_mpc_lag` is the same tracker in Rust, a challenger beside the Python one
+(`tracker:=mpc_lag_rs`; the league's steer option `mpc_lag_rs`, in no stack).
+
+```
+the Python (aav_track)            the Rust (aav_mpc_lag, crate mpc-lag)
+lag_model.py   ──── ported ────►  model.rs     the same states, to 4e-15
+qp.py          ──── ported ────►  qp.rs        the same iterations (400 cold, 50 warm)
+mpc_lag.py     ──── ported ────►  tracker.rs   the same commands, to 1e-3
+car_model.py   ──── its twin ──►  car-model    the estimate
+```
+
+| On this Mac, the U-turn at 2 m/s | Python `mpc_lag` | Rust `mpc_lag_rs` |
+|---|---|---|
+| A tick, mean | 5.3 ms | **0.75 ms** |
+| A tick, worst | 26 ms | **2.4 ms** |
+| Worst off the path, vehicle.yaml's lags | under 0.12 m (its test) | 0.10 m |
+| Worst off the path, the lags doubled | under 0.25 m (its test) | 0.18 m |
+
+In our simulator, 15 Nov: the test lot's tour (4 legs), one run each, headless, forward
+only, 1 m/s, `pixi run measure controllers --trackers mpc_lag_rs mpc_lag --tours lot`
+(`log/mpc-lag-rs-compare/`, not in git):
+
+| The lot tour | Python `mpc_lag` | Rust `mpc_lag_rs` |
+|---|---|---|
+| Legs reached | 4 of 4 | 4 of 4 |
+| Time | 164 s | 160 s |
+| Off the path, mean / worst | 0.12 / 0.84 m | 0.13 / 0.87 m |
+| Sway (m/s² RMS) | 0.052 | 0.057 |
+| A tick, mean (leg by leg) | 3.7-7.7 ms | **0.7-1.3 ms** |
+| A tick, worst | 14.2 ms | **6.6 ms** |
+| The follower's CPU | 28-35 % | **4-6 %** |
+| Missed 20 Hz ticks | 0 | 0 |
+
+They drive alike, as they should: the same maths. The Rust one swayed more on the first
+leg (28 against 14 left-right changes per 100 m) and less on others: one run, a hint.
+
+- **The QP:** our ADMM ported, not clarabel (TODO 199). It warm-starts from the last
+  tick and gives the Python's answers; clarabel (an interior point method) does neither.
+- **Shared vectors:** `gen_vectors.py` writes the Python's states and commands to
+  `vectors.json`; `cargo test` checks the Rust against them.
+- **Not in the Rust yet:** keeping each path inside the lane (TODO 169, `road_ahead_topic`)
+  and the live swap.
+
 ### Not done yet
 
 - The LQI speed loop (`speed_loop:=lqi`) isn't modelled; `mpc_lag` doesn't follow
@@ -1195,3 +1253,190 @@ So the sim keeps today's defaults. To drive with NDT in the EKF, pick it:
   already need the map, with a plain message when it's missing.
 - Find why the cubes let the car through the post once (`sim-check --lidar-obstacle
   --voxels`, run 1 of 3: `log/sim-all/check-lidar-obstacle-voxels.log`).
+
+## The wiggle, 14 Nov (TODO 124, 149)
+
+**The question:** under Nav2 the car's turn flips from side to side. Why?
+
+**The road:** the campus, lot P4 along the road, one goal, about 305 m
+(`pixi run measure controllers --tours wiggle --series`). Our simulator, 2.5 m/s, 2 runs each.
+
+**The numbers** (`drive_metrics.wiggle`, also on every scorecard):
+
+| Number | Means |
+|---|---|
+| swing (m) | how far the car goes side to side about its own smoothed track (RMS) |
+| flips a second | how often the steering, or the turn rate, changes side while moving |
+
+### The three tests
+
+Each switch takes one suspect away. Swing in metres, flips of ego's steering a second.
+
+| Test | MPPI | Pure Pursuit (RPP) | What it says |
+|---|---|---|---|
+| Baseline | 0.054-0.065 m, 0.23-0.27 | 0.119-0.131 m, 0.54-0.56 | |
+| 1. The simulator's truth as the pose (`truth_pose:=true`) | 0.062-0.063 m, 0.21-0.22 | 0.083-0.113 m, **0.29-0.36** | the GPS's jitter: half of RPP's flips; none of MPPI's |
+| 2. One plan a goal (`replan_hz:=0`) | 0.062-0.074 m, 0.26 | **0.082-0.087 m**, 0.45 | the replanning: a third of RPP's swing; none of MPPI's |
+| 3. Before and after the smoother | flips 0.24-0.27 before, the same after | 0.62-0.63 before, 0.60-0.62 after | the smoother adds nothing (`mppi_lag` too: 0.88-1.06 before, 0.79-0.87 after) |
+
+The global EKF's sideways error jumps by **0.09 m RMS every 0.2 s** (the sim's GPS: 0.5 m
+noise, 5 fixes a second), and its heading by about 1°. With the truth as the pose, both go.
+
+**The replanning also made loops:** with a new plan every second the car drove 9-16 new
+routes a goal and 40-130 m more than the route, mostly circling the goal. With one plan: 0.
+
+### The causes
+
+| Cause | Who it moves | Fixed? |
+|---|---|---|
+| **A new plan every second** (the to-pose tree's 1 Hz) | RPP, `mppi_lag`; the loops for all | **yes**: the tree keeps a valid path |
+| **The GPS's jitter through the global EKF** | RPP (half its flips) | no: next, below |
+| **MPPI's own sampling** | MPPI: 0.06-0.08 m, a flip every 4 s; `mppi_lag`: a flip a second | no: the follower itself |
+
+### The fix: keep a valid path
+
+The to-pose trees (`navigate_to_pose_car*.xml`) now plan again only when they must, as
+Nav2's own `nav_to_pose_with_consistent_replanning_and_if_path_becomes_invalid.xml`: the
+path is kept while it still ends at this goal, nothing blocks it (`IsPathValid`) and it is
+under 10 s old. The final approach keeps its 20 s (TODO 17). A config change: Nav2's
+servers are the same.
+
+| Follower | Swing before → after (m) | Steering flips a second | Time (s) | Driven (m) | New routes | Reached |
+|---|---|---|---|---|---|---|
+| MPPI | 0.054, 0.065 → 0.065, 0.080 | 0.27, 0.23 → 0.22, 0.26 | 189, 211 → **146, 142** | 343, 371 → **302, 304** | 9, 12 → **0** | 2/2 → 2/2 |
+| RPP | 0.119, 0.131 → **0.089, 0.094** | 0.54, 0.56 → **0.42, 0.47** | 288, 145 → **125, 126** | 315, 350 → 302, 305 | 4, 4 → **0** | 1/2 → **2/2** |
+| `mppi_lag` | 0.170, 0.137 → **0.100, 0.100** | 0.68, 0.71 → 1.04, 1.15 | 210, 210 → 137, 232 | 431, 93 → 301, 158 | 16, 0 → **0** | 1/2 → 1/2 |
+
+The same, from a recorded drive (`tools/record.sh`, then `tools/score_drive.py`; RPP, one
+run each, the old tree put back for "before"):
+
+| Scorecard row | Before | After |
+|---|---|---|
+| wiggle: side to side, RMS / worst | 0.139 m / 0.50 m | **0.084 m / 0.22 m** |
+| wiggle: steering changed side | 0.43 a second | 0.43 a second |
+| distance, time | 524 m, 242 s | **305 m, 134 s** |
+| off the plan, mean | 0.30 m | **0.17 m** |
+
+**What it shows:** RPP's and `mppi_lag`'s swing is 25-40 % smaller, and no follower loops
+at the end any more. MPPI's swing (6-8 cm) didn't change: it never came from the plan.
+`mppi_lag`'s flips went up because it now spends the whole drive on the road at speed
+(before, half of it was slow circling); its swing still fell.
+
+### Next
+
+- **The GPS's jitter:** follow in `odom` and apply the map's corrections slowly (the
+  whole-car design's idea), or trust each fix less in `ekf_global`. Test 1 says it halves
+  RPP's flips.
+- **`mppi_lag`'s flip a second:** its own sampling; tune its noise and smoothing.
+- **Our navigator** (`aav_navigator`) still plans every second: port `KeepAValidPath`.
+- Not yet on the car, nor in Gazebo (our simulator only); 2 runs each.
+
+Raw runs (not in git): `log/wiggle/a-base`, `a-truth`, `a-once`, `b-after`.
+
+## The lane finder as a pose sensor, 15 Nov (TODO 155)
+
+**The idea:** the GPS knows where the car is to a metre and jitters. The painted lines
+know where it is **across** the road to a few centimetres. With the lane map, that is a
+pose in the map: sure across the lane, nothing along it.
+
+```text
+ lane_finder ──lines──┐
+ lane map ──centre────┼─► lane_pose ──► /localization/lane/pose ──► ekf_global (x, y)
+ TF map → base_link ──┘    (gates)       0.15 m across, 50 m along
+```
+
+**Switch:** `lane_pose:=true` (`sim.launch.py`, `localization.launch.py`). Off by default:
+the GPS-only EKF stays the champion. Package: `aav_lane_pose`; config:
+`aav_localization/config/ekf_global_lane.yaml`.
+
+### The gates
+
+A picture becomes a pose only if all of these pass. The last two came from the campus.
+
+| Gate | Refused when |
+|---|---|
+| a line | none seen, or the surest under 0.5 confidence |
+| the car's angle | more than 0.3 rad from the lane |
+| the map | off every road; another road or the road's end within 4 m behind, 12 m ahead |
+| the width | both lines seen, gap off the map lane's by over 0.6 m |
+| jumps | the offset moved over 0.4 m in under 1 s |
+| the filter | the offset over 1.5 m from the filter's (the other lane) |
+| **the angle again** | the lines' angle over 0.05 rad from the filter's |
+| **the bend** | the lines' bend over 0.003 1/m from the map lane's |
+
+**Why the last two:** the finder fits each line 4-16 m ahead and carries it back to the
+car. A dashed centre line, or a junction's paint, bends the fit: the offset was then 0.2-0.4 m
+wrong for seconds at a time. On a recorded campus drive (offline, the truth beside it):
+
+| Pictures used | Offset vs the truth, RMS | 95 % | Worst |
+|---|---|---|---|
+| every one | 48 cm | 43 cm | 3.9 m |
+| the angle and bend gates | **4.3 cm** | 9.9 cm | 19 cm |
+
+### The numbers: the global EKF against the truth
+
+`tools/lane_drive.py [--lane-pose]` (`pixi run measure lane`): the lane follower steers by
+the camera; the EKF only watches, so this is the pose alone. Our simulator, 90 s each.
+
+| Road | lane_pose | Sideways error, RMS | 95 % | Worst | Jitter (RMS) |
+|---|---|---|---|---|---|
+| the road world, straight (2 runs each) | off | 9.2, 9.7 cm | 21, 19 cm | 33, 26 cm | 3.2, 3.0 cm |
+| | **on** | **1.9, 2.0, 2.1 cm** | 3.8-3.9 cm | 7-10 cm | **1.0-1.2 cm** |
+| the campus, Library Road, 130 m with a bend | off (2 runs) | 9.9, 9.9 cm | 20, 20 cm | 30 cm | 3.3 cm |
+| | on, before the last two gates | 10.5, 10.8 cm | 29 cm | 35 cm | 1.6 cm |
+| | **on** (2 runs) | **5.4, 5.4 cm** | 13 cm | 20 cm | **2.0, 2.1 cm** |
+
+The jitter is the sideways error less its own 2 s average: the quick swing a path
+follower sees. Along the road nothing changes (6-8 cm RMS), as designed.
+
+### The wiggle with the EKF steering: not shown
+
+The wiggle's tour (`measure controllers --stacks own --tours wiggle --runs 2`, 2.5 m/s):
+
+| lane_pose | Swing (m RMS) | Steering flips a second | Reached |
+|---|---|---|---|
+| off | 0.098, 0.086 | 0.34, 0.28 | 1/2 (run 2: the follower aborted) |
+| on | 0.091, 0.092 | 0.28, 0.32 | 2/2 |
+
+**No effect to read here:** most of that road has no paint the finder sees. Of about
+1,400 pictures a run, 17-32 became poses. The rest: no line (most), a junction, or an
+offset over 1.5 m from the filter's (probably the car out of the map's right-hand lane:
+the planner doesn't keep right). A fair test
+needs a long painted road with the car in its lane (our stack with `lane_map:=world`).
+
+### What it shows
+
+- Where the paint is good, the sideways error is **4-5 times smaller** and the jitter
+  **a third**. On a real road with a bend, **half**.
+- Bad lines would make it worse (the campus, before the last two gates): the gates matter
+  more than the filter.
+- **Not tested:** the car (a real camera, real paint, its EKF heading off by ~2°, which
+  the angle gate leans on); the wiggle with it steering; reversing; night.
+- 15 Nov: it stayed a challenger, off by default.
+
+### With the EKF steering, ours' stack (17 Nov): now ours' default
+
+`pixi run measure controllers --stacks own_calm_chunks --tours <tour> --runs 1 --reversing
+--series --launch behaviour:=true lane_route:=true things:=true [lane_pose:=true]`, our
+simulator with its cameras. Here the EKF steers, so the sway and the lane are its doing.
+The sideways error from each run's 0.05 s series (`lane_score.pose_error`); off the lane's
+centre by `lane_score.lane_error` on the campus's `lanes.yaml`.
+
+| Tour | lane_pose | Runs | EKF sideways, RMS | Jitter | Sway (m/s²) | Off the lane's centre |
+|---|---|---|---|---|---|---|
+| University Drive, 367 m | off | 4 | 9.2-9.9 cm | 2.7-2.9 cm | 0.057-0.063 | 0.10-0.11 m |
+| | **on** | 2 | **6.9, 7.8 cm** | **2.1 cm** | 0.056, 0.065 | 0.08, 0.10 m |
+| University Drive, the box tour, 90 m | off | 5 | 7.1-8.2 cm | 2.7-3.1 cm | 0.054-0.078 | 0.26-0.43 m (it passes the box) |
+| | **on** | 2 | **2.1, 1.9 cm** | **1.4, 1.2 cm** | 0.066, 0.060 | 0.33, 0.29 m |
+| the campus tour, 534 m | off | 1 | 9.1 cm | 3.1 cm | 0.100 | 1.53 m (mostly off painted lanes) |
+| | on | 1 | 9.4 cm | 3.0 cm | 0.097 | 1.34 m |
+
+- On a painted road it cuts the sideways error by a fifth (University Drive) to three
+  quarters (the box tour's straight), and the jitter by a quarter to a half.
+- The campus tour: no change (little paint on its way, the finder found no line most of
+  the time). Sway and the lane's centre: no worse, within one run to the next.
+- **Ours' default since 17 Nov** (`stacks.yaml`, pose level `ekf_lane`): on where the
+  world has a camera and a lane map, off elsewhere (the test lot, `cameras:=false`).
+  `pose:=ekf` turns it off.
+- Under a load of 15-20 (two simulators) the lane finder saw no line and the runs were
+  lost to stalls (`sensor_watchdog`): those runs are left out.

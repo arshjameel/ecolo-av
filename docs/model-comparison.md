@@ -155,7 +155,7 @@ packages, so the shared `.pixi` wasn't changed under other people's runs.
 ### Run it again
 
 ```bash
-pixi run python3 tools/sim_frames.py --out ~/aav-models/frames      # Gazebo frames (1 min)
+pixi run python3 tools/sim_frames.py --out ~/aav-models/frames      # the sim's frames (written for Gazebo; untried with Ravensim, TODO 242)
 pixi run -e ml python3 tools/compare_detectors.py --fetch           # the photos
 pixi run -e ml python3 tools/compare_detectors.py --out ~/aav-models/detectors.json
 ```

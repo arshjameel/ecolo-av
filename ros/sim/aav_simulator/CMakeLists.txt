@@ -26,7 +26,7 @@ install(PROGRAMS ${CARGO_TARGET_DIR}/release/simulator
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
-  # The simulator's core, without ROS: the car, the rays, the worlds aav_gazebo reads.
+  # The simulator's core, without ROS: the car, the rays, the worlds aav_sim_models reads.
   # cargo test -p sim-core.
   find_package(ament_cmake_test REQUIRED)
   ament_add_test(sim_core

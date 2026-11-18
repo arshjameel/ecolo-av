@@ -1,17 +1,31 @@
-//! mppi_lag: MPPI that knows the actuators' lag, in controller_server's FollowPath place.
+//! mppi_lag: MPPI that knows the actuators' lag, in Nav2's controller_server's FollowPath place.
 //!
-//! Action      follow_path                 nav2_msgs/action/FollowPath: bt_navigator's, a new
+//! Action      follow_path                 nav2_msgs/action/FollowPath: the navigator's, a new
 //!                                         goal each time the planner replans (the newest
 //!                                         replaces the last without a stop)
 //! Subscribes  localization/odom/local     nav_msgs/Odometry (odom_topic): the pose in odom
 //!                                         and the speed
-//!             /tf                         tf2_msgs/TFMessage: map -> odom, to move each new
-//!                                         path into odom
+//!             /tf                         tf2_msgs/TFMessage: map -> odom. Held, and moved
+//!                                         toward the newest at most map_correction_speed m/s
+//!                                         and map_correction_turn_rate rad/s (TODO 186:
+//!                                         follow in odom, correct slowly); each new path
+//!                                         comes into odom by the held one, and the running
+//!                                         path moves with it. map_correction false (the
+//!                                         launch's map_correction:=newest) or rates 0: the
+//!                                         newest, once a path
 //!             vehicle/steering, vehicle/throttle, vehicle/brake
 //!                                         aav_interfaces/ActuatorState: the measured levels,
 //!                                         while fresh (measured_timeout); else the model's own
 //!             local_costmap/costmap_raw   nav2_msgs/Costmap (costmap_topic): for CostCritic
-//!                                         and the path's clear points (use_costmap)
+//!                                         and the path's clear points (use_costmap); older
+//!                                         than costmap_timeout: zero, and the path fails
+//!             /world/road_ahead            aav_interfaces/RoadAhead (road_ahead_topic; empty: off), map:
+//!                                         the lane's line and edges, moved into odom by the
+//!                                         held map -> odom, for LaneCritic while fresh
+//!                                         (road_ahead_timeout); NaN edges or stale: no lane.
+//!                                         State WAIT, reason moving (the behaviour holds
+//!                                         the car for something moving near): the
+//!                                         progress check waits
 //! Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped, at rate_hz while a path
 //!                                         runs: (v, v tan(steer) / wheelbase), to Nav2's
 //!                                         velocity smoother, collision_monitor, then
@@ -29,10 +43,13 @@
 //!                                         through: nav
 //! Serves      nothing else; calls nothing.
 //! Parameters  read once at start (config/mppi_lag.yaml, and navigation.launch.py's from
-//!             nav2.yaml, vehicle.yaml and ego.yaml): see the README.
+//!             nav2.yaml, vehicle.yaml and ego.yaml): see the README. speed_loop: the
+//!             spine's speed loop profile the car runs (default, smooth, firm: the lag
+//!             model's PI; lqi: the shared car model), as sim.launch.py speed_loop:=
+//!             (TODO 163); an unknown name is refused.
 //!
-//! navigation.launch.py tracker:=mppi_lag starts it and renames controller_server's own
-//! action follow_path_unused. Everything after cmd_vel_nav is unchanged. The maths is the
+//! navigation.launch.py tracker:=mppi_lag (the default) starts it. With reversing:=true it reverses as Nav2's MPPI does (vx_min
+//! below 0, enforce_path_inversion: it stops at each cusp, then follows the next stretch). Everything after cmd_vel_nav is unchanged. The maths is the
 //! `mppi-lag` crate; this file only moves messages.
 
 use std::{
@@ -42,14 +59,17 @@ use std::{
 
 use anyhow::{bail, Context as _, Result};
 use futures::channel::oneshot;
+use mppi_lag::car_model::SpeedLoopProfile;
+use mppi_lag::map_correction::{into_map, into_odom, Correction};
 use mppi_lag::{
     critics::{inflation_cost, Critic},
     lag::Actuators,
-    Costmap, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, LagModel, Observation,
-    Outcome, Pose, Report, Settings, Tick,
+    Arrival, Costmap, Edges, Ego, Follower, FollowerSettings, GlobalPath, IdealModel, Inversion,
+    LagModel, Lane, LanePoint, MapCorrection, Observation, Outcome, PathAngleMode, Pose, Report,
+    Settings, SharedModel, SlewLimits, SpeedLoop, Tick,
 };
 use rclrs::*;
-use ros_env::aav_interfaces::msg::ActuatorState;
+use ros_env::aav_interfaces::msg::{ActuatorState, RoadAhead};
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
 use ros_env::geometry_msgs::msg::{
@@ -61,6 +81,8 @@ use ros_env::nav_msgs::msg::{Odometry, Path};
 use ros_env::std_msgs::msg::{Bool, Header};
 use ros_env::tf2_msgs::msg::TFMessage;
 
+mod trace;
+
 /// The name on the status topic, as aav_track's trackers have theirs.
 const TRACKER: &str = "mppi_lag";
 
@@ -68,6 +90,9 @@ fn main() -> Result<()> {
     let context = Context::default_from_env()?;
     let mut executor = context.create_basic_executor();
     let node = executor.create_node("mppi_lag")?;
+    if let Some(to) = trace::start() {
+        log_info!(node.logger(), "AAV_TRACE: the tick's stages timed, to {to}");
+    }
 
     let (config, _params) = Config::declare(&node)?;
     let follower = config.follower()?;
@@ -100,7 +125,13 @@ fn main() -> Result<()> {
         throttle: None,
         brake: None,
         map_to_odom: None,
+        correction: MapCorrection::new(config.map_correction),
+        corrected: None,
         costmap: None,
+        costmap_heard: Arrival::new(),
+        road_ahead: None,
+        lane_known: false,
+        moving_hold: None,
         job: None,
         next_id: 0,
         last_tick: None,
@@ -110,9 +141,10 @@ fn main() -> Result<()> {
     };
     log_info!(
         node.logger(),
-        "MPPI with the {} model follows Nav2's paths at {} Hz, up to {} m/s; {} samples x {} \
-         steps; lag_aware {lag_aware}",
+        "MPPI with the {} model (speed loop {}) follows Nav2's paths at {} Hz, up to {} m/s; \
+         {} samples x {} steps; lag_aware {lag_aware}",
         config.model,
+        config.speed_loop.name(),
         config.rate_hz,
         config.mppi.vx_max,
         config.mppi.batch_size,
@@ -144,6 +176,16 @@ fn main() -> Result<()> {
         )?)
     } else {
         None
+    };
+    // The road ahead's lane, for LaneCritic (navigation.launch.py names the topic only with
+    // behaviour:=true and a lane map).
+    let _road_ahead = if config.road_ahead_topic.is_empty() {
+        None
+    } else {
+        Some(worker.create_subscription(
+            config.road_ahead_topic.as_str(),
+            |s: &mut Core, msg: RoadAhead| s.on_road_ahead(&msg),
+        )?)
     };
     let period = Duration::from_secs_f64(1.0 / config.rate_hz);
     let _tick = worker.create_timer_repeating(period.node_time(), |s: &mut Core| s.tick())?;
@@ -205,6 +247,8 @@ enum AnyFollower {
     Lag(Box<Follower<LagModel>>),
     /// The lag-free model, as Nav2's MPPI: for comparison runs.
     Ideal(Box<Follower<IdealModel>>),
+    /// The shared car model (lag-aware): for a speed loop the lag model can't run (the LQI).
+    Shared(Box<Follower<SharedModel>>),
 }
 
 macro_rules! each {
@@ -212,6 +256,7 @@ macro_rules! each {
         match $self {
             AnyFollower::Lag($f) => $body,
             AnyFollower::Ideal($f) => $body,
+            AnyFollower::Shared($f) => $body,
         }
     };
 }
@@ -232,6 +277,12 @@ impl AnyFollower {
     fn tick(&mut self, now: f64, costmap: Option<&Costmap>) -> Option<Tick> {
         each!(self, f => f.tick(now, costmap))
     }
+    fn set_lane(&mut self, lane: Option<Lane>) {
+        each!(self, f => f.set_lane(lane))
+    }
+    fn held(&mut self) {
+        each!(self, f => f.held())
+    }
 }
 
 /// One FollowPath goal.
@@ -240,6 +291,8 @@ struct Job {
     done: oneshot::Sender<Finish>,
     feedback: FeedbackPublisher<FollowPath>,
     started: f64,
+    /// The path came in map: it moves as the held map -> odom moves.
+    in_map: bool,
 }
 
 /// The worker's payload: the follower, what it has heard, and what it publishes with.
@@ -263,7 +316,20 @@ struct Core {
     brake: Option<(f64, f64)>,
     /// map -> odom: odom's pose in map, and when.
     map_to_odom: Option<(Pose, f64)>,
+    /// The held map -> odom (TODO 186), slewed toward `map_to_odom`.
+    correction: MapCorrection,
+    /// When the held map -> odom last moved on (this node's clock).
+    corrected: Option<f64>,
     costmap: Option<Costmap>,
+    /// When the costmap last arrived (this node's clock).
+    costmap_heard: Arrival,
+    /// The road ahead's lane in its own frame (map), its frame, and when it arrived.
+    road_ahead: Option<(Lane, String, f64)>,
+    /// The last tick had a fresh lane (the status's `lane`).
+    lane_known: bool,
+    /// When the road ahead last said the behaviour holds the car for something moving
+    /// (state WAIT, reason moving): the progress check waits meanwhile.
+    moving_hold: Option<f64>,
     job: Option<Job>,
     next_id: u64,
     last_tick: Option<f64>,
@@ -277,17 +343,6 @@ fn yaw_of(q: &Quaternion) -> f64 {
 
 fn seconds(t: &Time) -> f64 {
     f64::from(t.sec) + f64::from(t.nanosec) * 1e-9
-}
-
-/// A pose in map into odom, given odom's pose in map (the map -> odom transform).
-fn into_odom(p: &Pose, odom_in_map: &Pose) -> Pose {
-    let (s, c) = odom_in_map.yaw.sin_cos();
-    let (dx, dy) = (p.x - odom_in_map.x, p.y - odom_in_map.y);
-    Pose::new(
-        c * dx + s * dy,
-        -s * dx + c * dy,
-        mppi_lag::model::wrap(p.yaw - odom_in_map.yaw),
-    )
 }
 
 impl Core {
@@ -358,6 +413,67 @@ impl Core {
             m.size_y as usize,
             msg.data.clone(),
         );
+        if self.costmap.is_some() {
+            self.costmap_heard.mark(self.now());
+        }
+    }
+
+    /// The road ahead: keep its lane (line and edges) as it came; `None` without edges.
+    fn on_road_ahead(&mut self, msg: &RoadAhead) {
+        let edge = |list: &[f32], i: usize| list.get(i).map_or(f64::NAN, |&v| f64::from(v));
+        let points = msg
+            .x
+            .iter()
+            .zip(&msg.y)
+            .enumerate()
+            .map(|(i, (&x, &y))| LanePoint {
+                x: f64::from(x),
+                y: f64::from(y),
+                edges: Edges::from_numbers(
+                    edge(&msg.left_hard, i),
+                    edge(&msg.right_hard, i),
+                    edge(&msg.left_soft, i),
+                    edge(&msg.right_soft, i),
+                ),
+            });
+        let frame = msg.header.frame_id.trim_start_matches('/').to_string();
+        self.road_ahead = Lane::new(points).map(|lane| (lane, frame, self.now()));
+        if msg.state == "WAIT" && msg.reason == "moving" {
+            self.moving_hold = Some(self.now());
+        }
+    }
+
+    /// The road ahead's lane in odom, if it is fresh and map -> odom is known.
+    fn lane_in_odom(&self, now: f64) -> Option<Lane> {
+        let (lane, frame, heard) = self.road_ahead.as_ref()?;
+        if now - heard > self.config.road_ahead_timeout {
+            return None;
+        }
+        if frame.is_empty() || *frame == self.config.odom_frame {
+            return Some(lane.clone());
+        }
+        if *frame != self.config.map_frame {
+            log_warn!(
+                self.logger.throttle(Duration::from_secs(5)),
+                "the road ahead is in {frame}, not {} or {}: ignored",
+                self.config.map_frame,
+                self.config.odom_frame
+            );
+            return None;
+        }
+        let (newest, stamp) = self.map_to_odom?;
+        if now - stamp > self.config.transform_tolerance + 1.0 {
+            return None;
+        }
+        // The held one while a map path runs, so the lane and the path move together.
+        let odom_in_map = match (&self.job, self.correction.held()) {
+            (Some(job), Some(held)) if job.in_map && self.config.map_correction.on() => held,
+            _ => newest,
+        };
+        Some(lane.moved(|x, y| {
+            let p = into_odom(&Pose::new(x, y, 0.0), &odom_in_map);
+            (p.x, p.y)
+        }))
     }
 
     /// A new FollowPath goal: its path into odom, then follow it. Returns the job's id.
@@ -369,8 +485,8 @@ impl Core {
     ) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        let path = match self.path_in_odom(msg) {
-            Ok(path) => path,
+        let (path, in_map) = match self.path_in_odom(msg) {
+            Ok(found) => found,
             Err((code, why)) => {
                 log_warn!(&self.logger, "FollowPath refused: {why}");
                 let _ = done.send(Finish::Aborted(code));
@@ -386,6 +502,7 @@ impl Core {
             self.loop_max = 0.0;
             self.last_tick = None;
         }
+        self.corrected = Some(self.now());
         self.follower.follow(path, replacing);
         self.set_lag_aware(true);
         self.job = Some(Job {
@@ -393,11 +510,14 @@ impl Core {
             done,
             feedback,
             started: self.now(),
+            in_map,
         });
         id
     }
 
-    fn path_in_odom(&self, msg: &Path) -> Result<GlobalPath, (u16, String)> {
+    /// The goal's path in odom, and whether it came in map. A map path comes by the held map
+    /// -> odom while one runs (none: the newest, which is then held).
+    fn path_in_odom(&mut self, msg: &Path) -> Result<(GlobalPath, bool), (u16, String)> {
         let mut poses: Vec<Pose> = msg
             .poses
             .iter()
@@ -407,7 +527,8 @@ impl Core {
             })
             .collect();
         let frame = msg.header.frame_id.trim_start_matches('/');
-        if !frame.is_empty() && frame != self.config.odom_frame {
+        let in_map = !frame.is_empty() && frame != self.config.odom_frame;
+        if in_map {
             if frame != self.config.map_frame {
                 return Err((
                     FollowPath_Result::TF_ERROR,
@@ -427,9 +548,11 @@ impl Core {
                     format!("map -> odom is {age:.1} s old"),
                 ));
             }
-            poses = poses.iter().map(|p| into_odom(p, &odom_in_map)).collect();
+            let driving = self.job.as_ref().is_some_and(|j| j.in_map);
+            let frame = self.correction.for_new_path(odom_in_map, driving);
+            poses = poses.iter().map(|p| into_odom(p, &frame)).collect();
         }
-        GlobalPath::new(poses).ok_or((
+        GlobalPath::new(poses).map(|p| (p, in_map)).ok_or((
             FollowPath_Result::INVALID_PATH,
             "the path is empty, or not all numbers".into(),
         ))
@@ -498,11 +621,35 @@ impl Core {
             let why = format!("no odometry on {}", self.config.odom_topic);
             return self.finish(Finish::Aborted(FollowPath_Result::UNKNOWN), &why);
         }
+        // Nav2's controller: no current costmap within costmap_update_timeout, a zero
+        // command and CONTROLLER_TIMED_OUT. A path gets the limit for its first one.
+        if self.config.use_costmap {
+            let checked = self
+                .costmap_heard
+                .check(now, job.started, self.config.costmap_timeout);
+            if let Err(stale) = checked {
+                let why = format!("the costmap on {}: {stale}", self.config.costmap_topic);
+                return self.finish(
+                    Finish::Aborted(FollowPath_Result::CONTROLLER_TIMED_OUT),
+                    &why,
+                );
+            }
+        }
+        self.correct(now);
         let costmap = if self.config.use_costmap {
             self.costmap.as_ref()
         } else {
             None
         };
+        let lane = self.lane_in_odom(now);
+        self.lane_known = lane.is_some();
+        self.follower.set_lane(lane);
+        if self
+            .moving_hold
+            .is_some_and(|heard| now - heard <= self.config.road_ahead_timeout)
+        {
+            self.follower.held();
+        }
         match self.follower.tick(now, costmap) {
             None => {}
             Some(Tick::Done(outcome)) => {
@@ -542,6 +689,32 @@ impl Core {
                 self.publish_local_plan(&report.plan.poses);
             }
         }
+    }
+
+    /// Move the held map -> odom toward the newest (fresh only), and the running map path
+    /// with it (TODO 186). A snap (a relocalisation) is logged.
+    fn correct(&mut self, now: f64) {
+        let in_map = self.job.as_ref().is_some_and(|j| j.in_map);
+        let since = self.corrected.replace(now);
+        let (Some((newest, stamp)), Some((car, _, _))) = (self.map_to_odom, self.odom) else {
+            return;
+        };
+        if !in_map || now - stamp > self.config.transform_tolerance + 1.0 {
+            return;
+        }
+        let dt = since.map_or(1.0 / self.config.rate_hz, |t| now - t);
+        let Some((correction, shift)) = self.correction.update(newest, &car, dt) else {
+            return;
+        };
+        if let Correction::Snapped { distance, angle } = correction {
+            log_warn!(
+                &self.logger,
+                "map -> odom moved {distance:.2} m and {:.1} degrees at the car: a \
+                 relocalisation, taken at once",
+                angle.to_degrees()
+            );
+        }
+        each!(&mut self.follower, f => f.move_path(|p| shift.apply(p)));
     }
 
     /// MPPI's chosen future, in odom, stamped now.
@@ -596,11 +769,23 @@ impl Core {
         }
     }
 
+    /// m: how far the held map -> odom puts the car from where the newest puts it (0 with
+    /// the correction off, or before both are known).
+    fn map_gap(&self) -> f64 {
+        let (Some(held), Some((newest, _)), Some((car, _, _))) =
+            (self.correction.held(), self.map_to_odom, self.odom)
+        else {
+            return 0.0;
+        };
+        into_map(&car, &held).distance(&into_map(&car, &newest))
+    }
+
     fn report(&self, loop_ms: f64, r: &Report) {
         let period_ms = 1000.0 / self.config.rate_hz;
         let values = [
             ("tracker", TRACKER.to_string()),
             ("model", self.config.model.clone()),
+            ("speed_loop", self.config.speed_loop.name().to_string()),
             ("loop_ms", format!("{loop_ms:.3}")),
             ("loop_ms_max", format!("{:.3}", self.loop_max)),
             ("missed_ticks", self.missed.to_string()),
@@ -612,6 +797,8 @@ impl Core {
             ("est_steering_rad", format!("{:.4}", r.steering)),
             ("best_cost", format!("{:.4}", r.plan.best_cost)),
             ("collided_share", format!("{:.3}", r.plan.collided)),
+            ("lane", self.lane_known.to_string()),
+            ("map_gap_m", format!("{:.3}", self.map_gap())),
         ];
         let msg = DiagnosticStatus {
             level: if loop_ms > period_ms {
@@ -634,10 +821,18 @@ impl Core {
     }
 }
 
+/// The `speed_loop` parameter's profile: spine-core's names (default, smooth, lqi, firm).
+fn speed_loop_profile(name: &str) -> Result<SpeedLoopProfile> {
+    name.parse()
+        .map_err(|e| anyhow::anyhow!("speed_loop:={name}: {e}"))
+}
+
 /// Everything read from the parameters, once.
 #[derive(Debug, Clone)]
 struct Config {
     model: String,
+    /// The spine's speed loop profile the car runs (TODO 163).
+    speed_loop: SpeedLoopProfile,
     rate_hz: f64,
     odom_topic: String,
     odom_frame: String,
@@ -651,6 +846,13 @@ struct Config {
     lag_aware_topic: String,
     costmap_topic: String,
     use_costmap: bool,
+    /// The road ahead (aav_interfaces/RoadAhead), for LaneCritic; empty: not read.
+    road_ahead_topic: String,
+    /// s: a road ahead older than this is dropped (it comes at 10 Hz).
+    road_ahead_timeout: f64,
+    /// s: a costmap older than this stops the car and fails the path (Nav2's
+    /// costmap_update_timeout, plus the local costmap's publish period).
+    costmap_timeout: f64,
     wheelbase: f64,
     max_steering_angle: f64,
     actuators: Actuators,
@@ -659,6 +861,8 @@ struct Config {
     follower: FollowerSettings,
     critics: Vec<Critic>,
     footprint: Vec<(f64, f64)>,
+    /// How fast the held map -> odom follows the newest (TODO 186).
+    map_correction: SlewLimits,
 }
 
 /// Declares the parameters; hold the handles as long as the node (rclrs undeclares a
@@ -834,6 +1038,13 @@ impl Declarer<'_> {
                     &format!("{n}.max_angle_to_furthest"),
                     c.max_angle_to_furthest,
                 )?;
+                let mode = self.integer(&format!("{n}.mode"), 0)?;
+                c.mode = PathAngleMode::from_number(mode).with_context(|| {
+                    format!(
+                        "{n}.mode:={mode}: 0 (forward), 1 (either way) or 2 (the way the \
+                         path faces)"
+                    )
+                })?;
                 Critic::PathAngle(c)
             }
             Critic::PreferForward(mut c) => {
@@ -841,6 +1052,16 @@ impl Declarer<'_> {
                 c.power = power(self, c.power)?;
                 c.threshold = threshold(self, c.threshold)?;
                 Critic::PreferForward(c)
+            }
+            Critic::Lane(mut c) => {
+                c.soft_weight = self.number(&format!("{n}.soft_weight"), c.soft_weight)?;
+                c.hard_weight = self.number(&format!("{n}.hard_weight"), c.hard_weight)?;
+                c.power = power(self, c.power)?;
+                c.trajectory_point_step = self.count(
+                    &format!("{n}.trajectory_point_step"),
+                    c.trajectory_point_step,
+                )?;
+                Critic::Lane(c)
             }
         })
     }
@@ -888,8 +1109,13 @@ impl Config {
             iteration_count: d.count("iteration_count", s.iteration_count)?,
             temperature: d.number("temperature", s.temperature)?,
             gamma: d.number("gamma", s.gamma)?,
+            // Below 0 (the default): the steering's control cost is gamma's, as Nav2's.
+            steer_gamma: Some(d.number("steer_gamma", -1.0)?).filter(|g| *g >= 0.0),
+            steer_gamma_speed: d.number("steer_gamma_speed", s.steer_gamma_speed)?,
             speed_std: d.number("vx_std", s.speed_std)?,
             steer_std: d.number("steer_std", s.steer_std)?,
+            steer_std_speed: d.number("steer_std_speed", s.steer_std_speed)?,
+            steer_std_min: d.number("steer_std_min", s.steer_std_min)?,
             noise_correlation: d.number("noise_correlation", s.noise_correlation)?,
             vx_max: d.number("vx_max", s.vx_max)?,
             vx_min: d.number("vx_min", s.vx_min)?,
@@ -917,6 +1143,21 @@ impl Config {
             progress_angle: d.number("progress_angle", f.progress_angle)?,
             progress_time: d.number("progress_time", f.progress_time)?,
             tracking_unknown: d.flag("track_unknown_space", f.tracking_unknown)?,
+            inversion: None,
+            cusp_reach: d.number("cusp_reach", f.cusp_reach)?,
+            cusp_wait: d.number("cusp_wait", f.cusp_wait)?,
+        };
+        // Nav2's enforce_path_inversion: stop at each cusp, then follow the next stretch.
+        let inversion = Inversion::default();
+        let tolerance = Inversion {
+            xy: d.number("inversion_xy_tolerance", inversion.xy)?,
+            yaw: d.number("inversion_yaw_tolerance", inversion.yaw)?,
+        };
+        let follower = FollowerSettings {
+            inversion: d
+                .flag("enforce_path_inversion", false)?
+                .then_some(tolerance),
+            ..follower
         };
 
         // The car's outline, padded (nav2.yaml's local costmap footprint + padding).
@@ -961,8 +1202,9 @@ impl Config {
         for name in d.names("critics", &mppi_lag::critics::NAMES)? {
             let Some(critic) = Critic::by_name(&name) else {
                 bail!(
-                    "critics: {name} isn't one of ours ({})",
-                    mppi_lag::critics::NAMES.join(", ")
+                    "critics: {name} isn't one of ours ({}, {})",
+                    mppi_lag::critics::NAMES.join(", "),
+                    mppi_lag::critics::OWN.join(", ")
                 );
             };
             let critic = match d.critic(critic)? {
@@ -976,8 +1218,22 @@ impl Config {
             critics.push(critic);
         }
 
+        // `map_correction` (the launch file's switch, never in the yaml: a node's own file
+        // wins over the launch's values) false: the old way, whatever the rates say.
+        let m = SlewLimits::default();
+        let slew = d.flag("map_correction", false)?;
+        let speed = d.number("map_correction_speed", m.speed)?;
+        let map_correction = SlewLimits {
+            speed: if slew { speed } else { 0.0 },
+            turn_rate: d.number("map_correction_turn_rate", m.turn_rate)?,
+            snap_distance: d.number("map_correction_snap_distance", m.snap_distance)?,
+            snap_angle: d.number("map_correction_snap_angle", m.snap_angle)?,
+        };
         let config = Self {
             model: d.text("model", "lag")?,
+            speed_loop: speed_loop_profile(
+                &d.text("speed_loop", SpeedLoopProfile::Default.name())?,
+            )?,
             rate_hz,
             odom_topic: d.text("odom_topic", "/localization/odom/local")?,
             odom_frame: d.text("odom_frame", "odom")?,
@@ -991,6 +1247,9 @@ impl Config {
             lag_aware_topic: d.text("lag_aware_topic", "/drivers/nav/lag_aware")?,
             costmap_topic: d.text("costmap_topic", "/local_costmap/costmap_raw")?,
             use_costmap: d.flag("use_costmap", true)?,
+            road_ahead_topic: d.text("road_ahead_topic", "")?,
+            road_ahead_timeout: d.number("road_ahead_timeout", 0.5)?,
+            costmap_timeout: d.number("costmap_timeout", 0.8)?,
             wheelbase,
             max_steering_angle,
             actuators,
@@ -999,6 +1258,7 @@ impl Config {
             follower,
             critics,
             footprint,
+            map_correction,
         };
         Ok((
             config,
@@ -1020,13 +1280,27 @@ impl Config {
                 self.footprint.clone(),
             )
         };
+        let lag = LagModel {
+            actuators: self.actuators,
+            wheelbase: self.wheelbase,
+            max_steering_angle: self.max_steering_angle,
+            ..LagModel::default()
+        };
         Ok(match self.model.as_str() {
-            "lag" => AnyFollower::Lag(Box::new(follower(LagModel {
-                actuators: self.actuators,
-                wheelbase: self.wheelbase,
-                max_steering_angle: self.max_steering_angle,
-                ..LagModel::default()
-            }))),
+            "lag" => match SpeedLoop::from_profile(self.speed_loop) {
+                Ok(speed_loop) => {
+                    AnyFollower::Lag(Box::new(follower(LagModel { speed_loop, ..lag })))
+                }
+                // The LQI: the shared model runs the spine's own loop, any law.
+                Err(_) => AnyFollower::Shared(Box::new(Follower::new(
+                    SharedModel::like(&lag, self.speed_loop),
+                    self.ego,
+                    self.mppi.clone(),
+                    self.critics.clone(),
+                    self.follower,
+                    self.footprint.clone(),
+                ))),
+            },
             "ideal" => AnyFollower::Ideal(Box::new(Follower::new(
                 IdealModel {
                     wheelbase: self.wheelbase,

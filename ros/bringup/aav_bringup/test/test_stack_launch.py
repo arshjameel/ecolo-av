@@ -61,14 +61,16 @@ def included(actions):
 
 
 @pytest.mark.parametrize('target, profile', [
-    ('turtle', 'turtle.launch.py'), ('gazebo', 'sim.launch.py'),
+    ('turtle', 'turtle.launch.py'), ('ravensim', 'sim.launch.py'),
+    # The old name, for one release.
+    ('gazebo', 'sim.launch.py'),
     ('bench', 'bench.launch.py'), ('car', 'car.launch.py'), ('carla', 'carla.launch.py')])
 def test_the_target_picks_the_profile(target, profile):
     assert list(included(started(STACK, target=target))) == [profile]
 
 
 @pytest.mark.parametrize('target, source', [('car', 'sim'), ('car', 'bench'),
-                                            ('gazebo', 'real'), ('bench', 'sim')])
+                                            ('ravensim', 'real'), ('bench', 'sim')])
 def test_a_source_the_target_cant_take_is_refused_before_anything_starts(target, source):
     with pytest.raises(ValueError, match='needs source:='):
         started(STACK, target=target, source=source)
@@ -99,3 +101,15 @@ def test_the_io_mux_starts_both_or_only_the_sensor_mux():
     assert [n.node_executable for n in replay] == ['sensor_mux']
     with pytest.raises(ValueError, match='needs source:=real'):
         started(IO_MUX, target='car', source='replay')
+
+
+def test_the_muxes_are_rust_by_default_and_python_one_switch_away():
+    # Ben, 17 Nov: "Rust tomorrow": both muxes, together; io_mux_impl:=python falls back.
+    for impl, package in (('', 'aav_io_mux_rs'), ('rust', 'aav_io_mux_rs'),
+                          ('python', 'aav_io_mux')):
+        args = {'io_mux_impl': impl} if impl else {}
+        nodes = [n for n in started(IO_MUX, target='car', source='', **args)
+                 if isinstance(n, Node)]
+        assert [n.node_package for n in nodes] == [package, package], impl
+    with pytest.raises(ValueError, match='io_mux_impl:=c'):
+        started(IO_MUX, target='car', source='', io_mux_impl='c')

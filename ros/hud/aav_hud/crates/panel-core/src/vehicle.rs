@@ -16,6 +16,7 @@ pub const BUILT_IN_YAML: &str =
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(from = "String")]
 pub enum SpeedWheels {
+    /// The front wheels: not driven.
     Front,
     /// The driven wheels: the car is rear-wheel drive.
     Rear,
@@ -35,6 +36,7 @@ impl From<String> for SpeedWheels {
 
 impl SpeedWheels {
     /// The word vehicle.yaml uses.
+    #[must_use]
     pub fn word(&self) -> &str {
         match self {
             Self::Front => "front",
@@ -44,6 +46,7 @@ impl SpeedWheels {
     }
 
     /// Whether these are the driven wheels (the rear: docs/learn-car.md).
+    #[must_use]
     pub fn are_driven(&self) -> bool {
         *self == Self::Rear
     }
@@ -65,6 +68,9 @@ pub struct Vehicle {
     /// Which wheels `/vehicle/odom` measures; None if vehicle.yaml doesn't say.
     #[serde(default)]
     pub speed_wheels: Option<SpeedWheels>,
+    /// The wheels' diameter, metres (the MEASURE page's check); None if unset.
+    #[serde(default)]
+    pub wheel_diameter: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -74,6 +80,10 @@ struct VehicleFile {
 
 impl Vehicle {
     /// Reads `vehicle:` from a vehicle.yaml.
+    ///
+    /// # Errors
+    ///
+    /// serde's error if the text has no readable `vehicle:`.
     pub fn from_vehicle_yaml(text: &str) -> Result<Self, serde_yaml_ng::Error> {
         let file: VehicleFile = serde_yaml_ng::from_str(text)?;
         Ok(file.vehicle)
@@ -98,6 +108,7 @@ mod tests {
         assert!(v.max_steering_angle > 0.1 && v.max_steering_angle < 1.0);
         // Today the wheel sensors are on the front (TODO 49b): not the driven wheels.
         assert_eq!(v.speed_wheels, Some(SpeedWheels::Front));
+        assert!(v.wheel_diameter.is_some_and(|d| d > 0.1 && d < 1.0));
         assert!(!SpeedWheels::Front.are_driven() && SpeedWheels::Rear.are_driven());
     }
 

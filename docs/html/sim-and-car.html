@@ -7,9 +7,13 @@
 <!-- Generated from docs/sim-and-car.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Simulation and the real car: how far we&#x27;ve got</h1>
-<div class="meta">9 min read · 8 sections</div></header>
+<div class="meta">10 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -114,7 +126,11 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#1-the-big-idea-swap-the-bottom-layer">1. The big idea: swap the bottom layer</a><a href="#2-the-three-bottom-boxes">2. The three bottom boxes</a><a href="#3-does-gazebo-produce-sensor-data-yes">3. Does Gazebo produce sensor data? Yes</a><a href="#4-works-means-in-simulation-or-on-the-bench">4. &quot;Works&quot; means: in simulation or on the bench</a><a href="#5-why-none-of-it-has-run-on-the-car-yet">5. Why none of it has run on the car yet</a><a href="#6-today-vs-after-the-kefc-changes">6. Today vs after the KEFC changes</a><a href="#7-the-plan-in-order">7. The plan, in order</a><a href="#8-try-it-yourself">8. Try it yourself</a></nav>
-<div class="lead"><p>Written 15 October 2026, checked 25 October. It answers three questions:</p>
+<div class="lead"><p>Written 15 October 2026, checked 25 October and 13 November. <strong>This page:</strong> what is
+simulated, what is real, and which layer swaps. How to run it: <a href="simulation.html">Simulation</a>;
+the plan behind it: <a href="full-simulation.html">Full simulation</a>; the simulator: <a href="own-simulator.html">Ravensim</a>, our own (Gazebo until 16 Nov:
+<a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>). Where it says Gazebo, it was measured
+there before 16 Nov; Ravensim plays the same part. It answers three questions:</p>
 <ol>
 <li>How far did we get with Gazebo?</li>
 <li>Does it really produce sensor data?</li>
@@ -126,7 +142,7 @@
 <li><strong>Gazebo works</strong>, and it <strong>does produce sensor data</strong>: an IMU, a GPS, wheel speed, a camera, a radar and a lidar, all on <code>main</code>.</li>
 <li>The three cameras, the radar and the lidar are in the <strong>road world</strong> and the <strong>parking lot</strong>: <code>pixi run sim world:=road</code> or <code>world:=test_lot</code> (all on by default since 15 Oct; <code>lidar:=false</code> drops the lidar).</li>
 <li><strong>The car's lidar</strong> is a roof Velodyne VLP-16: the stock <code>velodyne</code> driver, on by default on the car, untested with the real lidar.</li>
-<li><strong>None of our code has run on the real car yet.</strong> Everything "works" in simulation or on the bench only.</li>
+<li><strong>Almost none of our code has run on the real car.</strong> On 13 Nov the car drove with only the localization update installed (<a href="status.html">Status</a>): no recording or numbers in the repo yet. Everything else "works" in simulation or on the bench only.</li>
 <li>The point of simulation: the <strong>same nodes</strong> run in all three places. Only the bottom layer changes.</li>
 </ul>
 </blockquote></div>
@@ -166,9 +182,9 @@
 </tr>
 <tr>
 <td>Command</td>
-<td><code>pixi run sim</code></td>
+<td><code>pixi run sim</code> (Ravensim)</td>
 <td><code>pixi run bench</code></td>
-<td>not ready yet</td>
+<td><code>pixi run car &lt;machine&gt;</code>: <span class="badge b-untested">untested</span> as a whole</td>
 </tr>
 <tr>
 <td>Who plays the car</td>
@@ -248,7 +264,7 @@
 </table></div>
 <p><strong>How it gets there:</strong></p>
 <pre class="highlight"><code class="language-text">Gazebo sensor → ros_gz_bridge → /gazebo/... → one node per sensor → the real drivers' topic names</code></pre>
-<p><code>gazebo_adapter</code> (the car), <code>gazebo_imu</code>, <code>gazebo_gps</code> and <code>gazebo_radar</code> rename everything to the <strong>same names the real drivers use</strong> (<code>/sensors/gps/fix</code>, <code>/sensors/imu/data_raw</code>, <code>/vehicle/odom</code>). The software above can't tell the difference. One process each, as each sensor on the car has its own driver.</p>
+<p><code>sim_adapter</code> (the car), <code>sim_imu</code>, <code>sim_gps</code> and <code>sim_radar</code> rename everything to the <strong>same names the real drivers use</strong> (<code>/sensors/gps/fix</code>, <code>/sensors/imu/data_raw</code>, <code>/vehicle/odom</code>). The software above can't tell the difference. One process each, as each sensor on the car has its own driver.</p>
 <p><img alt="The simulated car in Gazebo" src="../img/gazebo-car.png" /></p>
 <h3 id="in-the-road-world-pixi-run-sim-worldroad">In the road world (<code>pixi run sim world:=road</code>)</h3>
 <p>Merged from the branch <code>wt/sim-full</code> on 15 Oct. Rates measured on Ben's Mac, on simulated time.</p>
@@ -276,7 +292,7 @@
 </tr>
 <tr>
 <td>A radar on the grill (a lidar shaped like it)</td>
-<td><code>/sensors/radar/points</code> (via <code>/gazebo/radar/points</code>)</td>
+<td><code>/sensors/radar/points</code> (via <code>/vehicle/sim/radar/points</code>)</td>
 <td>10 Hz</td>
 <td>✅</td>
 </tr>
@@ -498,8 +514,8 @@
 </thead>
 <tbody>
 <tr>
-<td>See Gazebo with the car</td>
-<td><code>pixi run sim</code></td>
+<td>See the simulated car</td>
+<td><code>pixi run sim</code> (Ravensim, no window: watch in RViz or Lichtblick)</td>
 </tr>
 <tr>
 <td>See its sensor data</td>

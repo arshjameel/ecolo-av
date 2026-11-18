@@ -15,6 +15,7 @@ use crate::ground::Ground;
 use crate::lidar::{LidarSpec, Scan};
 use crate::math::{Pose, Rot3, Vec3};
 use crate::noise::Noise;
+use crate::scene::Mesh;
 use crate::world::World;
 
 /// m/s²: SDF's default gravity, which our worlds keep.
@@ -23,8 +24,11 @@ pub const GRAVITY: f64 = 9.8;
 /// The car's size, for the wheels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Geometry {
+    /// m: rear axle to front axle.
     pub wheelbase: f64,
+    /// m: left wheel to right wheel.
     pub track: f64,
+    /// m.
     pub wheel_radius: f64,
 }
 
@@ -33,9 +37,11 @@ pub struct Geometry {
 pub struct Body {
     /// m, bumper to bumper.
     pub length: f64,
+    /// m, side to side.
     pub width: f64,
     /// m from the rear bumper to the rear axle (base_link).
     pub rear_overhang: f64,
+    /// m, ground to roof.
     pub height: f64,
 }
 
@@ -62,6 +68,7 @@ impl Body {
     /// that reaches into the car crosses one of them first. The diagonals catch a thing
     /// exactly as wide as the car and in line with it, whose faces lie along the sides.
     /// Cheap (18 short rays a step), and enough to stop at a wall.
+    #[must_use]
     pub fn touches(&self, scene: &crate::scene::Scene, base: &Pose) -> bool {
         let c = self.corners();
         const LINES: [(usize, usize); 6] = [(0, 1), (1, 2), (2, 3), (3, 0), (0, 2), (1, 3)];
@@ -87,13 +94,17 @@ impl Body {
 /// Where each sensor sits on the car, from `base_link` (vehicle.yaml's `sensors:`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Mounts {
+    /// The IMU (`imu_link`).
     pub imu: Pose,
+    /// The GPS antenna.
     pub gps: Pose,
+    /// The roof lidar.
     pub lidar: Pose,
+    /// The radar.
     pub radar: Pose,
 }
 
-/// How often each stream speaks, Hz. The defaults are Gazebo's (aav.gazebo.xacro).
+/// How often each stream speaks, Hz. The defaults are Gazebo's (its URDF, until 16 Nov).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rates {
     /// `/clock`: one per physics step, 1 kHz, as Gazebo (its clock is not
@@ -103,7 +114,9 @@ pub struct Rates {
     pub odom: f64,
     /// The OdometryPublisher's truth.
     pub truth: f64,
+    /// The IMU.
     pub imu: f64,
+    /// The GPS fix.
     pub navsat: f64,
     /// The wheels' joint states. Gazebo sends them every physics step; the car's wheel
     /// nodes, 100 Hz.
@@ -123,7 +136,8 @@ impl Default for Rates {
     }
 }
 
-/// The IMU's and GPS's noise (aav.gazebo.xacro's, standard deviations).
+/// The IMU's, GPS's and wheels' noise (Gazebo's URDF's until 16 Nov, standard deviations). The
+/// wheels' is ours (Gazebo's odometry has none), off by default (Ben, 14 Nov).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SensorNoise {
     /// rad/s.
@@ -134,6 +148,20 @@ pub struct SensorNoise {
     pub gps_horizontal_deg: f64,
     /// m.
     pub gps_vertical: f64,
+    /// m/s, on each wheel speed reading while the wheels turn (0: none). The odometry
+    /// then integrates the readings and drifts, as on the car.
+    pub wheel_speed: f64,
+    /// A fraction: the wheels read this much more than the ground moved (slip, worn
+    /// tyres, a wrong radius; 0: none, 0.02: 2 % too far).
+    pub wheel_slip: f64,
+}
+
+impl SensorNoise {
+    /// Whether the wheels' odometry is read from noisy wheels rather than the truth.
+    #[must_use]
+    pub fn wheels_noisy(&self) -> bool {
+        self.wheel_speed > 0.0 || self.wheel_slip != 0.0
+    }
 }
 
 impl Default for SensorNoise {
@@ -143,6 +171,8 @@ impl Default for SensorNoise {
             accel: 0.2,
             gps_horizontal_deg: 4.5e-6,
             gps_vertical: 1.0,
+            wheel_speed: 0.0,
+            wheel_slip: 0.0,
         }
     }
 }
@@ -152,9 +182,13 @@ impl Default for SensorNoise {
 pub struct Settings {
     /// ns per step.
     pub step_ns: u64,
+    /// The car's size, for the wheels.
     pub geometry: Geometry,
+    /// Where each sensor sits on the car.
     pub mounts: Mounts,
+    /// How often each stream speaks.
     pub rates: Rates,
+    /// How noisy each sensor is.
     pub noise: SensorNoise,
     /// The roof lidar, if the car has one in this run.
     pub lidar: Option<LidarSpec>,
@@ -190,18 +224,21 @@ pub struct ImuReading {
 pub struct Joints {
     /// rad and rad/s: rear_left, rear_right, front_left, front_right wheel joints.
     pub wheel_angle: [f64; 4],
+    /// rad/s: the same wheels, in the same order.
     pub wheel_rate: [f64; 4],
     /// rad: front_left, front_right steering joints (Ackermann).
     pub steering: [f64; 2],
 }
 
 impl Joints {
+    /// The wheel joints' names, in `wheel_angle`'s order.
     pub const WHEELS: [&'static str; 4] = [
         "rear_left_wheel_joint",
         "rear_right_wheel_joint",
         "front_left_wheel_joint",
         "front_right_wheel_joint",
     ];
+    /// The steering joints' names, in `steering`'s order.
     pub const STEERING: [&'static str; 2] =
         ["front_left_steering_joint", "front_right_steering_joint"];
 }
@@ -211,43 +248,60 @@ impl Joints {
 pub struct Odometry {
     /// The pose in the message's frame.
     pub x: f64,
+    /// m.
     pub y: f64,
+    /// rad, + left.
     pub yaw: f64,
     /// m/s and rad/s, in base_link.
     pub speed: f64,
+    /// rad/s, + left.
     pub yaw_rate: f64,
     /// m and rad: the height and tilt on the ground (0 for the wheels' odometry).
     pub z: f64,
+    /// rad.
     pub roll: f64,
+    /// rad.
     pub pitch: f64,
 }
 
 /// Something to publish now.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Output {
+    /// The clock has moved on a step (`/clock`).
     Clock,
-    /// The wheels' odometry, from where the car started (`/gazebo/odom`, odom frame).
+    /// The wheels' odometry, from where the car started (`/vehicle/sim/odom`, odom frame).
     Odom(Odometry),
     /// Where the car really is, in the map (`/vehicle/sim/truth`).
     Truth(Odometry),
+    /// An IMU reading.
     Imu(ImuReading),
+    /// A GPS fix.
     NavSat(Geodetic),
+    /// The wheels' joint states.
     Joints(Joints),
+    /// A lidar scan.
     Lidar(Scan),
+    /// A radar scan.
     Radar(Scan),
     /// The car has just hit something, here (x, y in the map), and stopped.
     Hit {
+        /// m, east.
         x: f64,
+        /// m, north.
         y: f64,
     },
 }
 
 /// What a plug-in sees when it's its turn.
+#[derive(Debug)]
 pub struct Frame<'a> {
+    /// ns on the simulator's clock.
     pub time_ns: u64,
+    /// The world, as it is now.
     pub world: &'a World,
     /// The world file, for a plug-in that loads its own copy (with colours).
     pub world_file: Option<&'a std::path::Path>,
+    /// Where the car is and what it's doing.
     pub car: CarState,
     /// `base_link` in the world (= map) frame; a sensor's pose is this then its mount.
     pub base_link: Pose,
@@ -261,8 +315,11 @@ pub struct Frame<'a> {
 /// It runs inside the loop: a slow one slows the clock, so keep it quick or hand the work
 /// to a thread of its own and drop frames, as a real camera would.
 pub trait SensorPlugin: Send {
+    /// The plug-in's name, for logs.
     fn name(&self) -> &str;
+    /// ns between two samples.
     fn period_ns(&self) -> u64;
+    /// Make one sample of the world as it is in `frame`.
     fn sample(&mut self, frame: &Frame<'_>);
 }
 
@@ -276,6 +333,7 @@ fn period_ns(hz: f64, step_ns: u64) -> u64 {
 }
 
 /// The loop's state.
+// Debug by hand: the car model and the plug-ins are trait objects, shown by name.
 pub struct Simulator {
     settings: Settings,
     world: World,
@@ -289,15 +347,68 @@ pub struct Simulator {
     gps_noise: Noise,
     lidar_noise: Noise,
     radar_noise: Noise,
+    wheel_noise: Noise,
+    /// m, m, rad: how far the wheels' odometry has drifted from the truth's (noisy
+    /// wheels only), in the odometry's frame.
+    drift: [f64; 3],
     /// When the car last pushed against something (ns): a new hit is one after a second
     /// clear of it, not each step it keeps pushing.
     last_contact_ns: Option<u64>,
     /// Each wheel's ground height (m): rear right, rear left, front right, front left.
     wheel_heights: [f64; 4],
+    /// Placed models that move on their own (`set_motion`): a person walking.
+    movers: Vec<Mover>,
+}
+
+impl std::fmt::Debug for Simulator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let plugins: Vec<&str> = self.plugins.iter().map(|p| p.name()).collect();
+        f.debug_struct("Simulator")
+            .field("settings", &self.settings)
+            .field("time_ns", &self.time_ns)
+            .field("plugins", &plugins)
+            .field("movers", &self.movers.len())
+            .finish_non_exhaustive()
+    }
+}
+
+/// A placed model moving at a steady velocity in the world: a person crossing, a car
+/// going by (TODO 170). The lidar, the radar and the car's body meet it where it is now.
+#[derive(Debug, Clone)]
+struct Mover {
+    name: String,
+    mesh: Mesh,
+    /// m and rad, in the world: where it is now.
+    x: f64,
+    y: f64,
+    z: f64,
+    yaw: f64,
+    /// m/s and rad/s, in the world.
+    velocity: Velocity,
+}
+
+/// A placed model's steady motion, in the world frame (Gazebo's SetEntityState twist).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Velocity {
+    /// m/s, east and north.
+    pub x: f64,
+    /// m/s, north.
+    pub y: f64,
+    /// rad/s, turning left.
+    pub yaw_rate: f64,
+}
+
+impl Velocity {
+    /// Whether it moves at all.
+    #[must_use]
+    pub fn is_still(&self) -> bool {
+        self.x == 0.0 && self.y == 0.0 && self.yaw_rate == 0.0
+    }
 }
 
 impl Simulator {
     /// A simulator with the car at (x, y, yaw) in the world.
+    #[must_use]
     pub fn new(
         settings: Settings,
         world: World,
@@ -312,6 +423,10 @@ impl Simulator {
             gps_noise: seed.fork(),
             lidar_noise: seed.fork(),
             radar_noise: seed.fork(),
+            // Forked last: the other sensors' noise stays as it was.
+            wheel_noise: seed.fork(),
+            drift: [0.0; 3],
+            movers: Vec::new(),
             settings,
             world,
             car,
@@ -339,18 +454,26 @@ impl Simulator {
         self.plugins.push(plugin);
     }
 
+    /// ns since the simulator started.
+    #[must_use]
     pub fn time_ns(&self) -> u64 {
         self.time_ns
     }
 
+    /// Where the car is and what it's doing.
+    #[must_use]
     pub fn car(&self) -> CarState {
         self.car.state()
     }
 
+    /// The car model it drives.
+    #[must_use]
     pub fn car_model(&self) -> &dyn CarModel {
         self.car.as_ref()
     }
 
+    /// The world, as it is now.
+    #[must_use]
     pub fn world(&self) -> &World {
         &self.world
     }
@@ -360,12 +483,15 @@ impl Simulator {
         &mut self.world
     }
 
+    /// The settings it runs with.
+    #[must_use]
     pub fn settings(&self) -> &Settings {
         &self.settings
     }
 
     /// `base_link` in the world: on the ground under the rear axle, tilted to the wheels
     /// (flat at z = 0 without `ground_step`).
+    #[must_use]
     pub fn base_link(&self) -> Pose {
         let s = self.car.state();
         match self.ground() {
@@ -383,10 +509,63 @@ impl Simulator {
         })
     }
 
-    /// The first outputs, at time 0: the clock and where the car stands.
-    pub fn start(&mut self) -> Vec<Output> {
+    /// Put a model in the world at `pose` (x, y, z and yaw used), moving at `velocity` from
+    /// now on (still: it stands there). Replaces any model of the same name.
+    pub fn place_model(&mut self, name: &str, mesh: Mesh, pose: &Pose, velocity: Velocity) {
+        self.movers.retain(|m| m.name != name);
+        self.world.scene.place(name, &mesh, pose);
+        if !velocity.is_still() {
+            let at = pose.position;
+            let f = pose.rotation.apply(Vec3::new(1.0, 0.0, 0.0));
+            self.movers.push(Mover {
+                name: name.to_string(),
+                mesh,
+                x: at.x,
+                y: at.y,
+                z: at.z,
+                yaw: f.y.atan2(f.x),
+                velocity,
+            });
+        }
+    }
+
+    /// Take a placed model away; false if there was none of that name.
+    pub fn remove_model(&mut self, name: &str) -> bool {
+        self.movers.retain(|m| m.name != name);
+        self.world.scene.remove(name)
+    }
+
+    /// Where a moving model is now (x, y, yaw in the world), if it moves.
+    #[must_use]
+    pub fn mover(&self, name: &str) -> Option<(f64, f64, f64)> {
+        self.movers
+            .iter()
+            .find(|m| m.name == name)
+            .map(|m| (m.x, m.y, m.yaw))
+    }
+
+    /// Move each moving model on by dt.
+    fn move_models(&mut self, dt: f64) {
+        for m in &mut self.movers {
+            m.x += m.velocity.x * dt;
+            m.y += m.velocity.y * dt;
+            m.yaw = crate::math::wrap(m.yaw + m.velocity.yaw_rate * dt);
+            let pose = Pose::new(Vec3::new(m.x, m.y, m.z), Rot3::from_yaw(m.yaw));
+            self.world.scene.place(&m.name, &m.mesh, &pose);
+        }
+    }
+
+    /// Put the car at (x, y, yaw), standing still, its actuators at rest (Gazebo's
+    /// `set_pose`; the node's SetEntityState). The truth and wheel odometry jump with it,
+    /// as in Gazebo; on a ground with steps the wheels settle again.
+    pub fn place_car(&mut self, x: f64, y: f64, yaw: f64) {
+        self.car.reset(x, y, yaw);
+        self.settle();
+    }
+
+    /// The wheels' heights where the car stands, found from a little up.
+    fn settle(&mut self) {
         if let Some(g) = self.ground() {
-            // Find the ground from a little up: the car may start on a raised lot.
             let s = self.car.state();
             let anywhere = Ground {
                 max_step: f64::INFINITY,
@@ -396,6 +575,12 @@ impl Simulator {
                 self.wheel_heights = h;
             }
         }
+    }
+
+    /// The first outputs, at time 0: the clock and where the car stands.
+    pub fn start(&mut self) -> Vec<Output> {
+        // Find the ground from a little up: the car may start on a raised lot.
+        self.settle();
         let mut out = vec![Output::Clock];
         self.speak(&mut out, true);
         out
@@ -404,6 +589,7 @@ impl Simulator {
     /// Move on one step under `command`; return what is due now.
     pub fn step(&mut self, command: &Command) -> Vec<Output> {
         let dt = self.settings.step_ns as f64 * 1e-9;
+        self.move_models(dt);
         let before = self.car.state();
         let mut s = self.car.step(command, dt);
         self.time_ns += self.settings.step_ns;
@@ -484,27 +670,37 @@ impl Simulator {
         }
         let base = self.base_link();
         let threads = self.settings.threads;
+        // What a ray hits moving (a person walking) gives the radar its own speed (TODO 194).
+        let movers = &self.movers;
+        let motion = |name: &str| {
+            movers
+                .iter()
+                .find(|m| m.name == name)
+                .map(|m| Vec3::new(m.velocity.x, m.velocity.y, 0.0))
+        };
         if let Some(spec) = self.settings.lidar {
             if self.due(spec.rate) {
                 let pose = base.then(&self.settings.mounts.lidar);
-                out.push(Output::Lidar(Scan::cast(
+                out.push(Output::Lidar(Scan::cast_moving(
                     &spec,
                     &self.world.scene,
                     &pose,
                     &mut self.lidar_noise,
                     threads,
+                    &motion,
                 )));
             }
         }
         if let Some(spec) = self.settings.radar {
             if self.due(spec.rate) {
                 let pose = base.then(&self.settings.mounts.radar);
-                out.push(Output::Radar(Scan::cast(
+                out.push(Output::Radar(Scan::cast_moving(
                     &spec,
                     &self.world.scene,
                     &pose,
                     &mut self.radar_noise,
                     threads,
+                    &motion,
                 )));
             }
         }
@@ -538,6 +734,9 @@ impl Simulator {
             roll: 0.0,
             pitch: 0.0,
         };
+        if self.settings.noise.wheels_noisy() {
+            self.read_wheels(s, dt);
+        }
         let g = self.settings.geometry;
         let half = g.track / 2.0;
         // Each wheel's ground speed along its own heading.
@@ -554,6 +753,35 @@ impl Simulator {
             self.joints.wheel_angle[i] = crate::math::wrap(self.joints.wheel_angle[i] + rate * dt);
         }
         self.joints.steering = wheel_angles(s.steering, g.wheelbase, g.track);
+    }
+
+    /// The wheels' odometry from noisy, slipping wheels: the truth's plus a drift that
+    /// grows from the gap between what the wheels read and how the car moved.
+    fn read_wheels(&mut self, s: &CarState, dt: f64) {
+        let n = self.settings.noise;
+        // A wheel that doesn't turn reads nothing: no noise standing still.
+        let turning = s.speed.abs() > 0.01;
+        let speed = if turning {
+            s.speed * (1.0 + n.wheel_slip) + self.wheel_noise.gauss(n.wheel_speed)
+        } else {
+            0.0
+        };
+        // Ackermann odometry turns by the wheels' speed and the steering: the same error.
+        let yaw_rate = if turning {
+            s.yaw_rate * speed / s.speed
+        } else {
+            s.yaw_rate
+        };
+        let true_yaw = self.odom.yaw;
+        let read_yaw = true_yaw + self.drift[2];
+        self.drift[0] += (speed * read_yaw.cos() - s.speed * true_yaw.cos()) * dt;
+        self.drift[1] += (speed * read_yaw.sin() - s.speed * true_yaw.sin()) * dt;
+        self.drift[2] += (yaw_rate - s.yaw_rate) * dt;
+        self.odom.x += self.drift[0];
+        self.odom.y += self.drift[1];
+        self.odom.yaw = crate::math::wrap(self.odom.yaw + self.drift[2]);
+        self.odom.speed = speed;
+        self.odom.yaw_rate = yaw_rate;
     }
 
     fn imu(&mut self) -> ImuReading {
@@ -608,6 +836,7 @@ impl Simulator {
 
 /// Each front wheel's angle for the centre wheel's `steering` (Ackermann), left then right:
 /// both point at the same turning centre.
+#[must_use]
 pub fn wheel_angles(steering: f64, wheelbase: f64, track: f64) -> [f64; 2] {
     if steering.abs() < 1e-9 {
         return [0.0, 0.0];
@@ -670,6 +899,32 @@ mod tests {
         assert!(body.touches(&scene, &Pose::IDENTITY));
         let back = Pose::new(Vec3::new(-0.2, 0.0, 0.0), Rot3::IDENTITY);
         assert!(!body.touches(&scene, &back));
+    }
+
+    #[test]
+    fn the_car_can_be_placed_anywhere_and_stands_still_there() {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(settings(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let go = Command::Twist {
+            speed: 1.0,
+            yaw_rate: 0.0,
+        };
+        for _ in 0..1000 {
+            sim.step(&go);
+        }
+        assert!(sim.car().speed > 0.5);
+        sim.place_car(10.0, -4.0, 1.0);
+        let s = sim.car();
+        assert_eq!((s.x, s.y, s.yaw), (10.0, -4.0, 1.0));
+        assert_eq!(s.speed, 0.0);
+        let stop = Command::Twist {
+            speed: 0.0,
+            yaw_rate: 0.0,
+        };
+        for _ in 0..100 {
+            sim.step(&stop);
+        }
+        assert!((sim.car().x - 10.0).abs() < 1e-6);
     }
 
     #[test]
@@ -797,6 +1052,7 @@ mod tests {
             accel: 0.0,
             gps_horizontal_deg: 0.0,
             gps_vertical: 0.0,
+            ..SensorNoise::default()
         };
         let mut sim = Simulator::new(s, World::flat(400.0), car, (0.0, 0.0, 0.0));
         let imu = sim.imu();
@@ -836,6 +1092,150 @@ mod tests {
         );
         let odom = last.expect("odometry");
         assert!((odom.x - (s.y - 3.0)).abs() < 1e-6 && odom.y.abs() < 1e-6);
+    }
+
+    /// Drive a curve for `secs` s; return the truth's distance and the last odometry.
+    fn drive_with_wheels(noise: SensorNoise, seed: u64, secs: usize) -> (f64, Odometry) {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut s = settings();
+        s.noise = noise;
+        s.seed = seed;
+        let mut sim = Simulator::new(s, World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let go = Command::Twist {
+            speed: 1.0,
+            yaw_rate: 0.1,
+        };
+        let mut last = None;
+        let mut travelled = 0.0;
+        for _ in 0..secs * 1000 {
+            for o in sim.step(&go) {
+                if let Output::Odom(odom) = o {
+                    last = Some(odom);
+                }
+            }
+            travelled += sim.car().speed.abs() * 0.001;
+        }
+        (travelled, last.expect("odometry"))
+    }
+
+    #[test]
+    fn a_walker_crosses_and_the_world_meets_it_where_it_is() {
+        use crate::scene::{Mesh, Ray};
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(settings(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let post = Mesh::cuboid(Vec3::new(0.5, 0.5, 1.8));
+        let start = Pose::new(Vec3::new(10.0, -3.0, 0.9), Rot3::from_yaw(0.0));
+        let walk = Velocity {
+            x: 0.0,
+            y: 1.5,
+            yaw_rate: 0.0,
+        };
+        sim.place_model("walker", post, &start, walk);
+        let ahead = Ray {
+            origin: Vec3::new(0.0, 0.0, 1.0),
+            direction: Vec3::new(1.0, 0.0, 0.0),
+        };
+        assert!(
+            sim.world().scene.cast(&ahead, 50.0).is_none(),
+            "not in the lane yet"
+        );
+        let still = Command::Twist {
+            speed: 0.0,
+            yaw_rate: 0.0,
+        };
+        for _ in 0..2000 {
+            sim.step(&still);
+        }
+        let (x, y, _) = sim.mover("walker").expect("it moves");
+        assert!(
+            (x - 10.0).abs() < 1e-9 && (y - 0.0).abs() < 1e-6,
+            "at ({x}, {y})"
+        );
+        let hit = sim
+            .world()
+            .scene
+            .cast(&ahead, 50.0)
+            .expect("in the lane now");
+        assert!((hit - 9.75).abs() < 1e-6, "its near face: {hit}");
+        assert!(sim.remove_model("walker"));
+        assert!(sim.mover("walker").is_none());
+        assert!(sim.world().scene.cast(&ahead, 50.0).is_none());
+    }
+
+    #[test]
+    fn a_still_model_is_placed_once_and_never_moves() {
+        use crate::scene::Mesh;
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(settings(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let at = Pose::new(Vec3::new(5.0, 0.0, 0.5), Rot3::from_yaw(0.0));
+        sim.place_model(
+            "box",
+            Mesh::cuboid(Vec3::new(1.0, 1.0, 1.0)),
+            &at,
+            Velocity::default(),
+        );
+        assert!(sim.mover("box").is_none());
+    }
+
+    #[test]
+    fn slipping_wheels_read_too_far() {
+        let slip = SensorNoise {
+            wheel_slip: 0.05,
+            ..SensorNoise::default()
+        };
+        let (_, truth) = drive_with_wheels(SensorNoise::default(), 1, 10);
+        let (travelled, read) = drive_with_wheels(slip, 1, 10);
+        assert!(
+            read.speed > 1.04 && read.speed < 1.06,
+            "speed {}",
+            read.speed
+        );
+        let (dx, dy) = (read.x - truth.x, read.y - truth.y);
+        let gap = (dx * dx + dy * dy).sqrt();
+        // About 5 % of the way, give or take the turn's own error.
+        assert!(
+            gap > 0.03 * travelled && gap < 0.08 * travelled,
+            "drift {gap} m"
+        );
+    }
+
+    #[test]
+    fn noisy_wheels_drift_the_same_way_for_the_same_seed() {
+        let noisy = SensorNoise {
+            wheel_speed: 0.1,
+            ..SensorNoise::default()
+        };
+        let (_, truth) = drive_with_wheels(SensorNoise::default(), 1, 10);
+        let (_, a) = drive_with_wheels(noisy, 7, 10);
+        let (_, b) = drive_with_wheels(noisy, 7, 10);
+        let (_, c) = drive_with_wheels(noisy, 8, 10);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+        assert!(a != truth, "noise on, the odometry is not the truth");
+    }
+
+    #[test]
+    fn wheels_standing_still_read_nothing() {
+        let noisy = SensorNoise {
+            wheel_speed: 0.1,
+            wheel_slip: 0.05,
+            ..SensorNoise::default()
+        };
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut s = settings();
+        s.noise = noisy;
+        let mut sim = Simulator::new(s, World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let still = Command::Twist {
+            speed: 0.0,
+            yaw_rate: 0.0,
+        };
+        for _ in 0..1000 {
+            for o in sim.step(&still) {
+                if let Output::Odom(odom) = o {
+                    assert_eq!((odom.x, odom.y, odom.speed), (0.0, 0.0, 0.0));
+                }
+            }
+        }
     }
 
     #[test]

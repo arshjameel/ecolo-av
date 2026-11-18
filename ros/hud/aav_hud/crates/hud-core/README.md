@@ -10,7 +10,7 @@ keeps. `map-core` shares its health, origin, watchdog and formatting code.
 
 | Module | Holds |
 |---|---|
-| `ahead` | the squiggly line: `Ahead` (trace, plan, stop, `Summary` from `/ego/ahead`), `Body`, `lines` (the words and their `Tone`), `View` (base_link onto a panel), `point_along`, `pretend` (a 12 s loop) |
+| `ahead` | the squiggly line: `Ahead` (trace, plan, stop, `Summary` from `/ego/ahead`), `Body`, `Road` (the road ahead where the car is), `lines`, `road_line` (the words and their `Tone`), `View` (base_link onto a panel), `point_along`, `pretend` (a 12 s loop) |
 | `config` | `HudConfig` from `config/hud.yaml` (`BUILT_IN_YAML`, built in); `Topic`, `NODE_NAME` = `hud` |
 | `units` | speed in m/s and km/h, angles |
 | `vehicle` | `/vehicle/status`: mode (`Mode`: MANUAL 0, RC 1, COMPUTER 2, TEST 3; any other number shows as `MODE n?`), gear letter, fault names |
@@ -22,7 +22,8 @@ keeps. `map-core` shares its health, origin, watchdog and formatting code.
 | `heartbeat` | `Heartbeat::poll(now, Frames)`: a beat every 100 ms while frames rise |
 | `watchdog` | the sensor watchdog's verdict, as a banner |
 | `gate` | `verdict(...)`: GO / WAIT / STOP and the main reason (e-stop, output mux, watchdog); `Gate::parse`, `Sensors::parse` |
-| `state` | `HudState::new`, `apply(Update, now)`, `estop_pressed`, `take_new_picture` |
+| `things` | the things near the car (`/world/things`, odom), named by the camera: `Thing` (`label`: `person 3`; `colour`; `in_base`, `corners_in_base`), `Kind` (person, vehicle, stop sign, other, unknown), `named_ahead` (nearest first). Colours in `theme::thing_colour`, the same as aav_things' markers |
+| `state` | `HudState::new`, `apply(Update, now)`, `estop_pressed`, `take_new_picture`, `things_now` (the things and the car's pose, while both are fresh) |
 | `format` | numbers as short text for the screen |
 | `screen` | which monitor a window opens on (`--monitor HDMI-1`) |
 | `theme` | every colour of the four screens (HUD, map, debug screen, hardware panel): `Theme`, `ThemeName` (`initial_d`, the default; `mocha`, `latte`, `calm`), `Style` (glass or arcade; `corner`), `Rgba` with `contrast` (WCAG); Catppuccin's palettes (MIT) |

@@ -10,6 +10,11 @@ publish.workspace = true
 name = "spine_bridge"
 path = "src/main.rs"
 
+# arm_when_open: arms the spine once the safety gate opens (the stand-ins' arm:=true).
+[[bin]]
+name = "arm_when_open"
+path = "src/arm.rs"
+
 [dependencies]
 anyhow = "1"
 # SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.

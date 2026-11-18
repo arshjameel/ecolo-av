@@ -13,14 +13,19 @@
 //! | Check | Nav2's plugin | Rule |
 //! |---|---|---|
 //! | [`GoalCheck`] | `SimpleGoalChecker` (stateful) | within xy_goal_tolerance of the end, then the heading |
-//! | [`ProgressCheck`] | `PoseProgressChecker` | moved or turned enough in time, else stuck |
+//! | [`ProgressCheck`] | `PoseProgressChecker` | moved or turned enough in time, else stuck; starts again at each new stretch (a cusp) |
+//! | cusp reached | `enforce_path_inversion` | within the inversion tolerances; or (ours) stopped within the goal's |
 
 use crate::costmap::Costmap;
 use crate::critics::Critic;
 use crate::ego::{Driven, DrivenState, Ego};
+use crate::lane::Lane;
 use crate::model::{wrap, CarModel, Command, Observation, Pose};
 use crate::optimizer::{NoValidControl, Optimizer, Plan, Scene, Settings};
-use crate::path::{Foot, GlobalPath};
+use crate::path::{Foot, GlobalPath, Inversion};
+
+/// m/s: slower than this, the car counts as stopped (at a cusp).
+const STOPPED: f64 = 0.05;
 
 /// Nav2's SimpleGoalChecker, stateful: once within xy, only the heading is left.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -34,6 +39,7 @@ pub struct GoalCheck {
 
 impl GoalCheck {
     /// A check with these tolerances.
+    #[must_use]
     pub fn new(xy: f64, yaw: f64) -> Self {
         Self {
             xy,
@@ -73,6 +79,7 @@ pub struct ProgressCheck {
 
 impl ProgressCheck {
     /// A check with these limits.
+    #[must_use]
     pub fn new(radius: f64, angle: f64, time: f64) -> Self {
         Self {
             radius,
@@ -160,6 +167,14 @@ pub struct FollowerSettings {
     pub progress_time: f64,
     /// Unknown costmap cells are drivable.
     pub tracking_unknown: bool,
+    /// Follow a path that changes direction one stretch at a time, stopping at each cusp
+    /// (Nav2's `enforce_path_inversion`; on when the car may reverse). `None`: one stretch.
+    pub inversion: Option<Inversion>,
+    /// m: stopped this close to a cusp for `cusp_wait` s, the stretch is done (ours,
+    /// TODO 174: a lock may hold the car short of it).
+    pub cusp_reach: f64,
+    /// s: how long the car must stand there first.
+    pub cusp_wait: f64,
 }
 
 impl Default for FollowerSettings {
@@ -174,6 +189,9 @@ impl Default for FollowerSettings {
             progress_angle: 0.5,
             progress_time: 10.0,
             tracking_unknown: false,
+            inversion: None,
+            cusp_reach: 2.0,
+            cusp_wait: 3.0,
         }
     }
 }
@@ -185,10 +203,16 @@ pub struct Follower<M: CarModel> {
     settings: FollowerSettings,
     footprint: Vec<(f64, f64)>,
     path: Option<GlobalPath>,
+    /// The road ahead's lane, in odom, while the node has a fresh one.
+    lane: Option<Lane>,
     estimate: Option<DrivenState<M::State>>,
     last: Command,
     goal: GoalCheck,
     progress: ProgressCheck,
+    /// The stretch followed last tick ([`GlobalPath::stretch`]; `None`: a new path).
+    stretch: Option<usize>,
+    /// When the car last stood still with a cusp ahead (s), while it still stands.
+    standing: Option<f64>,
 }
 
 impl<M: CarModel + Clone> Follower<M> {
@@ -205,6 +229,7 @@ impl<M: CarModel + Clone> Follower<M> {
             optimizer: Optimizer::new(Driven { ego, car: model }, mppi, critics),
             footprint,
             path: None,
+            lane: None,
             estimate: None,
             last: Command::default(),
             goal: GoalCheck::new(settings.xy_goal_tolerance, settings.yaw_goal_tolerance),
@@ -213,6 +238,8 @@ impl<M: CarModel + Clone> Follower<M> {
                 settings.progress_angle,
                 settings.progress_time,
             ),
+            stretch: None,
+            standing: None,
             settings,
         }
     }
@@ -250,7 +277,38 @@ impl<M: CarModel + Clone> Follower<M> {
             self.progress.reset();
             self.optimizer.reset(self.last);
         }
-        self.path = Some(path);
+        self.stretch = None;
+        self.standing = None;
+        self.path = Some(match self.settings.inversion {
+            Some(tolerance) => path.with_inversion(tolerance),
+            None => path,
+        });
+    }
+
+    /// Move the running path by `f` (the held map -> odom moved); its place on it, the
+    /// checks and MPPI's plan carry on.
+    pub fn move_path(&mut self, f: impl Fn(&Pose) -> Pose) {
+        if let Some(path) = self.path.as_mut() {
+            path.move_by(f);
+        }
+    }
+
+    /// The lane to keep to (the road ahead's, in odom), or `None`: none known, or stale.
+    /// Only `LaneCritic` reads it.
+    pub fn set_lane(&mut self, lane: Option<Lane>) {
+        self.lane = lane;
+    }
+
+    /// The behaviour planner holds the car for something moving near: standing is not a
+    /// lack of progress, so the progress check starts again (Ben, 16 Nov: "we should
+    /// likely just stop").
+    pub fn held(&mut self) {
+        self.progress.reset();
+    }
+
+    /// The lane it keeps to, if any.
+    pub fn lane(&self) -> Option<&Lane> {
+        self.lane.as_ref()
     }
 
     /// Stop following (the path ended or was cancelled). The next command is a stop.
@@ -290,17 +348,58 @@ impl<M: CarModel + Clone> Follower<M> {
             return None;
         };
         let pose = model.pose(&state);
-        let goal = path.goal();
-        if self.goal.done(&pose, &goal) {
+        // Not while a cusp lies ahead: a three-point turn may pass near its own goal.
+        if !path.cusp_ahead() && self.goal.done(&pose, &path.goal()) {
             return Some(Tick::Done(Outcome::Succeeded));
         }
         if self.progress.stuck(&pose, now) {
             return Some(Tick::Done(Outcome::Stuck));
         }
         let s = self.settings;
+        // Stopped short of a cusp, but within the goal's tolerances of it: the stretch is
+        // done, as the path would be at its goal. MPPI slows to a stop near a stretch's end
+        // as near the goal, and may stand just outside the inversion tolerances, where
+        // nothing would move it on (ours; Nav2 waits for the inversion tolerances).
+        let at_goal = Inversion {
+            xy: s.xy_goal_tolerance,
+            yaw: s.yaw_goal_tolerance,
+        };
+        // Held short of a cusp: standing `cusp_wait` s within `cusp_reach` m of it, the
+        // stretch is done too. A lock holds the car there, not the follower: the stop zone
+        // keeps the bumper 1 m from a wall the plan's cusp comes closer to (a narrow street,
+        // TODO 174), and nothing else would move it on.
+        let stopped = model.speed(&state).abs() < STOPPED;
+        self.standing = (stopped && path.cusp_ahead()).then(|| self.standing.unwrap_or(now));
+        let held = Inversion {
+            xy: s.cusp_reach,
+            yaw: s.yaw_goal_tolerance,
+        };
+        let waited = self
+            .standing
+            .is_some_and(|since| now - since >= s.cusp_wait);
+        if s.inversion.is_some()
+            && stopped
+            && (path.near_cusp(&pose, at_goal) || (waited && path.near_cusp(&pose, held)))
+        {
+            path.next_stretch();
+            self.standing = None;
+        }
+        // The goal the critics see: the next cusp while one lies ahead, so the car stops
+        // there as it would at the goal (Nav2's critics see only the final goal, and stop
+        // at a cusp only because the path ends there).
+        let goal = path.stretch_end();
         let window = path
             .window(&pose, s.max_search, s.prune_distance, costmap)
             .to_vec();
+        // A new stretch (this tick or from the window's own check): the car stops and
+        // changes gear there, which is not a lack of progress.
+        // By index: the path's poses move a little most ticks (map_correction), and a
+        // check by pose started the progress check again every tick, so it never fired.
+        let stretch = path.stretch();
+        if self.stretch.is_some_and(|last| last != stretch) {
+            self.progress.reset();
+        }
+        self.stretch = Some(stretch);
         if window.is_empty() {
             return Some(Tick::Done(Outcome::PathOutsideCostmap));
         }
@@ -311,6 +410,7 @@ impl<M: CarModel + Clone> Follower<M> {
             costmap,
             footprint: &self.footprint,
             tracking_unknown: s.tracking_unknown,
+            lane: self.lane.as_ref(),
         };
         let plan = match self.optimizer.evaluate(&state, &scene) {
             Ok(plan) => plan,

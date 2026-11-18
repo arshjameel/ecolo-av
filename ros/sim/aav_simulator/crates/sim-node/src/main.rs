@@ -1,28 +1,35 @@
-//! simulator: our own simulator, a drop-in for `gz sim` and its `ros_gz_bridge`s.
+//! simulator: Ravensim, our own simulator. It took the place of `gz sim` and its
+//! `ros_gz_bridge`s (Gazebo went on 16 Nov).
 //!
 //! It publishes what Gazebo's bridges publish, with the same names, types, frames, rates
-//! and QoS, so `gazebo_adapter`, `gazebo_imu`, `gazebo_gps`, `gazebo_radar` and the whole
+//! and QoS, so `sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar` and the whole
 //! stack above them run unchanged (docs/own-simulator.md):
 //!
-//! Subscribes  gazebo/cmd_vel          geometry_msgs/Twist: the speed and turn rate
-//!                                     gazebo_adapter's actuator model gives (Gazebo's
+//! Subscribes  vehicle/sim/cmd_vel          geometry_msgs/Twist: the speed and turn rate
+//!                                     sim_adapter's actuator model gives (Gazebo's
 //!                                     AckermannSteering system's input), kept until the next
 //! Publishes   /clock                  rosgraph_msgs/Clock, clock_hz (1000, as Gazebo), the simulated time
-//!             gazebo/odom             nav_msgs/Odometry, 50 Hz, odom -> base_link: the
+//!             vehicle/sim/odom             nav_msgs/Odometry, 50 Hz, odom -> base_link: the
 //!                                     wheels' odometry from where the car started
 //!             vehicle/sim/truth       nav_msgs/Odometry, 50 Hz, map -> base_link: where the
 //!                                     car really is (for checks only)
-//!             gazebo/imu              sensor_msgs/Imu, 50 Hz, imu_link: orientation, turn
+//!             vehicle/sim/imu              sensor_msgs/Imu, 50 Hz, imu_link: orientation, turn
 //!                                     rate and specific force (gravity +9.8 up), with
-//!                                     aav.gazebo.xacro's noise
-//!             gazebo/navsat           sensor_msgs/NavSatFix, 5 Hz, gps_link: the antenna on
+//!                                     Gazebo's old noise
+//!             vehicle/sim/navsat           sensor_msgs/NavSatFix, 5 Hz, gps_link: the antenna on
 //!                                     the world's datum, with its noise
 //!             joint_states            sensor_msgs/JointState, 100 Hz: the four wheels' spin
 //!                                     and the two steering joints (robot_state_publisher's TF)
 //!             sensors/lidar/points    sensor_msgs/PointCloud2, 10 Hz, lidar_link, reliable:
 //!                                     1800 x 16 rays, organised, packed as Gazebo's (lidar)
-//!             gazebo/radar/points     sensor_msgs/PointCloud2, 10 Hz, radar_link, best
-//!                                     effort: the radar stand-in's 61 x 3 rays (radar)
+//!             vehicle/sim/radar/points     sensor_msgs/PointCloud2, 10 Hz, radar_link, best
+//!                                     effort: the radar stand-in's 61 x 3 rays (radar).
+//!                                     Both clouds add `speed` (float32, at 20): what each
+//!                                     ray hit moves along it, for the radar's Doppler
+//! Subscribes  vehicle/sim/cameras/free_until  rosgraph_msgs/Clock: with camera_lockstep, the
+//!                                     cameras' next picture's sim time; at a truth stamped
+//!                                     that late the clock holds until they say a later one
+//!                                     (sim-core lockstep.rs: software rendering, no GPU)
 //!             vehicle/sim/entities    visualization_msgs/MarkerArray, latched: every model
 //!                                     placed while running (obstacle, spawn_entity), each a
 //!                                     MESH_RESOURCE marker: ns its name, mesh_resource its
@@ -32,6 +39,12 @@
 //!                                     file, or model://name) in the world, at initial_pose
 //!                                     (map frame; x, y and yaw), as Gazebo's create service
 //!             vehicle/sim/delete_entity  simulation_interfaces/DeleteEntity: take it away
+//!             vehicle/sim/set_entity_state  simulation_interfaces/SetEntityState: entity
+//!                                     `aav`, the car, put at state.pose (map frame; x, y,
+//!                                     yaw), standing still, as Gazebo's set_pose (a twist
+//!                                     is refused). A placed model: put at state.pose,
+//!                                     then moving at state.twist (map frame: linear x,
+//!                                     y, angular z), as a person walking (TODO 170)
 //!
 //! Parameters  world (an SDF file), models (folders for model://, ':'-separated),
 //!             start_x, start_y, start_yaw, wheelbase, track, wheel_radius, max_steering,
@@ -41,8 +54,10 @@
 //!             body_width, rear_overhang, body_height (the car stops at what its outline
 //!             meets, as Gazebo's; body_length 0: it drives through), ground_step (m: the
 //!             highest step a wheel rolls up, 0.1; the car rides the world's ground, tilts on
-//!             slopes, stops at a higher kerb; 0: flat ground), seed, step (s),
-//!             clock_hz, real_time_factor (1.0; 0: as fast as it can), threads
+//!             slopes, stops at a higher kerb; 0: flat ground), seed, wheel_noise (m/s on
+//!             each wheel reading, 0: off), wheel_slip (a fraction, 0: off), step (s),
+//!             clock_hz, real_time_factor (1.0; 0: as fast as it can), threads, camera_lockstep
+//!             (false; true: wait for the cameras, above), camera_timeout (s, wall: 10)
 //!
 //! The simulated time runs in a thread of its own, paced against the wall clock; the
 //! executor only takes the commands. Cameras plug in through sim-core's SensorPlugin.
@@ -70,18 +85,20 @@ use ros_env::sensor_msgs::msg::{
 };
 use ros_env::simulation_interfaces::msg::Result as SimResult;
 use ros_env::simulation_interfaces::srv::{
-    DeleteEntity, DeleteEntity_Request, DeleteEntity_Response, SpawnEntity, SpawnEntity_Request,
+    DeleteEntity, DeleteEntity_Request, DeleteEntity_Response, SetEntityState,
+    SetEntityState_Request, SetEntityState_Response, SpawnEntity, SpawnEntity_Request,
     SpawnEntity_Response,
 };
 use ros_env::std_msgs::msg::Header;
 use ros_env::visualization_msgs::msg::{Marker, MarkerArray};
 use sim_core::car::{Command, TwistFollower};
 use sim_core::lidar::{LidarSpec, Scan, FIELDS, POINT_STEP};
+use sim_core::lockstep::{CameraGate, Waited};
 use sim_core::math::{Pose, Rot3, Vec3};
 use sim_core::scene::Mesh;
 use sim_core::sim::{
     Body, Geometry, ImuReading, Joints, Mounts, Odometry, Output, Rates, SensorNoise, Settings,
-    Simulator,
+    Simulator, Velocity,
 };
 use sim_core::world::{Surfaces, World};
 
@@ -123,6 +140,13 @@ fn main() -> Result<()> {
         started.elapsed().as_secs_f64()
     );
 
+    let (wheel_noise, wheel_slip) = (params.wheel_noise.get(), params.wheel_slip.get());
+    if !(0.0..=1.0).contains(&wheel_noise) {
+        bail!("wheel_noise:={wheel_noise}: between 0 and 1 m/s");
+    }
+    if !(-0.5..=0.5).contains(&wheel_slip) {
+        bail!("wheel_slip:={wheel_slip}: between -0.5 and 0.5 (a fraction)");
+    }
     let step = params.step.get();
     if !(step > 0.0 && step <= 0.01) {
         bail!("step:={step}: between 0 and 0.01 s");
@@ -144,7 +168,11 @@ fn main() -> Result<()> {
             clock: params.clock_hz.get(),
             ..Rates::default()
         },
-        noise: SensorNoise::default(),
+        noise: SensorNoise {
+            wheel_speed: wheel_noise,
+            wheel_slip,
+            ..SensorNoise::default()
+        },
         lidar: params.lidar.get().then_some(LidarSpec::ROOF),
         radar: params.radar.get().then_some(LidarSpec::RADAR),
         seed: params.seed.get() as u64,
@@ -171,10 +199,10 @@ fn main() -> Result<()> {
 
     let out = Outputs {
         clock: node.create_publisher("/clock")?,
-        odom: node.create_publisher("gazebo/odom")?,
+        odom: node.create_publisher("vehicle/sim/odom")?,
         truth: node.create_publisher("vehicle/sim/truth")?,
-        imu: node.create_publisher("gazebo/imu")?,
-        navsat: node.create_publisher("gazebo/navsat")?,
+        imu: node.create_publisher("vehicle/sim/imu")?,
+        navsat: node.create_publisher("vehicle/sim/navsat")?,
         joints: node.create_publisher("joint_states")?,
         // Only the sensors this run has: a publisher with nothing behind it still shows in
         // the graph, and the sensor mux would doubt a lidar nobody announces.
@@ -184,7 +212,7 @@ fn main() -> Result<()> {
             None
         },
         radar: if params.radar.get() {
-            Some(node.create_publisher("gazebo/radar/points".best_effort().keep_last(5))?)
+            Some(node.create_publisher("vehicle/sim/radar/points".best_effort().keep_last(5))?)
         } else {
             None
         },
@@ -215,7 +243,7 @@ fn main() -> Result<()> {
         s.announce();
     }
     let latest = Arc::clone(&shared);
-    let _cmd = node.create_subscription("gazebo/cmd_vel", move |msg: Twist| {
+    let _cmd = node.create_subscription("vehicle/sim/cmd_vel", move |msg: Twist| {
         if let Ok(mut s) = latest.lock() {
             s.command = Command::Twist {
                 speed: msg.linear.x,
@@ -229,11 +257,46 @@ fn main() -> Result<()> {
         "vehicle/sim/spawn_entity",
         move |request: SpawnEntity_Request| spawn(&spawning, &search, &request),
     )?;
+    let placing = Arc::clone(&shared);
+    let moving_models = models.clone();
+    let _set_state = node.create_service::<SetEntityState, _>(
+        "vehicle/sim/set_entity_state",
+        move |request: SetEntityState_Request| set_state(&placing, &moving_models, &request),
+    )?;
     let deleting = Arc::clone(&shared);
     let _delete = node.create_service::<DeleteEntity, _>(
         "vehicle/sim/delete_entity",
         move |request: DeleteEntity_Request| delete(&deleting, &request),
     )?;
+
+    // Lockstep with the cameras (software rendering): the clock waits for their pictures.
+    let gate = params.camera_lockstep.get().then(|| {
+        Arc::new(CameraGate::new(Duration::from_secs_f64(
+            params.camera_timeout.get(),
+        )))
+    });
+    if gate.is_some() {
+        log_info!(
+            node.logger(),
+            "camera lockstep on: the clock waits for each picture (at most {:.0} s)",
+            params.camera_timeout.get()
+        );
+    }
+    let _free_until = match &gate {
+        Some(gate) => {
+            let gate = Arc::clone(gate);
+            Some(node.create_subscription(
+                "vehicle/sim/cameras/free_until",
+                move |msg: Clock| {
+                    let t = &msg.clock;
+                    gate.free_until(
+                        u64::try_from(t.sec).unwrap_or(0) * 1_000_000_000 + u64::from(t.nanosec),
+                    );
+                },
+            )?)
+        }
+        None => None,
+    };
 
     let stop = Arc::new(AtomicBool::new(false));
     let rtf = params.real_time_factor.get();
@@ -244,7 +307,7 @@ fn main() -> Result<()> {
     let running = Arc::clone(&stop);
     let looping = std::thread::Builder::new()
         .name("simulator".into())
-        .spawn(move || run(sim, out, shared, running, rtf, logger))?;
+        .spawn(move || run(sim, out, shared, running, rtf, gate, logger))?;
 
     let commands = Arc::clone(executor.commands());
     let halting = Arc::clone(&stop);
@@ -266,6 +329,7 @@ fn run(
     shared: Arc<Mutex<Shared>>,
     stop: Arc<AtomicBool>,
     rtf: f64,
+    gate: Option<Arc<CameraGate>>,
     logger: Logger,
 ) -> Result<()> {
     let first = sim.start();
@@ -274,6 +338,7 @@ fn run(
     let mut origin_ns = 0u64;
     let mut report = Instant::now();
     let mut report_ns = 0u64;
+    let mut held = (0u32, Duration::ZERO); // lockstep: waits, and their wall time
     while !stop.load(Ordering::Relaxed) {
         let (now_command, changes) = {
             let mut s = shared
@@ -282,16 +347,33 @@ fn run(
             (s.command, std::mem::take(&mut s.changes))
         };
         for change in changes {
-            let scene = &mut sim.world_mut().scene;
             match change {
-                Change::Place { name, mesh, pose } => scene.place(&name, &mesh, &pose),
+                Change::Place {
+                    name,
+                    mesh,
+                    pose,
+                    velocity,
+                } => sim.place_model(&name, mesh, &pose, velocity),
+                Change::PlaceCar(x, y, yaw) => sim.place_car(x, y, yaw),
                 Change::Remove(name) => {
-                    scene.remove(&name);
+                    sim.remove_model(&name);
                 }
             }
         }
         let outputs = sim.step(&now_command);
+        let pose_out = outputs.iter().any(|o| matches!(o, Output::Truth(_)));
         out.publish(&sim, outputs)?;
+        if let (Some(gate), true) = (&gate, pose_out) {
+            // The cameras draw from the truth: hold the clock until they're past it.
+            match gate.wait_past(sim.time_ns()) {
+                Waited::Free => {}
+                Waited::Answered(wait) => held = (held.0 + 1, held.1 + wait),
+                Waited::TimedOut => log_warn!(
+                    &logger,
+                    "camera lockstep: no word from the cameras; running free until they speak"
+                ),
+            }
+        }
         if rtf > 0.0 {
             let due =
                 origin + Duration::from_secs_f64((sim.time_ns() - origin_ns) as f64 * 1e-9 / rtf);
@@ -307,12 +389,22 @@ fn run(
         }
         if report.elapsed() >= Duration::from_secs(30) {
             let simulated = (sim.time_ns() - report_ns) as f64 * 1e-9;
+            let lockstep = if gate.is_some() {
+                format!(
+                    "; camera lockstep held the clock {} times, {:.1} s",
+                    held.0,
+                    held.1.as_secs_f64()
+                )
+            } else {
+                String::new()
+            };
             log_info!(
                 &logger,
-                "real-time factor {:.2} over the last {:.0} s",
+                "real-time factor {:.2} over the last {:.0} s{lockstep}",
                 simulated / report.elapsed().as_secs_f64(),
                 report.elapsed().as_secs_f64()
             );
+            held = (0, Duration::ZERO);
             report = Instant::now();
             report_ns = sim.time_ns();
         }
@@ -373,10 +465,14 @@ impl Shared {
 
 /// An object to put in the world, or take away, before the next step.
 enum Change {
+    /// The car, moved: x, y (m), yaw (rad), in the map.
+    PlaceCar(f64, f64, f64),
     Place {
         name: String,
         mesh: Mesh,
         pose: Pose,
+        /// Still, or walking on at this velocity (set_entity_state's twist).
+        velocity: Velocity,
     },
     Remove(String),
 }
@@ -453,11 +549,149 @@ fn spawn(
         name: name.clone(),
         mesh,
         pose,
+        velocity: Velocity::default(),
     });
     SpawnEntity_Response {
         result: sim_result(SimResult::RESULT_OK, ""),
         entity_name: name,
     }
+}
+
+/// The car's name, as Gazebo's spawn gives it (`-name aav`).
+const CAR: &str = "aav";
+
+/// SetEntityState: put the car at a pose next step, standing still (Gazebo's set_pose).
+fn set_state(
+    shared: &Mutex<Shared>,
+    models: &[PathBuf],
+    request: &SetEntityState_Request,
+) -> SetEntityState_Response {
+    let answer = |code: u8, why: String| SetEntityState_Response {
+        result: sim_result(code, why),
+    };
+    let frame = request.state.header.frame_id.trim_start_matches('/');
+    if !matches!(frame, "" | "world" | "map") {
+        return answer(
+            SimResult::RESULT_OPERATION_FAILED,
+            format!("the pose must be in the map (the world), not {frame}"),
+        );
+    }
+    let t = &request.state.twist;
+    if request.entity != CAR {
+        return move_model(shared, models, request);
+    }
+    let moving = [
+        t.linear.x,
+        t.linear.y,
+        t.linear.z,
+        t.angular.x,
+        t.angular.y,
+        t.angular.z,
+    ]
+    .iter()
+    .any(|v| *v != 0.0);
+    if moving {
+        return answer(
+            SimResult::RESULT_OPERATION_FAILED,
+            "the car is placed standing still: give a zero twist".into(),
+        );
+    }
+    let p = &request.state.pose;
+    let q = &p.orientation;
+    let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    let norm = (q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z).sqrt();
+    if !(p.position.x.is_finite() && p.position.y.is_finite() && (norm - 1.0).abs() < 0.01) {
+        return answer(
+            SetEntityState_Response::INVALID_POSE,
+            "the position must be finite and the quaternion a unit one".into(),
+        );
+    }
+    match shared.lock() {
+        Ok(mut s) => {
+            s.changes
+                .push(Change::PlaceCar(p.position.x, p.position.y, yaw));
+            answer(SimResult::RESULT_OK, String::new())
+        }
+        Err(_) => answer(
+            SimResult::RESULT_OPERATION_FAILED,
+            "the simulator's lock is poisoned".into(),
+        ),
+    }
+}
+
+/// SetEntityState for a placed model: put it at state.pose (map frame; x, y, z, yaw), then
+/// moving at state.twist (map frame: linear x and y, angular z; zero: it stands), as
+/// Gazebo's. A person crossing the road (TODO 170). The cameras see where it was put.
+fn move_model(
+    shared: &Mutex<Shared>,
+    models: &[PathBuf],
+    request: &SetEntityState_Request,
+) -> SetEntityState_Response {
+    let answer = |code: u8, why: String| SetEntityState_Response {
+        result: sim_result(code, why),
+    };
+    let t = &request.state.twist;
+    if [t.linear.z, t.angular.x, t.angular.y]
+        .iter()
+        .any(|v| *v != 0.0)
+    {
+        return answer(
+            SimResult::RESULT_OPERATION_FAILED,
+            "a model moves on the ground: linear x, y and angular z only".into(),
+        );
+    }
+    let velocity = Velocity {
+        x: t.linear.x,
+        y: t.linear.y,
+        yaw_rate: t.angular.z,
+    };
+    let p = &request.state.pose;
+    let q = &p.orientation;
+    let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    let finite = [
+        p.position.x,
+        p.position.y,
+        p.position.z,
+        velocity.x,
+        velocity.y,
+    ]
+    .iter()
+    .chain([velocity.yaw_rate].iter())
+    .all(|v| v.is_finite());
+    if !finite {
+        return answer(
+            SetEntityState_Response::INVALID_POSE,
+            "the pose and the twist must be finite".into(),
+        );
+    }
+    let Ok(mut s) = shared.lock() else {
+        let why = "the simulator's lock is poisoned".to_string();
+        return answer(SimResult::RESULT_OPERATION_FAILED, why);
+    };
+    let Some((file, _)) = s.placed.get(&request.entity).cloned() else {
+        let why = format!(
+            "nothing called {} was placed (the car is {CAR})",
+            request.entity
+        );
+        return answer(SimResult::RESULT_NOT_FOUND, why);
+    };
+    let mesh = match World::model_mesh(&file, models, Surfaces::Visual) {
+        Ok(mesh) => mesh,
+        Err(e) => return answer(SimResult::RESULT_OPERATION_FAILED, e.to_string()),
+    };
+    let pose = Pose::new(
+        Vec3::new(p.position.x, p.position.y, p.position.z),
+        Rot3::from_yaw(yaw),
+    );
+    s.placed.insert(request.entity.clone(), (file, pose));
+    s.announce();
+    s.changes.push(Change::Place {
+        name: request.entity.clone(),
+        mesh,
+        pose,
+        velocity,
+    });
+    answer(SimResult::RESULT_OK, String::new())
 }
 
 /// DeleteEntity: take a placed object away next step.
@@ -684,10 +918,14 @@ struct Params {
     rear_overhang: ReadOnlyParameter<f64>,
     body_height: ReadOnlyParameter<f64>,
     seed: ReadOnlyParameter<i64>,
+    wheel_noise: ReadOnlyParameter<f64>,
+    wheel_slip: ReadOnlyParameter<f64>,
     step: ReadOnlyParameter<f64>,
     clock_hz: ReadOnlyParameter<f64>,
     real_time_factor: ReadOnlyParameter<f64>,
     threads: ReadOnlyParameter<i64>,
+    camera_lockstep: ReadOnlyParameter<bool>,
+    camera_timeout: ReadOnlyParameter<f64>,
 }
 
 impl Params {
@@ -739,10 +977,14 @@ impl Params {
             rear_overhang: number("rear_overhang", 0.2)?,
             body_height: number("body_height", 1.5)?,
             seed: node.declare_parameter("seed").default(1).read_only()?,
+            wheel_noise: number("wheel_noise", 0.0)?,
+            wheel_slip: number("wheel_slip", 0.0)?,
             step: number("step", 0.001)?,
             clock_hz: number("clock_hz", 1000.0)?,
             real_time_factor: number("real_time_factor", 1.0)?,
             threads: node.declare_parameter("threads").default(4).read_only()?,
+            camera_lockstep: flag("camera_lockstep", false)?,
+            camera_timeout: number("camera_timeout", 10.0)?,
         })
     }
 }

@@ -1,5 +1,5 @@
-//! Nav2's cubes: what the voxels trial (aav_voxels, `voxels:=true`) tells the costmap
-//! and collision_monitor to stop for. The screen's own cubes are its own reading of the
+//! The costmap's cubes: what the voxels trial (aav_voxels, `voxels:=true`) tells the costmap
+//! and the stop zone to stop for. The screen's own cubes are its own reading of the
 //! lidar; these are Nav2's, drawn over them as red wireframes (key V).
 //!
 //! `/perception/voxels/cubes` is a PointCloud2 in base_link, stamped with the lidar
@@ -22,7 +22,7 @@ use crate::{
 };
 use map_core::geom::Pose;
 
-/// What Nav2's cubes need from the settings.
+/// What the costmap's cubes need from the settings.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VoxelSettings {
     /// One cube's edge (aav_voxels' `size`).
@@ -31,7 +31,7 @@ pub struct VoxelSettings {
     pub max_cubes: usize,
 }
 
-/// Nav2's cubes from one cloud, in odom.
+/// The costmap's cubes from one cloud, in odom.
 ///
 /// `points` are the cube centres in the cloud's frame; `cloud_to_base` takes them to
 /// base_link; `car` is base_link's pose in odom at the cloud's stamp. Over
@@ -75,6 +75,10 @@ pub fn build(
 
 /// One `/perception/voxels/cubes` cloud, start to finish: its frame (base_link, or one
 /// `/tf_static` knows), the pose at its stamp, its points.
+///
+/// # Errors
+///
+/// [`ScanError`] if the cloud can't be read, its frame isn't known, or there's no pose at its stamp.
 pub fn place(
     view: &CloudView<'_>,
     frame: &str,
@@ -100,6 +104,8 @@ pub enum Road {
 }
 
 impl Road {
+    /// From the status message's level: 0 (OK) is fitted.
+    #[must_use]
     pub fn from_level(level: u8) -> Self {
         if level == 0 {
             Self::Fitted
@@ -109,6 +115,7 @@ impl Road {
     }
 
     /// The panel's word.
+    #[must_use]
     pub fn word(self) -> &'static str {
         match self {
             Self::Fitted => "OK",
@@ -120,6 +127,7 @@ impl Road {
 /// What the panel shows of `/perception/voxels/status`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VoxelStatus {
+    /// Whether the road's tilt was fitted.
     pub road: Road,
     /// The node's own words: "road fitted", or why it took the road as flat.
     pub message: String,
@@ -129,8 +137,11 @@ pub struct VoxelStatus {
     pub cubes: Option<u64>,
     /// Flat squares of road seen (they clear the costmap).
     pub ground_cubes: Option<u64>,
+    /// Points in the cloud.
     pub points: Option<u64>,
+    /// The road's roll (degrees).
     pub roll_deg: Option<f64>,
+    /// The road's pitch (degrees).
     pub pitch_deg: Option<f64>,
     /// Clouds that came while one was being worked on.
     pub clouds_dropped: Option<u64>,
@@ -173,6 +184,7 @@ impl VoxelStatus {
     }
 
     /// The big numbers, in one short line: "412 cubes   3.2 ms".
+    #[must_use]
     pub fn numbers(&self) -> String {
         let mut parts = Vec::new();
         if let Some(n) = self.cubes {
@@ -185,6 +197,7 @@ impl VoxelStatus {
     }
 
     /// The road's fit and the smaller numbers.
+    #[must_use]
     pub fn details(&self) -> String {
         let mut parts = vec![self.message.clone()];
         if let (Some(r), Some(p)) = (self.roll_deg, self.pitch_deg) {

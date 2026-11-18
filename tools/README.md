@@ -30,7 +30,7 @@ Folders: [foxglove/](./foxglove/README.md) (the Foxglove/Lichtblick layouts),
 
 The `Task` column is `pixi run <task>`. "-" means no task: run the script itself, as
 `pixi run python3 tools/<script>.py` or `pixi run bash tools/<script>.sh`. "- (ros.sh)" needs
-ROS: `pixi run tools/ros.sh python3 tools/<script>.py`; "- (ros.sh --local)" starts Gazebo,
+ROS: `pixi run tools/ros.sh python3 tools/<script>.py`; "- (ros.sh --local)" starts Ravensim,
 so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 
 ### Tests and checks
@@ -39,11 +39,11 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 |---|---|---|
 | `test.sh` | every test that needs no ROS: Python units, Rust, interfaces.md, stand-ins stay local | inside `test` |
 | `lint.sh` | ament_flake8 and ament_pep257 on our Python | `lint` |
+| `release_charts/` | the 0.4 guide's charts (`charts.py <out dir>`) and its screenshot crops (`crop.py`); run by hand with matplotlib and Pillow | by hand |
 | `check_graph.py` | the running graph against `docs/interfaces.yaml`; then `/localization/health`'s line (warn only) | `check <profile>` |
 | `bench_check.py` | starts bench mode, tests the whole graph: contract, drive, e-stops | `bench-check` |
-| `sim_check.py` | Gazebo's road world headless, the whole graph, a drive (`--voxels`: Nav2 on the lidar's cubes) | `sim-check` |
+| `sim_check.py` | Ravensim's road world headless, the whole graph, a drive (`--voxels`: the costmap on the lidar's cubes) | `sim-check` |
 | `drop_in_check.py`, `drop_in.py` | is what's running a true drop-in: each stream's rate and frame against the contract's `drop_in` rules (`drop_in.py`: the logic, no ROS) | `drop-in` |
-| `gz_crash.py` | did Gazebo itself crash at start-up? (sim-check retries once) | - |
 | `layout_check.py` | is every topic in `foxglove/` served by a bridge? | - |
 | `ci_annotate.py` | a failed test log into GitHub annotations | (CI) |
 
@@ -74,7 +74,8 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `clear.sh` | a person clears the e-stop or a safety latch | `clear <estop, gate, geofence, watchdog>` |
 | `drive_to_point.sh` | drive to one point and stop (`--sim`) | `drive-to-point` |
 | `keyboard.sh` | teleop_twist_keyboard into `/drivers/keyboard/cmd_vel` (`--sim`, `--local`) | `keyboard` |
-| `record.sh` | records a drive into `bags/` (MCAP), with what the Motor Pi wrote for `link_check.py` | - |
+| `record.sh` | records a drive into `bags/` (MCAP): inputs, commands, and what the stack saw and decided (the front camera as JPEG, the locks, the road ahead); what the Motor Pi wrote for `link_check.py`. Run it through pixi (`pixi run tools/record.sh`): pixi sets Cyclone's participant limit | - |
+| `score_drive.py` | one scorecard for any recorded drive, sim or car: time, distance, top speed, time over the road ahead's limit, passes beyond its end, metres off the plan, holds, locks, a person driving (`--json`) | - (ros.sh) |
 | `replay_commands.sh` | plays a bag's commands into `/drivers/replay/cmd_vel` (no flags, never local) | - |
 | `build_engine.py` | the Orin's TensorRT model, on the Orin (JetPack's Python) | - |
 | `calibrate_camera.py` | calibrate a streamed camera; print the board | `calibrate-camera` |
@@ -88,25 +89,25 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `dev_window.sh` | the developer window (Bevy): pretend data, `--live` beside a sim here, or `--watch` | `dev-window` |
 | `sim_cameras.sh` | our simulator's cameras (Bevy, offscreen): the timing check, `--bench`, `--save`; `--ros` publishes the camera topics, here only | `sim-cameras` |
 | `screen.sh` | one of the four raylib screens, live or with pretend data (`--demo`) | `hud`, `map`, `debug-hud`, `hw-panel` |
-| `demo_all.sh` | Gazebo, RViz, the HUD and the map window in one go (`--debug`: the debug HUD too) | `demo` |
+| `ravensim.sh` | Ravensim and the developer window live on it, one process group; sim switches pass through (`world:=campus` adds its RavenTiles and lanes) | `ravensim` |
+| `demo_all.sh` | Ravensim, RViz, the HUD and the map window in one go (`--debug`: the debug HUD too) | `demo` |
 | `pick.py` | a plain-words menu of the sim's switches (route, follower, where-am-I, speed loop): prints, saves and runs the command (`docs/switches.md`) | `pick` |
-| `sim_fault.sh` | make a Gazebo sensor fail on purpose, or mend it | `sim-fault` |
-| `gz_window.sh` | Gazebo's window again, following the car | - (ros.sh) |
-| `software_gl.sh` | Mesa's software OpenGL, for Gazebo with no GPU | - (put in front) |
+| `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
+| `software_gl.sh` | Mesa's software renderer with no GPU: Vulkan (lavapipe) for Ravensim's cameras, which then run in lockstep (it exports `AAV_SOFTWARE_GL=1`); `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
-| `controller_compare.py` | Regulated Pure Pursuit against MPPI, and the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
+| `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
 | `diffusion.sh` | the diffusion planner trial's family: `data`, `train`, `score` (`models/diffusion/`) | `diffusion <data, train, score>` |
-| `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: map_server and planner_server only, no Gazebo | `diffusion data` |
+| `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: our global costmap and planner, as the stack runs them, through `aav_planner`'s `teach` example (no ROS, no simulator; Nav2's servers until 17 Nov, TODO 242) | `diffusion data` |
 | `lattice_primitives.py` | the State Lattice planner's primitives for our car, by Nav2's generator (`--check`: still right for `vehicle.yaml`?) | - (needs `pixi run get vendor`) |
-| `heading_check.py` | the global EKF's heading against Gazebo's truth | - (ros.sh --local) |
-| `campus_world.py` | Carleton from OpenStreetMap: a Gazebo world, one Nav2 map of the whole campus, and NDT's guessed map (tested without ROS) | `campus` |
+| `lattice_smooth.py` | the lattice's smooth moves (`lattice_moves:=smooth`, `smooth_fast`): curvature no faster than the steering turns; our own generator, no ROS (`--check`) | - |
+| `heading_check.py` | the global EKF's heading against Ravensim's truth | - (ros.sh --local) |
+| `campus_world.py` | Carleton from OpenStreetMap: a Ravensim world (SDF), its RavenTiles, one map of the whole campus (Nav2's PGM format), and NDT's guessed map (tested without ROS) | `campus` |
 | `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag (its maths without ROS) | `ndt-map` |
-| `gazebo_steering.py` | how much later Gazebo's wheels turn than the actuator model's (run with `tools/ros.sh --local`) | - |
 | `timing_test.py` | every topic's gaps and late messages, parked and driving | `measure timing` |
-| `stream_check.py` | the camera stream end to end, without the car | `measure stream` |
+| `stream_check.py` | the camera stream end to end, without the car (`--impl rust\|python`: which node; CPU and memory of each program) | `measure stream` |
 | `sim_frames.py` | camera pictures of the sim's stop sign, for the detectors | - |
 | `make_stop_sign.py` | the road world's stop-sign mesh and picture | - |
-| `make_map.py` | a Nav2 map (PGM + YAML) from a short spec | - |
+| `make_map.py` | a map (PGM + YAML, Nav2's format) from a short spec | - |
 
 ### Network
 
@@ -154,12 +155,15 @@ Each lands outside git, checksum pinned where the script says.
 | `topic_load.py` | the numbers behind `measure bandwidth` (no ROS) | - |
 | `stalls.py` | the numbers behind `measure timing` (no ROS) | - |
 | `drive_metrics.py` | the numbers behind `measure controllers` (no ROS) | - |
-| `measure.sh` | picks one of the five measurements below and runs it (Gazebo ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
+| `lane_score.py` | the numbers behind `measure lane` (no ROS); run alone on `measure controllers`' `results.json`: did each run keep right, by the lane map (off centre, in the lane, over the left line and how often, past the kerb) | - |
+| `scorecard.py` | the numbers behind `score_drive.py` (no ROS) | - |
+| `measure.sh` | picks one of the five measurements below and runs it (the simulator ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
 | `link_check.py` | did the Motor Pi's frames reach the ESP32? A bag (or the live topics) against the ESP32's status lines: PASS, FAIL, NOT TESTED (its maths without ROS) | `link-check` |
 | `atob_score.py` | scores A-to-B runs (bag or CSV): speed up, hold, stop on B; EKF vs truth or tape | `measure atob` |
 | `can_load.py` | the CAN bus load from `firmware/can/aav.dbc` | - |
 | `compare_detectors.py` | YOLO11, YOLO26 and RF-DETR on the same pictures | - |
-| `export_model.py` | a detector to Core ML (Mac) or ONNX (Orin) | - (`pixi run -e ml python3 tools/export_model.py --format coreml`) |
+| `export_model.py` | a detector to Core ML (Mac) or ONNX (Orin, and the Rust detector) | - (`pixi run -e ml python3 tools/export_model.py --format coreml`) |
+| `onnx_check.py` | the ONNX detector's boxes against PyTorch's, and each runtime's ms a picture (`--time`); `--write-fixtures` for `detector-core`'s tests ([ONNX](../docs/onnx.md)) | - (`pixi run -e ml python3 tools/onnx_check.py`) |
 | `vehicle_model.py` | the car's linear model: poles, steps, margins | - |
 | `state_space_demo.py` | the state-space teaching example | - |
 | `measure_map.py` | the measuring map: tape route, pictures, readings into `vehicle.yaml` (no ROS) | - |
@@ -179,8 +183,8 @@ Each lands outside git, checksum pinned where the script says.
 
 ## Invariants
 
-- **Stand-ins stay local.** turtle, sim, bench, view, demo and their checks run through
-  `tools/ros.sh --local`; so do `hw-panel`, `sim-cameras --ros` and the Gazebo measurements, inside `screen.sh`
+- **Stand-ins stay local.** turtle, sim, bench, view, demo, ravensim and their checks run through
+  `tools/ros.sh --local`; so do `hw-panel`, `sim-cameras --ros` and the simulator measurements, inside `screen.sh`
   and `measure.sh`. `test.sh` checks the list; give any new stand-in task the same.
 - **A family's script lists its choices** when run with no word or a wrong one, and
   exits 2 (`clear.sh`, `diffusion.sh`, `get.sh`, `measure.sh`, `pico.sh`, `screen.sh`, `esp32.sh`).
@@ -188,7 +192,7 @@ Each lands outside git, checksum pinned where the script says.
   type a word first. `actuator_test` caps its own speed (1 m/s; 0.3 m/s on `--stands`);
   `drive_to_point.sh` has no cap of its own and relies on ego's `max_speed` (1 m/s by default).
 - **Portable for Macs**: bash 3.2, no GNU-only flags, no Linux-only serial speeds.
-- **Logic without ROS** (`topic_load.py`, `stalls.py`, `drive_metrics.py`, `mcp_parts.py`)
+- **Logic without ROS** (`topic_load.py`, `stalls.py`, `drive_metrics.py`, `scorecard.py`, `mcp_parts.py`)
   has its own tests in `tools/tests/`.
 - **`mcp_server.py` only reads**: no call that writes to ROS, no file outside git
   (`tests/test_mcp_parts.py`).
@@ -207,13 +211,13 @@ Each lands outside git, checksum pinned where the script says.
 
 | Scripts | Touch |
 |---|---|
-| checks, sim, stand-ins | start ROS and Gazebo processes on this computer |
+| checks, sim, stand-ins | start ROS and Ravensim processes on this computer |
 | `actuator_test.sh`, `drive_to_point.sh` without `--sim`; `keyboard.sh` without `--sim` or `--local` | **move the real car** |
 | `replay_commands.sh` (always: it has no `--sim`) | **moves whatever shares the ROS domain**: on the car's network, the car |
 | `get.sh`, `get_*.sh`, `vendor.py`, `car_kit.sh` | download into `vendor/` (`car_kit.sh` caches in `vendor/car-kit-cache`), `models/`, `maps/`, `car-kit/` |
 | `car_day_build.sh` | writes `car-day/esp32/` and `docs/html/` |
 | `build_docs.py`, `graph_picture.py`, `vehicle_model.py`, `state_space_demo.py`, `measure_map.py` | write `docs/html/`, `docs/img/` (`measure_map.py` also its table in `docs/measure-the-car.md`) |
-| `make_stop_sign.py`, `make_map.py` | write the stop sign's files in `ros/sim/aav_gazebo/models/`; a map's PGM and YAML |
+| `make_stop_sign.py`, `make_map.py` | write the stop sign's files in `ros/sim/aav_sim_models/models/`; a map's PGM and YAML |
 | `record.sh` | writes `bags/` |
 | `esp32.sh flash`, `esp32.sh walk` (once `flash` is typed), `pico.sh <board> flash`, `legacy_firmware.sh -t upload` | write a board's flash (bench only) |
 | `esp32_walk.py` | writes `bench-logs/`: the record, the first check's log, the copy of the C++ (a secret inside) |

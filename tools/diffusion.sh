@@ -6,11 +6,11 @@
 # usage: tools/diffusion.sh <what> [args]   (pixi run diffusion <what>)
 #
 #   data   the teachers' paths: map_server and planner_server (the lattice, Hybrid-A*) on
-#          random maps, no Gazebo, on this computer only (about 10 min for 800 maps)
+#          random maps, no simulator, on this computer only (about 10 min for 800 maps)
 #   train  the dataset, the model (flow matching), its score by the guard, planner.onnx
 #          (in the learn environment: pixi install --locked -e learn, once)
 #   score  the guard's score of the trained model again, on the held-back maps
-#   replay the plans a Gazebo run recorded (diffusion_record:=), through a model, offline
+#   replay the plans a sim run recorded (diffusion_record:=), through a model, offline
 #   export the trained weights to ONNX again: planner.onnx, and --fp16 planner_fp16.onnx
 #
 # Each one's --help lists its options. Portable: bash 3.2 (a Mac), no GNU-only flags.
@@ -20,10 +20,10 @@ LEARN=.pixi/envs/learn/bin/python
 
 usage() {
   echo "usage: pixi run diffusion <data|train|score|replay|export> [args]" >&2
-  echo "  data   the lattice's and Hybrid-A*'s paths on random maps (no Gazebo)" >&2
+  echo "  data   the lattice's and Hybrid-A*'s paths on random maps (no simulator)" >&2
   echo "  train  train the model on them, score it, export models/diffusion/planner.onnx" >&2
   echo "  score  score the trained model again with the guard" >&2
-  echo "  replay replay a Gazebo run's recorded plans through a model, offline" >&2
+  echo "  replay replay a sim run's recorded plans through a model, offline" >&2
   echo "  export the weights to ONNX again (--fp16: planner_fp16.onnx too)" >&2
   exit 2
 }

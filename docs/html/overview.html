@@ -7,9 +7,13 @@
 <!-- Generated from docs/overview.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Overview: everything in ecolo-av</h1>
-<div class="meta">14 min read · 6 sections</div></header>
+<div class="meta">16 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a class="here" href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -116,8 +128,8 @@
 <nav class="toc"><span>On this page:</span><a href="#in-numbers">In numbers</a><a href="#the-folders">The folders</a><a href="#our-own-code">Our own code</a><a href="#stock-ros-packages-and-plugins-we-use">Stock ROS packages and plugins we use</a><a href="#code-from-the-previous-teams">Code from the previous teams</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>The whole project on one page: what's in the repo, the stock ROS packages and plugins it
 uses, the code it took from the 2025-26 and 2024-25 teams, and what's still missing. Each
-section links to the page with the details. Counts checked on 25 October 2026; every
-package, one per row: <a href="packages.html">Packages</a>.</p></div>
+section links to the page with the details. Counts checked on 14 November 2026; every
+package, one per row: <a href="packages.html">Packages</a>. What works: <a href="status.html">Status</a>.</p></div>
 <section class="card"><h2 id="in-numbers">In numbers</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -128,12 +140,12 @@ package, one per row: <a href="packages.html">Packages</a>.</p></div>
 </thead>
 <tbody>
 <tr>
-<td>ROS packages that build</td>
-<td>37: 23 in Python, 14 in CMake (some of them Rust)</td>
+<td>ROS packages</td>
+<td>51: 30 in Python, 21 in CMake (12 of them Rust nodes). Plus two Bevy crates outside colcon: the developer window and Ravensim's cameras</td>
 </tr>
 <tr>
 <td>Rust firmware crates</td>
-<td>13 (<code>spine-core</code>, <code>aav-inputs</code>, device drivers, glue), and 4 board programs: the spine on today's ESP32 and on a Pico 2, the wheel encoder, the status display</td>
+<td>15 (<code>spine-core</code>, <code>aav-inputs</code>, device drivers, glue, the status lines, the firmware update), and 4 board programs: the spine on today's ESP32 and on a Pico 2, the wheel encoder, the status display</td>
 </tr>
 <tr>
 <td>The 2025-26 team's firmware boards, in C++</td>
@@ -145,7 +157,7 @@ package, one per row: <a href="packages.html">Packages</a>.</p></div>
 </tr>
 <tr>
 <td>Computers in the machine files</td>
-<td>4: <code>orin</code>, <code>motor_pi</code>, <code>laptop</code>, <code>all</code></td>
+<td>6: <code>orin</code>, <code>motor_pi</code>, <code>motor_pi_alone</code>, <code>localization</code>, <code>laptop</code>, <code>all</code></td>
 </tr>
 <tr>
 <td>Contracts</td>
@@ -153,11 +165,11 @@ package, one per row: <a href="packages.html">Packages</a>.</p></div>
 </tr>
 <tr>
 <td>Tests</td>
-<td><code>pixi run test</code>: 1110 on 25 Oct, 0 failures (<a href="status.html">Status</a>); plus <code>bench-check</code> and <code>sim-check</code></td>
+<td><code>pixi run test</code>: 1110 on 25 Oct, 1575 on 3 Nov, 0 failures (<a href="status.html">Status</a>); plus <code>bench-check</code> and <code>sim-check</code></td>
 </tr>
 <tr>
 <td>Tools</td>
-<td>about 70 scripts and 80 <code>pixi run</code> tasks</td>
+<td>about 100 scripts and 45 <code>pixi run</code> tasks (89 before 1 Nov)</td>
 </tr>
 </tbody>
 </table></div>
@@ -209,16 +221,16 @@ package, one per row: <a href="packages.html">Packages</a>.</p></div>
 </tr>
 <tr>
 <td><code>pixi.toml</code>, <code>pixi.lock</code></td>
-<td>the whole environment: ROS 2 Jazzy, Gazebo, Nav2, Rust, compilers</td>
+<td>the whole environment: ROS 2 Jazzy, Rust, compilers</td>
 <td><a href="infrastructure.html">Infrastructure</a></td>
 </tr>
 </tbody>
 </table></div>
 </section>
 <section class="card"><h2 id="our-own-code">Our own code</h2>
-<p>Written for 2026-27. Most packages are configuration around stock ROS packages; four
-nodes hold real logic of our own (ego, the spine bridge, the scripted driver, the lane
-finder).</p>
+<p>Written for 2026-27. The car's defaults are still mostly configuration around stock ROS
+packages, with ego, the muxes, the bridges and the safety locks our own. Since 29 Oct we
+also write our own algorithms, each a trial beside its stock default (the second table).</p>
 <p>The main ones. Every package: <a href="packages.html">Packages</a>.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -276,12 +288,12 @@ finder).</p>
 </tr>
 <tr>
 <td><code>aav_navigation</code></td>
-<td>Nav2 set up for a car, and the maps</td>
+<td>our navigation set up for a car (each node a port of a Nav2 server), and the maps</td>
 <td>drivers</td>
 </tr>
 <tr>
 <td><code>aav_routes</code></td>
-<td>street routes (Valhalla) as GPS waypoints for Nav2</td>
+<td>street routes (Valhalla) as GPS waypoints for the navigator</td>
 <td>drivers</td>
 </tr>
 <tr>
@@ -316,7 +328,7 @@ finder).</p>
 </tr>
 <tr>
 <td><code>aav_interfaces</code></td>
-<td>our messages: <code>VehicleStatus</code>, <code>ScriptedDrive</code></td>
+<td>our messages and actions: <code>VehicleStatus</code>, <code>WheelSpeeds</code>, <code>Heartbeat</code>, <code>DataSource</code>, <code>ScriptedDrive</code>, <code>DriveToPoint</code> and more</td>
 <td>ecolo_msgs</td>
 </tr>
 <tr>
@@ -331,18 +343,28 @@ finder).</p>
 </tr>
 <tr>
 <td><code>aav_safety</code>, <code>aav_ghost</code></td>
-<td>the sensor watchdog (a twist_mux lock, 30); a pretend person only Nav2 sees</td>
+<td>the sensor watchdog, the geofence, the stop hold and the joystick-alive check (twist_mux locks); a pretend person only navigation sees</td>
 <td>safety</td>
 </tr>
 <tr>
-<td><code>aav_turtlesim</code>, <code>aav_gazebo</code>, <code>aav_carla</code></td>
-<td>the turtle, Gazebo's car, a CARLA car (untested)</td>
+<td><code>aav_simulator</code>, <code>aav_sim_cameras</code></td>
+<td>Ravensim in Rust, the default since 8 Nov, and its cameras (Bevy)</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><code>aav_bringup</code></td>
-<td>the profiles, the machine files (each picks its parts, perception too), the RViz layout</td>
+<td><code>aav_turtlesim</code>, <code>aav_simulator</code>, <code>aav_sim_models</code>, <code>aav_carla</code></td>
+<td>the turtle, Ravensim's car, a CARLA car (untested)</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>aav_bringup</code>, <code>aav_run_info</code></td>
+<td>the profiles, the machine files (each picks its parts, perception too), the RViz layout; which algorithms a run uses (<code>/system/algorithms</code>)</td>
 <td>bringup</td>
+</tr>
+<tr>
+<td><code>aav_hud</code>, <code>aav_dev_window</code></td>
+<td>the HUD, the map window, the debug screen and the hardware panel (Rust, raylib); the developer window (Bevy)</td>
+<td>hud</td>
 </tr>
 <tr>
 <td><code>aav_spine_sim</code>, <code>aav_bench</code></td>
@@ -381,8 +403,52 @@ finder).</p>
 </tr>
 <tr>
 <td><code>aav_lidar</code></td>
-<td>the roof lidar's cloud as a 2D scan for Nav2</td>
+<td>the roof lidar's cloud as a 2D scan for the costmap and the stop zone</td>
 <td>perception</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="trials-ours-beside-the-stock-default">Trials: ours, beside the stock default</h3>
+<p>Off unless a switch turns them on; in the simulator only, except where it says
+(<a href="switches.html">Switches</a>, <a href="trials.html">Trials</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Does</th>
+<th>Area</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aav_ndt</code>, <code>aav_kiss_icp</code>, <code>aav_localization_health</code></td>
+<td>NDT on a saved lidar map (Rust); KISS-ICP lidar odometry (stock, MIT); health checks that only warn (on by default)</td>
+<td>localization</td>
+</tr>
+<tr>
+<td><code>aav_voxels</code></td>
+<td>the lidar as 0.25 m cubes for the costmap</td>
+<td>perception</td>
+</tr>
+<tr>
+<td><code>aav_track</code>, <code>aav_mppi_lag</code></td>
+<td>path followers: pure pursuit, Stanley, LQR, MPC, a lag-aware MPC; Nav2's MPPI in Rust on a model with the car's lags</td>
+<td>drivers</td>
+</tr>
+<tr>
+<td><code>aav_costmap</code>, <code>aav_planner</code>, <code>aav_navigator</code>, <code>aav_smoother</code></td>
+<td>Nav2's costmap, State Lattice planner, navigator and velocity smoother, ported to Rust: the defaults since 17 Nov</td>
+<td>drivers</td>
+</tr>
+<tr>
+<td><code>aav_diffusion_planner</code></td>
+<td>a small model draws the path, a guard checks it, the lattice is the fallback</td>
+<td>drivers</td>
+</tr>
+<tr>
+<td><code>aav_behaviour</code></td>
+<td>the behaviour planner: a speed cap on navigation before a stop sign, an obstacle, the fence and the goal</td>
+<td>drivers</td>
 </tr>
 </tbody>
 </table></div>
@@ -454,6 +520,11 @@ finder).</p>
 <td>a fixed map-to-odom frame when there's no GPS</td>
 </tr>
 <tr>
+<td>Localization</td>
+<td><code>nav2_amcl</code> (kept, with its lifecycle manager, when the rest of Nav2 went); KISS-ICP (not ROS, MIT)</td>
+<td>trials beside the EKFs, off by default</td>
+</tr>
+<tr>
 <td>Drivers</td>
 <td><code>joy</code>, <code>teleop_twist_joy</code>, <code>joy_teleop</code></td>
 <td>the joystick, its deadman, its e-stop button</td>
@@ -464,9 +535,9 @@ finder).</p>
 <td>driving from a laptop's keyboard</td>
 </tr>
 <tr>
-<td>Drivers</td>
-<td>Nav2: 8 servers (map, planner, controller, behaviours, navigator, waypoints, velocity smoother, lifecycle)</td>
-<td>plans and drives to a goal</td>
+<td>Messages</td>
+<td><code>nav2_msgs</code></td>
+<td>Nav2's action and message types: our navigator, planner and follower serve Nav2's names, so goal senders never changed. Nav2's servers went on 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>)</td>
 </tr>
 <tr>
 <td>The mux</td>
@@ -480,8 +551,8 @@ finder).</p>
 </tr>
 <tr>
 <td>Backends</td>
-<td><code>turtlesim</code>; <code>ros_gz</code> with Gazebo Harmonic</td>
-<td>the turtle; the simulated car</td>
+<td><code>turtlesim</code></td>
+<td>the turtle (the simulated car is ours: Ravensim; Gazebo until 16 Nov)</td>
 </tr>
 <tr>
 <td>Watching</td>
@@ -505,7 +576,7 @@ finder).</p>
 </tr>
 </tbody>
 </table></div>
-<h3 id="the-plugins-inside-nav2-and-gazebo">The plugins inside Nav2 and Gazebo</h3>
+<h3 id="the-plugins-inside-nav2-until-17-nov-and-gazebo-until-16-nov">The plugins inside Nav2 (until 17 Nov) and Gazebo (until 16 Nov)</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -517,8 +588,8 @@ finder).</p>
 <tbody>
 <tr>
 <td>Nav2 planner</td>
-<td><code>SmacPlannerHybrid</code></td>
-<td>plans paths a car can drive: no turning on the spot</td>
+<td><code>SmacPlannerLattice</code> (the default since 1 Nov); <code>SmacPlannerHybrid</code> forward only</td>
+<td>plans paths a car can drive: no turning on the spot. <code>SmacPlanner2D</code>, NavFn and Theta* in the simulator only</td>
 </tr>
 <tr>
 <td>Nav2 controller</td>
@@ -702,12 +773,12 @@ avoidance, odometry and QNX layer. <a href="older-code.html">The older code</a> 
 </tr>
 <tr>
 <td>The car</td>
-<td>every measurement in <code>vehicle.yaml</code> (Q1); the steering calibration (Q2); Jazzy on its computers (Q24)</td>
+<td>most measurements in <code>vehicle.yaml</code> (Q1: the wheelbase and track are in, 1 Nov); the steering calibration (Q2); our full suite on its computers (13 Nov: only the localization update is installed)</td>
 <td><a href="car_measurements.html">Car numbers</a></td>
 </tr>
 <tr>
 <td>Navigation</td>
-<td>the real test site's map (Q21); N7 (the EKF's GPS heading jumps); the radar's real mount. Reversing on the car: off by default until the wheels tell direction (H5, 26 Oct); <code>reversing:=true</code> where the lidar sees behind</td>
+<td>the real test site's map (Q21); N7 (the EKF's GPS heading jumps); the radar's real mount. Reversing on the car: on by default again since 1 Nov, where the lidar sees behind; until the wheels tell direction (H5) the speed's sign is the last command's</td>
 <td><a href="costmaps.html">Costmaps</a></td>
 </tr>
 <tr>
@@ -722,7 +793,7 @@ avoidance, odometry and QNX layer. <a href="older-code.html">The older code</a> 
 </tr>
 <tr>
 <td>Simulation</td>
-<td>CARLA: adapter ready, never run (needs the NVIDIA computer). Bench mode works: <a href="bench.html">Bench mode</a></td>
+<td>CARLA: adapter ready, never run (needs the NVIDIA computer). Ravensim's cameras need a GPU. Bench mode works: <a href="bench.html">Bench mode</a></td>
 <td><a href="carla.html">CARLA</a></td>
 </tr>
 <tr>
@@ -732,8 +803,8 @@ avoidance, odometry and QNX layer. <a href="older-code.html">The older code</a> 
 </tr>
 </tbody>
 </table></div></section>
-<nav class="prevnext"><a class="prev" href="index.html"><small>Previous</small>← Start here</a>
-<a class="next" href="release-notes.html"><small>Next</small>Release notes →</a></nav>
+<nav class="prevnext"><a class="prev" href="what-we-built.html"><small>Previous</small>← What we built</a>
+<a class="next" href="release-0.4.html"><small>Next</small>0.4-rc1 →</a></nav>
 </main>
 <footer>Source: <code>docs/overview.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

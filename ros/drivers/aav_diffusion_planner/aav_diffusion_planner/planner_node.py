@@ -2,9 +2,9 @@
 diffusion_planner: a model draws the path; the guard checks it; the lattice is the fallback.
 
 A trial planner (planner:=diffusion, docs/designs/2026-11-02_diffusion-planner.md), off by
-default and refused on the car. It stands in for planner_server's ComputePathToPose, so
-bt_navigator's trees don't change; planner_server keeps running with the lattice, its
-own action renamed, and answers the fallback at the same time.
+default and refused on the car. It answers the navigator's ComputePathToPose in our planner's
+place; our planner (aav_planner) keeps running with the lattice, its own action renamed,
+and answers the fallback at the same time.
 
 For each plan: ask the lattice (its renamed action) for the same path; crop the global
 costmap round the start and goal; the model worker (worker.py, in the learn
@@ -14,8 +14,8 @@ lattice's. Neither: Nav2's NO_VALID_PATH. No model file, no learn environment, a
 error: always the lattice's, and the status says why.
 
 Serves      compute_path_to_pose (nav2_msgs/action/ComputePathToPose), as planner_server
-Calls       compute_path_to_pose_lattice (planner_server, remapped by navigation.launch.py)
-Subscribes  /global_costmap/costmap (nav_msgs/OccupancyGrid), TF map -> base_link
+Calls       compute_path_to_pose_lattice (our planner's, remapped by navigation.launch.py)
+Subscribes  /drivers/nav/costmap/global (nav_msgs/OccupancyGrid), TF map -> base_link
 Publishes   /plan (nav_msgs/Path: the path it returned, as planner_server publishes);
             /drivers/nav/diffusion/status (diagnostic_msgs/DiagnosticStatus: each plan's
             source, why, timings, the guard's refusals by check, and the running share
@@ -158,7 +158,7 @@ class DiffusionPlanner(Node):
         TransformListener(self.tf, self)
         latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                              durability=DurabilityPolicy.TRANSIENT_LOCAL)
-        self.create_subscription(OccupancyGrid, '/global_costmap/costmap', self.on_costmap,
+        self.create_subscription(OccupancyGrid, '/drivers/nav/costmap/global', self.on_costmap,
                                  latched, callback_group=MutuallyExclusiveCallbackGroup())
         self.plan_pub = self.create_publisher(Path, '/plan', latched)
         self.status_pub = self.create_publisher(DiagnosticStatus, '/drivers/nav/diffusion/status',

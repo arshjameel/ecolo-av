@@ -14,19 +14,25 @@ Both start by themselves at login, and come back 5 s after a crash.
 | Screen | Size | Shows | Program | Its unit |
 |---|---|---|---|---|
 | Small touchscreen, left | ~7" | the instrument cluster: speed, mode, gear, e-stop button, camera, GPS | `hud` | `aav-hud.service` |
-| Innoview monitor, right | ~15" | the map: Nav2's map over Ottawa's streets, place search | `map` | `aav-map.service` |
+| Innoview monitor, right | ~15" | the map: the navigation map over Ottawa's streets, place search | `map` | `aav-map.service` |
 
 Both are in `ros/hud/aav_hud` ([HUD](hud.md)).
 
 ## The screens outside the car
 
 The HUD and the map stay in the car. Two more screens are for the lab or a laptop, one
-per job (Ben, 3 Nov: "Just the stuff we control"):
+per job (Ben, 3 Nov: "Just the stuff we control"). Since 5 Nov: raylib only for the two
+in the car, on the dash Pi; laptop screens can be Bevy; the Orin runs no graphics:
 
 | Screen | For | Where it's going |
 |---|---|---|
-| **Drive**: the [cockpit](foxglove.md#cockpit) (Lichtblick) | Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run | 0.3: absorbs the debug screen |
+| **Drive**: the [cockpit](foxglove.md#cockpit) (Lichtblick) | the chase camera's view, the goal, the cubes, the localizers, which algorithms run | stays, as a layout |
+| **Developer window** (Bevy, `pixi run dev-window`; Ben, 5 Nov) | the scene, what the lidar sees with NDT, a map you click, a console: live on the simulators | absorbs the debug screen ([design](designs/2026-11-05_one-window.md)); not the cockpit, as planned on 3 Nov |
 | **Hardware**: the [hardware panel](hud.md#the-hardware-panel) | every sensor, simple buttons, the steering's ends | stays separate |
+
+The developer window live, 14 Nov: our stack (`stack:=ours`) driving the road world, the road ahead's line on the AHEAD panel:
+
+![The developer window while our stack drives](img/dev-window-ours-live.png)
 
 ## How it starts
 
@@ -121,12 +127,12 @@ Already installed? Just the screens: `bash ~/aav-jazzy/aav/tools/car_screens_ins
 | Try one by hand | `~/aav-jazzy/aav.sh ros2 launch aav_hud map.launch.py fullscreen:=true monitor:=HDMI-1` |
 | Light colours for a sunny day | `theme: latte` in `ros/hud/aav_hud/config/hud.yaml`, `map.yaml`, `debug_hud.yaml` and `hw_panel.yaml`, then restart them ([Themes](hud.md#themes-the-screens-colours)); `initial_d` (black, white, Carleton red) is every screen's default, `mocha` the soft dark one |
 
-> **No HUD, no Nav2.** The HUD sends a [heartbeat](hud.md#the-heartbeat). On the car,
-> the sensor watchdog stops Nav2 and the AI slot while it's missing: stopping `aav-hud`
+> **No HUD, no navigation.** The HUD sends a [heartbeat](hud.md#the-heartbeat). On the car,
+> the sensor watchdog stops navigation and the AI slot while it's missing: stopping `aav-hud`
 > holds them too. A session with no HUD screen: `car.launch.py watch_hud:=false`, written
 > on the test card.
 >
-> **Latched (24 Oct).** Once the HUD has run 5 s, a crash, freeze or stop holds Nav2
+> **Latched (24 Oct).** Once the HUD has run 5 s, a crash, freeze or stop holds navigation
 > even after systemd restarts it: the screen says **AUTO STOP, HUD LOST**. A person
 > checks the screen, then `pixi run clear watchdog`.
 

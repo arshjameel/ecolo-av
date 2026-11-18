@@ -10,6 +10,9 @@
   <exec_depend>rclpy</exec_depend>
   <exec_depend>aav_interfaces</exec_depend>
   <exec_depend>aav_detector</exec_depend>
+  <exec_depend>aav_description</exec_depend>
+  <!-- The Rust node, the default with detector:=none (camera_stream_impl). -->
+  <exec_depend>aav_camera_stream_rs</exec_depend>
   <exec_depend>builtin_interfaces</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>diagnostic_msgs</exec_depend>

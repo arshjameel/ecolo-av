@@ -33,6 +33,11 @@ These are the conventions decided so far. They apply to people and to Claude ses
   Their code is in the GitHub orgs `AAV-2025-2026` and `Carleton-AAV-Capstone`.
 - **Inherited code** keeps a `PROVENANCE.md`: where it came from (repo, branch, commit),
   and every change made since. Update it when you change such a file.
+- **Credit what we use and what inspires us** (Ben, 14 Nov: "give acknowlegement to stuff
+  we have looked at or used as insperation"). `docs/acknowledgements.md` lists every
+  project, paper, map source and tool we copied from, ported, or took an idea from, with
+  its licence and where we used it. Add a row in the same commit as the work. Copied or
+  ported code also keeps its `PROVENANCE.md`.
 - **Secrets** never go in git, logs or docs. Write down only where a secret is and what
   type it is. The legacy firmware reads WiFi credentials from an untracked
   `secrets.h`; copy it from `secrets.h.example`. Old credentials in the inherited repos
@@ -47,21 +52,26 @@ These are the conventions decided so far. They apply to people and to Claude ses
   `/<area>/<device or node>/<thing>`, such as `/sensors/gps/fix`, `/drivers/joy/cmd_vel`,
   `/safety/estop`. Only ROS's own global names (`/tf`, `/clock`...) and Nav2's stay
   outside. `tools/tests/test_topic_areas.py` checks `docs/interfaces.yaml`.
-- **Prefer stock packages**, and look for a better open-source one before keeping ours or
-  an inherited one (Ben, 15 Oct: "if there is better version of stuff that is open source
-  then lets look at that"). Check its licence:
-  1. stock ROS packages (robot_localization, Nav2, twist_mux, teleop_twist_*);
-  2. then code inherited from the previous teams;
-  3. then a reasonable stub.
+- **We run our own stack** (Ben, 14 Nov: "remove nav2 and gazeboo ... We want to run
+  everythign ourselves in rust and/or python"). Ours (`stack:=ours`, on Ravensim, our
+  simulator) is the default. Nav2 went on 17 Nov, Gazebo on 16 Nov
+  (`docs/history/gazebo-as-it-was.md`); CARLA stays. Stock packages are a reference to learn from (read `vendor/`), not the
+  default. Kept for now, as small and proven: robot_localization, twist_mux,
+  teleop_twist_* (replace one only when it hits a real limit). Still look for better open
+  source to learn from, and check its licence (Ben, 15 Oct).
 - **Our own algorithms** (Ben, 5 Nov): for each area we build a new best hybrid from papers,
-  known algorithms and current implementations. Stock stays the default; ours runs beside
-  it as the challenger until it wins on the same routes and bags. Every algorithm stays.
-- **Everything is a drop-in replacement** (Ben, 5 Nov: "just swap out and test"). Gazebo, our
-  simulator and the real sensors all produce the same topics; so does every algorithm for its
+  known algorithms and current implementations. A new one runs beside the current default
+  as the challenger until it wins on the same routes and bags. Every algorithm stays.
+- **Everything is a drop-in replacement** (Ben, 5 Nov: "just swap out and test"). Ravensim,
+  CARLA and the real sensors all produce the same topics; so does every algorithm for its
   job. `docs/interfaces.yaml` is what they must match. Nothing downstream may care which one
   is running, and tests score them the same way. The safety locks are never swapped out.
 - **Languages:**
-  - Python (rclpy) for the ROS nodes we write;
+  - Rust (rclrs) for new ROS nodes (Ben, 16 Nov: "lets remove python were possible. I
+    trust rust more then python"). Still Python: ML on the GPU (train in PyTorch;
+    inference later via ONNX), launch files, tools and tests. The Rust twins of ego,
+    behaviour, the sensor watchdog and localization_health are the defaults on the car
+    too; `*_impl:=python` falls back;
   - Rust (`no_std`, Embassy) for all firmware and hardware drivers, not C or C++ (Ben,
     10 Oct): the spine first. The 2025-26 C++ boards keep running until each one's Rust
     version replaces it. Logic goes in crates like `spine-core` and `aav-inputs` (tested
@@ -75,12 +85,11 @@ These are the conventions decided so far. They apply to people and to Claude ses
     went to Ben's Rust twin (11 Oct), the radar clustering to a Rust ROS node (15 Oct).
     Stock ROS packages stay as they are;
   - **Screens** (Ben, 5 Nov): the in-car HUD and street map stay raylib, on the Pi. Screens on
-    a laptop or desktop can be Bevy. The Orin runs no graphics and no simulator: Gazebo, and
-    later our own simulator, run on a Mac or Linux desktop, for testing only
+    a laptop or desktop can be Bevy. The Orin runs no graphics and no simulator: Ravensim runs
+    on a Mac or Linux desktop, for testing only
     (`docs/designs/2026-11-05_own-simulator.md`);
-  - Rust ROS nodes (rclrs from crates.io: `aav_imu_yahboom`, `aav_spine_bridge`)
-    are for those ports, the HUD (raylib, Ben, 11 Oct), and later for a node where Rust
-    pays off, such as ego.
+  - Rust ROS nodes use rclrs from crates.io (such as `aav_imu_yahboom`, `aav_spine_bridge`,
+    `aav_ego_rs`); the HUD is Rust with raylib (Ben, 11 Oct).
 - **Keep the maths out of ROS.** A node's logic lives in a module with no ROS imports
   and has its own tests. Examples: `ackermann.py`, `can_codec.py`, `speed_profile.py`,
   `legacy_protocol.py` and `vehicle.py`; in Rust, `spine-core`.
@@ -141,12 +150,11 @@ EGM artifact directory: docs/designs
   `tools/test.sh` checks it; give any new stand-in task the same.
 - The MCP server (`tools/mcp_server.py`, `docs/mcp.md`) only reads. Never give it a call
   that writes to ROS, or a file outside git to read: `tools/tests/test_mcp_parts.py` checks.
-- Gazebo on oirp-spss also needs `GZ_IP=127.0.0.1` (multicast doesn't loop back there)
-  and its own `GZ_PARTITION`; without them the car never spawns.
-  The road world's cameras need `tools/software_gl.sh` in front there (no GPU, as on
-  GitHub's runners): `tools/software_gl.sh pixi run sim-check --simulator gazebo`.
-- Our own simulator (`simulator:=own`, the default since 8 Nov) needs a GPU for its
-  cameras; on a computer without one, use `simulator:=gazebo`.
+- Ravensim (`simulator:=ravensim`, the only simulator since Gazebo went on 16 Nov; its
+  maps are RavenTiles) draws its cameras on the GPU. On a computer without one (oirp-spss,
+  GitHub's runners) put `tools/software_gl.sh` in front (Mesa's lavapipe): its clock then
+  waits for each picture (`camera_lockstep:=auto`), so the world runs slower than real
+  time and the cameras keep their rate. Or use `--no-cameras`.
 
 ## Git
 
@@ -180,8 +188,8 @@ EGM artifact directory: docs/designs
 
 - **`vendor/`** (inside this repo, but not in git): other people's source, to look things
   up. `vendor/ros2-src/` is ROS 2 Jazzy and the stock packages; `vendor/ros2-rust/` is
-  rclrs; `vendor/gazebo/` is Gazebo Harmonic at the releases we run (its README says which
-  library does what); PlatformIO keeps its downloads in `vendor/platformio/`. `pixi run get vendor` downloads
+  rclrs; `vendor/gazebo/` is Gazebo Harmonic at the releases we ran until 16 Nov (kept to
+  read; its README says which library does what); PlatformIO keeps its downloads in `vendor/platformio/`. `pixi run get vendor` downloads
   the source at the commits in `vendor/*.repos`. Never edit
   or build them. Search them with `grep -r` or `rg -u`: most search tools skip folders
   that git ignores.

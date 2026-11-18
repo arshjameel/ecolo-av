@@ -2,11 +2,11 @@
 
 ## Overview
 
-Ghost obstacles: a pretend person or post that only Nav2 sees. It tests stopping on the
+Ghost obstacles: a pretend person or post that only navigation sees. It tests stopping on the
 real car with nothing real to hit. The full guide is `docs/ghost-obstacles.md`.
 
 - `ghost_obstacle` (node) publishes what a perfect 2D lidar at `base_link` would see of
-  the ghost. The local costmap's `ghost_layer` and `collision_monitor`'s ghost source read it.
+  the ghost. The local costmap's `ghost_layer` and the stop zone's ghost source read it.
 - `ghost` (command) places or removes it: `pixi run ghost ahead 10`.
 
 `navigation.launch.py ghost:=true` starts the node; `sim.launch.py` and `car.launch.py`
@@ -29,7 +29,7 @@ pass `ghost:=` on. Off by default.
 | `x`, `y` | 0, 0 m | in `frame`, when `ahead` is negative |
 | `frame` | `map` | the ghost stands still in this frame |
 | `width`, `height` | 0.5 m, 1.7 m | a person; a post is 0.3 x 1.2 |
-| `rate_hz` | 10 Hz | keep well inside collision_monitor's 1 s `source_timeout` |
+| `rate_hz` | 10 Hz | keep well inside the stop zone's 1 s `source_timeout` |
 
 Setting `enabled`, `ahead`, `x`, `y` or `frame` places the ghost again. A new size
 keeps it where it stands. Defaults are in `config/ghost_obstacle.yaml`.
@@ -42,7 +42,7 @@ keeps it where it stands. Defaults are in `config/ghost_obstacle.yaml`.
 | `at <x> <y>` | a ghost at map x, y |
 | `size <width> <height>` | change its size (m) |
 | `on`, `off` | the last ghost again; take it away |
-| `--local ...` | Gazebo or the bench on this computer (`ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`) |
+| `--local ...` | Ravensim or the bench on this computer (`ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`) |
 
 It calls `/ghost_obstacle/set_parameters_atomically`, so every value of one command lands at once.
 
@@ -57,7 +57,7 @@ It calls `/ghost_obstacle/set_parameters_atomically`, so every value of one comm
 ## Invariants
 
 - `ghost.py` has no ROS imports, and its own tests.
-- The ghost has its own costmap layer and its own collision_monitor source, so it only
+- The ghost has its own costmap layer and its own stop zone source, so it only
   ever adds an obstacle. It never clears or hides a real one.
 - Silent for 1 s, the ghost source stops Nav2, like a silent radar.
 - The scan is always published, even with no ghost (all `inf`), so the layer clears itself.
@@ -76,5 +76,5 @@ cd ros/safety/aav_ghost && python3 -m pytest -q          # the maths and the com
 pixi run build && colcon test --packages-select aav_ghost && colcon test-result --verbose
 ```
 
-`tools/test.sh` runs the first; `pixi run test` runs everything. In Gazebo:
+`tools/test.sh` runs the first; `pixi run test` runs everything. In Ravensim:
 `pixi run sim-check --ghost`.

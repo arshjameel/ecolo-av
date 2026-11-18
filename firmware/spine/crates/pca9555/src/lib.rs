@@ -21,6 +21,9 @@
 //! expander.release().done();
 //! ```
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use embedded_hal::i2c::I2c;
 
@@ -40,26 +43,43 @@ mod command {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Pin {
+    /// Port 0, pin 0: bit 0.
     P00,
+    /// Port 0, pin 1: bit 1.
     P01,
+    /// Port 0, pin 2: bit 2.
     P02,
+    /// Port 0, pin 3: bit 3.
     P03,
+    /// Port 0, pin 4: bit 4.
     P04,
+    /// Port 0, pin 5: bit 5.
     P05,
+    /// Port 0, pin 6: bit 6.
     P06,
+    /// Port 0, pin 7: bit 7.
     P07,
+    /// Port 1, pin 0: bit 8.
     P10,
+    /// Port 1, pin 1: bit 9.
     P11,
+    /// Port 1, pin 2: bit 10.
     P12,
+    /// Port 1, pin 3: bit 11.
     P13,
+    /// Port 1, pin 4: bit 12.
     P14,
+    /// Port 1, pin 5: bit 13.
     P15,
+    /// Port 1, pin 6: bit 14.
     P16,
+    /// Port 1, pin 7: bit 15.
     P17,
 }
 
 impl Pin {
     /// This pin's bit in a 16-bit value.
+    #[must_use]
     pub const fn mask(self) -> u16 {
         1 << self as u8
     }
@@ -74,6 +94,8 @@ pub struct Pca9555<I2C> {
 }
 
 impl<I2C: I2c> Pca9555<I2C> {
+    /// The expander at `address`; it remembers every output as high, as the chip
+    /// starts. Sends nothing.
     pub fn new(i2c: I2C, address: u8) -> Self {
         Pca9555 {
             i2c,
@@ -82,6 +104,8 @@ impl<I2C: I2c> Pca9555<I2C> {
         }
     }
 
+    /// The bus address it was made with.
+    #[must_use]
     pub fn address(&self) -> u8 {
         self.address
     }
@@ -92,12 +116,20 @@ impl<I2C: I2c> Pca9555<I2C> {
     }
 
     /// Set all sixteen output levels: 1 is high. Pins that are inputs ignore them.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn set_outputs(&mut self, levels: u16) -> Result<(), I2C::Error> {
         self.outputs = levels;
         self.write_pair(command::OUTPUT, levels)
     }
 
     /// Set one output, and keep the others as last asked for.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn set_pin(&mut self, pin: Pin, high: bool) -> Result<(), I2C::Error> {
         let levels = if high {
             self.outputs | pin.mask()
@@ -108,22 +140,35 @@ impl<I2C: I2c> Pca9555<I2C> {
     }
 
     /// The output levels last asked for, even if that write failed.
+    #[must_use]
     pub fn outputs(&self) -> u16 {
         self.outputs
     }
 
     /// Choose the inputs: 1 makes a pin an input, 0 an output. At power-up every
     /// pin is an input.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn set_inputs(&mut self, inputs: u16) -> Result<(), I2C::Error> {
         self.write_pair(command::CONFIGURATION, inputs)
     }
 
     /// Invert how these inputs read: 1 inverts. At power-up nothing is inverted.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn set_polarity(&mut self, inverted: u16) -> Result<(), I2C::Error> {
         self.write_pair(command::POLARITY, inverted)
     }
 
     /// Read the level on all sixteen pins, inputs and outputs.
+    ///
+    /// # Errors
+    ///
+    /// The bus's error, if the transfer fails.
     pub fn read_inputs(&mut self) -> Result<u16, I2C::Error> {
         let mut buf = [0; 2];
         self.i2c

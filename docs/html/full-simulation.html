@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The full simulation: the whole car in Gazebo · AAV 2026–27</title>
+<title>The full simulation: the whole car, first built in Gazebo · AAV 2026–27</title>
 <link rel="stylesheet" href="style.css">
 </head><body>
 <!-- Generated from docs/full-simulation.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
-<h1>The full simulation: the whole car in Gazebo</h1>
-<div class="meta">19 min read · 10 sections</div></header>
+<h1>The full simulation: the whole car, first built in Gazebo</h1>
+<div class="meta">20 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -117,6 +129,11 @@
 <div class="lead"><p>Written 15 October 2026, checked 25 October. The goal (Ben, 15 Oct): "fully simulate the car inside
 Gazebo with all the sensors, and build the full pipeline." This page says what we have,
 what's missing, and how the car's measurements feed in.</p>
+<p><strong>This page is the 15 Oct plan and its record.</strong> How to run the simulation today:
+<a href="simulation.html">Simulation</a>. What swaps between sim, bench and car: <a href="sim-and-car.html">Sim and the car</a>.
+Since 8 Nov <code>pixi run sim</code> starts <a href="own-simulator.html">Ravensim</a>, which plays
+Gazebo's part on the same topics; Gazebo was removed on 16 Nov (<a href="../history/gazebo-as-it-was.md">Gazebo, as it
+was</a>). The results below were measured on Gazebo.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -149,7 +166,7 @@ what's missing, and how the car's measurements feed in.</p>
 <tr>
 <td>3</td>
 <td>The actuator model (A), guessed numbers</td>
-<td>✅ built: <code>aav_gazebo/actuator_model.py</code>, numbers in <code>vehicle.yaml</code> <code>actuators:</code>, on by default (<code>actuator_model:=false</code> for the old car)</td>
+<td>✅ built: <code>aav_sim_models/actuator_model.py</code>, numbers in <code>vehicle.yaml</code> <code>actuators:</code>, on by default (<code>actuator_model:=false</code> for the old car)</td>
 </tr>
 <tr>
 <td>4</td>
@@ -174,12 +191,12 @@ what's missing, and how the car's measurements feed in.</p>
 <tr>
 <td>7</td>
 <td>The actuator test script (<code>tests.md</code> 1.10)</td>
-<td>✅ 15 Oct: <code>pixi run actuator-test &lt;test&gt; --sim</code>, all 9 tests in Gazebo; they give back the model's numbers (<a href="actuator-tests.html">docs/actuator-tests.md</a>). It found Gazebo's IMU blind to the car's acceleration: fixed in <code>gazebo_adapter</code></td>
+<td>✅ 15 Oct: <code>pixi run actuator-test &lt;test&gt; --sim</code>, all 9 tests in Gazebo; they give back the model's numbers (<a href="actuator-tests.html">docs/actuator-tests.md</a>). It found Gazebo's IMU blind to the car's acceleration: fixed in <code>sim_adapter</code></td>
 </tr>
 <tr>
 <td>8-10</td>
 <td>the real numbers, the test lot, forces</td>
-<td>not started</td>
+<td>not started. Beside them, since: a Carleton world from OpenStreetMap (<code>pixi run campus</code>, <code>world:=campus</code>), not a survey of the test lot; and Ravensim, whose car rides slopes and stops at kerbs (8 Nov), still with no forces</td>
 </tr>
 </tbody>
 </table></div>
@@ -253,7 +270,7 @@ what's missing, and how the car's measurements feed in.</p>
 </tr>
 <tr>
 <td>The model and its tests</td>
-<td><code>ros/sim/aav_gazebo/aav_gazebo/actuator_model.py</code>, <code>test/test_actuator_model.py</code></td>
+<td><code>ros/sim/aav_sim_models/aav_sim_models/actuator_model.py</code>, <code>test/test_actuator_model.py</code></td>
 </tr>
 <tr>
 <td>How it's documented</td>
@@ -268,7 +285,7 @@ what's missing, and how the car's measurements feed in.</p>
   twist_mux → ego ──────────── /ego/actuator_cmd (speed + steering)
         │
   ┌─────┴─────── spine:=false (default) ─────────────┐   ┌────── spine:=true (15 Oct) ──────┐
-  │ gazebo_adapter → a Python copy of the spine's    │   │ spine_bridge → CAN frames        │
+  │ sim_adapter → a Python copy of the spine's    │   │ spine_bridge → CAN frames        │
   │ speed loop → ACTUATOR MODEL: throttle, brake,    │   │   → the spine's real logic       │
   │ steering, as measured → Gazebo                   │   │     (timeouts, e-stop, limits)   │
   │ (no CAN, no arming, no e-stop latch; brakes      │   │   → ACTUATOR MODEL: throttle,    │
@@ -340,7 +357,7 @@ what's missing, and how the car's measurements feed in.</p>
 </tr>
 <tr>
 <td>The world</td>
-<td>a test road, an empty lot</td>
+<td>a test road, an empty lot, a walled test lot, Carleton from OpenStreetMap (<code>world:=campus</code>)</td>
 <td><strong>a copy of the real test lot</strong></td>
 </tr>
 <tr>
@@ -537,7 +554,7 @@ pixi run sim-check --spine        # proves it: the normal checks, then the spine
                                                           e-stops, its speed loop)
                                                               │ throttle, brake, gear, steering
                                                               ▼
-                                gazebo_adapter: the actuator model ──► Gazebo's car
+                                sim_adapter: the actuator model ──► Gazebo's car
                                                               │ Gazebo's wheels and steering
                                                               ▼
  /vehicle/* ◄── spine_bridge ◄──CAN frames── spine_sim: VEHICLE_FEEDBACK, STATUS, wheel frames</code></pre>
@@ -551,7 +568,7 @@ pixi run sim-check --spine        # proves it: the normal checks, then the spine
 <tbody>
 <tr>
 <td>One backend</td>
-<td><code>spine_bridge</code> alone reads ego's commands (<code>/control/sim/actuator_cmd</code>, from the output mux). <code>gazebo_adapter</code> then only drives the actuator model from the spine's outputs, and no longer publishes <code>/vehicle/*</code></td>
+<td><code>spine_bridge</code> alone reads ego's commands (<code>/control/sim/actuator_cmd</code>, from the output mux). <code>sim_adapter</code> then only drives the actuator model from the spine's outputs, and no longer publishes <code>/vehicle/*</code></td>
 </tr>
 <tr>
 <td><code>/system/source</code></td>
@@ -582,7 +599,7 @@ pixi run sim-check --spine        # proves it: the normal checks, then the spine
 <thead>
 <tr>
 <th>Stop</th>
-<th>Direct path (<code>gazebo_adapter</code>)</th>
+<th>Direct path (<code>sim_adapter</code>)</th>
 <th>Spine in the loop</th>
 </tr>
 </thead>
@@ -629,11 +646,11 @@ sends 13-byte frames to the 2025-26 C++ ESP32 firmware. Gazebo can now run that 
 <pre class="highlight"><code class="language-bash">pixi run sim esp32:=true                                # the bridge's speed loop on (pi)
 pixi run sim esp32:=true esp32_loop:=open               # the 2025-26 mapping, to compare
 pixi run sim-check --drive-to-point-only --esp32 pi     # proves it</code></pre>
-<pre class="highlight"><code class="language-text"> ego ──► output_mux ──► legacy_uart_bridge ──13-byte frames, local TCP──► gazebo_esp32
+<pre class="highlight"><code class="language-text"> ego ──► output_mux ──► legacy_uart_bridge ──13-byte frames, local TCP──► sim_esp32
           (the car's own; speed_loop.mode pi or open)      (the C++ firmware's logic:
                 ▲                                           its throttle ramp, its brake)
                 │                                                   │
-          /vehicle/odom ◄── gazebo_adapter (the actuator model) ◄───┘</code></pre>
+          /vehicle/odom ◄── sim_adapter (the actuator model) ◄───┘</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -649,12 +666,12 @@ pixi run sim-check --drive-to-point-only --esp32 pi     # proves it</code></pre>
 <td>the car</td>
 </tr>
 <tr>
-<td><code>gazebo_esp32</code> (<code>esp32_firmware.py</code>)</td>
+<td><code>sim_esp32</code> (<code>esp32_firmware.py</code>)</td>
 <td>the ESP32</td>
 <td><code>ros2_handler.cpp</code>, <code>dac.cpp</code>: throttle ramp 6 up, 12 down per frame; brake = |accel| x 3500 from 400; no command timeout</td>
 </tr>
 <tr>
-<td><code>gazebo_adapter</code></td>
+<td><code>sim_adapter</code></td>
 <td>the motor, brake, steering and wheels</td>
 <td>the actuator model (<code>vehicle.yaml</code>, guesses)</td>
 </tr>
@@ -690,7 +707,7 @@ pixi run sim-check --drive-to-point-only --esp32 pi     # proves it</code></pre>
   brake takes 0.2 s to bite, so the car falls behind ego, and the PI braked harder to catch
   up. Now the PI compares the car with ego's speed delayed by 0.3 s (<code>response_lag</code>), and
   the stop meets its plan.</li>
-<li><strong>Without Gazebo:</strong> <code>aav_gazebo/test/test_legacy_chain.py</code> runs the same chain (loop,
+<li><strong>Without Gazebo:</strong> <code>aav_sim_models/test/test_legacy_chain.py</code> runs the same chain (loop,
   frames, firmware, actuator model) in a unit test.</li>
 </ul>
 </section>

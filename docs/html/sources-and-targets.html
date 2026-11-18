@@ -7,9 +7,13 @@
 <!-- Generated from docs/sources-and-targets.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Sources and targets: the sensor mux and the output mux</h1>
-<div class="meta">11 min read · 9 sections</div></header>
+<div class="meta">12 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a class="here" href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -122,7 +134,8 @@ everything is real. Package <code>aav_io_mux</code>, built 23 Oct.</p>
 <p class="admonition-title">The short version</p>
 <ul>
 <li><strong>Source:</strong> where the sensor data comes from: <code>real</code>, <code>sim</code>, <code>bench</code> or <code>replay</code>.</li>
-<li><strong>Target:</strong> who plays the car: <code>car</code>, <code>gazebo</code>, <code>bench</code>, <code>turtle</code> or <code>carla</code>.</li>
+<li><strong>Target:</strong> who plays the car: <code>car</code>, <code>sim</code> (any simulator: Ravensim), <code>bench</code>,
+  <code>turtle</code> or <code>carla</code>. (<code>stack.launch.py</code> spells the sim profile <code>target:=ravensim</code> (the mux's target: <code>sim</code>); the old <code>target:=gazebo</code> works until after 0.4-rc1, TODO 241.)</li>
 <li>Every backend reads only its own target's topic, <code>/control/&lt;target&gt;/actuator_cmd</code>.
   Nothing reads <code>/ego/actuator_cmd</code> directly any more.</li>
 <li>The real car's topic carries commands only while <strong>every</strong> source is REAL. One SIM
@@ -137,10 +150,10 @@ everything is real. Package <code>aav_io_mux</code>, built 23 Oct.</p>
 <pre class="highlight"><code class="language-text"> sources                       checked by                    targets
  ───────                       ──────────                    ───────
  real drivers ─┐                                       ┌─► /control/car/... ──► spine_bridge
- Gazebo        ├─► /sensors/... ──► sensor_mux         │                        legacy_uart_bridge
+ Ravensim      ├─► /sensors/... ──► sensor_mux         │                        legacy_uart_bridge
  bench mocks   │   /vehicle/...      │ /system/sensor_mux/state
  a bag (replay)┘   /system/source ───┤ (ok? which source?)
-                                     ▼                 ├─► /control/sim/.. ──► gazebo_adapter
+                                     ▼                 ├─► /control/sim/.. ──► sim_adapter
  drivers ─► twist_mux ─► ego ─► output_mux ────────────┤   /control/bench/... ──► spine_bridge (bench)
                     /ego/actuator_cmd  (target:=car)   └─► /control/turtle/.. ──► turtlesim_adapter</code></pre>
 </section>
@@ -168,7 +181,7 @@ everything is real. Package <code>aav_io_mux</code>, built 23 Oct.</p>
 </table></div>
 <p>Both forget an announcement once the node that made it has gone. The real car's stock
 drivers (u-blox, Velodyne, usb_cam) can't announce, so an unannounced sensor counts as
-REAL. Every stand-in announces (Gazebo, the bench's mocks, <code>spine_bridge</code> off the car, a
+REAL. Every stand-in announces (Ravensim, the bench's mocks, <code>spine_bridge</code> off the car, a
 replay), so it can't pass for real.</p>
 </section>
 <section class="card"><h2 id="open-wait-stop">Open, wait, stop</h2>
@@ -220,8 +233,8 @@ replay), so it can't pass for real.</p>
 </tr>
 <tr>
 <td>In a simulator, a sensor nobody announces</td>
-<td>doubt; evidence once it lasts 5 s</td>
-<td>a node can publish before its announcement arrives</td>
+<td>doubt; evidence once it lasts 5 s <strong>and</strong> the start-up grace (30 s) has passed</td>
+<td>a node can publish before its announcement arrives: on a busy computer, 10 s before (TODO 234)</td>
 </tr>
 <tr>
 <td>The sensor mux quiet for 3 s</td>
@@ -230,7 +243,7 @@ replay), so it can't pass for real.</p>
 </tr>
 <tr>
 <td>A node on <code>/system/source</code> whose announcement hasn't arrived</td>
-<td>doubt; evidence once it lasts 5 s</td>
+<td>doubt; evidence once it lasts 5 s and the start-up grace has passed</td>
 <td>the graph can show it before its message (up to 30 ms across processes, measured 24 Oct); the message may say SIM</td>
 </tr>
 <tr>
@@ -266,7 +279,7 @@ gate is shut (Ben, 24 Oct), and says why.</p>
 <td>refused: no word, or quiet for so long</td>
 </tr>
 <tr>
-<td>says <code>OPEN</code> for another target (<code>gazebo</code>, on the car)</td>
+<td>says <code>OPEN</code> for another target (<code>sim</code>, on the car)</td>
 <td>refused: not this bridge's gate</td>
 </tr>
 <tr>
@@ -295,8 +308,8 @@ gate is shut (Ben, 24 Oct), and says why.</p>
 <td><code>OPEN - bench: ...</code></td>
 </tr>
 <tr>
-<td><code>sim</code> (Gazebo, <code>spine:=true</code>)</td>
-<td><code>gazebo</code></td>
+<td><code>sim</code> (the simulator, <code>spine:=true</code>)</td>
+<td><code>sim</code></td>
 <td><code>OPEN - sim: ...</code></td>
 </tr>
 </tbody>
@@ -304,20 +317,20 @@ gate is shut (Ben, 24 Oct), and says why.</p>
 <ul>
 <li>Disarming always works.</li>
 <li>Both bridges, Rust and Python, say the same words (<code>spine-bridge</code>'s <code>gate.rs</code>,
-  <code>aav_spine/output_gate.py</code>). Their clock for "quiet" is a steady one, not Gazebo's.</li>
+  <code>aav_spine/output_gate.py</code>). Their clock for "quiet" is a steady one, not the simulator's.</li>
 <li><code>role:=sensors</code> has no <code>/spine/arm</code>, so nothing to refuse.</li>
 <li><code>legacy_uart_bridge</code> (today's car, through the Motor Pi) has no arm step: the output
   mux's silence makes it brake after 0.3 s.</li>
-<li>The bench and Gazebo (<code>arm:=true</code>) start <code>arm_when_open</code> (<code>aav_spine</code>) after 12 s. It
+<li>The bench and Ravensim (<code>arm:=true</code>) start <code>arm_when_open</code> (<code>aav_spine</code>) after 12 s. It
   asks each second until the gate opens, then exits. It gives up after 120 s, or at once
   on an e-stop. <code>bench_check.py</code> and <code>sim_check.py</code> also wait for OPEN before they arm.</li>
 </ul>
 <p>When it sends nothing, each backend's own timeout brakes, as when ego stops: <code>spine_bridge</code>
-after 0.1 s (then the spine's 100 ms watchdog), <code>legacy_uart_bridge</code> after 0.3 s, Gazebo
+after 0.1 s (then the spine's 100 ms watchdog), <code>legacy_uart_bridge</code> after 0.3 s, Ravensim
 after 0.2 s. The clear service refuses while anything is still wrong, and says what.</p>
 </section>
 <section class="card"><h2 id="one-launch-target">One launch, <code>target:=</code></h2>
-<pre class="highlight"><code class="language-text">ros2 launch aav_bringup stack.launch.py target:=gazebo world:=road</code></pre>
+<pre class="highlight"><code class="language-text">ros2 launch aav_bringup stack.launch.py target:=ravensim world:=road</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -333,8 +346,8 @@ after 0.2 s. The clear service refuses while anything is still wrong, and says w
 <td>sim</td>
 </tr>
 <tr>
-<td><code>gazebo</code></td>
-<td><code>sim.launch.py</code></td>
+<td><code>ravensim</code> (<code>gazebo</code>, its old name, until after 0.4-rc1)</td>
+<td><code>sim.launch.py</code> (our simulator by default; the mux's target is <code>sim</code>)</td>
 <td>sim</td>
 </tr>
 <tr>
@@ -382,7 +395,7 @@ instead, and let each launch start only the chosen source:</p>
 </tr>
 <tr>
 <td>If the mux dies</td>
-<td>the sensors stop (the watchdog stops Nav2)</td>
+<td>the sensors stop (the watchdog stops navigation)</td>
 <td>the output mux stops the car within 3 s</td>
 </tr>
 <tr>
@@ -437,7 +450,7 @@ own. The frame: <a href="rust-firmware.html#the-heartbeat-version-2-of-the-seria
 <ul>
 <li>A stand-in that announces nothing and runs <strong>instead of</strong> the real driver (one
   publisher, unannounced): it looks real. Every stand-in of ours announces.</li>
-<li>Ghost obstacles: they only add an obstacle to Nav2's view, never a sensor, so they're
+<li>Ghost obstacles: they only add an obstacle to navigation's view, never a sensor, so they're
   allowed on the car (<a href="ghost-obstacles.html">ghost obstacles</a>).</li>
 <li>The first 4 s after start: the sensor mux stays quiet 2 s while discovery settles, and
   the output mux waits 2 s more. Nothing drives in that time.</li>

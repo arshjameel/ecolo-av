@@ -16,6 +16,9 @@
 //!
 //! Times are a free-running microsecond clock that may wrap (every 71 minutes).
 #![no_std]
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 use core::f32::consts::TAU;
 
@@ -53,11 +56,13 @@ pub enum ConfigError {
 
 impl WheelConfig {
     /// How far the car goes from one pulse to the next (m).
+    #[must_use]
     pub fn metres_per_pulse(&self) -> f32 {
         TAU * self.wheel_radius / f32::from(self.holes_per_rev)
     }
 
     /// The slowest speed that still reads as moving (m/s).
+    #[must_use]
     pub fn slowest_speed(&self) -> f32 {
         self.metres_per_pulse() * 1000.0 / self.zero_speed_timeout_ms as f32
     }
@@ -80,7 +85,9 @@ impl WheelConfig {
 /// Which way the wheel turns, when the board can tell (a second sensor, or the gear).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
+    /// The car rolls forward.
     Forward,
+    /// The car rolls backward.
     Reverse,
 }
 
@@ -96,6 +103,11 @@ pub struct WheelNode {
 }
 
 impl WheelNode {
+    /// A node for `wheel`, with no pulse yet.
+    ///
+    /// # Errors
+    ///
+    /// The config's error, if it can't give a speed (see [`ConfigError`]).
     pub fn new(wheel: Wheel, cfg: WheelConfig) -> Result<Self, ConfigError> {
         cfg.check()?;
         Ok(WheelNode {
@@ -111,10 +123,14 @@ impl WheelNode {
         })
     }
 
+    /// Which wheel this node is.
+    #[must_use]
     pub fn wheel(&self) -> Wheel {
         self.wheel
     }
 
+    /// The config it was made with.
+    #[must_use]
     pub fn config(&self) -> WheelConfig {
         self.cfg
     }
@@ -134,12 +150,14 @@ impl WheelNode {
     }
 
     /// Pulses so far; wraps at 65536, as in the frame.
+    #[must_use]
     pub fn pulse_count(&self) -> u16 {
         self.pulses
     }
 
     /// Speed of the tyre over the ground at `now_us` (m/s), always 0 or more: one Hall
     /// sensor can't tell which way the wheel turns.
+    #[must_use]
     pub fn speed(&self, now_us: u32) -> f32 {
         self.estimator.speed(now_us)
     }

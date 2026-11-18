@@ -6,6 +6,6 @@ import sys
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parents[2]
 for path in (HERE.parent, HERE, SRC / 'drivers' / 'aav_drive_to_point', SRC / 'ego' / 'aav_ego',
-             SRC / 'sim' / 'aav_gazebo', SRC / 'bringup' / 'aav_description'):
+             SRC / 'sim' / 'aav_sim_models', SRC / 'bringup' / 'aav_description'):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))

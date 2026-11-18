@@ -19,7 +19,9 @@ use crate::{
 pub enum Fade {
     /// Seen in the newest scan (or within the first quarter of `keep_for`).
     New,
+    /// A little older.
     Recent,
+    /// Older still.
     Older,
     /// About to go.
     Oldest,
@@ -30,6 +32,7 @@ impl Fade {
     pub const ALL: [Fade; 4] = [Fade::New, Fade::Recent, Fade::Older, Fade::Oldest];
 
     /// The step of a cube last seen `age` ago; `None` once it is older than `keep_for`.
+    #[must_use]
     pub fn of(age: Duration, keep_for: Duration) -> Option<Self> {
         if age > keep_for {
             return None;
@@ -44,6 +47,7 @@ impl Fade {
     }
 
     /// How much of its colour it keeps: 1 new, less as it fades (towards the background).
+    #[must_use]
     pub fn brightness(self) -> f32 {
         match self {
             Self::New => 1.0,
@@ -59,12 +63,15 @@ impl Fade {
 pub struct FadedCube {
     /// Its centre in odom, metres.
     pub centre: [f32; 3],
+    /// How high it is above base_link.
     pub band: Band,
+    /// How old it is.
     pub fade: Fade,
 }
 
 impl FadedCube {
     /// A cube from this scan: not faded at all.
+    #[must_use]
     pub fn new(c: &Cube) -> Self {
         Self {
             centre: c.centre,
@@ -91,6 +98,7 @@ pub struct KeptCubes {
 
 impl KeptCubes {
     /// Cubes kept for `keep_for` after they were last seen; at most `max` drawn.
+    #[must_use]
     pub fn new(keep_for: Duration, max: usize) -> Self {
         Self {
             keep_for,
@@ -138,20 +146,25 @@ impl KeptCubes {
     }
 
     /// What to draw: at most `max`, the nearest the car at the newest scan.
+    #[must_use]
     pub fn cubes(&self) -> &[FadedCube] {
         &self.drawn
     }
 
     /// How many kept cubes are left out over `max` (the farthest).
+    #[must_use]
     pub fn cut(&self) -> usize {
         self.cut
     }
 
     /// How many cells are kept (some may be cut from the drawing).
+    #[must_use]
     pub fn len(&self) -> usize {
         self.cells.len()
     }
 
+    /// True if no cube is kept.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.cells.is_empty()
     }

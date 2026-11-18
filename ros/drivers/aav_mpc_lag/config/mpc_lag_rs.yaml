@@ -1,0 +1,25 @@
+# mpc_lag_rs's own settings (docs/trials.md, the lag-aware MPC). navigation.launch.py adds
+# the rest (vehicle.mpc_lag_rs_params): the speed, the goal and progress checks from
+# nav2.yaml; the wheelbase, full lock, steering rate and actuators from vehicle.yaml.
+# The numbers are aav_track's track.yaml's for the Python mpc_lag, so the two race on the
+# same terms (aav_navigation test_launch_params.py checks they match).
+mpc_lag_rs:
+  ros__parameters:
+    lateral_accel: 1.0        # m/s^2 sideways: slow for a bend
+    odom_timeout: 1.0         # s without /localization/odom/local: give up the path
+    # Follow in odom, correct slowly (TODO 186): as track.yaml.
+    map_correction_speed: 0.1           # m/s
+    map_correction_turn_rate: 0.01745   # rad/s (1 degree/s)
+    map_correction_snap_distance: 2.0   # m: a bigger gap is a relocalisation: taken at once
+    map_correction_snap_angle: 0.1745   # rad (10 degrees): likewise
+    mpc_lag:                  # steering and set speed through the car's lags
+      horizon: 30             # ticks: 1.5 s at 20 Hz
+      q: [1.0, 2.0, 0.05]     # on e_y (m), e_theta (rad), wheels - r (rad)
+      r: 0.2                  # on the command's distance from the bend's own steering
+      r_rate: 1.0             # on each tick's change of steering command
+      q_speed: 0.5            # on (v - the speed limit there)^2
+      r_speed: 0.5            # on each tick's change of set speed
+      latency: 0.1            # s the ROS chain adds before the actuators: whole ticks,
+                              # added to the dead times
+      # speed_loop: the spine's profile it predicts comes from the launch (sim.launch.py
+      # speed_loop:=, vehicle.mpc_lag_rs_params), never from here: this file would win.

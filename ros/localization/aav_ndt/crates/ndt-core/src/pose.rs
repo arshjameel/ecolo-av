@@ -10,17 +10,23 @@ use crate::Point;
 /// pitch are the map's (0: `base_link` on the ground).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Pose2 {
+    /// m.
     pub x: f64,
+    /// m.
     pub y: f64,
+    /// rad, + left of x.
     pub yaw: f64,
 }
 
 impl Pose2 {
+    /// The pose (`x`, `y`, `yaw`).
+    #[must_use]
     pub const fn new(x: f64, y: f64, yaw: f64) -> Self {
         Self { x, y, yaw }
     }
 
     /// `self ∘ other`: `other`, as seen from `self`, put into `self`'s frame.
+    #[must_use]
     pub fn compose(&self, other: &Pose2) -> Pose2 {
         let (s, c) = self.yaw.sin_cos();
         Pose2 {
@@ -31,6 +37,7 @@ impl Pose2 {
     }
 
     /// The pose that undoes this one: `self ∘ self.inverse()` is no move.
+    #[must_use]
     pub fn inverse(&self) -> Pose2 {
         let (s, c) = self.yaw.sin_cos();
         Pose2 {
@@ -41,11 +48,13 @@ impl Pose2 {
     }
 
     /// Where `other` is, seen from `self`: `self⁻¹ ∘ other`.
+    #[must_use]
     pub fn between(&self, other: &Pose2) -> Pose2 {
         self.inverse().compose(other)
     }
 
     /// A point in this pose's frame, moved into the frame the pose is in. Height is kept.
+    #[must_use]
     pub fn apply(&self, p: &Point) -> Point {
         let (s, c) = self.yaw.sin_cos();
         Point::new(self.x + c * p.x - s * p.y, self.y + s * p.x + c * p.y, p.z)
@@ -53,6 +62,7 @@ impl Pose2 {
 
     /// Part way from `self` to `other`: `t` = 0 is `self`, 1 is `other`. Position on a
     /// straight line, yaw the short way round.
+    #[must_use]
     pub fn lerp(&self, other: &Pose2, t: f64) -> Pose2 {
         Pose2 {
             x: self.x + t * (other.x - self.x),
@@ -62,6 +72,7 @@ impl Pose2 {
     }
 
     /// How far apart two poses are: (metres, radians, the turn's size).
+    #[must_use]
     pub fn distance(&self, other: &Pose2) -> (f64, f64) {
         (
             (other.x - self.x).hypot(other.y - self.y),
@@ -70,12 +81,14 @@ impl Pose2 {
     }
 
     /// The same pose with every number finite.
+    #[must_use]
     pub fn is_finite(&self) -> bool {
         self.x.is_finite() && self.y.is_finite() && self.yaw.is_finite()
     }
 }
 
 /// An angle in (-π, π].
+#[must_use]
 pub fn wrap(angle: f64) -> f64 {
     let a = angle.rem_euclid(std::f64::consts::TAU);
     if a > std::f64::consts::PI {
@@ -93,6 +106,7 @@ pub struct Mount(Isometry3<f64>);
 impl Mount {
     /// From `vehicle.yaml`'s `xyz` (m) and `rpy` (rad: roll about x, then pitch about y,
     /// then yaw about z, as URDF).
+    #[must_use]
     pub fn from_xyz_rpy(xyz: [f64; 3], rpy: [f64; 3]) -> Self {
         let [x, y, z] = xyz;
         let [roll, pitch, yaw] = rpy;
@@ -103,6 +117,7 @@ impl Mount {
     }
 
     /// A lidar point, moved into `base_link`.
+    #[must_use]
     pub fn to_base_link(&self, p: &Point) -> Point {
         self.0.transform_point(p)
     }

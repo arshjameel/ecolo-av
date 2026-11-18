@@ -16,7 +16,9 @@ map ──ekf_global (GPS, GPS heading)──▶ odom ──ekf_local (wheels, I
 | [aav_gps_heading](./aav_gps_heading/README.md) | a heading from the GPS's Doppler velocity, while the car moves | `/localization/gps/heading` |
 | [aav_ndt](./aav_ndt/README.md) | a trial: NDT on a saved lidar map, in Rust; never TF; into `ekf_global` only with `ndt_ekf:=true` | `/localization/ndt/pose` |
 | [aav_kiss_icp](./aav_kiss_icp/README.md) | a trial: KISS-ICP lidar odometry (how far the car moved, no map); never TF; its twist into `ekf_local` only with `kiss_ekf:=true` | `/localization/kiss_icp/odom` |
+| [aav_lane_pose](./aav_lane_pose/README.md) | a trial: the lane finder's lines against the lane map, the car's place across its lane; into `ekf_global` only with `lane_pose:=true` | `/localization/lane/pose` |
 | [aav_localization_health](./aav_localization_health/README.md) | warn-only checks: gyro bias, IMU mounting, GPS quality, stamps, frames, TF, front wheels, runaway EKFs | `/localization/health`, `/diagnostics` |
+| [aav_localization_health_rs](./aav_localization_health_rs/README.md) | the same checks in Rust (`localization_health_impl:=rust`): the Python's answers, exactly | the same as the Python's |
 
 ## Invariants
 

@@ -49,6 +49,7 @@ pub struct StandInBus {
 
 impl StandInBus {
     /// Devices at the calibration's addresses.
+    #[must_use]
     pub fn new(cal: &Calibration) -> Self {
         StandInBus {
             addresses: cal.addresses,
@@ -57,6 +58,7 @@ impl StandInBus {
     }
 
     /// What each device was last told.
+    #[must_use]
     pub fn devices(&self) -> DeviceTargets {
         self.targets
     }

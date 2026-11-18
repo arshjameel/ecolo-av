@@ -4,7 +4,7 @@ run_info: which algorithms this run uses, as the launch chose them, for the scre
 Subscribes  nothing
 Publishes   system/algorithms   diagnostic_msgs/DiagnosticStatus, reliable, transient local
                                 (latched), depth 1: name algorithms, level OK, message one
-                                short line (lattice, mppi, voxels...), hardware_id the run
+                                short line (own, mppi_lag, voxels...), hardware_id the run
                                 (sim world:=road, car), values one row each - run, planner,
                                 path follower, obstacles, local EKF, global EKF, NDT,
                                 KISS-ICP, AMCL. Again every period seconds, so a screen
@@ -17,7 +17,7 @@ Parameters  profile, nav, planner, controller, tracker, lidar, radar, voxels, am
             (sim.launch.py, car.launch.py fill them); period (2.0 s).
 
 It says what the launch asked for, not what is alive: the cockpit's tracker panel may swap
-the tracker later in Gazebo (/drivers/nav/track/status says which then). The words are in
+the tracker later in the simulator (/drivers/nav/track/status says which then). The words are in
 algorithms.py (no ROS).
 """
 
@@ -44,9 +44,9 @@ class RunInfo(Node):
                            'kiss_ekf')}
         choices = Choices(
             profile=str(param('profile', 'sim')), nav=bool(param('nav', True)),
-            planner=str(param('planner', 'lattice')),
+            planner=str(param('planner', 'own')),
             controller=str(param('controller', 'mppi')),
-            tracker=str(param('tracker', 'none')),
+            tracker=str(param('tracker', 'mppi_lag')),
             lidar=flags['lidar'], radar=flags['radar'], voxels=flags['voxels'],
             amcl=flags['amcl'], ndt=use(flags['ndt'], flags['ndt_ekf']),
             kiss_icp=use(flags['kiss_icp'], flags['kiss_ekf']))

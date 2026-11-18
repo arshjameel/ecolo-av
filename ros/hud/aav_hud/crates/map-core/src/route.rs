@@ -32,20 +32,26 @@ impl Route {
         }
     }
 
+    /// The route's points.
+    #[must_use]
     pub fn points(&self) -> &[Point] {
         &self.points
     }
 
+    /// True if it has no points.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.points.is_empty()
     }
 
     /// The last point: where Nav2 is going.
+    #[must_use]
     pub fn goal(&self) -> Option<Point> {
         self.points.last().copied()
     }
 
     /// The whole length, start to goal.
+    #[must_use]
     pub fn length(&self) -> Metres {
         Metres(self.segments().map(|(a, b)| (b - a).length()).sum())
     }
@@ -56,6 +62,7 @@ impl Route {
     }
 
     /// Where `car` is along the route; None for an empty route.
+    #[must_use]
     pub fn progress(&self, car: Point) -> Option<Progress> {
         let goal = self.goal()?;
         // The nearest point on each segment, and that segment's number; keep the nearest

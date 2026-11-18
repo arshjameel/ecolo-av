@@ -64,6 +64,7 @@ pub enum Gear {
 impl Gear {
     /// Moving: the direction. Standing still: Drive only when the computer drives and
     /// may move (armed, no e-stop), otherwise Park. The same rule as aav_hud's.
+    #[must_use]
     pub fn pick(mode: Mode, armed: bool, estop: bool, speed: MetresPerSecond) -> Self {
         if speed.0 < -MOVING.0 {
             Self::Reverse
@@ -75,6 +76,7 @@ impl Gear {
     }
 
     /// The one letter: D, R or P.
+    #[must_use]
     pub fn letter(self) -> &'static str {
         match self {
             Self::Drive => "D",
@@ -87,15 +89,25 @@ impl Gear {
 /// One fault the spine reports, a bit of VehicleStatus's `faults`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Fault {
+    /// No commands came in time.
     CmdTimeout,
+    /// A command's checksum was wrong.
     BadChecksum,
+    /// A command's counter didn't move on.
     BadCounter,
+    /// The steering actuator's driver failed.
     SteeringDriver,
+    /// The brake actuator's driver failed.
     BrakeDriver,
+    /// The throttle's DAC failed.
     ThrottleDac,
+    /// The wheel encoder failed.
     WheelEncoder,
+    /// The CAN bus failed.
     CanBus,
+    /// The RC remote's signal is lost.
     RcSignalLost,
+    /// The car went faster than allowed.
     Overspeed,
 }
 
@@ -115,11 +127,13 @@ impl Fault {
     ];
 
     /// Its bit in `faults` (VehicleStatus's FAULT_* constants).
+    #[must_use]
     pub fn bit(self) -> u16 {
         1 << (self as u16)
     }
 
     /// A short name for the screen.
+    #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Self::CmdTimeout => "no commands",
@@ -142,6 +156,7 @@ pub struct Faults(pub u16);
 
 impl Faults {
     /// No fault at all.
+    #[must_use]
     pub fn is_empty(self) -> bool {
         self.0 == 0
     }
@@ -154,6 +169,7 @@ impl Faults {
     }
 
     /// Bits that no [`Fault`] names (a newer firmware), or 0.
+    #[must_use]
     pub fn unknown_bits(self) -> u16 {
         let known = Fault::ALL.iter().fold(0, |bits, f| bits | f.bit());
         self.0 & !known
@@ -177,19 +193,27 @@ impl fmt::Display for Faults {
 /// One `/vehicle/status` message, in our types.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct VehicleStatus {
+    /// Who drives.
     pub mode: Mode,
+    /// The spine is armed.
     pub armed: bool,
     /// Any stop: the hardware button, `/safety/estop`, or the spine's watchdog.
     pub estop_active: bool,
+    /// Along the car, + forward.
     pub speed: MetresPerSecond,
+    /// The front wheels' angle, + left.
     pub steering_angle: Radians,
+    /// 0 to 1.
     pub throttle: Fraction,
+    /// 0 to 1.
     pub brake: Fraction,
+    /// The spine's faults, one bit each.
     pub faults: Faults,
 }
 
 impl VehicleStatus {
     /// The gear letter for this status.
+    #[must_use]
     pub fn gear(&self) -> Gear {
         Gear::pick(self.mode, self.armed, self.estop_active, self.speed)
     }

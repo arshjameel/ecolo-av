@@ -42,7 +42,7 @@ def bridge(context):
     return [Node(
         package=bridges.package(LaunchConfiguration('bridge').perform(context)),
         executable=bridges.EXECUTABLE,
-        name='spine_bridge',
+        name='spine_bridge', namespace='/',
         parameters=[
             PathJoinSubstitution([FindPackageShare('aav_spine'), 'config', 'spine.yaml']),
             vehicle.spine_params(v),

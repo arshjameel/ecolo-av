@@ -6,24 +6,29 @@ use std::time::Instant;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiTextureHandle};
 use debug_core::{
-    cubes::CubeScan,
+    cubes::{Band, CubeScan, Metres},
+    flat::{ground_the_flat, FlatRule},
     ndt::{MapCells, NdtStatus},
     orbit::Orbit,
+    swap::Tracker,
 };
 use hud_core::{
     ahead::{self, Ahead, PlanSource, Summary, Tone},
     gate::Light,
     origin::Origins,
+    things::Thing,
     vehicle::VehicleStatus,
 };
 use map_core::{
     geom::{Point, Pose},
     grid::{Grid, Palette},
-    view::{PixelsPerMetre, ScreenPoint, View, Viewport as MapViewport},
+    view::{Mode as MapMode, ScreenPoint, Viewport as MapViewport},
 };
 
 use crate::{
+    chunks,
     feed::{self, Heard, Level, Update},
+    map_nav::{Gesture, MapNav},
     set_viewport, CubesCamera, PictureImage, Source,
 };
 
@@ -40,14 +45,11 @@ const MAP_SHARE: f32 = 0.44;
 const LOOK_DOWN: [f32; 2] = [0.0, -0.18];
 /// The view from the car, top to bottom, radians: wide, as Ben preferred. The wheel zooms.
 pub const DRIVER_FOV: f32 = 1.15;
-/// A map wider than this, metres, shows the car's surroundings, not all of itself.
 /// Cubes lower than this are the ground's waves, kerbs and grass: not compared with NDT's map.
 pub const WAVES_TOP: f32 = 0.45;
 /// NDT's picture on the flat map: metres per pixel, and the most pixels a side.
 const FOOTPRINT_CELL: f32 = 0.5;
 const MAX_FOOTPRINT: usize = 4096;
-const BIG_MAP: f64 = 300.0;
-const BIG_MAP_VIEW: f64 = 160.0;
 /// Log lines kept for the console.
 const CONSOLE_LINES: usize = 500;
 /// The most cubes drawn on the map. A real scan has about 2,000; beyond that it's a blur.
@@ -91,10 +93,30 @@ const BAND_LEGEND: [([u8; 3], &str); 6] = [
     (BAND_RGB[5], "higher"),
 ];
 
+/// One painted line of the lane map, on the map.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LaneLine {
+    pub points: Vec<Point>,
+    pub look: LaneLook,
+}
+
+/// How a lane map's line is drawn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LaneLook {
+    Solid,
+    Dashed,
+    Stop,
+    Curb,
+}
+
 /// What's drawn. The defaults are the quiet view Ben asked for.
 #[derive(Clone, Copy, Debug)]
 pub struct Layers {
-    pub road: bool,
+    /// The ground's cubes: the road and the lidar's rings on flat raised ground (key G;
+    /// off: Ben, 17 Nov, "lets get rid of the waves the lidar made").
+    pub ground: bool,
+    /// The lane map's lines on the map (`--lanes`; key L).
+    pub lanes: bool,
     pub nav2_cubes: bool,
     pub ndt_cubes: bool,
     pub costmap: bool,
@@ -103,12 +125,17 @@ pub struct Layers {
     pub plan: bool,
     /// The squiggly line: the trace, the plan ahead, the stop bar and their words (key T).
     pub ahead: bool,
+    /// The things near the car, each box in its kind's colour, with its name (key K).
+    pub things: bool,
+    /// The chunks loaded and their saved maps (`--chunks`; key H), and the route.
+    pub chunks: bool,
 }
 
 impl Default for Layers {
     fn default() -> Self {
         Self {
-            road: true,
+            ground: false,
+            lanes: true,
             nav2_cubes: false,
             ndt_cubes: false,
             costmap: true,
@@ -116,6 +143,8 @@ impl Default for Layers {
             scan: true,
             plan: true,
             ahead: true,
+            things: true,
+            chunks: true,
         }
     }
 }
@@ -129,7 +158,7 @@ pub enum Goal {
     Picked(Point),
     /// DRIVE HERE pressed, waiting for CONFIRM.
     Armed(Point),
-    /// Confirmed: pretend Nav2 is driving there.
+    /// Confirmed: pretend the navigator is driving there.
     Driving(Point),
 }
 
@@ -226,9 +255,29 @@ pub struct WorldNews {
     ndt_pose: Option<Pose>,
     pub picture_size: Option<[u32; 2]>,
     pub plan: Vec<Point>,
+    /// The road ahead, on the map (drawn with the plan, key P).
+    pub road_ahead: feed::RoadAhead,
+    /// The lane map's painted lines (`--lanes`, a Lanelet2 .osm), drawn with the road.
+    pub lanes: Vec<LaneLine>,
+    /// The map's chunks (`--chunks`, a folder with chunks.yaml): those loaded for the car
+    /// and its route (`chunks::loaded`, as the planner and NDT load them, TODO 175), each
+    /// with its saved map (key H).
+    pub chunks: Option<map_chunks::Grid>,
+    /// The folder `--chunks` named: the saved maps are read from it as chunks load.
+    pub chunk_folder: Option<std::path::PathBuf>,
+    saved_maps: chunks::SavedMaps,
+    saved_pictures:
+        std::collections::BTreeMap<(map_chunks::ChunkKey, map_chunks::Detail), egui::TextureHandle>,
+    /// The street route (`/drivers/nav/route/path`, map): the zoomed-out level's line.
+    pub route: Vec<Point>,
     /// The squiggly line, in base_link, and when its trace and numbers were last heard.
     pub ahead: Ahead,
     trace_heard: Option<Instant>,
+    /// The things near the car (odom), named by the camera, and when they were last heard.
+    things: Vec<Thing>,
+    things_heard: Option<Instant>,
+    /// When the newest plan came: a navigator replans while it drives a goal.
+    plan_heard: Option<Instant>,
     summary_heard: Option<Instant>,
     map: GridLayer,
     costmap: GridLayer,
@@ -240,6 +289,15 @@ pub struct WorldNews {
 }
 
 impl WorldNews {
+    /// The line the coarse chunks follow: the street route if there is one, else the plan.
+    pub fn chunk_route(&self) -> &[Point] {
+        if self.route.len() >= 2 {
+            &self.route
+        } else {
+            &self.plan
+        }
+    }
+
     /// A line for the console, from the window itself.
     pub fn note(&mut self, line: String) {
         self.push_line(Level::Info, line);
@@ -273,21 +331,44 @@ impl WorldNews {
         self.map_match = index.match_cubes(&cubes, WAVES_TOP);
     }
 
+    /// The voxels node's cubes on flat raised ground (the lidar's rings on the campus's
+    /// grass, a kerb up from the road) become ground, against the newest road
+    /// (`debug_core::flat`). Each cube's band starts again from its height, so a newer
+    /// road can give one back.
+    fn ground_the_waves(&mut self) {
+        for c in &mut self.cubes.cubes {
+            c.band = Band::of(Metres(f64::from(c.centre[2])), Metres(0.0));
+        }
+        ground_the_flat(&mut self.cubes.cubes, &self.road.cubes, FlatRule::default());
+    }
+
     /// One piece of news. The picture isn't here: it goes straight into its image.
     pub fn apply(&mut self, update: Update, now: Instant) {
         match update {
             Update::Cubes(scan) => {
                 self.cubes = scan;
+                self.ground_the_waves();
                 self.match_cubes();
             }
-            Update::Road(scan) => self.road = scan,
+            Update::Road(mut scan) => {
+                // The voxels node's road is ground, however high it sits.
+                for c in &mut scan.cubes {
+                    c.band = Band::Ground;
+                }
+                self.road = scan;
+                self.ground_the_waves();
+            }
             Update::CarInOdom(pose) => self.car_odom = pose,
             Update::CarInMap(pose) => self.car_map = pose,
             Update::Picture(_) => {}
             Update::Log(level, line) => self.push_line(level, line),
             Update::Ndt(status) => self.ndt_status = Some(status),
             Update::NdtPose(pose) => self.ndt_pose = Some(pose),
-            Update::Plan(points) => self.plan = points,
+            Update::Plan(points) => {
+                self.plan = points;
+                self.plan_heard = Some(now);
+            }
+            Update::RoadAhead(road) => self.road_ahead = road,
             Update::Map(grid) => self.map.set(grid),
             Update::Costmap(grid) => self.costmap.set(grid),
             Update::Origin(announcement) => self.origins.apply(announcement),
@@ -304,6 +385,29 @@ impl WorldNews {
                 self.ahead.summary = Some(summary);
                 self.summary_heard = Some(now);
             }
+            Update::Things(things) => {
+                self.things = things;
+                self.things_heard = Some(now);
+            }
+            Update::Route(points) => self.route = points,
+        }
+    }
+
+    /// The goal someone else sent (sim-check, the tools, RViz, the map window): the end of a
+    /// plan heard within [`GOAL_PLAN_FRESH`]. Every navigator, Nav2's or ours, replans while
+    /// it drives (every 1 s to a pose, 3 s through poses) and stops when the goal ends.
+    pub fn goal_elsewhere(&self, now: Instant) -> Option<Point> {
+        let heard = self.plan_heard?;
+        (now.saturating_duration_since(heard) <= GOAL_PLAN_FRESH)
+            .then(|| self.plan.last().copied())
+            .flatten()
+    }
+
+    /// The things while they are fresh; none once `things` has been quiet 2 s.
+    pub fn things_now(&self, now: Instant) -> &[Thing] {
+        match self.things_heard {
+            Some(at) if now.saturating_duration_since(at) <= feed::STALE_AFTER => &self.things,
+            _ => &[],
         }
     }
 
@@ -322,6 +426,9 @@ impl WorldNews {
         Some(ahead)
     }
 }
+
+/// How long a plan says a goal is still being driven: more than the slowest replan (3 s).
+pub const GOAL_PLAN_FRESH: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// The squiggly line's colours: the plan faint, the trace by how well it keeps to the plan.
 pub const AHEAD_PLAN_RGB: [u8; 3] = [150, 156, 164];
@@ -383,9 +490,10 @@ pub struct UiState {
     /// Where the lidar sits on the car, in base_link: the driver's eyes.
     pub eyes: [f32; 3],
     pub world: WorldNews,
-    view: View,
-    /// The size the map was last fitted to; `None` once a person has moved or zoomed it.
-    fitted_to: Option<egui::Vec2>,
+    /// The map panel's view: following the car, the whole map, or free (`map_nav`).
+    pub map: MapNav,
+    /// F was pressed: the map panel follows the car, or shows the whole map, next frame.
+    map_follow_key: bool,
     goal: Goal,
     tab: Tab,
     console_floor: Level,
@@ -403,8 +511,8 @@ impl Default for UiState {
             driver_fov: DRIVER_FOV,
             eyes: [0.0, 0.0, 1.5],
             world: WorldNews::default(),
-            view: View::default(),
-            fitted_to: Some(egui::Vec2::ZERO),
+            map: MapNav::default(),
+            map_follow_key: false,
             goal: Goal::default(),
             tab: Tab::default(),
             console_floor: Level::Info,
@@ -454,7 +562,7 @@ pub fn draw(
     picture: Res<PictureImage>,
     mut state: ResMut<UiState>,
     window: Single<&Window>,
-    mut camera: Single<&mut Camera, With<CubesCamera>>,
+    mut camera: Single<(&mut Camera, &GlobalTransform), With<CubesCamera>>,
 ) -> Result {
     let picture_id = contexts.add_image(EguiTextureHandle::Weak(picture.0.id()));
     let ctx = contexts.ctx_mut()?.clone();
@@ -504,18 +612,24 @@ pub fn draw(
     panel(&mut root, console_rect, |ui| console_panel(ui, state));
     cubes_panel(&mut root, cubes_rect, state);
     ndt_line(&root, cubes_rect, &state.world, state.layers.ndt_cubes);
+    if state.layers.things {
+        let (eyes, at) = (&*camera.0, camera.1);
+        thing_names(&root, cubes_rect, &state.world, |p| {
+            eyes.world_to_viewport(at, p).ok()
+        });
+    }
     if state.layers.ahead {
         let now = Instant::now();
         ahead_words(&root, cubes_rect, &state.world, now);
         ahead_inset(&root, cubes_rect, &state.world, now);
     }
     panel(&mut root, map_rect, |ui| map_panel(ui, state, feed));
-    panel(&mut root, corner_rect, |ui| corner_panel(ui, state));
+    panel(&mut root, corner_rect, |ui| corner_panel(ui, state, feed));
 
     let scale = window.scale_factor();
     let inner = cubes_rect.shrink(1.0);
     set_viewport(
-        &mut camera,
+        &mut camera.0,
         UVec2::new((inner.left() * scale) as u32, (inner.top() * scale) as u32),
         UVec2::new(
             (inner.width() * scale) as u32,
@@ -550,7 +664,8 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
     ctx.input(|input| {
         let layers = &mut state.layers;
         for (key, layer) in [
-            (egui::Key::G, &mut layers.road),
+            (egui::Key::G, &mut layers.ground),
+            (egui::Key::L, &mut layers.lanes),
             (egui::Key::V, &mut layers.nav2_cubes),
             (egui::Key::N, &mut layers.ndt_cubes),
             (egui::Key::O, &mut layers.costmap),
@@ -558,6 +673,8 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
             (egui::Key::S, &mut layers.scan),
             (egui::Key::P, &mut layers.plan),
             (egui::Key::T, &mut layers.ahead),
+            (egui::Key::K, &mut layers.things),
+            (egui::Key::H, &mut layers.chunks),
         ] {
             if input.key_pressed(key) {
                 *layer = !*layer;
@@ -568,6 +685,9 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
                 Eyes::Driver => Eyes::Orbit,
                 Eyes::Orbit => Eyes::Driver,
             };
+        }
+        if input.key_pressed(egui::Key::F) {
+            state.map_follow_key = true;
         }
         if input.key_pressed(egui::Key::R) {
             state.orbit.reset();
@@ -964,14 +1084,23 @@ fn screen(p: ScreenPoint) -> egui::Pos2 {
 }
 
 fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) {
+    let (mut follow_clicked, mut whole_clicked) = (false, false);
     ui.horizontal(|ui| {
         title(ui, "THE MAP: click to pick a goal");
+        let mode = state.map.view.mode;
+        follow_clicked = ui
+            .selectable_label(mode == MapMode::FollowCar, "Follow car (F)")
+            .clicked();
+        whole_clicked = ui
+            .selectable_label(mode == MapMode::WholeMap, "Whole map")
+            .clicked();
         let layers = &mut state.layers;
         ui.toggle_value(&mut layers.costmap, "Costmap");
         ui.toggle_value(&mut layers.ndt_map, "NDT");
         ui.toggle_value(&mut layers.scan, "Cubes");
         ui.toggle_value(&mut layers.plan, "Plan");
         ui.toggle_value(&mut layers.ahead, "Ahead");
+        ui.toggle_value(&mut layers.things, "Things");
     });
 
     let rect = ui.available_rect_before_wrap();
@@ -981,37 +1110,27 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         width: f64::from(rect.width()),
         height: f64::from(rect.height()),
     };
-    // The window's size can change in its first frames, and when dragged: fit again, until
-    // a person has chosen a view of their own.
-    let fit_to = state.world.map.grid.as_ref().map(|grid| grid.info.bounds());
     let car = state.world.car_map.position;
-    if let (Some(bounds), true) = (fit_to, state.fitted_to.is_some()) {
-        let (width, height) = bounds.size();
-        // A whole campus would make the car a dot: follow the car, until a person moves.
-        if width.max(height) > BIG_MAP {
-            state.view.centre = car;
-            state.view.set_scale(PixelsPerMetre(
-                viewport.width.min(viewport.height) / BIG_MAP_VIEW,
-            ));
-            state.fitted_to = Some(rect.size());
-        }
-    }
-    if let (Some(bounds), true) = (
-        fit_to,
-        state.fitted_to.is_some_and(|size| size != rect.size()),
-    ) {
-        let (width, height) = bounds.size();
-        state.view.centre = bounds.centre();
-        state.view.set_scale(PixelsPerMetre(
-            (viewport.width / width.max(1.0)).min(viewport.height / height.max(1.0)) * 0.97,
-        ));
-        state.fitted_to = Some(rect.size());
-    }
+    // With chunks, the view starts sized to those loaded (the car's 3 x 3 and the
+    // route's): the three levels. The whole map is the static map's box.
+    let near = state
+        .world
+        .chunks
+        .as_ref()
+        .filter(|_| state.layers.chunks)
+        .and_then(|grid| chunks::bounds(&chunks::loaded(grid, car, state.world.chunk_route())));
+    let whole = state
+        .world
+        .map
+        .grid
+        .as_ref()
+        .map(|grid| grid.info.bounds())
+        .or(near);
 
     let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
     if response.clicked() {
         if let Some(at) = response.interact_pointer_pos() {
-            let on_map = state.view.to_map(
+            let on_map = state.map.view.to_map(
                 ScreenPoint::new(f64::from(at.x), f64::from(at.y)),
                 &viewport,
             );
@@ -1023,26 +1142,45 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
             }
         }
     }
-    if response.dragged_by(egui::PointerButton::Secondary) {
+    let mut gestures = Vec::new();
+    // Any button's drag pans: a Mac's trackpad has no easy right-drag.
+    if response.dragged() {
         let drag = response.drag_delta();
-        let k = state.view.scale.0;
-        state.fitted_to = None;
-        state.view.centre = Point::new(
-            state.view.centre.x - f64::from(drag.x) / k,
-            state.view.centre.y + f64::from(drag.y) / k,
-        );
+        gestures.push(Gesture::Drag {
+            dx: f64::from(drag.x),
+            dy: f64::from(drag.y),
+        });
     }
     if response.hovered() {
-        let scroll = ui.input(|input| input.smooth_scroll_delta.y);
-        if scroll != 0.0 {
-            let k = state.view.scale.0 * f64::from(1.0 + scroll * 0.002);
-            state.fitted_to = None;
-            state.view.set_scale(PixelsPerMetre(k));
-        }
+        let at = response
+            .hover_pos()
+            .map(|p| ScreenPoint::new(f64::from(p.x), f64::from(p.y)));
+        let (scroll, pinch) = ui.input(|input| (input.smooth_scroll_delta.y, input.zoom_delta()));
+        gestures.push(Gesture::Wheel {
+            by: f64::from(scroll),
+            at,
+        });
+        gestures.push(Gesture::Pinch {
+            factor: f64::from(pinch),
+            at,
+        });
     }
+    if std::mem::take(&mut state.map_follow_key) {
+        gestures.push(Gesture::ToggleFollow);
+    }
+    if follow_clicked {
+        gestures.push(Gesture::FollowCar);
+    }
+    if whole_clicked {
+        gestures.push(Gesture::WholeMap);
+    }
+    for gesture in gestures {
+        state.map.apply(gesture, &viewport);
+    }
+    state.map.frame(car, whole, near, &viewport);
 
     let painter = ui.painter_at(rect);
-    let view = state.view;
+    let view = state.map.view;
     let to = |p: Point| screen(view.to_screen(p, &viewport));
     let k = view.scale.0 as f32;
     let layers = state.layers;
@@ -1052,7 +1190,7 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         painter.text(
             rect.center(),
             egui::Align2::CENTER_CENTER,
-            "waiting for Nav2's map",
+            "waiting for the map",
             egui::FontId::proportional(16.0),
             egui::Color32::from_gray(170),
         );
@@ -1084,6 +1222,21 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
             );
         }
     }
+    if let (true, Some(grid)) = (layers.chunks, world.chunks) {
+        paint_chunks(ui, world, &grid, &painter, to);
+    }
+    if layers.lanes {
+        for lane in &world.lanes {
+            let (width, colour) = match lane.look {
+                LaneLook::Solid => (1.5, egui::Color32::from_rgb(230, 230, 230)),
+                LaneLook::Dashed => (1.0, egui::Color32::from_rgb(150, 150, 150)),
+                LaneLook::Stop => (3.0, egui::Color32::from_rgb(235, 40, 40)),
+                LaneLook::Curb => (2.0, egui::Color32::from_rgb(200, 170, 60)),
+            };
+            let line: Vec<_> = lane.points.iter().map(|p| to(*p)).collect();
+            painter.add(egui::Shape::line(line, egui::Stroke::new(width, colour)));
+        }
+    }
     let car = world.car_map;
     if layers.scan {
         for cube in world.cubes.cubes.iter().take(MAX_MAP_CUBES) {
@@ -1091,12 +1244,73 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
             painter.circle_filled(to(p), 1.5, egui::Color32::from_rgb(40, 220, 110));
         }
     }
+    if layers.things {
+        // Each thing: its box (odom, onto the map) in its kind's colour, and its name.
+        for thing in world.things_now(Instant::now()) {
+            let (hl, hw) = (thing.length / 2.0, thing.width / 2.0);
+            let corner = |dx: f64, dy: f64| {
+                let odom = [(thing.x + dx) as f32, (thing.y + dy) as f32];
+                to(feed::odom_to_map(odom, world.car_odom, car))
+            };
+            let outline = vec![
+                corner(-hl, -hw),
+                corner(hl, -hw),
+                corner(hl, hw),
+                corner(-hl, hw),
+                corner(-hl, -hw),
+            ];
+            let colour = rgba_colour(thing.colour());
+            painter.add(egui::Shape::line(outline, egui::Stroke::new(2.0, colour)));
+            if thing.is_named() {
+                painter.text(
+                    corner(0.0, hw),
+                    egui::Align2::CENTER_BOTTOM,
+                    thing.label(),
+                    egui::FontId::proportional(14.0),
+                    egui::Color32::WHITE,
+                );
+            }
+        }
+    }
+    if layers.chunks && world.route.len() >= 2 {
+        let line: Vec<_> = world.route.iter().map(|p| to(*p)).collect();
+        painter.add(egui::Shape::line(
+            line,
+            egui::Stroke::new(4.0, egui::Color32::from_rgb(170, 90, 230)),
+        ));
+    }
     if layers.plan && world.plan.len() >= 2 {
         let line: Vec<_> = world.plan.iter().map(|p| to(*p)).collect();
         painter.add(egui::Shape::line(
             line,
             egui::Stroke::new(2.5, egui::Color32::from_rgb(90, 200, 255)),
         ));
+    }
+    if layers.plan && world.road_ahead.line.len() >= 2 {
+        let top = world.road_ahead.top_speed();
+        for pair in world.road_ahead.line.windows(2) {
+            let (a, v) = pair[0];
+            let (b, _) = pair[1];
+            painter.line_segment([to(a), to(b)], egui::Stroke::new(5.0, road_colour(v, top)));
+        }
+        if let Some((end, heading)) = world.road_ahead.end {
+            let (sin, cos) = heading.sin_cos();
+            let side = |s: f64| to(Point::new(end.x - 1.5 * s * sin, end.y + 1.5 * s * cos));
+            painter.line_segment(
+                [side(1.0), side(-1.0)],
+                egui::Stroke::new(4.0, egui::Color32::from_rgb(235, 40, 40)),
+            );
+        }
+        for (stop, why) in &world.road_ahead.stops {
+            painter.circle_stroke(to(*stop), 6.0, egui::Stroke::new(2.0, egui::Color32::WHITE));
+            painter.text(
+                to(*stop),
+                egui::Align2::LEFT_BOTTOM,
+                format!("  {why}"),
+                egui::FontId::proportional(13.0),
+                egui::Color32::WHITE,
+            );
+        }
     }
     if layers.ahead {
         if let Some(squiggle) = world.ahead_now(Instant::now()) {
@@ -1106,6 +1320,8 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
     }
     if let Some(goal) = state.goal.point() {
         painter.circle_stroke(to(goal), 7.0, egui::Stroke::new(2.5, egui::Color32::YELLOW));
+    } else if let Some(goal) = world.goal_elsewhere(Instant::now()) {
+        painter.circle_stroke(to(goal), 7.0, egui::Stroke::new(2.5, egui::Color32::GOLD));
     }
     // The car as an arrow, big enough to find whatever the zoom.
     let (sin, cos) = car.yaw.sin_cos();
@@ -1123,7 +1339,8 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         egui::Stroke::new(1.5, egui::Color32::WHITE),
     ));
 
-    goal_buttons(ui, rect, state, feed);
+    let world_goal = state.world.goal_elsewhere(Instant::now());
+    goal_buttons(ui, rect, state, feed, world_goal);
 }
 
 /// The two presses a goal needs, over the map's bottom edge. The gates are checked at the
@@ -1133,6 +1350,7 @@ fn goal_buttons(
     map: egui::Rect,
     state: &mut UiState,
     feed: &mut dyn feed::Feed,
+    world_goal: Option<Point>,
 ) {
     let row = egui::Rect::from_min_max(
         egui::pos2(map.left() + 6.0, map.bottom() - 34.0),
@@ -1140,9 +1358,17 @@ fn goal_buttons(
     );
     ui.scope_builder(egui::UiBuilder::new().max_rect(row), |ui| {
         ui.horizontal(|ui| match state.goal {
-            Goal::None => {
-                ui.label("no goal");
-            }
+            Goal::None => match world_goal {
+                Some(goal) => {
+                    ui.label(format!(
+                        "driving to a goal sent elsewhere: x {:.1}, y {:.1}",
+                        goal.x, goal.y
+                    ));
+                }
+                None => {
+                    ui.label("no goal");
+                }
+            },
             Goal::Picked(goal) => {
                 if ui.button("DRIVE HERE").clicked() {
                     state.goal = Goal::Armed(goal);
@@ -1160,13 +1386,29 @@ fn goal_buttons(
                 }
             }
             Goal::Driving(_) => {
+                if ui.button("CANCEL THE GOAL").clicked() {
+                    cancel(state, feed);
+                }
                 if ui.button("Clear the marker").clicked() {
                     state.goal = Goal::None;
                 }
-                ui.label("cancelling Nav2's goal isn't built yet");
             }
         });
     });
+}
+
+/// CANCEL THE GOAL: the navigator's goals cancelled, through the same gates as a goal.
+fn cancel(state: &mut UiState, feed: &mut dyn feed::Feed) {
+    let world = &mut state.world;
+    match feed::command_allowed(feed.may_command(), &world.origins)
+        .and_then(|()| feed.cancel_goal())
+    {
+        Ok(()) => {
+            world.note("cancel sent: the navigator answers in the console".to_owned());
+            state.goal = Goal::None;
+        }
+        Err(why) => world.push_line(Level::Error, format!("goal not cancelled: {why}")),
+    }
 }
 
 /// A click and the two presses at once, for `--click-goal`.
@@ -1196,7 +1438,7 @@ fn confirm(state: &mut UiState, feed: &mut dyn feed::Feed, at: Point) -> Goal {
     }
 }
 
-fn corner_panel(ui: &mut egui::Ui, state: &mut UiState) {
+fn corner_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) {
     ui.horizontal(|ui| {
         ui.selectable_value(&mut state.tab, Tab::Keys, "KEYS");
         ui.selectable_value(&mut state.tab, Tab::Algorithms, "ALGORITHMS");
@@ -1206,7 +1448,7 @@ fn corner_panel(ui: &mut egui::Ui, state: &mut UiState) {
         .auto_shrink(false)
         .show(ui, |ui| match state.tab {
             Tab::Keys => keys_tab(ui, state),
-            Tab::Algorithms => algorithms_tab(ui, state),
+            Tab::Algorithms => algorithms_tab(ui, state, feed),
         });
 }
 
@@ -1214,7 +1456,11 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
     let on = |value: bool| if value { "on" } else { "off" };
     let layers = state.layers;
     let rows = [
-        ("G", "road cubes", on(layers.road)),
+        (
+            "G",
+            "the ground: road, and the lidar's rings on raised grass",
+            on(layers.ground),
+        ),
         ("V", "outline every live cube", on(layers.nav2_cubes)),
         (
             "N",
@@ -1222,14 +1468,31 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
             on(layers.ndt_cubes),
         ),
         ("O", "costmap", on(layers.costmap)),
+        ("L", "lane map's lines on the map", on(layers.lanes)),
         ("M", "NDT's map", on(layers.ndt_map)),
         ("S", "cubes on the map", on(layers.scan)),
         ("P", "plan", on(layers.plan)),
+        (
+            "H",
+            "chunks loaded, their saved map; route",
+            on(layers.chunks),
+        ),
         (
             "T",
             "squiggly line: trace, plan ahead, stop",
             on(layers.ahead),
         ),
+        (
+            "F",
+            "map: follow the car, or the whole map",
+            state.map.view.mode.label(),
+        ),
+        (
+            "drag",
+            "map: move it (either button); click picks a goal",
+            "",
+        ),
+        ("wheel", "map: zoom at the pointer (or pinch)", ""),
         ("C", "camera", state.camera.label()),
         ("R", "reset the camera", ""),
     ];
@@ -1246,7 +1509,77 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
         });
 }
 
-fn algorithms_tab(ui: &mut egui::Ui, state: &mut UiState) {
+/// The follower row's place in `ALGORITHMS`: the one row that swaps live.
+const FOLLOWER_ROW: usize = 1;
+
+/// Whether `pick` is one of aav_track's followers, which swap live (`tracker` parameter).
+/// The chunks loaded for the car (`chunks::loaded`): each one's saved map under its
+/// outline, bright round the car (0.25 m) and amber along the route (1 m), labelled (i, j).
+fn paint_chunks(
+    ui: &egui::Ui,
+    world: &mut WorldNews,
+    grid: &map_chunks::Grid,
+    painter: &egui::Painter,
+    to: impl Fn(Point) -> egui::Pos2,
+) {
+    let boxes = chunks::loaded(grid, world.car_map.position, world.chunk_route());
+    if let Some(folder) = world.chunk_folder.clone() {
+        let maps = world.saved_maps.of(&folder, grid, &boxes);
+        for (key, detail, saved) in maps {
+            let texture = world
+                .saved_pictures
+                .entry((key, detail))
+                .or_insert_with(|| {
+                    let image = egui::ColorImage::from_rgba_unmultiplied(
+                        [saved.info.width as usize, saved.info.height as usize],
+                        &saved.to_rgba(&MAP_COLOURS),
+                    );
+                    ui.ctx().load_texture(
+                        format!("chunk {key} {}", chunks::detail_word(detail)),
+                        image,
+                        egui::TextureOptions::NEAREST,
+                    )
+                });
+            let bounds = saved.info.bounds();
+            painter.image(
+                texture.id(),
+                egui::Rect::from_min_max(
+                    to(Point::new(bounds.min.x, bounds.max.y)),
+                    to(Point::new(bounds.max.x, bounds.min.y)),
+                ),
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+        }
+        let errors = std::mem::take(&mut world.saved_maps.errors);
+        for why in errors {
+            world.push_line(Level::Warn, format!("a chunk's saved map: {why}"));
+        }
+    }
+    for b in &boxes {
+        let colour = match (b.here, b.detail) {
+            (true, _) => egui::Color32::from_rgb(120, 200, 255),
+            (false, map_chunks::Detail::Fine) => egui::Color32::from_rgb(70, 120, 220),
+            (false, map_chunks::Detail::Coarse) => egui::Color32::from_rgb(220, 150, 60),
+        };
+        let line: Vec<_> = b.outline.iter().map(|p| to(*p)).collect();
+        painter.add(egui::Shape::line(line, egui::Stroke::new(1.5, colour)));
+        let top_left = b.outline[3];
+        painter.text(
+            to(Point::new(top_left.x + 1.0, top_left.y - 1.0)),
+            egui::Align2::LEFT_TOP,
+            &b.label,
+            egui::FontId::proportional(12.0),
+            colour,
+        );
+    }
+}
+
+fn live_tracker(pick: &str) -> Option<&'static str> {
+    Tracker::ALL.iter().map(|t| t.name()).find(|n| *n == pick)
+}
+
+fn algorithms_tab(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) {
     egui::Grid::new("algorithms").num_columns(2).show(ui, |ui| {
         for (row, (name, choices)) in ALGORITHMS.iter().enumerate() {
             ui.label(*name);
@@ -1259,5 +1592,189 @@ fn algorithms_tab(ui: &mut egui::Ui, state: &mut UiState) {
             ui.end_row();
         }
     });
-    ui.add_enabled(false, egui::Button::new("SWAP (not built yet)"));
+    let pick = ALGORITHMS[FOLLOWER_ROW]
+        .1
+        .get(state.picks[FOLLOWER_ROW])
+        .copied()
+        .unwrap_or("");
+    match live_tracker(pick) {
+        Some(name) => {
+            if ui.button(format!("SWAP THE FOLLOWER TO {name}")).clicked() {
+                let world = &mut state.world;
+                let asked = feed::command_allowed(feed.may_command(), &world.origins)
+                    .and_then(|()| feed.swap_tracker(name));
+                match asked {
+                    Ok(()) => world.note(format!(
+                        "swap to {name} asked: the answer comes in the console"
+                    )),
+                    Err(why) => world.push_line(Level::Error, format!("not swapped: {why}")),
+                }
+            }
+        }
+        None => {
+            ui.add_enabled(false, egui::Button::new("SWAP"));
+        }
+    }
+    ui.label(
+        "Live, in the simulator: aav_track's followers (pure_pursuit, stanley, lqr, mpc), when the \
+         sim runs one (tracker:=pure_pursuit). The rest are chosen at launch: planner:=, \
+         planner_search:=, tracker:=, ndt:=, ndt_ekf:=, voxels:=, speed_loop:= (docs/trials.md).",
+    );
+}
+
+/// The things' names in the 3D scene: each named thing's words over its top, in a dark
+/// box, as the camera sees them (`place`: a point in odom to the window, None off screen).
+fn thing_names(
+    root: &egui::Ui,
+    rect: egui::Rect,
+    world: &WorldNews,
+    place: impl Fn(Vec3) -> Option<Vec2>,
+) {
+    let painter = root.painter_at(rect);
+    // Below the panel's title, NDT line and legend; and never on a name already drawn
+    // (seen 15 Nov: three names in a pile on the header). The farthest first, from the
+    // top of the picture down, so a pushed name stays in depth order; a name moved off its
+    // thing gets a thin line to it.
+    let clear_top = rect.top() + NAMES_BELOW;
+    let mut labels: Vec<(egui::Pos2, &Thing)> = world
+        .things_now(Instant::now())
+        .iter()
+        .filter(|thing| thing.is_named())
+        .filter_map(|thing| {
+            let top = Vec3::new(thing.x as f32, thing.y as f32, thing.height as f32 + 0.4);
+            let at = place(top).map(|p| egui::pos2(p.x, p.y))?;
+            rect.contains(at).then_some((at, thing))
+        })
+        .collect();
+    labels.sort_by(|a, b| a.0.y.total_cmp(&b.0.y));
+    let mut placed: Vec<egui::Rect> = Vec::new();
+    for (at, thing) in labels {
+        let galley = painter.layout_no_wrap(
+            thing.label(),
+            egui::FontId::proportional(16.0),
+            egui::Color32::WHITE,
+        );
+        let size = galley.size() + egui::vec2(12.0, 6.0);
+        let mut back = egui::Rect::from_center_size(at - egui::vec2(0.0, size.y / 2.0), size);
+        if back.top() < clear_top {
+            back = back.translate(egui::vec2(0.0, clear_top - back.top()));
+        }
+        while let Some(hit) = placed.iter().find(|r| r.intersects(back)) {
+            back = back.translate(egui::vec2(0.0, hit.bottom() + 2.0 - back.top()));
+        }
+        if !rect.contains_rect(back) {
+            continue;
+        }
+        let colour = rgba_colour(thing.colour());
+        if !back.expand(2.0).contains(at) {
+            let foot = egui::pos2(back.center().x, back.top());
+            painter.line_segment([foot, at], egui::Stroke::new(1.0, colour));
+        }
+        painter.rect_filled(back, 3.0, egui::Color32::from_black_alpha(190));
+        painter.rect_stroke(
+            back,
+            3.0,
+            egui::Stroke::new(2.0, colour),
+            egui::StrokeKind::Inside,
+        );
+        painter.galley(
+            back.min + egui::vec2(6.0, 3.0),
+            galley,
+            egui::Color32::WHITE,
+        );
+        placed.push(back);
+    }
+}
+
+/// The 3D view's names start this far below its top: under its title, NDT line and
+/// legend (`ndt_line`, `cubes_panel`).
+const NAMES_BELOW: f32 = 74.0;
+
+/// A hud_core colour (the things' kinds) for egui.
+fn rgba_colour(c: hud_core::theme::Rgba) -> egui::Color32 {
+    egui::Color32::from_rgba_unmultiplied(c.r, c.g, c.b, c.a)
+}
+
+/// The road ahead's colour for a speed limit: green at the strip's top speed, red at a stop.
+fn road_colour(limit: f64, top: f64) -> egui::Color32 {
+    let share = feed::speed_share(limit, top);
+    egui::Color32::from_rgb(
+        (235.0 * (1.0 - share) + 40.0 * share) as u8,
+        (40.0 * (1.0 - share) + 210.0 * share) as u8,
+        60,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_road_and_the_rings_on_raised_grass_are_ground_the_kerb_stands() {
+        use debug_core::cubes::Cube;
+        let now = Instant::now();
+        let cube = |x: f32, y: f32, z: f32| Cube {
+            centre: [x, y, z],
+            band: Band::of(Metres(f64::from(z)), Metres(0.0)),
+        };
+        let scan = |cubes| CubeScan {
+            cubes,
+            ..CubeScan::default()
+        };
+        let mut world = WorldNews::default();
+        // The voxels node's road, a little above base_link: still ground.
+        world.apply(Update::Road(scan(vec![cube(4.8, 1.0, 0.01)])), now);
+        assert_eq!(world.road.cubes[0].band, Band::Ground);
+        // The kerb beside the road, grass behind it, a wall.
+        let cubes = vec![
+            cube(5.2, 1.0, 0.31),
+            cube(9.0, 1.0, 0.31),
+            cube(9.0, 4.0, 1.0),
+        ];
+        world.apply(Update::Cubes(scan(cubes)), now);
+        let bands: Vec<Band> = world.cubes.cubes.iter().map(|c| c.band).collect();
+        assert_eq!(bands, [Band::Knee, Band::Ground, Band::Waist]);
+        // A newer road away from the kerb: the kerb's cube is flat ground too.
+        world.apply(Update::Road(scan(vec![cube(-4.0, 1.0, 0.0)])), now);
+        assert_eq!(world.cubes.cubes[0].band, Band::Ground);
+        assert!(!Layers::default().ground, "the ground starts hidden");
+    }
+
+    #[test]
+    fn a_fresh_plan_shows_a_goal_sent_elsewhere() {
+        let start = Instant::now();
+        let mut world = WorldNews::default();
+        assert_eq!(world.goal_elsewhere(start), None);
+        world.apply(
+            Update::Plan(vec![Point::new(0.0, 0.0), Point::new(14.0, 2.0)]),
+            start,
+        );
+        assert_eq!(world.goal_elsewhere(start), Some(Point::new(14.0, 2.0)));
+        let later = start + GOAL_PLAN_FRESH + std::time::Duration::from_millis(1);
+        assert_eq!(
+            world.goal_elsewhere(later),
+            None,
+            "a quiet plan: the goal has ended"
+        );
+        world.apply(Update::Plan(Vec::new()), later);
+        assert_eq!(
+            world.goal_elsewhere(later),
+            None,
+            "an empty plan has no end"
+        );
+    }
+
+    #[test]
+    fn every_live_tracker_is_on_the_follower_row_and_only_they_swap() {
+        let (name, choices) = ALGORITHMS[FOLLOWER_ROW];
+        assert_eq!(name, "Follower");
+        for t in Tracker::ALL {
+            assert!(choices.contains(&t.name()), "{} missing", t.name());
+            assert_eq!(live_tracker(t.name()), Some(t.name()));
+        }
+        // Chosen at launch, never swapped live.
+        for launch_only in ["mppi", "rpp", "mpc_full"] {
+            assert_eq!(live_tracker(launch_only), None);
+        }
+    }
 }

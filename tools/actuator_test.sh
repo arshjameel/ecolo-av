@@ -3,7 +3,7 @@
 #
 # usage: tools/actuator_test.sh <test> [--sim|--bench] [--stands] [options]
 #        (pixi run actuator-test ...; the preflight: pixi run actuator-test preflight --stands)
-#   --sim    Gazebo: this computer only (tools/ros.sh --local), on simulated time
+#   --sim    Ravensim: this computer only (tools/ros.sh --local), on simulated time
 #   --bench  bench mode: this computer only (tools/ros.sh --local)
 #   neither  the real car: whatever shares this ROS domain, so NOT --local. The test asks
 #            you to type its name first, and caps the speed at 1 m/s (0.3 on --stands)

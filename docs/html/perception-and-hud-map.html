@@ -7,9 +7,13 @@
 <!-- Generated from docs/perception-and-hud-map.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Perception models, the lidar, and a map on the HUD</h1>
-<div class="meta">13 min read · 7 sections</div></header>
+<div class="meta">14 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a class="here" href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -115,7 +127,12 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#1-camera-perception-which-tool-for-which-job">1. Camera perception: which tool for which job</a><a href="#2-the-cameras-on-the-car-one-thing-to-fix-first">2. The cameras on the car: one thing to fix first</a><a href="#3-the-lidar-three-steps">3. The lidar: three steps</a><a href="#4-a-map-on-the-hud">4. A map on the HUD</a><a href="#5-better-open-source-options-including-nvidias-per-pixel-models">5. Better open-source options, including NVIDIA&#x27;s per-pixel models</a><a href="#6-what-to-do-in-order">6. What to do, in order</a><a href="#sources-15-oct">Sources (15 Oct)</a></nav>
 <div class="lead"><blockquote>
-<p><strong>A snapshot from 15 October 2026.</strong> What's true now: <a href="status.html">Status</a>, <a href="perception.html">Perception</a>, <a href="camera-pipeline.html">Camera pipeline</a> and <a href="hud.html#the-map-window-big-screen">the HUD's map window</a>.</p>
+<p><strong>A snapshot from 15 October 2026: the options we weighed, and why.</strong> It is not how
+things run now. What runs today, and who reads each topic: <a href="perception.html">Perception</a>.
+Also <a href="status.html">Status</a>, <a href="camera-pipeline.html">Camera pipeline</a> and
+<a href="hud.html#the-map-window-big-screen">the HUD's map window</a>.</p>
+<p>Still open from this page (13 Nov): lidar clusters, a 3D detector, camera + lidar
+together, a per-pixel road mask (<code>segmenter</code>), and the recorded-drive model test.</p>
 </blockquote>
 <p>Written 15 October 2026. <strong>Since then:</strong> the detector is RF-DETR Nano, not YOLO
 (Ben, 23 Oct), as TensorRT on the Orin and Core ML on a Mac: see
@@ -131,7 +148,7 @@
 <ul>
 <li><strong>Use stock YOLO for objects</strong> (answered 23 Oct: RF-DETR Nano by default; YOLO with <code>detector:=yolo</code>): one model, run as TensorRT on the Orin and Core ML on a Mac. <strong>Keep OpenCV for lane lines</strong> (already done: under 1 ms a frame).</li>
 <li><strong>The previous teams' trained model is lost</strong> (<code>best.pt</code> was on someone's laptop) and knew one label. Start from stock, and train our own later only if the stock one fails on our recordings.</li>
-<li><strong>Lidar: no model to start.</strong> Put its points straight into Nav2's costmap and collision_monitor. Clustering next. A downloaded 3D detector last, and only if needed.</li>
+<li><strong>Lidar: no model to start.</strong> Put its points straight into the costmap and the stop zone. Clustering next. A downloaded 3D detector last, and only if needed.</li>
 <li><strong>Per-pixel, for where the road is: NVIDIA's CitySemSegFormer</strong> (a ready ONNX file), run with ONNX Runtime, not Isaac ROS: Isaac ROS isn't on Jazzy for the Orin yet (since then: Isaac ROS 4.6 supports the Orin on JetPack 7.2, <a href="perception.html#isaac-ros-nvidia">Perception</a>).</li>
 <li><strong>A map on the HUD: yes.</strong> The raylib HUD can draw offline map tiles with the car's GPS dot on top. (Answered: built 15-16 Oct as <a href="hud.html#the-map-window-big-screen">the map window</a>.)</li>
 </ul>
@@ -249,8 +266,8 @@ cameras are on one Pi 5: MediaMTX → <code>aav_camera_stream</code> on the Orin
 </thead>
 <tbody>
 <tr>
-<td><strong>1. Points into Nav2</strong></td>
-<td>the lidar's point cloud → the local costmap's obstacle layer, and collision_monitor's stop zone</td>
+<td><strong>1. Points into the costmap</strong></td>
+<td>the lidar's point cloud → the local costmap's obstacle layer, and the stop zone</td>
 <td>no</td>
 <td>"something is there, don't drive into it"</td>
 <td>small: configuration, like the radar's</td>
@@ -305,7 +322,7 @@ student and research cars stop there.</p>
 <p>The usual way: YOLO finds a box in the picture; the lidar points that fall inside that box
 give its distance. That needs the camera and lidar <strong>calibrated</strong> to each other (where each
 one sits on the car, and the camera's lens). It's a later step, after both run on the car.</p>
-<h3 id="in-gazebo-today">In Gazebo today</h3>
+<h3 id="in-the-simulator-today">In the simulator today</h3>
 <p><code>pixi run sim world:=road</code> (or <code>world:=test_lot</code>) simulates a generic 16-beam lidar on the roof, on
 <code>/sensors/lidar/points</code>. It's on by default (15 Oct): with the Mac quiet, it runs with
 YOLO and all three cameras. Step 1 can be built and tested there before the real lidar's model is
@@ -415,7 +432,7 @@ that ... nvidia has some per pixel object detection models."</p>
 </tr>
 </tbody>
 </table></div>
-<p>Per-pixel is what our costmap is missing: Nav2 doesn't know where the road is (see
+<p>Per-pixel is what our costmap is missing: the planner doesn't know where the road is (outside the lane map) (see
 <a href="maps-and-position.html">Maps and position</a>). A road mask, projected onto
 the ground, becomes a costmap layer: off-road = high cost.</p>
 <h3 id="nvidias-options">NVIDIA's options</h3>
@@ -546,7 +563,7 @@ be Rust: the <code>ort</code> crate wraps ONNX Runtime.</p>
 </tr>
 <tr>
 <td>3</td>
-<td>The lidar's points into Nav2 (step 1), first in Gazebo</td>
+<td>The lidar's points into the costmap (step 1), first in the simulator</td>
 <td>nothing (answered: done; the roof VLP-16 through the stock <code>velodyne</code> driver, untested with the real lidar)</td>
 </tr>
 <tr>
@@ -567,7 +584,7 @@ be Rust: the <code>ort</code> crate wraps ONNX Runtime.</p>
 <tr>
 <td>7</td>
 <td>A <code>segmenter</code> node on ONNX Runtime; try CitySemSegFormer for a road mask, then a road layer in the costmap</td>
-<td>can start now, in Gazebo's road world</td>
+<td>can start now, in the simulator's road world</td>
 </tr>
 </tbody>
 </table></div>
@@ -580,7 +597,7 @@ be Rust: the <code>ort</code> crate wraps ONNX Runtime.</p>
 <li><a href="https://catalog.ngc.nvidia.com/orgs/nvidia/teams/tao/models/citysemsegformer">CitySemSegFormer on NGC</a></li>
 <li><a href="https://docs.nvidia.com/tao/tao-toolkit/text/model_zoo/cv_models/citysegformer.html">CitySemSegFormer in the TAO docs</a></li>
 </ul></section>
-<nav class="prevnext"><a class="prev" href="perception.html"><small>Previous</small>← Perception</a>
+<nav class="prevnext"><a class="prev" href="kerbs.html"><small>Previous</small>← Kerbs</a>
 <a class="next" href="camera-pipeline.html"><small>Next</small>Camera pipeline →</a></nav>
 </main>
 <footer>Source: <code>docs/perception-and-hud-map.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>

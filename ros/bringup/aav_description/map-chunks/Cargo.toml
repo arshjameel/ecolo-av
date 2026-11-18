@@ -1,0 +1,21 @@
+[package]
+name = "map-chunks"
+description = "The map cut into fixed 64 m squares (chunks): which chunks the car needs, loading and dropping them, and cutting a whole occupancy map into chunks. No ROS."
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# Its own workspace: a std crate beside a ROS package, shared by the planner, NDT, the
+# things and the dev window (docs/designs/2026-11-15_three-levels.md).
+[workspace]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_yaml_ng = "0.10"
+# MIT/Apache-2.0 (TODO 195): each chunk loaded and built on its own core.
+rayon = "1"
+
+[dev-dependencies]
+# MIT/Apache-2.0 (TODO 204): the chunks' rules checked on random cars and routes.
+proptest = "1"

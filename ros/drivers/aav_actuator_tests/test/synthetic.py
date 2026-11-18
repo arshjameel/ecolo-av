@@ -46,7 +46,7 @@ def drive(t, command, gain, tau, dead, drag, sign=1.0, v0=0.0, deadband=0.0, fin
     """
     Return (t_fine, speed, accel): command -> dead time -> lag -> push -> speed, finely.
 
-    The actuator model's car (aav_gazebo actuator_model), stepped at 1 ms; the brake and
+    The actuator model's car (aav_sim_models actuator_model), stepped at 1 ms; the brake and
     the drag never reverse it.
     """
     tf = times(t[-1], fine)

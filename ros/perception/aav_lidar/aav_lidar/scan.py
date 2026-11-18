@@ -4,7 +4,7 @@ The roof lidar's cloud, flattened into a 2D scan around base_link. No ROS here.
 lidar_scan (the node) hands this module the cloud's points; it returns, for each direction
 around the car, the distance to the nearest point between two heights above the road:
 what the car would hit. Below the lower height is the road; above the upper one, what the
-car passes under. Nav2's local costmap and collision_monitor read the result
+car passes under. The local costmap and the stop zone read the result
 (/sensors/lidar/scan), a few kB instead of the cloud's 0.9 MB.
 
 The same idea as the stock pointcloud_to_laserscan, which we tried first: it subscribes

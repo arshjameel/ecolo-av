@@ -1,6 +1,12 @@
 # Perception models, the lidar, and a map on the HUD
 
-> **A snapshot from 15 October 2026.** What's true now: [Status](status.md), [Perception](perception.md), [Camera pipeline](camera-pipeline.md) and [the HUD's map window](hud.md#the-map-window-big-screen).
+> **A snapshot from 15 October 2026: the options we weighed, and why.** It is not how
+> things run now. What runs today, and who reads each topic: [Perception](perception.md).
+> Also [Status](status.md), [Camera pipeline](camera-pipeline.md) and
+> [the HUD's map window](hud.md#the-map-window-big-screen).
+>
+> Still open from this page (13 Nov): lidar clusters, a 3D detector, camera + lidar
+> together, a per-pixel road mask (`segmenter`), and the recorded-drive model test.
 
 Written 15 October 2026. **Since then:** the detector is RF-DETR Nano, not YOLO
 (Ben, 23 Oct), as TensorRT on the Orin and Core ML on a Mac: see
@@ -14,7 +20,7 @@ Written 15 October 2026. **Since then:** the detector is RF-DETR Nano, not YOLO
 > **The short version**
 > - **Use stock YOLO for objects** (answered 23 Oct: RF-DETR Nano by default; YOLO with `detector:=yolo`): one model, run as TensorRT on the Orin and Core ML on a Mac. **Keep OpenCV for lane lines** (already done: under 1 ms a frame).
 > - **The previous teams' trained model is lost** (`best.pt` was on someone's laptop) and knew one label. Start from stock, and train our own later only if the stock one fails on our recordings.
-> - **Lidar: no model to start.** Put its points straight into Nav2's costmap and collision_monitor. Clustering next. A downloaded 3D detector last, and only if needed.
+> - **Lidar: no model to start.** Put its points straight into the costmap and the stop zone. Clustering next. A downloaded 3D detector last, and only if needed.
 > - **Per-pixel, for where the road is: NVIDIA's CitySemSegFormer** (a ready ONNX file), run with ONNX Runtime, not Isaac ROS: Isaac ROS isn't on Jazzy for the Orin yet (since then: Isaac ROS 4.6 supports the Orin on JetPack 7.2, [Perception](perception.md#isaac-ros-nvidia)).
 > - **A map on the HUD: yes.** The raylib HUD can draw offline map tiles with the car's GPS dot on top. (Answered: built 15-16 Oct as [the map window](hud.md#the-map-window-big-screen).)
 
@@ -68,7 +74,7 @@ cameras are on one Pi 5: MediaMTX → `aav_camera_stream` on the Orin, [Camera p
 
 | Step | What | Model? | Gives | Effort |
 |---|---|---|---|---|
-| **1. Points into Nav2** | the lidar's point cloud → the local costmap's obstacle layer, and collision_monitor's stop zone | no | "something is there, don't drive into it" | small: configuration, like the radar's |
+| **1. Points into the costmap** | the lidar's point cloud → the local costmap's obstacle layer, and the stop zone | no | "something is there, don't drive into it" | small: configuration, like the radar's |
 | **2. Clusters** | group nearby points into objects (DBSCAN, as we already do for the radar) | no | boxes with a position and size | small: reuse `aav_radar_clusters` |
 | **3. A 3D detector** | a downloaded model labels the points: car, person, cyclist | yes | labelled 3D boxes | big |
 
@@ -91,7 +97,7 @@ The usual way: YOLO finds a box in the picture; the lidar points that fall insid
 give its distance. That needs the camera and lidar **calibrated** to each other (where each
 one sits on the car, and the camera's lens). It's a later step, after both run on the car.
 
-### In Gazebo today
+### In the simulator today
 
 `pixi run sim world:=road` (or `world:=test_lot`) simulates a generic 16-beam lidar on the roof, on
 `/sensors/lidar/points`. It's on by default (15 Oct): with the Mac quiet, it runs with
@@ -142,7 +148,7 @@ that ... nvidia has some per pixel object detection models."
 | **Instance segmentation** | per pixel, and which object | YOLO11-seg, Mask2Former | both at once |
 | **Drivable area + lanes** | road and lane pixels | TwinLiteNet, YOLOPv2 | a cheap road mask for a small car |
 
-Per-pixel is what our costmap is missing: Nav2 doesn't know where the road is (see
+Per-pixel is what our costmap is missing: the planner doesn't know where the road is (outside the lane map) (see
 [Maps and position](maps-and-position.md)). A road mask, projected onto
 the ground, becomes a costmap layer: off-road = high cost.
 
@@ -197,11 +203,11 @@ be Rust: the `ort` crate wraps ONNX Runtime.
 |---|---|---|
 | 1 | Friday: what cameras, lidar and radar are really on the car, and what drives them | the audit (answered: audits of 16 and 21 Oct) |
 | 2 | `camera_ros` instead of `usb_cam` on the camera Pis | step 1 (answered: MediaMTX → `aav_camera_stream` instead) |
-| 3 | The lidar's points into Nav2 (step 1), first in Gazebo | nothing (answered: done; the roof VLP-16 through the stock `velodyne` driver, untested with the real lidar) |
+| 3 | The lidar's points into the costmap (step 1), first in the simulator | nothing (answered: done; the roof VLP-16 through the stock `velodyne` driver, untested with the real lidar) |
 | 4 | Record a real drive; run stock YOLO on it; decide whether to train | the cameras on the car |
 | 5 | The HUD's map panel with offline tiles | the test area chosen (answered: built as the map window) |
 | 6 | Lidar clusters; then camera + lidar calibration | the lidar on the car |
-| 7 | A `segmenter` node on ONNX Runtime; try CitySemSegFormer for a road mask, then a road layer in the costmap | can start now, in Gazebo's road world |
+| 7 | A `segmenter` node on ONNX Runtime; try CitySemSegFormer for a road mask, then a road layer in the costmap | can start now, in the simulator's road world |
 
 ## Sources (15 Oct)
 

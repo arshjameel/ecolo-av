@@ -11,7 +11,7 @@
 //! |   the localizers, the plan          +------------------------+
 //! |                                     | NDT's match: ellipses, |
 //! | KEYS                                | the scan, the score    |
-//! |                                     | NAV2'S CUBES (voxels)  |
+//! |                                     | THE COSTMAP'S CUBES (voxels)  |
 //! |                                     | LOCALIZATION HEALTH    |
 //! +-------------------------------------+------------------------+
 //! ```
@@ -35,7 +35,7 @@
 //! height band and fade step, a small shader that shades each face by its normal. A
 //! fading cube is drawn darker (towards the background), not see-through, so nothing
 //! needs sorting. NDT's map is drawn through map -> odom with rlgl's matrix stack.
-//! Nav2's cubes (the voxels trial's, key V) are red wireframes over the screen's own
+//! The costmap's cubes (the voxels trial's, key V) are red wireframes over the screen's own
 //! cubes: what Nav2 stops for, beside what the screen sees.
 //!
 //! Every colour comes from the theme (`hud_core::theme`, `theme:` in
@@ -325,7 +325,7 @@ impl Ui {
             y += 40.0;
         }
         // Two boxes of about the same height; the score's lines under the second; then
-        // Nav2's cubes and the localization health checks.
+        // The costmap's cubes and the localization health checks.
         let score_h = 96.0;
         let health = self.health_lines(state, f, w - x0 - 36.0);
         let below = NAV2_H + health_height(health.len());
@@ -345,7 +345,7 @@ impl Ui {
         self.health_section(d, state, f, &health, x0, y, w);
     }
 
-    /// Nav2's cubes (the voxels trial's): the road's fit, how many cubes, how long; or
+    /// The costmap's cubes (the voxels trial's): the road's fit, how many cubes, how long; or
     /// that it is off. Returns where the next section starts.
     fn nav2_section(
         &self,
@@ -358,7 +358,7 @@ impl Ui {
     ) -> f32 {
         let mut y = self.section(
             d,
-            "NAV2'S CUBES (VOXELS TRIAL): WHAT NAV2 STOPS FOR",
+            "THE COSTMAP'S CUBES (VOXELS TRIAL): WHAT THE CAR STOPS FOR",
             x0,
             y,
             w,
@@ -883,7 +883,7 @@ impl Ui {
             );
             self.text(d, band.label(), bx + 22.0, by, 16.0, t.text);
         }
-        // Nav2's cubes: a red outline, as they are drawn.
+        // The costmap's cubes: a red outline, as they are drawn.
         let by = y + 2.0 * 26.0;
         d.draw_rectangle_lines_ex(
             Rectangle::new(x + 6.0, by + 3.0, 16.0, 16.0),
@@ -895,7 +895,7 @@ impl Ui {
             .as_ref()
             .filter(|_| state.health(Source::Nav2Cubes, f.now).is_ok())
             .map_or_else(|| "-".to_owned(), |s| s.cubes.len().to_string());
-        let words = format!("Nav2's cubes (V)  {count}");
+        let words = format!("the costmap's cubes (V)  {count}");
         self.text(d, &words, x + 28.0, by, 16.0, t.text);
 
         // Top right of the view: the frame rate, and the camera's mode.
@@ -1026,7 +1026,14 @@ impl Ui {
                 y += 34.0;
             }
             None => {
-                self.text(d, "none (Nav2's own controller)", x, y, 20.0, t.dim);
+                self.text(
+                    d,
+                    "none (mppi_lag, the default follower)",
+                    x,
+                    y,
+                    20.0,
+                    t.dim,
+                );
                 y += 32.0;
             }
         }
@@ -1231,7 +1238,7 @@ fn viewport(w: f32, h: f32, fovy_deg: f32) {
     }
 }
 
-/// The Nav2 cubes section's height on the seeing screen.
+/// The costmap cubes section's height on the seeing screen.
 const NAV2_H: f32 = 40.0 + 32.0 + 22.0;
 
 /// The health section's height with `lines` lines of checks under its first.
@@ -1396,7 +1403,7 @@ fn ndt_map(d: &mut impl RaylibDraw3D, state: &DebugState, cells: &MapCells, colo
     unsafe { raylib::ffi::rlPopMatrix() };
 }
 
-/// Nav2's cubes as red wireframes over the screen's own (key V); dimmer once STALE.
+/// The costmap's cubes as red wireframes over the screen's own (key V); dimmer once STALE.
 fn nav2_cubes(d: &mut impl RaylibDraw3D, state: &DebugState, f: &Frame<'_>, t: &Theme) {
     let Some(size) = state.nav2.as_ref().map(|s| s.size) else {
         return;

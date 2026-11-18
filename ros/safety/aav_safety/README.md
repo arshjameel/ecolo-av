@@ -2,11 +2,11 @@
 
 ## Overview
 
-The sensor watchdog. When a sensor Nav2, the point driver or the AI slot needs dies, lies or freezes,
+The sensor watchdog. When a sensor navigation, the point driver or the AI slot needs dies, lies or freezes,
 it stops them, and says why loudly: in the log, on `/diagnostics` and on the HUD. People and
 test scripts can still drive.
 
-And the stop hold (`stop_hold`). Nav2's collision_monitor decides afresh on every
+And the stop hold (`stop_hold`). The stop zone (`aav_stop_zone`) decides afresh on every
 command, so an obstacle at its stop zone's edge flickers it between stop and go, and the
 car creeps on. The hold keeps a stop until the monitor has said "go" for `clear_time` s
 without a break.
@@ -21,8 +21,8 @@ last state while its receiver is in, so a pad turned off could keep driving. It 
 between joy_node and teleop_twist_joy (aav_teleop starts it) and stops the joystick when
 it goes silent (0.5 s) or freezes while driving (2 s), until the deadman is released.
 
-And the geofence (`geofence`): an area no program may leave, without Nav2. It holds
-every program (scripted, replay, point, Nav2, AI) before the car's stopping distance
+And the geofence (`geofence`): an area no program may leave, without navigation. It holds
+every program (scripted, replay, point, navigation, AI) before the car's stopping distance
 reaches the fence's edge, and while the global pose can't be trusted. People still drive
 (`docs/geofence.md`).
 
@@ -36,6 +36,9 @@ The watchdog works through a twist_mux lock (priority 30, in `aav_command_mux`).
 | `FROZEN` | the same values for `frozen_after` s (a camera only while the car moves) |
 | `JUMP` | two GPS fixes too far apart for the car. Latched |
 | `DISAGREE` | the wheels' speed or turn against the IMU and the GPS (`wheel_check.py`). Latched |
+| `STUCK` | an actuator (`/vehicle/steering`) more than `follow_tolerance` off its command for `follow_persist` s (TODO 207). Latched; NaN on a side is no check, not a fault |
+| `OVER` | the car more than `over_margin` over ego's speed for `over_warn` s while not slowing (TODO 207). A warning only |
+| `OVERSPEED` | the same for `over_persist` s: a stuck throttle. Latched. A stale wheel speed or command is no check |
 | `LOST` | a `latch` input (the HUD) dropped out after its start-up. Latched |
 
 A person clears latched faults: `pixi run clear watchdog`. More in
@@ -48,7 +51,7 @@ A person clears latched faults: `pixi run clear watchdog`. More in
 | In / out | Topic | Type |
 |---|---|---|
 | in | each input's `topic` (below) | by `kind` |
-| in | `/vehicle/odom` (always), `/sensors/imu/data` (for the cross check) | |
+| in | `/vehicle/odom` (always; also the speed input's measured speed), `/sensors/imu/data` (for the cross check) | |
 | out | `/safety/sensor_watchdog/lock`, at `rate_hz` | `std_msgs/Bool`: true while a `stop` input isn't OK; a heartbeat |
 | out | `/safety/sensor_watchdog/state`, at `rate_hz` | `std_msgs/String`: `OK`, or `STOP`/`WARN` and why |
 | out | `/diagnostics`, 1 Hz | `diagnostic_msgs/DiagnosticArray`: one status per input |
@@ -58,11 +61,11 @@ A person clears latched faults: `pixi run clear watchdog`. More in
 
 | In / out | Topic | Type |
 |---|---|---|
-| in | `/safety/collision_monitor/state` | `nav2_msgs/CollisionMonitorState`: on each change |
+| in | `/safety/stop_zone/state` | `nav2_msgs/CollisionMonitorState`: on each change (`aav_stop_zone`) |
 | out | `/safety/stop_hold/lock`, at `rate_hz` | `std_msgs/Bool`: twist_mux's `stop_zone` lock (priority 21) |
 
 Parameters (`config/stop_hold.yaml`): `clear_time` (s, 1.0), `rate_hz` (10).
-`aav_navigation`'s `navigation.launch.py` starts it wherever it starts collision_monitor.
+`aav_navigation`'s `navigation.launch.py` starts it wherever it starts the stop zone.
 
 ### Node `joy_alive`
 
@@ -83,6 +86,27 @@ In the namespace `/drivers/joy` (aav_teleop `teleop.launch.py`).
 
 Parameters: aav_teleop `config/joy_alive.yaml`: `enable_button` 0, `motion_axes` [1],
 `motion_threshold` 0.05, `silent_after` 0.5, `frozen_after` 2.0, `rate_hz` 10.
+
+Since 17 Nov the Rust twin, [`aav_joy_alive_rs`](../aav_joy_alive_rs/README.md), runs by
+default (`teleop.launch.py joy_alive_impl:=rust`); this one with `joy_alive_impl:=python`.
+`test_joy_alive_vectors.py` checks this module still gives the answers the Rust is checked
+against: after a change here, run `aav_joy_alive_rs/gen_vectors.py` (and port it).
+
+### Node `goal_leash` (TODO 116)
+
+The language driver (`aav_language`) runs on a laptop and sends goals to drivers on the
+car; a ROS action carries on when its client vanishes. So the laptop beats, and the leash
+cancels its goals if the beats stop:
+
+| When | The leash |
+|---|---|
+| no beat yet | nothing (no laptop driver) |
+| beats on `/drivers/language/heartbeat` (`std_msgs/UInt64`, 1, 2, 3...) | armed |
+| quiet over `timeout` (1 s) | cancels every goal on `actions` (`/scripted_drive`, `/follow_gps_waypoints`) once: the car slows to a stop the driver's way, no e-stop |
+| beat 0 (goodbye: closed cleanly, its goals cancelled) | disarmed, nothing cancelled |
+
+Started next to the mux on the car, in the sim and on the bench. Calls each action's
+`_action/cancel_goal` with an empty goal id and a zero stamp (ROS's "every goal").
 
 ### Node `geofence`
 
@@ -105,13 +129,13 @@ Parameters: aav_teleop `config/joy_alive.yaml`: `enable_button` 0, `motion_axes`
 | `COASTING` (the legacy speed loop's stop not measured, in either mode) | on | `vehicle.yaml` `open_loop_decel` or `pi_loop_decel`, for the running mode |
 | `STANDS` (`stands:=true`) | open, logged every 5 s | |
 
-`launch/geofence.launch.py backend:=spine|uart|gazebo|gazebo_esp32 [radius:=30]
+`launch/geofence.launch.py backend:=spine|uart|sim|sim_esp32 [radius:=30]
 [centre_x:=0] [centre_y:=0] [site:=] [max_speed:=] [gps:=true] [stands:=false]`: it works
 out the stopping numbers (`motion_from`) from `ego.yaml`, `vehicle.yaml` and the backend's
 config, and passes them. `config/geofence.yaml`: `margin` 1.0, `hysteresis` 0.5, `max_std`
 3.0, `max_age` 1.0, `gps_max_age` 2.0, `settle_time` 3.0, `jump_margin` 2.0, `pose_lag`
 0.1, `rate_hz` 10, and `sites.<name>.datum`, `.corners`. car.launch.py starts it wherever
-it starts the mux; the bench always; Gazebo with `geofence:=true` (the default).
+it starts the mux; the bench always; Ravensim with `geofence:=true` (the default).
 
 ### Inputs (`config/sensor_watchdog.yaml`)
 
@@ -124,18 +148,25 @@ it starts the mux; the bench always; Gazebo with `geofence:=true` (the default).
 | `camera` | `/sensors/camera/front_left/image_raw` | image | 1.0 s | yes |
 | `front_left_stream`, `front_right_stream` | `/perception/detections` (by `frame_id`) | detections | 1.0 s | yes |
 | `hud` | `/hud/heartbeat` | heartbeat, latched | 1.0 s | yes |
-| `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (collision_monitor stops Nav2 itself) |
+| `steering` | `/vehicle/steering` | actuator (STUCK: 0.15 rad for 1 s) | 1.0 s | yes; the sim only so far (not with `esp32:=true`), the car's uplink has no measured angle |
+| `speed` | `/ego/actuator_cmd`, against `/vehicle/odom`'s speed | speed (0.2 m/s over while not slowing: OVER after 1 s, OVERSPEED after 2 s) | 1.0 s | yes; the sim only so far |
+| `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (the stop zone stops navigation itself) |
+| `node_costmap`, `node_planner`, `node_navigator`, `node_mppi_lag`, `node_smoother`, `node_behaviour`, `node_voxels`, `node_things`, `node_ego`, `node_look_ahead` | the node's full name (`/planner`...), looked for in the ROS graph | node | 3.0 s | no: warn only (Ben, 14 Nov). The sim watches the ones it starts |
 
 Per input parameters: `topic`, `kind`, `max_age` (s), `stop`, `frozen_after` (s),
 `max_jump_speed` (m/s), `jump_margin` (m), `frame_id`, `latch`, `latch_grace` (s);
 for odom, `cross_check`, `cross_window` (s), `cross_speed_tolerance` (m/s),
 `cross_yaw_tolerance` (rad/s), `cross_persist` (s), `cross_gps_window` (s),
-`cross_gps_tolerance` (m/s). Global: `inputs`, `rate_hz` (10).
+`cross_gps_tolerance` (m/s); for actuator, `follow_tolerance` and `follow_persist` (s); for speed, `over_margin`
+(m/s), `over_warn` (s), `over_persist` (s), `over_slowing` (m/s²). Global: `inputs`, `rate_hz` (10).
 
 ### Launch and modules
 
-`launch/watchdog.launch.py inputs:=odom,imu,gps,local,global [use_sim_time:=false]`:
-each profile passes the inputs it has (sim, bench, car).
+`launch/watchdog.launch.py inputs:=odom,imu,gps,local,global [use_sim_time:=false]
+[watchdog_impl:=rust]`: each profile passes the inputs it has (sim, bench, car).
+`watchdog_impl:=rust`, the default since Ben, 16 Nov ("watchdog in rust sure"), runs
+[`aav_watchdog_rs`](../aav_watchdog_rs/README.md): the same node in Rust, with this one's
+answers tick by tick. `watchdog_impl:=python` runs this one.
 
 | Module | No ROS? | Holds |
 |---|---|---|
@@ -148,10 +179,13 @@ each profile passes the inputs it has (sim, bench, car).
 | `geofence_node.py` | no | the node `geofence` |
 | `joy_alive.py` | yes | `JoyAlive`: the joystick's `WAITING`, `SILENT`, `FROZEN` and their latch |
 | `joy_alive_node.py` | no | the node `joy_alive` |
+| `leash.py` | yes | `Leash`: armed by beats, trips once after `timeout` s quiet, disarmed by `GOODBYE` |
+| `goal_leash_node.py` | no | the node `goal_leash` |
 
 ## Invariants
 
-- `watchdog.py`, `wheel_check.py`, `hold.py`, `geofence.py` and `joy_alive.py` have no ROS imports, and their own tests.
+- `watchdog.py`, `wheel_check.py`, `hold.py`, `geofence.py`, `joy_alive.py` and `leash.py` have no ROS imports, and their own tests.
+- `goal_leash` only ever cancels goals: it never drives, and never sets the e-stop.
 - `joy_alive` only ever releases the joystick; it never makes a command of its own. Its
   latch lets go only on a released deadman, so a pad coming back with the trigger held stays stopped.
 - The geofence's lock (51) holds every program, never a person or the actuator tests.
@@ -159,10 +193,15 @@ each profile passes the inputs it has (sim, bench, car).
   site), so a restarted node finds an outside car outside again.
 - The geofence copies no car number: its stopping numbers come from the configs.
 - Only people call `/safety/geofence/clear`; it refuses while the car is outside.
-- The stop hold's lock holds Nav2 (20) and the AI slot (10) only. Timeout 0: its silence
+- The stop hold's lock holds navigation (20) and the AI slot (10) only. Timeout 0: its silence
   locks nothing, and a `stop_hold` that dies while true keeps the stop.
 - The stop hold times on the steady clock, so a jump in sim time can't end it early.
-- The lock holds the point driver (25), Nav2 (20) and the AI slot (10), never a person or a test.
+- OVER and OVERSPEED count fresh numbers only: a wheel speed older than the `speed`
+  input's `max_age`, or a command after a gap longer than it, is no check. Quiet wheels
+  are the `odom` input's own fault (STALE), so they never latch OVERSPEED (16 Nov).
+- Speeds compare as sizes, so reversing counts too. A car that slows at 0.3 m/s² or
+  more is never over: a healthy stop lags its command (the car model, `test_watchdog.py`).
+- The lock holds the point driver (25), navigation (20) and the AI slot (10), never a person or a test.
 - Fail-safe: twist_mux treats 1 s without a lock message as locked, so a dead or hung
   watchdog stops them too.
 - Ages are about 5 messages at the sensor's rate, never under ego's 0.5 s command timeout.
@@ -183,5 +222,5 @@ cd ros/safety/aav_safety && python3 -m pytest -q        # the logic, no ROS
 pixi run build && colcon test --packages-select aav_safety && colcon test-result --verbose
 ```
 
-`tools/test.sh` runs the first; `pixi run test` runs everything. In Gazebo:
+`tools/test.sh` runs the first; `pixi run test` runs everything. In Ravensim:
 `pixi run sim-check --faults`, or break a sensor by hand with `pixi run sim-fault gps stop`.

@@ -3,6 +3,8 @@
 What each part of release 0.2 does, how to run it, and how far to trust it. It carries
 on from [What's new](whats-new.md) (22 October to 1 November), which stays as history.
 
+> **Nav2 and Gazebo, named below, are gone**: Gazebo on 16 Nov, Nav2 on 17 Nov. Today: Ravensim and our stack (`stack:=ours`). What each was: [Nav2, as it was](history/nav2-as-it-was.md), [Gazebo, as it was](history/gazebo-as-it-was.md).
+
 > **The short version**
 > - **0.2 = sim-complete, car-ready.** Everything runs in Gazebo and every test passes. **Nothing has moved the real car yet**: that's 0.3.
 > - **Screens:** the HUD, the map, the debug screen, the hardware panel (with the steering calibration) and the cockpit; Initial D red and black on all of them.

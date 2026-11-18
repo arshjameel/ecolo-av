@@ -11,6 +11,9 @@
 //! - a cluster grows from a core point: its neighbours join, and so do the neighbours of
 //!   every core point that joins;
 //! - a point that no cluster reaches is noise.
+// The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
+// too, and a pure function's value never dropped.
+#![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
 pub mod cloud;
 
@@ -61,6 +64,11 @@ impl Error for SettingsError {}
 impl Settings {
     /// `radius`: points this close are neighbours. `min_points`: the neighbours a core
     /// point needs, itself included (DBSCAN's minPts).
+    ///
+    /// # Errors
+    ///
+    /// [`SettingsError::Radius`] for a radius not above 0; [`SettingsError::NoPoints`] for
+    /// `min_points` 0.
     pub fn new(radius: Metres, min_points: usize) -> Result<Self, SettingsError> {
         if !(radius.0.is_finite() && radius.0 > 0.0) {
             return Err(SettingsError::Radius(radius.0));
@@ -70,11 +78,13 @@ impl Settings {
     }
 
     /// Points this close are neighbours.
+    #[must_use]
     pub fn radius(&self) -> Metres {
         self.radius
     }
 
     /// The neighbours a core point needs, itself included.
+    #[must_use]
     pub fn min_points(&self) -> usize {
         self.min_points.get()
     }
@@ -95,6 +105,7 @@ pub struct Cluster {
 /// A border point (a neighbour of a core point, but not core itself) that two clusters
 /// reach goes where the C++ node put it: to the later cluster, if that cluster's first
 /// core point is its neighbour; otherwise to the first cluster that reached it.
+#[must_use]
 pub fn cluster(points: &[Point], settings: &Settings) -> Vec<Cluster> {
     let reach = settings.radius.0 * settings.radius.0;
     let neighbours = |i: usize| -> Vec<usize> {
@@ -170,14 +181,18 @@ fn distance_squared(a: &[f32; 3], b: &[f32; 3]) -> f64 {
 /// The space some points take: the smallest and the largest x, y and z (m).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bounds {
+    /// The smallest x, y, z.
     pub min: [f32; 3],
+    /// The largest x, y, z.
     pub max: [f32; 3],
 }
 
 /// A box as RViz's CUBE marker draws it: its centre, and its size along each axis (m).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Cuboid {
+    /// x, y, z (m).
     pub centre: [f64; 3],
+    /// Along x, y, z (m).
     pub size: [f64; 3],
 }
 
@@ -204,6 +219,7 @@ impl Bounds {
 
     /// The box round these bounds, `margin` bigger on every side. The sums are the C++
     /// node's, in its order, so the numbers match it to the last bit.
+    #[must_use]
     pub fn padded(&self, margin: Metres) -> Cuboid {
         let size = [0, 1, 2].map(|i| f64::from(self.max[i] - self.min[i]) + 2.0 * margin.0);
         let centre = [0, 1, 2].map(|i| f64::from(self.min[i]) + size[i] / 2.0 - margin.0);
@@ -214,18 +230,23 @@ impl Bounds {
 /// A colour, 8 bits a channel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rgb {
+    /// Red.
     pub r: u8,
+    /// Green.
     pub g: u8,
+    /// Blue.
     pub b: u8,
 }
 
 impl Rgb {
     /// Packed as PCL and RViz read a point's `rgb` field: 0x00RRGGBB.
+    #[must_use]
     pub fn packed(self) -> u32 {
         u32::from(self.r) << 16 | u32::from(self.g) << 8 | u32::from(self.b)
     }
 
     /// Each channel from 0 to 1, as a marker's colour takes it.
+    #[must_use]
     pub fn unit(self) -> [f32; 3] {
         [self.r, self.g, self.b].map(|c| f32::from(c) / 255.0)
     }
@@ -287,6 +308,7 @@ const PALETTE: [Rgb; 10] = [
 ];
 
 /// The colour of the cluster at `index` (0 is the first), for its points and its box.
+#[must_use]
 pub fn colour(index: usize) -> Rgb {
     PALETTE[index % PALETTE.len()]
 }

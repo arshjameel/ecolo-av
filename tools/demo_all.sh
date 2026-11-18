@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start the whole simulated car on this computer, in one go:
-#   Gazebo (the car, in the walled test lot), the nav screen (RViz), the HUD, and the
+#   the simulator (ours by default; the car, in the walled test lot), the nav screen (RViz), the HUD, and the
 #   street-map window.
 #
 # Everything runs localhost-only (tools/ros.sh --local), so it shares one ROS graph on
@@ -34,15 +34,16 @@ for arg in "$@"; do
     *) echo "usage: pixi run demo [--debug] [--fullscreen] [name:=value ...]" >&2; exit 2 ;;
   esac
 done
-# The debug HUD's run: AMCL beside the global EKF and a trial tracker, so every layer
-# and the panel's tracker have something to show (docs/designs/2026-10-29_debug-hud.md).
+# The debug HUD's run: AMCL beside the global EKF, so every layer has something to show
+# (docs/designs/2026-10-29_debug-hud.md). The stack is the default, ours (its follower,
+# mppi_lag, reverses), as every other run; until 15 Nov it took pure_pursuit forward only.
 # The test lot already has nav and the lidar on, as amcl:=true needs.
 # rviz:=false: this script opens RViz itself (step 2, drive.rviz). Without it the launch
 # opens a second one (road.rviz) as well.
 sim_args="world:=test_lot rviz:=false"
 steps=4
 if $debug; then
-  sim_args="$sim_args amcl:=true tracker:=pure_pursuit reversing:=false"
+  sim_args="$sim_args amcl:=true"
   steps=5
   # NDT too, when its map of the test lot has been made (it isn't in git).
   ndt_map=maps/ndt/test_lot.pcd
@@ -57,10 +58,6 @@ fi
 # The switches you gave come last: ros2 launch keeps the last value of each.
 sim_args="$sim_args$extra"
 echo "switches: $sim_args   (pixi run pick: a menu; docs/switches.md: every switch)"
-
-# Gazebo's transport finds its own parts by multicast, which a Mac on some networks (or
-# none) refuses ("No route to host"); on this computer only, it needs none.
-export GZ_IP="${GZ_IP:-127.0.0.1}"
 
 pids=""
 cleanup() {
@@ -79,7 +76,7 @@ for f in maps/streets/ottawa.pmtiles:street-map maps/places/ottawa.db:places; do
   [ -f "${f%%:*}" ] || echo "note: no ${f%%:*}, so the map window misses it: run pixi run get ${f##*:} once"
 done
 
-echo "1/$steps  Gazebo (the car, in the test lot) — give it ~20s to spawn..."
+echo "1/$steps  the simulator (the car, in the test lot) — give it ~20s to spawn..."
 # shellcheck disable=SC2086  # sim_args is several words on purpose
 start tools/ros.sh --local ros2 launch aav_bringup sim.launch.py $sim_args
 sleep 20

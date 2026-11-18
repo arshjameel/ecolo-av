@@ -36,11 +36,15 @@ use spine_core::{RcInput, RcSwitch};
 pub struct RcMap {
     /// Channel indexes, from 0 (index 0 is CH1).
     pub mode_switch: usize,
+    /// The throttle stick's channel.
     pub throttle: usize,
+    /// The steering stick's channel.
     pub steering: usize,
+    /// The gear switch's channel.
     pub gear: usize,
     /// A channel is usable only strictly between these (the C++: 100 and 2200).
     pub valid_above: u16,
+    /// The top of the usable range (µs).
     pub valid_below: u16,
     /// RC direct while the mode switch reads above this.
     pub direct_above: u16,
@@ -50,9 +54,11 @@ pub struct RcMap {
     /// The gear switch: forward below `forward_below`, reverse above
     /// `reverse_above`, brake in between.
     pub forward_below: u16,
+    /// Reverse above this (µs).
     pub reverse_above: u16,
     /// A stick's middle, and how far it travels each way (µs).
     pub centre: u16,
+    /// How far a stick travels from its middle to either end (µs).
     pub half_travel: u16,
     /// Throttle at or below this fraction counts as none (the C++: 5 %).
     pub throttle_deadband: f32,
@@ -97,6 +103,7 @@ impl RcMap {
     };
 
     /// Where the mode switch is, for its channel's value.
+    #[must_use]
     pub fn switch(&self, value: u16) -> RcSwitch {
         if value > self.direct_above {
             RcSwitch::Direct
@@ -114,6 +121,7 @@ impl RcMap {
     ///   ROS the board sends them up; on computer they do nothing.
     /// - A stick or the gear switch out of range: zero speed and straight wheels. The
     ///   C++ did a safe stop here (`jrkSafeStop()`).
+    #[must_use]
     pub fn rc_input(&self, ch: &Channels) -> Option<RcInput> {
         let usable = |index: usize| {
             ch.get(index)

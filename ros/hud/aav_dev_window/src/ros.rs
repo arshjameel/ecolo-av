@@ -7,9 +7,13 @@
 //! `/map`, the costmap, `/system/source`, `/vehicle/status`, the output gate, the
 //! watchdog, and the squiggly line's four, all base_link: `/ego/trace` (Path),
 //! `/ego/plan_ahead` (Path), `/ego/stop_point` (PoseStamped), `/ego/ahead`
-//! (DiagnosticStatus) (`config/dev_window.yaml`).
+//! (DiagnosticStatus); the road ahead, map (`aav_interfaces/RoadAhead`); the things
+//! near the car, odom (`aav_interfaces/Things`, named by the camera); the street route,
+//! map (`/drivers/nav/route/path`, Path, latched) (`config/dev_window.yaml`).
 //! Publishes, only with `--developer`: `/goal_pose`, `/safety/estop` (only ever true).
-//! Serves and calls nothing.
+//! Calls, only with `--developer` and every sensor SIM: `/navigate_to_pose/_action/cancel_goal`
+//! (action_msgs/CancelGoal, every goal: CANCEL THE GOAL) and `/track/set_parameters`
+//! (rcl_interfaces/SetParameters, `tracker`: SWAP, TODO 114). Serves nothing.
 
 use std::{
     sync::atomic::{AtomicU64, Ordering},
@@ -36,6 +40,7 @@ use hud_core::{
     heartbeat::{Frames, Heartbeat},
     origin::{Announcement, Entry, Origin},
     picture::Picture,
+    things::Thing,
     units::{Fraction, MetresPerSecond, Radians},
     vehicle::{Faults, Mode, VehicleStatus},
 };
@@ -44,17 +49,21 @@ use map_core::{
     grid::{Grid, GridInfo},
 };
 use rclrs::*;
-use ros_env::aav_interfaces::msg::{DataSource, VehicleStatus as VehicleStatusMsg};
+use ros_env::aav_interfaces::msg::{
+    DataSource, RoadAhead as RoadAheadMsg, Things, VehicleStatus as VehicleStatusMsg,
+};
+use ros_env::action_msgs::srv::{CancelGoal, CancelGoal_Request, CancelGoal_Response};
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::DiagnosticStatus;
 use ros_env::geometry_msgs::msg::{Pose as PoseMsg, PoseStamped, PoseWithCovarianceStamped};
 use ros_env::nav_msgs::msg::{OccupancyGrid, Odometry, Path};
-use ros_env::rcl_interfaces::msg::Log;
+use ros_env::rcl_interfaces::msg::{Log, Parameter, ParameterType, ParameterValue};
+use ros_env::rcl_interfaces::srv::{SetParameters, SetParameters_Request, SetParameters_Response};
 use ros_env::sensor_msgs::msg::{Image, PointCloud2};
 use ros_env::std_msgs::msg::{Bool, String as StringMsg, UInt64};
 use serde::Deserialize;
 
-use crate::feed::{Feed, Level, Update};
+use crate::feed::{Feed, Level, RoadAhead, Update};
 
 const NODE_NAME: &str = "dev_window";
 /// The frame the cubes are made in.
@@ -88,11 +97,16 @@ struct Topics {
     watchdog: String,
     goal: String,
     estop: String,
+    cancel_goal: String,
+    track_parameters: String,
     screen_alive: String,
     trace: String,
     plan_ahead: String,
     stop_point: String,
     ahead: String,
+    road_ahead: String,
+    things: String,
+    route: String,
 }
 
 /// A Path's points, as they are (base_link for the squiggly line's two).
@@ -107,6 +121,10 @@ fn path_points(m: &Path) -> Vec<(f64, f64)> {
 struct Commands {
     goal: Publisher<PoseStamped>,
     estop: Publisher<Bool>,
+    cancel: Client<CancelGoal>,
+    track: Client<SetParameters>,
+    /// Where the services' answers go: the console.
+    tx: SyncSender<Update>,
 }
 
 /// The node, seen from the window.
@@ -222,6 +240,93 @@ impl Feed for RosFeed {
             step += PERIOD;
         }
         Ok(())
+    }
+
+    fn cancel_goal(&mut self) -> Result<(), String> {
+        self.may_command()?;
+        let commands = self.commands.as_ref().ok_or("no client in this run")?;
+        if !commands
+            .cancel
+            .service_is_ready()
+            .map_err(|e| e.to_string())?
+        {
+            return Err("no navigator answers (is the stack running?)".to_owned());
+        }
+        let tx = commands.tx.clone();
+        // An empty request (no id, no time) cancels every goal (action_msgs/CancelGoal).
+        let promise = commands
+            .cancel
+            .call_then(
+                &CancelGoal_Request::default(),
+                move |r: CancelGoal_Response| {
+                    send(&tx, cancel_reply(&r));
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        // The promise needn't be kept (rclrs): the callback runs when the answer comes.
+        drop(promise);
+        Ok(())
+    }
+
+    fn swap_tracker(&mut self, name: &'static str) -> Result<(), String> {
+        self.may_command()?;
+        let commands = self.commands.as_ref().ok_or("no client in this run")?;
+        if !commands
+            .track
+            .service_is_ready()
+            .map_err(|e| e.to_string())?
+        {
+            return Err("no track node (start the sim with tracker:=pure_pursuit)".to_owned());
+        }
+        let tx = commands.tx.clone();
+        let promise = commands
+            .track
+            .call_then(&tracker_request(name), move |r: SetParameters_Response| {
+                send(&tx, swap_reply(name, &r));
+            })
+            .map_err(|e| e.to_string())?;
+        drop(promise);
+        Ok(())
+    }
+}
+
+/// `tracker := name`, as `ros2 param set /track tracker <name>` sends it.
+fn tracker_request(name: &str) -> SetParameters_Request {
+    SetParameters_Request {
+        parameters: vec![Parameter {
+            name: "tracker".into(),
+            value: ParameterValue {
+                type_: ParameterType::PARAMETER_STRING,
+                string_value: name.into(),
+                ..Default::default()
+            },
+        }],
+    }
+}
+
+/// The track node's answer, for the console.
+fn swap_reply(asked: &str, response: &SetParameters_Response) -> Update {
+    match response.results.first() {
+        Some(r) if r.successful => {
+            Update::Log(Level::Info, format!("swapped: {asked} follows now"))
+        }
+        Some(r) => Update::Log(Level::Warn, format!("not swapped to {asked}: {}", r.reason)),
+        None => Update::Log(Level::Warn, format!("not swapped to {asked}: no answer")),
+    }
+}
+
+/// The navigator's answer to a cancel, for the console.
+fn cancel_reply(response: &CancelGoal_Response) -> Update {
+    let n = response.goals_canceling.len();
+    match response.return_code {
+        CancelGoal_Response::ERROR_NONE => Update::Log(
+            Level::Info,
+            format!("the goal is cancelled ({n} cancelling)"),
+        ),
+        CancelGoal_Response::ERROR_UNKNOWN_GOAL_ID => {
+            Update::Log(Level::Info, "no goal to cancel".to_owned())
+        }
+        code => Update::Log(Level::Warn, format!("the cancel was refused (code {code})")),
     }
 }
 
@@ -473,6 +578,66 @@ fn spin(
             send(&tx, Update::Plan(points));
         }
     })?;
+    let _road_ahead = node.create_subscription(topics.road_ahead.as_str().qos(newest), {
+        let tx = tx.clone();
+        move |m: RoadAheadMsg| {
+            let points: Vec<_> =
+                m.x.iter()
+                    .zip(&m.y)
+                    .zip(&m.heading)
+                    .zip(&m.speed_limit)
+                    .map(|(((&x, &y), &heading), &limit)| {
+                        (
+                            f64::from(x),
+                            f64::from(y),
+                            f64::from(heading),
+                            f64::from(limit),
+                        )
+                    })
+                    .collect();
+            let stops: Vec<_> = m
+                .stops
+                .iter()
+                .map(|s| (f64::from(s.along), s.reason.clone()))
+                .collect();
+            let road =
+                RoadAhead::from_parts(&points, f64::from(m.spacing), f64::from(m.end), &stops);
+            send(&tx, Update::RoadAhead(road));
+        }
+    })?;
+    let _things = node.create_subscription(topics.things.as_str().qos(newest), {
+        let tx = tx.clone();
+        move |m: Things| {
+            let things = m
+                .things
+                .iter()
+                .map(|t| Thing {
+                    id: t.id,
+                    name: t.kind.clone(),
+                    x: f64::from(t.x),
+                    y: f64::from(t.y),
+                    vx: f64::from(t.vx),
+                    vy: f64::from(t.vy),
+                    length: f64::from(t.length),
+                    width: f64::from(t.width),
+                    height: f64::from(t.height),
+                    coasting: t.coasting,
+                })
+                .collect();
+            send(&tx, Update::Things(things));
+        }
+    })?;
+    let _route = node.create_subscription(topics.route.as_str().qos(latched), {
+        let tx = tx.clone();
+        move |m: Path| {
+            let points = m
+                .poses
+                .iter()
+                .map(|p| Point::new(p.pose.position.x, p.pose.position.y))
+                .collect();
+            send(&tx, Update::Route(points));
+        }
+    })?;
     let _map = node.create_subscription(topics.map.as_str().qos(latched), {
         let tx = tx.clone();
         move |m: Box<OccupancyGrid>| match grid(&m) {
@@ -545,6 +710,9 @@ fn spin(
         Some(Commands {
             goal: node.create_publisher(topics.goal.as_str())?,
             estop: node.create_publisher(topics.estop.as_str().qos(estop_qos))?,
+            cancel: node.create_client::<CancelGoal>(topics.cancel_goal.as_str())?,
+            track: node.create_client::<SetParameters>(topics.track_parameters.as_str())?,
+            tx: tx.clone(),
         })
     } else {
         None

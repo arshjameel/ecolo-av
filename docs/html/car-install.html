@@ -7,9 +7,13 @@
 <!-- Generated from docs/car-install.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our stack on the car, from a USB stick</h1>
-<div class="meta">8 min read · 10 sections</div></header>
+<div class="meta">9 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -120,13 +132,16 @@ sudo</strong>, and <strong>without touching</strong> the 2025-26 Humble software
 <div class="admonition warning">
 <p class="admonition-title">Not on the car yet</p>
 <p>The kit is made and checked on a Mac, and installed offline on 64-bit ARM Linux by CI
-on every push (GitHub's ARM runner, Ubuntu 24.04). On the Orin and the Pis it is
-<span class="badge b-untested">untested</span>: car day is its first run there (<a href="car-day.html">Car day</a>, session 4). Back
-up first, then install.</p>
-</div></div>
+on every push (GitHub's ARM runner, Ubuntu 24.04). <strong>Only the localization Pi has it</strong>
+(by 11 Nov; the car drove with it on 13 Nov). On the Orin and the Motor Pi it is
+<span class="badge b-untested">untested</span> (<a href="car-day.html">Car day</a>, session 4). Back up first, then install.</p>
+</div>
+<p>This page says <strong>what the kit is, how it installs and how to undo it</strong>. The steps for one
+computer, with services at boot: <a href="car-setup.html">Car setup</a>. The order on the car:
+<a href="rollout.html">Rolling out</a> (short) and <a href="car-day.html">Car day</a> (full).</p></div>
 <section class="card"><h2 id="the-plan-in-one-picture">The plan in one picture</h2>
 <pre class="highlight"><code class="language-text">  Mac (internet)                    USB stick                 car computer (no internet)
-  pixi run car-kit   ──────────►   car-kit/  (1.8 GB)  ──►   car_install.sh  ──►  ~/aav-jazzy/
+  pixi run car-kit   ──────────►   car-kit/  (2.3 GB)  ──►   car_install.sh  ──►  ~/aav-jazzy/
                                                               car_listen.sh       (read-only)</code></pre>
 <div class="table-wrap"><table>
 <thead>
@@ -177,7 +192,7 @@ git fetch upstream &amp;&amp; git switch main &amp;&amp; git merge --ff-only ups
                                     # the team's main (CONTRIBUTING.md); the kit holds
                                     # what is committed, nothing else
 pixi run car-kit                    # writes car-kit/ (git ignores it)</code></pre>
-<p>What it holds (made on Ben's Mac, 15 Oct):</p>
+<p>What it holds (sizes from a fresh clone on Ben's Mac, 17 Nov; 2.3 GB in all):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -190,7 +205,7 @@ pixi run car-kit                    # writes car-kit/ (git ignores it)</code></p
 <tr>
 <td><code>aav-jazzy-linux-aarch64.tar</code></td>
 <td>every package of our default Pixi environment, for 64-bit ARM, from <code>pixi.lock</code> (packed by pixi-pack)</td>
-<td>1.7 GB</td>
+<td>1.3 GB</td>
 </tr>
 <tr>
 <td><code>bin/pixi</code>, <code>bin/pixi-unpack</code></td>
@@ -199,23 +214,23 @@ pixi run car-kit                    # writes car-kit/ (git ignores it)</code></p
 </tr>
 <tr>
 <td><code>aav.bundle</code></td>
-<td>the repo (git bundle)</td>
-<td>5 MB</td>
+<td>the repo (git bundle: <code>HEAD</code>, and <code>main</code> if the clone has one)</td>
+<td>201 MB</td>
 </tr>
 <tr>
 <td><code>aav-src.tar.gz</code></td>
 <td>the same code, for a computer with no git</td>
-<td>4 MB</td>
+<td>177 MB</td>
 </tr>
 <tr>
 <td><code>rust-crates.tar.gz</code></td>
-<td>the 152 Rust crates our four Rust packages use, so <code>cargo</code> needs no internet</td>
-<td>43 MB</td>
+<td>every crate our Rust packages use (each <code>Cargo.lock</code> in <code>ros/</code>, among them the car's default ego, behaviour, sensor watchdog and localization_health since 16 Nov), so <code>cargo</code> needs no internet</td>
+<td>161 MB</td>
 </tr>
 <tr>
 <td><code>models/</code></td>
-<td>the YOLO model files from <code>models/</code>, if you have them (<code>pixi run get models</code>)</td>
-<td>6 MB</td>
+<td>the model files from <code>models/</code>, if you have them (<code>pixi run get models</code>; the Orin's ONNX: <a href="car-day.html#session-0-before-leaving-at-home">Car day</a> A0 step 3)</td>
+<td>355 MB (RF-DETR's <code>.pth</code> and YOLO11n)</td>
 </tr>
 <tr>
 <td><code>car_install.sh</code>, <code>README.md</code>, <code>KIT.txt</code>, <code>SHA256SUMS</code></td>
@@ -389,6 +404,10 @@ theirs never see each other: no mixed Humble and Jazzy messages, no topic clashe
 <td><code>~/aav-jazzy/aav.sh car orin</code></td>
 </tr>
 <tr>
+<td>the Orin's part, one switch changed</td>
+<td><code>~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python</code> (the <code>--</code> is needed)</td>
+</tr>
+<tr>
 <td>a rebuild after an edit</td>
 <td><code>~/aav-jazzy/aav.sh build</code></td>
 </tr>
@@ -446,8 +465,12 @@ GitHub, so <code>git pull</code> in <code>~/aav-jazzy/aav</code> works once the 
 <td><span class="badge b-works">works</span> 24 Oct, CI's job <code>car-kit</code> (every push): GitHub's ARM runner, Ubuntu 24.04; the kit 1 min, the install and the build of every package, the HUD too, 4.5 min</td>
 </tr>
 <tr>
-<td>the install on the Orin or a Pi</td>
-<td><span class="badge b-untested">untested</span>: car day</td>
+<td>the install on the localization Pi</td>
+<td>by 11 Nov: the first try failed building <code>aav_bringup</code> (it depended on the skipped <code>aav_hud</code>; PR #28, with a test). 13 Nov: the car drove with this update installed (Ben). No audit or bag records it</td>
+</tr>
+<tr>
+<td>the install on the Orin or the Motor Pi</td>
+<td><span class="badge b-untested">untested</span></td>
 </tr>
 </tbody>
 </table></div></section>

@@ -19,14 +19,14 @@ sim.launch.py / car.launch.py ──(parameters)──▶ run_info ──▶ /sy
 | out | `/system/algorithms` | `diagnostic_msgs/DiagnosticStatus`, latched, again every 2 s |
 
 The message: `name` algorithms, `level` OK, `message` one short line
-(`lattice, mppi, voxels, NDT scored`), `hardware_id` the run (`sim world:=road`), and one
+(`own, mppi_lag, voxels, NDT scored`), `hardware_id` the run (`sim world:=road`), and one
 `values` row each:
 
 | Row | Example |
 |---|---|
 | run | `sim world:=test_lot` |
-| planner | `lattice (SmacPlannerLattice)` |
-| path follower | `MPPI (Nav2 controller_server)`, or `lqr (aav_track, trial)` |
+| planner | `ours in Rust (aav_planner: the lattice, ...)` |
+| path follower | `mppi_lag (aav_mppi_lag)`, or `lqr (aav_track, trial)` |
 | obstacles | `lidar scan + radar`, or `voxels: the lidar as 0.25 m cubes (trial)` |
 | local EKF, global EKF | their inputs: `wheels, IMU`, `+ KISS-ICP speed (trial)` |
 | NDT, KISS-ICP, AMCL | `off`, `on, scored only`, or `on, into the global EKF` |
@@ -36,7 +36,7 @@ The message: `name` algorithms, `level` OK, `message` one short line
 | `profile` | `sim` | the run, in words |
 | `nav` | true | Nav2 runs |
 | `planner`, `controller`, `tracker` | lattice, mppi, none | as `vehicle.py` names them |
-| `lidar`, `radar`, `voxels` | false | what Nav2 sees obstacles with |
+| `lidar`, `radar`, `voxels` | false | what navigation sees obstacles with |
 | `amcl`, `ndt`, `ndt_ekf`, `kiss_icp`, `kiss_ekf` | false | the trial localizers |
 | `period` | 2.0 s | how often it says it again |
 
@@ -50,7 +50,7 @@ The message: `name` algorithms, `level` OK, `message` one short line
 ## Invariants
 
 - It says what the launch **asked for**, not what is alive. A live tracker swap in
-  Gazebo shows on `/drivers/nav/track/status`.
+  Ravensim shows on `/drivers/nav/track/status`.
 - Every planner, controller and tracker `vehicle.py` knows has words here (a test checks).
 - `sim.launch.py` always starts it; `car.launch.py` where Nav2 runs.
 

@@ -19,14 +19,19 @@ use thiserror::Error;
 /// Why a WebSocket can't be used.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum WsError {
+    /// Not a ws:// address.
     #[error("not a ws:// address: {0:?} (such as ws://192.168.4.1:81/)")]
     Address(String),
+    /// wss://: TLS isn't done here.
     #[error("wss:// needs TLS, which this panel doesn't do: use ws://")]
     Tls,
+    /// The board didn't switch to a WebSocket: its answer.
     #[error("the board didn't switch to a WebSocket: {0}")]
     Refused(String),
+    /// A frame bigger than [`MAX_MESSAGE`] (bytes).
     #[error("a frame of {0} bytes: more than this panel takes")]
     TooBig(u64),
+    /// An opcode RFC 6455 doesn't define.
     #[error("a frame with opcode {0:#x}, which RFC 6455 doesn't define")]
     Opcode(u8),
 }
@@ -34,13 +39,20 @@ pub enum WsError {
 /// A `ws://` address.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Url {
+    /// The host name or address.
     pub host: String,
+    /// The port.
     pub port: u16,
     /// Starts with `/`.
     pub path: String,
 }
 
 impl Url {
+    /// A `ws://` address from text.
+    ///
+    /// # Errors
+    ///
+    /// [`WsError`] if it isn't a ws:// address, or is wss://.
     pub fn parse(s: &str) -> Result<Self, WsError> {
         let bad = || WsError::Address(s.to_owned());
         if s.starts_with("wss://") {
@@ -73,6 +85,7 @@ impl fmt::Display for Url {
 }
 
 /// The opening request. `nonce`: 16 bytes, different each time.
+#[must_use]
 pub fn request(url: &Url, nonce: [u8; 16]) -> String {
     format!(
         "GET {} HTTP/1.1\r\nHost: {}:{}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\
@@ -85,6 +98,10 @@ pub fn request(url: &Url, nonce: [u8; 16]) -> String {
 }
 
 /// Checks the answer's head (up to the blank line): 101, and `Upgrade: websocket`.
+///
+/// # Errors
+///
+/// [`WsError::Refused`] if the answer isn't 101 with `Upgrade: websocket`.
 pub fn check_answer(head: &str) -> Result<(), WsError> {
     let first = head.lines().next().unwrap_or_default();
     let switched = first
@@ -104,6 +121,7 @@ pub fn check_answer(head: &str) -> Result<(), WsError> {
 }
 
 /// Standard base64, with padding.
+#[must_use]
 pub fn base64(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
@@ -126,11 +144,17 @@ pub fn base64(bytes: &[u8]) -> String {
 /// A frame's kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Opcode {
+    /// More of a message.
     Continuation,
+    /// A text message.
     Text,
+    /// A binary message.
     Binary,
+    /// Close.
     Close,
+    /// Ping.
     Ping,
+    /// Pong.
     Pong,
 }
 
@@ -164,9 +188,13 @@ impl Opcode {
 pub enum Message {
     /// Lossy UTF-8: a broken byte becomes U+FFFD, and that line won't parse.
     Text(String),
+    /// Binary bytes.
     Binary(Vec<u8>),
+    /// A ping, with its bytes.
     Ping(Vec<u8>),
+    /// A pong.
     Pong,
+    /// The board closes.
     Close,
 }
 
@@ -182,6 +210,7 @@ pub struct Decoder {
 }
 
 impl Decoder {
+    /// Adds bytes read from the socket.
     pub fn push(&mut self, bytes: &[u8]) {
         self.buf.extend_from_slice(bytes);
     }
@@ -280,6 +309,7 @@ fn whole(kind: Opcode, payload: Vec<u8>) -> Message {
 
 /// A frame from this client: always masked, as RFC 6455 asks. Only for the protocol's
 /// own replies (a pong, a close).
+#[must_use]
 pub fn client_frame(opcode: Opcode, payload: &[u8], mask: [u8; 4]) -> Vec<u8> {
     let mut out = vec![0x80 | opcode.bits()];
     match payload.len() {

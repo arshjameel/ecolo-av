@@ -4,7 +4,7 @@ Which spine_bridge the launch files start, and what it does on the bus.
 No ROS imports. Both are the same node, `spine_bridge`, on the same topics, with this
 package's config/spine.yaml: aav_spine_bridge (Rust, T1.8) and aav_spine (Python, kept
 until the Rust one has run on the car). The launch argument is `bridge:=rust|python`, in
-spine.launch.py, bench.launch.py, sim.launch.py and gazebo.launch.py.
+spine.launch.py, bench.launch.py, sim.launch.py and ravensim.launch.py.
 
 Its `role`: `spine` drives the car over CAN; `sensors` only reads the wheel nodes, and
 sends nothing. car.launch.py picks it from `actuators:=`, the car's wiring

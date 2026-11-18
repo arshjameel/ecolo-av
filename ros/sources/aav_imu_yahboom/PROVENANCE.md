@@ -92,3 +92,4 @@ change, never the logic:
 
 - `crates/imu-node/src/main.rs`, `test/compare_with_cpp.py`, `package.xml`: `/imu/data_raw`
   -> `/sensors/imu/data_raw`, `/imu/mag` -> `/sensors/imu/mag`, as its C++ twin.
+- 2026-11-15 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.

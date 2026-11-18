@@ -9,7 +9,11 @@
 <h1>Maps and position: from the wheels to OpenStreetMap</h1>
 <div class="meta">8 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a class="here" href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -127,7 +139,7 @@
 <li><strong>Local EKF:</strong> "how I've moved since I started". Smooth, but it slowly drifts.</li>
 <li><strong>Global EKF:</strong> the same, plus GPS. "Where I am on the earth". True, but it can jump a little.</li>
 <li>The <strong>map frame</strong> is a flat grid in metres, pinned to one GPS point (the <strong>datum</strong>). That's how x/y and latitude/longitude meet.</li>
-<li><strong>OpenStreetMap is only for people and routes:</strong> the HUD's map window (streets, place search) and the street router (Valhalla). Nav2 never reads it.</li>
+<li><strong>OpenStreetMap is only for people and routes:</strong> the HUD's map window (streets, place search) and the street router (Valhalla). Navigation never reads it.</li>
 <li><strong>Costmaps</strong> are grids of "how bad is it to drive here". The <strong>global</strong> one is big and coarse (for the whole route). The <strong>local</strong> one is small, fine and live (for what's in front of the car right now).</li>
 </ul>
 </blockquote></div>
@@ -222,12 +234,12 @@
 <ul>
 <li><code>navsat_transform</code> turns each GPS fix into x/y metres from the datum.</li>
 <li>It also answers on request: <code>/fromLL</code> (lat/lon → x/y) and <code>/toLL</code> (x/y → lat/lon).</li>
-<li>That's how a GPS goal becomes a Nav2 goal.</li>
+<li>That's how a GPS goal becomes a navigation goal.</li>
 </ul>
 </section>
 <section class="card"><h2 id="4-where-openstreetmap-comes-in">4. Where OpenStreetMap comes in</h2>
 <p>OpenStreetMap (OSM) is a free map of the world's roads and places. <strong>We use it for people
-and for routes</strong>, never inside Nav2. Everything works offline: the data are files.</p>
+and for routes</strong>, never inside navigation. Everything works offline: the data are files.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -241,7 +253,7 @@ and for routes</strong>, never inside Nav2. Everything works offline: the data a
 <tr>
 <td>Draw the street map</td>
 <td>Ottawa's streets as vector tiles (Protomaps, 40 MB)</td>
-<td>the HUD's map window, under Nav2's map (<a href="hud.html#the-street-map-under-it">HUD</a>)</td>
+<td>the HUD's map window, under the navigation map (<a href="hud.html#the-street-map-under-it">HUD</a>)</td>
 <td>no: <code>pixi run get street-map</code></td>
 </tr>
 <tr>
@@ -259,18 +271,18 @@ and for routes</strong>, never inside Nav2. Everything works offline: the data a
 </tbody>
 </table></div>
 <p>A place reaches the car in one of two ways:</p>
-<pre class="highlight"><code class="language-text"> map window: pick a place ─► DRIVE HERE, CONFIRM ─► /goal_pose (inside Nav2's map only)
+<pre class="highlight"><code class="language-text"> map window: pick a place ─► DRIVE HERE, CONFIRM ─► /goal_pose (inside the navigation map only)
 
  street_router: a destination ─► Valhalla: a street route (lat/lon points)
-     ─► a person calls /drivers/nav/route/follow ─► Nav2: FollowGPSWaypoints
-     ─► /fromLL: each point to map x/y ─► Nav2 drives point to point</code></pre>
+     ─► a person calls /drivers/nav/route/follow ─► the navigator: FollowGPSWaypoints
+     ─► /fromLL: each point to map x/y ─► the navigator drives through them</code></pre>
 <blockquote>
-<p>⚠️ <strong>Nav2 doesn't know where the road is.</strong> The route's points follow the road, but Nav2
+<p>⚠️ <strong>The planner doesn't know where the road is</strong> (except with <code>path:=lane</code>, the lane map). The route's points follow the road, but the planner
 only sees the points, not the road. Between two points it plans across its costmap,
 which today is empty (all free). Staying in the lane is the lane keeper's job
 (<code>aav_lane_finder</code>, <code>aav_lane_geometry</code>). A lane layer in the costmap would be the next step.</p>
 </blockquote>
-<p>Both ways work in Gazebo (16 Oct); neither has run on the car.</p>
+<p>Both ways worked in Gazebo (16 Oct), with Nav2; neither has run on the car.</p>
 </section>
 <section class="card"><h2 id="5-costmaps-the-fine-grained-part">5. Costmaps: the fine-grained part</h2>
 <p>A <strong>costmap</strong> is a grid laid on the ground. Each cell holds a cost:</p>
@@ -347,7 +359,7 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 <td>tens of metres</td>
 <td>GPS waypoints</td>
 <td>one point every few tens of metres</td>
-<td>breadcrumbs for Nav2</td>
+<td>breadcrumbs for the navigator</td>
 </tr>
 <tr>
 <td>200 m</td>
@@ -363,9 +375,9 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 </tr>
 <tr>
 <td>a few metres</td>
-<td>collision_monitor</td>
-<td>its stop zone</td>
-<td>last-moment stop, whatever Nav2 thinks</td>
+<td>the stop zone (<code>aav_stop_zone</code>)</td>
+<td>a box just ahead</td>
+<td>last-moment stop, whatever navigation thinks</td>
 </tr>
 <tr>
 <td>centimetres</td>
@@ -387,11 +399,11 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 <tbody>
 <tr>
 <td><code>ekf_local</code>, <code>ekf_global</code>, <code>navsat_transform</code></td>
-<td>✅ in Gazebo and on the bench. ❌ never on the car</td>
+<td>✅ in the simulator and on the bench. ❌ never on the car</td>
 </tr>
 <tr>
-<td>Nav2 with both costmaps</td>
-<td>✅ in Gazebo and on the bench</td>
+<td>Navigation with both costmaps</td>
+<td>✅ in the simulator and on the bench</td>
 </tr>
 <tr>
 <td>Radar and cameras in the local costmap</td>
@@ -406,16 +418,16 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 <td>❌ a placeholder: set it at the test site</td>
 </tr>
 <tr>
-<td>A street route → Nav2</td>
-<td>✅ in Gazebo (<a href="routes.html">Street routes</a>); untested on the car</td>
+<td>A street route → the navigator</td>
+<td>✅ in the simulator (<a href="routes.html">Street routes</a>); untested on the car</td>
 </tr>
 <tr>
 <td>A map of the real test site</td>
 <td>❌ only <code>empty</code> and an example lot</td>
 </tr>
 <tr>
-<td>Nav2 knowing about roads and lanes</td>
-<td>❌ the next big step</td>
+<td>Navigation knowing about roads and lanes</td>
+<td>🔧 the lane map and <code>path:=lane</code> (16 Nov, in <code>stack:=ours</code>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -449,7 +461,7 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 </table></div>
 <p>More: <a href="costmaps.html">Costmaps</a>, <a href="how-it-fits.html">How it fits</a>, <a href="hud.html">HUD</a>.</p></section>
 <nav class="prevnext"><a class="prev" href="campus.html"><small>Previous</small>← The campus</a>
-<a class="next" href="learn-nav2.html"><small>Next</small>Learn: Nav2 →</a></nav>
+<a class="next" href="learn-nav2.html"><small>Next</small>Learn: navigation →</a></nav>
 </main>
 <footer>Source: <code>docs/maps-and-position.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

@@ -24,7 +24,7 @@
 //!             plan_topic            nav_msgs/Path               Nav2's plan
 //!             tf_topic, tf_static_topic  tf2_msgs/TFMessage     map -> odom; base_link -> lidar_link
 //!             voxels_cubes_topic    sensor_msgs/PointCloud2     reliable, keep last 1, base_link:
-//!                                   Nav2's cubes (the voxels trial), red wireframes, key V
+//!                                   the costmap's cubes (the voxels trial), red wireframes, key V
 //!             voxels_status_topic   diagnostic_msgs/DiagnosticStatus  the voxels trial: ms, cubes, road fit
 //!             health_topic          std_msgs/String             /localization/health: OK or WARN ...
 //!             imu_topic             sensor_msgs/Imu             the panel
@@ -113,8 +113,8 @@ usage: debug_hud [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
 
 keys: drag turn, right-drag (or shift-drag) move, wheel zoom, C chase / follow / free,
       R reset the camera, L the seeing screen (the map and NDT's match from above) or
-      the sensor panel, K kept (fading) cubes or this scan's, V Nav2's cubes (the voxels
-      trial's, red wireframes), M NDT's map,
+      the sensor panel, K kept (fading) cubes or this scan's, V the costmap's cubes (the
+      voxels trial's, red wireframes), M NDT's map,
       A AMCL's particles, H hide the key legend, 1-4 swap the trial tracker (sim only:
       pure pursuit, Stanley, LQR, MPC), F11 full screen";
 
@@ -430,6 +430,7 @@ fn key_of(action: Action) -> KeyboardKey {
         Action::Camera => KeyboardKey::KEY_C,
         Action::ResetCamera => KeyboardKey::KEY_R,
         Action::Cubes => KeyboardKey::KEY_K,
+        Action::Ground => KeyboardKey::KEY_G,
         Action::NdtMap => KeyboardKey::KEY_M,
         Action::Particles => KeyboardKey::KEY_A,
         Action::Nav2Cubes => KeyboardKey::KEY_V,
@@ -516,7 +517,7 @@ mod tests {
             }
         }
         assert!(USAGE.contains("K kept") && USAGE.contains("L the seeing screen"));
-        assert!(USAGE.contains("V Nav2's cubes"));
+        assert!(USAGE.contains("V the costmap's cubes"));
     }
 
     #[test]

@@ -19,6 +19,12 @@ so the sideways acceleration stays within the body's limit.
 Speeding up is also jerk-limited (max_jerk): the push builds up and eases off, so people
 aboard aren't thrown back. Slowing down never is: a stop, from the collision monitor or a
 silent driver, starts at once.
+
+While a person drives, the pedal (pedal.py) grades how hard a slow-down is: letting the
+stick off slows gently, pulling it back brakes by how far. A stop (no fresh command) and a
+turn's cap still brake at max_deceleration. And the pedal waits at a standstill before
+changing direction (pedal.may_shift): held at 0 for shift_hold, and stopped by the wheels
+when they are measured.
 """
 
 from __future__ import annotations
@@ -29,6 +35,7 @@ from typing import Callable, Optional, Tuple
 
 from aav_ego import dynamics
 from aav_ego.dynamics import Body
+from aav_ego.pedal import may_shift, Pedal, slow_rate
 
 
 @dataclass
@@ -84,17 +91,20 @@ def turn_rate(v: float, d: float, wheelbase: float) -> float:
 
 
 def slew_speed(current: float, target: float, lim: Limits, dt: float,
-               speed_up: Optional[float] = None) -> Tuple[float, float]:
+               speed_up: Optional[float] = None,
+               slow_down: Optional[float] = None) -> Tuple[float, float]:
     """
     Move the speed toward target within the limits; return (speed, rate used).
 
     speed_up (m/s^2), if given, replaces lim.max_acceleration: the body's lower limit.
+    slow_down (m/s^2), if given, replaces lim.max_deceleration: the pedal's (pedal.py).
     """
     if current != 0.0 and target != 0.0 and (current > 0.0) != (target > 0.0):
         target = 0.0  # change direction through a stop
     speeding_up = abs(target) > abs(current)
     up = lim.max_acceleration if speed_up is None else speed_up
-    rate = up if speeding_up else lim.max_deceleration
+    down = lim.max_deceleration if slow_down is None else min(slow_down, lim.max_deceleration)
+    rate = up if speeding_up else down
     step = rate * dt
     if target > current:
         return min(target, current + step), rate
@@ -135,6 +145,12 @@ class EgoModel:
         self.speed = 0.0
         self.steering = 0.0
         self.accel = 0.0         # m/s^2, signed: the last tick's change of speed
+        # The pedal (pedal.py) while a person drives, else None: ego_node sets it each tick.
+        self.pedal: Optional[Pedal] = None
+        # A fresh measured speed (m/s), else None: ego_node sets it each tick.
+        self.wheel_speed: Optional[float] = None
+        self.direction = 0.0     # +1 or -1: the way it last moved; 0 never moved
+        self.held = 0.0          # s at a standstill (speed 0) since it last moved
 
     def step(self, cmd: Optional[Tuple[float, float]], dt: float,
              lead: Optional[Callable[[float, float, float], Tuple[float, float]]] = None
@@ -159,6 +175,7 @@ class EgoModel:
                 v, target_d = lead(v, target_d, dt)
                 target_d = clamp(target_d, -lim.max_steering_angle, lim.max_steering_angle)
             target_v = clamp(v, -lim.max_reverse_speed, lim.max_speed)
+        asked = target_v
         speed_up = None
         if self.body is not None:
             speed_up = min(lim.max_acceleration, dynamics.speed_up_limit(self.body))
@@ -168,14 +185,31 @@ class EgoModel:
                     abs(curvature(self.steering, lim.wheelbase)))
             cap = dynamics.curve_speed(self.body, k)
             target_v = clamp(target_v, -cap, cap)
+        # The pedal grades the slowing a person asks for; never a stop (cmd None) or a turn's
+        # cap (target_v below what was asked): those brake at max_deceleration.
+        slow_down = None
+        if self.pedal is not None and cmd is not None and target_v == asked:
+            slow_down = slow_rate(self.pedal, self.speed, cmd[0], lim.max_deceleration)
+        # A person asking the other way waits at a standstill, the brake on (may_shift).
+        if (self.pedal is not None and cmd is not None and self.speed == 0.0
+                and target_v * self.direction < 0.0
+                and not may_shift(self.pedal, self.held, self.wheel_speed)):
+            target_v = 0.0
         before = self.speed
-        self.speed, accel = slew_speed(self.speed, target_v, lim, dt, speed_up)
+        self.speed, accel = slew_speed(self.speed, target_v, lim, dt, speed_up, slow_down)
         if lim.max_jerk > 0.0 and abs(self.speed) > abs(before):
             # Speeding up, so toward target_v (a change of direction stops first).
             self.speed, signed = ease_speed(before, target_v, self.accel, accel,
                                             lim.max_jerk, dt)
             accel = abs(signed)
         self.accel = (self.speed - before) / dt if dt > 0.0 else 0.0
+        if self.speed != 0.0:
+            self.direction = 1.0 if self.speed > 0.0 else -1.0
+            self.held = 0.0
+        elif before == 0.0:
+            self.held += dt
+        else:
+            self.held = 0.0      # it has just stopped
         step = lim.max_steering_rate * dt
         self.steering = clamp(target_d, self.steering - step, self.steering + step)
         return self.speed, self.steering, accel

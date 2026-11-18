@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_detector_rs</name>
+  <version>0.1.0</version>
+  <description>The object detector in Rust (rclrs): a drop-in for aav_detector's Python node (detector.launch.py detector_impl:=rust), a challenger, not the default. RF-DETR's ONNX through ONNX Runtime (the ort crate): Core ML on a Mac, the CPU anywhere, TensorRT on the Orin (untested). The same topics: image in; /perception/detections and /perception/detections/image out. The model and its maths are the detector-core crate, with no ROS.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>vision_msgs</depend>
+
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -7,9 +7,13 @@
 <!-- Generated from docs/own-costmap.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own costmap</h1>
-<div class="meta">9 min read · 6 sections</div></header>
+<div class="meta">28 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a class="here" href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,10 +125,11 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does-layer-by-layer">What it does, layer by layer</a><a href="#try-it">Try it</a><a href="#the-scores-8-nov">The scores (8 Nov)</a><a href="#without-ros">Without ROS</a><a href="#whats-missing-for-the-planner-step">What&#x27;s missing for the planner step</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does-layer-by-layer">What it does, layer by layer</a><a href="#the-radar-forgets-what-has-gone-15-nov-todo-193">The radar forgets what has gone (15 Nov, TODO 193)</a><a href="#the-lanes-layer-15-nov-todo-148-a-challenger">The lanes layer (15 Nov, TODO 148, a challenger)</a><a href="#threads-and-bounds-14-nov">Threads and bounds (14 Nov)</a><a href="#from-map-chunks-on-every-core-16-nov-todo-175-195">From map chunks, on every core (16 Nov, TODO 175, 195)</a><a href="#try-it">Try it</a><a href="#the-scores-8-nov">The scores (8 Nov)</a><a href="#without-ros">Without ROS</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 to <strong>our own versions, one piece at a time</strong>, each beside Nav2
-until it wins. The order: the costmap, then a path planner in Rust, then the navigator.
-This page is the first piece. Nav2 stays the default, and stays on the car.</p>
+until it won. The order: the costmap, then a path planner in Rust, then the navigator.
+This page is the first piece. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>).
+Nav2 went on 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>): ours is the only one, in the sim and on the car. The comparisons with Nav2's below are the record.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -143,7 +156,23 @@ This page is the first piece. Nav2 stays the default, and stays on the car.</p>
 <li>
 <p><strong>Fast:</strong> 0.4 ms an update without ROS; about 0.5 ms in the sim.</p>
 </li>
-<li><strong>With <code>tracker:=mppi_lag</code></strong>, MPPI reads ours instead of Nav2's.</li>
+<li>
+<p><strong>Big maps:</strong> each costmap has its own thread, and the global one is worked out once
+  per map, so the campus never makes the local one late (<a href="#threads-and-bounds-14-nov">threads</a>).</p>
+</li>
+<li>
+<p><strong>With <code>tracker:=mppi_lag</code></strong>, MPPI reads ours instead of Nav2's.</p>
+</li>
+<li>
+<p><strong>From map chunks</strong> (16 Nov, on in <code>stack:=ours</code>): the global costmap holds only the
+  64 m chunks round the car and along the route, each inflated on its own core. Every
+  leg as before, a third of the memory (<a href="#from-map-chunks-on-every-core-16-nov-todo-175-195">chunks</a>).</p>
+</li>
+<li>
+<p><strong>The local one too</strong> (16 Nov, on in <code>stack:=ours</code>): its map from the 3 x 3 chunks round
+  the car, not <code>/map</code>. Every leg as before, half the node's memory; nothing of ours reads
+  <code>/map</code> on the campus now.</p>
+</li>
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
@@ -177,7 +206,7 @@ odometry, /tf ────┤
 <tr>
 <td><code>/drivers/nav/costmap/global</code>, <code>global_raw</code></td>
 <td>the same, the whole map</td>
-<td>the planner, next</td>
+<td>our planner (<code>planner:=own</code>)</td>
 </tr>
 <tr>
 <td><code>/drivers/nav/costmap/status</code></td>
@@ -194,7 +223,8 @@ odometry, /tf ────┤
 <p><strong>The recovery clears ours too.</strong> When stuck, Nav2's behaviour trees call
 <code>local_costmap/clear_entirely_local_costmap</code>. With <code>costmap:=own</code> and
 <code>tracker:=mppi_lag</code>, the launch file points that call at our local costmap, the one MPPI
-reads. The global clear stays Nav2's: the planner still reads Nav2's global costmap.</p>
+reads. The global clear stays Nav2's under Nav2's navigator; our navigator
+(<code>navigator:=own</code>) clears ours (<a href="own-navigator.html">page</a>).</p>
 </section>
 <section class="card"><h2 id="what-it-does-layer-by-layer">What it does, layer by layer</h2>
 <div class="table-wrap"><table>
@@ -229,7 +259,685 @@ reads. The global clear stays Nav2's: the planner still reads Nav2's global cost
 <li><strong>One change from Nav2:</strong> the inflation finds the nearest obstacle exactly (a distance
   transform), not by Nav2's brushfire. The costs are the same.</li>
 <li><strong>Not ported:</strong> Nav2's 3D voxel layer, range sensors, filters. <code>nav2.yaml</code> uses none.</li>
+<li><strong>One addition (15 Nov): the radar's view clears.</strong> See below.</li>
+<li><strong>A challenger (15 Nov): the lanes layer</strong> (<code>lane_costs:=true</code>), off by default. See below.</li>
 </ul>
+</section>
+<section class="card"><h2 id="the-radar-forgets-what-has-gone-15-nov-todo-193">The radar forgets what has gone (15 Nov, TODO 193)</h2>
+<p><strong>The problem.</strong> A box in the lane: the radar marks it, the car stops. The box is taken
+away. The radar now returns <strong>nothing</strong> there, and in Nav2's rule only a ray to a point
+clears. So the box stayed in the radar's layer for ever. MPPI saw a wall that wasn't
+there and stood still until its progress check failed (10 s).</p>
+<p><strong>The fix.</strong> A point cloud source can say how wide its view is: <code>view_angle</code> (rad), on
+the radar's block in <code>nav2.yaml</code>, 120° (the TI radar's, and the simulator's stand-in).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where the radar sees...</th>
+<th>Ours does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a point</td>
+<td>marks it, clears the ray up to it (as Nav2)</td>
+</tr>
+<tr>
+<td>nothing, inside its view</td>
+<td>clears the ray out to <code>raytrace_max_range</code> (8.4 m), as a scan's inf does</td>
+</tr>
+<tr>
+<td>outside its view (beside, behind)</td>
+<td>nothing: old marks stay</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>One ray every 0.5° (<code>obstacle::view_points</code>): 7 cm apart at 8.4 m.</li>
+<li>The rays end past <code>obstacle_max_range</code>, so they never mark.</li>
+<li>Only the radar's own layer: the lidar's and the cameras' marks are never touched.</li>
+<li>Nav2's costmap had no such setting.</li>
+<li>A real radar's sparse frames: a thing it misses in both frames of 0.2 s is cleared, and
+  marked again at the next frame that sees it. the stop zone still reads the radar
+  itself, not the costmap.</li>
+</ul>
+</section>
+<section class="card"><h2 id="the-lanes-layer-15-nov-todo-148-a-challenger">The lanes layer (15 Nov, TODO 148, a challenger)</h2>
+<p><strong>The idea</strong> (D2 in the <a href="../designs/2026-11-13_one-shape.md">one-shape design</a>): the lane
+map's roads drawn into the global costmap as a soft cost, so the planner keeps right.
+Ben, 13 Nov: lane lines "it can cross but only if it needs to and to stay on the right side".</p>
+<pre class="highlight"><code class="language-text"> cost
+ 200 ┤█                                    █   kerb, and 1 m past it
+ 150 ┤ ████████████████                        the oncoming lane
+  80 ┤                 █         █             the lane's own lines
+   0 ┤                    ●                    the right lane's centre
+     └── left kerb ── centre line ── edge line ── right kerb ──</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Turn it on</td>
+<td><code>pixi run sim lane_costs:=true</code> (needs <code>costmap:=own</code>; ours has it). Off by default</td>
+</tr>
+<tr>
+<td>The map</td>
+<td><code>lane_map:=</code>'s <code>lanes.yaml</code>, else the world's own (the campus's, the road world's). The test lot has none: nothing drawn</td>
+</tr>
+<tr>
+<td>Which lane is right</td>
+<td>the newest <code>/plan</code>: each road segment it runs along. Until then a two-way road's two lane centres are both 0</td>
+</tr>
+<tr>
+<td>How it adds</td>
+<td><strong>added</strong> to the inflation, up to 252: never a wall. Obstacles and unknown cells stay</td>
+</tr>
+<tr>
+<td>Where</td>
+<td>the global costmap only (the planner's). The local one, and so MPPI, don't see it</td>
+</tr>
+<tr>
+<td>Code</td>
+<td><code>crates/costmap/src/lanes.rs</code> (no ROS, 9 tests); <code>lane_map.costmap_block</code>; <code>navigation.launch.py lane_costs:=</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Why added, not the higher of the two.</strong> On the campus the lidar marks both kerbs. The
+inflation from them is lowest in the road's <strong>middle</strong>: 59 at the right lane's centre
+(2 m from the kerb), about 10 at the centre line. With Nav2's rule (the higher of the
+two) the centre line (50) was cheaper than the lane's centre (59): the first runs kept to
+the middle. Added, the lane's centre is the cheapest place across the road (a test checks).</p>
+<h3 id="the-scores-15-nov-our-simulator-the-campus">The scores (15 Nov, our simulator, the campus)</h3>
+<p><code>pixi run measure controllers --stacks own --tours campus --runs 2 --launch behaviour:=true</code>
+with nothing more, <code>lane_costs:=true</code>, or <code>lane_map:=world</code> (the road ahead on the lane's
+centre and mppi_lag's LaneCritic: today's nearest to <code>path:=lane</code>, which isn't built).
+Scored by <code>tools/lane_score.py</code> on the one leg every run drove: "along the road".</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Lanes</th>
+<th>Reached</th>
+<th>Time (s)</th>
+<th>Sway (m/s²)</th>
+<th>Off the lane's centre (m)</th>
+<th>Over the centre line</th>
+<th>Crossings</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A1</td>
+<td>none</td>
+<td><strong>no</strong> (watchdog)</td>
+<td>221</td>
+<td>0.12</td>
+<td>0.93</td>
+<td>0 %</td>
+<td>0</td>
+</tr>
+<tr>
+<td>A2</td>
+<td>none</td>
+<td>yes</td>
+<td>119</td>
+<td>0.22</td>
+<td>1.91</td>
+<td>75 %</td>
+<td>4</td>
+</tr>
+<tr>
+<td>B1</td>
+<td>ramp, the higher of two</td>
+<td>yes</td>
+<td>121</td>
+<td>0.26</td>
+<td>1.27</td>
+<td>25 %</td>
+<td>2</td>
+</tr>
+<tr>
+<td>B2</td>
+<td>ramp, the higher of two</td>
+<td>yes</td>
+<td>127</td>
+<td>0.23</td>
+<td>1.37</td>
+<td>30 %</td>
+<td>2</td>
+</tr>
+<tr>
+<td>B3</td>
+<td>ramp, <strong>added</strong> (kept)</td>
+<td>yes</td>
+<td>122</td>
+<td>0.26</td>
+<td>1.10</td>
+<td>27 %</td>
+<td>2</td>
+</tr>
+<tr>
+<td>B4</td>
+<td>ramp, added</td>
+<td>yes</td>
+<td>143</td>
+<td>0.23</td>
+<td>0.51</td>
+<td>2 %</td>
+<td>1</td>
+</tr>
+<tr>
+<td>C1</td>
+<td>lane line (<code>lane_map:=world</code>)</td>
+<td><strong>no</strong> (follower)</td>
+<td>221</td>
+<td>0.23</td>
+<td>1.17</td>
+<td>30 %</td>
+<td>3</td>
+</tr>
+<tr>
+<td>C2</td>
+<td>lane line</td>
+<td><strong>no</strong> (no path)</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>None</th>
+<th>Ramp, added</th>
+<th>Lane line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reached "along the road"</td>
+<td>1 of 2</td>
+<td>2 of 2</td>
+<td>0 of 2</td>
+</tr>
+<tr>
+<td>Over the centre line</td>
+<td>75 %</td>
+<td>2-27 %</td>
+<td>30 %</td>
+</tr>
+<tr>
+<td>Time</td>
+<td>119 s</td>
+<td>122-143 s (B4 took a 48 m longer way)</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Sway</td>
+<td>0.22</td>
+<td>0.23-0.26</td>
+<td>0.23</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The verdict: a challenger, not in <code>ours</code>.</strong> It keeps right more (the time over the
+centre line fell from 75 % to 2-27 %), but on 2 runs, 30 s of mapped road each, with no
+gain in time or sway. A third ramp run (the added one) is left out: three sims at once
+starved it, and the car never moved. The test lot has no lane map: the layer draws
+nothing there (1 run, 4 of 4 legs, as without).</p>
+<p><strong>Read with care.</strong></p>
+<ul>
+<li>Only University Drive is in the lane map on this route: about 30 s of each 120 s leg.
+  The rest is roads OpenStreetMap doesn't paint.</li>
+<li>"Over the centre line" counts a left turn across it too.</li>
+<li>The runs are noisy: legs failed for reasons the lanes don't touch (the sensor
+  watchdog, "the car doesn't fit at the start", the follower giving up).</li>
+</ul>
+<p><strong>16 Nov: against <code>path:=lane</code>, on more road.</strong> A new tour, <code>university</code> (about 290 m of
+University Drive), 3 runs each: the ramp kept the car 0.59 m off the lane's centre and
+over the centre line 1 % of the time (nothing: 1.51 m, 68 %); the lane-centre planner
+0.10 m and 0 %, with less sway (0.063 against 0.087 m/s²), the same time a leg. The
+table: <a href="own-planner.html#the-scores-16-nov-our-simulator-the-university-drive-tour">own-planner.md</a>.
+Later that day, 3 clean runs each: <code>path:=lane</code> no worse on any column, and since then
+<code>ours</code>' path; the ramp stays a challenger (<code>lanes:=ramp</code>; TODO 148).</p>
+</section>
+<section class="card"><h2 id="threads-and-bounds-14-nov">Threads and bounds (14 Nov)</h2>
+<p><strong>The problem.</strong> On the campus map (6400 × 6400 cells, 41 million) every leg with
+<code>costmap:=own tracker:=mppi_lag</code> failed: "the costmap on .../local_raw: 0.84 s old
+(limit 0.80 s)". Both costmaps ran on one thread, and the global one rebuilt the whole
+map each second. While it did, the local one waited.</p>
+<p><strong>The fix, Nav2's way:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Nav2 does</th>
+<th>Ours now</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>each costmap has its own update thread (<code>mapUpdateLoop</code>)</td>
+<td>each costmap has its own thread; the ROS worker only gathers the inputs and hands them over</td>
+</tr>
+<tr>
+<td>each update redoes only the bounds the layers touched (<code>updateBounds</code>, <code>updateCosts</code>)</td>
+<td>the global one is worked out <strong>once per map</strong>; after that only the cells the sensors touched, plus the inflation's reach</td>
+</tr>
+<tr>
+<td>a late update loop is skipped and logged</td>
+<td>a busy thread skips to the newest inputs (<code>skipped</code> on the status)</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code>ROS worker: messages, timers ──▶ local thread:  update + publish (5 Hz, 0.4 ms)
+                             └─▶ global thread: map once (0.5 s) + publish (1 Hz)</code></pre>
+<p><strong>Before and after</strong>, without ROS (<code>examples/timing.rs</code>, campus size, this Mac with the
+simulator running beside it):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>global update, every second</td>
+<td><strong>477-539 ms</strong></td>
+<td>0.000 ms (nothing changed)</td>
+</tr>
+<tr>
+<td>global update when the map comes</td>
+<td>the same</td>
+<td>477 ms, once, on its own thread</td>
+</tr>
+<tr>
+<td>global with a lidar layer on it</td>
+<td>the whole map again</td>
+<td>0.25 ms (the scan's area)</td>
+</tr>
+<tr>
+<td>making the two messages' cells</td>
+<td>26 ms each publish</td>
+<td>only after a change</td>
+</tr>
+<tr>
+<td>local waits for the global</td>
+<td>yes</td>
+<td><strong>never</strong></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Still sent in full, once a second:</strong> the global grid (41 MB as 0-255, 41 MB as
+  0-100). Our planner checks its age (2 s limit), so it must keep coming. It goes out
+  on the global thread, so the local one never waits for it. Not timed with ROS yet.</li>
+<li><strong>The same cells:</strong> a test checks an area update against a whole one, cell for cell.</li>
+<li><strong>The local one</strong> still rebuilds its whole 200 × 200 window: it moves every update,
+  and that takes 0.4 ms.</li>
+<li><strong>New status values:</strong> <code>publish_ms</code> (the last publish) and <code>skipped</code>.</li>
+</ul>
+</section>
+<section class="card"><h2 id="from-map-chunks-on-every-core-16-nov-todo-175-195">From map chunks, on every core (16 Nov, TODO 175, 195)</h2>
+<p>Ben, 16 Nov: "why are map chunks and obstical avoidance not using rayon ... we should load
+the closest ones or atleas the ones on the path. Lets turn on chunking for sure."</p>
+<p><strong>The idea.</strong> The global costmap holds only the 64 m chunks it needs, not the whole map.
+The chunked maps are called <strong>RavenTiles</strong> (Ben, 16 Nov).</p>
+<pre class="highlight"><code class="language-text"> car + the route ahead ─▶ map_chunks::wanted: the 3 x 3 round the car + 100 m of route
+                          ─▶ the rectangle round them, one chunk more each side
+   ┌────┬────┬────┬────┬────┐
+   │kept│kept│kept│new │new │   new chunks: read from fine/i_j.pgm, each on its own core
+   ├────┼────┼────┼────┼────┤   kept chunks: their cells kept as they were
+   │kept│kept│CAR │redo│new │   redo: a chunk whose neighbour came or went
+   └────┴────┴────┴────┴────┘   each chunk inflated on its own core (rayon), then stitched</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>costmap_chunks:=auto</code> (<code>sim.launch.py</code>)</td>
+<td>the campus's chunks (<code>maps/campus/chunks/</code>, made by <code>pixi run campus</code>); the lot and the road world have none, so the whole map</td>
+</tr>
+<tr>
+<td><code>chunked.rs</code></td>
+<td>the window (<code>Window</code>), which chunks to redo, reading a chunk (<code>ChunkSource</code>), stitching</td>
+</tr>
+<tr>
+<td><code>layered.rs</code></td>
+<td><code>set_chunks</code>, <code>follow_chunks</code> (each update), <code>set_ahead</code> (the route)</td>
+</tr>
+<tr>
+<td>the route ahead</td>
+<td>our planner's <code>/drivers/nav/planner/route</code>: the lane line to the goal, however far</td>
+</tr>
+<tr>
+<td>the same cells</td>
+<td>a chunk's costs need only its 8 neighbours (the 3 m inflation is less than a chunk)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Every fixed costmap uses the cores now</strong>, chunks or not: the grid is worked out in
+64 m tiles, each on its own core, each reading its tile plus the inflation's reach.</p>
+<h3 id="how-long-it-takes-this-mac-m4-max-16-cores">How long it takes (this Mac, M4 Max, 16 cores)</h3>
+<p><code>cargo run --release -p costmap --example chunks</code> on the campus's chunks; criterion for
+the whole map (<code>cargo bench -p costmap</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>1 core</th>
+<th>16 cores (rayon)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>read one chunk (256 x 256 cells)</td>
+<td>0.11 ms</td>
+<td>0.07 ms</td>
+</tr>
+<tr>
+<td>stitch one chunk</td>
+<td>0.001 ms</td>
+<td>0.001 ms</td>
+</tr>
+<tr>
+<td>first window, 25 chunks: read and stitch</td>
+<td>1.9 ms</td>
+<td>0.6 ms</td>
+</tr>
+<tr>
+<td>first window: inflate</td>
+<td>12-13 ms (0.5 ms a chunk)</td>
+<td><strong>1.4 ms</strong></td>
+</tr>
+<tr>
+<td>the car one chunk on: read 5, redo 10-15</td>
+<td>8 ms</td>
+<td><strong>1.3 ms</strong></td>
+</tr>
+<tr>
+<td>the whole campus map (41 M cells), worked out</td>
+<td>326 ms</td>
+<td><strong>32 ms</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The same cells:</strong> the window against the whole campus map's costmap, away from its
+edge: 0 cells differ. Tests: a 320 m map in chunks, cell for cell against the whole
+map's costmap, as the car drives (with and without a lidar layer); tiles against one pass.</p>
+<h3 id="the-scores">The scores</h3>
+<p>Our simulator, 16 Nov, <code>measure controllers --stacks own_calm own_calm_chunks --tours lot
+campus university --runs 2 --reversing --launch behaviour:=true lane_route:=true</code> (as
+<code>stack:=ours</code> drives; results in /tmp/r2, not in git). Load 7-10 at the start, this Mac only.
+The lot has no chunks, so both are the whole map there: its rows show the noise.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tour</th>
+<th>Costmap</th>
+<th>Legs</th>
+<th>Time (s)</th>
+<th>Sway (m/s²)</th>
+<th>Off the path (m), mean / worst</th>
+<th>Plan (ms, median)</th>
+<th>Costmap: CPU, memory</th>
+<th>Planner: CPU, memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lot</td>
+<td>whole map</td>
+<td>8 of 8</td>
+<td>320</td>
+<td>0.022</td>
+<td>0.16 / 0.83</td>
+<td>2</td>
+<td>4 %, 37 MB</td>
+<td>4 %, 41 MB</td>
+</tr>
+<tr>
+<td>lot</td>
+<td>(chunks: none here)</td>
+<td>8 of 8</td>
+<td>331</td>
+<td>0.019</td>
+<td>0.14 / 0.47</td>
+<td>2</td>
+<td>3 %, 36 MB</td>
+<td>4 %, 48 MB</td>
+</tr>
+<tr>
+<td>campus</td>
+<td>whole map</td>
+<td>6 of 6</td>
+<td>557</td>
+<td>0.087</td>
+<td>0.16 / 1.87</td>
+<td>28</td>
+<td>12 %, 474 MB</td>
+<td>10 %, 403 MB</td>
+</tr>
+<tr>
+<td>campus</td>
+<td><strong>chunks</strong></td>
+<td>6 of 6</td>
+<td>574</td>
+<td>0.090</td>
+<td>0.16 / 1.78</td>
+<td><strong>21</strong></td>
+<td><strong>4 %, 145 MB</strong></td>
+<td><strong>5 %, 65 MB</strong></td>
+</tr>
+<tr>
+<td>University Drive</td>
+<td>whole map</td>
+<td>6 of 6</td>
+<td>344</td>
+<td>0.065</td>
+<td>0.10 / 0.99</td>
+<td>0 (the lane)</td>
+<td>12 %, 470 MB</td>
+<td>10 %, 242 MB</td>
+</tr>
+<tr>
+<td>University Drive</td>
+<td><strong>chunks</strong></td>
+<td>6 of 6</td>
+<td>342</td>
+<td>0.060</td>
+<td>0.09 / 0.57</td>
+<td>0 (the lane)</td>
+<td><strong>4 %, 135 MB</strong></td>
+<td><strong>5 %, 60 MB</strong></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it says</th>
+<th>So</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>every leg reached, either way</td>
+<td>the far goals in steps work; no goal was cut (each was inside the 5 x 5 window)</td>
+</tr>
+<tr>
+<td>the campus 17 s slower</td>
+<td>run 1 the same to a second each leg; run 2 slower (41 against 31 s on the first leg): the whole map's run 2 was slower than its run 1 too. Noise</td>
+</tr>
+<tr>
+<td>a third of the memory and CPU</td>
+<td>no 41 M-cell grid, and no 41 MB message once a second</td>
+</tr>
+<tr>
+<td>the global costmap's moves</td>
+<td>11-12 a tour; each 0.2-14 ms (read, stitch), 5-15 chunks redone</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>On since 16 Nov in <code>stack:=ours</code></strong> (<code>costmap:=ours_chunks</code>, <code>stacks.yaml</code>). Nav2's
+costmap and <code>costmap:=ours</code> keep the whole map.</p>
+<p><strong>Found on the way</strong>, both fixed: a goal near the map's edge (the test lot's) was cut
+short of; and a 430 m loop of lanes round the block to a goal 10 m off
+(<a href="own-planner.html#far-goals-in-steps-16-nov-todo-175">own-planner.md</a>).</p>
+<h3 id="the-local-costmap-from-the-chunks-too-local_chunkstrue-16-nov">The local costmap from the chunks too (<code>local_chunks:=true</code>, 16 Nov)</h3>
+<p>The local costmap (20 x 20 m, 0.1 m cells, in odom) still took its static layer from
+<code>/map</code>: the node held the whole 41 M-cell campus map for a 20 m window.</p>
+<pre class="highlight"><code class="language-text"> car in map (map -&gt; odom) ─▶ its chunk ─▶ the 3 x 3 round it (192 m square, 0.6 M cells)
+                                           │ read on a chunk change (each on its own core)
+                                           ▼
+                 the 20 m window, each 0.1 m cell looked up in them (as from /map)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>layered.rs</code></td>
+<td>a rolling costmap may now <code>set_chunks</code>; <code>follow_chunks</code> keeps the 3 x 3 as its static map; the window stamps from it as it did from <code>/map</code></td>
+</tr>
+<tr>
+<td>the node</td>
+<td>the car's place in map from map -&gt; odom; no <code>/map</code> subscription when every costmap is made of chunks</td>
+</tr>
+<tr>
+<td>the same cells</td>
+<td>a test drives a window across chunk edges, odom turned and moved off map: cell for cell the window <code>/map</code> gives</td>
+</tr>
+<tr>
+<td>Pick it</td>
+<td><code>local_chunks:=true</code> with <code>costmap_chunks:=</code> (<code>costmap:=ours_all_chunks</code> in <code>stacks.yaml</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The scores.</strong> Our simulator, 16 Nov, <code>measure controllers --stacks own_calm_chunks
+own_calm_chunks_local --tours campus university_box --runs 2 --reversing --launch
+behaviour:=true lane_route:=true</code> (results in /tmp/maps/b2a, not in git). Load under 8 at
+the start, no other simulator running.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tour</th>
+<th>Local costmap from</th>
+<th>Legs</th>
+<th>Time (s)</th>
+<th>Sway (m/s²)</th>
+<th>Off the path (m), mean / worst</th>
+<th>Costmap node: CPU, memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>campus</td>
+<td><code>/map</code></td>
+<td>6 of 6</td>
+<td>562</td>
+<td>0.088</td>
+<td>0.20 / 1.90</td>
+<td>4-5 %, 131-148 MB</td>
+</tr>
+<tr>
+<td>campus</td>
+<td><strong>the chunks</strong></td>
+<td>6 of 6</td>
+<td>533</td>
+<td>0.089</td>
+<td>0.17 / 1.67</td>
+<td>4 %, <strong>66-81 MB</strong></td>
+</tr>
+<tr>
+<td>University Drive, a parked box</td>
+<td><code>/map</code></td>
+<td>2 of 2</td>
+<td>85</td>
+<td>0.060</td>
+<td>0.06 / 0.34</td>
+<td>4 %, 138-140 MB</td>
+</tr>
+<tr>
+<td>University Drive, a parked box</td>
+<td><strong>the chunks</strong></td>
+<td>2 of 2</td>
+<td>87</td>
+<td>0.065</td>
+<td>0.07 / 0.34</td>
+<td>4 %, <strong>75-78 MB</strong></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What it says</th>
+<th>So</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>every leg, the same times and sway</td>
+<td>the same cells, as the test says</td>
+</tr>
+<tr>
+<td>half the node's memory</td>
+<td>the 41 M-cell map (and its message) is gone; the 3 x 3 is 0.6 M cells</td>
+</tr>
+<tr>
+<td>a chunk change</td>
+<td>read in 0.4-1.2 ms, every 10-30 s of driving</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>On since 16 Nov in <code>stack:=ours</code></strong> (<code>costmap:=ours_all_chunks</code>). <code>ours_chunks</code> (the local
+one from <code>/map</code>) stays a challenger.</p>
+<p><strong>Who still reads <code>/map</code> in <code>ours</code> on the campus.</strong> Checked while driving (<code>ros2 topic info
+/map -v</code>): <code>map_server</code> publishes it, <strong>nobody subscribes</strong>. It is still read by:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Reader</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aav_things</code> (the background: walls aren't things)</td>
+<td><code>things:=true</code></td>
+</tr>
+<tr>
+<td>the screens: RViz, the map window, the dev window, Foxglove's cockpit</td>
+<td>when they run</td>
+</tr>
+<tr>
+<td>AMCL</td>
+<td><code>amcl:=true</code>, without its own map</td>
+</tr>
+<tr>
+<td><code>sim_check.py</code></td>
+<td>its checks</td>
+</tr>
+</tbody>
+</table></div>
+<p>Next: give those the chunks too, then <code>map_server</code> can stop on the campus.</p>
 </section>
 <section class="card"><h2 id="try-it">Try it</h2>
 <div class="table-wrap"><table>
@@ -418,11 +1126,11 @@ Nav2's in every cell each time. Three runs can't prove run 2's stall is gone for
 <li><strong>It is lighter:</strong> both of ours together use about half the CPU of Nav2's local one.</li>
 <li><strong>As good on these legs, once it can be cleared:</strong> 3 of 3 since the clear service, as
   Nav2's. Not yet a winner: six runs a leg is little, it went past the post once (run 3),
-  and the radar and cameras are untested. Nav2 stays the default.</li>
+  and the radar and cameras are untested. (Nav2 then stayed the default.)</li>
 </ul>
 </section>
 <section class="card"><h2 id="without-ros">Without ROS</h2>
-<p><code>cargo test -p costmap</code>: 31 tests.</p>
+<p><code>cargo test -p costmap</code>: 52 tests.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -459,21 +1167,38 @@ Nav2's in every cell each time. Three runs can't prove run 2's stall is gone for
 <td>the distance transform</td>
 <td>exact against brute force</td>
 </tr>
+<tr>
+<td>an area update</td>
+<td>the same cells as a whole one, as the car drives with a lidar layer</td>
+</tr>
+<tr>
+<td>a map without sensors</td>
+<td>worked out once, again only after a clear</td>
+</tr>
+<tr>
+<td>the lanes layer</td>
+<td>lowest at the right lane's centre, the other way swaps the lanes, both low with no route, a route across a road says nothing, an area drawn as the whole, the lane's centre cheapest between two inflated kerbs, a new route's area update the same as a whole one</td>
+</tr>
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="whats-missing-for-the-planner-step">What's missing for the planner step</h2>
+<section class="card"><h2 id="whats-missing">What's missing</h2>
 <ul>
 <li><strong>The planner</strong> reads Nav2's global costmap (<code>planner_server</code>). Our planner
   (<a href="own-planner.html">page</a>, <code>planner:=own</code>) reads <code>/drivers/nav/costmap/global_raw</code> when
   <code>costmap:=own</code> is on too.</li>
-<li><strong>The global costmap's size:</strong> the campus map is large; ours rebuilds it all each second
-  (27 ms for 500 m × 500 m without ROS). Fine now; only the changed part if it grows.</li>
-<li><strong>The global clear:</strong> ours serves it, but the trees still clear Nav2's global costmap
-  (the planner's). Our planner and navigator should call ours.</li>
+<li><strong>The global costmap's size:</strong> fixed 14 Nov (<a href="#threads-and-bounds-14-nov">threads</a>);
+  with chunks (16 Nov) only 5 x 5 or so chunks (1.6 M cells). Sending it in full each
+  second is left; partial updates (Nav2's <code>_updates</code>) only if that proves slow.</li>
+<li><strong>Coarse chunks</strong> (1 m far away): the planner's lattice is fixed to 0.25 m cells, so
+  every chunk held is the fine one.</li>
+<li><strong>The local costmap from chunks:</strong> done 16 Nov (<a href="#the-local-costmap-from-the-chunks-too-local_chunkstrue-16-nov">above</a>); <code>/map</code> is now
+  read in <code>ours</code> only by the things' background and the screens.</li>
+<li><strong>The global clear:</strong> ours serves it. Our navigator calls it (8 Nov); Nav2's trees
+  still clear Nav2's global costmap.</li>
 <li><strong>Radar, cubes and cameras</strong> (point clouds, placed by <code>/tf_static</code>'s mounts): built,
   but untested; the sim's runs had the lidar's scan alone.</li>
-<li><strong>On the car:</strong> untested. Nav2 stays there.</li>
+<li><strong>On the car:</strong> untested; ours is the car's costmap since 17 Nov.</li>
 </ul></section>
 <nav class="prevnext"><a class="prev" href="mppi-lag.html"><small>Previous</small>← MPPI with lag</a>
 <a class="next" href="own-planner.html"><small>Next</small>Our own planner →</a></nav>

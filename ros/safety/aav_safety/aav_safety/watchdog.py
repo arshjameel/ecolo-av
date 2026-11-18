@@ -23,6 +23,22 @@ What counts as wrong, per input (each check only where its rule asks for it):
   DISAGREE  the wheels' speed or turn against the IMU's and the GPS's, where the odom
           rule has a cross_check (wheel_check.py): a wheel speed frozen while the car
           speeds up, brakes, turns or drives on faster. Latched, as a jump
+  STUCK   an actuator input (kind actuator, ActuatorState: what it was told, what it did)
+          whose measured value stayed more than follow_tolerance off its command for
+          follow_persist seconds: steering stuck in a bend (TODO 207; found by the
+          actuator faults, TODO 159). Latched, as a jump. NaN on either side is not a
+          fault here (the spine fills a side it doesn't know with NaN): only no check
+  OVER    a speed input (kind speed: ego's commanded speed, the wheels' measured speed)
+          whose measured speed has been more than over_margin above the command for
+          over_warn seconds while the car was not slowing: a warning only, for people
+  OVERSPEED  the same for over_persist seconds: a throttle stuck open, or a speed loop
+          that runs away (TODO 207). Latched, as a jump. "Not slowing": the measured speed
+          fell by less than over_slowing m/s^2 over the last SLOWING_WINDOW s, so a
+          healthy stop, which lags its command by up to 0.7 m/s for a second (the car
+          model), never counts. Speeds compare as sizes, so reversing counts the same.
+          Only fresh numbers count (16 Nov): a wheel speed older than the speed input's
+          max_age, or a command after a gap of more than max_age, is no check (the
+          watched odom input says STALE for the wheels; this input for ego)
   LOST    where the rule says latch (the HUD's heartbeat): the input went wrong (STALE,
           FROZEN...) after its start-up. Latched: a program that died or froze once may
           do it again, so a person looks before Nav2 drives again (clear())
@@ -38,6 +54,13 @@ then is its own, while the queued messages (and, in a simulator, the clock) catc
 A heartbeat input (kind heartbeat) is a program saying it is alive, not a sensor: the
 HUD's /hud/heartbeat, the number of frames its screen has drawn. Silence (STALE, or NEVER
 before its first) means the screen froze or died; a count that stops rising is FROZEN.
+
+A node input (kind node) is one of our own nodes (Ben, 14 Nov: the watchdog warns about
+our nodes, warn only, no lock): its topic is the node's full name (/planner), and it
+"arrives" each tick the node is in the ROS graph. Gone for max_age (it died, and its 1 s
+respawn didn't bring it back, or it hangs before it joins): STALE, a warning. A node input
+never stops the car (stop must be false): the costmap's and odometry's age checks and
+twist_mux's timeout already stop it while a node it needs is down.
 
 A detections input (kind detections) watches a camera through its detector's output: the
 car's camera_stream nodes (aav_camera_stream) keep their pictures inside, and send a
@@ -62,10 +85,16 @@ NAN = 'NAN'
 FROZEN = 'FROZEN'
 JUMP = 'JUMP'
 LOST = 'LOST'
+STUCK = 'STUCK'
+OVER = 'OVER'
+OVERSPEED = 'OVERSPEED'
+WARN_ONLY = (OVER,)         # states that warn but never stop the drivers
 
-KINDS = ('odom', 'imu', 'gps', 'image', 'cloud', 'heartbeat', 'detections')
+KINDS = ('odom', 'imu', 'gps', 'image', 'cloud', 'heartbeat', 'detections', 'node',
+         'actuator', 'speed')
 EARTH_RADIUS = 6371000.0    # m
 MOVING = 0.2                # m/s: faster than this, the camera's picture must change
+SLOWING_WINDOW = 0.5        # s: the overspeed check's look back, for "is it slowing?"
 
 
 @dataclass(frozen=True)
@@ -84,6 +113,12 @@ class Rule:
     frame_id: str = ''          # detections only: the camera whose messages count
     latch: bool = False         # a dropout after its start-up latches LOST, until clear()
     latch_grace: float = 5.0    # s after its first OK: one dropout forgiven
+    follow_tolerance: float = 0.0   # actuator only: |command - measured| above it ...
+    follow_persist: float = 1.0     # ... for this many s: STUCK (latched)
+    over_margin: float = 0.0    # speed only: m/s over the command (0 off) ...
+    over_warn: float = 1.0      # ... for this many s while not slowing: OVER (a warning)
+    over_persist: float = 2.0   # ... for this many s: OVERSPEED (latched)
+    over_slowing: float = 0.3   # m/s^2: slowing at least this fast doesn't count
 
     def __post_init__(self):
         if self.kind not in KINDS:
@@ -98,6 +133,23 @@ class Rule:
         if self.kind == 'detections' and self.frozen_after > 0.0:
             raise ValueError(f'{self.name}: detections have no frozen check (an empty list '
                              'repeats on a clear road)')
+        if self.kind == 'node' and self.stop:
+            raise ValueError(f'{self.name}: a node input only warns (stop: false; Ben, '
+                             '14 Nov)')
+        if self.kind == 'node' and not self.topic.startswith('/'):
+            raise ValueError(f"{self.name}: a node input's topic is the node's full name, "
+                             'such as /planner')
+        if self.follow_tolerance > 0.0 and self.kind != 'actuator':
+            raise ValueError(f'{self.name}: only an actuator input has a follow check')
+        if not (self.follow_tolerance >= 0.0 and self.follow_persist > 0.0):
+            raise ValueError(f'{self.name}: follow_tolerance must be 0 or more, '
+                             'follow_persist above 0 s')
+        if self.over_margin > 0.0 and self.kind != 'speed':
+            raise ValueError(f'{self.name}: only a speed input has an overspeed check')
+        if not (self.over_margin >= 0.0 and 0.0 < self.over_warn <= self.over_persist
+                and self.over_slowing >= 0.0):
+            raise ValueError(f'{self.name}: over_margin and over_slowing must be 0 or more, '
+                             'and 0 < over_warn <= over_persist')
         if not self.latch_grace >= 0.0:
             raise ValueError(f'{self.name}: latch_grace must be 0 or more seconds')
 
@@ -130,6 +182,12 @@ class Watch:
         self.same_since = None     # when the values stopped changing
         self.fix = None            # the newest good GPS fix: (stamp, latitude, longitude)
         self.jumped = None         # the jump that latched, as text, until clear()
+        self.off_since = None      # actuator: when it went more than follow_tolerance off
+        self.stuck = None          # actuator: what latched STUCK, as text, until clear()
+        self.over_since = None     # speed: when it went over (and not slowing), or None
+        self.over_words = ''       # speed: what is over, as text, while over_since is set
+        self.speeds = []           # speed: (now, |measured|) over the last SLOWING_WINDOW
+        self.overspeed = None      # speed: what latched OVERSPEED, as text, until clear()
         # Latch rules (rule.latch), kept by update().
         self.first_good = None     # the first update() it was OK at: the grace starts
         self.was_ok = False        # OK at the last update()
@@ -154,6 +212,7 @@ class Watch:
         say nothing about how far apart they were taken.
         """
         rule = self.rule
+        gap_before = None if self.heard is None else now - self.heard
         if self.heard is None:
             self.window = now
         else:
@@ -163,6 +222,16 @@ class Watch:
         self.heard = now
         if rule.kind == 'gps' and (not has_fix or fix is None or not finite(fix)):
             self.bad = 'NO FIX'
+            return
+        if rule.kind in ('actuator', 'speed'):
+            if rule.kind == 'speed' and gap_before is not None and gap_before > rule.max_age:
+                self.over_since, self.speeds = None, []     # a stale command: start afresh
+            self.bad = None
+            self.good = now
+            if rule.kind == 'actuator':
+                self.follow(now, values)
+            else:
+                self.over(now, values)
             return
         if not finite(values):
             self.bad = NAN
@@ -186,6 +255,51 @@ class Watch:
             if self.fix is None or taken > self.fix[0]:     # not an old fix, late
                 self.fix = (taken, fix[0], fix[1])
 
+    def follow(self, now: float, values: Sequence[float]):
+        """Actuator: note (command, measured); latch STUCK once off too long."""
+        rule = self.rule
+        if rule.follow_tolerance <= 0.0 or len(values) < 2 or not finite(values[:2]):
+            self.off_since = None
+            return
+        command, measured = values[0], values[1]
+        if abs(command - measured) <= rule.follow_tolerance:
+            self.off_since = None
+            return
+        if self.off_since is None:
+            self.off_since = now
+        if self.stuck is None and now - self.off_since >= rule.follow_persist:
+            self.stuck = (f'asked {command:+.2f}, did {measured:+.2f} for '
+                          f'{now - self.off_since:.1f} s')
+
+    def over(self, now: float, values: Sequence[float]):
+        """
+        Speed: note (command, measured[, age]) in m/s; latch OVERSPEED once over too long.
+
+        age: the measured speed's age (s). Older than max_age, it is no check: the wheels
+        went quiet (odometry's own fault), and their last speed says nothing now.
+        """
+        rule = self.rule
+        stale = len(values) >= 3 and not values[2] <= rule.max_age
+        if rule.over_margin <= 0.0 or len(values) < 2 or not finite(values[:2]) or stale:
+            self.over_since, self.speeds = None, []
+            return
+        command, measured = abs(values[0]), abs(values[1])
+        self.speeds = [(t, v) for t, v in self.speeds if now - t <= SLOWING_WINDOW]
+        oldest = self.speeds[0] if self.speeds else None
+        self.speeds.append((now, measured))
+        # Only a full window says whether it is slowing: a shorter one is noise.
+        slowing = (oldest is not None and now - oldest[0] >= 0.8 * SLOWING_WINDOW
+                   and (oldest[1] - measured) / (now - oldest[0]) >= rule.over_slowing)
+        if measured <= command + rule.over_margin or slowing:
+            self.over_since = None
+            return
+        if self.over_since is None:
+            self.over_since = now
+        self.over_words = (f'asked {command:.2f} m/s, did {measured:.2f} for '
+                           f'{now - self.over_since:.1f} s')
+        if self.overspeed is None and now - self.over_since >= rule.over_persist:
+            self.overspeed = self.over_words
+
     def state(self, now: float) -> Tuple[str, str]:
         """Return (OK or what is wrong, a few words for a person)."""
         if self.lost is not None:
@@ -200,6 +314,10 @@ class Watch:
         rule = self.rule
         if self.jumped is not None:
             return JUMP, f'jumped {self.jumped}: clear it once the position is right'
+        if self.stuck is not None:
+            return STUCK, f'{self.stuck}: clear it once the actuator follows again'
+        if self.overspeed is not None:
+            return OVERSPEED, f'{self.overspeed}: clear it once the throttle obeys again'
         why = self.cross.update(now) if self.cross is not None else None
         if why is not None:
             return DISAGREE, why + ': clear it once the wheels are right'
@@ -215,6 +333,8 @@ class Watch:
         if (rule.frozen_after > 0.0 and self.same_since is not None
                 and now - self.same_since > rule.frozen_after):
             return FROZEN, f'the same for {now - self.same_since:.1f} s'
+        if self.over_since is not None and self.good - self.over_since >= rule.over_warn:
+            return OVER, self.over_words
         return OK, f'{age:.1f} s old'
 
     def traffic(self, now: float) -> Tuple[float, float, float]:
@@ -254,6 +374,8 @@ class Watch:
     def clear(self):
         """Forget what latched; a latch rule starts afresh, with its grace again."""
         self.jumped = None
+        self.stuck, self.off_since = None, None
+        self.overspeed, self.over_since, self.speeds = None, None, []
         if self.cross is not None:
             self.cross.clear()
         self.lost, self.first_good, self.was_ok, self.forgiven = None, None, False, False
@@ -312,7 +434,8 @@ class Watchdog:
         out = []
         for name, watch in self.watches.items():
             state, detail = watch.state(now)
-            out.append((name, state, detail, watch.rule.stop and state != OK))
+            out.append((name, state, detail,
+                        watch.rule.stop and state != OK and state not in WARN_ONLY))
         return out
 
     def locked(self, now: float) -> bool:
@@ -329,6 +452,6 @@ class Watchdog:
         return verdict + ': ' + '; '.join(f'{n} {s} ({d})' for n, s, d, _ in wrong)
 
     def clear(self):
-        """Forget latched GPS jumps, wheel disagreements and lost inputs (a person checked)."""
+        """Forget latched jumps, disagreements, stuck actuators, overspeed, lost inputs."""
         for watch in self.watches.values():
             watch.clear()

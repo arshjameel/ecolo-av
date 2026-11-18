@@ -4,7 +4,7 @@
 
 use crate::cost::{FREE, LETHAL, NO_INFORMATION};
 use crate::footprint;
-use crate::grid::Grid;
+use crate::grid::{self, Bounds, Grid};
 
 /// One observation source's settings: Nav2's names, from nav2.yaml.
 #[derive(Debug, Clone, PartialEq)]
@@ -33,6 +33,7 @@ pub struct Source {
 
 impl Source {
     /// Nav2's defaults (marking and clearing, 0-2 m high, 0-2.5 m marks, 0-3 m clears).
+    #[must_use]
     pub fn named(name: &str) -> Self {
         Self {
             name: name.to_owned(),
@@ -61,6 +62,7 @@ pub struct Observation {
 /// A laser scan's points in its own frame, as Nav2 gets them: with `inf_is_valid` an inf
 /// range becomes a point just short of `range_max` (clears, never marks past the marking
 /// range); NaN and ranges outside [range_min, range_max) are dropped.
+#[must_use]
 pub fn scan_points(
     angle_min: f64,
     angle_increment: f64,
@@ -81,6 +83,41 @@ pub fn scan_points(
                 let (s, c) = (angle_min + i as f64 * angle_increment).sin_cos();
                 [r * c, r * s, 0.0]
             })
+        })
+        .collect()
+}
+
+/// Degrees between two of [`view_points`]' rays: 0.07 m apart at the radar's 8.4 m, so
+/// no 0.1 m cell between two rays is missed.
+pub const VIEW_STEP: f64 = 0.5 * std::f64::consts::PI / 180.0;
+
+/// A point cloud's "nothing there" (ours; Nav2 has no such setting): in the sensor's own
+/// frame, one point `range` m out (at its height, z = 0) in each direction across its
+/// horizontal view, `view_angle` rad wide and centred on x, that none of `points` lies in.
+/// Its rays clear what an earlier frame marked; give a `range` past the source's
+/// `obstacle_max_range` and they never mark (a scan's inf with `inf_is_valid`, for a
+/// radar: TODO 193, a box taken away stayed in the radar's layer for ever).
+#[must_use]
+pub fn view_points(points: &[[f64; 3]], view_angle: f64, range: f64) -> Vec<[f64; 3]> {
+    if view_angle <= 0.0 || range <= 0.0 {
+        return Vec::new();
+    }
+    let rays = (view_angle / VIEW_STEP).round().max(1.0) as usize;
+    let step = view_angle / rays as f64;
+    let first = -view_angle / 2.0;
+    let mut seen = vec![false; rays + 1];
+    for p in points {
+        let i = ((p[1].atan2(p[0]) - first) / step).round();
+        if (0.0..=rays as f64).contains(&i) {
+            seen[i as usize] = true;
+        }
+    }
+    seen.iter()
+        .enumerate()
+        .filter(|(_, &s)| !s)
+        .map(|(i, _)| {
+            let (s, c) = (first + i as f64 * step).sin_cos();
+            [range * c, range * s, 0.0]
         })
         .collect()
 }
@@ -106,6 +143,7 @@ pub struct ObstacleLayer {
 
 impl ObstacleLayer {
     /// A layer with an empty grid of the master's size.
+    #[must_use]
     pub fn new(name: &str, sources: Vec<Source>, like: &Grid, track_unknown: bool) -> Self {
         let default = if track_unknown { NO_INFORMATION } else { FREE };
         Self {
@@ -122,8 +160,15 @@ impl ObstacleLayer {
     /// Take what the sensors saw: `observations[i]` is source i's (its newest, or those
     /// within its persistence; none if it is silent). Clears along every clearing source's
     /// rays first, then marks, then clears under `outline` (the car, in the costmap's
-    /// frame), as Nav2 does.
-    pub fn update(&mut self, observations: &[Vec<&Observation>], outline: &[(f64, f64)]) {
+    /// frame), as Nav2 does. Returns the cells it touched (Nav2's `updateBounds`): every
+    /// cell a ray cleared, a point marked or the car stood on, whether its cost changed or
+    /// not; `None` if none.
+    pub fn update(
+        &mut self,
+        observations: &[Vec<&Observation>],
+        outline: &[(f64, f64)],
+    ) -> Option<Bounds> {
+        let mut touched = None;
         let sources = &self.sources;
         let seen = || {
             sources
@@ -133,7 +178,7 @@ impl ObstacleLayer {
         };
         let clears: Vec<_> = seen().filter(|(s, _)| s.clearing).collect();
         for (source, obs) in clears {
-            raytrace_free(&mut self.grid, source, obs);
+            touched = grid::union(touched, raytrace_free(&mut self.grid, source, obs));
         }
         let marks: Vec<_> = seen().filter(|(s, _)| s.marking).collect();
         for (source, obs) in marks {
@@ -150,23 +195,41 @@ impl ObstacleLayer {
                 }
                 if let Some((cx, cy)) = self.grid.cell(p[0], p[1]) {
                     self.grid.set(cx, cy, LETHAL);
+                    touched = grid::union(touched, Some(Bounds::cell(cx, cy)));
                 }
             }
         }
         if self.footprint_clearing {
-            for i in footprint::cells_under(&self.grid, outline) {
+            let under = footprint::cells_under(&self.grid, outline);
+            for &i in &under {
                 self.grid.data[i] = FREE;
             }
+            touched = grid::union(touched, Bounds::of_indices(under, self.grid.width));
         }
+        touched
     }
 
     /// Into the master grid, keeping the higher cost; this layer's unknown cells add
     /// nothing (Nav2's `updateWithMax`).
     pub fn combine_into(&self, master: &mut Grid) {
-        for (m, &c) in master.data.iter_mut().zip(&self.grid.data) {
-            if c != NO_INFORMATION && (*m == NO_INFORMATION || *m < c) {
-                *m = c;
-            }
+        combine(&mut master.data, &self.grid.data);
+    }
+
+    /// The same, for the cells in `b` only, into `part`: a crop of the master at `b`'s
+    /// corner (Grid::crop).
+    pub fn combine_area(&self, part: &mut Grid, b: Bounds) {
+        let w = self.grid.width;
+        for (y, row) in (b.y0..b.y1).zip(part.data.chunks_exact_mut(b.width().max(1))) {
+            combine(row, &self.grid.data[y * w + b.x0..y * w + b.x1]);
+        }
+    }
+}
+
+/// Nav2's `updateWithMax`, cell by cell.
+fn combine(master: &mut [u8], layer: &[u8]) {
+    for (m, &c) in master.iter_mut().zip(layer) {
+        if c != NO_INFORMATION && (*m == NO_INFORMATION || *m < c) {
+            *m = c;
         }
     }
 }
@@ -177,11 +240,10 @@ fn keeps(source: &Source, p: &[f64; 3]) -> bool {
 }
 
 /// Nav2's `raytraceFreespace`: each ray from the sensor, cut at the grid's edge, clears.
-fn raytrace_free(grid: &mut Grid, source: &Source, obs: &Observation) {
+/// Returns the cells it cleared.
+fn raytrace_free(grid: &mut Grid, source: &Source, obs: &Observation) -> Option<Bounds> {
     let (ox, oy) = (obs.origin[0], obs.origin[1]);
-    let Some(start) = grid.cell(ox, oy) else {
-        return;
-    };
+    let start = grid.cell(ox, oy)?;
     let (gx, gy) = (grid.origin_x, grid.origin_y);
     let (ex, ey) = grid.end();
     let max_cells = grid.cell_distance(source.raytrace_max_range);
@@ -214,9 +276,10 @@ fn raytrace_free(grid: &mut Grid, source: &Source, obs: &Observation) {
             grid.raytrace(start, end, max_cells, min_cells, |i| cleared.push(i));
         }
     }
-    for i in cleared {
+    for &i in &cleared {
         grid.data[i] = FREE;
     }
+    Bounds::of_indices(cleared, grid.width)
 }
 
 #[cfg(test)]
@@ -280,6 +343,58 @@ mod tests {
         assert_eq!(l.grid.get(150, 100), FREE);
         // Without inf_is_valid an inf is dropped, and clears nothing.
         assert!(scan_points(0.0, 0.1, 0.2, 30.0, &[f32::INFINITY, f32::NAN], false).is_empty());
+    }
+
+    fn radar() -> Source {
+        Source {
+            clearing: true,
+            min_obstacle_height: -0.5,
+            obstacle_min_range: 0.3,
+            obstacle_max_range: 8.4,
+            raytrace_max_range: 8.4,
+            ..Source::named("radar")
+        }
+    }
+
+    #[test]
+    fn view_points_fill_the_view_where_nothing_was_seen() {
+        let wide = 120f64.to_radians();
+        let all = view_points(&[], wide, 8.5);
+        assert_eq!(all.len(), 241);
+        assert!(all.iter().all(|p| ((p[0].hypot(p[1])) - 8.5).abs() < 1e-9));
+        let edge = all[0][1].atan2(all[0][0]);
+        assert!((edge + wide / 2.0).abs() < 1e-9);
+        // A point straight ahead takes its own direction out of the view.
+        let some = view_points(&[[3.0, 0.0, 0.0]], wide, 8.5);
+        assert_eq!(some.len(), 240);
+        assert!(some.iter().all(|p| p[1].abs() > 1e-6));
+        // Behind the sensor, or no view: nothing.
+        assert_eq!(view_points(&[[-3.0, 0.0, 0.0]], wide, 8.5).len(), 241);
+        assert!(view_points(&[], 0.0, 8.5).is_empty());
+    }
+
+    #[test]
+    fn a_radar_forgets_a_box_taken_away() {
+        // TODO 193: the radar marked a box 3 m ahead; then it is taken away and the radar
+        // returns nothing. Nav2's rule alone keeps the mark for ever; the view clears it.
+        let g = Grid::new((-10.0, -10.0), 0.1, 200, 200, FREE);
+        let mut l = ObstacleLayer::new("obstacle_layer", vec![radar()], &g, false);
+        let boxed = seen(vec![[3.0, 0.0, 0.0], [3.0, 0.2, 0.0], [3.0, -0.2, 0.0]]);
+        l.update(&[vec![&boxed]], &[]);
+        assert_eq!(l.grid.cost_at(3.05, 0.05, 0), LETHAL);
+        l.update(&[vec![&seen(vec![])]], &[]);
+        assert_eq!(l.grid.cost_at(3.05, 0.05, 0), LETHAL);
+        let gone = seen(view_points(&[], 120f64.to_radians(), 8.5));
+        l.update(&[vec![&gone]], &[]);
+        assert!(l.grid.data.iter().all(|&c| c == FREE));
+        // While the box is there, its points still mark through the view's clearing, and
+        // the view's own points (past the marking range) never mark.
+        let pts = boxed.points.clone();
+        let mut with_view = pts.clone();
+        with_view.extend(view_points(&pts, 120f64.to_radians(), 8.5));
+        l.update(&[vec![&seen(with_view)]], &[]);
+        assert_eq!(l.grid.cost_at(3.05, 0.05, 0), LETHAL);
+        assert_eq!(l.grid.data.iter().filter(|&&c| c == LETHAL).count(), 3);
     }
 
     #[test]

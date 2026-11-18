@@ -10,11 +10,11 @@ REAL, SIM, BENCH, REPLAY = (safety.SOURCE_REAL, safety.SOURCE_SIM, safety.SOURCE
 
 def test_source_kind_errs_towards_real():
     assert safety.source_kind({}) is Kind.UNKNOWN
-    assert safety.source_kind({'gazebo_adapter': [SIM, SIM]}) is Kind.SIM
+    assert safety.source_kind({'sim_adapter': [SIM, SIM]}) is Kind.SIM
     assert safety.source_kind({'spine_bridge': [BENCH], 'mock_imu': [BENCH]}) is Kind.BENCH
     assert safety.source_kind({'legacy_uart_bridge': [REAL]}) is Kind.REAL
     # One real actuator beside a simulator is the real car.
-    assert safety.source_kind({'gazebo_adapter': [SIM], 'legacy_uart_bridge': [REAL]}) \
+    assert safety.source_kind({'sim_adapter': [SIM], 'legacy_uart_bridge': [REAL]}) \
         is Kind.REAL
     assert safety.source_kind({'replay_source': [REPLAY]}) is Kind.REPLAY
 

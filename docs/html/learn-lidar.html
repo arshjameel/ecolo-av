@@ -9,7 +9,11 @@
 <h1>From lidar points to cubes, maps and where we are</h1>
 <div class="meta">15 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a class="here" href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,18 +125,18 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#1-what-a-lidar-does">1. What a lidar does</a><a href="#2-our-lidar-the-vlp-16">2. Our lidar: the VLP-16</a><a href="#3-cubes-voxels">3. Cubes (voxels)</a><a href="#4-not-teslas-occupancy-network">4. Not Tesla&#x27;s &quot;occupancy network&quot;</a><a href="#5-from-cubes-to-nav2s-flat-map">5. From cubes to Nav2&#x27;s flat map</a><a href="#6-cubes-into-objects-with-names">6. Cubes into objects, with names</a><a href="#7-where-are-we-ndt-on-a-saved-map">7. Where are we? NDT on a saved map</a><a href="#8-making-the-map-kiss-icp">8. Making the map: KISS-ICP</a><a href="#9-a-trial-alternative-amcl-on-a-2d-map">9. A trial alternative: AMCL on a 2D map</a><a href="#10-seeing-it-all-the-debug-hud">10. Seeing it all: the debug HUD</a><a href="#11-today-planned-idea">11. Today, planned, idea</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#1-what-a-lidar-does">1. What a lidar does</a><a href="#2-our-lidar-the-vlp-16">2. Our lidar: the VLP-16</a><a href="#3-cubes-voxels">3. Cubes (voxels)</a><a href="#4-not-teslas-occupancy-network">4. Not Tesla&#x27;s &quot;occupancy network&quot;</a><a href="#5-from-cubes-to-the-flat-map">5. From cubes to the flat map</a><a href="#6-cubes-into-objects-with-names">6. Cubes into objects, with names</a><a href="#7-where-are-we-ndt-on-a-saved-map">7. Where are we? NDT on a saved map</a><a href="#8-making-the-map-kiss-icp">8. Making the map: KISS-ICP</a><a href="#9-a-trial-alternative-amcl-on-a-2d-map">9. A trial alternative: AMCL on a 2D map</a><a href="#10-seeing-it-all-the-debug-hud">10. Seeing it all: the debug HUD</a><a href="#11-today-planned-idea">11. Today, planned, idea</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
 <div class="lead"><p>Ben's guess (29 Oct): "the lidar returns some kind of point map and we have an NDT and
 occupation network that reads that data and produces something cube related."</p>
 <p><strong>Close.</strong> The lidar gives a cloud of dots. From those dots we can make <strong>cubes</strong> (what is
-around us), a <strong>flat map for Nav2</strong> (where we may drive), <strong>objects</strong> (what each thing is),
+around us), a <strong>flat map for navigation</strong> (where we may drive), <strong>objects</strong> (what each thing is),
 and with a saved map, <strong>where we are</strong> (NDT). This page takes them one at a time.</p>
 <p><strong>You'll learn:</strong></p>
 <ul>
 <li>what one lidar point is, and what our VLP-16 sends;</li>
 <li>cubes (voxels): filled, free, unknown;</li>
 <li>why ours aren't Tesla's "occupancy network";</li>
-<li>how cubes flatten into Nav2's costmap, and what runs today;</li>
+<li>how cubes flatten into the costmap, and what runs today;</li>
 <li>joining cubes into named objects;</li>
 <li>NDT, KISS-ICP and AMCL: finding the car on a map;</li>
 <li>what's built, what's planned, what's only an idea.</li>
@@ -240,7 +252,7 @@ Costmaps in more depth: <a href="costmaps.html">Costmaps</a>.</p></div>
 </table></div>
 <div class="admonition warning">
 <p class="admonition-title">Never seen on our car</p>
-<p>The driver has run against <code>tools/fake_vlp16.py</code> and in Gazebo, never with the real
+<p>The driver has run against <code>tools/fake_vlp16.py</code> and in the simulator, never with the real
 VLP-16. Where it sits (<code>lidar_link</code>, 0.9 m forward, 1.8 m up) is a guess to measure.</p>
 </div>
 </section>
@@ -316,7 +328,7 @@ a while <strong>fade</strong> back to unknown, so a person who walked away doesn
 <div class="admonition note">
 <p class="admonition-title">Planned, not built</p>
 <p>No code makes cubes yet. The plan (TODO, "Tesla-style cubes on our HUD"): a voxel grid
-in Rust in <code>hud-core</code>, no ROS, its own tests; Gazebo first.</p>
+in Rust in <code>hud-core</code>, no ROS, its own tests; the simulator first.</p>
 </div>
 </section>
 <section class="card"><h2 id="4-not-teslas-occupancy-network">4. Not Tesla's "occupancy network"</h2>
@@ -361,9 +373,9 @@ at eight cameras and <strong>guesses</strong> which cubes are filled.</p>
 <p>The picture looks the same: cubes round the car, coloured by height. The way it's made
 is not. So we call ours "cubes" or a "voxel grid", not an occupancy network.</p>
 </section>
-<section class="card"><h2 id="5-from-cubes-to-nav2s-flat-map">5. From cubes to Nav2's flat map</h2>
-<p>Nav2 plans on a <strong>2D costmap</strong>: a grid seen from above, 10 cm cells, each free or
-blocked (<a href="learn-nav2.html">Learn: Nav2</a>). To get there, look <strong>down each column</strong> of cubes.</p>
+<section class="card"><h2 id="5-from-cubes-to-the-flat-map">5. From cubes to the flat map</h2>
+<p>The planner plans on a <strong>2D costmap</strong>: a grid seen from above, 10 cm cells, each free or
+blocked (<a href="learn-nav2.html">Learn: navigation</a>). To get there, look <strong>down each column</strong> of cubes.</p>
 <pre class="highlight"><code class="language-text">  roof + margin  2.0 m ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  above: a branch, a bridge. Ignore
                        │ ■ │   │   │
                        │ ■ │   │   │      a filled cube in the band
@@ -461,8 +473,8 @@ inside the band</strong>.</p>
 </tbody>
 </table></div>
 <p>A flat scan loses one thing: a table with an empty space under it looks like a wall.
-That's fine for a car. Nav2's own 3D <code>VoxelLayer</code> is there if 2D ever misses something.</p>
-<h3 id="the-trial-cubes-for-nav2-voxelstrue">The trial: cubes for Nav2 (<code>voxels:=true</code>)</h3>
+That's fine for a car. A 3D layer (as Nav2's <code>VoxelLayer</code>) could follow if 2D ever misses something.</p>
+<h3 id="the-trial-cubes-for-the-costmap-voxelstrue">The trial: cubes for the costmap (<code>voxels:=true</code>)</h3>
 <p>Ben, 30 Oct: "this is a car not a needle. We need to quickly know something is in our way."
 <code>voxels</code> (<code>ros/perception/aav_voxels</code>) reads the cloud once and keeps <strong>0.25 m cubes</strong>.</p>
 <pre class="highlight"><code>   flat scan (today)                     cubes (the trial)
@@ -546,7 +558,7 @@ inside a box, it gets the box's name, and the cubes give its distance.</p>
 <td>the camera and the lidar must see the same moment</td>
 </tr>
 <tr>
-<td>Gazebo first</td>
+<td>The simulator first</td>
 <td>there every pose is exact, so a mistake is in the code, not the calibration</td>
 </tr>
 </tbody>
@@ -618,7 +630,7 @@ wheels' clicks come slowly (<a href="learn-speed.html">Learn: speed</a>).</p>
 <p><strong>The catch:</strong> a bare lot gives the lidar little to match. Kerbs, posts and walls help.</p>
 </section>
 <section class="card"><h2 id="9-a-trial-alternative-amcl-on-a-2d-map">9. A trial alternative: AMCL on a 2D map</h2>
-<p><strong>AMCL</strong> (Adaptive Monte Carlo Localization) is Nav2's stock way to find a robot on a 2D
+<p><strong>AMCL</strong> (Adaptive Monte Carlo Localization) is Nav2's stock way (its <code>nav2_amcl</code>, kept for this trial) to find a robot on a 2D
 map. It scatters hundreds of guesses ("particles") and keeps the ones whose view matches
 the lidar's 2D scan.</p>
 <div class="table-wrap"><table>
@@ -648,7 +660,7 @@ the lidar's 2D scan.</p>
 <tr>
 <td>First test</td>
 <td>a recording of the real lot</td>
-<td>Gazebo's <code>test_lot</code> world</td>
+<td>the simulator's <code>test_lot</code> world</td>
 </tr>
 </tbody>
 </table></div>
@@ -699,12 +711,12 @@ it starts. Built on the raylib HUD (<code>ros/hud/aav_hud</code>).</p>
 <tbody>
 <tr>
 <td>VLP-16 → <code>/sensors/lidar/points</code></td>
-<td>✅ built; Gazebo and a fake lidar; never the real one</td>
+<td>✅ built; the simulator and a fake lidar; never the real one</td>
 <td><code>aav_sensors</code> <code>sensors.launch.py</code></td>
 </tr>
 <tr>
-<td>Points → 2D scan → costmap and <code>collision_monitor</code></td>
-<td>✅ built; Gazebo</td>
+<td>Points → 2D scan → costmap and the stop zone</td>
+<td>✅ built; the simulator</td>
 <td><code>aav_lidar</code> <code>lidar_scan</code>, <code>nav2.yaml</code></td>
 </tr>
 <tr>
@@ -743,7 +755,7 @@ it starts. Built on the raylib HUD (<code>ros/hud/aav_hud</code>).</p>
 <td></td>
 </tr>
 <tr>
-<td>Nav2's 3D <code>VoxelLayer</code></td>
+<td>A 3D costmap layer (as Nav2's <code>VoxelLayer</code>)</td>
 <td>an idea: only if 2D misses something</td>
 <td></td>
 </tr>

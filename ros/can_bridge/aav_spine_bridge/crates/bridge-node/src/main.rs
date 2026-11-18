@@ -9,7 +9,7 @@
 //!             safety/estop          std_msgs/Bool
 //!             safety/output_mux/state  std_msgs/String: the safety gate, for /spine/arm
 //!             can/rx               can_msgs/Frame  (ros2_socketcan's receiver on the car;
-//!                                   spine_sim on the bench and in Gazebo)
+//!                                   spine_sim on the bench and in Ravensim)
 //! Publishes   can/tx                can_msgs/Frame  (ros2_socketcan's sender)
 //!             vehicle/odom          nav_msgs/Odometry  (twist only, in base_link)
 //!             vehicle/wheels        aav_interfaces/WheelSpeeds  (the front wheel nodes,
@@ -23,7 +23,7 @@
 //!                                   VEHICLE_STATUS; command NaN: the spine's speed loop
 //!                                   decides)
 //!             system/source         aav_interfaces/DataSource, latched: REAL on the car,
-//!                                   BENCH on the bench, SIM in Gazebo's spine profile (the
+//!                                   BENCH on the bench, SIM in Ravensim's spine profile (the
 //!                                   `source` parameter)
 //! Service     spine/arm             std_srvs/SetBool: refused during an e-stop, and while
 //!                                   the safety gate is shut: the output mux not OPEN for
@@ -72,8 +72,8 @@ use ros_env::sensor_msgs::msg::JointState;
 use ros_env::std_msgs::msg::{Bool, Header, String as StringMsg};
 use ros_env::std_srvs::srv::{SetBool, SetBool_Request, SetBool_Response};
 use spine_bridge::{
-    Bridge, Command, Drive, Geometry, Motion, Reading, Role, Settings, Status, Target, Update,
-    DRIVE_CMD_ID, ESTOP_CMD_ID,
+    wheels, Bridge, Command, Drive, Geometry, Motion, Reading, Role, Settings, Status, Target,
+    Update, DRIVE_CMD_ID, ESTOP_CMD_ID,
 };
 
 /// What this node publishes, for /system/source, in role spine.
@@ -354,7 +354,7 @@ enum Source {
     Real,
     /// The bench's spine_sim.
     Bench,
-    /// spine_sim on Gazebo's car.
+    /// spine_sim on Ravensim's car.
     Sim,
 }
 
@@ -427,7 +427,7 @@ struct State {
 }
 
 impl State {
-    /// The node's clock (Gazebo's, with use_sim_time), since its zero.
+    /// The node's clock (the simulator's, with use_sim_time), since its zero.
     fn now(&self) -> Duration {
         Duration::from_nanos(u64::try_from(self.clock.now().nsec).unwrap_or(0))
     }
@@ -508,7 +508,7 @@ impl State {
         odom.twist.twist.linear.x = speed;
         odom.twist.twist.angular.z = yaw_rate.unwrap_or(0.0);
         // vx, vy, vz, roll, pitch and yaw rates, on the diagonal.
-        let twist_diagonal = [
+        let mut twist_diagonal = [
             speed_variance,
             SIDEWAYS_VARIANCE,
             UNKNOWN,
@@ -516,6 +516,13 @@ impl State {
             UNKNOWN,
             yaw_rate.map_or(UNKNOWN, |_| yaw_rate_variance),
         ];
+        // Wheels that read nothing: the car stands, exactly (TODO 191, as aav_description's
+        // standstill_covariance): its speed, sideways speed and turn rate all known zero.
+        if wheels::is_standstill(speed) {
+            for i in [0, 1, 5] {
+                twist_diagonal[i] = wheels::STANDSTILL_VARIANCE;
+            }
+        }
         for (i, variance) in twist_diagonal.into_iter().enumerate() {
             odom.twist.covariance[i * 7] = variance;
         }

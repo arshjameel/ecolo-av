@@ -7,9 +7,13 @@
 <!-- Generated from docs/vehicle-model.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The car as a linear model</h1>
-<div class="meta">32 min read · 11 sections</div></header>
+<div class="meta">33 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
 <a href="release-notes.html">Release notes</a>
 <a href="getting-started.html">Getting started</a>
 <a href="first-day.html">Your first day</a>
@@ -22,6 +26,7 @@
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
 <a href="release-0.2.html">The 0.2 guide</a>
 <a href="whats-new.html">What&#x27;s new</a>
 <a href="audit-friday.html">Audit, 16 Oct</a>
@@ -29,10 +34,10 @@
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
 <a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="know-the-car.html">Know the car</a>
-<span class="sep">Learn:</span>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -45,12 +50,12 @@
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
-<span class="sep">Reference:</span>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -58,6 +63,8 @@
 <a href="path-followers.html">Path followers</a>
 <a href="switches.html">Switches</a>
 <a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -67,6 +74,7 @@
 <a href="a-to-b.html">A to B</a>
 <a href="routes.html">Street routes</a>
 <a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
 <a href="perception-and-hud-map.html">Perception options</a>
 <a href="camera-pipeline.html">Camera pipeline</a>
 <a href="camera-calibration.html">Camera calibration</a>
@@ -90,15 +98,19 @@
 <a href="learn-state-space.html">Learn: state space</a>
 <a class="here" href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
 <a href="ghost-obstacles.html">Ghost obstacles</a>
 <a href="geofence.html">The geofence</a>
 <a href="sources-and-targets.html">Sources and targets</a>
 <a href="mcp.html">AI apps (MCP)</a>
 <a href="plain-english.html">Plain English</a>
 <a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
 <a href="firmware.html">Firmware</a>
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -113,7 +125,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-picture">The picture</a><a href="#the-symbols">The symbols</a><a href="#1-speed">1. Speed</a><a href="#2-steering">2. Steering</a><a href="#3-the-path-lateral-state-space">3. The path: lateral state space</a><a href="#4-the-delays">4. The delays</a><a href="#5-discrete-time-as-the-computers-run-it">5. Discrete time: as the computers run it</a><a href="#6-gazebos-car-against-the-model">6. Gazebo&#x27;s car against the model</a><a href="#7-which-numbers-are-guesses">7. Which numbers are guesses</a><a href="#what-its-for">What it&#x27;s for</a><a href="#run-it">Run it</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-picture">The picture</a><a href="#the-symbols">The symbols</a><a href="#1-speed">1. Speed</a><a href="#2-steering">2. Steering</a><a href="#3-the-path-lateral-state-space">3. The path: lateral state space</a><a href="#4-the-delays">4. The delays</a><a href="#5-discrete-time-as-the-computers-run-it">5. Discrete time: as the computers run it</a><a href="#6-gazebos-car-against-the-model-a-record-gazebo-went-on-16-nov">6. Gazebo&#x27;s car against the model (a record: Gazebo went on 16 Nov)</a><a href="#7-which-numbers-are-guesses">7. Which numbers are guesses</a><a href="#what-its-for">What it&#x27;s for</a><a href="#run-it">Run it</a></nav>
 <div class="lead"><p>Ben, 24 Oct: "Do we have a mathematical model for the car now for the ego? ... a matrix
 control thing ... Maybe second order system". Now we do. This page writes the car the
 way SYSC 3600 (Systems and Simulation) would: differential equations, Laplace, transfer
@@ -134,8 +146,8 @@ process, from a free-body diagram to a simulator, one step at a time.</p>
   the default: it waits for the stands (<a href="#tuning-the-speed-loop">Tuning the speed loop</a>).</li>
 <li><strong>The lateral loop is where delays matter:</strong> 52° of phase margin with none, 45°
   with today's 84 ms, 31° with the worst case (259 ms) at 1 m/s.</li>
-<li><strong>Gazebo's car steers as <code>vehicle.yaml</code> says, within 22 ms</strong> (25 Oct; it was 0.11 s
-  late: an extra lag in Gazebo's own steering, now fixed: section 6).</li>
+<li><strong>The simulated car steers as <code>vehicle.yaml</code> says</strong> (Gazebo's within 22 ms, 25 Oct; it was 0.11 s
+  late: an extra lag in Gazebo's own steering, fixed then: section 6. Ravensim steers to the model's angle itself).</li>
 <li><strong>Nothing here drives the car.</strong> It is for tuning, checking, and the report.</li>
 </ul>
 </div>
@@ -256,8 +268,8 @@ numbers.</p></div>
 <tr>
 <td>L</td>
 <td>wheelbase</td>
-<td>1.57 m</td>
-<td><code>wheelbase</code> TODO measure</td>
+<td>1.57 m on this page; <strong>measured 1.561 m</strong> (1 Nov, <code>vehicle.yaml</code>): the page's numbers were worked with 1.57</td>
+<td><code>wheelbase</code> MEASURED</td>
 </tr>
 <tr>
 <td>e_y, e_θ</td>
@@ -768,7 +780,7 @@ with a zero-order hold (the command is held until the next one) gives</p>
 tests check the discrete model against the continuous one at every sample, and the
 discrete speed loop against the spine's own code, line by line.</p>
 </section>
-<section class="card"><h2 id="6-gazebos-car-against-the-model">6. Gazebo's car against the model</h2>
+<section class="card"><h2 id="6-gazebos-car-against-the-model-a-record-gazebo-went-on-16-nov">6. Gazebo's car against the model (a record: Gazebo went on 16 Nov)</h2>
 <p>Gazebo's car runs our car model (<code>aav_description</code> <code>car_model.py</code>, <a href="car-model.html">One car model</a>, the same
 numbers), then Gazebo's own Ackermann plugin:</p>
 <div class="table-wrap"><table>
@@ -800,7 +812,7 @@ numbers), then Gazebo's own Ackermann plugin:</p>
 <h3 id="measured-and-fixed-todo-52c-24-25-oct">Measured, and fixed (TODO 52c, 24-25 Oct)</h3>
 <p>How: <code>actuator-test steer-rate --sim</code> drives the steps (centre → full lock → centre, each
 way) in the empty world, headless, on a ROS domain of its own, while
-<code>tools/gazebo_steering.py</code> records Gazebo's two steering joints (<code>/joint_states</code>, made into
+<code>tools/gazebo_steering.py</code> (deleted with Gazebo) recorded Gazebo's two steering joints (<code>/joint_states</code>, made into
 the centre wheel's angle) and the model's angle (<code>/vehicle/steering</code>), and fits the lag
 between them (<code>analysis.fit_follower</code>).</p>
 <div class="table-wrap"><table>
@@ -873,7 +885,7 @@ between them (<code>analysis.fit_follower</code>).</p>
 </tr>
 <tr>
 <td>A busy computer adds more</td>
-<td>gazebo_adapter's ticks stall (up to 0.2 s of Gazebo's time) when other simulators run</td>
+<td>sim_adapter's ticks stall (up to 0.2 s of Gazebo's time) when other simulators run</td>
 <td>none needed: run it twice</td>
 </tr>
 </tbody>
@@ -997,8 +1009,8 @@ rolling about 0.3 s late.</p>
 </tr>
 <tr>
 <td><code>wheelbase</code></td>
-<td>1.57 m</td>
-<td>the tape measure (M-list)</td>
+<td>1.561 m: <strong>measured</strong>, 1 Nov (this page used 1.57)</td>
+<td>the tape measure (M-list): done</td>
 <td>v/L in A</td>
 </tr>
 <tr>
@@ -1252,7 +1264,7 @@ Three runs of each profile on Ben's Mac, beside two other helpers' simulators:</
 </table></div>
 <ul>
 <li>Runs 2 and 3 of today's gains gave the same numbers; so did all three of <code>smooth</code>. Run 1 of today's was spoiled by the Mac's load (late commands made
-  gazebo_adapter brake: sim-check reports that, and drives the step again, up to 3 times).</li>
+  sim_adapter brake: sim-check reports that, and drives the step again, up to 3 times).</li>
 <li>At 2 m/s today's loop passes the coast band (2.2), brakes, and the brake resets the
   integral: the car then sags to 1.76 m/s and takes 10 s to come back. <code>smooth</code> never
   gets there.</li>
@@ -1279,12 +1291,12 @@ Three runs of each profile on Ben's Mac, beside two other helpers' simulators:</
 <td><code>SpeedLoopConfig::smooth()</code>, or <code>SpeedLoopProfile::Smooth.config()</code>, in the board's <code>SpineConfig</code></td>
 </tr>
 <tr>
-<td>Gazebo's actuator model</td>
+<td>the simulator's actuator model</td>
 <td><code>speed_loop:=default</code></td>
 <td><code>pixi run sim speed_loop:=smooth</code></td>
 </tr>
 <tr>
-<td>the spine in Gazebo, the bench</td>
+<td>the spine in the simulator, the bench</td>
 <td><code>speed_loop:=default</code> (spine_sim)</td>
 <td><code>... spine:=true speed_loop:=smooth</code>, <code>pixi run bench speed_loop:=smooth</code></td>
 </tr>
@@ -1314,8 +1326,8 @@ guesses: it is a starting point for the stands, not the answer.</p>
 <h3 id="checking-the-delays">Checking the delays</h3>
 <p>The margins table is the check: before raising ego's speed cap, make sure the lateral
 loop keeps 30° or more with the Orin's measured delays.</p>
-<h3 id="making-gazebos-car-match-the-real-one">Making Gazebo's car match the real one</h3>
-<p>Fit the car day's numbers, put them in <code>vehicle.yaml</code> (Gazebo's steering follows them:
+<h3 id="making-the-simulated-car-match-the-real-one">Making the simulated car match the real one</h3>
+<p>Fit the car day's numbers, put them in <code>vehicle.yaml</code> (the simulator's actuator model follows them;
 section 6), then compare the same step in both: that's the sim-versus-real report.</p>
 <h3 id="after-state-space">After state space</h3>
 <div class="table-wrap"><table>

@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# stop-sign-core: when to stop for a stop sign, with no ROS (aav_detector's stop_sign.py,
+#   ported): cargo test -p stop-sign-core
+# stop-sign-node: the ROS node (rclrs), binary `stop_sign_watcher`. colcon builds it
+#   through CMakeLists.txt.
+members = ["crates/stop-sign-core", "crates/stop-sign-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

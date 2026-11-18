@@ -17,6 +17,7 @@ pub enum Turn {
 /// What the person did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Input {
+    /// A click of the knob.
     Turn(Turn),
     /// The knob's own switch: pin or unpin the page.
     KnobPress,
@@ -40,6 +41,8 @@ pub struct Knob {
 const REST: u8 = 0b11;
 
 impl Knob {
+    /// The knob, its pins as read now.
+    #[must_use]
     pub fn new(clk: bool, dt: bool) -> Self {
         Knob {
             last: pins(clk, dt),
@@ -88,6 +91,8 @@ impl Button {
     /// Steady for 20 ms before a change counts.
     pub const STABLE_MS: u32 = 20;
 
+    /// A released button.
+    #[must_use]
     pub const fn new() -> Self {
         Button(Debouncer::new(true, Self::STABLE_MS))
     }
