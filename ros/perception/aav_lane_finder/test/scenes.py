@@ -21,7 +21,7 @@ BENCH_CAMERA = (1.80, 0.29, 1.20)
 
 def picture(offset=0.0, heading=0.0, radius=math.inf, lines=('left', 'right'),
             lane_width=3.5, line_width=0.15, width=640, height=360, focal=343.0,
-            camera=BENCH_CAMERA, pitch=0.0):
+            camera=BENCH_CAMERA, pitch=0.0, dash=None):
     """
     Draw what the camera sees of a lane, in BGR.
 
@@ -30,6 +30,8 @@ def picture(offset=0.0, heading=0.0, radius=math.inf, lines=('left', 'right'),
     radius   m: + bends left, - bends right, inf is straight. The bend starts at the car.
     lines    which of the lane's two lines are painted
     camera   m: where the camera is in base_link; pitch, rad: + looks down
+    dash     (period, painted) m: dashed lines, painted the first `painted` m of each
+             `period` along the lane; None: solid
     """
     v, u = np.mgrid[0:height, 0:width].astype(float)
     # A ray through each pixel's centre, in the camera's axes: x forward, y left, z up.
@@ -53,7 +55,11 @@ def picture(offset=0.0, heading=0.0, radius=math.inf, lines=('left', 'right'),
     image[:] = SKY
     image[ground] = GRASS
     image[ground & (np.abs(across) < lane_width / 2.0 + 0.5)] = ROAD
+    painted = ground
+    if dash is not None:
+        period, length = dash
+        painted = ground & (np.mod(lx, period) < length)
     for side in lines:
         middle = lane_width / 2.0 if side == 'left' else -lane_width / 2.0
-        image[ground & (np.abs(across - middle) < line_width / 2.0)] = PAINT
+        image[painted & (np.abs(across - middle) < line_width / 2.0)] = PAINT
     return image

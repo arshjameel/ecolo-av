@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_lane_finder_rs</name>
+  <version>0.1.0</version>
+  <description>lane_finder in Rust (rclrs): a drop-in for aav_lane_finder's Python node, the default (lane_finder_impl:=python falls back). The same topics, QoS, parameters and answers: the front left camera's pictures and camera_info in; /perception/lane/geometry and the debug picture out. The maths is the lane-core crate, with no ROS and no OpenCV.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>aav_lane_geometry</depend>
+
+  <!-- Its lane_finder.yaml: the same settings as the Python node. -->
+  <exec_depend>aav_lane_finder</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+  <test_depend>aav_lane_finder</test_depend>
+  <test_depend>python3-numpy</test_depend>
+  <test_depend>python3-opencv</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

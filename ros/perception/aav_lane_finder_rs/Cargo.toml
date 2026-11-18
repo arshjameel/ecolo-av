@@ -1,0 +1,18 @@
+[workspace]
+resolver = "2"
+# lane-core: the bird's-eye warp, the paint mask, the sliding windows, the fits, the lane,
+#   the debug picture. No ROS (aav_lane_finder's birds_eye.py and lane_lines.py, ported):
+#   cargo test -p lane-core
+# lane-node: the ROS node (rclrs), binary `lane_finder`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/lane-core", "crates/lane-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# The vectors test warps and searches whole pictures: build it optimised.
+[profile.test]
+opt-level = 3

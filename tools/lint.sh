@@ -12,6 +12,7 @@ OURS=(ros/bringup/aav_bringup ros/bringup/aav_description ros/bringup/aav_run_in
       ros/perception/aav_lane_geometry/test
       ros/hud/aav_hud/launch ros/perception/aav_radar_clusters/launch
       ros/perception/aav_radar_clusters/test ros/perception/aav_voxels
-      ros/perception/aav_voxels_rs/test ros/perception/aav_lidar_rs ros/perception/aav_things_rs)
+      ros/perception/aav_voxels_rs/test ros/perception/aav_lidar_rs ros/perception/aav_things_rs
+      ros/perception/aav_lane_finder_rs)
 ament_flake8 "${OURS[@]}"
 ament_pep257 "${OURS[@]}"
