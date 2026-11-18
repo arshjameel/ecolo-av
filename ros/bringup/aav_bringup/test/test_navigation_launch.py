@@ -372,8 +372,9 @@ def test_amcl_needs_the_lidar_and_never_publishes_map_to_odom():
         file = yaml.safe_load(f)['amcl']['ros__parameters']
     assert file['tf_broadcast'] is False
     assert file['scan_topic'] == '/sensors/lidar/scan' and file['base_frame_id'] == 'base_link'
-    # Its own manager, the only lifecycle manager left (nav2_amcl is a lifecycle node).
-    assert list(given(nodes['lifecycle_manager_localization'])['node_names']) == ['amcl']
+    # Ours by default (TODO 231): a plain node, so no lifecycle manager at all.
+    assert amcl._Node__package == 'aav_amcl_rs'
+    assert 'lifecycle_manager_localization' not in nodes
     assert 'lifecycle_manager_navigation' not in nodes
     assert 'amcl_map_server' not in nodes and 'map_topic' not in start   # our /map
     # What the launch file sets must not be in the file too: under sim.launch.py's global
@@ -389,7 +390,19 @@ def test_amcl_may_have_a_map_of_its_own():
     assert served['topic_name'] == given(nodes['amcl'])['map_topic'] == '/localization/amcl/map'
     # Our map server keeps /map; AMCL's is ours too, not a lifecycle node.
     assert nodes['amcl_map_server']._Node__package == 'aav_costmap'
-    assert list(given(nodes['lifecycle_manager_localization'])['node_names']) == ['amcl']
+
+
+def test_amcl_impl_stock_is_nav2s_with_its_manager_on_the_same_topics_and_config():
+    ours = nav_nodes(lidar='true', amcl='true', amcl_y='2.5')
+    stock = nav_nodes(lidar='true', amcl='true', amcl_y='2.5', amcl_impl='stock')
+    assert stock['amcl']._Node__package == 'nav2_amcl'
+    # Its own manager, the only lifecycle manager left (nav2_amcl is a lifecycle node).
+    assert list(given(stock['lifecycle_manager_localization'])['node_names']) == ['amcl']
+    # Nothing downstream can tell: the same remappings, start and parameter file.
+    assert remaps(ours['amcl']) == remaps(stock['amcl'])
+    assert given(ours['amcl']) == given(stock['amcl'])
+    with pytest.raises(ValueError, match='amcl_impl'):
+        nav_nodes(lidar='true', amcl='true', amcl_impl='python')
 
 
 def test_the_sim_passes_the_trials_on_and_checks_them():
@@ -408,6 +421,7 @@ def test_the_sim_passes_the_trials_on_and_checks_them():
                               start_yaw='1.0')
     assert (sent['amcl'], sent['lidar']) == ('true', 'true')
     assert (sent['amcl_y'], sent['amcl_yaw']) == ('4.0', '1.0')
+    assert sent['amcl_impl'] == 'rust'
     assert sent['amcl_map'].endswith('maps/example_lot_amcl.yaml')
     assert os.path.exists(sent['amcl_map'])
     assert sent_to_navigation(SIM, world='test_lot')['amcl_map'] == ''

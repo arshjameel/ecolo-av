@@ -4,9 +4,9 @@ The amcl node itself, with stock's amcl.yaml, on a made-up map: scans in, a pose
 It starts the built node on its own ROS domain, on this computer only, with a walled
 yard and two boxes on /map (latched), a start 0.5 m and 6 degrees off, the odometry
 on /localization/odom/local and scans from the truth on /sensors/lidar/scan, as the car
-drives 6 m. The last pose (stamped with its scan's stamp) on /localization/amcl/pose must be within 0.15 m and 2 degrees,
-and particles come on /localization/amcl/particles. Needs the workspace built and
-sourced: `colcon test` runs it.
+drives 6 m. The last pose on /localization/amcl/pose must be within 0.15 m and 2 degrees
+of the truth at its stamp (its scan's), and particles come on
+/localization/amcl/particles. Needs the workspace built and sourced: `colcon test` runs it.
 """
 
 import math
