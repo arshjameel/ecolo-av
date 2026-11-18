@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# io-mux-core: the sensor mux's and the output mux's logic, with no ROS (aav_io_mux's
+#   provenance.py, heartbeat.py and muxes.py, ported): cargo test -p io-mux-core
+# io-mux-node: the two ROS nodes (rclrs), binaries `sensor_mux` and `output_mux`. colcon
+#   builds them through CMakeLists.txt.
+members = ["crates/io-mux-core", "crates/io-mux-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
