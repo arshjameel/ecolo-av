@@ -510,7 +510,9 @@ stay installed, one switch away. Check this each time you start `car.launch.py`.
 | 3 | `ros2 node list` | `/ego`, `/look_ahead`, `/sensor_watchdog`, `/localization_health`, `/lidar_scan` (and `/things`): the same names as the Python's | |
 
 **If a Rust node misbehaves:** stop the car (e-stop), stop the launch, and start it again
-with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... watchdog_impl:=python`. One switch
+with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... watchdog_impl:=python`.
+With the short form, put `--` before the switch: `~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python`
+(without `--`, Pixi stops: "received more arguments than expected"). One switch
 per node; the others stay Rust. Write down what you saw: it decides whether the Rust stays.
 
 ## A6 · The steering actuator's ends, Way A

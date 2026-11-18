@@ -4,7 +4,7 @@ This guide takes a new laptop from nothing to driving the TurtleSim turtle.
 Target: under 30 minutes (T1.1). If it takes longer, tell the integration team where you got stuck.
 
 Works on Linux (x86-64 and ARM) and macOS (Apple Silicon or Intel). No admin rights needed.
-You need about 10 GB of free disk space. The longer version, with Gazebo and Nav2 too:
+You need about 10 GB of free disk space. The longer version, with Ravensim, our simulator:
 [Your first day](first-day.md).
 
 ## 1. Install Pixi
@@ -34,7 +34,7 @@ works too. How changes get in: [Contributing](../CONTRIBUTING.md).
 
     pixi install
 
-The first run downloads ROS 2 Jazzy, Gazebo and the toolchains (about 7 GB). Later runs
+The first run downloads ROS 2 Jazzy and the toolchains (about 7 GB). Later runs
 are instant. Then build our packages once:
 
     pixi run build

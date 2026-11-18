@@ -18,7 +18,7 @@ computer, with services at boot: [Car setup](car-setup.md). The order on the car
 
 ```text
   Mac (internet)                    USB stick                 car computer (no internet)
-  pixi run car-kit   ──────────►   car-kit/  (1.8 GB)  ──►   car_install.sh  ──►  ~/aav-jazzy/
+  pixi run car-kit   ──────────►   car-kit/  (2.3 GB)  ──►   car_install.sh  ──►  ~/aav-jazzy/
                                                               car_listen.sh       (read-only)
 ```
 
@@ -40,16 +40,16 @@ git fetch upstream && git switch main && git merge --ff-only upstream/main
 pixi run car-kit                    # writes car-kit/ (git ignores it)
 ```
 
-What it holds (made on Ben's Mac, 15 Oct):
+What it holds (sizes from a fresh clone on Ben's Mac, 17 Nov; 2.3 GB in all):
 
 | File | What | Size |
 |---|---|---|
-| `aav-jazzy-linux-aarch64.tar` | every package of our default Pixi environment, for 64-bit ARM, from `pixi.lock` (packed by pixi-pack) | 1.7 GB |
+| `aav-jazzy-linux-aarch64.tar` | every package of our default Pixi environment, for 64-bit ARM, from `pixi.lock` (packed by pixi-pack) | 1.3 GB |
 | `bin/pixi`, `bin/pixi-unpack` | the programs that unpack and run it, for 64-bit ARM, version-pinned and checksummed | 78 MB |
-| `aav.bundle` | the repo (git bundle) | 5 MB |
-| `aav-src.tar.gz` | the same code, for a computer with no git | 4 MB |
-| `rust-crates.tar.gz` | every crate our Rust packages use (each `Cargo.lock` in `ros/`, among them the car's default ego, behaviour, sensor watchdog and localization_health since 16 Nov), so `cargo` needs no internet | 43 MB |
-| `models/` | the YOLO model files from `models/`, if you have them (`pixi run get models`) | 6 MB |
+| `aav.bundle` | the repo (git bundle: `HEAD`, and `main` if the clone has one) | 201 MB |
+| `aav-src.tar.gz` | the same code, for a computer with no git | 177 MB |
+| `rust-crates.tar.gz` | every crate our Rust packages use (each `Cargo.lock` in `ros/`, among them the car's default ego, behaviour, sensor watchdog and localization_health since 16 Nov), so `cargo` needs no internet | 161 MB |
+| `models/` | the model files from `models/`, if you have them (`pixi run get models`; the Orin's ONNX: [Car day](car-day.md#session-0-before-leaving-at-home) A0 step 3) | 355 MB (RF-DETR's `.pth` and YOLO11n) |
 | `car_install.sh`, `README.md`, `KIT.txt`, `SHA256SUMS` | the installer, a short how-to, the commit, the checksums | small |
 
 Any stick works, even FAT32: the biggest file is under 4 GB.
@@ -137,6 +137,7 @@ theirs never see each other: no mixed Humble and Jazzy messages, no topic clashe
 | any ROS command | `~/aav-jazzy/aav.sh ros2 topic list` |
 | the Motor-Pi's part of the car | `~/aav-jazzy/aav.sh car motor_pi` |
 | the Orin's part | `~/aav-jazzy/aav.sh car orin` |
+| the Orin's part, one switch changed | `~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python` (the `--` is needed) |
 | a rebuild after an edit | `~/aav-jazzy/aav.sh build` |
 
 `aav.sh` runs `pixi run --as-is` in `~/aav-jazzy/aav`, after clearing anything a Humble

@@ -17,6 +17,11 @@ cd "$(dirname "$0")/.."
 manifest=ros/hud/aav_dev_window/Cargo.toml
 ndt_map=maps/ndt/test_lot.pcd
 
+# cargo runs quiet (-q): on a fresh clone the first build (Bevy) shows nothing for minutes.
+if [ ! -x ros/hud/aav_dev_window/target/release/dev_window ]; then
+  echo "dev_window: the first time, cargo builds the window (Bevy): about 2-5 min, no output" >&2
+fi
+
 case "${1:-}" in
   --live)
     shift

@@ -70,7 +70,13 @@ rm -rf "$OUT"
 mkdir -p "$OUT/bin"
 
 step "The code: $(git log --oneline -1)"
-git bundle create "$OUT/aav.bundle" HEAD main 2>&1 | tail -1
+# HEAD, and main when this clone has a local main (a clone made with -b, or of a branch,
+# may not: then git bundle stopped with only its usage line).
+refs="HEAD"
+if git show-ref --verify --quiet refs/heads/main; then refs="HEAD main"
+else echo "NOTE: no local branch main here: the kit's bundle holds HEAD only" >&2; fi
+# shellcheck disable=SC2086  # two words on purpose
+git bundle create "$OUT/aav.bundle" $refs 2>&1 | tail -1
 git archive --format=tar.gz -o "$OUT/aav-src.tar.gz" HEAD
 
 step "The environment: default, linux-aarch64, from pixi.lock (pixi-pack $PIXI_PACK_VERSION)"

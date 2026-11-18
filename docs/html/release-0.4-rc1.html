@@ -7,7 +7,7 @@
 <!-- Generated from docs/release-0.4-rc1.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>0.4-rc1 on the car: Wednesday 18 Nov</h1>
-<div class="meta">7 min read · 8 sections</div></header>
+<div class="meta">8 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -161,6 +161,8 @@ below "Untested on the car" has run in Ravensim, bench mode, QEMU or unit tests 
 <p>The release in one page, one command per job: <a href="release-0.4.html">0.4-rc1: start here</a>.</p>
 </section>
 <section class="card"><h2 id="see-it-first-in-ravensim">See it first, in Ravensim</h2>
+<p>A new laptop first: <a href="getting-started.html">Getting started</a>, steps 1-3 (<code>pixi install</code>,
+then <code>pixi run build</code>). Then:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -171,7 +173,11 @@ below "Untested on the car" has run in Ravensim, bench mode, QEMU or unit tests 
 <tbody>
 <tr>
 <td>Ravensim and the developer window (scene, console, lidar, map, keys)</td>
-<td><code>pixi run ravensim</code> (<code>world:=campus</code> for Carleton)</td>
+<td><code>pixi run ravensim</code> (<code>world:=campus</code> for Carleton, after <code>pixi run campus</code> once). The first time, the window takes 2-5 min to build, with no output; the sim starts at once. Ctrl-C stops both</td>
+</tr>
+<tr>
+<td>that it all works, headless</td>
+<td><code>pixi run sim-check</code> (about 2 min; every line PASS, then a table of ✅)</td>
 </tr>
 </tbody>
 </table></div>
@@ -189,8 +195,8 @@ below "Untested on the car" has run in Ravensim, bench mode, QEMU or unit tests 
 <tbody>
 <tr>
 <td>1</td>
-<td>Make the kit on a Mac with internet: <code>pixi run car-kit</code>, copy <code>car-kit/</code> to a stick</td>
-<td><a href="car-install.html">Car install</a>, section 1</td>
+<td>Make the kit on a Mac with internet: the models (<code>pixi run get models</code>), the Orin's ONNX, then <code>pixi run car-kit</code> (about 1 min, 2.3 GB with the models); copy <code>car-kit/</code> to a stick</td>
+<td><a href="car-day.html#session-0-before-leaving-at-home">Car day</a>, A0 steps 1-5; <a href="car-install.html">Car install</a>, section 1</td>
 </tr>
 <tr>
 <td>2</td>
@@ -219,7 +225,8 @@ below "Untested on the car" has run in Ravensim, bench mode, QEMU or unit tests 
 </tr>
 </tbody>
 </table></div>
-<p>Undo: <code>rm -rf ~/aav-jazzy</code>. Nothing else changes, no sudo.</p>
+<p>Undo: <code>rm -rf ~/aav-jazzy</code>. Nothing else changes, no sudo. (Installed with <code>--screens</code>? First
+<code>bash ~/aav-jazzy/aav/tools/car_screens_install.sh uninstall</code>: <a href="car-install.html#undo">Car install</a>.)</p>
 </section>
 <section class="card"><h2 id="check-first-on-the-car">Check first on the car</h2>
 <div class="table-wrap"><table>
@@ -242,7 +249,7 @@ below "Untested on the car" has run in Ravensim, bench mode, QEMU or unit tests 
 <td>2</td>
 <td>a Rust node misbehaves</td>
 <td>-</td>
-<td>e-stop, stop the launch, start again with that node's fall-back</td>
+<td>e-stop, stop the launch, start again with that node's fall-back: <code>~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python</code> (the <code>--</code> is needed)</td>
 </tr>
 <tr>
 <td>3</td>

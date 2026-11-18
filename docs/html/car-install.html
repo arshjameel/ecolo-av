@@ -138,7 +138,7 @@ computer, with services at boot: <a href="car-setup.html">Car setup</a>. The ord
 <a href="rollout.html">Rolling out</a> (short) and <a href="car-day.html">Car day</a> (full).</p></div>
 <section class="card"><h2 id="the-plan-in-one-picture">The plan in one picture</h2>
 <pre class="highlight"><code class="language-text">  Mac (internet)                    USB stick                 car computer (no internet)
-  pixi run car-kit   ──────────►   car-kit/  (1.8 GB)  ──►   car_install.sh  ──►  ~/aav-jazzy/
+  pixi run car-kit   ──────────►   car-kit/  (2.3 GB)  ──►   car_install.sh  ──►  ~/aav-jazzy/
                                                               car_listen.sh       (read-only)</code></pre>
 <div class="table-wrap"><table>
 <thead>
@@ -189,7 +189,7 @@ git fetch upstream &amp;&amp; git switch main &amp;&amp; git merge --ff-only ups
                                     # the team's main (CONTRIBUTING.md); the kit holds
                                     # what is committed, nothing else
 pixi run car-kit                    # writes car-kit/ (git ignores it)</code></pre>
-<p>What it holds (made on Ben's Mac, 15 Oct):</p>
+<p>What it holds (sizes from a fresh clone on Ben's Mac, 17 Nov; 2.3 GB in all):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -202,7 +202,7 @@ pixi run car-kit                    # writes car-kit/ (git ignores it)</code></p
 <tr>
 <td><code>aav-jazzy-linux-aarch64.tar</code></td>
 <td>every package of our default Pixi environment, for 64-bit ARM, from <code>pixi.lock</code> (packed by pixi-pack)</td>
-<td>1.7 GB</td>
+<td>1.3 GB</td>
 </tr>
 <tr>
 <td><code>bin/pixi</code>, <code>bin/pixi-unpack</code></td>
@@ -211,23 +211,23 @@ pixi run car-kit                    # writes car-kit/ (git ignores it)</code></p
 </tr>
 <tr>
 <td><code>aav.bundle</code></td>
-<td>the repo (git bundle)</td>
-<td>5 MB</td>
+<td>the repo (git bundle: <code>HEAD</code>, and <code>main</code> if the clone has one)</td>
+<td>201 MB</td>
 </tr>
 <tr>
 <td><code>aav-src.tar.gz</code></td>
 <td>the same code, for a computer with no git</td>
-<td>4 MB</td>
+<td>177 MB</td>
 </tr>
 <tr>
 <td><code>rust-crates.tar.gz</code></td>
 <td>every crate our Rust packages use (each <code>Cargo.lock</code> in <code>ros/</code>, among them the car's default ego, behaviour, sensor watchdog and localization_health since 16 Nov), so <code>cargo</code> needs no internet</td>
-<td>43 MB</td>
+<td>161 MB</td>
 </tr>
 <tr>
 <td><code>models/</code></td>
-<td>the YOLO model files from <code>models/</code>, if you have them (<code>pixi run get models</code>)</td>
-<td>6 MB</td>
+<td>the model files from <code>models/</code>, if you have them (<code>pixi run get models</code>; the Orin's ONNX: <a href="car-day.html#session-0-before-leaving-at-home">Car day</a> A0 step 3)</td>
+<td>355 MB (RF-DETR's <code>.pth</code> and YOLO11n)</td>
 </tr>
 <tr>
 <td><code>car_install.sh</code>, <code>README.md</code>, <code>KIT.txt</code>, <code>SHA256SUMS</code></td>
@@ -399,6 +399,10 @@ theirs never see each other: no mixed Humble and Jazzy messages, no topic clashe
 <tr>
 <td>the Orin's part</td>
 <td><code>~/aav-jazzy/aav.sh car orin</code></td>
+</tr>
+<tr>
+<td>the Orin's part, one switch changed</td>
+<td><code>~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python</code> (the <code>--</code> is needed)</td>
 </tr>
 <tr>
 <td>a rebuild after an edit</td>

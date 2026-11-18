@@ -22,9 +22,13 @@ The release in one page, one command per job: [0.4-rc1: start here](release-0.4.
 
 ## See it first, in Ravensim
 
+A new laptop first: [Getting started](getting-started.md), steps 1-3 (`pixi install`,
+then `pixi run build`). Then:
+
 | To see | Run |
 |---|---|
-| Ravensim and the developer window (scene, console, lidar, map, keys) | `pixi run ravensim` (`world:=campus` for Carleton) |
+| Ravensim and the developer window (scene, console, lidar, map, keys) | `pixi run ravensim` (`world:=campus` for Carleton, after `pixi run campus` once). The first time, the window takes 2-5 min to build, with no output; the sim starts at once. Ctrl-C stops both |
+| that it all works, headless | `pixi run sim-check` (about 2 min; every line PASS, then a table of ✅) |
 
 ## Install it on the car, step by step
 
@@ -32,21 +36,22 @@ Don't copy the steps from here: follow these pages in order.
 
 | # | Step | Where |
 |---|---|---|
-| 1 | Make the kit on a Mac with internet: `pixi run car-kit`, copy `car-kit/` to a stick | [Car install](car-install.md), section 1 |
+| 1 | Make the kit on a Mac with internet: the models (`pixi run get models`), the Orin's ONNX, then `pixi run car-kit` (about 1 min, 2.3 GB with the models); copy `car-kit/` to a stick | [Car day](car-day.md#session-0-before-leaving-at-home), A0 steps 1-5; [Car install](car-install.md), section 1 |
 | 2 | Back up every car computer first | [Car day](car-day.md), A2 |
 | 3 | On the car: `car_install.sh --dry-run` (checks only) | [Car install](car-install.md), section 2 |
 | 4 | Install: `car_install.sh`, about 5 min a computer | [Car install](car-install.md), section 3 |
 | 5 | Look, read-only: `car_listen.sh` | [Car install](car-install.md), section 4 |
 | 6 | Our stack on the Orin and the Motor Pi | [Car day](car-day.md), A5 (4a-4f) |
 
-Undo: `rm -rf ~/aav-jazzy`. Nothing else changes, no sudo.
+Undo: `rm -rf ~/aav-jazzy`. Nothing else changes, no sudo. (Installed with `--screens`? First
+`bash ~/aav-jazzy/aav/tools/car_screens_install.sh uninstall`: [Car install](car-install.md#undo).)
 
 ## Check first on the car
 
 | # | Check | You should see | If not |
 |---|---|---|---|
 | 1 | which language runs ([car day 4f](car-day.md#4f-the-rust-nodes-are-the-ones-running)) | `languages: ego_impl:=rust ... things_impl:=rust` in `car.launch.py`'s first lines | a Rust package didn't build: `~/aav-jazzy/build.log` |
-| 2 | a Rust node misbehaves | - | e-stop, stop the launch, start again with that node's fall-back |
+| 2 | a Rust node misbehaves | - | e-stop, stop the launch, start again with that node's fall-back: `~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python` (the `--` is needed) |
 | 3 | the clocks | `chronyc tracking` on every computer | [Car day](car-day.md#the-clocks) |
 
 The fall-backs, one per node (the others stay Rust):
