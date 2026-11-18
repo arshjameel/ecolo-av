@@ -146,6 +146,12 @@ pub struct EgoModel {
     pub accel: f64,
     /// The pedal while a person drives: the node sets it each tick.
     pub pedal: Option<Pedal>,
+    /// A fresh measured speed (m/s), else `None`: the node sets it each tick.
+    pub wheel_speed: Option<f64>,
+    /// +1 or -1: the way it last moved; 0 never moved.
+    pub direction: f64,
+    /// s at a standstill (speed 0) since it last moved.
+    pub held: f64,
 }
 
 /// One tick's output.
@@ -170,6 +176,9 @@ impl EgoModel {
             steering: 0.0,
             accel: 0.0,
             pedal: None,
+            wheel_speed: None,
+            direction: 0.0,
+            held: 0.0,
         }
     }
 
@@ -207,6 +216,15 @@ impl EgoModel {
             }
             _ => None,
         };
+        // A person asking the other way waits at a standstill, the brake on.
+        if let (Some(pedal), Some(_)) = (self.pedal, cmd) {
+            if self.speed == 0.0
+                && target_v * self.direction < 0.0
+                && !pedal.may_shift(self.held, self.wheel_speed)
+            {
+                target_v = 0.0;
+            }
+        }
         let before = self.speed;
         let (speed, mut accel) = slew_speed(self.speed, target_v, &lim, dt, speed_up, slow_down);
         self.speed = speed;
@@ -221,6 +239,14 @@ impl EgoModel {
         } else {
             0.0
         };
+        if self.speed != 0.0 {
+            self.direction = self.speed.signum();
+            self.held = 0.0;
+        } else if before == 0.0 {
+            self.held += dt;
+        } else {
+            self.held = 0.0; // it has just stopped
+        }
         let step = lim.max_steering_rate * dt;
         self.steering = clamp(target_d, self.steering - step, self.steering + step);
         Output {
@@ -242,6 +268,41 @@ mod tests {
         assert!((turn_rate(1.0, d, lim.wheelbase) - 0.2).abs() < 1e-12);
         assert_eq!(steering_angle(0.01, 0.2, &lim, 0.3), 0.3);
         assert_eq!(steering_angle(1.0, 5.0, &lim, 0.0), 0.5);
+    }
+
+    #[test]
+    fn the_pedal_holds_at_a_standstill_before_reversing() {
+        const DT: f64 = 0.02;
+        let lim = Limits {
+            max_jerk: 0.0,
+            ..Limits::default()
+        };
+        let pedal = Pedal::default();
+        let mut m = EgoModel::new(lim, None);
+        m.pedal = Some(pedal);
+        for _ in 0..100 {
+            m.step(Some((1.0, 0.0)), DT, None);
+        }
+        assert!((m.speed - 1.0).abs() < 1e-12);
+        let speeds: Vec<f64> = (0..200)
+            .map(|_| m.step(Some((-1.0, 0.0)), DT, None).speed)
+            .collect();
+        let stop = speeds.iter().position(|&s| s <= 0.0).unwrap_or(0);
+        let back = speeds.iter().position(|&s| s < 0.0).unwrap_or(0);
+        assert!(speeds[stop..back].iter().all(|&s| s == 0.0));
+        let held = (back - stop) as f64 * DT;
+        assert!(held >= pedal.shift_hold && held < pedal.shift_hold + 3.0 * DT);
+        // A fresh wheel speed still turning: no reversing, however long.
+        let mut m = EgoModel::new(lim, None);
+        m.pedal = Some(pedal);
+        m.wheel_speed = Some(0.3);
+        for _ in 0..100 {
+            m.step(Some((1.0, 0.0)), DT, None);
+        }
+        let lowest = (0..300)
+            .map(|_| m.step(Some((-1.0, 0.0)), DT, None).speed)
+            .fold(f64::INFINITY, f64::min);
+        assert_eq!(lowest, 0.0);
     }
 
     #[test]

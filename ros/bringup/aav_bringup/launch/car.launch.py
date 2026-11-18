@@ -28,11 +28,14 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [ego_impl:=rust] [behaviour_impl:=rust] [watchdog_impl:=rust]
       [localization_health_impl:=rust] [lidar_impl:=rust] [things_impl:=rust]
       [io_mux_impl:=rust] [legacy_impl:=rust] [rc_impl:=rust] [lane_finder_impl:=rust]
+      [joy_alive_impl:=rust] [stop_sign_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
                            aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
                            aav_lidar_rs, aav_things_rs, aav_io_mux_rs (both muxes),
-                           aav_legacy_rs (legacy_uart_bridge) and aav_rc_rs (rc_driver);
-                           since 18 Nov aav_lane_finder_rs (lane_finder, the lane part).
+                           aav_legacy_rs (legacy_uart_bridge), aav_rc_rs (rc_driver),
+                           aav_joy_alive_rs (joy_alive) and aav_stop_sign_rs
+                           (stop_sign_watcher); since 18 Nov aav_lane_finder_rs
+                           (lane_finder, the lane part).
                            python: the Python node instead, the same names and topics;
                            one switch each, the fall-back if one misbehaves.
                            docs/car-day.md)
@@ -440,7 +443,9 @@ def launch_setup(context):
              'io_mux_impl': vehicle.check_io_mux_impl(arg('io_mux_impl')),
              'legacy_impl': vehicle.check_legacy_impl(arg('legacy_impl')),
              'rc_impl': vehicle.check_rc_impl(arg('rc_impl')),
-             'lane_finder_impl': vehicle.check_lane_finder_impl(arg('lane_finder_impl'))}
+             'lane_finder_impl': vehicle.check_lane_finder_impl(arg('lane_finder_impl')),
+             'joy_alive_impl': vehicle.check_joy_alive_impl(arg('joy_alive_impl')),
+             'stop_sign_impl': vehicle.check_stop_sign_impl(arg('stop_sign_impl'))}
     get_logger('car.launch.py').info(
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
@@ -518,7 +523,8 @@ def launch_setup(context):
         actions.append(include('aav_io_mux', 'io_mux.launch.py', target='car', source='real',
                                io_mux_impl=impls['io_mux_impl']))
     if on('teleop'):
-        actions.append(include('aav_teleop', 'teleop.launch.py'))
+        actions.append(include('aav_teleop', 'teleop.launch.py',
+                               joy_alive_impl=impls['joy_alive_impl']))
     if on('scripted'):
         actions.append(include('aav_scripted', 'scripted.launch.py'))
     if on('drive_to_point'):
@@ -537,8 +543,8 @@ def launch_setup(context):
     if run_detector:
         actions += detector(context, machine, config.get('detector') or {})
     if on('stop_signs'):
-        actions.append(Node(package='aav_detector', executable='stop_sign_watcher',
-                            name='stop_sign_watcher'))
+        actions.append(Node(package=vehicle.STOP_SIGN_IMPLS[impls['stop_sign_impl']],
+                            executable='stop_sign_watcher', name='stop_sign_watcher'))
         # Its distance needs each camera's focal length, from the stream's CameraInfo.
         blind = uncalibrated(streaming) if streaming else []
         if blind:
@@ -735,6 +741,12 @@ def generate_launch_description():
         DeclareLaunchArgument('rc_impl', default_value=vehicle.DEFAULT_RC_IMPL,
                               description='rust (aav_rc_rs) or python (aav_rc): rc_driver, '
                                           'beside legacy_uart_bridge'),
+        DeclareLaunchArgument('joy_alive_impl', default_value=vehicle.DEFAULT_JOY_ALIVE_IMPL,
+                              description='rust (aav_joy_alive_rs) or python (aav_safety): '
+                                          'joy_alive, between joy_node and teleop_twist_joy'),
+        DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
+                              description='rust (aav_stop_sign_rs) or python (aav_detector): '
+                                          'stop_sign_watcher, the stop_signs part'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
                               description='rust (aav_localization_health_rs) or python '

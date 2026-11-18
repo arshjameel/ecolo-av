@@ -104,6 +104,8 @@ fall-back, one switch away ([0.4 on the car](release-0.4-rc1.md)):
 | The muxes (output and sensor) | `~/aav-jazzy/aav.sh car motor_pi_alone -- io_mux_impl:=python` |
 | The ESP32's UART bridge | `~/aav-jazzy/aav.sh car motor_pi_alone -- legacy_impl:=python` |
 | The RC driver | `~/aav-jazzy/aav.sh car motor_pi_alone -- rc_impl:=python` |
+| The joystick's check (joy_alive) | `~/aav-jazzy/aav.sh car motor_pi_alone -- joy_alive_impl:=python` |
+| The stop-sign watcher | `~/aav-jazzy/aav.sh car motor_pi_alone -- stop_sign_impl:=python` |
 | The others (ego, the watchdog...) | the list in [0.4 on the car](release-0.4-rc1.md) |
 
 ## Rollback

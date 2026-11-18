@@ -48,7 +48,7 @@ Times are from the moment named to the firmware's `EVENT` line saying it (its ow
 | 7 | Let go of the key | throttle 0 after 0.40 s, then the hold brake | 0.39 s | PASS (car day 3.4 said 0.3 s: corrected) |
 | 8 | E-stop while driving | full brake in 20 ms; stays braked while keys still ask; drives again after the clear | 7 ms | PASS |
 | 9 | Joystick: push, ease off | 0.3 m/s, then 0.3 m/s | the same | PASS |
-| 10 | Joystick: pull back | ego slows to 0, hold brake **80 ms**, then reverses | the same | PASS, but see open problem 1 |
+| 10 | Joystick: pull back | ego slows to 0, hold brake **80 ms**, then reverses | the same | PASS; open problem 1, **fixed** after: now holds 1.0 s |
 | 11 | Joystick: hold back | reverse at 0.3 m/s (after the fix) | the same | PASS |
 | 12 | Joystick goes silent while driving | `SILENT`; throttle 0 after 0.39 s | 0.38 s | PASS |
 | 13 | Joystick frozen while driving | `FROZEN` at 2.06 s; throttle 0 at 2.29 s | the same | PASS |
@@ -83,7 +83,7 @@ Car day's gate is 0.2 s.
 
 | # | Problem | Why it matters | Suggestion |
 |---|---|---|---|
-| 1 | Pull the stick back while moving: ego reaches 0 by its *model*, holds the brake 80 ms, then reverses | the Motor Pi alone has no wheel speed, so the direction can flip while the rear wheels still turn (the DAC is 0 then) | on stands, watch 3.2b; a dwell before reversing, or wait for a driven-wheel speed (TODO 49b) |
+| 1 | **Fixed (17 Nov).** Pull the stick back while moving: ego reached 0 by its *model*, held the brake 80 ms, then reversed | the Motor Pi alone has no wheel speed, so the direction could flip while the rear wheels still turn (the DAC is 0 then) | ego's pedal now holds 0, the brake on, for `pedal_shift_hold` (1.0 s, `ego.yaml`) before the other way; with a fresh `/vehicle/odom`, also until it reads under `pedal_stop_speed` (0.05 m/s). Python and Rust, shared vectors. On stands: time the wheels' coast-down in 3.2b and set the hold above it. Not re-rehearsed in QEMU |
 | 2 | The bridge's five "leave braked" frames on exit repeat the last counter | with version 2 the ESP32 ignores a repeated counter, so they do nothing; its own 100 ms rule brakes it | harmless; car day 3.7 "a last stop frame" really means "brakes within 0.2 s" |
 | 3 | A dead mux or bridge is not restarted | the car stays braked (safe), but nothing drives until the whole launch restarts | Ctrl-C the launch, start it again |
 
@@ -124,6 +124,8 @@ If a Rust node misbehaves, restart the launch with its fall-back:
 | The muxes (output and sensor) | `io_mux_impl:=python` |
 | The ESP32's UART bridge | `legacy_impl:=python` |
 | The RC driver | `rc_impl:=python` |
+| The joystick's check (joy_alive; Rust since after the rehearsal) | `joy_alive_impl:=python` |
+| The stop-sign watcher (Rust since after the rehearsal) | `stop_sign_impl:=python` |
 
 With `aav.sh car motor_pi_alone`, put them after `--`: `~/aav-jazzy/aav.sh car motor_pi_alone -- legacy_impl:=python`.
 Each passed the same checks tonight (the bridge's after its fix: pull tonight's commits first).

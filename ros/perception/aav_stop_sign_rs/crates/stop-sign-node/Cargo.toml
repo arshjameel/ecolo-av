@@ -1,0 +1,24 @@
+[package]
+name = "stop-sign-node"
+description = "stop_sign_watcher: stop the car at stop signs, through twist_mux's stop-sign lock"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "stop_sign_watcher"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+stop-sign-core = { path = "../stop-sign-core" }
+# Ours, reused, not copied: the TF buffer with history (aav_behaviour_rs's), for
+# lidar_distance, and ego-core's Transform.
+behaviour-core = { path = "../../../../drivers/aav_behaviour_rs/crates/behaviour-core" }
+ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"

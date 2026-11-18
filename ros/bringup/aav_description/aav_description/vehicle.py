@@ -570,6 +570,37 @@ def check_lane_finder_impl(impl):
     return name
 
 
+# Which joy_alive runs (teleop.launch.py, car.launch.py; joy_alive_impl:=): rust
+# (aav_joy_alive_rs, the default since Ben, 17 Nov: "I don't think we want to do this again
+# later") or python (aav_safety's: the same node name, topics, parameters and answers).
+JOY_ALIVE_IMPLS = {'python': 'aav_safety', 'rust': 'aav_joy_alive_rs'}
+DEFAULT_JOY_ALIVE_IMPL = 'rust'
+
+
+def check_joy_alive_impl(impl):
+    """Return joy_alive's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in JOY_ALIVE_IMPLS:
+        raise ValueError(f'joy_alive_impl:={impl}: pick one of {", ".join(JOY_ALIVE_IMPLS)}')
+    return name
+
+
+# Which stop_sign_watcher runs (car.launch.py's stop_signs, sim.launch.py and
+# bench.launch.py with perception; stop_sign_impl:=): rust (aav_stop_sign_rs, the default
+# since Ben, 17 Nov) or python (aav_detector's: the same node name, topics, parameters and
+# answers). Each one's package.
+STOP_SIGN_IMPLS = {'python': 'aav_detector', 'rust': 'aav_stop_sign_rs'}
+DEFAULT_STOP_SIGN_IMPL = 'rust'
+
+
+def check_stop_sign_impl(impl):
+    """Return stop_sign_watcher's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in STOP_SIGN_IMPLS:
+        raise ValueError(f'stop_sign_impl:={impl}: pick one of {", ".join(STOP_SIGN_IMPLS)}')
+    return name
+
+
 # Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
 # localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
 # in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or

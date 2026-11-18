@@ -1060,3 +1060,19 @@ def test_rewrite_follows_rewrittenyamls_rules():
     assert out['c'][0]['footprint'] == '[[1, 2]]'
     assert out['a']['b']['n'] == 2.5 and out['a']['new']['flag'] is True
     assert cfg['a']['footprint'] == 'x'          # a copy
+
+
+def test_joy_alive_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_JOY_ALIVE_IMPL == 'rust'
+    assert vehicle.check_joy_alive_impl(' Python ') == 'python'
+    assert vehicle.JOY_ALIVE_IMPLS['rust'] == 'aav_joy_alive_rs'
+    with pytest.raises(ValueError, match='joy_alive_impl:=c'):
+        vehicle.check_joy_alive_impl('c')
+
+
+def test_stop_sign_impl_is_python_or_rust():
+    assert vehicle.DEFAULT_STOP_SIGN_IMPL == 'rust'
+    assert vehicle.check_stop_sign_impl('PYTHON') == 'python'
+    assert vehicle.STOP_SIGN_IMPLS == {'python': 'aav_detector', 'rust': 'aav_stop_sign_rs'}
+    with pytest.raises(ValueError, match='stop_sign_impl:=c'):
+        vehicle.check_stop_sign_impl('c')

@@ -139,6 +139,8 @@ fn pedal(v: &Value) -> Option<Pedal> {
     (!v.is_null()).then(|| Pedal {
         let_off: f(&v["let_off"]),
         full: f(&v["full"]),
+        shift_hold: f(&v["shift_hold"]),
+        stop_speed: f(&v["stop_speed"]),
     })
 }
 
@@ -233,6 +235,7 @@ fn ego_steps_as_the_python() {
         let mut model = EgoModel::new(limits(&run["limits"]), body(&run["body"]));
         let mut lead = lead(&run["lead"]);
         let the_pedal = pedal(&run["pedal"]);
+        let wheels = run["wheels"].as_array();
         for (i, (step, out)) in run["steps"]
             .as_array()
             .unwrap()
@@ -249,6 +252,7 @@ fn ego_steps_as_the_python() {
                 }
             }
             model.pedal = the_pedal.filter(|_| c.is_some());
+            model.wheel_speed = wheels.and_then(|w| of(&w[i]));
             let got = model.step(c, dt, if on { lead.as_mut() } else { None });
             let what = format!("{name} step {i}");
             w.check(got.speed, f(&out[0]), &what);
@@ -269,6 +273,11 @@ fn the_pedal_and_the_body_as_the_python() {
         w.check(got, f(&c["rate"]), &c.to_string());
     }
     w.report();
+    for c in v["may_shifts"].as_array().unwrap() {
+        let p = pedal(&c["pedal"]).unwrap();
+        let got = p.may_shift(f(&c["held"]), of(&c["wheel"]));
+        assert_eq!(Some(got), c["may"].as_bool(), "may_shift {c}");
+    }
 
     let mut w = Worst::new("body limits", EXACT);
     let lim = Described {

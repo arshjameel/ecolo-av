@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-day.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car day: the runbook</h1>
-<div class="meta">82 min read · 33 sections</div></header>
+<div class="meta">83 min read · 33 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1483,6 +1483,16 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <td><code>aav_lane_finder_rs</code></td>
 <td><code>lane_finder_impl:=python</code></td>
 </tr>
+<tr>
+<td>joy_alive (the joystick's check, wherever teleop runs)</td>
+<td><code>aav_joy_alive_rs</code></td>
+<td><code>joy_alive_impl:=python</code></td>
+</tr>
+<tr>
+<td>stop_sign_watcher (the stop_signs part, next to the mux)</td>
+<td><code>aav_stop_sign_rs</code></td>
+<td><code>stop_sign_impl:=python</code></td>
+</tr>
 </tbody>
 </table></div>
 <div class="table-wrap"><table>
@@ -1498,13 +1508,13 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>1</td>
 <td>read the first lines of <code>car.launch.py</code> (<code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...</code>)</td>
-<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust</code></td>
+<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust joy_alive_impl:=rust stop_sign_impl:=rust</code></td>
 <td>a word other than <code>rust</code>: someone passed <code>:=python</code></td>
 </tr>
 <tr>
 <td>2</td>
 <td>on the Orin: <code>ps -eo args \| grep '_rs/lib/' \| grep -v grep</code></td>
-<td><code>aav_ego_rs/lib/...</code>, <code>aav_watchdog_rs/lib/...</code>, <code>aav_localization_health_rs/lib/...</code>, <code>aav_lidar_rs/lib/...</code>, <code>aav_io_mux_rs/lib/...</code>; on the Motor Pi <code>aav_legacy_rs/lib/...</code>, <code>aav_rc_rs/lib/...</code> (and <code>aav_behaviour_rs</code>, <code>aav_things_rs</code> with behaviour and things on)</td>
+<td><code>aav_ego_rs/lib/...</code>, <code>aav_watchdog_rs/lib/...</code>, <code>aav_localization_health_rs/lib/...</code>, <code>aav_lidar_rs/lib/...</code>, <code>aav_io_mux_rs/lib/...</code>, <code>aav_stop_sign_rs/lib/...</code> (and <code>aav_lane_finder_rs/lib/...</code> with the lane part); on the Motor Pi <code>aav_legacy_rs/lib/...</code>, <code>aav_rc_rs/lib/...</code> (and <code>aav_joy_alive_rs/lib/...</code> with teleop there) (and <code>aav_behaviour_rs</code>, <code>aav_things_rs</code> with behaviour and things on)</td>
 <td>a package missing: its build failed, see <code>~/aav-jazzy/build.log</code></td>
 </tr>
 <tr>

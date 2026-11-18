@@ -15,7 +15,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [amcl:=false] [voxels:=false] [voxels_impl:=python] [kerbs:=] [ego_impl:=rust]
       [lidar_impl:=rust] [things_impl:=rust] [lane_finder_impl:=rust]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
-      [io_mux_impl:=rust]
+      [io_mux_impl:=rust] [stop_sign_impl:=rust]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
       [plan_around:=true] [things:=false]
@@ -192,6 +192,9 @@ bench's argument names:
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs): the same topics and
                       answers as the Python's; the default on the car and here since
                       16 Nov (Ben: "watchdog in rust sure"; python: aav_safety's)
+  stop_sign_impl:=rust  with perception:=true, stop_sign_watcher in Rust (aav_stop_sign_rs):
+                      the same node name, topics and answers; the default since 17 Nov
+                      (python: aav_detector's)
   io_mux_impl:=rust  the sensor mux and the output mux in Rust (aav_io_mux_rs): the same
                       node names, topics and answers; the default on the car and here
                       since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
@@ -711,7 +714,9 @@ def launch_setup(context):
                     use_sim_time='true',
                     detector_impl=vehicle.check_detector_impl(arg('detector_impl'))),
             # With things named (TODO 192), the lidar gives the stop sign's distance.
-            Node(package='aav_detector', executable='stop_sign_watcher', name='stop_sign_watcher',
+            Node(package=vehicle.STOP_SIGN_IMPLS[
+                     vehicle.check_stop_sign_impl(arg('stop_sign_impl'))],
+                 executable='stop_sign_watcher', name='stop_sign_watcher',
                  parameters=[{'use_sim_time': True,
                               'lidar_distance': flag['things']
                               and arg('things_names').lower() == 'true'}]),
@@ -932,6 +937,10 @@ def generate_launch_description():
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
                               description='python or rust: which sensor watchdog runs '
                                           '(aav_safety, or aav_watchdog_rs)'),
+        DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
+                              description='python or rust: which stop_sign_watcher runs, '
+                                          'with perception:=true (aav_detector, or '
+                                          'aav_stop_sign_rs)'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
                               description='python or rust: which sensor mux and output mux '
                                           'run (aav_io_mux, or aav_io_mux_rs)'),

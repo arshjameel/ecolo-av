@@ -37,7 +37,7 @@ topics:
     type: sensor_msgs/msg/Joy
     pub: [joy_alive]
     sub: [teleop_twist_joy_node]
-    note: The joystick, only while it is really there and moving (aav_safety joy_alive, joy_alive.py) - each /drivers/joy/joy message as it came, or while stopped a released copy (every axis and button 0), so teleop_twist_joy sends one zero and nothing more; once more the moment silence trips it. It stops on SILENT (no Joy for 0.5 s - the receiver unplugged, joy_node dead) and FROZEN (the deadman held and the throttle axis off centre, every axis and button bit-identical for 2 s - a dead pad's receiver repeating itself; a stick pinned at its edge trips it too). Both latch until the deadman is seen released; at start-up nothing passes until it has been released once (WAITING). aav_teleop config/joy_alive.yaml.
+    note: The joystick, only while it is really there and moving (aav_safety joy_alive, joy_alive.py) - each /drivers/joy/joy message as it came, or while stopped a released copy (every axis and button 0), so teleop_twist_joy sends one zero and nothing more; once more the moment silence trips it. It stops on SILENT (no Joy for 0.5 s - the receiver unplugged, joy_node dead) and FROZEN (the deadman held and the throttle axis off centre, every axis and button bit-identical for 2 s - a dead pad's receiver repeating itself; a stick pinned at its edge trips it too). Both latch until the deadman is seen released; at start-up nothing passes until it has been released once (WAITING). aav_teleop config/joy_alive.yaml. Since 17 Nov the Rust twin publishes it by default (aav_joy_alive_rs, the same node name and answers); joy_alive_impl:=python runs aav_safety's.
   /drivers/joy/alive:
     type: std_msgs/msg/String
     pub: [joy_alive]
@@ -621,7 +621,7 @@ topics:
     pub: [stop_sign_watcher]
     sub: [twist_mux, hud, language_drive, behaviour]
     live: [car]
-    note: true while the car stops for a stop sign. A twist_mux lock at priority 30 - it holds navigation and the AI slot, never a person; never expires on silence. On the car, the stop_signs part - one watcher, on the machine with the mux.
+    note: true while the car stops for a stop sign. A twist_mux lock at priority 30 - it holds navigation and the AI slot, never a person; never expires on silence. On the car, the stop_signs part - one watcher, on the machine with the mux. Since 17 Nov the Rust twin publishes it by default (aav_stop_sign_rs, the same node name and answers); stop_sign_impl:=python runs aav_detector's.
   /perception/stop_sign/distance:
     type: geometry_msgs/msg/PointStamped
     pub: [stop_sign_watcher]

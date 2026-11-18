@@ -59,7 +59,7 @@ Parameters. From `config/ego.yaml`:
 | `lag_lead` | `auto` | live. The lag lead: `auto` in a simulator only (off on the car, SAFE); `on` the car too, once tests 3.10-4.5 measured the lags; `off` never. Never while a lag-aware driver drives |
 | `lag_lead_filter`, `lag_lead_max_speed`, `lag_lead_max_steer` | 0.1 s, 0.3 m/s, 0.1 rad | the request's filter; the most the lead adds or takes |
 | `lag_aware_drivers` | scripted, point, nav, ai | whose `/drivers/<d>/lag_aware` ego watches |
-| `pedal_drivers`, `pedal_let_off`, `pedal_full` | joy, rc, keyboard; 1.0 m/s²; 1.0 m/s | the pedal (`pedal.py`): while a person drives, the stick is an accelerator and a brake. Let off slows (let go: `pedal_let_off`), pulled back brakes by how far (all the way: `max_deceleration`), then reverses at a standstill; `pedal_full` is what a full stick asks. Off during an e-stop (`/safety/estop`), and for a stale command or a turn's cap. `[]`: off |
+| `pedal_drivers`, `pedal_let_off`, `pedal_full`, `pedal_shift_hold`, `pedal_stop_speed` | joy, rc, keyboard; 1.0 m/s²; 1.0 m/s; 1.0 s; 0.05 m/s | the pedal (`pedal.py`): while a person drives, the stick is an accelerator and a brake. Let off slows (let go: `pedal_let_off`), pulled back brakes by how far (all the way: `max_deceleration`), then reverses only after `pedal_shift_hold` s held at 0, the brake on (Ben, 17 Nov), and while `/vehicle/odom` is fresh (0.5 s), once its speed is under `pedal_stop_speed`; `pedal_full` is what a full stick asks. 0 s: no hold. Off during an e-stop (`/safety/estop`), and for a stale command or a turn's cap. `[]`: off |
 | `road_ahead`, `road_ahead_drivers`, `road_pose_timeout` | false, nav and point, 1.0 s | the road ahead's limit (`road_limit.py`): on or off, whose commands (each also in `lag_aware_drivers`), how old the pose may be |
 | `trace_horizon`, `trace_rate_hz`, `trace_speed_loop` | 2.0 s, 10 Hz, `default` | the trace; 0 Hz: none |
 | `vehicle_yaml` | `''` | the car model's numbers (`''`: `aav_description`'s) |
@@ -75,7 +75,7 @@ Modules:
 | `ackermann.py` | `Limits`, `EgoModel.step(cmd, dt)` -> (speed, steering, accel); `steering_angle`, `turn_rate`, `slew_speed`, `ease_speed`, `curvature`; `LIVE_LIMITS`, `live_change()` |
 | `dynamics.py` | `Body`; `speed_up_limit`, `braking_limit`, `lateral_limit`, `curve_speed`, `stopping_distance`, `energy`, `describe()` (start-up log lines) |
 | `vehicle_model.py` | the car as a linear model (transfer functions, state space, margins), for tuning and the report: `VehicleModel`, `from_vehicle_yaml()`, `summary()`. Never drives the car. Used by `tools/vehicle_model.py` (`pixi run python3 tools/vehicle_model.py`, `docs/vehicle-model.md`) |
-| `pedal.py` | `Pedal`, `slow_rate(pedal, current, target, max_deceleration)`: how hard a person's let-off or pull-back slows |
+| `pedal.py` | `Pedal`, `slow_rate(pedal, current, target, max_deceleration)`: how hard a person's let-off or pull-back slows; `may_shift(pedal, held, wheel_speed)`: may the car change direction yet |
 | `lag_lead.py` | `LagLead` (the lead), `LeadTimes`, `LeadLimits`, `lead_wanted(mode, sim, aware)`, `LagAwareWatch` (whose command is it?), `command_key` |
 | `road_limit.py` | the road ahead's limit: `allowed(strip, pose, age, timeout, curve, base)`, `cap(cmd, limit)` (keeps the curvature) |
 | `trace_ahead.py` | `Twin` (ego's copy of the car), `trace(...)` -> poses in `base_link`, `ego_commands` |
@@ -100,6 +100,7 @@ Modules:
   more than 0.5 s off (check chrony).
 - A change of direction passes through a stop.
 - The pedal grades only a person's own slowing: a stop, an e-stop and a turn's cap always brake at `max_deceleration`.
+- With the pedal, a change of direction waits at a standstill: `pedal_shift_hold` s at 0, and a fresh wheel speed (if any) under `pedal_stop_speed`. Going the same way again, or from rest after start-up, does not wait.
 - Jerk limits only speeding up. Braking is never softened, and never weaker for a heavy
   car; a turn slows the car rather than steering less.
 - Turn speed stays under `max_lateral_accel` and under half of what slides or tips the car.
@@ -129,7 +130,7 @@ it; `test_ego_launch.py` skips without ROS). `pixi run test` runs everything.
 | `test_dynamics.py` | the body's limits |
 | `test_vehicle_model.py` | the linear model (needs numpy, scipy) |
 | `test_ego_launch.py` | the `max_speed` and `sim_max_speed` caps; `look_ahead` on by default, and off |
-| `test_pedal.py` | the pedal: let off more slows more, back harder brakes harder, full back stops then reverses, let go rolls to a stop, a stale command still brakes fully |
+| `test_pedal.py` | the pedal: let off more slows more, back harder brakes harder, full back stops, holds `shift_hold`, then reverses (and backwards then forward); a turning wheel blocks the shift; the same way or from rest goes at once; let go rolls to a stop; a stale command and the e-stop still brake fully at once |
 | `test_lag_lead.py` | the lead: when it runs, its limits, ego's limits after it, it helps on the car model |
 | `test_road_limit.py` | the road ahead's limit: no road or a stale pose allow 0; it falls to 0 at the end; the curvature kept; reverse untouched |
 | `test_trace_ahead.py` | the trace and the twin |

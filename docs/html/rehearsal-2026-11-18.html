@@ -7,7 +7,7 @@
 <!-- Generated from docs/rehearsal-2026-11-18.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Rehearsal for 18 Nov: the Motor Pi alone, on a Mac</h1>
-<div class="meta">11 min read · 6 sections</div></header>
+<div class="meta">12 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -267,7 +267,7 @@ iBUS frames (pretend RC) ──► QEMU UART2      QEMU UART1 ◄──► the R
 <td>Joystick: pull back</td>
 <td>ego slows to 0, hold brake <strong>80 ms</strong>, then reverses</td>
 <td>the same</td>
-<td>PASS, but see open problem 1</td>
+<td>PASS; open problem 1, <strong>fixed</strong> after: now holds 1.0 s</td>
 </tr>
 <tr>
 <td>11</td>
@@ -433,9 +433,9 @@ Car day's gate is 0.2 s.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td>Pull the stick back while moving: ego reaches 0 by its <em>model</em>, holds the brake 80 ms, then reverses</td>
-<td>the Motor Pi alone has no wheel speed, so the direction can flip while the rear wheels still turn (the DAC is 0 then)</td>
-<td>on stands, watch 3.2b; a dwell before reversing, or wait for a driven-wheel speed (TODO 49b)</td>
+<td><strong>Fixed (17 Nov).</strong> Pull the stick back while moving: ego reached 0 by its <em>model</em>, held the brake 80 ms, then reversed</td>
+<td>the Motor Pi alone has no wheel speed, so the direction could flip while the rear wheels still turn (the DAC is 0 then)</td>
+<td>ego's pedal now holds 0, the brake on, for <code>pedal_shift_hold</code> (1.0 s, <code>ego.yaml</code>) before the other way; with a fresh <code>/vehicle/odom</code>, also until it reads under <code>pedal_stop_speed</code> (0.05 m/s). Python and Rust, shared vectors. On stands: time the wheels' coast-down in 3.2b and set the hold above it. Not re-rehearsed in QEMU</td>
 </tr>
 <tr>
 <td>2</td>
@@ -590,6 +590,14 @@ Car day's gate is 0.2 s.</p>
 <tr>
 <td>The RC driver</td>
 <td><code>rc_impl:=python</code></td>
+</tr>
+<tr>
+<td>The joystick's check (joy_alive; Rust since after the rehearsal)</td>
+<td><code>joy_alive_impl:=python</code></td>
+</tr>
+<tr>
+<td>The stop-sign watcher (Rust since after the rehearsal)</td>
+<td><code>stop_sign_impl:=python</code></td>
 </tr>
 </tbody>
 </table></div>

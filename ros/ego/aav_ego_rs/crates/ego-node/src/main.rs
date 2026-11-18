@@ -5,6 +5,7 @@
 //! Node `ego`
 //! Subscribes  control/cmd_vel   geometry_msgs/TwistStamped (or Twist, use_stamped false)
 //!             vehicle/odom      nav_msgs/Odometry: the measured speed, for the trace's twin
+//!                               and the pedal's change of direction (fresh: 0.5 s)
 //!             drivers/<d>/lag_aware  std_msgs/Bool, latched (reliable, transient local,
 //!                               depth 1), and drivers/<d>/cmd_vel (TwistStamped), for each
 //!                               d in lag_aware_drivers: is a lag-aware driver driving?

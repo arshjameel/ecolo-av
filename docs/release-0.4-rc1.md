@@ -72,6 +72,8 @@ The fall-backs, one per node (the others stay Rust):
 | legacy_uart_bridge (the ESP32's UART, the Motor Pi) | `legacy_impl:=python` |
 | rc_driver (RC via ROS) | `rc_impl:=python` |
 | lane_finder (lane keeping, the lane pose) | `lane_finder_impl:=python` |
+| joy_alive (the joystick's check, between joy_node and teleop) | `joy_alive_impl:=python` |
+| stop_sign_watcher (twist_mux's stop-sign lock) | `stop_sign_impl:=python` |
 
 ## Untested on the car (everything since 13 Nov)
 

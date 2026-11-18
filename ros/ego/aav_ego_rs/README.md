@@ -71,7 +71,7 @@ name (`/ego:`, `/look_ahead:`): both have a `rate_hz`, and a plain dict would re
 |---|---|---|
 | `ackermann` | `Limits`, `EgoModel::step` → `Output`, `steering_angle`, `slew_speed`, `ease_speed`, `curvature` | `ackermann.py` |
 | `dynamics` | `Body` (limits, curve speed, stopping distance), `describe` → `LogLine`s | `dynamics.py` |
-| `pedal` | `Pedal::slow_rate` | `pedal.py` |
+| `pedal` | `Pedal::slow_rate`, `Pedal::may_shift` | `pedal.py` |
 | `lag_lead` | `LeadMode` (auto, on, off), `LagLead`, `LeadTimes`, `LeadLimits`, `lead_wanted`, `LagAwareWatch`, `CommandKey` | `lag_lead.py` |
 | `stop_law` | `StopCurve` (`from_car_model`, `from_numbers`, `cap`, `distance`), `CurveError` | `aav_description/stop_law.py` |
 | `road_ahead` | `Strip`, `along_of`, `room_at`, `limit_at`; `allowed`, `cap` | `road_ahead.py` (readers), `road_limit.py` |
@@ -101,8 +101,8 @@ name (`/ego:`, `/look_ahead:`): both have a `rate_hz`, and a plain dict would re
 
 | Part | Numbers | Largest difference |
 |---|---|---|
-| ego's step: speed, steering, accel (7 runs: plain, body and jerk, loaded, two pedals, the lead, unfiltered) | 6,900 | 0 |
-| the pedal's slowing | 200 | 0 |
+| ego's step: speed, steering, accel (8 runs: plain, body and jerk, loaded, three pedals (one with wheel speeds), the lead, unfiltered) | 8,100 | 0 |
+| the pedal's slowing; may it shift | 200; 100 | 0; the same |
 | the body's limits, and its log lines (as text) | 64 | 0 |
 | the stopping law (3 cars × 4 speed loops × 3 limit sets) | 474 | 0 |
 | the road ahead: along, room, limits, allowed, the cap, look_ahead's `road` | 940 | 0 |

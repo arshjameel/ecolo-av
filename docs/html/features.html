@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">111 min read · 15 sections</div></header>
+<div class="meta">113 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -516,8 +516,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="car-day.html#a9b-the-joystick-on-stands">The joystick-alive check</a> (<code>aav_safety</code> <code>joy_alive</code>, TODO 74a)</td>
-<td>Ben, 2 Nov: "joystick control so we can move the car talking directly from the pi to the esp32". <code>joy_node</code> repeats the last state while the receiver is in, so a pad turned off or out of range could keep driving: now a silent joystick (0.5 s) or one whose values freeze while driving (2 s) stops the car until the trigger is released</td>
+<td><a href="car-day.html#a9b-the-joystick-on-stands">The joystick-alive check</a> (<code>aav_safety</code> <code>joy_alive</code>, TODO 74a; in Rust, <a href="../../ros/safety/aav_joy_alive_rs/README.md"><code>aav_joy_alive_rs</code></a>, the default since 17 Nov)</td>
+<td>Ben, 2 Nov: "joystick control so we can move the car talking directly from the pi to the esp32". <code>joy_node</code> repeats the last state while the receiver is in, so a pad turned off or out of range could keep driving: now a silent joystick (0.5 s) or one whose values freeze while driving (2 s) stops the car until the trigger is released. Ben, 17 Nov: the Motor Pi alone's joystick path in Rust by default ("I don't think we want to do this again later"): the same answers as the Python (shared vectors), a chain test with each through teleop, twist_mux and ego; <code>joy_alive_impl:=python</code> falls back</td>
 <td>Ben</td>
 <td>2026-11-02</td>
 <td>sim</td>
@@ -835,8 +835,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td>The pedal (<code>aav_ego</code> <code>pedal.py</code>; <code>pedal_drivers</code>, <code>pedal_let_off</code>, <code>pedal_full</code> in <code>ego.yaml</code>)</td>
-<td>Ben, 15 Nov: on the test drive the driver had to switch between speeding up, braking and reversing. With the pedal, a person's stick is an accelerator and a brake: let off part way slows gently, let go slows at 1.0 m/s² (Ben's choice, like engine braking), pulled back brakes by how far (full back: 2.0 m/s²), then reverses at a standstill. People only (joy, rc, keyboard): a computer driver plans its own slowing (the stop law) and needs its speeds followed at once; the AI can join as a challenger in the sim. The e-stop, a stale command and a turn's cap still brake fully</td>
+<td>The pedal (<code>aav_ego</code> <code>pedal.py</code>, <code>aav_ego_rs</code> <code>pedal.rs</code>; <code>pedal_drivers</code>, <code>pedal_let_off</code>, <code>pedal_full</code>, <code>pedal_shift_hold</code>, <code>pedal_stop_speed</code> in <code>ego.yaml</code>)</td>
+<td>Ben, 15 Nov: on the test drive the driver had to switch between speeding up, braking and reversing. With the pedal, a person's stick is an accelerator and a brake: let off part way slows gently, let go slows at 1.0 m/s² (Ben's choice, like engine braking), pulled back brakes by how far (full back: 2.0 m/s²), then reverses at a standstill. Since 17 Nov a change of direction waits there, the brake on: 1.0 s (<code>pedal_shift_hold</code>, a guess for stands), and a fresh wheel speed, when there is one, under 0.05 m/s (Ben: "come to a complete stop and shift into drive or reverse"; the 18 Nov rehearsal saw ego reverse 80 ms after its model reached 0, while the Motor Pi alone has no wheel speed). People only (joy, rc, keyboard): a computer driver plans its own slowing (the stop law) and needs its speeds followed at once; the AI can join as a challenger in the sim. The e-stop, a stale command and a turn's cap still brake fully</td>
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>built</td>
@@ -964,6 +964,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tr>
 <td><a href="../../ros/io_mux/aav_io_mux_rs/README.md">The sensor mux and output mux in Rust</a> (<code>aav_io_mux_rs</code>, <code>io_mux_impl:=rust</code>), the default</td>
 <td>Ben, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later": the Motor Pi alone runs the safety path that makes the ESP32's heartbeat, so it goes to Rust before the Rust ESP32 is flashed. A safety lock, so it answers exactly as the Python: 6,500 steps of shared vectors (every SourceCheck and log line, every state line, each command passed or held with its heartbeat counter, each clear; the latches, NOT SIM / WAIT, the 30 s start-up grace, the screens refused for the car, each limit exactly). sim-check's road world passes with both; 4-5 % of a core each against 17-22 % for the Python. The default on the car and in the simulator; <code>io_mux_impl:=python</code> falls back until a car day proves it</td>
+<td>Ben</td>
+<td>2026-11-17</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_stop_sign_rs/README.md"><code>joy_alive</code> and <code>stop_sign_watcher</code> in Rust</a> (<code>aav_joy_alive_rs</code>, <code>joy_alive_impl:=rust</code>; <code>aav_stop_sign_rs</code>, <code>stop_sign_impl:=rust</code>), the defaults</td>
+<td>Ben, 17 Nov: the Motor Pi alone's Python nodes become Rust by default ("I don't think we want to do this again later"): the joystick's check and the stop-sign lock. Each gives the Python's answers on shared vectors (6,982 joystick events; 2,400 watcher steps, sign points, lidar matches); a chain test drives ego through each joy_alive, a process test locks and lets go with each watcher. <code>*_impl:=python</code> falls back</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>

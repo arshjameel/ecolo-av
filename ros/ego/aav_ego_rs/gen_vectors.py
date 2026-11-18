@@ -34,7 +34,7 @@ from aav_ego import dynamics, look_ahead as la, road_limit, stop_ahead, trace_ah
 from aav_ego.ackermann import EgoModel, Limits  # noqa: E402
 from aav_ego.dynamics import Body  # noqa: E402
 from aav_ego.lag_lead import LagLead, LeadLimits, LeadTimes  # noqa: E402
-from aav_ego.pedal import Pedal, slow_rate  # noqa: E402
+from aav_ego.pedal import may_shift, Pedal, slow_rate  # noqa: E402
 
 OUT = HERE / 'crates' / 'ego-core' / 'tests' / 'vectors.json'
 LAGGY = cm.ActuatorConfig(throttle_dead_time=0.06, brake_dead_time=0.04,
@@ -82,8 +82,12 @@ def ego_runs():
          'pedal': asdict(Pedal(let_off=1.0, full=1.0)), 'lead': None,
          'steps': commands(rng, 400, 20)},
         {'name': 'pedal soft', 'limits': asdict(Limits()), 'body': None,
-         'pedal': asdict(Pedal(let_off=0.4, full=0.8)), 'lead': None,
+         'pedal': asdict(Pedal(let_off=0.4, full=0.8, shift_hold=0.3)), 'lead': None,
          'steps': commands(rng, 300, 15)},
+        {'name': 'pedal wheels', 'limits': asdict(Limits()), 'body': None,
+         'pedal': asdict(Pedal(shift_hold=0.2, stop_speed=0.1)), 'lead': None,
+         'steps': commands(rng, 400, 25),
+         'wheels': [rng.choice([None, None, 0.0, 0.05, -0.08, 0.3]) for _ in range(400)]},
         {'name': 'lead', 'limits': asdict(Limits(max_jerk=2.0)), 'body': asdict(Body()),
          'pedal': None, 'lead': {'times': asdict(times), 'limits': asdict(LeadLimits())},
          'steps': commands(rng, 400, 35)},
@@ -99,15 +103,29 @@ def ego_runs():
         lead = (LagLead(LeadTimes(**run['lead']['times']), LeadLimits(**run['lead']['limits']))
                 if run['lead'] else None)
         outs = []
-        for cmd, dt in run['steps']:
+        wheels = run.get('wheels') or [None] * len(run['steps'])
+        for (cmd, dt), wheel in zip(run['steps'], wheels):
             c = tuple(cmd) if cmd is not None else None
             on = lead is not None and c is not None
             if lead is not None and not on:
                 lead.reset()
             model.pedal = Pedal(**run['pedal']) if run['pedal'] and c is not None else None
+            model.wheel_speed = wheel
             outs.append(list(model.step(c, dt, lead.step if on else None)))
         run['outs'] = outs
     return runs
+
+
+def may_shifts():
+    rng = random.Random(5)
+    out = []
+    for _ in range(100):
+        p = Pedal(shift_hold=rng.choice([0.0, 0.5, 1.0]), stop_speed=rng.choice([0.05, 0.2]))
+        held = rng.choice([0.0, 0.5, 1.0, rng.uniform(0.0, 2.0)])
+        wheel = rng.choice([None, 0.0, rng.uniform(-0.3, 0.3)])
+        out.append({'pedal': asdict(p), 'held': held, 'wheel': wheel,
+                    'may': may_shift(p, held, wheel)})
+    return out
 
 
 def slow_rates():
@@ -344,7 +362,8 @@ def looks():
 
 
 def main():
-    vectors = {'ego_runs': ego_runs(), 'slow_rates': slow_rates(), 'bodies': bodies(),
+    vectors = {'ego_runs': ego_runs(), 'slow_rates': slow_rates(),
+               'may_shifts': may_shifts(), 'bodies': bodies(),
                'stop_curves': stop_curves(), 'roads': roads(), 'stop_points': stop_points(),
                'traces': traces(), 'look_ahead': looks(),
                'cfgs': {k: asdict(v) for k, v in CFGS.items()}}

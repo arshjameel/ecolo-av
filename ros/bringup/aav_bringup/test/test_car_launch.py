@@ -235,7 +235,7 @@ def test_bad_values_stop_the_launch():
 def test_one_stop_sign_watcher_next_to_the_mux():
     for machine in MACHINES:
         parts = CAR.load_machine(machine)['parts']
-        watcher = ('aav_detector', 'stop_sign_watcher') in nodes(started(CAR, machine=machine))
+        watcher = ('aav_stop_sign_rs', 'stop_sign_watcher') in nodes(started(CAR, machine=machine))
         assert watcher == bool(parts.get('mux')), machine
 
 
@@ -293,6 +293,31 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
         started(CAR, machine='motor_pi', legacy_impl='c')
     with pytest.raises(ValueError, match='watchdog_impl'):
         started(CAR, machine='all', watchdog_impl='c')
+
+
+def test_joy_alive_is_rust_by_default_and_python_one_switch_away():
+    # Ben, 17 Nov: the Motor Pi alone's joystick path in Rust too (joy_alive_impl).
+    for machine in ('motor_pi_alone', 'all'):
+        assert included(started(CAR, machine=machine))['teleop.launch.py'][
+            'joy_alive_impl'] == 'rust', machine
+    assert included(started(CAR, machine='motor_pi_alone', joy_alive_impl='python'))[
+        'teleop.launch.py']['joy_alive_impl'] == 'python'
+    with pytest.raises(ValueError, match='joy_alive_impl'):
+        started(CAR, machine='motor_pi_alone', joy_alive_impl='c')
+
+
+def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
+    # Ben, 17 Nov: the Motor Pi alone's stop_signs part in Rust too (stop_sign_impl).
+    def watcher(**args):
+        actions = started(CAR, machine='motor_pi_alone', **args)
+        found = [package for package, exe in nodes(actions) if exe == 'stop_sign_watcher']
+        assert len(found) == 1, args
+        return found[0]
+
+    assert watcher() == 'aav_stop_sign_rs'
+    assert watcher(stop_sign_impl='python') == 'aav_detector'
+    with pytest.raises(ValueError, match='stop_sign_impl'):
+        started(CAR, machine='motor_pi_alone', stop_sign_impl='c')
 
 
 def test_the_output_mux_runs_next_to_ego_for_the_real_car():
@@ -500,7 +525,7 @@ def test_the_orin_streams_both_front_cameras_with_rfdetr_inside(orin_kit):
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     assert inputs[-2:] == ['front_left_stream', 'front_right_stream']
     # The stop-sign watcher reads the same /perception/detections.
-    assert ('aav_detector', 'stop_sign_watcher') in nodes(started(CAR, machine='orin'))
+    assert ('aav_stop_sign_rs', 'stop_sign_watcher') in nodes(started(CAR, machine='orin'))
 
 
 def test_the_orin_today_skips_the_streams_and_says_why(monkeypatch, tmp_path):
