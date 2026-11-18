@@ -10,7 +10,7 @@ only the backend and the data source change.
 | Package | What it is |
 |---|---|
 | [aav_bringup](./aav_bringup/README.md) | the launch profiles (below), `stack.launch.py target:=`, Foxglove, per-computer parts for the car |
-| [aav_description](./aav_description/README.md) | **`config/vehicle.yaml`, the only place car measurements live**; the URDF; `vehicle.py`, which works out Nav2, ego and spine parameters from it |
+| [aav_description](./aav_description/README.md) | **`config/vehicle.yaml`, the only place car measurements live**; the URDF; `vehicle.py`, which works out navigation, ego and spine parameters from it |
 | [aav_run_info](./aav_run_info/README.md) | `run_info`: which algorithms the run uses (planner, path follower, obstacles, localizers), on `/system/algorithms`, for the cockpit |
 
 | Profile | Command | Backend | Source |

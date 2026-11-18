@@ -17,9 +17,9 @@ drivers; they never move the car, and they never hold back a person on a live jo
 
 ## Invariants
 
-- The watchdog lock (priority 30) holds Nav2, the point driver and the AI slot only, never people or tests.
+- The watchdog lock (priority 30) holds navigation, the point driver and the AI slot only, never people or tests.
 - Fail-safe: 1 s without a watchdog lock message counts as locked.
-- The stop hold's lock (priority 21) holds Nav2 and the AI slot only; its silence locks nothing.
+- The stop hold's lock (priority 21) holds navigation and the AI slot only; its silence locks nothing.
 - JUMP, DISAGREE, STUCK, OVERSPEED and LOST latch until a person clears them (`/safety/sensor_watchdog/clear`).
 - The geofence's lock (priority 51) holds every program, never people or the actuator
   tests; 1 s of silence locks too. OUTSIDE and JUMP latch until a person clears them.

@@ -165,7 +165,7 @@ Change one only with the team.
 - `protocol` and `ros/can_bridge/aav_spine/aav_spine/can_codec.py` put the same bytes
   on the bus: `tests/vectors.rs` is generated from the Python codec. After any change
   to `aav.dbc`, follow the steps in the root `CLAUDE.md`.
-- `speed_loop` and Gazebo's Python port agree on `../../speed_loop_vectors.txt`.
+- `speed_loop` and the simulator's Python port (`aav_sim_models`) agree on `../../speed_loop_vectors.txt`.
 
 ## Side Effects
 

@@ -41,7 +41,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `lint.sh` | ament_flake8 and ament_pep257 on our Python | `lint` |
 | `check_graph.py` | the running graph against `docs/interfaces.yaml`; then `/localization/health`'s line (warn only) | `check <profile>` |
 | `bench_check.py` | starts bench mode, tests the whole graph: contract, drive, e-stops | `bench-check` |
-| `sim_check.py` | Ravensim's road world headless, the whole graph, a drive (`--voxels`: Nav2 on the lidar's cubes) | `sim-check` |
+| `sim_check.py` | Ravensim's road world headless, the whole graph, a drive (`--voxels`: the costmap on the lidar's cubes) | `sim-check` |
 | `drop_in_check.py`, `drop_in.py` | is what's running a true drop-in: each stream's rate and frame against the contract's `drop_in` rules (`drop_in.py`: the logic, no ROS) | `drop-in` |
 | `layout_check.py` | is every topic in `foxglove/` served by a bridge? | - |
 | `ci_annotate.py` | a failed test log into GitHub annotations | (CI) |
@@ -94,19 +94,19 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
 | `software_gl.sh` | Mesa's software renderer with no GPU: Vulkan (lavapipe) for Ravensim's cameras, which then run in lockstep (it exports `AAV_SOFTWARE_GL=1`); `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
-| `controller_compare.py` | Regulated Pure Pursuit against MPPI, and the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
+| `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
 | `diffusion.sh` | the diffusion planner trial's family: `data`, `train`, `score` (`models/diffusion/`) | `diffusion <data, train, score>` |
-| `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: map_server and planner_server only, no simulator | `diffusion data` |
+| `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: Nav2's map_server and planner_server, no simulator. **Broken since Nav2 went (17 Nov)**: those servers are no longer installed (TODO 242) | `diffusion data` |
 | `lattice_primitives.py` | the State Lattice planner's primitives for our car, by Nav2's generator (`--check`: still right for `vehicle.yaml`?) | - (needs `pixi run get vendor`) |
 | `lattice_smooth.py` | the lattice's smooth moves (`lattice_moves:=smooth`, `smooth_fast`): curvature no faster than the steering turns; our own generator, no ROS (`--check`) | - |
 | `heading_check.py` | the global EKF's heading against Ravensim's truth | - (ros.sh --local) |
-| `campus_world.py` | Carleton from OpenStreetMap: a Ravensim world (SDF), its RavenTiles, one Nav2 map of the whole campus, and NDT's guessed map (tested without ROS) | `campus` |
+| `campus_world.py` | Carleton from OpenStreetMap: a Ravensim world (SDF), its RavenTiles, one map of the whole campus (Nav2's PGM format), and NDT's guessed map (tested without ROS) | `campus` |
 | `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag (its maths without ROS) | `ndt-map` |
 | `timing_test.py` | every topic's gaps and late messages, parked and driving | `measure timing` |
 | `stream_check.py` | the camera stream end to end, without the car | `measure stream` |
 | `sim_frames.py` | camera pictures of the sim's stop sign, for the detectors | - |
 | `make_stop_sign.py` | the road world's stop-sign mesh and picture | - |
-| `make_map.py` | a Nav2 map (PGM + YAML) from a short spec | - |
+| `make_map.py` | a map (PGM + YAML, Nav2's format) from a short spec | - |
 
 ### Network
 

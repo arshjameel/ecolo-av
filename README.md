@@ -259,7 +259,7 @@ The rules every part keeps. The full list is in [CLAUDE.md](CLAUDE.md).
 Everything builds on Jazzy, on Linux and on Macs. The turtle, Ravensim (our own simulator;
 Gazebo until 16 Nov) and bench mode (the whole car's software, with stand-ins for the hardware) all run.
 Release 0.2 was 3 Nov; 0.3 (Ravensim, our own simulator, and our own costmap, planner, navigator
-and smoother beside Nav2) merged on 9 Nov. The car drove on 13 Nov with only the
+and smoother beside Nav2; ours since Nav2 went on 17 Nov) merged on 9 Nov. The car drove on 13 Nov with only the
 localization update installed: the full suite isn't on the car yet. What works, what's
 untested and what's next: [docs/status.md](docs/status.md).
 
