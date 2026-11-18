@@ -11,7 +11,8 @@ to ego. A person always outranks the computer.
 | Package | Driver | Topic | Priority |
 |---|---|---|---|
 | [aav_teleop](./aav_teleop/README.md) | joystick (stock joy + teleop_twist_joy), keyboard, e-stop button | `/drivers/joy/cmd_vel`, `/drivers/keyboard/cmd_vel` | 100, 90 |
-| [aav_rc](./aav_rc/README.md) | the RC transmitter, through ROS | `/drivers/rc/cmd_vel` | 95 |
+| [aav_rc](./aav_rc/README.md) | the RC transmitter, through ROS (Python: the fall-back, `rc_impl:=python`) | `/drivers/rc/cmd_vel` | 95 |
+| [aav_rc_rs](./aav_rc_rs/README.md) | the same `rc_driver` in Rust, the default since 17 Nov | `/drivers/rc/cmd_vel` | 95 |
 | [aav_actuator_tests](./aav_actuator_tests/README.md) | stage-3 and stage-4 actuator tests | `/drivers/tests/cmd_vel` | 60 |
 | [aav_scripted](./aav_scripted/README.md) | `/scripted_drive`: one speed profile | `/drivers/scripted/cmd_vel` | 50 |
 | [aav_drive_to_point](./aav_drive_to_point/README.md) | `/drive_to_point`: drive to one GPS or map point and stop | `/drivers/point/cmd_vel` | 25 |

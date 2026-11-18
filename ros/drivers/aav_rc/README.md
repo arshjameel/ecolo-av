@@ -25,7 +25,7 @@ The mode switch (CH6; the three positions are a proposal, `docs/decisions.md`):
 
 | Item | What |
 |---|---|
-| Node `rc_driver` | `ros2 launch aav_rc rc.launch.py [max_speed:=1.0] [use_sim_time:=false]` |
+| Node `rc_driver` | `ros2 launch aav_rc rc.launch.py [max_speed:=1.0] [use_sim_time:=false] [rc_impl:=rust]`: the Rust twin (`aav_rc_rs`) by default since 17 Nov; `rc_impl:=python` runs this package's |
 | Subscribes | `/vehicle/rc` (`aav_interfaces/RcSticks`): mode switch, throttle and steering sticks (-1 to 1), gear on brake |
 | Publishes | `/drivers/rc/cmd_vel` (`geometry_msgs/TwistStamped`), frame `base_link` |
 

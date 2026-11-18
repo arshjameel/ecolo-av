@@ -59,7 +59,8 @@ docs/league-results-2026-11-16.md).
     pixi run sim-check --esp32 pi|open     (every run with today's car in the loop instead,
                                             esp32:=true: the car's legacy_uart_bridge, its
                                             speed_loop.mode pi or open, and sim_esp32,
-                                            the 2025-26 C++ firmware standing in)
+                                            the 2025-26 C++ firmware standing in;
+                                            the Rust bridge, --python-legacy the Python)
     pixi run sim-check --speed-steps       (the speed loop's steps, TODO 27: reverse 0.5,
                                             then 1.0 and 2.0 m/s, in the empty world: one
                                             more run, 3 more minutes; --speed-steps-only
@@ -3266,6 +3267,9 @@ def main():
             print('--esp32 and --spine are two backends: pick one', file=sys.stderr)
             return 2
         EVERY_RUN.extend(['esp32:=true', f'esp32_loop:={args[at + 1]}'])
+        # --python-legacy: aav_legacy's Python legacy_uart_bridge, not the Rust one.
+        if '--python-legacy' in args:
+            EVERY_RUN.append('legacy_impl:=python')
     global SIMULATOR
     from aav_sim_models import worlds
     SIMULATOR = worlds.DEFAULT_SIMULATOR

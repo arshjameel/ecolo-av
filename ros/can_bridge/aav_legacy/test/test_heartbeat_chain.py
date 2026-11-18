@@ -8,6 +8,10 @@ pseudo-terminal this test reads, byte for byte what the ESP32 would get.
   all REAL, ego at 50 Hz       -> the counter moves in the frames, as the mux sent it
   ego stops                    -> frames still come at 50 Hz: stops, the counter frozen
   Gazebo announces SIM as well -> the gate shuts: not one heartbeat, the counter never moves
+
+Each test runs twice (conftest's impl): the Python bridge and muxes in this process, and the
+Rust ones (aav_legacy_rs, aav_io_mux_rs: the car's defaults since 17 Nov) as processes:
+the Rust-to-Rust heartbeat chain.
 """
 
 import fcntl
@@ -15,6 +19,7 @@ import os
 import random
 import time
 
+from conftest import ros_nodes, RustNode
 import pytest
 
 try:
@@ -55,7 +60,7 @@ def frames_in(data):
 class Run:
     """The muxes, the bridge on a pseudo-terminal, and a test node, spun together."""
 
-    def __init__(self, gazebo=False):
+    def __init__(self, gazebo=False, impl='python'):
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
         self.master, slave = os.openpty()
         port = os.ttyname(slave)
@@ -66,9 +71,15 @@ class Run:
                 '-p', 'output_mux:target:=car', '-p', 'output_mux:settle:=0.5',
                 '-p', f'legacy_uart_bridge:port:={port}',
                 '-p', 'legacy_uart_bridge:frame_version:=2']
-        rclpy.init(args=args, domain_id=random.randint(150, 230))
+        domain = random.randint(150, 230)
+        rclpy.init(args=args, domain_id=domain)
         self.executor = SingleThreadedExecutor()
-        self.nodes = [SensorMux(), OutputMux(), LegacyUartBridge()]
+        if impl == 'rust':
+            self.nodes = [RustNode('aav_io_mux_rs', 'sensor_mux', args, domain),
+                          RustNode('aav_io_mux_rs', 'output_mux', args, domain),
+                          RustNode('aav_legacy_rs', 'legacy_uart_bridge', args, domain)]
+        else:
+            self.nodes = [SensorMux(), OutputMux(), LegacyUartBridge()]
         self.test = rclpy.create_node('heartbeat_test')
         self.nodes.append(self.test)
         self.heartbeats = []
@@ -86,7 +97,7 @@ class Run:
             pub.publish(DataSource(announcer='sim_adapter', sensors=[SensorSource(
                 name='camera_front_left', topic='/sensors/camera/front_left/image_raw',
                 source=SensorSource.SIM)]))
-        for n in self.nodes:
+        for n in ros_nodes(self.nodes):
             self.executor.add_node(n)
 
     def on_state(self, msg):
@@ -131,8 +142,8 @@ class Run:
 
 
 @pytest.fixture
-def run(request):
-    r = Run(**getattr(request, 'param', {}))
+def run(request, impl):
+    r = Run(**getattr(request, 'param', {}), impl=impl)
     yield r
     r.close()
 

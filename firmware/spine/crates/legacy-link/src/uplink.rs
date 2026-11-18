@@ -43,7 +43,9 @@ pub enum DriveMode {
 }
 
 impl DriveMode {
-    fn to_byte(self) -> u8 {
+    /// The mode as byte 5: `VehicleStatus.mode`'s number.
+    #[must_use]
+    pub fn to_byte(self) -> u8 {
         match self {
             DriveMode::Stopped => 0,
             DriveMode::RcDirect => 1,
@@ -76,7 +78,9 @@ pub enum ModeSwitch {
 }
 
 impl ModeSwitch {
-    fn to_byte(self) -> u8 {
+    /// The switch as byte 6: `RcSticks.mode_switch`'s number.
+    #[must_use]
+    pub fn to_byte(self) -> u8 {
         match self {
             ModeSwitch::NoSignal => 0,
             ModeSwitch::Computer => 1,

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_rc_rs</name>
+  <version>0.1.0</version>
+  <description>rc_driver in Rust (rclrs): the default since 17 Nov (Ben: "Rust tomorrow"), beside aav_rc's Python one (rc_impl:=rust|python). The same node name, topic, QoS and parameters: /vehicle/rc (the RC's mode switch and sticks, from the ESP32's uplink) becomes /drivers/rc/cmd_vel while the mode switch is on RC via ROS. The rules are the rc-core crate, with no ROS, checked against rc_drive.py's answers.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>aav_interfaces</depend>
+
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

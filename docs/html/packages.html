@@ -7,7 +7,7 @@
 <!-- Generated from docs/packages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>What each package does</h1>
-<div class="meta">23 min read · 10 sections</div></header>
+<div class="meta">24 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -394,6 +394,20 @@ each one's README has its topics.</p></div>
 <td>today's car: the 2025-26 ESP32 over UART, through the Motor Pi</td>
 <td><span class="badge b-untested">untested</span> on the car</td>
 <td>new, for the 2025-26 protocols</td>
+</tr>
+<tr>
+<td><code>aav_legacy_rs</code></td>
+<td>can_bridge</td>
+<td><code>legacy_uart_bridge</code> in Rust, the default (Ben, 17 Nov) beside <code>aav_legacy</code>'s (<code>legacy_impl:=python</code>): the same topics and frames, packed by the firmware's <code>legacy-link</code></td>
+<td><span class="badge b-works">works</span> against the Python's answers, byte for byte; the chain tests and the QEMU check; <span class="badge b-untested">untested</span> on the car</td>
+<td>new: a port of <code>aav_legacy</code>'s bridge</td>
+</tr>
+<tr>
+<td><code>aav_rc_rs</code></td>
+<td>drivers</td>
+<td><code>rc_driver</code> in Rust, the default (Ben, 17 Nov) beside <code>aav_rc</code>'s (<code>rc_impl:=python</code>)</td>
+<td><span class="badge b-works">works</span> against the Python's answers; the uplink chain test; <span class="badge b-untested">untested</span> on the car</td>
+<td>new: a port of <code>aav_rc</code></td>
 </tr>
 <tr>
 <td><code>aav_turtlesim</code></td>

@@ -277,12 +277,20 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
                 'localization.launch.py': 'localization_health_impl',
                 # Ben, 17 Nov: both muxes too, the ESP32's heartbeat ("Rust tomorrow").
                 'io_mux.launch.py': 'io_mux_impl'}
+    # And the ESP32's UART bridge and rc_driver, wherever legacy_uart runs.
+    legacy = {'legacy_impl', 'rc_impl'}
     sent = included(started(CAR, machine='all'))
     for name, switch in switches.items():
         assert sent[name][switch] == 'rust', name
     back = included(started(CAR, machine='all', **dict.fromkeys(switches.values(), 'python')))
     for name, switch in switches.items():
         assert back[name][switch] == 'python', name
+    for impl in legacy:
+        assert included(started(CAR, machine='motor_pi'))['legacy.launch.py'][impl] == 'rust'
+        assert included(started(CAR, machine='motor_pi', **{impl: 'python'}))[
+            'legacy.launch.py'][impl] == 'python'
+    with pytest.raises(ValueError, match='legacy_impl'):
+        started(CAR, machine='motor_pi', legacy_impl='c')
     with pytest.raises(ValueError, match='watchdog_impl'):
         started(CAR, machine='all', watchdog_impl='c')
 
@@ -377,6 +385,10 @@ def test_the_car_passes_its_bridge_choice_to_the_spine(monkeypatch, socketcan):
 # actuators on the ESP32, driven through the Motor Pi's UART; the CAN bus straight to the
 # Orin, with the wheel sensors on it (docs/can-plan.md).
 
+# legacy.launch.py's languages, by default: Rust since 17 Nov (Ben, "Rust tomorrow").
+RUST_LEGACY = {'legacy_impl': 'rust', 'rc_impl': 'rust'}
+
+
 def test_the_car_as_wired_today(socketcan):
     # The Orin reads its CAN bus for the wheels only...
     orin = included(started(CAR, machine='orin'))
@@ -384,12 +396,12 @@ def test_the_car_as_wired_today(socketcan):
     assert 'legacy.launch.py' not in orin
     # ...and the Motor Pi drives the ESP32, with no UDP encoder beside the CAN wheels.
     motor_pi = included(started(CAR, machine='motor_pi'))
-    assert motor_pi['legacy.launch.py'] == {'uart': 'true', 'encoder': 'false'}
+    assert motor_pi['legacy.launch.py'] == {'uart': 'true', 'encoder': 'false', **RUST_LEGACY}
     assert 'spine.launch.py' not in motor_pi
     # One computer with everything: the same two.
     everything = included(started(CAR, machine='all'))
     assert everything['spine.launch.py']['role'] == 'sensors'
-    assert everything['legacy.launch.py'] == {'uart': 'true', 'encoder': 'false'}
+    assert everything['legacy.launch.py'] == {'uart': 'true', 'encoder': 'false', **RUST_LEGACY}
 
 
 def test_actuators_can_makes_the_can_spine_the_one_backend(socketcan):
@@ -409,7 +421,7 @@ def test_the_udp_encoder_never_runs_beside_the_can_wheels(monkeypatch, socketcan
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {
         'spine': True, 'legacy_uart': True, 'legacy_encoder': True}})
     assert included(started(CAR, machine='orin'))['legacy.launch.py'] == {
-        'uart': 'true', 'encoder': 'false'}
+        'uart': 'true', 'encoder': 'false', **RUST_LEGACY}
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {
         'legacy_uart': True, 'legacy_encoder': True}})
     assert included(started(CAR, machine='orin'))['legacy.launch.py']['encoder'] == 'true'

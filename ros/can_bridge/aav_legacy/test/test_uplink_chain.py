@@ -9,6 +9,9 @@ and rc_driver (aav_rc).
                                          and rc_driver's /drivers/rc/cmd_vel from the sticks
   the switch back on computer         -> one zero, then nothing
   uplink false (the default)          -> none of it: the bridge reads nothing back
+
+Each test runs twice (conftest's impl): the Python bridge and rc_driver in this process, and
+the Rust ones (aav_legacy_rs, aav_rc_rs, the defaults since 17 Nov) as processes.
 """
 
 import fcntl
@@ -17,6 +20,7 @@ import os
 import random
 import time
 
+from conftest import ros_nodes, RustNode
 import pytest
 
 try:
@@ -46,7 +50,7 @@ def uplink(sequence, switch, throttle=0.5, steering=0.25):
 class Run:
     """The bridge on a pseudo-terminal, rc_driver, and a test node, spun together."""
 
-    def __init__(self, uplink_on=True):
+    def __init__(self, uplink_on=True, impl='python'):
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
         self.master, self.slave = os.openpty()
         port = os.ttyname(self.slave)
@@ -55,9 +59,14 @@ class Run:
         args = ['--ros-args', '-p', f'legacy_uart_bridge:port:={port}',
                 '-p', 'legacy_uart_bridge:frame_version:=2',
                 '-p', f'legacy_uart_bridge:uplink:={str(uplink_on).lower()}']
-        rclpy.init(args=args, domain_id=random.randint(150, 230))
+        domain = random.randint(150, 230)
+        rclpy.init(args=args, domain_id=domain)
         self.executor = SingleThreadedExecutor()
-        self.nodes = [LegacyUartBridge(), RcDriver()]
+        if impl == 'rust':
+            self.nodes = [RustNode('aav_legacy_rs', 'legacy_uart_bridge', args, domain),
+                          RustNode('aav_rc_rs', 'rc_driver', args, domain)]
+        else:
+            self.nodes = [LegacyUartBridge(), RcDriver()]
         self.test = rclpy.create_node('uplink_test')
         self.nodes.append(self.test)
         self.got = {'status': [], 'rc': [], 'steering': [], 'cmd': [], 'link': [],
@@ -71,10 +80,12 @@ class Run:
                                  ('throttle', ActuatorState, '/vehicle/throttle')):
             self.test.create_subscription(
                 msg, topic, lambda m, k=kind: self.got[k].append((time.monotonic(), m)), 100)
-        for n in self.nodes:
+        for n in ros_nodes(self.nodes):
             self.executor.add_node(n)
         self.sequence = 0
         self.wrote = b''                            # every byte the bridge wrote
+        if impl == 'rust':
+            self.drain(0.5)     # the processes start: the 1 Hz health in step with Python's
 
     def spin(self, seconds, switch=None, **sticks):
         """Spin for this long; the ESP32 sends an uplink frame every 20 ms if `switch`."""
@@ -98,6 +109,15 @@ class Run:
             except BlockingIOError:
                 pass
 
+    def drain(self, seconds):
+        """Read the bridge's frames for this long, without spinning."""
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            try:
+                self.wrote += os.read(self.master, 4096)
+            except BlockingIOError:
+                time.sleep(0.005)
+
     def since(self, kind, t):
         return [m for at, m in self.got[kind] if at >= t]
 
@@ -111,8 +131,8 @@ class Run:
 
 
 @pytest.fixture
-def run(request):
-    r = Run(**getattr(request, 'param', {}))
+def run(request, impl):
+    r = Run(**getattr(request, 'param', {}), impl=impl)
     yield r
     r.close()
 

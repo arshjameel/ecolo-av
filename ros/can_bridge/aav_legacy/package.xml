@@ -14,8 +14,11 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>aav_description</exec_depend>
   <exec_depend>aav_interfaces</exec_depend>
-  <!-- rc_driver, started beside the bridge (legacy.launch.py rc:=true). -->
+  <!-- rc_driver, started beside the bridge (legacy.launch.py rc:=true); and the Rust
+       bridge and rc_driver, the defaults (legacy_impl:=rust, rc_impl:=rust). -->
   <exec_depend>aav_rc</exec_depend>
+  <exec_depend>aav_legacy_rs</exec_depend>
+  <exec_depend>aav_rc_rs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 
@@ -23,6 +26,7 @@
   <test_depend>python3-pytest</test_depend>
   <!-- test_heartbeat_chain.py runs the muxes with the bridge. -->
   <test_depend>aav_io_mux</test_depend>
+  <test_depend>aav_io_mux_rs</test_depend>
   <!-- test_uplink_chain.py runs rc_driver with the bridge. -->
   <test_depend>aav_rc</test_depend>
   <!-- test_no_timeout_lock.py runs the stock twist_mux with aav_command_mux's config. -->

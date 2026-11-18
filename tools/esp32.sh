@@ -189,6 +189,10 @@ case "${1:-}" in
       echo "skipped: needs the Xtensa Rust (pixi run esp tools) and QEMU (pixi run esp qemu-tools)"
       exit 0
     fi
+    # The frames come from the bridge's own relay: the Rust one (aav_legacy_rs, the car's
+    # default since 17 Nov) unless --bridge python is given. Built with the host's Rust,
+    # before the Xtensa toolchain goes first on PATH.
+    (cd ros/can_bridge/aav_legacy_rs && cargo build -q --release --locked --example relay_frames)
     # With the uplink: the check reads its frames on UART1, and feeds iBUS on UART2.
     build -q --features qemu,uplink --target-dir target/qemu
     image=$BOARD/target/qemu/flash.bin
@@ -196,7 +200,8 @@ case "${1:-}" in
       "$BOARD/target/qemu/xtensa-esp32-none-elf/release/spine-esp32-umod" "$image" \
       >/dev/null 2>&1
     qemu_env
-    python3 tools/esp32_qemu.py --qemu "$QEMU_BIN" --flash "$image" "$@"
+    python3 tools/esp32_qemu.py --qemu "$QEMU_BIN" --flash "$image" --bridge rust \
+      --relay-bin ros/can_bridge/aav_legacy_rs/target/release/examples/relay_frames "$@"
     ;;
   check)
     if ! have_toolchain; then

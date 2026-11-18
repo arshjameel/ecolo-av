@@ -11,9 +11,12 @@ emulator", has the picture and the results.
   this script --iBUS----> unix socket --> QEMU UART2 RX --> the RC receiver's parser
   this script <--lines--- unix socket <-- QEMU UART0 <-- the firmware's log
 
-The frames are the real protocol: aav_legacy's own `pack_frame_v2` (version 2, TODO 50),
-at the bridge's 50 Hz, with ego's values (`to_legacy`) and the Orin's counter, which
-moves by one a frame while the Orin is alive. The firmware logs four kinds of line
+The frames are the real protocol, made by the bridge's own relay (version 2, TODO 50), at
+the bridge's 50 Hz, from ego's command and the Orin's counter, which moves by one a frame
+while the Orin is alive. `--bridge rust` (the default with `tools/esp32.sh qemu-check`,
+as on the car since 17 Nov): aav_legacy_rs's Relay, through its `relay_frames` example
+(`--relay-bin`); `--bridge python`: aav_legacy's `uart_relay.Relay`. Both write the same
+bytes (aav_legacy_rs's vectors check it). The firmware logs four kinds of line
 (src/main.rs):
 
   EVENT   t=<ms> mode=.. armed=.. estop=.. throttle=.. brake=.. ... faults=..  on a change
@@ -65,7 +68,7 @@ import sys
 import tempfile
 import threading
 import time
-from typing import Iterable, List, Optional, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'ros/can_bridge/aav_legacy'))
@@ -73,6 +76,7 @@ from aav_legacy.legacy_protocol import (  # noqa: E402
     LegacyMapping, MODE_COMPUTER, MODE_RC_DIRECT, MODE_STOPPED, pack_frame, pack_frame_v2,
     stop_command, SWITCH_NONE, SWITCH_RC_DIRECT, SWITCH_RC_VIA_ROS, to_legacy, Uplink,
     UplinkParser)
+from aav_legacy.uart_relay import Relay  # noqa: E402,I100
 STOP_COMMAND = stop_command  # the bridge's stale stop, for the tests
 
 # The firmware's numbers (spine-core's SpineConfig, spine-board's Calibration::TODAY).
@@ -667,19 +671,57 @@ class Firmware:
         self.proc.wait()
 
 
+def python_relay() -> Callable[[float, float, int], bytes]:
+    """aav_legacy's relay (frame_version 2): ego's command, fresh, and the counter."""
+    relay = Relay(LegacyMapping(), 0.3, 2)
+
+    def frame(speed, steering, counter):
+        relay.command(speed, steering, 0.0)
+        relay.heartbeat(counter)
+        return relay.frame(0.0)
+    return frame
+
+
+class RustRelay:
+    """aav_legacy_rs's relay, through its relay_frames example: a line in, a frame out."""
+
+    def __init__(self, binary: Path):
+        self.proc = subprocess.Popen([str(binary)], stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, text=True)
+
+    def __call__(self, speed, steering, counter):
+        self.proc.stdin.write(f'{speed!r} {steering!r} {counter}\n')
+        self.proc.stdin.flush()
+        line = self.proc.stdout.readline()
+        if not line:
+            raise RuntimeError('relay_frames stopped')
+        return bytes.fromhex(line.strip())
+
+    def close(self):
+        self.proc.stdin.close()
+        self.proc.wait(5)
+
+
 class Orin:
     """The Orin's counter and the Motor-Pi's frames: legacy_uart_bridge, frame_version 2."""
 
-    def __init__(self):
+    def __init__(self, relay=None):
         self.counter = 0
         self.sent: List[Sent] = []
+        self.relay = relay or python_relay()
+        # Ego's command for each frame's values: the relay takes the command, as the bridge.
+        mapping = LegacyMapping()
+        self.commands = {to_legacy(*c, mapping): c for c in (DRIVE, STAND_STILL)}
 
     def frames(self, values, move=True, armed=True, bad_crc=False):
         """Return a frame maker: each call, the next frame (the counter +1, or frozen)."""
         def make():
             if move:
                 self.counter = (self.counter + 1) & 0xFF
-            frame = pack_frame_v2(*values, counter=self.counter, armed=armed, estop=False)
+            command = self.commands.get(tuple(values)) if armed else None
+            frame = (self.relay(*command, self.counter) if command is not None
+                     else pack_frame_v2(*values, counter=self.counter, armed=armed,
+                                        estop=False))
             if bad_crc:
                 frame = frame[:-1] + bytes([frame[-1] ^ 0xFF])
             self.sent.append(Sent(time.monotonic(), self.counter, not bad_crc))
@@ -687,7 +729,7 @@ class Orin:
         return make
 
 
-def run(qemu: Path, flash: Path, cycles: int, rc: bool = True):
+def run(qemu: Path, flash: Path, cycles: int, rc: bool = True, relay=None):
     """
     Boot the firmware, run the cycles (their gaps in turn: KINDS), then the RC's modes.
 
@@ -697,7 +739,7 @@ def run(qemu: Path, flash: Path, cycles: int, rc: bool = True):
     mapping = LegacyMapping()
     drive = to_legacy(*DRIVE, mapping)
     still = to_legacy(*STAND_STILL, mapping)
-    orin = Orin()
+    orin = Orin(relay)
     rc_phases: List[RcPhase] = []
     with tempfile.TemporaryDirectory(prefix='esp-qemu-', dir='/tmp') as tmp:
         fw = Firmware(qemu, flash, Path(tmp))
@@ -888,8 +930,13 @@ def wait_for_quiet(limit: float, seconds: float = 120.0) -> Optional[float]:
 def attempt(args) -> List[str]:
     """Run the check once, print its tables, and return its problems (empty: a pass)."""
     try:
-        results, uplink, rc, clock, lines, ups = run(args.qemu, args.flash, args.cycles,
-                                                     rc=not args.no_rc)
+        relay = RustRelay(args.relay_bin) if args.bridge == 'rust' else None
+        try:
+            results, uplink, rc, clock, lines, ups = run(args.qemu, args.flash, args.cycles,
+                                                         rc=not args.no_rc, relay=relay)
+        finally:
+            if relay is not None:
+                relay.close()
     except ValueError as e:
         # Seen once on 24 Oct at load 17: QEMU printed almost nothing, so no clocks to map.
         print(f'the firmware in QEMU said too little to judge ({e}). A starved computer?')
@@ -931,13 +978,21 @@ def main(argv=None) -> int:
     ap.add_argument('--idle', type=float, metavar='SECONDS',
                     help='only boot it and send nothing for this long, then save the log '
                     '(--log): for the first check')
+    ap.add_argument('--bridge', choices=('rust', 'python'), default='python',
+                    help="whose relay makes the frames: aav_legacy_rs's (needs --relay-bin) "
+                    "or aav_legacy's")
+    ap.add_argument('--relay-bin', type=Path,
+                    help="aav_legacy_rs's relay_frames example, for --bridge rust")
     ap.add_argument('--no-retry', action='store_true',
                     help='one run only, even if only the host-speed timings failed')
     args = ap.parse_args(argv)
+    if args.bridge == 'rust' and not args.relay_bin:
+        ap.error('--bridge rust needs --relay-bin (tools/esp32.sh qemu-check builds it)')
     if args.idle:
         if not args.log:
             ap.error('--idle needs --log')
         return run_idle(args.qemu, args.flash, args.idle, args.log)
+    print(f"the frames: the {args.bridge} bridge's relay")
     load = load_average()
     if load is not None:
         print(f'load average {load:.1f} at the start')

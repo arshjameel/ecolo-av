@@ -22,6 +22,7 @@ programs only meet through messages.
 | New ROS nodes | Rust (`rclrs`) | Ben, 16 Nov: "I trust rust more then python". Exceptions: ML on the GPU (train in PyTorch; inference later through ONNX), launch files, tools and tests |
 | ego + look_ahead, behaviour, the sensor watchdog, localization_health | Rust (`rclrs`): `aav_ego_rs`, `aav_behaviour_rs`, `aav_watchdog_rs`, `aav_localization_health_rs` | Ports of the Python nodes, the same answers. The default on the car and in the simulator since 16 Nov (Ben); `*_impl:=python` falls back until a car day proves them |
 | The sensor mux and the output mux, `aav_io_mux_rs` | Rust (`rclrs`) | Ports of `aav_io_mux`'s nodes (Ben, 17 Nov: "Rust tomorrow"): the same answers, step by step. The default; `io_mux_impl:=python` falls back |
+| The ESP32's UART bridge and rc_driver, `aav_legacy_rs`, `aav_rc_rs` | Rust (`rclrs`) | Ports of `legacy_uart_bridge` and `rc_driver` (Ben, 17 Nov: "Rust tomorrow"): the same frames, byte for byte, packed by the firmware's own `legacy-link`. The default; `legacy_impl:=python`, `rc_impl:=python` fall back |
 | Our older ROS nodes: drivers, bridges, adapters | Python | Glue that runs 50 times a second or less. Ported to Rust where possible (Ben, 16 Nov) |
 | Launch files | Python | That's how ROS 2 launch works |
 | Stock packages: the EKFs, twist_mux (Nav2 until 17 Nov) | C++ | Not ours: we only configure them |

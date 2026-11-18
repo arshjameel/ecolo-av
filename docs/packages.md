@@ -47,6 +47,8 @@ each one's README has its topics.
 | `aav_spine` | can_bridge | the CAN spine: ego's commands as CAN frames. Its Python `spine_bridge`, the config and the launch file | [[works]] on the bench, against `spine_sim`; no spine board yet | new |
 | `aav_spine_bridge` | can_bridge | the same `spine_bridge` in Rust, on the firmware's own CAN code (`spine-core`); the default since 23 Oct (`bridge:=python` for the other) | [[works]] on the bench, against `spine_sim`; no spine board yet | new: a port of `aav_spine`'s node (T1.8) |
 | `aav_legacy` | can_bridge | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | [[untested]] on the car | new, for the 2025-26 protocols |
+| `aav_legacy_rs` | can_bridge | `legacy_uart_bridge` in Rust, the default (Ben, 17 Nov) beside `aav_legacy`'s (`legacy_impl:=python`): the same topics and frames, packed by the firmware's `legacy-link` | [[works]] against the Python's answers, byte for byte; the chain tests and the QEMU check; [[untested]] on the car | new: a port of `aav_legacy`'s bridge |
+| `aav_rc_rs` | drivers | `rc_driver` in Rust, the default (Ben, 17 Nov) beside `aav_rc`'s (`rc_impl:=python`) | [[works]] against the Python's answers; the uplink chain test; [[untested]] on the car | new: a port of `aav_rc` |
 | `aav_turtlesim` | sim | turtlesim, steered like the car | [[works]] | new |
 | `aav_sim_models` | sim | Ravensim's car behind the real car's topics: the adapters, worlds and models (`aav_gazebo` until 16 Nov) | [[works]] headless | new |
 | `aav_simulator` | sim | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | passed every `sim-check` leg Gazebo passes, 8 Nov ([its page](own-simulator.md)) | new |
