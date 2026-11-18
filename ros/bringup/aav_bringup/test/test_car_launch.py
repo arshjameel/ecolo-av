@@ -274,7 +274,9 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
     # too; each *_impl:=python falls back, one switch each (docs/car-day.md).
     switches = {'ego.launch.py': 'ego_impl', 'navigation.launch.py': 'behaviour_impl',
                 'watchdog.launch.py': 'watchdog_impl',
-                'localization.launch.py': 'localization_health_impl'}
+                'localization.launch.py': 'localization_health_impl',
+                # Ben, 17 Nov: both muxes too, the ESP32's heartbeat ("Rust tomorrow").
+                'io_mux.launch.py': 'io_mux_impl'}
     sent = included(started(CAR, machine='all'))
     for name, switch in switches.items():
         assert sent[name][switch] == 'rust', name
@@ -293,7 +295,8 @@ def test_the_output_mux_runs_next_to_ego_for_the_real_car():
         sent = included(started(CAR, machine=machine))
         assert ('io_mux.launch.py' in sent) == bool(parts.get('ego')), machine
         if parts.get('ego'):
-            assert sent['io_mux.launch.py'] == {'target': 'car', 'source': 'real'}, machine
+            assert sent['io_mux.launch.py'] == {'target': 'car', 'source': 'real',
+                                                'io_mux_impl': 'rust'}, machine
 
 
 def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):

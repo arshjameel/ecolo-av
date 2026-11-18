@@ -35,6 +35,7 @@ Each launch file's docstring lists all its arguments. The common ones:
 | `perception`, `lane`, `camera_obstacles` | sim, bench | the object detector and the stop-sign watcher; lane keeping; boxes into the costmap |
 | `hud` | sim, bench | the HUD window (`aav_hud`, raylib); needs a screen |
 | `bridge:=rust\|python` | sim, bench, car | which `spine_bridge` (`aav_spine.bridges`) |
+| `io_mux_impl:=rust\|python` | sim, car (the others pass it through) | which sensor mux and output mux: `aav_io_mux_rs` (the default since 17 Nov) or `aav_io_mux` |
 | `reversing` | car, sim, bench, carla | may navigation back up (at 0.5 m/s at most). `true` everywhere; on the car only where the lidar watches behind. Until the wheels tell direction (H5), the sign is the last command's |
 | `max_speed`; `sim_speed` | car; sim, carla | the top speed, m/s |
 | `start_y` (m), `start_yaw` (rad); the car and sim also `start_x` | car, sim, bench | where the car starts in the map frame. `world:=campus` starts in lot P4 unless told otherwise |

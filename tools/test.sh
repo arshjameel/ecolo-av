@@ -56,6 +56,8 @@ if command -v cargo >/dev/null; then
   (cd ros/drivers/aav_behaviour_rs && cargo test -q --locked -p behaviour-core)
   echo "== ros/safety/aav_watchdog_rs: the sensor watchdog in Rust, the Python node's answers"
   (cd ros/safety/aav_watchdog_rs && cargo test -q --locked -p watchdog-core)
+  echo "== ros/io_mux/aav_io_mux_rs: the sensor mux and the output mux in Rust, the Python's answers"
+  (cd ros/io_mux/aav_io_mux_rs && cargo test -q --locked -p io-mux-core)
   echo "== ros/localization/aav_localization_health_rs: localization_health in Rust, the Python's answers"
   (cd ros/localization/aav_localization_health_rs && cargo test -q --locked -p health-core)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
@@ -119,6 +121,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/perception/aav_things_rs -p things-core
   rust_style ros/drivers/aav_behaviour_rs -p behaviour-core
   rust_style ros/safety/aav_watchdog_rs -p watchdog-core
+  rust_style ros/io_mux/aav_io_mux_rs -p io-mux-core
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
   rust_style ros/bringup/aav_description/car-model
   rust_style ros/bringup/aav_description/map-chunks

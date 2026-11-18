@@ -258,8 +258,8 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | **In → out** | `/ego/actuator_cmd`, `/system/source`, the ROS graph → `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` |
 | **Origin** | ours (the proposal's sensor and output muxes) |
 | **Status** | [[works]] in its tests and in every profile; [[untested]] on the car |
-| **Run alone** | `ros2 launch aav_io_mux io_mux.launch.py target:=car` |
-| **Test** | `test/test_provenance.py` (in `tools/test.sh`), `test/test_real_backend_guard.py` (`pixi run test`) |
+| **Run alone** | `ros2 launch aav_io_mux io_mux.launch.py target:=car` (Rust, `aav_io_mux_rs`, the default since 17 Nov; `io_mux_impl:=python` for these) |
+| **Test** | `test/test_provenance.py`, `test_vectors.py` (in `tools/test.sh`), `test/test_real_backend_guard.py` (`pixi run test`); the Rust: `cargo test -p io-mux-core` (the shared vectors) |
 | **Read first** | `aav_io_mux/provenance.py`, then [Sources and targets](sources-and-targets.md) |
 
 ### aav_ego

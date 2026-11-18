@@ -25,9 +25,14 @@ topics (pictures, point clouds) cost nothing extra.
 
 ## Interface
 
-Launch: `ros2 launch aav_io_mux io_mux.launch.py target:=car|sim|bench|turtle|carla [source:=real|sim|bench|replay]`.
+Launch: `ros2 launch aav_io_mux io_mux.launch.py target:=car|sim|bench|turtle|carla [source:=real|sim|bench|replay] [io_mux_impl:=rust|python]`.
 An empty `target` starts no output mux (a replay drives nothing). An empty `source`
 takes the target's. A source the target can't take is refused before anything starts.
+
+**Which language.** `io_mux_impl:=rust`, the default since Ben, 17 Nov ("Rust
+tomorrow"), starts both muxes from [`aav_io_mux_rs`](../aav_io_mux_rs/README.md): the same
+node names, topics and answers. `io_mux_impl:=python` starts this package's, the
+fall-back. `car.launch.py` and `sim.launch.py` pass it on.
 
 **`sensor_mux`**
 
@@ -55,12 +60,16 @@ Modules:
 |---|---|
 | `provenance.py` | the rules, no ROS: `SOURCES`, `TARGETS`, `SENSORS`, `command_topic`, `choose`, `Announcers`, `foreign`, `check_sensors`, `Hold`, `Report`, `Gate` |
 | `heartbeat.py` | no ROS: `heartbeat_topic(target)`, `Counter.beat()` (1 ... 255, 0) |
-| `sensor_mux.py`, `output_mux.py` | the two ROS nodes |
+| `muxes.py` | no ROS: `SensorMuxLogic`, `OutputMuxLogic`, `screen_names`: each node's work, each message and tick in, what to publish and log out. The Rust twins are checked against it |
+| `sensor_mux.py`, `output_mux.py` | the two ROS nodes: messages into `muxes.py`, its answers out |
 | `domains.py` | `free_domain()`: a free ROS domain (150-230) for a test or check; used by the guard test, `sim_check.py`, `bench_check.py` |
 
 ## Invariants
 
-- `provenance.py` and `heartbeat.py` have no ROS imports.
+- `provenance.py`, `heartbeat.py` and `muxes.py` have no ROS imports.
+- **The Rust twins answer the same**: `aav_io_mux_rs/gen_vectors.py` writes this
+  package's answers; after a change here, run it (and port the change). `test_vectors.py`
+  fails until you do.
 - Every rule errs towards "this is the real car, and something is wrong": an unknown
   source number is never REAL; a silent sensor mux closes the gate.
 - Each sensor topic has at most one publisher, from the source asked for. An
@@ -102,4 +111,5 @@ runs it). `pixi run test` runs everything.
 |---|---|
 | `test_provenance.py` | the rules: choose, announcers, check, hold, gate |
 | `test_heartbeat.py` | the counter wraps in a byte |
+| `test_vectors.py` | `muxes.py` still gives the answers the Rust is checked against (`aav_io_mux_rs`'s `vectors.json`) |
 | `test_real_backend_guard.py` | real nodes on a private domain: a SIM announcement stops DRIVE_CMD frames to the real spine_bridge (needs ROS) |

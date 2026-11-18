@@ -14,7 +14,8 @@ Makes sure **exactly one backend** plays the car, and the real car moves only on
 
 | Package | What it is |
 |---|---|
-| [aav_io_mux](./aav_io_mux/README.md) | `sensor_mux` (checks each sensor's source) and `output_mux` (one target: car, sim, bench, turtle or carla) |
+| [aav_io_mux](./aav_io_mux/README.md) | `sensor_mux` (checks each sensor's source) and `output_mux` (one target: car, sim, bench, turtle or carla), in Python: the fall-back (`io_mux_impl:=python`) |
+| [aav_io_mux_rs](./aav_io_mux_rs/README.md) | the same two nodes in Rust, the default (Ben, 17 Nov): the same names, topics and answers |
 
 ## Invariants
 
@@ -28,4 +29,4 @@ Makes sure **exactly one backend** plays the car, and the real car moves only on
 
 ## Verification
 
-- Run: `pixi run test` (or `colcon test --packages-select aav_io_mux`).
+- Run: `pixi run test` (or `colcon test --packages-select aav_io_mux aav_io_mux_rs`).

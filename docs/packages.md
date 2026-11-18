@@ -42,6 +42,7 @@ each one's README has its topics.
 | `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov) beside `aav_behaviour`'s (`behaviour_impl:=python`): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
+| `aav_io_mux_rs` | io_mux | `sensor_mux` and `output_mux` in Rust, the default (Ben, 17 Nov) beside `aav_io_mux`'s (`io_mux_impl:=python`): the same topics and answers | [[works]] against the Python's answers, step by step; sim-check; [[untested]] on the car | new: a port of `aav_io_mux` |
 | `aav_ego` | ego | one command → speed and steering the car can do | [[works]] | new |
 | `aav_spine` | can_bridge | the CAN spine: ego's commands as CAN frames. Its Python `spine_bridge`, the config and the launch file | [[works]] on the bench, against `spine_sim`; no spine board yet | new |
 | `aav_spine_bridge` | can_bridge | the same `spine_bridge` in Rust, on the firmware's own CAN code (`spine-core`); the default since 23 Oct (`bridge:=python` for the other) | [[works]] on the bench, against `spine_sim`; no spine board yet | new: a port of `aav_spine`'s node (T1.8) |

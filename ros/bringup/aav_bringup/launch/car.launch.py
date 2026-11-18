@@ -27,11 +27,13 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [voxels_impl:=python] (rust: the same cubes from aav_voxels_rs, the Rust port)
       [ego_impl:=rust] [behaviour_impl:=rust] [watchdog_impl:=rust]
       [localization_health_impl:=rust] [lidar_impl:=rust] [things_impl:=rust]
+      [io_mux_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
                            aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
-                           aav_lidar_rs and aav_things_rs. python: the Python
-                           node instead, the same names and topics; one switch each, the
-                           fall-back if one misbehaves. docs/car-day.md)
+                           aav_lidar_rs, aav_things_rs and aav_io_mux_rs (both muxes).
+                           python: the Python node instead, the same names and topics;
+                           one switch each, the fall-back if one misbehaves.
+                           docs/car-day.md)
       [ghost:=false]      (true: a pretend person only navigation sees, where it runs, for
                            stopping tests with nothing real to hit: pixi run ghost ahead 10)
       [geofence_radius:=30.0] [geofence_site:=] [stands:=false]
@@ -432,7 +434,8 @@ def launch_setup(context):
              'localization_health_impl': vehicle.check_localization_health_impl(
                  arg('localization_health_impl')),
              'lidar_impl': vehicle.check_lidar_impl(arg('lidar_impl')),
-             'things_impl': vehicle.check_things_impl(arg('things_impl'))}
+             'things_impl': vehicle.check_things_impl(arg('things_impl')),
+             'io_mux_impl': vehicle.check_io_mux_impl(arg('io_mux_impl'))}
     get_logger('car.launch.py').info(
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
@@ -507,7 +510,8 @@ def launch_setup(context):
         # Next to ego: the sensor mux and the output mux. The real backends (spine_bridge,
         # legacy_uart_bridge, on any machine) read only /control/car/actuator_cmd, which
         # carries ego's commands only while every source on the network is REAL.
-        actions.append(include('aav_io_mux', 'io_mux.launch.py', target='car', source='real'))
+        actions.append(include('aav_io_mux', 'io_mux.launch.py', target='car', source='real',
+                               io_mux_impl=impls['io_mux_impl']))
     if on('teleop'):
         actions.append(include('aav_teleop', 'teleop.launch.py'))
     if on('scripted'):
@@ -710,6 +714,9 @@ def generate_launch_description():
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
                               description='rust (aav_watchdog_rs) or python (aav_safety): '
                                           'the sensor watchdog'),
+        DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
+                              description='rust (aav_io_mux_rs) or python (aav_io_mux): '
+                                          'the sensor mux and the output mux'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
                               description='rust (aav_localization_health_rs) or python '

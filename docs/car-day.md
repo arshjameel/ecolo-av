@@ -502,12 +502,13 @@ stay installed, one switch away. Check this each time you start `car.launch.py`.
 | localization_health | `aav_localization_health_rs` | `localization_health_impl:=python` |
 | lidar_scan (the flat scan) | `aav_lidar_rs` | `lidar_impl:=python` |
 | things (with `things:=true`) | `aav_things_rs` | `things_impl:=python` |
+| sensor mux + output mux (the ESP32's heartbeat; the Motor Pi alone too) | `aav_io_mux_rs` | `io_mux_impl:=python` |
 
 | # | Do | You should see | If not |
 |---|---|---|---|
-| 1 | read the first lines of `car.launch.py` (`~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...`) | `languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust` | a word other than `rust`: someone passed `:=python` |
-| 2 | on the Orin: `ps -eo args \| grep '_rs/lib/' \| grep -v grep` | `aav_ego_rs/lib/...`, `aav_watchdog_rs/lib/...`, `aav_localization_health_rs/lib/...`, `aav_lidar_rs/lib/...` (and `aav_behaviour_rs`, `aav_things_rs` with behaviour and things on) | a package missing: its build failed, see `~/aav-jazzy/build.log` |
-| 3 | `ros2 node list` | `/ego`, `/look_ahead`, `/sensor_watchdog`, `/localization_health`, `/lidar_scan` (and `/things`): the same names as the Python's | |
+| 1 | read the first lines of `car.launch.py` (`~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...`) | `languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust` | a word other than `rust`: someone passed `:=python` |
+| 2 | on the Orin: `ps -eo args \| grep '_rs/lib/' \| grep -v grep` | `aav_ego_rs/lib/...`, `aav_watchdog_rs/lib/...`, `aav_localization_health_rs/lib/...`, `aav_lidar_rs/lib/...`, `aav_io_mux_rs/lib/...` (and `aav_behaviour_rs`, `aav_things_rs` with behaviour and things on) | a package missing: its build failed, see `~/aav-jazzy/build.log` |
+| 3 | `ros2 node list` | `/ego`, `/look_ahead`, `/sensor_watchdog`, `/localization_health`, `/lidar_scan`, `/sensor_mux`, `/output_mux` (and `/things`): the same names as the Python's | |
 
 **If a Rust node misbehaves:** stop the car (e-stop), stop the launch, and start it again
 with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... watchdog_impl:=python`.

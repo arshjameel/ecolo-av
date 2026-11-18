@@ -1,0 +1,24 @@
+[package]
+name = "io-mux-node"
+description = "The sensor mux and the output mux in ROS 2 (rclrs)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "sensor_mux"
+path = "src/bin/sensor_mux.rs"
+
+[[bin]]
+name = "output_mux"
+path = "src/bin/output_mux.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+io-mux-core = { path = "../io-mux-core" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"
