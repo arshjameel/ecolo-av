@@ -153,7 +153,12 @@ def changes(frames):
 
 
 def test_the_counter_comes_from_the_mux_and_the_bridge_only_relays_it(run):
-    run.spin(1.5, drive=True)               # the gate opens after 0.5 s of all clear
+    # The gate opens after 0.5 s of all clear. The Rust nodes are processes that must
+    # start and find each other first (once 1.5 s wasn't enough under load, 18 Nov), so
+    # wait for OPEN, up to 10 s, rather than a fixed time.
+    deadline = time.monotonic() + 10.0
+    while not run.state.startswith('OPEN') and time.monotonic() < deadline:
+        run.spin(0.25, drive=True)
     assert run.state.startswith('OPEN'), run.state
     run.heartbeats.clear()
     driving = run.spin(2.0, drive=True)
