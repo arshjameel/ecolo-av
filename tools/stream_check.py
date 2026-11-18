@@ -28,6 +28,8 @@ Options:
                      it holds back about 2 frames, 135 ms), gst-mac, gst-soft...;
                      --hwaccel H, ffmpeg's (videotoolbox); --program P, the decoder program
   --gst              gst-soft: GStreamer's software decoder (avdec_h264), to compare
+  --impl I           the node: rust (aav_camera_stream_rs, the default; with a detector
+                     the Python one runs, as camera_stream.launch.py) or python
   --pattern          no Gazebo: aav_detector's stop-sign photo, moving, with noise (the
                      noise makes the encoder work as on a real camera)
   --sign-at X        put Gazebo's stop sign X m ahead of the car (25)
@@ -142,6 +144,27 @@ def cpu_by_group(groups):
         if len(fields) == 2 and int(fields[0]) in totals:
             totals[int(fields[0])] += ps_seconds(fields[1])
     return totals
+
+
+def rss_by_group(groups):
+    """Return the memory in use now (resident, MB) of each process group."""
+    out = subprocess.run(['ps', '-axo', 'pgid=,rss='], capture_output=True,
+                         text=True).stdout
+    totals = dict.fromkeys(groups, 0.0)
+    for line in out.splitlines():
+        fields = line.split()
+        if len(fields) == 2 and int(fields[0]) in totals:
+            totals[int(fields[0])] += int(fields[1]) / 1024.0
+    return totals
+
+
+def stream_node(impl):
+    """Return the command that starts camera_stream in this language (before --ros-args)."""
+    if impl == 'rust':
+        from ament_index_python.packages import get_package_prefix
+        return [os.path.join(get_package_prefix('aav_camera_stream_rs'), 'lib',
+                             'aav_camera_stream_rs', 'camera_stream')]
+    return [sys.executable, '-m', 'aav_camera_stream.camera_stream']
 
 
 def load_average():
@@ -350,6 +373,14 @@ def main():
     sign_at = float(option(args, '--sign-at', '25'))
     speed = float(option(args, '--drive', '0.3'))
     pattern = '--pattern' in args
+    from aav_description import vehicle
+    try:
+        impl, why = vehicle.camera_stream_runs(option(args, '--impl', 'rust'), detector, decoder)
+    except ValueError as e:
+        print(e, file=sys.stderr)
+        return 2
+    if why:
+        print(f'the Python camera_stream: {why}', flush=True)
     if not os.access(MEDIAMTX, os.X_OK):
         print('No MediaMTX here: pixi run get mediamtx (once)', file=sys.stderr)
         return 2
@@ -411,7 +442,7 @@ def main():
         check.feeder.start()
         programs.start(
             'camera_stream',
-            [sys.executable, '-m', 'aav_camera_stream.camera_stream', '--ros-args',
+            [*stream_node(impl), '--ros-args',
              '-r', f'__node:=camera_stream_{CAMERA}', '-p', f'camera:={CAMERA}',
              '-p', f'url:={url}', '-p', f'decoder:={decoder}', '-p', f'hwaccel:="{hwaccel}"',
              '-p', f'program:="{program}"',
@@ -453,6 +484,7 @@ def main():
         check.spin_for(0.3)
         rx1, tx1, tracks = api_bytes(api_port)
         cpu1 = cpu_by_group(groups.values())
+        rss = rss_by_group(groups.values())
         status = check.status or {}
         dets = check.detections[det0:]
         previews = check.previews[prev0:]
@@ -528,6 +560,9 @@ def main():
             result('previews', False, 'none in the measurement')
         cpu = [f'{name} {100 * (cpu1[pid] - cpu0[pid]) / span:.0f}%'
                for name, pid in groups.items()]
+        result('memory', None, ', '.join(f'{name} {rss[pid]:.0f} MB'
+                                         for name, pid in groups.items())
+               + f' (resident, at the end; camera_stream is the {impl} node)')
         result('CPU', None, ', '.join(cpu) + ' (each with its children: camera_stream with '
                'its decoder, ravensim with its cameras; 100% = one core of this computer); load '
                f'average {", ".join(f"{x:.1f}" for x in load_before)} before, '
