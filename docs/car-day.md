@@ -31,6 +31,9 @@ one computer.
     [Car setup](car-setup.md) for one computer; [Car install](car-install.md) for what the
     kit is and how to undo it.
 
+
+**The ESP32 and the Motor Pi, on one page:** [Flash the ESP32, upgrade the Motor Pi](esp32-motor-pi-runbook.md) (Senura's runbook, 17 Nov).
+
 ## The people
 
 Fill this in before the day. Nobody does two jobs at once.

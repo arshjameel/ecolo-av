@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flash the ESP32, then upgrade the Motor Pi · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/esp32-motor-pi-runbook.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Flash the ESP32, then upgrade the Motor Pi</h1>
+<div class="meta">7 min read · 7 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<span class="sep">Reference:</span>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a class="here" href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#the-order">The order</a><a href="#before-you-start">Before you start</a><a href="#steps-3-5-the-esp32">Steps 3-5: the ESP32</a><a href="#step-6-the-motor-pi-to-2404">Step 6: the Motor Pi to 24.04</a><a href="#after-what-to-check">After: what to check</a><a href="#if-the-rust-nodes-misbehave">If the Rust nodes misbehave</a><a href="#rollback">Rollback</a></nav>
+<div class="lead"><p>Senura's runbook (17 Nov), checked against the repo the same night by Ben's session.
+One page, in order. Each step links to the car-day section that has the details.</p>
+<div class="admonition danger">
+<p class="admonition-title">On stands, e-stops in hand</p>
+<p>The ESP32 drives the brake, throttle, steering and direction. The Rust firmware has
+never been flashed on the car: only <code>cargo test</code> and QEMU so far
+(<a href="esp32-safety.html">ESP32 safety</a>). Wheels off the ground, the motor and safety team
+there, the red button and the Kar-Tech stop <strong>tested first</strong>.</p>
+</div></div>
+<section class="card"><h2 id="the-order">The order</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Where the details are</th>
+<th>Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>The Motor Pi is alive on the network</td>
+<td><a href="car-day.html#session-4-the-orin-and-the-motor-pi">Car day A5</a></td>
+<td><code>ping</code>; <code>nmap -sn 192.168.1.0/24</code> if its address moved</td>
+</tr>
+<tr>
+<td>1</td>
+<td><strong>Back up</strong> the Motor Pi</td>
+<td><a href="car-day.html#a2-back-up-every-machine">Car day A2</a></td>
+<td>an SD-card image, checked</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>The Motor Pi's UART, ready</strong> (console off it, theirs off at boot)</td>
+<td><a href="car-day.html#a7b-the-motor-pis-uart-ready">Car day A7b</a></td>
+<td>L1-L5 show nobody on <code>/dev/ttyAMA0</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>The firmware in the emulator, on a Mac</td>
+<td>below</td>
+<td><code>pixi run esp qemu-check</code>: PASS</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Flash the Rust ESP32</strong>, guided</td>
+<td><a href="car-day.html#session-6-the-esp32">Car day A8</a></td>
+<td><code>pixi run esp first-check</code>: SAFE TO GO ON</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The on-stands checks (session 6)</td>
+<td><a href="car-day.html#session-6-the-esp32">Car day A8</a></td>
+<td>every answer yes; any no rolls back</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Upgrade the Motor Pi to Ubuntu 24.04</td>
+<td><a href="car-day.html#day-b-upgrades-and-the-reflash">Car day, Day B</a></td>
+<td><code>car_setup.sh motor_pi check</code>: no STOP</td>
+</tr>
+</tbody>
+</table></div>
+<p>Step 2 was missing from the first draft. Without it the Pi's kernel console and the
+2025-26 bridge both write to the ESP32's wire, and <code>car_setup.sh motor_pi check</code> STOPs.</p>
+</section>
+<section class="card"><h2 id="before-you-start">Before you start</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A laptop with the repo and Pixi</td>
+<td>Flashing and QEMU work from a Mac (QEMU is set up for Apple silicon)</td>
+</tr>
+<tr>
+<td>The ESP32 tools</td>
+<td><code>pixi run esp tools</code>, once (several minutes, needs <code>rustup</code>). On Ben's Mac already: <code>espflash</code> 4.3.0 in <code>vendor/cargo-tools/bin</code></td>
+</tr>
+<tr>
+<td>A USB cable to the ESP32</td>
+<td>find its port: <code>ls /dev/cu.usb*</code> (Mac), <code>ls /dev/ttyUSB* /dev/ttyACM*</code> (Linux)</td>
+</tr>
+<tr>
+<td>The logins</td>
+<td><a href="car-day.html">Car day, "Logins"</a> (never copy a password anywhere)</td>
+</tr>
+<tr>
+<td>The team agrees to retire the 2025-26 C++ path</td>
+<td>needed before step 6, which is one-way</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="steps-3-5-the-esp32">Steps 3-5: the ESP32</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi run car-day-build</code></td>
+<td>builds the firmware into <code>car-day/esp32/</code> and runs the QEMU check (3-5 min). Do it the night before</td>
+</tr>
+<tr>
+<td><code>pixi run esp qemu-check</code></td>
+<td>boots it in QEMU: it brakes when the heartbeat stops</td>
+</tr>
+<tr>
+<td><code>pixi run esp walk &lt;port&gt;</code></td>
+<td><strong>the first flash, one step at a time</strong>, shown and spoken: saves the C++ (the whole 4 MB flash), flashes the Rust, runs first-check, asks the on-stands questions, <strong>rolls back to the C++ on any no</strong>, and writes <code>bench-logs/&lt;date&gt;-esp32-first-flash.md</code>. <code>--dry-run</code> rehearses it</td>
+</tr>
+<tr>
+<td><code>pixi run esp first-check &lt;port&gt;</code></td>
+<td>reads the boot log for 30 s: SAFE TO GO ON or STOP</td>
+</tr>
+</tbody>
+</table></div>
+<p>A belt-and-braces backup before the walk (the walk does the same):</p>
+<pre class="highlight"><code>vendor/cargo-tools/bin/espflash read-flash --port &lt;port&gt; 0 0x400000 esp32-cpp-backup-$(date +%F).bin</code></pre>
+<p>Restore: <code>vendor/cargo-tools/bin/espflash write-bin --port &lt;port&gt; 0 &lt;backup.bin&gt;</code>.
+Keep the <code>.bin</code> on the laptop and the shared drive.</p>
+</section>
+<section class="card"><h2 id="step-6-the-motor-pi-to-2404">Step 6: the Motor Pi to 24.04</h2>
+<p>On the Motor Pi, from the car kit. Run each line without <code>--apply</code> first: it shows the plan.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi</code> (dry run of everything)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi backup --apply</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi install --apply</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32</code>, then <code>sudo reboot</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32 --release-upgrade</code> (22.04 to 24.04, interactive), then <code>sudo reboot</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Clear <code>build/ install/ log/</code>, then <code>install --apply</code> again (native to 24.04)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi services --apply --machine motor_pi_alone</code>, then <code>sudo reboot</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi check</code>: the UART to the ESP32 is there</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check first</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Free disk: <code>bash ~/car-kit/car_install.sh --dry-run</code></td>
+<td>the localization Pi needed a 64 GB card</td>
+</tr>
+<tr>
+<td><code>motor_pi_alone</code> or <code>motor_pi</code></td>
+<td>alone: the Pi runs the mux, ego and the bridge, so the heartbeat is made beside the ESP32 and no Orin is needed. <code>motor_pi</code>: the Orin runs the mux and ego. Decide with the team</td>
+</tr>
+<tr>
+<td><code>--after-esp32</code></td>
+<td>the upgrade refuses without it: step 5 must have passed</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="after-what-to-check">After: what to check</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Expect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>~/aav-jazzy/aav.sh ros2 topic hz /control/car/link_frame</code></td>
+<td>about 10 Hz: the bridge writes frames</td>
+</tr>
+<tr>
+<td><code>~/aav-jazzy/aav.sh ros2 topic echo /safety/output_mux/state --once</code></td>
+<td>the mux's state</td>
+</tr>
+<tr>
+<td>A drive on stands: <code>pixi run keyboard</code> on the laptop, <code>max_speed:=0.3</code></td>
+<td>the wheels turn; let go and they stop</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition note">
+<p class="admonition-title"><code>/vehicle/odom</code> is not the Motor Pi's</p>
+<p>The wheel sensors are an Arduino on the <strong>Orin's</strong> CAN bus (<code>aav.dbc</code> 0x200, 0x201);
+the Orin's spine bridge publishes <code>/vehicle/odom</code>. The Motor Pi's old Pico encoder is
+off (<code>legacy_encoder: false</code>). So with only the ESP32 and the Motor Pi, there is no
+<code>/vehicle/odom</code>: check it on the Orin's day, with the wheel Arduino wired.</p>
+</div>
+</section>
+<section class="card"><h2 id="if-the-rust-nodes-misbehave">If the Rust nodes misbehave</h2>
+<p>Since 17 Nov the Motor Pi's nodes run in Rust by default. Each has the Python as a
+fall-back, one switch away (<a href="release-0.4-rc1.html">0.4 on the car</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Fall-back</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The muxes (output and sensor)</td>
+<td><code>~/aav-jazzy/aav.sh car motor_pi_alone -- io_mux_impl:=python</code></td>
+</tr>
+<tr>
+<td>The others</td>
+<td>the list in <a href="release-0.4-rc1.html">0.4 on the car</a></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rollback">Rollback</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The ESP32</td>
+<td>the walk rolls back by itself on a no; otherwise <code>espflash write-bin</code> the backup</td>
+</tr>
+<tr>
+<td>The Motor Pi's OS</td>
+<td>the release upgrade is not easily undone: restore the SD-card image from step 1</td>
+</tr>
+<tr>
+<td>Stop half-way</td>
+<td>fine: the old C++ and the old OS keep running until the team tries again</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="rust-firmware.html"><small>Previous</small>← Rust firmware</a>
+<a class="next" href="esp32-bench.html"><small>Next</small>ESP32 first flash →</a></nav>
+</main>
+<footer>Source: <code>docs/esp32-motor-pi-runbook.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

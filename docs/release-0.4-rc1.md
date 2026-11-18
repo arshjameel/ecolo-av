@@ -7,6 +7,9 @@ first, and what nobody has tried on the car yet.
     The car drove on 13 Nov with **only the localization update** installed. Everything
     below "Untested on the car" has run in Ravensim, bench mode, QEMU or unit tests only.
 
+
+**Flashing the ESP32 and upgrading the Motor Pi:** [the runbook](esp32-motor-pi-runbook.md) (Senura, 17 Nov), in order, with the gates and the way back.
+
 ## What's in it
 
 The whole stack on one page: [What we built](what-we-built.md). In short:
