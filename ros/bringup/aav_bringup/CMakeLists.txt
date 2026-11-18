@@ -25,6 +25,11 @@ if(BUILD_TESTING)
   # Nav2's settings with and without reversing, as navigation.launch.py writes them.
   ament_add_pytest_test(test_navigation_launch test/test_navigation_launch.py
     APPEND_ENV AMENT_PREFIX_PATH=${CMAKE_INSTALL_PREFIX})
+  # A launch value reaches the Rust node (namespace '/'): ego's max_speed, the legacy
+  # bridge's port and frame, the output mux's target, read back from the running processes.
+  ament_add_pytest_test(test_rust_overrides test/test_rust_overrides.py
+    APPEND_ENV AMENT_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}
+    TIMEOUT 180)
 endif()
 
 ament_package()

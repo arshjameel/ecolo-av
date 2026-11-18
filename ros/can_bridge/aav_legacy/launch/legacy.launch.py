@@ -2,7 +2,7 @@
 Today's car (2025-26 hardware) as a backend, until the CAN spine exists.
 
   ros2 launch aav_legacy legacy.launch.py [uart:=true] [encoder:=true] [rc:=true]
-      [legacy_impl:=rust] [rc_impl:=rust]
+      [legacy_impl:=rust] [rc_impl:=rust] [port:=] [frame_version:=]
 
   /control/car/actuator_cmd, /safety/estop ──> legacy_uart_bridge ──> frames ──> ESP32
   ESP32 ──uplink (legacy.yaml uplink: true)──> legacy_uart_bridge ──> /vehicle/status,
@@ -13,6 +13,12 @@ Today's car (2025-26 hardware) as a backend, until the CAN spine exists.
 legacy_impl (rust): legacy_uart_bridge in Rust (aav_legacy_rs), the default since Ben
 decided, 17 Nov: "Rust tomorrow". python: this package's own, the same node name, topics,
 parameters and frames. rc_impl (rust): rc_driver in Rust (aav_rc_rs); python: aav_rc's.
+
+port, frame_version (empty: legacy.yaml's): the bridge's serial port and frame, for one
+run (a bench ESP32 on /dev/ttyUSB0, the Rust firmware's frame_version 2) without editing
+legacy.yaml. The bridge has namespace '/', so these and vehicle.yaml's numbers are written
+under its own name and beat legacy.yaml in both languages (rclrs lets a file's node name
+beat launch's /**: docs/languages.md, "Launch overrides").
 
 Run legacy_uart_bridge on the Pi wired to the ESP32's UART, encoder_udp anywhere
 on the car's network. READ docs/firmware.md first: the ESP32 firmware has no
@@ -42,6 +48,16 @@ def nodes(context):
     model = {f'speed_loop.{k}': float(car['actuators'][k])
              for k in ('max_accel', 'max_brake', 'drag')}
     use_sim_time = {'use_sim_time': LaunchConfiguration('use_sim_time')}
+    # One run's port and frame, over legacy.yaml's (empty: keep the file's).
+    overrides = {}
+    port = context.launch_configurations.get('port', '').strip()
+    if port:
+        overrides['port'] = port
+    frame = context.launch_configurations.get('frame_version', '').strip()
+    if frame:
+        if frame not in ('1', '2', '3'):
+            raise ValueError(f'frame_version:={frame}: use 1, 2 or 3 (legacy.yaml)')
+        overrides['frame_version'] = int(frame)
     legacy = vehicle.check_legacy_impl(context.launch_configurations.get(
         'legacy_impl', vehicle.DEFAULT_LEGACY_IMPL))
     rc = vehicle.check_rc_impl(context.launch_configurations.get(
@@ -51,14 +67,14 @@ def nodes(context):
         actions.append(Node(
             package=vehicle.LEGACY_IMPLS[legacy],
             executable='legacy_uart_bridge',
-            name='legacy_uart_bridge',
+            name='legacy_uart_bridge', namespace='/',
             parameters=[config, {'max_steering_angle': float(v['max_steering_angle'])},
-                        model, use_sim_time]))
+                        model, use_sim_time, overrides]))
         if on(context, 'rc'):
             actions.append(Node(
                 package=vehicle.RC_IMPLS[rc],
                 executable='rc_driver',
-                name='rc_driver',
+                name='rc_driver', namespace='/',
                 parameters=[{'max_reverse_speed': float(v['max_reverse_speed']),
                              'max_steering_angle': float(v['max_steering_angle']),
                              'wheelbase': float(v['wheelbase'])}, use_sim_time]))
@@ -81,6 +97,11 @@ def generate_launch_description():
         DeclareLaunchArgument('rc_impl', default_value=vehicle.DEFAULT_RC_IMPL,
                               description='rc_driver in rust (aav_rc_rs, the default) or '
                                           'python (aav_rc)'),
+        DeclareLaunchArgument('port', default_value='',
+                              description="the bridge's serial port (empty: legacy.yaml's)"),
+        DeclareLaunchArgument('frame_version', default_value='',
+                              description="1, 2 or 3: the bridge's frame (empty: "
+                                          "legacy.yaml's)"),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         OpaqueFunction(function=nodes),
         Node(

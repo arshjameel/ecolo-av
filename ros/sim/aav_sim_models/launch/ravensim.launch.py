@@ -107,12 +107,13 @@ def spine_in_the_loop(context, v, sim_time):
     spine_share = FindPackageShare('aav_spine').perform(context)
     actions = [
         Node(package=bridges.package(LaunchConfiguration('bridge').perform(context)),
-             executable=bridges.EXECUTABLE, name='spine_bridge',
+             executable=bridges.EXECUTABLE, name='spine_bridge', namespace='/',
              parameters=[os.path.join(spine_share, 'config', 'spine.yaml'),
                          vehicle.spine_params(v),
                          # /system/source: everything under it is the simulator's.
                          {'source': 'sim'}, sim_time]),
         Node(package='aav_spine_sim', executable='spine_sim', name='spine_sim',
+             namespace='/',
              parameters=[{'car': 'ravensim', 'wheelbase': float(v['wheelbase']),
                           'speed_loop': LaunchConfiguration('speed_loop').perform(context),
                           'track': float(v['track']),

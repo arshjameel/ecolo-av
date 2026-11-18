@@ -33,7 +33,7 @@ def driver(context):
     return [Node(
         package=vehicle.RC_IMPLS[impl],
         executable='rc_driver',
-        name='rc_driver',
+        name='rc_driver', namespace='/',
         parameters=[rc_params(vehicle.load()),
                     {'max_speed': ParameterValue(LaunchConfiguration('max_speed'),
                                                  value_type=float),

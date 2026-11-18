@@ -30,7 +30,7 @@ def watchdog(context):
     impl = vehicle.check_watchdog_impl(LaunchConfiguration('watchdog_impl').perform(context))
     # inputs isn't in the file, so this dict adds it rather than losing to the file.
     return [Node(package=vehicle.WATCHDOG_IMPLS[impl], executable='sensor_watchdog',
-                 name='sensor_watchdog',
+                 name='sensor_watchdog', namespace='/',
                  output='screen',
                  parameters=[config, {'inputs': names, 'use_sim_time': sim_time}])]
 

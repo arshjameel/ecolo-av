@@ -124,8 +124,11 @@ ros2 run aav_legacy steering_limits --left 3420 --centre 1890 --right 480 --left
 
 ### Launch
 
-`legacy.launch.py [uart:=true] [encoder:=true] [rc:=true] [legacy_impl:=rust] [rc_impl:=rust]`:
-the bridge, the encoder, and `rc_driver` beside the bridge.
+`legacy.launch.py [uart:=true] [encoder:=true] [rc:=true] [legacy_impl:=rust] [rc_impl:=rust]
+[port:=] [frame_version:=]`: the bridge, the encoder, and `rc_driver` beside the bridge.
+`port` and `frame_version` (empty: `legacy.yaml`'s) change one run without editing the file,
+in both languages: the bridge has `namespace='/'`, so launch's values beat the YAML in Rust
+too (`docs/languages.md`, "Launch overrides"; `aav_bringup`'s `test_rust_overrides.py`).
 
 | Switch | `rust` (the default since 17 Nov, Ben: "Rust tomorrow") | `python` (the fall-back) |
 |---|---|---|

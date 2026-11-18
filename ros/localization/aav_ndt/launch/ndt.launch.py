@@ -91,7 +91,7 @@ def nodes(context):
             settings['min_score_per_point'] = float(arg('ndt_min_score'))
         if arg('ndt_min_height'):
             settings['min_height'] = float(arg('ndt_min_height'))
-    return [Node(package='aav_ndt', executable='ndt', name='ndt', output='screen',
+    return [Node(package='aav_ndt', executable='ndt', name='ndt', namespace='/', output='screen',
                  parameters=[settings,
                              car_parameters(vehicle.load()), start,
                              {'map': map_path(arg('ndt_map')),

@@ -56,7 +56,7 @@ def hud_node(context):
     return [Node(
         package='aav_hud',
         executable='hud',
-        name='hud',
+        name='hud', namespace='/',
         arguments=arguments,
         parameters=[
             PathJoinSubstitution([FindPackageShare('aav_hud'), 'config', 'hud.yaml']),

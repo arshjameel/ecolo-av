@@ -83,6 +83,38 @@ rm -rf build/*/target/release/build/rclrs-* build/*/target/release/.fingerprint/
 pixi run build
 ```
 
+## Launch overrides: `namespace='/'` on every Rust node
+
+**The trap (found 18 Nov).** rclrs 0.8 reads a parameter file's `/**` entries first, then
+the entry under the node's own name, whatever order the files came in. rclpy and rclcpp
+take the files in order. launch_ros writes a launch dict under `/**` when the Node has no
+namespace. So with a config YAML (`legacy_uart_bridge:`) and a launch dict:
+
+| Who started | The YAML says | Launch says | Python uses | Rust used |
+|---|---|---|---|---|
+| `legacy_uart_bridge` | `port: /dev/ttyAMA0` | `port:=socket://...` | launch's | **the YAML's** |
+
+**The fix.** Give the Node `namespace='/'` (the same names and topics). launch then writes
+its dicts under `/legacy_uart_bridge` too, and the later file wins in both languages.
+`tools/tests/test_rust_launch_params.py` fails a Rust Node with several parameter sources
+and no namespace; `aav_bringup`'s `test_rust_overrides.py` starts ego, the legacy bridge and
+the output mux in both languages and reads the values back.
+
+**Also:** rclrs matches only `/**` and the exact name. A YAML key such as `/**/joy_alive`
+reaches the Python node and **not** the Rust one: name a Rust node in full.
+
+What the audit found (18 Nov, every launch profile run without starting anything):
+
+| Node (Rust) | Key in both | YAML | Launch | Was it lost? | Now |
+|---|---|---|---|---|---|
+| `legacy_uart_bridge` | `max_steering_angle` | 0.5 (legacy.yaml) | vehicle.yaml's | yes, hidden: both 0.5 today; a new measurement would never have reached Rust | `namespace='/'` |
+| `legacy_uart_bridge` | `port`, `frame_version` | legacy.yaml | new `port:=`, `frame_version:=` | (no launch argument before) | tested both languages |
+| `hud` | `max_speed` | hud.yaml | ego's cap, `max_speed:=` | yes, with `max_speed:=0.3`: the redline kept hud.yaml's 1.0 | `namespace='/'` |
+| `ego` (rust), `point_driver` | - | ego.yaml as a dict / one file per node | | no | already safe |
+| `ndt`, `lane_finder` | - | | | no: fixed before (5 and 18 Nov) | `namespace='/'` |
+| spine_bridge, lidar_scan, voxels, things, mppi_lag, mpc_lag_rs, velocity_smoother, localization_health, sensor_watchdog, imu_node, behaviour, rc_driver, spine_sim | none today | | | no | `namespace='/'`, so a future key can't be lost |
+| `joy_alive` (being ported) | its whole YAML | `/**/joy_alive:` | | would be: rclrs skips wildcards | name it in full when ported |
+
 ## Rust on the Pi and the ESP32
 
 | Target | Rust there | A ROS node? |

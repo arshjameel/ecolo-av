@@ -110,7 +110,7 @@ def launch_setup(context):
                          ('imu/mag', '/sensors/imu/mag')]),
         include('aav_localization', 'localization.launch.py', gps='true'),
         Node(package=bridges.package(LaunchConfiguration('bridge').perform(context)),
-             executable=bridges.EXECUTABLE, name='spine_bridge',
+             executable=bridges.EXECUTABLE, name='spine_bridge', namespace='/',
              parameters=[os.path.join(share('aav_spine'), 'config', 'spine.yaml'),
                          vehicle.spine_params(v),
                          # /system/source: the spine is spine_sim, not the real board.
