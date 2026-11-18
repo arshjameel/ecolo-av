@@ -29,14 +29,16 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [localization_health_impl:=rust] [lidar_impl:=rust] [things_impl:=rust]
       [io_mux_impl:=rust] [legacy_impl:=rust] [rc_impl:=rust] [lane_finder_impl:=rust]
       [joy_alive_impl:=rust] [stop_sign_impl:=rust] [drive_to_point_impl:=rust]
+      [camera_stream_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
                            aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
                            aav_lidar_rs, aav_things_rs, aav_io_mux_rs (both muxes),
                            aav_legacy_rs (legacy_uart_bridge), aav_rc_rs (rc_driver),
                            aav_joy_alive_rs (joy_alive) and aav_stop_sign_rs
                            (stop_sign_watcher); since 18 Nov aav_lane_finder_rs
-                           (lane_finder, the lane part) and aav_drive_to_point_rs
-                           (point_driver).
+                           (lane_finder, the lane part), aav_drive_to_point_rs
+                           (point_driver) and aav_camera_stream_rs (camera_stream, with
+                           detector: none).
                            python: the Python node instead, the same names and topics;
                            one switch each, the fall-back if one misbehaves.
                            docs/car-day.md)
@@ -334,11 +336,12 @@ def stream_labels(obstacles):
     return ','.join(labels)
 
 
-# The car decides these: its sources are real, no stream check's time code, no sim clock.
-STREAM_FIXED = ('source', 'time_code', 'use_sim_time')
+# The car decides these: its sources are real, no stream check's time code, no sim clock,
+# and the node's language from its own camera_stream_impl argument.
+STREAM_FIXED = ('source', 'time_code', 'use_sim_time', 'camera_stream_impl')
 
 
-def camera_streams(context, machine, settings, labels, publish_image):
+def camera_streams(context, machine, settings, labels, publish_image, impl):
     """
     Return the camera_stream part and the cameras it streams; or skip it, saying why.
 
@@ -347,6 +350,8 @@ def camera_streams(context, machine, settings, labels, publish_image):
     detector. Skipped, like the detector part, where the decoder program, PyTorch or the
     model file is missing: a stream without its detector would look healthy and see no
     stop signs. detector: none in the machine file runs the streams without, on purpose.
+    impl (camera_stream_impl:=) picks the node's language; with a detector the Python
+    one runs (vehicle.camera_stream_runs).
     """
     if not isinstance(settings, dict) or not settings.get('host'):
         raise RuntimeError(f"{machine}.yaml: give the camera streams' settings, with the "
@@ -355,7 +360,8 @@ def camera_streams(context, machine, settings, labels, publish_image):
     defaults = arguments(context, machine, 'aav_camera_stream', 'camera_stream.launch.py',
                          settings, 'camera_stream', fixed=STREAM_FIXED)
     args = {**defaults, 'labels': labels, 'publish_image': publish_image, **settings,
-            'source': 'real', 'time_code': False, 'use_sim_time': False}
+            'source': 'real', 'time_code': False, 'use_sim_time': False,
+            'camera_stream_impl': impl}
     cameras = streamed(args)
     if not cameras:
         raise RuntimeError(f'{machine}.yaml: camera_stream streams no cameras')
@@ -448,7 +454,8 @@ def launch_setup(context):
              'joy_alive_impl': vehicle.check_joy_alive_impl(arg('joy_alive_impl')),
              'stop_sign_impl': vehicle.check_stop_sign_impl(arg('stop_sign_impl')),
              'drive_to_point_impl': vehicle.check_drive_to_point_impl(
-                 arg('drive_to_point_impl'))}
+                 arg('drive_to_point_impl')),
+             'camera_stream_impl': vehicle.check_camera_stream_impl(arg('camera_stream_impl'))}
     get_logger('car.launch.py').info(
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
@@ -471,7 +478,8 @@ def launch_setup(context):
             context, machine, config.get('camera_stream'),
             stream_labels(on('camera_obstacles')),
             # The lane finder reads the front left picture, here: no network in between.
-            publish_image=on('lane') and 'front_left' in intended)
+            publish_image=on('lane') and 'front_left' in intended,
+            impl=impls['camera_stream_impl'])
     run_detector = on('detector')
     if run_detector and intended:
         images = detector_images(config.get('detector'))
@@ -723,6 +731,11 @@ def generate_launch_description():
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+        DeclareLaunchArgument('camera_stream_impl',
+                              default_value=vehicle.DEFAULT_CAMERA_STREAM_IMPL,
+                              description='rust or python: which camera_stream pulls each '
+                                          'camera Pi stream (aav_camera_stream_rs, or '
+                                          'aav_camera_stream); a detector runs the Python one'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='python or rust: which things node tracks the '
                                           'cubes (aav_things, or aav_things_rs)'),

@@ -104,7 +104,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `campus_world.py` | Carleton from OpenStreetMap: a Ravensim world (SDF), its RavenTiles, one map of the whole campus (Nav2's PGM format), and NDT's guessed map (tested without ROS) | `campus` |
 | `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag (its maths without ROS) | `ndt-map` |
 | `timing_test.py` | every topic's gaps and late messages, parked and driving | `measure timing` |
-| `stream_check.py` | the camera stream end to end, without the car | `measure stream` |
+| `stream_check.py` | the camera stream end to end, without the car (`--impl rust\|python`: which node; CPU and memory of each program) | `measure stream` |
 | `sim_frames.py` | camera pictures of the sim's stop sign, for the detectors | - |
 | `make_stop_sign.py` | the road world's stop-sign mesh and picture | - |
 | `make_map.py` | a map (PGM + YAML, Nav2's format) from a short spec | - |

@@ -40,6 +40,7 @@ The same for `front_right`, in a second program.
 |---|---|---|
 | The Pi's settings | `ros/sources/aav_camera_stream/pi/mediamtx.yml` | install: `pi/README.md` [[untested]] on the Pi |
 | The node | `aav_camera_stream/camera_stream.py` | one per camera |
+| Its Rust twin | `aav_camera_stream_rs` (`camera_stream`) | the default with `detector: none`; [below](#the-rust-node-18-nov) |
 | Its logic, no ROS | `decoders.py`, `reader.py`, `latest.py`, `lens.py`, `timecode.py`, `models.py`, `calibration.py` | 55 tests |
 | The detector | `aav_detector.detectors.load_detector` | imported, not copied |
 | Start it, the car | `car.launch.py machine:=orin`: its `camera_stream` part, set in `orin.yaml` | [below](#on-the-car-carlaunchpy) |
@@ -104,6 +105,37 @@ Check it at the car, and fix it on the router.
     of silence is a sure sign, as for a camera's pictures. `/diagnostics` comes once a
     second, and its frame rate is over 5 s. Nothing checks for a frozen picture: an
     empty list repeats on a clear road, and a stuck Pi camera stops the stream instead.
+
+## The Rust node (18 Nov)
+
+Ben, 18 Nov: "lets port them to rust". `aav_camera_stream_rs` is the same node in Rust:
+same name, topics, parameters and diagnostics. It runs **no model**.
+
+| Asked for | Runs |
+|---|---|
+| `detector: none` (and not `decoder: opencv`) | the Rust node (the default, `camera_stream_impl:=rust`) |
+| `detector: rfdetr` or `yolo` (the car's `orin.yaml` today) | the Python node; the launch log says why |
+| `camera_stream_impl:=python` | the Python node, always |
+
+| Same as the Python | How we know |
+|---|---|
+| decoder command lines, `auto`'s choice | 462 vectors from `decoders.py` |
+| newest frame, rates, delays, stamps | 17 timed sequences from `latest.py` |
+| the time code | 29 vectors from `timecode.py` |
+| lens files, scaling, the new lens, undistorted pictures | 40 vectors from `lens.py` and OpenCV: the new K to 1e-12, every grey level the same |
+| the published pictures, lens, detections, diagnostics | both nodes on one test stream (`test_camera_stream_node.py`) |
+
+`pixi run measure stream --pattern --detector none --impl rust|python` (a Mac, 18 Nov,
+other helpers' work running: load average 5-19; 40 s each, gst-mac, the stream check's
+calibration, so each picture is undistorted): **measured**
+
+| Node | CPU (with its decoder) | Memory | Work a picture | Time code → detections |
+|---|---|---|---|---|
+| Rust (last run) | 6 % of a core | 41 MB | 0.9 ms | 7 ms median, 10 p95 |
+| Python (last run) | 17 % | 235 MB | 1.1 ms | 7 ms median, 9 p95 |
+| Earlier runs | Rust 4-6 %, Python 14 % | Rust 41-51, Python 233 | | one Rust run had p95 174 ms while the load jumped from 6 to 13: the decoder's side too (arrival p95 174) |
+
+The Orin with JetPack's decoder: [[untested]].
 
 ## The settings, and why
 

@@ -2,11 +2,16 @@
 
 import importlib.util
 import os
+import sys
 
 import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LAUNCH = os.path.join(HERE, '..', 'launch', 'camera_stream.launch.py')
+try:
+    import aav_description  # noqa: F401
+except ImportError:             # tools/test.sh: the workspace isn't sourced
+    sys.path.append(os.path.join(HERE, '..', '..', '..', 'bringup', 'aav_description'))
 try:
     import launch  # noqa: F401
     import launch_ros  # noqa: F401
@@ -45,3 +50,20 @@ def test_no_calibration_means_no_undistortion():
     p = m.node_parameters('front_right', {'frame_id': 'camera_right_link', 'calibration': ''},
                           values, '/repo')
     assert p['calibration'] == ''
+
+
+def test_the_rust_node_by_default_the_python_one_with_a_model():
+    m = load()
+    values = {name: default for name, default, _ in m.ARGS}
+    assert values['camera_stream_impl'] == 'rust'
+    assert 'camera_stream_impl' not in m.node_parameters('front_left', {}, values, '/repo')
+    python = m.node_command('python', 'camera_stream_front_left', '/tmp/p.yaml')
+    assert python == ['python3', '-m', 'aav_camera_stream.camera_stream', '--ros-args',
+                      '-r', '__node:=camera_stream_front_left', '--params-file', '/tmp/p.yaml']
+    from ament_index_python.packages import PackageNotFoundError
+    try:
+        rust = m.node_command('rust', 'camera_stream_front_left', '/tmp/p.yaml')
+    except PackageNotFoundError:
+        return                  # not built and sourced (tools/test.sh)
+    assert rust[0].endswith(os.path.join('lib', 'aav_camera_stream_rs', 'camera_stream'))
+    assert rust[1:] == python[3:]

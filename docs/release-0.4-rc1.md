@@ -76,6 +76,7 @@ The fall-backs, one per node (the others stay Rust):
 | stop_sign_watcher (twist_mux's stop-sign lock) | `stop_sign_impl:=python` |
 | point_driver (drive to a point; the Orin) and its client | `drive_to_point_impl:=python`; `pixi run drive-to-point --python ...` |
 | arm_when_open (bench and Ravensim's spine only) | `arm_when_open_impl:=python` |
+| camera_stream (each camera Pi stream; Rust only with `detector: none`: with RF-DETR the Python runs anyway) | `camera_stream_impl:=python` |
 
 ## Untested on the car (everything since 13 Nov)
 
