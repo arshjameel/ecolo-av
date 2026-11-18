@@ -2,6 +2,8 @@
 
 Senura's runbook (17 Nov), checked against the repo the same night by Ben's session.
 One page, in order. Each step links to the car-day section that has the details.
+The night before, the whole Motor Pi path ran on a Mac against the ESP32 in QEMU:
+[the rehearsal](rehearsal-2026-11-18.md) (what passed, what didn't, the morning's checklist).
 
 !!! danger "On stands, e-stops in hand"
     The ESP32 drives the brake, throttle, steering and direction. The Rust firmware has

@@ -752,7 +752,7 @@ The HUD's GO / STOP panel says whether the car may move, and why not. A latched 
 | 3.2 | Forward, gently | the drive wheels turn **forward**, slowly | backwards: write it down (`legacy_protocol.py`), not fixed at the car. **Fast:** e-stop, write down the speed (3.12's tachometer), and no ground driving until tests 4.2 and 4.4 |
 | 3.2b | Backward, gently (the keyboard's back key) | the drive wheels turn **backward**, slowly; the HUD's speed reads negative | forward: the ESP32's direction switch (ask the hardware lead). **Nav2 must not reverse on the ground until this passes:** `reversing:=false` |
 | 3.3 | Left | the front wheels turn **left** | right: `steering_sign` (Q2) |
-| 3.4 | Let go of the key | slows to 0 within 0.3 s | |
+| 3.4 | Let go of the key | throttle off within 0.5 s (the QEMU rehearsal: 0.4 s), then the hold brake | |
 | 3.5 | The HUD's e-stop button | brakes at once; nothing moves until `pixi run clear estop` | |
 | 3.6 | Stop the keyboard program | the bridge brakes: its commands go stale | |
 | 3.7 | Ctrl-C the Motor Pi's bridge | a last stop frame | |

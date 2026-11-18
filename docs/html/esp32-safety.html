@@ -110,6 +110,7 @@
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
 <a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a class="here" href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -680,7 +681,7 @@ ESP32 brakes on its own only when ego, the mux, the Pi or the wire stops.</p>
 </tr>
 <tr>
 <td>What a laptop can do</td>
-<td>drive (<code>pixi run keyboard</code>), watch (<code>pixi run hw-panel stands:=true</code>), e-stop</td>
+<td>drive (<code>pixi run keyboard</code>), watch (<code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code>; not <code>pixi run hw-panel</code>, which stays on the laptop), e-stop</td>
 </tr>
 <tr>
 <td>hw_panel's speed buttons on the real car</td>
@@ -708,7 +709,7 @@ ESP32 brakes on its own only when ego, the mux, the Pi or the wire stops.</p>
 </tr>
 <tr>
 <td>the laptop (to watch)</td>
-<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run hw-panel stands:=true</code></td>
+<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code> (<code>pixi run hw-panel</code> is localhost-only: it never sees the car)</td>
 </tr>
 </tbody>
 </table></div>

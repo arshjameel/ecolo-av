@@ -51,6 +51,20 @@ def test_max_speed_can_only_lower():
         nodes(max_speed='2.0')
 
 
+def test_max_speed_caps_reverse_too():
+    # Car day A9 on stands: "the speed capped at 0.3 m/s", both ways. Only ever lower.
+    from aav_description import vehicle
+    reverse = float(vehicle.load()['vehicle']['max_reverse_speed'])
+    for cap in ('0.3', '1.0'):
+        (process,) = nodes(ego_impl='rust', max_speed=cap)
+        ego = rust_params(process)['/ego']['ros__parameters']
+        assert ego['max_speed'] == float(cap)
+        assert ego['max_reverse_speed'] == min(float(cap), reverse)
+    # The Python ego gets the same list of dicts, the last one winning, as the Rust's file.
+    (process,) = nodes(ego_impl='rust')
+    assert rust_params(process)['/ego']['ros__parameters']['max_reverse_speed'] == reverse
+
+
 def test_sim_max_speed_is_refused_on_the_car():
     with pytest.raises(ValueError, match='simulators only'):
         nodes(sim_max_speed='3.0')

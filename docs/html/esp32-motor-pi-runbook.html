@@ -7,7 +7,7 @@
 <!-- Generated from docs/esp32-motor-pi-runbook.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Flash the ESP32, then upgrade the Motor Pi</h1>
-<div class="meta">8 min read · 7 sections</div></header>
+<div class="meta">9 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -110,6 +110,7 @@
 <a href="can-plan.html">CAN plan</a>
 <a href="rust-firmware.html">Rust firmware</a>
 <a class="here" href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
 <a href="esp32-bench.html">ESP32 first flash</a>
 <a href="esp32-safety.html">ESP32 safety rules</a>
 <a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
@@ -126,7 +127,9 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#the-order">The order</a><a href="#before-you-start">Before you start</a><a href="#steps-4-6-the-esp32">Steps 4-6: the ESP32</a><a href="#step-7-the-motor-pi-to-2404">Step 7: the Motor Pi to 24.04</a><a href="#after-what-to-check">After: what to check</a><a href="#if-the-rust-nodes-misbehave">If the Rust nodes misbehave</a><a href="#rollback">Rollback</a></nav>
 <div class="lead"><p>Senura's runbook (17 Nov), checked against the repo the same night by Ben's session.
-One page, in order. Each step links to the car-day section that has the details.</p>
+One page, in order. Each step links to the car-day section that has the details.
+The night before, the whole Motor Pi path ran on a Mac against the ESP32 in QEMU:
+<a href="rehearsal-2026-11-18.html">the rehearsal</a> (what passed, what didn't, the morning's checklist).</p>
 <div class="admonition danger">
 <p class="admonition-title">On stands, e-stops in hand</p>
 <p>The ESP32 drives the brake, throttle, steering and direction. The Rust firmware has
@@ -414,7 +417,7 @@ fall-back, one switch away (<a href="release-0.4-rc1.html">0.4 on the car</a>):<
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="rust-firmware.html"><small>Previous</small>← Rust firmware</a>
-<a class="next" href="esp32-bench.html"><small>Next</small>ESP32 first flash →</a></nav>
+<a class="next" href="rehearsal-2026-11-18.html"><small>Next</small>Rehearsal for 18 Nov →</a></nav>
 </main>
 <footer>Source: <code>docs/esp32-motor-pi-runbook.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

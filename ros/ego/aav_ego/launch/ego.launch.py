@@ -23,6 +23,7 @@ look_ahead (true) also starts look_ahead: the squiggly line's numbers for the sc
 
 max_speed (m/s) caps the forward speed below config/ego.yaml's, for a first drive on
 stands; empty (the default) keeps ego.yaml's. It can only lower the cap, never raise it.
+It caps reverse too: max_reverse_speed becomes the smaller of it and vehicle.yaml's.
 
 The wheelbase, the steering limit, the reverse speed and the body (mass, track, centre of
 mass, tyre grip, the throttle's and brake's accelerations) come from
@@ -62,7 +63,11 @@ def ego_node(context):
         if not 0.0 < limit <= CONFIG_MAX_SPEED:
             raise ValueError(f'max_speed:={cap} must be above 0 and at most '
                              f'{CONFIG_MAX_SPEED} m/s (config/ego.yaml)')
-        params.append({'max_speed': limit})
+        # Backwards too: "the speed capped at 0.3 m/s" on stands (car day A9) means both
+        # ways. Only ever lowers vehicle.yaml's max_reverse_speed (rehearsal, 17 Nov: with
+        # max_speed:=0.3 the stick held back still reversed at 0.5 m/s).
+        reverse = min(limit, float(car['vehicle']['max_reverse_speed']))
+        params.append({'max_speed': limit, 'max_reverse_speed': reverse})
     sim = context.launch_configurations.get('sim_max_speed', '').strip()
     if sim:
         # Above ego.yaml's cap, so only ever in a simulator: refused on wall-clock time.
