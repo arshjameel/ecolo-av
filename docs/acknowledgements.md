@@ -71,6 +71,11 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | OpenCV | Apache-2.0 | runs; ported (the formulas) | lane finding (the Python `aav_lane_finder`); its `projectPoints` lens model and its fixed-point bilinear `remap` rewritten in Rust for `aav_lane_finder_rs` (`lane-core`), so the bird's-eye view has OpenCV's grey levels exactly |
 | **NumPy**'s `polyfit`, `convolve` ('same') and `linspace` | BSD-3 | ported (the algorithms) | `lane-core`: the lane lines' fit, the line starts' histogram and the sliding windows' edges, as the Python lane finder computes them (`aav_lane_finder_rs`) |
 | **png** (image-rs) | MIT OR Apache-2.0 | runs (tests) | reads the Rust lane finder's test pictures (`lane-core`'s vectors) |
+| OpenCV's `getOptimalNewCameraMatrix`, `undistortPoints`, `initUndistortRectifyMap`, 3 × 3 `invert`, `INTER_AREA` | Apache-2.0 | ported (the formulas) | the Rust camera stream's undistortion and preview (`stream-core`, `aav_camera_stream_rs`): the same new lens and grey levels as the Python's OpenCV |
+| **jpeg-encoder** crate (V. Ströbel), 0.7 | (MIT OR Apache-2.0) AND IJG: "this software is based in part on the work of the Independent JPEG Group" | runs | the Rust camera stream's preview JPEG (`stream-core`) |
+| GStreamer (`gst-launch-1.0`), FFmpeg (`ffmpeg`), MediaMTX | LGPL-2.1; LGPL-2.1+ / GPL; MIT | runs, as separate programs | decoding the camera Pi's stream (both camera_stream nodes run them as child programs, linked to nothing); MediaMTX on the Pi and in `pixi run measure stream` |
+| Python's `shlex.split` and `str.format` | PSF-2.0 | ported (the rules) | the Rust camera stream fills and splits a GStreamer pipeline as the Python does (`stream-core`'s `decoders`) |
+| **libc** crate; **serde_yaml_ng** | MIT OR Apache-2.0 | runs | the Rust camera stream: stopping the decoder's process group (`killpg`); reading camera_info YAML calibrations |
 | NVIDIA TensorRT; Apple Core ML Tools | NVIDIA licence; BSD-3 | runs | the detector on the Orin and on Macs |
 | **ONNX Runtime** (Microsoft) | MIT | runs | the Rust detector (`aav_detector_rs`), and `tools/onnx_check.py` ([ONNX](onnx.md)) |
 | **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `detector-core` |
