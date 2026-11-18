@@ -82,6 +82,21 @@ def reference():
     return np.frombuffer(raw[:WIDTH * HEIGHT * 3], np.uint8).reshape(HEIGHT, WIDTH, 3)
 
 
+def stop(process):
+    """Stop a process group: SIGINT, then SIGKILL; gone already is fine."""
+    for sig, wait in ((signal.SIGINT, 10), (signal.SIGKILL, 5)):
+        try:
+            os.killpg(process.pid, sig)
+        except (ProcessLookupError, PermissionError):
+            break               # macOS: EPERM for a group whose members have all exited
+        try:
+            process.wait(wait)
+            break
+        except subprocess.TimeoutExpired:
+            continue
+    process.wait(5)
+
+
 class Watch:
     """Everything the node publishes, by topic."""
 
@@ -99,8 +114,13 @@ class Watch:
                 (DiagnosticArray, '/diagnostics', reliable),
                 (DataSource, '/system/source', latched)]:
             self.got[topic] = []
-            node.create_subscription(kind, topic, lambda m, t=topic: self.got[t].append(
-                (time.monotonic(), m)), qos)
+            node.create_subscription(kind, topic, lambda m, t=topic: self.keep(t, m), qos)
+
+    def keep(self, topic, msg):
+        # Only this node's report: another test's nodes may share the domain.
+        if topic != '/diagnostics' or any(
+                s.name == 'camera_stream: front_left' for s in msg.status):
+            self.got[topic].append((time.monotonic(), msg))
 
 
 @pytest.mark.parametrize('impl', ['rust', 'python'])
@@ -182,12 +202,7 @@ def test_a_test_stream_comes_out_undistorted(impl, tmp_path):
     finally:
         me.destroy_node()
         rclpy.shutdown()
-        os.killpg(node.pid, signal.SIGINT)
-        try:
-            node.wait(10)
-        except subprocess.TimeoutExpired:
-            os.killpg(node.pid, signal.SIGKILL)
-            node.wait(5)
+        stop(node)
         log.close()
 
 

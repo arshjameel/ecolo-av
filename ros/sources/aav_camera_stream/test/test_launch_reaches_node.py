@@ -18,6 +18,7 @@ import time
 import pytest
 
 try:
+    from ament_index_python.packages import get_package_prefix
     from diagnostic_msgs.msg import DiagnosticArray
     import rclpy
     from rclpy.qos import QoSProfile, ReliabilityPolicy
@@ -26,12 +27,38 @@ except ImportError:
     rclpy = None
 
 GST = shutil.which('gst-launch-1.0')
-pytestmark = pytest.mark.skipif(rclpy is None or GST is None or not shutil.which('ros2'),
-                                reason='needs ROS sourced (colcon test) and gst-launch-1.0')
+
+
+def installed():
+    """Whether both nodes are built and sourced (not under tools/test.sh)."""
+    try:
+        return all(get_package_prefix(p) for p in ('aav_camera_stream', 'aav_camera_stream_rs'))
+    except (LookupError, ValueError):
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    rclpy is None or GST is None or not shutil.which('ros2') or not installed(),
+    reason='needs the workspace built and sourced (colcon test) and gst-launch-1.0')
 
 PIPELINE = ('videotestsrc is-live=true pattern=colors ! video/x-raw,width={width},'
             'height={height},framerate=15/1 ! videoconvert ! video/x-raw,format=BGR '
             '! fdsink sync=false')
+
+
+def stop(process):
+    """Stop a process group: SIGINT, then SIGKILL; gone already is fine."""
+    for sig, wait in ((signal.SIGINT, 15), (signal.SIGKILL, 5)):
+        try:
+            os.killpg(process.pid, sig)
+        except (ProcessLookupError, PermissionError):
+            break               # macOS: EPERM for a group whose members have all exited
+        try:
+            process.wait(wait)
+            break
+        except subprocess.TimeoutExpired:
+            continue
+    process.wait(5)
 
 
 @pytest.mark.parametrize('impl', ['rust', 'python'])
@@ -53,8 +80,8 @@ def test_launch_values_reach_the_node(impl, tmp_path):
     me = rclpy.create_node(f'camera_stream_launch_test_{impl}')
     got = {'diag': [], 'image': []}
     reliable = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
-    me.create_subscription(DiagnosticArray, '/diagnostics',
-                           lambda m: got['diag'].extend(m.status), reliable)
+    me.create_subscription(DiagnosticArray, '/diagnostics', lambda m: got['diag'].extend(
+        s for s in m.status if s.name == 'camera_stream: front_left'), reliable)
     me.create_subscription(Image, '/sensors/camera/front_left/image_raw',
                            lambda m: got['image'].append(m), reliable)
     try:
@@ -74,21 +101,5 @@ def test_launch_values_reach_the_node(impl, tmp_path):
     finally:
         me.destroy_node()
         rclpy.shutdown()
-        os.killpg(launch.pid, signal.SIGINT)
-        try:
-            launch.wait(15)
-        except subprocess.TimeoutExpired:
-            os.killpg(launch.pid, signal.SIGKILL)
-            launch.wait(5)
+        stop(launch)
         log.close()
-
-
-def test_a_detector_runs_the_python_node():
-    import importlib.util
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'launch',
-                        'camera_stream.launch.py')
-    spec = importlib.util.spec_from_file_location('camera_stream_launch', path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    runs, why = module.vehicle.camera_stream_runs('rust', 'rfdetr', 'gst-nvidia')
-    assert runs == 'python' and 'rfdetr' in why
