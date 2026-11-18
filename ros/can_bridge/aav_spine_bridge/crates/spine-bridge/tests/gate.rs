@@ -5,8 +5,8 @@
 use std::time::{Duration, Instant};
 
 use spine_bridge::{
-    ArmError, Arming, Bridge, Command, Drive, GateShut, Geometry, OutputGate, Role, Settings,
-    Target, GATE_SHUT,
+    try_again, ArmError, Arming, Bridge, Command, Drive, GateShut, Geometry, OutputGate, Role,
+    Settings, Target, GATE_SHUT,
 };
 
 const SETTINGS: Settings = Settings {
@@ -157,4 +157,22 @@ fn targets_by_name() {
     assert_eq!("sim".parse(), Ok(Target::Sim));
     assert!("turtle".parse::<Target>().is_err());
     assert_eq!(Target::Sim.to_string(), "sim");
+}
+
+#[test]
+fn arm_when_open_retries_only_the_gate() {
+    // The cases of aav_spine's test_output_gate.py.
+    let shut = OutputGate::new(Target::Car, secs(1.5))
+        .check(Instant::now())
+        .unwrap_err()
+        .to_string();
+    assert!(try_again(false, &shut, secs(5.0), secs(120.0)));
+    assert!(!try_again(false, &shut, secs(120.0), secs(120.0))); // gives up
+    assert!(!try_again(true, "armed", secs(5.0), secs(120.0)));
+    assert!(!try_again(
+        false,
+        "e-stop is active; clear /safety/estop first",
+        secs(5.0),
+        secs(120.0)
+    ));
 }
