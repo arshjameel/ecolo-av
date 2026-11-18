@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# point-core: the point driver's maths and rules without ROS (aav_drive_to_point's
+#   approach.py, line.py, drive.py, rules.py and run.py, ported): cargo test -p point-core
+# point-node: the ROS nodes (rclrs): the action server `point_driver` and its client
+#   `drive_to_point`. colcon builds them through CMakeLists.txt.
+members = ["crates/point-core", "crates/point-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
