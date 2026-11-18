@@ -1,4 +1,6 @@
-//! rc_drive.py's answers (gen_vectors.py → vectors.json), and ours: the same, exactly.
+//! rc_drive.py's answers (gen_vectors.py → vectors.json), and ours: the same, to 1e-12.
+//! Not bit for bit: the turn rate goes through tan(), and Linux's maths library gave a
+//! last digit one off macOS's (CI, 18 Nov).
 
 use rc_core::{Limits, RcDrive, Sticks, Switch};
 use serde_json::Value;
@@ -8,6 +10,14 @@ fn f(v: &Value) -> f64 {
         Value::String(s) if s == "nan" => f64::NAN,
         other => other.as_f64().expect("a number"),
     }
+}
+
+/// Equal to 1e-12, or both NaN.
+fn same(ours: f64, theirs: f64, event: usize) {
+    assert!(
+        (ours.is_nan() && theirs.is_nan()) || (ours - theirs).abs() <= 1e-12,
+        "event {event}: ours {ours}, Python's {theirs}"
+    );
 }
 
 #[test]
@@ -43,8 +53,8 @@ fn every_tick_the_same_command() {
             match (ours, &e["cmd"]) {
                 (None, Value::Null) => {}
                 (Some(c), Value::Array(theirs)) => {
-                    assert_eq!(c.v, f(&theirs[0]), "event {i}");
-                    assert_eq!(c.w, f(&theirs[1]), "event {i}");
+                    same(c.v, f(&theirs[0]), i);
+                    same(c.w, f(&theirs[1]), i);
                 }
                 (ours, theirs) => panic!("event {i}: ours {ours:?}, Python's {theirs}"),
             }
