@@ -505,6 +505,23 @@ def check_watchdog_impl(impl):
     return name
 
 
+# Which sensor mux and output mux run (io_mux.launch.py, car.launch.py, sim.launch.py
+# io_mux_impl:=): rust (aav_io_mux_rs, the default on the car and in the simulator since
+# Ben decided, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later")
+# or python (aav_io_mux: the same node names, topics and answers; kept selectable until a
+# car day proves the Rust). Both muxes switch together. Each one's package.
+IO_MUX_IMPLS = {'python': 'aav_io_mux', 'rust': 'aav_io_mux_rs'}
+DEFAULT_IO_MUX_IMPL = 'rust'
+
+
+def check_io_mux_impl(impl):
+    """Return the muxes' language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in IO_MUX_IMPLS:
+        raise ValueError(f'io_mux_impl:={impl}: pick one of {", ".join(IO_MUX_IMPLS)}')
+    return name
+
+
 # Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
 # localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
 # in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or

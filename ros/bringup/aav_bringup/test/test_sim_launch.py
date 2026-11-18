@@ -235,7 +235,9 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
                          'watchdog.launch.py', 'geofence.launch.py'}
     assert sent['ravensim.launch.py']['world'] == 'empty'
     # ego's commands reach Ravensim through the output mux, only while everything is SIM.
-    assert sent['io_mux.launch.py'] == {'target': 'sim', 'source': 'sim'}
+    assert sent['io_mux.launch.py'] == {'target': 'sim', 'source': 'sim', 'io_mux_impl': 'rust'}
+    back = included(started(SIM, io_mux_impl='Python'))['io_mux.launch.py']
+    assert back['io_mux_impl'] == 'python'
     nav = sent['navigation.launch.py']
     assert (nav['radar'], nav['lidar'], nav['stop_zone'], nav['camera_obstacles']) == (
         'false', 'false', 'false', 'false')

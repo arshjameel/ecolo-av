@@ -15,6 +15,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [amcl:=false] [voxels:=false] [voxels_impl:=python] [kerbs:=] [ego_impl:=rust]
       [lidar_impl:=rust] [things_impl:=rust]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
+      [io_mux_impl:=rust]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
       [plan_around:=true] [things:=false]
@@ -188,6 +189,9 @@ bench's argument names:
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs): the same topics and
                       answers as the Python's; the default on the car and here since
                       16 Nov (Ben: "watchdog in rust sure"; python: aav_safety's)
+  io_mux_impl:=rust  the sensor mux and the output mux in Rust (aav_io_mux_rs): the same
+                      node names, topics and answers; the default on the car and here
+                      since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
   localization_health_impl:=rust  localization_health in Rust
                       (aav_localization_health_rs), in the Python one's place: the same
                       topics and answers; warn only (TODO 185); the default on the car
@@ -538,6 +542,7 @@ def launch_setup(context):
         # ego's commands go to Ravensim (sim_adapter, or spine_bridge with spine:=true)
         # only while every source is SIM (aav_io_mux).
         include(context, 'aav_io_mux', 'io_mux.launch.py', target='sim', source='sim',
+                io_mux_impl=vehicle.check_io_mux_impl(arg('io_mux_impl')),
                 **({'screens': arg('watch_screens')} if arg('watch_screens') else {})),
         include(context, 'aav_scripted', 'scripted.launch.py', use_sim_time='true'),
         include(context, 'aav_drive_to_point', 'drive_to_point.launch.py', use_sim_time='true',
@@ -912,6 +917,9 @@ def generate_launch_description():
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
                               description='python or rust: which sensor watchdog runs '
                                           '(aav_safety, or aav_watchdog_rs)'),
+        DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
+                              description='python or rust: which sensor mux and output mux '
+                                          'run (aav_io_mux, or aav_io_mux_rs)'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL,
                               description='python or rust: which localization_health runs '
