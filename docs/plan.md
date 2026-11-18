@@ -12,9 +12,9 @@ the end, mapped to these numbers.
 
 > **The short version**
 > - **Software, built and tested in simulation: about 43%** of the committed tasks. **Proven on the car: about 5%** (the audits).
-> - **Ahead:** the drivers, ego, the muxes, Gazebo, Nav2, A to B, the HUD. **Behind:** everything that needs the car or new parts: power, calibration, the closed loop.
+> - **Ahead:** the drivers, ego, the muxes, the simulator, navigation, A to B, the HUD. **Behind:** everything that needs the car or new parts: power, calibration, the closed loop.
 > - **Gate 1, 30 Oct (Know the car): not passed.** The wheelbase and track are measured (1 Nov); the steering limit, the weight and the actuators aren't. Still the most urgent job. **Next gate: 27 Nov (Safe to move).**
-> - **MPPI:** Nav2's default since 22 Oct, tuned for the car in Gazebo, and compared with Regulated Pure Pursuit by `pixi run measure controllers` (`controller:=rpp` for the old one; [controllers](path-followers.md)). It steers round an obstacle the sensors see.
+> - **MPPI:** the default since 22 Oct, tuned for the car in Gazebo (Nav2's then; ours, `mppi_lag`, since 14 Nov), and scored by `pixi run measure controllers` ([controllers](path-followers.md)). It steers round an obstacle the sensors see.
 > - **Status:** ✅ done · 🧪 done in simulation only · 🔧 started · ⬜ not started · 🎯 stretch.
 
 ## How far along, by sub-project
@@ -54,12 +54,12 @@ work that runs in Gazebo or on the bench; "on the car" counts only what ran on t
 | Old code | every 2025-26 and 2024-25 repo surveyed; kept, ported or retired, with reasons | `docs/older-code.md`, each `PROVENANCE.md` |
 | Rust | the spine, the wheel encoder, the status display, the IMU driver, the radar clustering | `firmware/spine`, `ros/sources`, `ros/perception` |
 | Ego and the mux | twist_mux (a person always wins), ego (Ackermann, limits, timeouts), and now the car's weight | `ros/ego`, `ros/command_mux`, `ros/io_mux` |
-| Simulation | TurtleSim; our own simulator in Rust (the default since 8 Nov) and Gazebo, each with the whole car (cameras, radar, lidar, GPS, IMU, wheel speed, actuator model); the campus world; the bench with the real CAN messages | `pixi run turtle`, `sim`, `bench` |
+| Simulation | TurtleSim; our own simulator in Rust (Ravensim: the default since 8 Nov, the only one since Gazebo went on 16 Nov), with the whole car (cameras, radar, lidar, GPS, IMU, wheel speed, actuator model); the campus world; the bench with the real CAN messages | `pixi run turtle`, `sim`, `bench` |
 | Position | two EKFs and navsat_transform: within 0.15 m of Gazebo's truth; replay within 0.03 m | `ros/localization` |
-| Drivers | joystick, keyboard, scripted, replay, GPS A to B, Nav2, plain English (local model), street routes | `ros/drivers` |
-| Nav2 | the State Lattice planner (the default since 1 Nov; Hybrid-A* forward only), **MPPI** (the default) or Regulated Pure Pursuit, collision monitor, ghost obstacles | `ros/drivers/aav_navigation` |
-| Ours beside Nav2 (0.3, simulator only) | a costmap, planner, navigator, smoother and a lag-aware MPPI in Rust; trial followers; a diffusion planner; a behaviour planner | `ros/drivers`, [Switches](switches.md) |
-| Safety | a sensor watchdog (14 faults, the HUD's heartbeat among them, stop the car in Gazebo; frozen wheels 25 of 25 since 24 Oct); the collision monitor; the spine's timeout (not flashed) | `ros/safety`, `firmware/spine` |
+| Drivers | joystick, keyboard, scripted, replay, GPS A to B, navigation, plain English (local model), street routes | `ros/drivers` |
+| Navigation | ours in Rust (Nav2 until 17 Nov): the State Lattice planner (Hybrid-A* too), **MPPI with lag**, our costmap, navigator, smoother and stop zone; ghost obstacles | `ros/drivers/aav_navigation` |
+| Challengers | trial followers; a diffusion planner; a behaviour planner | `ros/drivers`, [Switches](switches.md) |
+| Safety | a sensor watchdog (14 faults, the HUD's heartbeat among them, stop the car in the simulator; frozen wheels 25 of 25 since 24 Oct); the stop zone; the spine's timeout (not flashed) | `ros/safety`, `firmware/spine` |
 | Screens | the raylib HUD and the map window, full screen at boot (ready to install) | `ros/hud` |
 | Perception | RF-DETR Nano by default, YOLO with `detector:=yolo` (Core ML on a Mac; a TensorRT engine for the Orin); the camera streams (`aav_camera_stream`); radar clustering; a lidar layer | `ros/perception`, [newer models](model-comparison.md) |
 | The car | two read-only audits: every computer, port and connection; irreplaceable files copied off | `docs/history/` |
@@ -162,7 +162,7 @@ the next concrete step.
 | T7.5 | Nav2 in Gazebo | 5 Feb | 🧪 | 90 | the corner problem fixed (M8); allowed to reverse, both controllers reach every lot goal, U-turn included (22 Oct). Left: forward only, stuck facing a wall (TODO 18) |
 | T7.6 | Language-model driver | 29 Jan | 🧪 | 90 | |
 | T7.7 | GPS A to B on the car | 26 Feb | ⬜ | 0 | 🎯 the year's demonstration |
-| T7.8 | Nav2 on the car | 26 Mar | ⬜ | 0 | |
+| T7.8 | Navigation on the car | 26 Mar | ⬜ | 0 | |
 | T7.9 | MPPI | Mar | 🧪 | 70 | the default since 22 Oct; a track of its own: M1-M9 below |
 
 ### 8 · Perception
@@ -212,7 +212,7 @@ too". It shares the car's model with ego, as the proposal says (section 8.3).
 | M4 | The comparison: `pixi run measure controllers` | ✅ 22 Oct | six runs overnight; MPPI did at least as well in each. **MPPI is the default** since 22 Oct ([controllers](path-followers.md)) |
 | M5 | Steering round an obstacle | ✅ 22 Oct, Gazebo | the planner's costmap has the radar and lidar (`plan_around:=true`); both controllers drove round the box 2.6-3.8 m clear. `sim-check --plan-around` |
 | M6 | Its CPU on the Orin | ⬜ | with the load report (T1.7) |
-| M7 | MPPI on the car | ⬜ | after Nav2 passes on the car (T7.8); MPPI is the default now |
+| M7 | MPPI on the car | ⬜ | after navigation passes on the car (T7.8); MPPI is the default now |
 | M8 | **The corner problem** (both controllers) | ✅ 22 Oct, Gazebo | the planner's costmap inflates 3.0 m gently, and it plans turns 1.25 x wider than full lock: both kept clear of the building. Left: after a wide turn the car can stop facing a wall, and forward only it can't get out (TODO 18) |
 | M9 | **The heading jumps** at walking pace (both) | 🧪 | measured over whole drives (22 Oct night): under 6° when slow, up to 25° at speed; the position is up to 0.7 m off, so goals count within 1.0 m. **A heading source since 25 Oct:** the GPS receiver's velocity (`aav_gps_heading`, TODO 13): median 1.6-2.1° at walking pace. RTK or two antennas would do better: the hardware lead decides, with T6.4. Reversing is worse while the antenna is ahead of the rear axle (22 Oct, [why](learn-gps.md#mount-the-antenna-over-the-rear-axle)): on the car it is over the axle already (Ben, 23 Oct). **Much better since 22 Oct, 06:00:** the global EKF's yaw noise 0.06 → 0.01; the lot tour's worst heading per leg 7-16° (was 14-76°) |
 

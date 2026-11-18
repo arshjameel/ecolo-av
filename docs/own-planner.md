@@ -1,9 +1,9 @@
 # Our own planner
 
-Ben, 8 Nov: move off Nav2 **one piece at a time**, each beside Nav2 until it wins. The
+Ben, 8 Nov: move off Nav2 **one piece at a time**, each beside Nav2 until it won. The
 order: the costmap ([done](own-costmap.md)), then **the path planner** (this page), then
-the navigator. Since 14 Nov ours is the simulator's default (`stack:=ours`; Nav2's
-lattice with `planner:=lattice` or `stack:=stock`). Nav2 stays on the car.
+the navigator. Since 14 Nov ours is the simulator's default (`stack:=ours`).
+Nav2 went on 17 Nov ([as it was](history/nav2-as-it-was.md)): ours is the only one, in the sim and on the car. The comparisons with Nav2's below are the record.
 
 > **The short version**
 > - **Switch:** `planner:=own`. Package `aav_planner` (Rust).
@@ -35,25 +35,23 @@ lattice with `planner:=lattice` or `stack:=stock`). Nav2 stays on the car.
 ## How it fits
 
 ```
-global costmap ───────────┐   Nav2's /global_costmap/costmap_raw (costmap:=nav2)
-                          │   or ours, /drivers/nav/costmap/global_raw (costmap:=own)
+global costmap (ours) ────┐   /drivers/nav/costmap/global_raw
 /tf (map → odom → car) ───┤
                           ▼
-bt_navigator ──ComputePathToPose──▶ planner (ours) ──▶ /plan ──▶ the follower, screens
-                                           └──────────▶ /drivers/nav/planner/status
-planner_server (Nav2's lattice) keeps running beside it: /compute_path_to_pose
+navigator ──ComputePathToPose──▶ planner (ours) ──▶ /plan ──▶ the follower, screens
+                                        └──────────▶ /drivers/nav/planner/status
 ```
 
 | Name | Type | For |
 |---|---|---|
-| `/drivers/nav/planner/compute_path_to_pose` | action, Nav2's ComputePathToPose | bt_navigator (remapped here) |
+| `/drivers/nav/planner/compute_path_to_pose` | action, Nav2's ComputePathToPose | the navigator |
 | `/plan` | nav_msgs/Path | the follower's path, the screens |
 | `/drivers/nav/planner/status` | DiagnosticStatus | each plan's times, length, cusps, or why none |
-| `/drivers/nav/planner/nav2_plan` | nav_msgs/Path | Nav2's lattice's own `/plan`, moved aside |
 
-**How the swap works.** `navigation.launch.py` remaps two names in `bt_navigator`:
-`compute_path_to_pose` and `compute_path_through_poses` → ours. The costmap step did the
-same with the clear service. Our navigator ([page](own-navigator.md)) calls both too.
+**How the swap worked.** Until 17 Nov `navigation.launch.py` remapped two names in Nav2's
+`bt_navigator` (`compute_path_to_pose` and `compute_path_through_poses`) to ours, with
+Nav2's `planner_server` running beside it. Now our navigator ([page](own-navigator.md))
+calls ours directly, and Nav2's planner is gone ([as it was](history/nav2-as-it-was.md)).
 
 ## What it does
 
@@ -83,7 +81,7 @@ start ─▶ A* over the moves ─▶ now and then: one curve straight to the go
 | To | Run |
 |---|---|
 | See it | `pixi run sim planner:=own`, then send a goal |
-| Score it beside Nav2's | `pixi run measure controllers --planners lattice own --reversing --tours lot` |
+| Score it against our Hybrid-A* | `pixi run measure controllers --planners own own_hybrid --reversing --tours lot` |
 | On our costmap too | add `costmap:=own` (it then plans on `/drivers/nav/costmap/global_raw`) |
 | Test the maths | `cd ros/drivers/aav_planner && cargo test -p lattice-planner` |
 | Time the hand-made maps | `cargo run --release -p lattice-planner --example scenes` |
@@ -270,7 +268,7 @@ take out wiggles shorter than ~2 m, so the steps stay, and the follower drives t
 
 | Switch | What |
 |---|---|
-| `plan_smoothing:=nav2` | Nav2's weights (`navigation.launch.py`'s default; `stack:=stock`; the car) |
+| `plan_smoothing:=nav2` | Nav2's weights (`navigation.launch.py`'s default; the car) |
 | `plan_smoothing:=strong` | w_data 0.02 in the GridBased block's `smoother`: Nav2's lattice and ours both read it. The sim's `ours` stack picks it |
 
 ```sh

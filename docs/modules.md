@@ -93,7 +93,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | | |
 |---|---|
 | **Does** | sends a config to the TI IWR6843AOP mmWave radar and publishes its points |
-| **Why** | sees obstacles ahead, for Nav2's costmap and the collision monitor |
+| **Why** | sees obstacles ahead, for the costmap and the stop zone |
 | **Runs on** | not in any machine file yet (`radar: false`) |
 | **In → out** | `/dev/aav/radar_cmd`, `/dev/aav/radar_data` → `/sensors/radar/points` (PointCloud2, `radar_link`, best effort) |
 | **Origin** | inherited: 2025-26 `Nav_Radar` @ 6242631882 |
@@ -167,8 +167,8 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | | |
 |---|---|
 | **Does** | runs the stage-3 and stage-4 tests (steering, speed up, coast, brake, circles, straight), logs them, prints the numbers for `vehicle.yaml` |
-| **Why** | fill `vehicle.yaml`'s `actuators:` with measured numbers, so Gazebo moves like the car |
-| **Runs on** | the laptop on the car's network (or the Mac with Gazebo) |
+| **Why** | fill `vehicle.yaml`'s `actuators:` with measured numbers, so the simulator moves like the car |
+| **Runs on** | the laptop on the car's network (or a Mac with Ravensim) |
 | **In → out** | the car's readings, `/safety/estop`, `/system/source` → `/drivers/tests/cmd_vel` (priority 60) |
 | **Origin** | ours |
 | **Status** | [[works]] Gazebo, all 9 tests (15 Oct); [[untested]] on the car |
@@ -222,12 +222,12 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 
 | | |
 |---|---|
-| **Does** | Nav2 set up for a car: the Smac State Lattice planner (the default since 1 Nov; Hybrid-A* if forward only), MPPI (or Regulated Pure Pursuit), costmaps, the collision monitor, and the maps |
+| **Does** | our navigation, set up for a car: the launch file and settings that start our map server, costmaps, planner (the State Lattice; Hybrid-A*), navigator, `mppi_lag`, smoother and stop zone, and the maps |
 | **Why** | drives to a goal or along GPS waypoints, around obstacles |
 | **Runs on** | the Orin |
 | **In → out** | `/localization/odom/local`, TF, `/map`, `/goal_pose`, `/sensors/radar/points`, `/perception/camera_obstacles` → `/drivers/nav/cmd_vel`, `/plan`, `/safety/collision_monitor/state` |
-| **Origin** | stock Nav2; our settings. Replaces 2025-26 `Navigation_PathPlanning_ObstacleAvoidance` and `Obstacle_Avoidance_logic` |
-| **Status** | [[works]] goals in Gazebo, 40 m on the bench. Open: the weave (N7) |
+| **Origin** | ours, each node a port of a Nav2 server (Nav2 itself went on 17 Nov); our settings. Replaces 2025-26 `Navigation_PathPlanning_ObstacleAvoidance` and `Obstacle_Avoidance_logic` |
+| **Status** | [[works]] goals in Ravensim (and in Gazebo with Nav2), 40 m on the bench. Open: the weave (N7) |
 | **Run alone** | part of `pixi run sim`; alone: `ros2 launch aav_navigation navigation.launch.py` |
 | **Test** | `pixi run bench-check --obstacle` |
 | **Read first** | `config/nav2.yaml`, then [Costmaps](costmaps.md) |
@@ -328,13 +328,13 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 
 | | |
 |---|---|
-| **Does** | puts Gazebo's simulated car behind the real car's topics, with an IMU and GPS; in the road world, a camera, a radar stand-in and (with `lidar:=true`) a roof lidar |
-| **Why** | Nav2 and the EKFs can be tested with the same settings as on the car |
+| **Does** | puts Ravensim's car behind the real car's topics, with an IMU and GPS; in the road world, a camera, a radar stand-in and (with `lidar:=true`) a roof lidar |
+| **Why** | navigation and the EKFs can be tested with the same settings as on the car |
 | **Runs on** | any laptop (headless on oirp-spss) |
 | **In → out** | `/control/sim/actuator_cmd`, `/vehicle/sim/odom`, `/vehicle/sim/imu`, `/vehicle/sim/navsat`, `/vehicle/sim/radar/points` → `/vehicle/sim/cmd_vel`, `/vehicle/odom`, `/vehicle/status`, `/sensors/imu/data_raw`, `/sensors/gps/fix`, `/sensors/radar/points`. The road world's bridges add `/sensors/camera/front_left/*`, `/sensors/lidar/points` and `/vehicle/sim/truth` |
-| **Origin** | ours, on stock Gazebo Harmonic and `ros_gz` |
-| **Status** | [[works]] headless on Linux and a Mac; its window on a Mac |
-| **Run alone** | `pixi run sim` (`gui:=false` on a Mac) |
+| **Origin** | ours; first written for Gazebo Harmonic (until 16 Nov), now beside Ravensim (`aav_simulator`) |
+| **Status** | [[works]] headless on a Mac; on Linux with software GL [[untested]] (TODO 240) |
+| **Run alone** | `pixi run sim`; `pixi run ravensim` with the developer window |
 | **Test** | `test/test_turn_rate.py`, `test_radar.py`, `test_worlds.py` (`colcon test` only); `pixi run check sim`, `pixi run sim-check` |
 | **Read first** | `aav_sim_models/sim_adapter.py` |
 
@@ -342,7 +342,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 
 | | |
 |---|---|
-| **Does** | a CARLA car as the car: the same topics as Gazebo's, from CARLA's Python client |
+| **Does** | a CARLA car as the car: the same topics as Ravensim's, from CARLA's Python client |
 | **Why** | photo-real towns and cameras; Carleton's streets from OpenStreetMap ([CARLA](carla.md)) |
 | **Runs on** | a Linux x86_64 computer that can reach a CARLA server (TCP 2000-2001); not a Mac |
 | **In → out** | `/control/carla/actuator_cmd`, `/safety/estop` → odom, status, IMU, GPS, cameras, radar, lidar, `/clock`, `/vehicle/carla/truth` |
@@ -376,7 +376,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 |---|---|
 | **Does** | groups the radar's points into objects (DBSCAN), with a box round each, in Rust (rclrs) |
 | **Why** | turns a cloud of radar points into "something is there" |
-| **Runs on** | with the radar (`radar_clusters: false` on the car for now); always on the bench and in Gazebo's road world |
+| **Runs on** | with the radar (`radar_clusters: false` on the car for now); always on the bench and in the simulator's road world |
 | **In → out** | `/sensors/radar/points` → `/perception/radar/clusters`, `/perception/radar/cluster_boxes` |
 | **Origin** | ours: a rewrite of the 2025-26 C++ node (`Nav_Radar` @ 6242631882), which it replaced on 15 Oct. Two crates: `radar-clustering` (DBSCAN, boxes, cloud bytes; no ROS) and `clusters-node` |
 | **Status** | [[works]] on the bench and in Gazebo; the C++ node's answers for 94 clouds, bit for bit. [[untested]] on the real radar |
@@ -500,27 +500,27 @@ These have no card here yet. Each package's README answers the same questions.
 |---|---|---|
 | `aav_camera_stream` | one node per front camera: the camera Pi's H.264 stream, decoded, with RF-DETR inside | `ros/sources/aav_camera_stream/README.md`, then [Camera pipeline](camera-pipeline.md) |
 | `aav_rc` | the RC transmitter on "RC via ROS" as a driver (priority 95, proposed) | `ros/drivers/aav_rc/README.md` |
-| `aav_routes` | street routes (Valhalla) as GPS waypoints for Nav2 | `ros/drivers/aav_routes/README.md`, then [Routes](routes.md) |
+| `aav_routes` | street routes (Valhalla) as GPS waypoints for the navigator | `ros/drivers/aav_routes/README.md`, then [Routes](routes.md) |
 | `aav_spine_bridge` | `spine_bridge` in Rust, the default; the same node as `aav_spine`'s Python one | `ros/can_bridge/aav_spine_bridge/README.md` |
-| `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for Nav2 | `ros/perception/aav_lidar/README.md` |
+| `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | `ros/perception/aav_lidar/README.md` |
 | `aav_lidar_rs` | `lidar_scan` in Rust, the default (`lidar_impl:=`): the same scan | `ros/perception/aav_lidar_rs/README.md` |
 | `aav_things_rs` | `things` in Rust, the default (`things_impl:=`): the same things | `ros/perception/aav_things_rs/README.md` |
 | `aav_voxels_rs` | `voxels` in Rust: the lidar's cubes, the Python node's drop-in (`voxels_impl:=rust`) | `ros/perception/aav_voxels_rs/README.md` |
 | `aav_safety` | the sensor watchdog: a twist_mux lock (30) when a sensor fails | `ros/safety/aav_safety/README.md`, then [Simulation](simulation.md#the-sensor-watchdog) |
-| `aav_ghost` | ghost obstacles: a pretend person only Nav2 sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
+| `aav_ghost` | ghost obstacles: a pretend person only navigation sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
 | `aav_run_info` | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | `ros/bringup/aav_run_info/README.md` |
 | `aav_localization_health` | warn-only checks on what the EKFs read and say (`/localization/health`, `/diagnostics`) | `ros/localization/aav_localization_health/README.md` |
 | `aav_ndt` | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | `ros/localization/aav_ndt/README.md`, then [the design](designs/2026-10-29_ndt.md) |
 | `aav_kiss_icp` | KISS-ICP lidar odometry, a trial (`kiss_icp:=true`) | `ros/localization/aav_kiss_icp/README.md`, then [the design](designs/2026-10-30_kiss-icp.md) |
-| `aav_voxels` | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for Nav2 | `ros/perception/aav_voxels/README.md`, then [the design](designs/2026-10-30_voxels.md) |
+| `aav_voxels` | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for the costmap | `ros/perception/aav_voxels/README.md`, then [the design](designs/2026-10-30_voxels.md) |
 | `aav_track` | trial path followers in `controller_server`'s place (`tracker:=` pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag) | `ros/drivers/aav_track/README.md`, then [Trials](trials.md) |
 | `aav_mppi_lag` | Nav2's MPPI in Rust, on a car model that knows the actuators' lag (`tracker:=mppi_lag`) | `ros/drivers/aav_mppi_lag/README.md`, then [MPPI with lag](mppi-lag.md) |
-| `aav_costmap` | our own costmap in Rust, a trial beside Nav2's (`costmap:=own`) | `ros/drivers/aav_costmap/README.md`, then [Our costmap](own-costmap.md) |
-| `aav_planner` | our own path planner in Rust, a trial (`planner:=own`): Nav2's Smac State Lattice ported | `ros/drivers/aav_planner/README.md`, then [Our planner](own-planner.md) |
-| `aav_navigator` | our own navigator in Rust, a trial (`navigator:=own`), in `bt_navigator`'s place | `ros/drivers/aav_navigator/README.md`, then [Our navigator](own-navigator.md) |
-| `aav_smoother` | our own velocity smoother in Rust, a trial (`smoother:=own`) | `ros/drivers/aav_smoother/README.md`, then [Our smoother](own-smoother.md) |
+| `aav_costmap` | our own costmap in Rust, the only one since Nav2 went (`costmap:=own`) | `ros/drivers/aav_costmap/README.md`, then [Our costmap](own-costmap.md) |
+| `aav_planner` | our own path planner in Rust, the default (`planner:=own`): Nav2's Smac State Lattice ported | `ros/drivers/aav_planner/README.md`, then [Our planner](own-planner.md) |
+| `aav_navigator` | our own navigator in Rust, the only one (`navigator:=own`), in `bt_navigator`'s old place | `ros/drivers/aav_navigator/README.md`, then [Our navigator](own-navigator.md) |
+| `aav_smoother` | our own velocity smoother in Rust, the only one (`smoother:=own`) | `ros/drivers/aav_smoother/README.md`, then [Our smoother](own-smoother.md) |
 | `aav_diffusion_planner` | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | `ros/drivers/aav_diffusion_planner/README.md`, then [the design](designs/2026-11-02_diffusion-planner.md) |
-| `aav_behaviour` | the behaviour planner, a trial (`behaviour:=true`): six states and a speed cap on Nav2 | `ros/drivers/aav_behaviour/README.md`, then [How the car stops](stopping.md) |
+| `aav_behaviour` | the behaviour planner, a trial (`behaviour:=true`): six states and a speed cap on navigation | `ros/drivers/aav_behaviour/README.md`, then [How the car stops](stopping.md) |
 | `aav_simulator` | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | `ros/sim/aav_simulator/README.md`, then [Ravensim](own-simulator.md) |
 | `aav_sim_cameras` | Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
 | `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |

@@ -50,8 +50,8 @@ The main ones. Every package: [Packages](packages.md).
 | `aav_teleop` | the joystick's settings, and its e-stop button | drivers |
 | `aav_rc` | the RC transmitter as a driver (priority 95, off until the hardware lead confirms the wire) | drivers |
 | `aav_actuator_tests` | the stage 3-4 actuator tests, as a driver (priority 60) | drivers |
-| `aav_navigation` | Nav2 set up for a car, and the maps | drivers |
-| `aav_routes` | street routes (Valhalla) as GPS waypoints for Nav2 | drivers |
+| `aav_navigation` | our navigation set up for a car (each node a port of a Nav2 server), and the maps | drivers |
+| `aav_routes` | street routes (Valhalla) as GPS waypoints for the navigator | drivers |
 | `aav_localization` | the two EKFs and GPS-to-map: settings only | localization |
 | `aav_gps_heading` | the heading from the GPS receiver's velocity, for `ekf_global` | localization |
 | `aav_description` | the car's model and `vehicle.yaml` | bringup |
@@ -61,7 +61,7 @@ The main ones. Every package: [Packages](packages.md).
 | `aav_interfaces` | our messages and actions: `VehicleStatus`, `WheelSpeeds`, `Heartbeat`, `DataSource`, `ScriptedDrive`, `DriveToPoint` and more | ecolo_msgs |
 | `aav_spine`, `aav_spine_bridge` | the CAN spine: ego's commands as CAN frames (`spine_bridge`: Rust by default, Python with `bridge:=python`) | can_bridge |
 | `aav_legacy` | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | can_bridge |
-| `aav_safety`, `aav_ghost` | the sensor watchdog, the geofence, the stop hold and the joystick-alive check (twist_mux locks); a pretend person only Nav2 sees | safety |
+| `aav_safety`, `aav_ghost` | the sensor watchdog, the geofence, the stop hold and the joystick-alive check (twist_mux locks); a pretend person only navigation sees | safety |
 | `aav_simulator`, `aav_sim_cameras` | Ravensim in Rust, the default since 8 Nov, and its cameras (Bevy) | sim |
 | `aav_turtlesim`, `aav_simulator`, `aav_sim_models`, `aav_carla` | the turtle, Ravensim's car, a CARLA car (untested) | sim |
 | `aav_bringup`, `aav_run_info` | the profiles, the machine files (each picks its parts, perception too), the RViz layout; which algorithms a run uses (`/system/algorithms`) | bringup |
@@ -73,7 +73,7 @@ The main ones. Every package: [Packages](packages.md).
 | `boards/pico2` | the spine's board program for a Pico 2 (Embassy): builds, never flashed | firmware |
 | `aav_lane_finder` | the lane finder: the camera's picture to `/perception/lane/geometry`, with OpenCV | perception |
 | `aav_detector` | RF-DETR Nano (the default) or YOLO (`detector:=yolo`) on the camera's images, and the stop-sign watcher | perception |
-| `aav_lidar` | the roof lidar's cloud as a 2D scan for Nav2 | perception |
+| `aav_lidar` | the roof lidar's cloud as a 2D scan for the costmap and the stop zone | perception |
 
 ### Trials: ours, beside the stock default
 
@@ -83,11 +83,11 @@ Off unless a switch turns them on; in the simulator only, except where it says
 | Package | Does | Area |
 |---|---|---|
 | `aav_ndt`, `aav_kiss_icp`, `aav_localization_health` | NDT on a saved lidar map (Rust); KISS-ICP lidar odometry (stock, MIT); health checks that only warn (on by default) | localization |
-| `aav_voxels` | the lidar as 0.25 m cubes for Nav2 | perception |
+| `aav_voxels` | the lidar as 0.25 m cubes for the costmap | perception |
 | `aav_track`, `aav_mppi_lag` | path followers: pure pursuit, Stanley, LQR, MPC, a lag-aware MPC; Nav2's MPPI in Rust on a model with the car's lags | drivers |
-| `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother` | Nav2's costmap, State Lattice planner, navigator and velocity smoother, in Rust | drivers |
+| `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother` | Nav2's costmap, State Lattice planner, navigator and velocity smoother, ported to Rust: the defaults since 17 Nov | drivers |
 | `aav_diffusion_planner` | a small model draws the path, a guard checks it, the lattice is the fallback | drivers |
-| `aav_behaviour` | the behaviour planner: a speed cap on Nav2 before a stop sign, an obstacle, the fence and the goal | drivers |
+| `aav_behaviour` | the behaviour planner: a speed cap on navigation before a stop sign, an obstacle, the fence and the goal | drivers |
 
 ## Stock ROS packages and plugins we use
 
@@ -106,10 +106,10 @@ Off unless a switch turns them on; in the simulator only, except where it says
 | Description | `robot_state_publisher`, `joint_state_publisher`, `xacro` | the car's model and frames |
 | Localization | `robot_localization`: `ekf_node` (twice) and `navsat_transform_node` | where the car is: `ekf_local` to steer, `ekf_global` to plan, GPS into map coordinates |
 | Localization | `tf2_ros` | a fixed map-to-odom frame when there's no GPS |
-| Localization | `nav2_amcl`; KISS-ICP (not ROS, MIT) | trials beside the EKFs, off by default |
+| Localization | `nav2_amcl` (kept, with its lifecycle manager, when the rest of Nav2 went); KISS-ICP (not ROS, MIT) | trials beside the EKFs, off by default |
 | Drivers | `joy`, `teleop_twist_joy`, `joy_teleop` | the joystick, its deadman, its e-stop button |
 | Drivers | `teleop_twist_keyboard` | driving from a laptop's keyboard |
-| Drivers | Nav2: 8 servers (map, planner, controller, behaviours, navigator, waypoints, velocity smoother, lifecycle) | plans and drives to a goal |
+| Messages | `nav2_msgs` | Nav2's action and message types: our navigator, planner and follower serve Nav2's names, so goal senders never changed. Nav2's servers went on 17 Nov ([as it was](history/nav2-as-it-was.md)) |
 | The mux | `twist_mux` | picks one command, by priority |
 | Backends | `ros2_socketcan` | the CAN bus (Linux only) |
 | Backends | `turtlesim` | the turtle (the simulated car is ours: Ravensim; Gazebo until 16 Nov) |

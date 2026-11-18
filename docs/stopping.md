@@ -1,6 +1,6 @@
 # How the car stops
 
-One stopping law for every planned stop, a behaviour planner that uses it to slow Nav2,
+One stopping law for every planned stop, a behaviour planner that uses it to slow navigation,
 and a check of where the car really stops. Ben, 7 Nov: "we can use that to say if we have
 turned enough or slowing down enough". The designs:
 [how the car stops](designs/2026-11-05_how-the-car-stops.md),
@@ -51,7 +51,7 @@ the pretend car. `loop=None` gives the design's ρ 0.35.
 | The geofence's lock | RSS | **unchanged** (Simplex) | its worst case is never shorter than where the car model stops (`test_geofence.py`). Above about 0.7 m/s the law plans **more** room than the lock (1.97 against 1.40 m at 1 m/s on the spine), so the car slows before the lock closes |
 | The stop sign's lock | 4.7 m | **unchanged** | |
 
-### Point driver, pretend car (ego and Gazebo's actuator model)
+### Point driver, pretend car (ego and the sim's actuator model)
 
 | From | Law | Stop error | Peak braking | Time |
 |---|---|---|---|---|
@@ -60,13 +60,13 @@ the pretend car. `loop=None` gives the design's ρ 0.35.
 | 3 m/s, 30 m | approach | +0.04 m | 1.32 m/s² | 19.7 s |
 | 3 m/s, 30 m | hybrid | +0.09 m | **0.78 m/s²** | 19.9 s |
 
-Gentler at speed, 5 cm further past B. Not yet run in Gazebo.
+Gentler at speed, 5 cm further past B. Not yet run in the simulator.
 
 ## 2. The behaviour planner
 
 `aav_behaviour` (a trial, **off by default**): `pixi run sim world:=road behaviour:=true`.
-It knows why the car should slow, and sends Nav2 a speed cap. **It can't stop the car**:
-a lock or Nav2's goal check makes every final stop.
+It knows why the car should slow, and sends navigation a speed cap. **It can't stop the car**:
+a lock or the navigator's goal check makes every final stop.
 
 ```text
  DRIVE ─► APPROACH ─► STOPPED ─► WAIT ─► GO ─► DRIVE
@@ -81,7 +81,7 @@ a lock or Nav2's goal check makes every final stop.
 | An obstacle in the lane | lidar: nearest point ahead − bumper − stop zone | collision_monitor, then the `stop_zone` lock |
 | A moving thing (`things:=true`) | to the thing, in the lane now **or walking into it** before the car gets there (below) | the `stop_zone` lock |
 | The fence | along the plan to where the geofence would say NEAR | the geofence's lock |
-| The goal | along the plan to its end | Nav2's goal check |
+| The goal | along the plan to its end | the navigator's goal check |
 
 ### Someone walking into the lane (TODO 194)
 
@@ -164,7 +164,7 @@ aborted. Each held every time.
 | Rule | Why |
 |---|---|
 | `v_cap(left)` of the lowest stop | the stopping law, above |
-| 0.0, or between 0.3 m/s and Nav2's top speed | Nav2 reads 0.0 as **no limit** |
+| 0.0, or between 0.3 m/s and the top speed | 0.0 reads as **no limit** |
 | Falls no faster than 2 m/s² | MPPI cuts its turn rate at once, its speed later |
 | The sign's cap never rises in APPROACH | a new picture can't speed the car up |
 | Rises at 0.5 m/s² in GO | |
@@ -204,7 +204,7 @@ picture now logs `stop sign dropped: <why>`.
 ### The obstacle leg: a wall across the road (15 Nov, TODO 162)
 
 **Why it failed:** `plan_around:=false` hides the box only from the planner. The path
-follower's own local costmap (Nav2's MPPI, or `mppi_lag` on ours) still sees it, and
+follower's own local costmap (`mppi_lag`; Nav2's MPPI then) still sees it, and
 steers round a 1 m box when there is room. At 1 m/s the stopping law's cap binds only in
 the last 2 m, so by then the car was already beside the box: no APPROACH(obstacle), no stop
 zone. It went round 2 of 4 runs on 8 Nov, and on 14 Nov; it stopped on 15 Nov. A coin toss.
@@ -219,7 +219,7 @@ waited for. Passing a parked box is `--behaviour-things`' leg. So `--behaviour` 
 | ours, the 1 m box (before) | passed: stop zone at 0.43 m/s, 0.91 m before it |
 | ours, a box in a walled lane (tried) | stopped at the box, but then stopped again for a wall it faced at an angle after rocking: goal aborted. Dropped |
 | ours, the wall across | **passed**: stop zone at 0.45 m/s, 0.94 m before it, goal reached |
-| stock (Nav2), the wall across | **passed**: stop zone at 0.33 m/s, 1.04 m before it, goal reached |
+| stock (Nav2, its last runs), the wall across | **passed**: stop zone at 0.33 m/s, 1.04 m before it, goal reached |
 
 At 1 m/s the law's cap binds only in the last 2 m, so the slowing is short.
 
@@ -227,7 +227,7 @@ At 1 m/s the law's cap binds only in the last 2 m, so the slowing is short.
 
 | Part | Why it waits |
 |---|---|
-| The `patient` progress checker | a stock tree edit; holds over 10 s still look stuck to Nav2 |
+| The `patient` progress checker | holds over 10 s still look stuck to the navigator's progress check |
 | ASK's reply (`/hud/ask/answer`) | the HUD has no reply path |
 | The car | the stage gates in the design: `pi` mode first |
 
@@ -241,7 +241,7 @@ At 1 m/s the law's cap binds only in the last 2 m, so the slowing is short.
 | 2 | steady for 1.5 s, then the e-stop: the spine brakes fully |
 | 3 | the prediction: the first `/ego/stop_point` after the press (ego, the shared car model, full brake) |
 | 4 | moved to the map by `/tf` at its stamp |
-| 5 | scored against Gazebo's truth and the global EKF |
+| 5 | scored against the simulator's truth and the global EKF |
 
 Pass: within 0.25 m, or 10 % of the distance if more. A drive that never reached half
 its speed fails. The maths is `tools/stop_points.py`: it can score a bag from the car

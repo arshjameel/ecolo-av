@@ -1,16 +1,17 @@
 # Our own navigator
 
-Ben, 8 Nov: move off Nav2 **one piece at a time**, each beside Nav2 until it wins. The
+Ben, 8 Nov: move off Nav2 **one piece at a time**, each beside Nav2 until it won. The
 order: the costmap ([done](own-costmap.md)), the planner ([done](own-planner.md)), then
 **the navigator** (this page), the last piece. Since 14 Nov ours is the simulator's
-default (`stack:=ours`; Nav2's with `navigator:=nav2` or `stack:=stock`). Nav2 stays on the car.
+default (`stack:=ours`).
+Nav2 went on 17 Nov ([as it was](history/nav2-as-it-was.md)): ours is the only one, in the sim and on the car. The comparisons with Nav2's below are the record.
 
 > **The short version**
 > - **Switch:** `navigator:=own`. Package `aav_navigator` (Rust).
-> - **What it is:** what Nav2's `bt_navigator`, our behaviour trees and
+> - **What it is:** what Nav2's `bt_navigator`, our behaviour trees for it and
 >   `waypoint_follower` do for the car, as one state machine.
 > - **Drop-in:** Nav2's four actions, under Nav2's own names (`/navigate_to_pose`...),
->   in `bt_navigator`'s and `waypoint_follower`'s place. No goal sender knows which runs.
+>   in `bt_navigator`'s and `waypoint_follower`'s place. No goal sender had to change.
 > - **All ours:** `navigator:=own planner:=own costmap:=own tracker:=mppi_lag`. Then no
 >   Nav2 server navigates.
 > - **Scores:** test lot 7 of 12 legs (Nav2 8); the box 3 of 3 (Nav2 3); campus 4 of 6
@@ -22,15 +23,15 @@ default (`stack:=ours`; Nav2's with `navigator:=nav2` or `stack:=stock`). Nav2 s
 ```
 goal senders ──▶ navigator (ours) ──ComputePathToPose──────────▶ planner (ours or Nav2's)
  RViz, map,          │            ──ComputePathThroughPoses────▶
- street_router,      │            ──FollowPath─────────────────▶ mppi_lag (or controller_server)
+ street_router,      │            ──FollowPath─────────────────▶ mppi_lag (or a tracker)
  language_drive,     │            ──ClearEntireCostmap─────────▶ costmaps (ours or Nav2's)
  the tools           └──────────── /drivers/nav/navigator/status
-                                   mppi_lag ─▶ velocity smoother ─▶ collision_monitor ─▶ twist_mux
+                                   mppi_lag ─▶ velocity smoother ─▶ stop zone ─▶ twist_mux
 ```
 
-The safety locks, collision_monitor and twist_mux never change.
+The safety locks, the stop zone and twist_mux never change.
 
-| Action (the same name for both) | Nav2's server | Used by |
+| Action (Nav2's name, kept) | Nav2's server it replaced | Used by |
 |---|---|---|
 | `/navigate_to_pose` | `bt_navigator` | the tools, sim-check, RViz and the screens (`/goal_pose`) |
 | `/navigate_through_poses` | `bt_navigator` | anyone with several poses |
@@ -69,8 +70,9 @@ goal ─▶ plan ─▶ follow ─▶ plan again: at most every second, but keep
 
 Each change is in `ros/drivers/aav_navigator/PROVENANCE.md`.
 
-**What all ours leaves running from Nav2:** `map_server` (the map), the velocity
-smoother, and collision_monitor (the command line in front of the safety locks).
+**What all ours left running from Nav2, until 17 Nov:** `map_server` (the map), the
+velocity smoother, and collision_monitor. Each is ours now: `aav_costmap`'s map server,
+`aav_smoother`, `aav_stop_zone` ([Nav2, as it was](history/nav2-as-it-was.md)).
 
 ## Try it
 
@@ -159,9 +161,9 @@ again. A goal a few metres past the exit would avoid it.
 - **Reversing:** since 14 Nov all ours reverses (`mppi_lag`, [page](mppi-lag.md#reversing));
   not yet scored against all Nav2 with `--reversing`.
 
-- **On the car:** untested; `car.launch.py` always passes `navigator:=nav2`.
+- **On the car:** untested; `car.launch.py` runs ours (the only navigator since 17 Nov).
 - **`IsPathValid`** on the final approach (14 Nov): once a second it asks the planner
-  (planner_server's, or ours, `aav_planner`, where none runs); a blocked path is planned
+  (ours, `aav_planner`); a blocked path is planned
   again. Not yet seen in a sim run.
 - **Back up** calls Nav2's `behavior_server` where it runs (reversing only). All ours runs
   none: since 14 Nov the navigator then backs up through the follower, `mppi_lag`, on a

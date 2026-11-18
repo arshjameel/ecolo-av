@@ -145,12 +145,12 @@ page. All of these are trials or sim-only unless the row says "default".
 | `pixi run test`: build, tests, lint, `colcon test` | [[works]] 25 Oct: 1110 tests, 0 failures, 4 skipped, 37 packages. 3 Nov (0.2): 1575 tests, 0 failures. 15 Nov: 1934 tests, 0 failures, 6 skipped, 54 packages. CI runs it on Linux (x86_64 and 64-bit ARM) for every pull request and every push to `main` |
 | Live graph vs `docs/interfaces.yaml`: turtle, sim, road, replay and bench | [[works]] 0 failures each (sim and road again on 15 Oct, after the topic renaming) |
 | `pixi run bench-check` (`--perception`, `--lane`, `--obstacle`) | [[works]] on `main`, 11 Oct: the default checks, the stop sign, lane keeping and the obstacle |
-| Sim, headless: drive commands (the keyboard's topic)  [[works]] |and goals | [[works]] (Ravensim) || [[works]] |
+| Sim, headless: drive commands (the keyboard's topic) and goals | [[works]] (Ravensim) |
 | Replay of a recorded drive | [[works]] the EKFs match the recording within 0.03 m |
 | Car, with no hardware attached | comes up; only the missing sensors (IMU, GPS) fail the graph check, as expected. Checked again on 11 Oct, with the perception parts |
 | The same `pixi.toml` on macOS | [[works]] on an Apple Silicon Mac (macOS 27), 10 Oct: build 18 s, `pixi run test` all green after one fix (GNU `coreutils`, see [Your Mac](mac.md)) |
 | On the Mac: the turtle, Ravensim headless, a goal, the docs, `pixi run doctor`, recording a drive | [[works]] |
-|  [[works]] `pixi run sim` opens it, and the camera follows the car |On the Mac: Ravensim's developer window | [[untested]] by a person: `pixi run ravensim` opens it beside the sim (17 Nov) || [[works]] `pixi run sim` opens it, and the camera follows the car |
+| On the Mac: Ravensim's developer window | [[untested]] by a person: `pixi run ravensim` opens it beside the sim (17 Nov) |
 | On the Mac: RViz, rqt_graph | [[untested]] they open; nobody has looked at them yet |
 | The same `pixi.toml` on 64-bit ARM Linux | [[works]] in CI on Ubuntu 24.04 ARM (25 Oct): `pixi run test`, and the car kit installed with no network. [[untested]] on the car's own computers (Ubuntu 22.04, JetPack 6) |
 

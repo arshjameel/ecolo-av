@@ -1,9 +1,9 @@
 # Our own costmap
 
 Ben, 8 Nov: move off Nav2 to **our own versions, one piece at a time**, each beside Nav2
-until it wins. The order: the costmap, then a path planner in Rust, then the navigator.
-This page is the first piece. Since 14 Nov ours is the simulator's default (`stack:=ours`;
-Nav2's with `costmap:=nav2` or `stack:=stock`). Nav2 stays on the car.
+until it won. The order: the costmap, then a path planner in Rust, then the navigator.
+This page is the first piece. Since 14 Nov ours is the simulator's default (`stack:=ours`).
+Nav2 went on 17 Nov ([as it was](history/nav2-as-it-was.md)): ours is the only one, in the sim and on the car. The comparisons with Nav2's below are the record.
 
 > **The short version**
 > - **Switch:** `costmap:=own`. Package `aav_costmap` (Rust).
@@ -89,9 +89,9 @@ the radar's block in `nav2.yaml`, 120° (the TI radar's, and the simulator's sta
 - One ray every 0.5° (`obstacle::view_points`): 7 cm apart at 8.4 m.
 - The rays end past `obstacle_max_range`, so they never mark.
 - Only the radar's own layer: the lidar's and the cameras' marks are never touched.
-- Nav2's costmap has no such setting and ignores it (`stack:=stock` keeps the old way).
+- Nav2's costmap had no such setting.
 - A real radar's sparse frames: a thing it misses in both frames of 0.2 s is cleared, and
-  marked again at the next frame that sees it. collision_monitor still reads the radar
+  marked again at the next frame that sees it. the stop zone still reads the radar
   itself, not the costmap.
 
 ## The lanes layer (15 Nov, TODO 148, a challenger)
@@ -335,7 +335,6 @@ one from `/map`) stays a challenger.
 | `aav_things` (the background: walls aren't things) | `things:=true` |
 | the screens: RViz, the map window, the dev window, Foxglove's cockpit | when they run |
 | AMCL | `amcl:=true`, without its own map |
-| Nav2's costmaps | `costmap:=nav2` (not ours) |
 | `sim_check.py` | its checks |
 
 Next: give those the chunks too, then `map_server` can stop on the campus.
@@ -418,7 +417,7 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
 - **It is lighter:** both of ours together use about half the CPU of Nav2's local one.
 - **As good on these legs, once it can be cleared:** 3 of 3 since the clear service, as
   Nav2's. Not yet a winner: six runs a leg is little, it went past the post once (run 3),
-  and the radar and cameras are untested. Nav2 stays the default.
+  and the radar and cameras are untested. (Nav2 then stayed the default.)
 
 ## Without ROS
 
@@ -453,4 +452,4 @@ Our local update: **0.50-0.55 ms** on average, 0.58 ms at the 95th percentile.
   still clear Nav2's global costmap.
 - **Radar, cubes and cameras** (point clouds, placed by `/tf_static`'s mounts): built,
   but untested; the sim's runs had the lidar's scan alone.
-- **On the car:** untested. Nav2 stays there.
+- **On the car:** untested; ours is the car's costmap since 17 Nov.

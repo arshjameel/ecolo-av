@@ -1,18 +1,18 @@
 # Street routes (PLAN S8)
 
-Pick a destination, get the way there **along real streets**, and hand it to Nav2 as GPS
+Pick a destination, get the way there **along real streets**, and hand it to our navigator as GPS
 waypoints. Built 16 October. **On the campus** (7 Nov): by a building's name, on the
 campus's own road graph, no server: [On the campus](#on-the-campus).
 
 !!! warning "For real streets later: the lot first"
   This is for driving on streets, after the car has proven itself in a lot (PLAN C8, C9).
-  A route is only a **suggestion**. Nav2 still plans every step on its own costmaps, and
+  A route is only a **suggestion**. The navigator still plans every step on its own costmaps, and
   twist_mux, the e-stop, ego's limits and timeout, the sensor watchdog and the spine stay
-  in charge. Nothing goes to Nav2 until a person asks.
+  in charge. Nothing goes to the navigator until a person asks.
 
 ## The picture
 
-![Street routes: destination and GPS fix in, Valhalla asked, waypoints out, Nav2 only on request](img/routes.svg)
+![Street routes: destination and GPS fix in, Valhalla asked, waypoints out, the navigator only on request](img/routes.svg)
 
 | Step | Who | What |
 |---|---|---|
@@ -20,7 +20,7 @@ campus's own road graph, no server: [On the campus](#on-the-campus).
 | 2 | `street_router` | asks the router for the way from the car's newest fix (`/localization/gps/fix`) |
 | 3 | Valhalla | answers in OSRM's JSON, offline, from Ottawa's OpenStreetMap |
 | 4 | `street_router` | cuts it into waypoints 10-30 m apart; publishes them, a map path, and a status line |
-| 5 | you | `/drivers/nav/route/follow`: only now does Nav2 get the route (`/follow_gps_waypoints`) |
+| 5 | you | `/drivers/nav/route/follow`: only now does the navigator get the route (`/follow_gps_waypoints`) |
 
 ## Which router? (the survey)
 
@@ -67,7 +67,7 @@ own extract (Geofabrik's Ontario, 1 GB, for a bigger area).
 ## On the campus
 
 Directions to a building, Tesla-like (Ben, 7 Nov: TODO 140). Say where; the car gets the
-way along the campus roads, as waypoints for Nav2.
+way along the campus roads, as waypoints for the navigator.
 
 ```
 "Fieldhouse"  ──►  the place's middle  ──►  the nearest road the car may use
@@ -109,8 +109,8 @@ map frame, latched): the map window, RViz, Foxglove.
 | | Campus graph (picked) | Valhalla on a campus extract |
 |---|---|---|
 | Server | none: in `street_router` | `valhalla_service`, tiles built first |
-| Its map | `maps/carla/carleton.osm`, the one Gazebo's world and Nav2's map come from | a `.pbf`: a second download or a conversion |
-| Roads | exactly the kinds `campus_world.py` draws free on Nav2's map | its car profile avoids parking aisles and private service roads: most of a campus |
+| Its map | `maps/carla/carleton.osm`, the one the campus world and its map come from | a `.pbf`: a second download or a conversion |
+| Roads | exactly the kinds `campus_world.py` draws free on the campus map | its car profile avoids parking aisles and private service roads: most of a campus |
 | Size | 1,665 corners, 1,749 road pieces; a route in about 2 ms | built for a city |
 | Licence | ours | MIT |
 
@@ -144,7 +144,7 @@ up to 56 m away (Tory). Add `stop: [lat, lon]` to a place for the real drop-off 
 | MacOdrum Library | 1,480 m |
 
 Long ways round are the map's: one-way roads, and buildings whose nearest road is a dead
-end. Gazebo's map lets Nav2 go either way on a one-way road; the route doesn't.
+end. The campus map lets the planner go either way on a one-way road; the route doesn't.
 
 ### What was tested (7-8 Nov, a Mac)
 
@@ -154,7 +154,7 @@ end. Gazebo's map lets Nav2 go either way on a one-way road; the route doesn't.
 | `test_street_router.py`: a place by name, with a fake car and Nav2 (`colcon test`) | passes |
 | Gazebo, `world:=campus`, headless: P4 to **Fieldhouse** (route 453 m, 18 waypoints) | **did not arrive** (below). With our navigator, 8 Nov: 1 of 2 |
 
-The route, the waypoints and the follow call all worked. Nav2 did not finish the drive:
+The route, the waypoints and the follow call all worked. Nav2 (then) did not finish the drive:
 
 | Run | Drove | Stopped at | Why |
 |---|---|---|---|
@@ -162,13 +162,13 @@ The route, the waypoints and the follow call all worked. Nav2 did not finish the
 | `reversing:=true` | 310 m in 300 s (sim), through the lot's exit after a 90 s three-point turn | the bend by the roundabout, 143 m short | the car ended on a blocked cell at the road's edge: the planner said "Start occupied" from then on |
 
 **What it shows.** Straight roads are fine: about 1.4 m/s between the bends. The bends are
-not. Each waypoint is a Nav2 goal *at* the corner, facing the next road, so the car must
+not. Each waypoint was a goal *at* the corner, facing the next road, so the car had to
 stop on the corner already turned. Our car can't turn that tightly there.
 
 | Next (TODO 140) | Why |
 |---|---|
-| put a bend's waypoint a few metres *before* the corner, facing along the road in | no stop half-turned at a corner; Nav2 plans the turn itself |
-| or send one goal through all the points (Nav2's `navigate_through_poses`) | no stop at each waypoint at all. **Our navigator does this** (`navigator:=own`, a trial): 8 Nov, our simulator, 2 runs: it arrived 1 of 2 (263 s), Nav2 0 of 2 ([scores](own-navigator.md#the-campus-25-ms-2-runs)) |
+| put a bend's waypoint a few metres *before* the corner, facing along the road in | no stop half-turned at a corner; the planner plans the turn itself |
+| or send one goal through all the points (`navigate_through_poses`) | no stop at each waypoint at all. **Our navigator does this** (the default since 17 Nov: `waypoints: pass_through`): 8 Nov, our simulator, 2 runs: it arrived 1 of 2 (263 s), Nav2 0 of 2 ([scores](own-navigator.md#the-campus-25-ms-2-runs)) |
 | `stop:` points for the places, measured on the day | the middle of a building is not where a car pulls up |
 
 NDT was off in these runs (its campus floor is still TODO 121); the EKF used GPS.
@@ -183,20 +183,20 @@ NDT was off in these runs (its campus floor is still TODO 121); the EKF used GPS
 | The campus graph, no ROS | `aav_routes/campus_graph.py` | roads from the `.osm`, places, snapping, Dijkstra |
 | The campus's site file | `config/campus_site.yaml` | roads the car may use, named places |
 | Directions without ROS | `tools/campus_route.py` | `pixi run campus-route` |
-| The map window | `aav_hud` (Rust) | draws `/drivers/nav/route/path` in violet, under Nav2's blue plan |
+| The map window | `aav_hud` (Rust) | draws `/drivers/nav/route/path` in violet, under the blue plan |
 | The tasks | `tools/get_routes.sh`, `tools/router.sh` | download and build; start the router |
 
 The waypoints reuse the route maths from the 2025-26 HUD's back end, now
-`aav_routes/route.py` (no ROS, tested): bends kept, headings along the street. Ours adds the gaps Nav2 needs:
+`aav_routes/route.py` (no ROS, tested): bends kept, headings along the street. Ours adds the gaps the navigator needs:
 
 | Setting | Default | Why |
 |---|---|---|
-| `min_spacing` | 10 m | Nav2 slows at each waypoint: not too many |
-| `max_spacing` | 30 m | each goal stays near the car, inside Nav2's costmaps |
+| `min_spacing` | 10 m | a waypoint the navigator stops at (`stop_at_each`) slows the car: not too many |
+| `max_spacing` | 30 m | each goal stays near the car, inside the costmaps |
 | `tolerance` | 1 m | a bend may be cut by this much |
 | `max_length` | 3000 m | longer routes are refused: the lot first |
 | `fix_max_age` | 2 s | no fresh GPS fix, no route |
-| `follow_at_once` | false | true sends every route to Nav2 by itself: not on the car |
+| `follow_at_once` | false | true sends every route to the navigator by itself: not on the car |
 
 ## Topics
 
@@ -208,7 +208,7 @@ The waypoints reuse the route maths from the 2025-26 HUD's back end, now
 | `/drivers/nav/route/waypoints` | `geographic_msgs/GeoPath`, latched | out: the GPS waypoints |
 | `/drivers/nav/route/path` | `nav_msgs/Path` (map), latched | out: the route, to draw |
 | `/drivers/nav/route/status` | `std_msgs/String`, latched | out: "route: 1.99 km, about 4 min..." or why not |
-| `/drivers/nav/route/follow` | `std_srvs/Trigger` (a service) | a person sends the route to Nav2 |
+| `/drivers/nav/route/follow` | `std_srvs/Trigger` (a service) | a person sends the route to the navigator |
 
 Full contract: [Topics](interfaces.md).
 
@@ -217,7 +217,7 @@ Full contract: [Topics](interfaces.md).
 | What | Result |
 |---|---|
 | `osrm_route.py` unit tests: 27, on three recorded answers (Valhalla polyline6 and GeoJSON, OSRM's demo) and an error | all pass |
-| `street_router` with a fake router, fake `/fromLL` and fake Nav2 (`colcon test`): 4 | all pass; nothing reaches Nav2 before `follow` |
+| `street_router` with a fake router, fake `/fromLL` and a fake navigator (`colcon test`): 4 | all pass; nothing reaches the navigator before `follow` |
 | `get routes` on this Mac | 49 MB download, graph in 5 s |
 | A real route, Carleton (45.3876, -75.6960) to Lansdowne | 1.99 km, 4 min, 76 waypoints |
 | Gazebo, headless, `empty` world, private domain: a street 80 m south of the datum | the car drove it and stopped **0.5 m** from the route's end, in 140 s |
@@ -243,11 +243,11 @@ Full contract: [Topics](interfaces.md).
   failed... Finland"). Harmless: a city extract has no country boundaries.
 - **`driving_side: "left"`** in Valhalla's OSRM answers, even in Ottawa. We don't read it.
 - The router's time is for **a normal car** on the speed limit, not ours (1 m/s to start).
-- Nav2 drives to each waypoint in turn and slows at each: that's why they're 10-30 m apart.
+- The navigator drives through the waypoints as one goal (`pass_through`); with `stop_at_each` it slows at each: that's why they're 10-30 m apart.
 - The data: © OpenStreetMap contributors, ODbL. BBBike's extract changes every week, so
   `get routes` checks it against BBBike's own checksum, not a fixed one.
 - **No older code copied.** The 2025-26 team's Navigation-LocalPathGenerator read OSRM
-  routes too, and followed them itself ([Older code](older-code.md)). Here Nav2 follows,
+  routes too, and followed them itself ([Older code](older-code.md)). Here the navigator follows,
   so only a small parser was needed: written new, with tests.
 - No API keys, no paid service. A public demo server only for a one-off check by hand,
   never as the default.

@@ -29,16 +29,16 @@ each one's README has its topics.
 | `aav_scripted` | drivers | scripted drives: speed up, hold, slow down | [[works]] turtle and the bench | new |
 | `aav_drive_to_point` | drivers | drive to one GPS or map point B, and stop there smoothly | [[works]] in Gazebo (15 Oct); [[untested]] on the car | new |
 | `aav_language` | drivers | plain English: a local model plans drive tools, you say yes | [[works]] Gazebo and the turtle | new |
-| `aav_navigation` | drivers | Nav2, set up for a car, and the maps | [[works]] goals reached in Gazebo | new |
-| `aav_routes` | drivers | street routes (Valhalla) as GPS waypoints for Nav2; directions on the campus (`router:=campus`) | [[works]] in Gazebo | new |
+| `aav_navigation` | drivers | our navigation, set up for a car (each node a port of a Nav2 server), and the maps | [[works]] goals reached in Ravensim | new |
+| `aav_routes` | drivers | street routes (Valhalla) as GPS waypoints for the navigator; directions on the campus (`router:=campus`) | [[works]] in Gazebo | new |
 | `aav_track` | drivers | trial path followers in `controller_server`'s place (`tracker:=` pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag) | built 29 Oct; trials, off by default ([Trials](trials.md)) | new |
-| `aav_mppi_lag` | drivers | Nav2's MPPI in Rust, on a car model that knows the actuators' lag (`tracker:=mppi_lag`) | built 7 Nov; a trial ([its page](mppi-lag.md)) | new: a port of Nav2's MPPI (`PROVENANCE.md`) |
-| `aav_costmap` | drivers | our own costmap in Rust (`costmap:=own`), beside Nav2's | built 8 Nov; a trial ([its page](own-costmap.md)) | new: a port of Nav2's `costmap_2d` layers |
-| `aav_planner` | drivers | our own path planner in Rust (`planner:=own`): Nav2's Smac State Lattice ported | built 8 Nov; a trial ([its page](own-planner.md)) | new: a port of Nav2's planner |
-| `aav_navigator` | drivers | our own navigator in Rust (`navigator:=own`): what `bt_navigator` and `waypoint_follower` do | built 8 Nov; a trial ([its page](own-navigator.md)) | new |
-| `aav_smoother` | drivers | our own velocity smoother in Rust (`smoother:=own`): the turn rate from where the wheels can be | built 8 Nov; a trial ([its page](own-smoother.md)) | new |
+| `aav_mppi_lag` | drivers | Nav2's MPPI in Rust, on a car model that knows the actuators' lag (`tracker:=mppi_lag`) | built 7 Nov; the default follower ([its page](mppi-lag.md)) | new: a port of Nav2's MPPI (`PROVENANCE.md`) |
+| `aav_costmap` | drivers | our own costmap in Rust (`costmap:=own`) | built 8 Nov; the only one since 17 Nov ([its page](own-costmap.md)) | new: a port of Nav2's `costmap_2d` layers |
+| `aav_planner` | drivers | our own path planner in Rust (`planner:=own`): Nav2's Smac State Lattice ported | built 8 Nov; the default ([its page](own-planner.md)) | new: a port of Nav2's planner |
+| `aav_navigator` | drivers | our own navigator in Rust (`navigator:=own`): what `bt_navigator` and `waypoint_follower` do | built 8 Nov; the only one since 17 Nov ([its page](own-navigator.md)) | new |
+| `aav_smoother` | drivers | our own velocity smoother in Rust (`smoother:=own`): the turn rate from where the wheels can be | built 8 Nov; the only one since 17 Nov ([its page](own-smoother.md)) | new |
 | `aav_diffusion_planner` | drivers | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | built 2 Nov; a trial, off by default ([Trials](trials.md)) | new |
-| `aav_behaviour` | drivers | the behaviour planner, a trial (`behaviour:=true`): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on Nav2 | built 7 Nov; off by default ([How the car stops](stopping.md)) | new |
+| `aav_behaviour` | drivers | the behaviour planner, a trial (`behaviour:=true`): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on navigation | built 7 Nov; off by default ([How the car stops](stopping.md)) | new |
 | `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov) beside `aav_behaviour`'s (`behaviour_impl:=python`): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
@@ -47,7 +47,7 @@ each one's README has its topics.
 | `aav_spine_bridge` | can_bridge | the same `spine_bridge` in Rust, on the firmware's own CAN code (`spine-core`); the default since 23 Oct (`bridge:=python` for the other) | [[works]] on the bench, against `spine_sim`; no spine board yet | new: a port of `aav_spine`'s node (T1.8) |
 | `aav_legacy` | can_bridge | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | [[untested]] on the car | new, for the 2025-26 protocols |
 | `aav_turtlesim` | sim | turtlesim, steered like the car | [[works]] | new |
-| `aav_sim_models` | sim | Gazebo's car behind the real car's topics; its adapters run with Ravensim too | [[works]] headless | new |
+| `aav_sim_models` | sim | Ravensim's car behind the real car's topics: the adapters, worlds and models (`aav_gazebo` until 16 Nov) | [[works]] headless | new |
 | `aav_simulator` | sim | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | passed every `sim-check` leg Gazebo passes, 8 Nov ([its page](own-simulator.md)) | new |
 | `aav_sim_cameras` | sim | Ravensim's cameras (Bevy, offscreen; needs a GPU). A cargo program, not a colcon package | built 7-8 Nov ([its page](own-simulator-cameras.md)) | new |
 | `aav_carla` | sim | a CARLA adapter (CARLA's Python client) | [[untested]] never run against a server | new |
@@ -55,14 +55,15 @@ each one's README has its topics.
 | `aav_bench` | sim | pretend sensors: IMU, GPS, battery, camera, radar, lidar | [[works]] | new |
 | `aav_safety` | safety | the sensor watchdog: a twist_mux lock (30) when a sensor is stale, NaN, frozen or jumps | [[works]] Gazebo and the bench | new |
 | `aav_watchdog_rs` | safety | `sensor_watchdog` in Rust, the default (Ben, 16 Nov) beside `aav_safety`'s (`watchdog_impl:=python`): the same topics and answers | [[works]] against the Python's answers, tick by tick | new: a port of `aav_safety`'s watchdog |
-| `aav_ghost` | safety | ghost obstacles: a pretend person only Nav2 sees | [[works]] in Gazebo | new |
+| `aav_ghost` | safety | ghost obstacles: a pretend person only navigation sees | [[works]] in Gazebo | new |
+| `aav_stop_zone` | safety | the stop zone (Rust): zeroes navigation's command when the radar or lidar sees points just ahead, or goes silent; the lock since 17 Nov | [[works]] in Ravensim: stopped every time Nav2's `collision_monitor` did, in its shadow run ([Nav2, as it was](history/nav2-as-it-was.md)) | new: a port of Nav2's `collision_monitor` |
 | `aav_interfaces` | ecolo_msgs | our 13 messages (such as `VehicleStatus`, `DataSource`, `Heartbeat`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) | [[works]] builds | new |
 | `aav_bringup` | bringup | the six profiles, `stack.launch.py`, Foxglove, the machine files, the RViz layouts | [[works]] turtle, sim, replay, bench | new |
 | `aav_run_info` | bringup | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | built 3 Nov | new |
 | `aav_detector` | perception | RF-DETR (the default) or YOLO on the camera's images, and the stop-sign watcher | [[works]] on the bench | 2024-25 `camera_ros2_ws` |
 | `aav_radar_clusters` | perception | radar clustering (DBSCAN), with a box round each object (Rust) | [[works]] on the bench and in Gazebo | new: a rewrite of the 2025-26 `Nav_Radar` C++ node |
-| `aav_lidar` | perception | `lidar_scan`: the roof lidar's cloud as a 2D scan for Nav2 | [[works]] in Gazebo and the bench | new |
-| `aav_voxels` | perception | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for Nav2 | built 30 Oct; a trial, off by default | new |
+| `aav_lidar` | perception | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | [[works]] in Gazebo and the bench | new |
+| `aav_voxels` | perception | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for the costmap | built 30 Oct; a trial, off by default | new |
 | `aav_voxels_rs` | perception | `voxels` in Rust: the lidar as 0.25 m cubes, a drop-in for `aav_voxels`' (`voxels_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_voxels` |
 | `aav_lidar_rs` | perception | `lidar_scan` in Rust: the lidar flattened to a 720-ray scan, a drop-in for `aav_lidar`'s (`lidar_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_lidar` |
 | `aav_things_rs` | perception | `things` in Rust: the cubes as tracked things, a drop-in for `aav_things`' (`things_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_things` |
@@ -134,8 +135,8 @@ Only one runs at a time.
 | `aav_spine` (`aav_spine_bridge`: the node, in Rust) | CAN frames on `/can/tx` (through ros2_socketcan, Linux only) | `/vehicle/status`; the service `/spine/arm`; stops sending drive frames when ego goes quiet for 0.1 s |
 | `aav_legacy` | UART frames to today's ESP32 (`/dev/ttyAMA0`): 13 bytes today, or version 2 (17 bytes) with the output mux's heartbeat | `encoder_udp`: the 2025-26 wheel encoder's UDP packets into `/vehicle/odom` (off on the car since 23 Oct: the wheels are on CAN) |
 | `aav_turtlesim` | `/turtle1/cmd_vel` | |
-| `aav_sim_models` | `/vehicle/sim/cmd_vel` | turns Gazebo's IMU and GPS into `/sensors/imu/data_raw` and `/sensors/gps/fix` |
-| `aav_carla` | CARLA's Python client (TCP to the server) | the same sensor topics as Gazebo; untested ([CARLA](carla.md)) |
+| `aav_sim_models` | `/vehicle/sim/cmd_vel` | turns Ravensim's IMU and GPS into `/sensors/imu/data_raw` and `/sensors/gps/fix` |
+| `aav_carla` | CARLA's Python client (TCP to the server) | the same sensor topics as Ravensim; untested ([CARLA](carla.md)) |
 
 ## Bench mode
 
