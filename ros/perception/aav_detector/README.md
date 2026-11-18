@@ -7,7 +7,7 @@ Finds objects in the camera pictures, and uses what it finds. Three nodes:
 | Node | Does | Needs PyTorch? |
 |---|---|---|
 | `detector` (runs as `object_detector`) | a model finds boxes in each picture: RF-DETR Nano by default, YOLO as an option | yes (the `ml` environment) |
-| `stop_sign_watcher` | holds the autonomous drivers at a stop sign, through a twist_mux lock | no |
+| `stop_sign_watcher` | holds the autonomous drivers at a stop sign, through a twist_mux lock. Its Rust twin, [`aav_stop_sign_rs`](../aav_stop_sign_rs/README.md), is the default since 17 Nov; this one with `stop_sign_impl:=python` | no |
 | `camera_obstacles` | puts each box on the road as points, for the local costmap | no |
 
 It began as the 2024-25 team's `yolo_ros2` (see `PROVENANCE.md`). The model comparison
@@ -65,7 +65,7 @@ is in `docs/model-comparison.md`. Its Rust twin, a challenger, is `aav_detector_
 | `detr.py` | yes | RF-DETR pre- and post-processing for exported models (NumPy only) |
 | `ground.py` | yes | pinhole camera over a flat road: `Lens`, `Mount`, `box_points`, `view_edge`, `counts` |
 | `recent.py` | yes | `Recent`: each camera's newest points, dropped after `max_age` |
-| `stop_sign.py` | yes | `StopRule`, `StopSignWatcher`: CLEAR, STOPPING, PASSING |
+| `stop_sign.py` | yes | `StopRule`, `StopSignWatcher`: CLEAR, STOPPING, PASSING. The Rust is checked against its answers: after a change, run `aav_stop_sign_rs/gen_vectors.py` (`test_stop_sign_vectors.py` fails until you do) |
 | `detector.py`, `stop_sign_watcher.py`, `camera_obstacles.py` | no | the nodes |
 
 ## Invariants

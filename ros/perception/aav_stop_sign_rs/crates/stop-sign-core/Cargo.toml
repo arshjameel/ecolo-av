@@ -1,0 +1,11 @@
+[package]
+name = "stop-sign-core"
+description = "When to stop for a stop sign, from the detector's boxes, with no ROS (the Rust twin of aav_detector's stop_sign.py)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dev-dependencies]
+# Reads the shared vectors, tests/vectors.json (gen_vectors.py, from stop_sign.py).
+serde_json = { version = "1", features = ["float_roundtrip"] }

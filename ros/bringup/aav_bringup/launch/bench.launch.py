@@ -6,6 +6,7 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
       [start_y:=0.0] [start_yaw:=0.0] [bend_radius:=] [obstacle:=false]
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
       [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [geofence_radius:=100.0]
+      [stop_sign_impl:=rust|python]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
   pixi run -e ml bench perception:=true     (adds YOLO and the stop-sign watcher)
@@ -173,7 +174,9 @@ def launch_setup(context):
     if flag['perception']:
         actions += [
             include('aav_detector', 'detector.launch.py', labels='stop sign'),
-            Node(package='aav_detector', executable='stop_sign_watcher', name='stop_sign_watcher'),
+            Node(package=vehicle.STOP_SIGN_IMPLS[vehicle.check_stop_sign_impl(
+                LaunchConfiguration('stop_sign_impl').perform(context))],
+                executable='stop_sign_watcher', name='stop_sign_watcher'),
         ]
     if flag['camera_obstacles']:
         actions.append(Node(package='aav_detector', executable='camera_obstacles',
@@ -216,6 +219,9 @@ def generate_launch_description():
                                           'stand_in: the joystick path, a script plays '
                                           'the pad (no joy_node)'),
         DeclareLaunchArgument('rviz', default_value='false'),
+        DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
+                              description='rust (aav_stop_sign_rs) or python (aav_detector): '
+                                          'the stop-sign watcher, with perception'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher '
                                           '(the ml environment)'),

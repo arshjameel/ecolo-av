@@ -621,7 +621,7 @@ topics:
     pub: [stop_sign_watcher]
     sub: [twist_mux, hud, language_drive, behaviour]
     live: [car]
-    note: true while the car stops for a stop sign. A twist_mux lock at priority 30 - it holds navigation and the AI slot, never a person; never expires on silence. On the car, the stop_signs part - one watcher, on the machine with the mux.
+    note: true while the car stops for a stop sign. A twist_mux lock at priority 30 - it holds navigation and the AI slot, never a person; never expires on silence. On the car, the stop_signs part - one watcher, on the machine with the mux. Since 17 Nov the Rust twin publishes it by default (aav_stop_sign_rs, the same node name and answers); stop_sign_impl:=python runs aav_detector's.
   /perception/stop_sign/distance:
     type: geometry_msgs/msg/PointStamped
     pub: [stop_sign_watcher]

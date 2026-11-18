@@ -30,6 +30,7 @@
   <exec_depend>aav_spine_sim</exec_depend>
   <exec_depend>aav_radar_clusters</exec_depend>
   <exec_depend>aav_detector</exec_depend>
+  <exec_depend>aav_stop_sign_rs</exec_depend>   <!-- stop_sign_watcher, the default -->
   <exec_depend>aav_camera_stream</exec_depend>
   <exec_depend>aav_lane_geometry</exec_depend>
   <exec_depend>aav_lane_finder</exec_depend>
