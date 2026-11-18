@@ -1720,7 +1720,7 @@ ESP32 as noise. And theirs (<code>aav_serial_bridge</code>) only stopped comes b
 <tr>
 <td>6</td>
 <td><strong>Ours on:</strong> <code>~/aav-jazzy/aav.sh car motor_pi</code></td>
-<td><code>serial port /dev/ttyAMA0 open</code>; L5 shows <strong>one</strong> <code>python3</code></td>
+<td><code>serial port /dev/ttyAMA0 open</code>; L5 shows <strong>one</strong> process: <code>legacy_uart_bridge</code> (the Rust bridge, the default since 17 Nov), or <code>python3</code> with <code>-- legacy_impl:=python</code></td>
 <td>Ctrl-C</td>
 </tr>
 <tr>

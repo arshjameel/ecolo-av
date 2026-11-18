@@ -100,7 +100,9 @@ fall-back, one switch away ([0.4 on the car](release-0.4-rc1.md)):
 | Node | Fall-back |
 |---|---|
 | The muxes (output and sensor) | `~/aav-jazzy/aav.sh car motor_pi_alone -- io_mux_impl:=python` |
-| The others | the list in [0.4 on the car](release-0.4-rc1.md) |
+| The ESP32's UART bridge | `~/aav-jazzy/aav.sh car motor_pi_alone -- legacy_impl:=python` |
+| The RC driver | `~/aav-jazzy/aav.sh car motor_pi_alone -- rc_impl:=python` |
+| The others (ego, the watchdog...) | the list in [0.4 on the car](release-0.4-rc1.md) |
 
 ## Rollback
 

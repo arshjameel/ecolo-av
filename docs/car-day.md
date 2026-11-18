@@ -597,7 +597,7 @@ ESP32 as noise. And theirs (`aav_serial_bridge`) only stopped comes back at the 
 | 3 | **No login prompt on it:** `sudo systemctl disable --now serial-getty@ttyAMA0.service` (the name from L3; skip if none) | L3 shows none | `sudo systemctl enable --now serial-getty@ttyAMA0.service` |
 | 4 | **Theirs off at boot:** `sudo systemctl disable --now aav_serial_bridge` | L4: `disabled`; L5: nobody | `sudo systemctl enable --now aav_serial_bridge` |
 | 5 | `sudo reboot`, then L1-L5 again | no serial console, no prompt, theirs disabled, nobody on the port | the way back of 2-4, then reboot |
-| 6 | **Ours on:** `~/aav-jazzy/aav.sh car motor_pi` | `serial port /dev/ttyAMA0 open`; L5 shows **one** `python3` | Ctrl-C |
+| 6 | **Ours on:** `~/aav-jazzy/aav.sh car motor_pi` | `serial port /dev/ttyAMA0 open`; L5 shows **one** process: `legacy_uart_bridge` (the Rust bridge, the default since 17 Nov), or `python3` with `-- legacy_impl:=python` | Ctrl-C |
 | 7 | A second terminal: `~/aav-jazzy/aav.sh ros2 topic hz /control/car/link_frame` | about 10 Hz: the bridge reports what it writes | |
 
 !!! warning "The boot line is one line"
