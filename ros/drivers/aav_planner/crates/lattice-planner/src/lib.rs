@@ -28,6 +28,7 @@ pub mod pass;
 pub mod scenes;
 pub mod search;
 pub mod smoother;
+pub mod spec;
 pub mod steps;
 
 use std::sync::{Arc, Mutex};
@@ -40,6 +41,7 @@ pub use curves::CurveKind;
 pub use lattice::{Lattice, LatticeError};
 pub use search::Expansion;
 pub use smoother::SmootherSettings;
+pub use spec::planner_from_json;
 
 use heuristic::DistanceTable;
 use search::Search;

@@ -697,6 +697,7 @@ dependencies = [
  "costmap",
  "criterion",
  "lanelet-map",
+ "map-chunks",
  "serde_json",
  "serde_yaml_ng",
 ]

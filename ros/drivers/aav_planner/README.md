@@ -15,7 +15,7 @@ the navigator -> /drivers/nav/planner/compute_path_to_pose
 
 | Part | What it is |
 |---|---|
-| `crates/lattice-planner` | the maths, no ROS: the primitives file and Hybrid-A*'s arcs (`Lattice::hybrid`), the A* search (`Expansion`: lattice or Hybrid), the Reeds-Shepp and Dubins curves, the car's outline check, the two estimates (heuristics), the smoother; `lane.rs`: the lane-centre planner (`path:=lane`: the right lane's centre by the lane map's road graph, the lattice joining the ends; a loop round the block to a goal close by is the lattice's); with `lane_graph:=lanelet2` it routes on the Lanelet2 map instead (`lanelet-map`: each lane its own centre, neighbours, one way, the stop lines on the way; TODO 175); `pass.rs`: something parked on the lane line is passed by moving only its stretch left, the least that clears it, then back (Ben, 16 Nov; `lane_pass:=false`: the lattice, as before); `steps.rs`: a goal off the costmap planned to where the way there leaves it (TODO 175); `scenes.rs`: the hand-made maps and the example lot |
+| `crates/lattice-planner` | the maths, no ROS: the primitives file and Hybrid-A*'s arcs (`Lattice::hybrid`), the A* search (`Expansion`: lattice or Hybrid), the Reeds-Shepp and Dubins curves, the car's outline check, the two estimates (heuristics), the smoother; `lane.rs`: the lane-centre planner (`path:=lane`: the right lane's centre by the lane map's road graph, the lattice joining the ends; a loop round the block to a goal close by is the lattice's); with `lane_graph:=lanelet2` it routes on the Lanelet2 map instead (`lanelet-map`: each lane its own centre, neighbours, one way, the stop lines on the way; TODO 175); `pass.rs`: something parked on the lane line is passed by moving only its stretch left, the least that clears it, then back (Ben, 16 Nov; `lane_pass:=false`: the lattice, as before); `steps.rs`: a goal off the costmap planned to where the way there leaves it (TODO 175); `scenes.rs`: the hand-made maps and the example lot; `spec.rs`: the planner from its `settings` JSON (`planner_from_json`, the node's and the diffusion data's); `examples/teach.rs`: our global costmap and planner on a map file, a JSON line a request, the diffusion planner's teachers (`pixi run diffusion data`, TODO 242) |
 | `crates/planner-node` | the ROS node, binary `planner` (rclrs): messages in and out only, one thread a plan |
 
 ```sh
@@ -62,5 +62,6 @@ W_DATA=0.02 cargo run --release -p lattice-planner --example staircase   # a roa
 cargo run --release -p lattice-planner --example cusps       # the turns in a street by cusp_penalty (TODO 174)
 cargo run --release -p lattice-planner --example lane -- <lanes.json>   # path:=lane on the campus's legs (its header: how to make the file)
 cargo run --release -p lattice-planner --example steps -- <lanes.json> <chunks>   # the same legs on the chunks round the car, in steps
+echo '{"teachers": {}}' | cargo run --release -p lattice-planner --example teach   # the diffusion data's teacher (tools/diffusion_data.py drives it)
 pixi run build && colcon test --packages-select aav_planner
 ```

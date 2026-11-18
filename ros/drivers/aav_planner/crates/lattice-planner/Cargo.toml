@@ -20,6 +20,9 @@ lanelet-map = { path = "../../../../bringup/aav_description/lanelet-map" }
 criterion = { version = "0.7", default-features = false, features = ["cargo_bench_support"] }
 # The campus's lanes.yaml, read in a test (tests/lanelet2.rs).
 serde_yaml_ng = "0.10"
+# The map server's reading of a map file, for examples/teach.rs (the diffusion data's
+# teachers, TODO 242).
+map-chunks = { path = "../../../../bringup/aav_description/map-chunks" }
 
 [[bench]]
 name = "plan"

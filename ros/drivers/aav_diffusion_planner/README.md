@@ -56,7 +56,7 @@ none), `max_speed:=` empty or at most 0.5, and `diffusion_provider:=`, `diffusio
 | `training/model.py`, `training/train.py` | the network (PyTorch), training, its score, ONNX export (FP16 too) | no |
 | `training/replay.py` | a sim run's recorded plans through any model, offline: the guard's score by check | no |
 | `training/measure.py` | the time a plan, part by part, against the budget (`pixi run measure diffusion`; on the Orin with any Python that has ONNX Runtime) | no |
-| `tools/diffusion_data.py` (repo) | the teachers' paths on random maps | yes |
+| `tools/diffusion_data.py` (repo) | the teachers' paths on random maps: our costmap and planner (`aav_planner`'s `teach` example) | no |
 
 ## Set up and run
 
