@@ -14,10 +14,10 @@ moves the car.**
 | Step | What happens |
 |---|---|
 | 1. Sense | Sensors publish raw data. Two filters (EKFs) work out where the car is. |
-| 2. Propose | Each driver proposes a speed and a turn rate: joystick, keyboard, script or Nav2 (a route, a plan, a path follower). |
+| 2. Propose | Each driver proposes a speed and a turn rate: joystick, keyboard, script or navigation (a route, a plan, a path follower). |
 | 3. Pick | `twist_mux` passes on the highest-priority driver. `/safety/estop` blocks them all. |
 | 4. Convert | **ego**, the virtual car, turns that into a speed and steering angle the car can do. |
-| 5. Move | One backend moves something: the real car, our simulator, Gazebo, or a turtle on the screen. |
+| 5. Move | One backend moves something: the real car, Ravensim (our simulator), CARLA, or a turtle on the screen. |
 
 ## New here?
 
@@ -57,7 +57,7 @@ our car uses it.
 | Lidar: points, cubes, the costmap, named objects, NDT | [Learn: lidar](learn-lidar.md) |
 | Control: feedback loops, PID, steering geometry, safe stops | [Learn: control](learn-control.md) |
 | State space: from a drawing to a car simulator; poles, Bode, roll | [Learn: state space](learn-state-space.md) |
-| Nav2: planning a path and steering along it | [Learn: Nav2](learn-nav2.md) |
+| Navigation: planning a path and steering along it | [Learn: navigation](learn-nav2.md) |
 | CAN: the wire for steering, brake and throttle | [Learn: CAN](learn-can.md) |
 
 ## Read these, in order
@@ -66,7 +66,7 @@ our car uses it.
 
 ## Try it in five minutes
 
-The full hour, with rqt_graph, Gazebo and a Nav2 goal, is [Your first day](first-day.md).
+The full hour, with rqt_graph, Ravensim and a goal, is [Your first day](first-day.md).
 On a Mac or on Linux, once [pixi is installed](run.md):
 
 ```bash

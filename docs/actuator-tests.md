@@ -1,11 +1,11 @@
 # Actuator tests: measure how the car moves
 
 One script runs the stage-3 and stage-4 tests of `tests.md`: it drives the car,
-logs what happened, and prints the numbers for `vehicle.yaml`. Built and proven in Gazebo
+logs what happened, and prints the numbers for `vehicle.yaml`. Built and proven in Gazebo, the simulator then
 (15 Oct); the same script runs on the car.
 
 !!! note "The short version"
-    - `pixi run actuator-test --list` shows the tests. Add `--sim` for Gazebo.
+    - `pixi run actuator-test --list` shows the tests. Add `--sim` for Ravensim.
     - **On the car:** stage 3 on stands (`--stands`), stage 4 in an empty lot. It asks you
       to type the test's name first, and never goes above 1 m/s (0.3 on stands).
     - **To stop:** Ctrl-C, the e-stop, or the joystick's deadman. Any of them, any time.
@@ -15,7 +15,7 @@ logs what happened, and prints the numbers for `vehicle.yaml`. Built and proven 
 
 ```text
  actuator_test ──/drivers/tests/cmd_vel──► twist_mux ──► ego ──► backend ──► the car
-   (priority 60)                               ▲                    (or Gazebo)
+   (priority 60)                               ▲                    (or Ravensim)
  joystick 100, RC 95, keyboard 90 ─────────────┘ always win
         │
         └── reads back: /vehicle/odom (speed), /vehicle/steering, /throttle, /brake,
@@ -23,7 +23,7 @@ logs what happened, and prints the numbers for `vehicle.yaml`. Built and proven 
 ```
 
 It's a driver like any other ([Build a driver](howto-driver.md)), in twist_mux's `tests`
-slot: below every person (joystick, RC, keyboard), above Nav2 and every other program.
+slot: below every person (joystick, RC, keyboard), above navigation and every other program.
 
 ## The tests
 
@@ -41,18 +41,18 @@ slot: below every person (joystick, RC, keyboard), above Nav2 and every other pr
 | `actuator-test preflight --stands` | 3.P | stands | speed up, hold, slow, brake; steer left, right, centre; every sensor counted | PASS / FAIL per line, no `vehicle.yaml` lines ([below](#the-preflight-on-stands)) |
 
 The steering tests creep at 0.2 m/s: ego only turns the wheels while the car moves. On
-stands the wheels spin slowly; in Gazebo the car crawls in arcs.
+stands the wheels spin slowly; in the simulator the car crawls in arcs.
 
-## In Gazebo
+## In Ravensim
 
 ```bash
-pixi run sim world:=empty gui:=false rviz:=false nav:=false sim_speed:=3   # terminal 1
+pixi run sim world:=empty rviz:=false nav:=false sim_speed:=3              # terminal 1
 pixi run actuator-test speed-up --sim                                      # terminal 2
 ```
 
 - `sim_speed:=3` lets ego go to 3 m/s, so `speed-up` and `brake` reach 2 and 3 m/s.
-- `--sim` keeps ROS on this computer and uses Gazebo's clock. The script refuses to run
-  without it when Gazebo announces SIM, and with it when anything announces REAL.
+- `--sim` keeps ROS on this computer and uses the simulator's clock. The script refuses to run
+  without it when the simulator announces SIM, and with it when anything announces REAL.
 - `nav:=false`: nothing else drives. The empty world has room for the circles.
 
 ## On the car
@@ -93,7 +93,7 @@ then run the rest. Start at walking pace: `--max-speed 0.5`.
 |---|---|
 | **Typing the test's name** | on the real car (or when nobody announces `/system/source`), nothing moves until you type it. No keyboard (a script, a pipe): refused |
 | **Speed cap** | 1 m/s on the car, 0.3 m/s on stands; `--max-speed` can lower it, never raise it there |
-| **ego must answer** | on the car, no answer from ego (its speed cap and steering limits): refused. In Gazebo, a warning |
+| **ego must answer** | on the car, no answer from ego (its speed cap and steering limits): refused. In the simulator, a warning |
 | **Stage check** | on the car, stage-3 tests need `--stands`, stage-4 tests refuse it |
 | **Envelope** | each test has a speed, distance and time limit (printed at the start): crossing one stops the car |
 | **Ctrl-C, errors** | zero commands until the car stands still, then it exits. A second Ctrl-C can't cut that short |
@@ -310,7 +310,7 @@ One run before the car goes on the ground (Ben, 29 Oct; the design:
 `docs/designs/2026-10-29_preflight.md`). It drives and checks every sensor at once.
 
 ```bash
-pixi run actuator-test preflight --stands --sim                          # Gazebo (pixi run sim first)
+pixi run actuator-test preflight --stands --sim                          # Ravensim (pixi run sim first)
 pixi run actuator-test preflight --stands --bench                        # bench mode (pixi run bench first)
 pixi run actuator-test preflight --stands --no-drive --skip steering     # the car today: the sensors only
 pixi run actuator-test preflight --stands --skip steering gps lidar      # the car, once it has a rear-wheel speed
@@ -341,7 +341,7 @@ Then one line per check: `PASS`, `FAIL`, `WARN` or `SKIP`.
     `--no-drive`: the sensors only, nothing moves. Also refused: the C++ ESP32 (its
     no-timeout lock), and the bridge on `speed_loop.mode pi`.
 
-In Gazebo and on the bench the car is **on the ground**, so the stands lines check the
+In the simulator and on the bench the car is **on the ground**, so the stands lines check the
 opposite (the IMU and GPS agree with the wheels) and say so. Who must be there on the car:
 the **e-stop person** (they are the stop), someone watching the **rear wheels** with a
 tachometer app, the laptop person; run it on the Orin (ssh + tmux) or a wired laptop.
@@ -449,7 +449,7 @@ Older logs (no `t_*` columns, no `shaping`) still work: the fits use the rows' t
 
 | Key | Holds | When unknown |
 |---|---|---|
-| `backend` | `legacy`, `spine`, `gazebo`, `gazebo-spine`, `bench` | `unknown` |
+| `backend` | `legacy`, `spine`, `ravensim`, `ravensim-spine`, `ravensim-ideal`, `bench` (`gazebo...` in runs before 16 Nov) | `unknown` |
 | `speed_loop` | the profile (`default`, `smooth`), or "none: open loop" on the ESP32 | on the car's spine: built into the firmware, so write it down |
 | `full_throttle_speed` | the legacy bridge's (its open loop) | `unknown`, or `n/a` |
 | `ego`, `ego_changed` | ego's limits (its ramp is before the backend); what the test lifted | "ego did not answer" |

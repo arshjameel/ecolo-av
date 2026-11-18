@@ -1,6 +1,6 @@
 # Build a driver
 
-A driver is anything that proposes how to move: a joystick, a script, Nav2, one day a
+A driver is anything that proposes how to move: a joystick, a script, navigation, one day a
 learned model. Every driver publishes the same kind of message on its own topic, and
 `twist_mux` picks one. This page builds a small example driver, `aav_circle`, from an
 empty folder to a turtle driving in circles.
@@ -33,7 +33,7 @@ driver is added.
 | Replay | `/drivers/replay/cmd_vel` | 40 |
 | Stop-sign and sensor-watchdog locks (block everything below) | `/perception/stop_sign`, `/safety/sensor_watchdog/lock` | 30 |
 | Drive to point: drive to one GPS point ([A to B](a-to-b.md)) | `/drivers/point/cmd_vel` | 25 |
-| Nav2 | `/drivers/nav/cmd_vel` | 20 |
+| Navigation | `/drivers/nav/cmd_vel` | 20 |
 | AI | `/drivers/ai/cmd_vel` | 10 |
 
 **People outrank software.** Give a new software driver a priority below 90. The example
@@ -153,7 +153,7 @@ pixi run graph                                             # terminal 3
   once. Let go, and the circle comes back after half a second;
 - `pixi run estop` stops everything, and `pixi run clear estop` lets it go again.
 
-Then `pixi run check turtle` should still say `0 failed`, and Gazebo is the next rung:
+Then `pixi run check turtle` should still say `0 failed`, and Ravensim is the next rung:
 `pixi run sim`.
 
 ## 5. Before you commit
@@ -173,7 +173,7 @@ Then `pixi run check turtle` should still say `0 failed`, and Gazebo is the next
    driver after 0.5 s.
 3. **Never publish `/control/cmd_vel` or `/ego/actuator_cmd` yourself.** Everything goes through
    the mux and ego, so the limits and the e-stop always apply.
-4. **Climb the test ladder:** the turtle, then Gazebo, then the car on stands, then the
+4. **Climb the test ladder:** the turtle, then Ravensim, then the car on stands, then the
    car with a safety driver. See [Simulation](simulation.md#the-test-ladder).
 
 ## What's been tested

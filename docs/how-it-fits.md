@@ -216,9 +216,9 @@ car) change.
 
 ![Bench mode's graph](img/graph-bench.svg)
 
-### Gazebo
+### The simulator (drawn with Gazebo, before 16 Nov; Ravensim's graph has the same topics)
 
-![Gazebo's graph](img/graph-sim.svg)
+![The simulator's graph](img/graph-sim.svg)
 
 The PNGs beside them (`docs/img/graph-*.png`) are for slides. To see it live: start a
 profile, then `pixi run graph`.

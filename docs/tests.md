@@ -13,11 +13,11 @@ in the order to run them. Each one says what it proves, how to run it, and when 
 
 ```text
  1 simulator  →  2 bench  →  3 car on stands  →  4 car, empty lot  →  5 the whole drive
- (Gazebo,        (stand-ins,   (wheels off the      (walking pace,       (A to B by GPS)
+ (Ravensim,       (stand-ins,   (wheels off the      (walking pace,       (A to B by GPS)
   turtle)         real CAN)     ground)              safety driver)
 ```
 
-## Stage 1: the simulator (Gazebo and the turtle)
+## Stage 1: the simulator (Ravensim and the turtle)
 
 Nothing real moves. Run these on any laptop.
 
@@ -30,21 +30,21 @@ no rows here yet: their results are on [How the car stops](stopping.md) and
 
 | # | Test | Run | Passes when | Status |
 |---|---|---|---|---|
-| 1.1 | The whole car graph in Gazebo | `pixi run sim-check` | all checks PASS: sensors, a 6.5 m drive, the EKF within 0.5 m of the truth | ✅ 3 Nov: 9 of 9 (the EKF 0.15 m off); also 9 of 9 with each speed loop and `--voxels`, 10 of 10 `--kiss-ekf`, 7 of 7 `--no-lidar` |
+| 1.1 | The whole car graph in the simulator | `pixi run sim-check` | all checks PASS: sensors, a 6.5 m drive, the EKF within 0.5 m of the truth | ✅ 3 Nov: 9 of 9 (the EKF 0.15 m off); also 9 of 9 with each speed loop and `--voxels`, 10 of 10 `--kiss-ekf`, 7 of 7 `--no-lidar` |
 | 1.2 | All three cameras send pictures | part of 1.1 | front left 10 Hz; front right and rear 5 Hz or more, each in its own frame | ✅ 15 Oct |
 | 1.3 | The roof lidar | `pixi run sim-check` (on by default) | 1800 × 16 rays at 10 Hz in `lidar_link` | ✅ |
 | 1.4 | Stop for an obstacle | `pixi run sim-check --obstacle` | stops 0-2 m before the box; drives on when it's gone | ✅ at 272 kg; ⚠️ at 181 kg, unconfirmed (the Mac was overloaded); ✅ 3 Nov: 0.23 m before it |
-| 1.5 | Lane keeping | `pixi run sim-check --lane` | back to the lane's centre within 5 cm | ✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs Nav2) |
+| 1.5 | Lane keeping | `pixi run sim-check --lane` | back to the lane's centre within 5 cm | ✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs navigation) |
 | 1.6 | The HUD, with pretend data | `pixi run hud --demo` | the window opens with speed, camera, GPS, e-stop | ✅ Ben, 15 Oct |
 | 1.7 | The HUD with the turtle | `pixi run turtle`, `pixi run hud`, `pixi run keyboard --local` | speed and steering move as you drive | ✅ Ben, 15 Oct |
 | 1.8 | Plain-English driving | `pixi run -e llm talk`: "drive 10 m forward" | drives 10 m (±0.2 m) after you type yes | ✅ Gazebo |
-| 1.9 | **"SIMULATED" on the HUD** | run Gazebo, look at the HUD | an orange SIMULATED banner; REAL / SIM tag per sensor | ✅ built 15 Oct (its logic tested); not yet seen on a screen |
-| 1.10 | **The actuator tests (stage 3-4), in Gazebo first** | `pixi run actuator-test <test> --sim` ([docs](actuator-tests.md)) | the script runs end to end and reports g and angles | ✅ 15 Oct: all 9 tests; they give back `vehicle.yaml`'s numbers |
-| 1.11 | **The lidar alone stops the car** | `pixi run sim-check --lidar-obstacle` (and `--plan-around`: Nav2 drives round a box it sees) | radar off: stops 0-2 m before a person-sized post, which shows in the local costmap; drives on when it's gone | ✅ 15 Oct: 0.16-0.55 m before it; 3 Nov: 0.16 m. ❌ with `--voxels`: 1 of 3 runs drove 1.30 m into the post (2 of 3 stopped 0.25 and 0.29 m before it) |
+| 1.9 | **"SIMULATED" on the HUD** | run the simulator, look at the HUD | an orange SIMULATED banner; REAL / SIM tag per sensor | ✅ built 15 Oct (its logic tested); not yet seen on a screen |
+| 1.10 | **The actuator tests (stage 3-4), in the simulator first** | `pixi run actuator-test <test> --sim` ([docs](actuator-tests.md)) | the script runs end to end and reports g and angles | ✅ 15 Oct: all 9 tests; they give back `vehicle.yaml`'s numbers |
+| 1.11 | **The lidar alone stops the car** | `pixi run sim-check --lidar-obstacle` (and `--plan-around`: the car drives round a box it sees) | radar off: stops 0-2 m before a person-sized post, which shows in the local costmap; drives on when it's gone | ✅ 15 Oct: 0.16-0.55 m before it; 3 Nov: 0.16 m. ❌ with `--voxels`: 1 of 3 runs drove 1.30 m into the post (2 of 3 stopped 0.25 and 0.29 m before it) |
 | 1.12 | **Sensor failures on purpose** | `pixi run sim-check --faults` (`--no-watchdog`: what happens without the watchdog) | each of 13 faults (GPS lost, NaN, jump; IMU stopped, frozen, NaN; wheels stopped, frozen, NaN; camera frozen; radar stopped; the watchdog hung, killed) stops the car within 6 s (frozen wheels: 10 s from when they go wrong), and says why; normal driving never trips the wheels' cross check | ✅ 15 Oct: all 13; 24 Oct, with the HUD's heartbeat: all 25 checks, 3 runs of 3; 3 Nov: all 25 (14 faults) |
-| 1.13 | **The spine in the loop** | `pixi run sim-check --spine` | in Gazebo with `spine:=true`: the normal checks pass; ego's commands stopped → the spine brakes fully within 0.28 s and latches; `/safety/estop` and the hardware e-stop → brake within 0.15 s, latched until armed again; disarmed → no motion | ✅ 15 Oct: full brake 195-209 ms, e-stops 1-12 ms; 3 Nov: all PASS, full brake 202-205 ms, e-stops 2 ms |
-| 1.14 | **Drive to a GPS point, smooth stop** | `pixi run sim-check --drive-to-point` ([A to B](a-to-b.md)) | every stop within 2 m of B by Gazebo's truth, no overshoot, braking about half `max_brake`; a cancel, the e-stop and a GPS fault stop it | ✅ 15 Oct: all within 0.4 m. ⚠️ 3 Nov, 2 runs: every stop within 0.46 m of B by the truth, but 1 of 9 drives each run ended 0.61 m past B by its own EKF (the limit 0.5 m): GPS noise, or the GPS's new position, to look at. ✅ 15 Nov, Ravensim, 1 run: 9 of 9 within 0.19 m of B by the truth, at most 0.15 m past by its EKF (after fixing ego waiting for a road ahead that `nav:=false` never writes, TODO 94) |
-| 1.15 | **Ghost obstacles: a pretend person only Nav2 sees** | `pixi run sim-check --ghost` ([docs](ghost-obstacles.md)) | a ghost 15 m ahead (nothing in Gazebo): stops 0-2 m before it (the stop zone or the controller), the local costmap marks it; drives on once it's off | ✅ 16 Oct: 0.21 m before it, the stop zone fired (one run, radar and lidar on too); 3 Nov: 0.51 m before it |
+| 1.13 | **The spine in the loop** | `pixi run sim-check --spine` | in the simulator with `spine:=true`: the normal checks pass; ego's commands stopped → the spine brakes fully within 0.28 s and latches; `/safety/estop` and the hardware e-stop → brake within 0.15 s, latched until armed again; disarmed → no motion | ✅ 15 Oct: full brake 195-209 ms, e-stops 1-12 ms; 3 Nov: all PASS, full brake 202-205 ms, e-stops 2 ms |
+| 1.14 | **Drive to a GPS point, smooth stop** | `pixi run sim-check --drive-to-point` ([A to B](a-to-b.md)) | every stop within 2 m of B by the simulator's truth, no overshoot, braking about half `max_brake`; a cancel, the e-stop and a GPS fault stop it | ✅ 15 Oct: all within 0.4 m. ⚠️ 3 Nov, 2 runs: every stop within 0.46 m of B by the truth, but 1 of 9 drives each run ended 0.61 m past B by its own EKF (the limit 0.5 m): GPS noise, or the GPS's new position, to look at. ✅ 15 Nov, Ravensim, 1 run: 9 of 9 within 0.19 m of B by the truth, at most 0.15 m past by its EKF (after fixing ego waiting for a road ahead that `nav:=false` never writes, TODO 94) |
+| 1.15 | **Ghost obstacles: a pretend person only navigation sees** | `pixi run sim-check --ghost` ([docs](ghost-obstacles.md)) | a ghost 15 m ahead (nothing in the world): stops 0-2 m before it (the stop zone or the controller), the local costmap marks it; drives on once it's off | ✅ 16 Oct: 0.21 m before it, the stop zone fired (one run, radar and lidar on too); 3 Nov: 0.51 m before it |
 | 1.16 | **Every screen in Initial D**, with pretend data | `pixi run hud --demo`, `map --demo`, `debug-hud --demo`, `hw-panel --demo` ([Themes](hud.md#themes-the-screens-colours)) | each opens black and red with thin white edges and sharp corners, no Catppuccin blue-grey; the e-stop red with white words; GO green, WAIT amber; the localizers keep their colours | ✅ 2 Nov: all four, screenshots on Ben's Mac |
 | 1.17 | The theme's contrast test | `cargo test -p hud-core theme` (in `tools/test.sh`) | every word 4.5 : 1, every shape and mark 3 : 1 on each screen's backgrounds; Initial D has no Catppuccin colour but the localizers' | ✅ 2 Nov |
 | 1.18 | **The diffusion planner's lot tour** | `pixi run measure controllers --planners lattice diffusion --reversing --tours lot` ([trials](trials.md#diffusion-2-nov-a-model-draws-the-lattice-guards)) | every leg, as the lattice; no plan tighter than full lock; the share of plans from the model (`/drivers/nav/diffusion/status`) | ✅ 2 Nov, 2 runs: 8 of 8 legs, 63 % from the model; 3 Nov, 3 runs: 12 of 12 legs, 73 % from the model, never tighter than full lock |
@@ -147,8 +147,8 @@ and the coast-down (4.2) subtracted, so drag doesn't count as motor or brake.
 | 4.14 | Global EKF + GPS | drive a loop: the EKF's track stays within 2 m of the GPS track | ⬜ |
 | 4.15 | Cameras: the freeze | 1 hour with no freeze, power and heat logged (`history/friday-todo-2026-10-16.md` part 5) | ⬜ |
 | 4.16 | Radar | `/perception/radar/clusters` shows a person walking in front | ⬜ |
-| 4.17 | Lidar (the roof VLP-16, stock `velodyne` driver) | `car.launch.py` (lidar on by default): an obstacle shows in RViz's local costmap (`lidar_layer`), and a person in front stops Nav2 | ⬜ untested with the real lidar; ✅ in Gazebo (1.11) and against a pretend VLP-16 |
-| 4.18 | **Sensor failures on the car** | pull the GPS's, the IMU's, the wheel sensors' CAN cable while Nav2 drives at walking pace: the HUD's red banner names it, and the car stops | ⬜ |
+| 4.17 | Lidar (the roof VLP-16, stock `velodyne` driver) | `car.launch.py` (lidar on by default): an obstacle shows in RViz's local costmap (`lidar_layer`), and a person in front stops navigation | ⬜ untested with the real lidar; ✅ in Gazebo (1.11) and against a pretend VLP-16 |
+| 4.18 | **Sensor failures on the car** | pull the GPS's, the IMU's, the wheel sensors' CAN cable while navigation drives at walking pace: the HUD's red banner names it, and the car stops | ⬜ |
 
 ### 4e. Record the lot: the maps and the scores
 
@@ -169,19 +169,19 @@ every drive**, or the maps won't line up. The Orin needs 20 GB free (the lidar i
 
 ### 4f. Reversing and the U-turn
 
-Nav2 may back up on the car (at 0.5 m/s at most), where the lidar watches behind. Until
+Navigation may back up on the car (at 0.5 m/s at most), where the lidar watches behind. Until
 the wheels tell direction (H5), the speed's sign is the **last command's**: 4.25 checks
 where that goes wrong.
 
 | # | Test | How | Passes when | Status |
 |---|---|---|---|---|
 | 4.23 | **Reverse straight** | the keyboard, 5 m back at 0.3 m/s, then `actuator-test straight` reversed | the local EKF goes **back** 5 m (±0.3 m); the GPS agrees | 🔧 |
-| 4.24 | **Stop for something behind** | a cone 3 m behind, Nav2 told to back up past it | stops before it: collision_monitor's box behind the bumper (Gazebo: 0.75 m short, `sim-check --rear-obstacle`; 3 Nov: 0.78 m) | 🔧 |
+| 4.24 | **Stop for something behind** | a cone 3 m behind, navigation told to back up past it | stops before it: the stop zone's box behind the bumper (Gazebo: 0.75 m short, `sim-check --rear-obstacle`; 3 Nov: 0.78 m) | 🔧 |
 | 4.25 | **Rolling back** (the known flaw) | on a gentle slope, drive forward, stop, let it roll back by hand on the brake | written down: how far the EKF thinks it went **forward**, and whether the watchdog noticed (it compares speeds, not directions: maybe not). Too far: wait for H5 before reversing on slopes | 🔧 |
-| 4.26 | **The U-turn** | Nav2, a goal behind the car in a 14 m lane of cones (Gazebo's "turn back" leg) | a three-point turn: forward, back about 9 m, forward; no cone touched | 🔧 in Gazebo, 16 of 16 legs with the lattice (30 Oct) |
+| 4.26 | **The U-turn** | navigation, a goal behind the car in a 14 m lane of cones (Gazebo's "turn back" leg) | a three-point turn: forward, back about 9 m, forward; no cone touched | 🔧 in Gazebo, 16 of 16 legs with the lattice (30 Oct) |
 | 4.27 | **The diffusion planner's trial** (0.3; [car day A12](car-day.md#a12-the-diffusion-planners-trial)): refused without `diffusion_trial:=true` and above 0.5 m/s; on stands, then a goal ahead, round a cone, and the U-turn | `car.launch.py diffusion_trial:=true`: ego and Nav2 at 0.5 m/s at most; the guard and the lattice behind it; every lock as always | the refusals happen (D.1-D.2); never over 0.5 m/s; no cone touched; the share from the model written down | 🔧 the refusals ✅ in `test_navigation_launch.py`; not run on the car |
 
-Nav2's map stays `empty.yaml`: the sensors see obstacles live. A map made from the lidar
+The navigation map stays `empty.yaml`: the sensors see obstacles live. A map made from the lidar
 needs a tool we don't have yet.
 
 ### The stack for every test on the ground
@@ -204,8 +204,8 @@ trials wait for 4.22. The simulator runs our stack by default since 14 Nov (`sta
 |---|---|---|---|---|
 | 5.1 | **Scripted drive** | 10 m at 0.5 m/s (`a-to-b.md`, test 5) | stops 10 m on (±0.5 m), straight | 🔧 in Gazebo, `sim-check`'s 6.5 m plan passes; not yet on the car |
 | 5.2 | **Smooth stop at a GPS point** | `pixi run drive-to-point --lat .. --lon ..`: speed up, hold, slow down at **half the measured brake g** (`vehicle.yaml` `max_brake`, from 4.3), stop at B ([A to B](a-to-b.md)) | stops within 1 m of B (2 m without RTK) | 🔧 in Gazebo 15 Oct (`sim-check --drive-to-point`): 10-60 m, any angle, 1 and 3 m/s, every stop within 0.4 m of B, braking 1.4-1.6 m/s² for a plan of 1.5. 🔧 the car: needs 4.3 |
-| 5.3 | Nav2 to a GPS point | the GPS goal, empty lot | reaches B, stops | 🔧 in Gazebo, goals of 8 m and 9.5 m; not yet on the car |
-| 5.4 | **Ghost obstacles** | the real car with a **simulated** person in Nav2's costmap | slows and stops for it, with nothing real to hit | ⬜ |
+| 5.3 | Navigation to a GPS point | the GPS goal, empty lot | reaches B, stops | 🔧 in Gazebo, goals of 8 m and 9.5 m; not yet on the car |
+| 5.4 | **Ghost obstacles** | the real car with a **simulated** person in navigation's costmap | slows and stops for it, with nothing real to hit | ⬜ |
 | 5.5 | Plain-English driving on the car | `AAV_DISCOVERY=SUBNET pixi run -e llm talk --car`: "drive 10 m forward" | the same as 5.1, after you type yes | ⬜ last |
 
 ## Checks at the car (not driving)
@@ -227,7 +227,7 @@ trials wait for 4.22. The simulator runs our stack by default since 14 Nov (`sta
  4.1 speed up  ─┐
  4.3 brake     ─┼─► vehicle.yaml: acceleration, braking g, steering map, mass
  4.5 circles   ─┤        │
- 4.8 scales    ─┘        ├─► Gazebo behaves like the real car (tests 1.x mean more)
+ 4.8 scales    ─┘        ├─► the simulator behaves like the real car (tests 1.x mean more)
                          └─► the smooth stop (5.2): it knows how hard it can brake
 ```
 
