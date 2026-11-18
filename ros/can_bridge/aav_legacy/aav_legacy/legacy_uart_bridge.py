@@ -98,6 +98,8 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 import serial
 from std_msgs.msg import Bool, String
 
+READ_CHUNK = 4096   # bytes read at most each 10 ms; the uplink brings about 20 (50 Hz x 40)
+
 
 class LegacyUartBridge(Node):
 
@@ -298,7 +300,11 @@ class LegacyUartBridge(Node):
         if self.serial is None:
             return
         try:
-            data = self.serial.read(self.serial.in_waiting or 1)
+            # Whatever has come, up to READ_CHUNK (the port has timeout 0: it never waits).
+            # Not in_waiting alone: on socket:// (Ravensim's sim_esp32, the QEMU
+            # rehearsal) pyserial's in_waiting says 0 or 1, not the bytes waiting, so one
+            # byte a tick fell behind the 50 Hz uplink and it went stale (17 Nov).
+            data = self.serial.read(max(self.serial.in_waiting, READ_CHUNK))
         except (serial.SerialException, OSError) as e:
             self.get_logger().error(f'serial read failed: {e}', throttle_duration_sec=2.0)
             return

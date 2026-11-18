@@ -9,6 +9,7 @@ first, and what nobody has tried on the car yet.
 
 
 **Flashing the ESP32 and upgrading the Motor Pi:** [the runbook](esp32-motor-pi-runbook.md) (Senura, 17 Nov), in order, with the gates and the way back.
+Rehearsed the night before on a Mac, the ESP32 in QEMU: [the rehearsal](rehearsal-2026-11-18.md), with a morning checklist.
 
 ## What's in it
 

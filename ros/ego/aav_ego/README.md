@@ -35,7 +35,7 @@ Launch arguments:
 
 | Name | Meaning |
 |---|---|
-| `max_speed` | m/s, a lower forward cap than `ego.yaml`'s (a first drive on stands). Must be above 0 and at most `ego.yaml`'s |
+| `max_speed` | m/s, a lower forward cap than `ego.yaml`'s (a first drive on stands); it caps reverse too, never above `vehicle.yaml`'s `max_reverse_speed` (17 Nov). Must be above 0 and at most `ego.yaml`'s |
 | `sim_max_speed` | m/s, a higher cap, up to 5.0, only with `use_sim_time:=true` |
 | `look_ahead` | `true`: also start `look_ahead` (the screens' squiggly line); `false`: ego alone |
 | `road_ahead` | `false`; `true`: hold navigation to `/world/road_ahead` (`sim.launch.py` sets it with `behaviour:=true`, its writer) |
