@@ -1,0 +1,17 @@
+[package]
+name = "lane-core"
+description = "The lane lines in a camera picture, no ROS: aav_lane_finder's bird's-eye warp, paint mask, sliding windows and fits, ported"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The least-squares fit (numpy's polyfit is an SVD solve too). MIT OR Apache-2.0, the
+# version ndt-core and things-core use.
+nalgebra = { version = "0.35", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+# The vectors' pictures (MIT OR Apache-2.0), and the Python's numbers read exactly.
+png = "0.18"
+serde_json = { version = "1", features = ["float_roundtrip"] }

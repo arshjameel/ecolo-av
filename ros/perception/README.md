@@ -12,7 +12,8 @@ commands the car itself, except through the stop-sign lock and the lane follower
 |---|---|---|
 | [aav_detector](./aav_detector/README.md) | object detection (RF-DETR Nano; YOLO as an option), the stop-sign watcher, camera obstacles | `/perception/detections`, `/perception/stop_sign`, `/perception/camera_obstacles` |
 | [aav_detector_rs](./aav_detector_rs/README.md) | the detector in Rust, a challenger (`detector_impl:=rust`): RF-DETR's ONNX through ONNX Runtime, Core ML on a Mac | the same as `aav_detector`'s `detector` |
-| [aav_lane_finder](./aav_lane_finder/README.md) | classic OpenCV lane finder on the front left camera | `/perception/lane/geometry` |
+| [aav_lane_finder](./aav_lane_finder/README.md) | classic OpenCV lane finder on the front left camera (Python: the fall-back, `lane_finder_impl:=python`); its launch file starts either | `/perception/lane/geometry` |
+| [aav_lane_finder_rs](./aav_lane_finder_rs/README.md) | the same `lane_finder` in Rust, no OpenCV, the default since 18 Nov: the same lanes | the same as `aav_lane_finder` |
 | [aav_lane_geometry](./aav_lane_geometry/README.md) | the 2025-26 team's lane keeping: the message, a PID follower, a fake lane | `/drivers/ai/cmd_vel` |
 | [aav_lidar](./aav_lidar/README.md) | flattens the lidar's cloud into a 720-ray scan for the costmap and the stop zone | `/sensors/lidar/scan` |
 | [aav_voxels](./aav_voxels/README.md) | a trial (`voxels:=true`): the lidar's cloud as 0.25 m cubes over the fitted road, for the costmap instead of the scan | `/perception/voxels/cubes`, `/perception/voxels/ground` |

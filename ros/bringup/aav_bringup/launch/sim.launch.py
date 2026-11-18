@@ -13,7 +13,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
       [amcl:=false] [voxels:=false] [voxels_impl:=python] [kerbs:=] [ego_impl:=rust]
-      [lidar_impl:=rust] [things_impl:=rust]
+      [lidar_impl:=rust] [things_impl:=rust] [lane_finder_impl:=rust]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [io_mux_impl:=rust]
       [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
@@ -175,6 +175,9 @@ bench's argument names:
                       default since 17 Nov): the same scan
   things_impl:=python the Python things node (aav_things) in the Rust one's place (the
                       default since 17 Nov), with things: the same topics and things
+  lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
+                      one's place (the default since 18 Nov), with lane:=true or
+                      lane_pose:=true: the same topics and lanes
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
@@ -724,7 +727,9 @@ def launch_setup(context):
         actions.append(include(context, 'aav_lane_geometry', 'lane_follower.launch.py',
                                fake=lane == 'fake'))
     if lane == 'true' or lane_pose:
-        actions.append(include(context, 'aav_lane_finder', 'lane_finder.launch.py'))
+        actions.append(include(
+            context, 'aav_lane_finder', 'lane_finder.launch.py',
+            lane_finder_impl=vehicle.check_lane_finder_impl(arg('lane_finder_impl'))))
     if flag['hud']:
         actions.append(include(context, 'aav_hud', 'hud.launch.py'))
     if flag['map']:
@@ -910,6 +915,10 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
                               description='python or rust: which lidar_scan flattens the '
                                           'lidar (aav_lidar, or aav_lidar_rs)'),
+        DeclareLaunchArgument('lane_finder_impl',
+                              default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
+                              description='rust or python: which lane_finder finds the lane '
+                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='python or rust: which things node tracks the '
                                           'cubes (aav_things, or aav_things_rs)'),

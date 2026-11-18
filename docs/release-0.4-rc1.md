@@ -71,6 +71,7 @@ The fall-backs, one per node (the others stay Rust):
 | sensor mux + output mux (the ESP32's heartbeat) | `io_mux_impl:=python` |
 | legacy_uart_bridge (the ESP32's UART, the Motor Pi) | `legacy_impl:=python` |
 | rc_driver (RC via ROS) | `rc_impl:=python` |
+| lane_finder (lane keeping, the lane pose) | `lane_finder_impl:=python` |
 
 ## Untested on the car (everything since 13 Nov)
 

@@ -48,6 +48,8 @@ if command -v cargo >/dev/null; then
   (cd ros/perception/aav_lidar_rs && cargo test -q --locked -p lidar-scan)
   echo "== ros/perception/aav_things_rs: the things in Rust, the Python modules' answers"
   (cd ros/perception/aav_things_rs && cargo test -q --locked -p things-core)
+  echo "== ros/perception/aav_lane_finder_rs: the lane finder in Rust, the Python's lanes on the same pictures"
+  (cd ros/perception/aav_lane_finder_rs && cargo test -q --locked -p lane-core)
   echo "== ros/perception/aav_detector_rs: the detector's maths in Rust (resize, decode, labels)"
   (cd ros/perception/aav_detector_rs && cargo test -q --locked -p detector-core)
   echo "== ros/ego/aav_ego_rs: ego and look_ahead in Rust, the Python modules' answers"
@@ -123,6 +125,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/ego/aav_ego_rs -p ego-core
   rust_style ros/perception/aav_lidar_rs -p lidar-scan
   rust_style ros/perception/aav_things_rs -p things-core
+  rust_style ros/perception/aav_lane_finder_rs -p lane-core
   rust_style ros/drivers/aav_behaviour_rs -p behaviour-core
   rust_style ros/safety/aav_watchdog_rs -p watchdog-core
   rust_style ros/io_mux/aav_io_mux_rs -p io-mux-core

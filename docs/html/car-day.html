@@ -1478,6 +1478,11 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <td><code>aav_rc_rs</code></td>
 <td><code>rc_impl:=python</code></td>
 </tr>
+<tr>
+<td>lane_finder (with the <code>lane</code> part; since 18 Nov)</td>
+<td><code>aav_lane_finder_rs</code></td>
+<td><code>lane_finder_impl:=python</code></td>
+</tr>
 </tbody>
 </table></div>
 <div class="table-wrap"><table>
@@ -1493,7 +1498,7 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>1</td>
 <td>read the first lines of <code>car.launch.py</code> (<code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...</code>)</td>
-<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust</code></td>
+<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust</code></td>
 <td>a word other than <code>rust</code>: someone passed <code>:=python</code></td>
 </tr>
 <tr>

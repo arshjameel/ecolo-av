@@ -2,6 +2,7 @@
 The lane finder, on the front camera's pictures.
 
   ros2 launch aav_lane_finder lane_finder.launch.py [debug_image:=false]
+      [lane_finder_impl:=rust]
 
   /sensors/camera/front_left/image_raw, /sensors/camera/front_left/camera_info
       -> lane_finder -> /perception/lane/geometry
@@ -10,33 +11,50 @@ Lane keeping is two launch files: this one finds the lane, and aav_lane_geometry
 lane_follower.launch.py steers by it (control_interface, on /drivers/ai/cmd_vel).
 bench.launch.py lane:=true starts both.
 
+lane_finder_impl: rust (aav_lane_finder_rs, the default since 18 Nov: the same node name,
+topics, parameters and lanes, no OpenCV) or python (this package's own node).
+
 The camera's place on the car (camera_left_link) and the wheelbase come from
-aav_description's vehicle.yaml; the rest from config/lane_finder.yaml.
+aav_description's vehicle.yaml; the rest from config/lane_finder.yaml (both languages).
 """
 
 import os
 
 from aav_description import vehicle
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
-def generate_launch_description():
+def finder(context):
+    """Return lane_finder, in the language lane_finder_impl picks."""
+    impl = vehicle.check_lane_finder_impl(context.launch_configurations.get(
+        'lane_finder_impl', vehicle.DEFAULT_LANE_FINDER_IMPL))
     car = vehicle.load()
     camera = car['sensors']['camera_left_link']
     share = FindPackageShare('aav_lane_finder').find('aav_lane_finder')
+    # namespace '/': launch then writes the dict below under /lane_finder, not /**, so it
+    # beats lane_finder.yaml in rclrs too (rclrs lets a file's node name beat /**, so
+    # debug_image:=true was lost in the Rust node).
+    return [Node(package=vehicle.LANE_FINDER_IMPLS[impl], executable='lane_finder',
+                 name='lane_finder', namespace='/', output='screen',
+                 parameters=[os.path.join(share, 'config', 'lane_finder.yaml'),
+                             {'camera_xyz': [float(v) for v in camera['xyz']],
+                              'camera_rpy': [float(v) for v in camera['rpy']],
+                              'wheelbase': float(car['vehicle']['wheelbase']),
+                              'debug_image': LaunchConfiguration('debug_image')}])]
+
+
+def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('debug_image', default_value='false',
                               description="/perception/lane/image: the bird's-eye view, and "
                                           'what the finder found in it'),
-        Node(package='aav_lane_finder', executable='lane_finder', name='lane_finder',
-             output='screen',
-             parameters=[os.path.join(share, 'config', 'lane_finder.yaml'),
-                         {'camera_xyz': [float(v) for v in camera['xyz']],
-                          'camera_rpy': [float(v) for v in camera['rpy']],
-                          'wheelbase': float(car['vehicle']['wheelbase']),
-                          'debug_image': LaunchConfiguration('debug_image')}]),
+        DeclareLaunchArgument('lane_finder_impl',
+                              default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
+                              description='lane_finder in rust (aav_lane_finder_rs, the '
+                                          'default) or python (aav_lane_finder)'),
+        OpaqueFunction(function=finder),
     ])
