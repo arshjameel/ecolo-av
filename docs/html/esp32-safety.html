@@ -7,7 +7,7 @@
 <!-- Generated from docs/esp32-safety.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The ESP32&#x27;s safety rules</h1>
-<div class="meta">21 min read · 9 sections</div></header>
+<div class="meta">22 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -185,6 +185,10 @@ against the code; the proofs are in the last table.</p>
 </tr>
 </tbody>
 </table></div>
+<p><strong>Rust by default</strong> (Ben, 17 Nov: "Rust tomorrow"): the output mux (<code>aav_io_mux_rs</code>),
+the bridge (<code>aav_legacy_rs</code>) and <code>rc_driver</code> (<code>aav_rc_rs</code>) run in Rust; each
+<code>*_impl:=python</code> falls back. The bridge packs its frames with the firmware's own
+<code>legacy-link</code>, so the Pi and the ESP32 share one copy of the bytes.</p>
 <p><strong>The heartbeat is the output mux's counter.</strong> Wherever the output mux runs (the Orin,
 or the Motor Pi with <code>machine:=motor_pi_alone</code>), that machine is the heartbeat.</p>
 </section>
@@ -845,7 +849,10 @@ joystick is for stands only.</p>
 <section class="card"><h2 id="where-its-proved">Where it's proved</h2>
 <p><code>spine.rs</code>, <code>fsm.rs</code>: <code>firmware/spine/crates/spine-core/src/</code>. <code>link.rs</code>, <code>health.rs</code>,
 <code>actuators.rs</code>, <code>spine_board.rs</code>, <code>calibration.rs</code>: <code>firmware/spine/crates/spine-board/src/</code>.
-<code>legacy_uart_bridge.py</code>, <code>legacy_protocol.py</code>: <code>ros/can_bridge/aav_legacy/aav_legacy/</code>.</p>
+<code>legacy_uart_bridge.py</code>, <code>legacy_protocol.py</code>: <code>ros/can_bridge/aav_legacy/aav_legacy/</code> (the Python
+fall-back). <code>relay.rs</code>: <code>ros/can_bridge/aav_legacy_rs/crates/legacy-bridge/src/</code>; <code>main.rs</code>:
+<code>ros/can_bridge/aav_legacy_rs/crates/legacy-node/src/</code> (the Rust bridge, the default). The
+two give the same frames, byte for byte: <code>legacy-bridge</code>'s <code>tests/vectors.rs</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -962,7 +969,7 @@ joystick is for stands only.</p>
 </tr>
 <tr>
 <td>The bridge leaves 5 stop frames as it ends</td>
-<td><code>legacy_uart_bridge.py:350-358</code></td>
+<td><code>main.rs</code> (<code>leave_braked</code>); <code>legacy_uart_bridge.py:350-358</code></td>
 <td></td>
 </tr>
 <tr>
@@ -972,13 +979,13 @@ joystick is for stands only.</p>
 </tr>
 <tr>
 <td>The bridge copies, never makes, the counter</td>
-<td><code>ros/can_bridge/aav_legacy/aav_legacy/uart_relay.py:93</code>, <code>:164-185</code></td>
-<td><code>test_the_counter_moves_only_when_the_orin_sends_one</code>; <code>test_when_ego_goes_quiet_it_sends_stops_with_the_last_counter</code></td>
+<td><code>relay.rs</code> (<code>heartbeat</code>, <code>frame</code>); <code>ros/can_bridge/aav_legacy/aav_legacy/uart_relay.py:93</code>, <code>:164-185</code></td>
+<td><code>the_counter_is_relayed_never_made_up</code>; <code>test_the_counter_moves_only_when_the_orin_sends_one</code>; <code>test_when_ego_goes_quiet_it_sends_stops_with_the_last_counter</code></td>
 </tr>
 <tr>
 <td>The bridge reads only <code>/control/car/heartbeat</code></td>
-<td><code>legacy_uart_bridge.py:150</code></td>
-<td></td>
+<td><code>main.rs</code> (<code>control/car/heartbeat</code>); <code>legacy_uart_bridge.py:150</code></td>
+<td><code>test_heartbeat_chain.py</code> (both bridges; the Rust one with the Rust muxes)</td>
 </tr>
 <tr>
 <td>The car refuses <code>screens:=</code></td>

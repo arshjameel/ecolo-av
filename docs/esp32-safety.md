@@ -39,6 +39,11 @@ against the code; the proofs are in the last table.
 | the serial frame (version 2) | values, the counter, `armed` and `estop` flags, a CRC | the bridge: it **copies** the counter, never makes one |
 | iBUS | the RC sticks and switches | the RC receiver |
 
+**Rust by default** (Ben, 17 Nov: "Rust tomorrow"): the output mux (`aav_io_mux_rs`),
+the bridge (`aav_legacy_rs`) and `rc_driver` (`aav_rc_rs`) run in Rust; each
+`*_impl:=python` falls back. The bridge packs its frames with the firmware's own
+`legacy-link`, so the Pi and the ESP32 share one copy of the bytes.
+
 **The heartbeat is the output mux's counter.** Wherever the output mux runs (the Orin,
 or the Motor Pi with `machine:=motor_pi_alone`), that machine is the heartbeat.
 
@@ -249,7 +254,10 @@ joystick is for stands only.
 
 `spine.rs`, `fsm.rs`: `firmware/spine/crates/spine-core/src/`. `link.rs`, `health.rs`,
 `actuators.rs`, `spine_board.rs`, `calibration.rs`: `firmware/spine/crates/spine-board/src/`.
-`legacy_uart_bridge.py`, `legacy_protocol.py`: `ros/can_bridge/aav_legacy/aav_legacy/`.
+`legacy_uart_bridge.py`, `legacy_protocol.py`: `ros/can_bridge/aav_legacy/aav_legacy/` (the Python
+fall-back). `relay.rs`: `ros/can_bridge/aav_legacy_rs/crates/legacy-bridge/src/`; `main.rs`:
+`ros/can_bridge/aav_legacy_rs/crates/legacy-node/src/` (the Rust bridge, the default). The
+two give the same frames, byte for byte: `legacy-bridge`'s `tests/vectors.rs`.
 
 | Statement | Code | Test |
 |---|---|---|
@@ -274,10 +282,10 @@ joystick is for stands only.
 | Open questions 1 and 2, fixed: any stop holds RC direct | `spine.rs` (`rc_hold` set on an e-stop and a driver fault too) | `rc_direct_waits_for_a_person_after_an_estop_or_a_driver_fault_clears`; the board's `rc_drives_without_the_computer`; QEMU's `direct` |
 | The board's link verdict (OK, STALE, COUNTER FROZEN) | `health.rs:6-12` | `frames_with_a_frozen_counter_say_counter_frozen` |
 | The counter: +1 per command, only while OPEN | `ros/io_mux/aav_io_mux/aav_io_mux/output_mux.py:109-112` | `test_heartbeat.py`: `test_it_counts_each_command_and_wraps_in_a_byte`, `test_it_never_moves_by_itself` |
-| The bridge leaves 5 stop frames as it ends | `legacy_uart_bridge.py:350-358` | |
+| The bridge leaves 5 stop frames as it ends | `main.rs` (`leave_braked`); `legacy_uart_bridge.py:350-358` | |
 | The joystick's SILENT 0.5 s, FROZEN 2 s | `ros/drivers/aav_teleop/config/joy_alive.yaml:10-15`, `ros/safety/aav_safety/aav_safety/joy_alive.py` | `test_joy_alive.py`: `test_frozen_values_while_driving_stop_after_frozen_after` |
-| The bridge copies, never makes, the counter | `ros/can_bridge/aav_legacy/aav_legacy/uart_relay.py:93`, `:164-185` | `test_the_counter_moves_only_when_the_orin_sends_one`; `test_when_ego_goes_quiet_it_sends_stops_with_the_last_counter` |
-| The bridge reads only `/control/car/heartbeat` | `legacy_uart_bridge.py:150` | |
+| The bridge copies, never makes, the counter | `relay.rs` (`heartbeat`, `frame`); `ros/can_bridge/aav_legacy/aav_legacy/uart_relay.py:93`, `:164-185` | `the_counter_is_relayed_never_made_up`; `test_the_counter_moves_only_when_the_orin_sends_one`; `test_when_ego_goes_quiet_it_sends_stops_with_the_last_counter` |
+| The bridge reads only `/control/car/heartbeat` | `main.rs` (`control/car/heartbeat`); `legacy_uart_bridge.py:150` | `test_heartbeat_chain.py` (both bridges; the Rust one with the Rust muxes) |
 | The car refuses `screens:=` | `ros/io_mux/aav_io_mux/aav_io_mux/provenance.py:278-281` | `test_the_real_car_refuses_the_screens_rule` |
 | ego sends at 50 Hz and stops on 0.3 s of quiet | `ros/ego/aav_ego/aav_ego/ego_node.py:112-130`, `ego.yaml:19` | |
 | twist_mux: 0.5 s per slot, hw_panel at 45 | `ros/command_mux/aav_command_mux/config/twist_mux.yaml` | |

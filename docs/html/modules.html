@@ -7,7 +7,7 @@
 <!-- Generated from docs/modules.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every module, explained</h1>
-<div class="meta">41 min read · 16 sections</div></header>
+<div class="meta">42 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -200,7 +200,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><a href="#drivers">drivers</a></td>
-<td><code>aav_teleop</code>, <code>aav_actuator_tests</code>, <code>aav_scripted</code>, <code>aav_drive_to_point</code>, <code>aav_language</code>, <code>aav_navigation</code>; <code>aav_rc</code>, <code>aav_routes</code>, <code>aav_track</code>, <code>aav_mppi_lag</code>, <code>aav_costmap</code>, <code>aav_planner</code>, <code>aav_navigator</code>, <code>aav_smoother</code>, <code>aav_diffusion_planner</code>, <code>aav_behaviour</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
+<td><code>aav_teleop</code>, <code>aav_actuator_tests</code>, <code>aav_scripted</code>, <code>aav_drive_to_point</code>, <code>aav_language</code>, <code>aav_navigation</code>; <code>aav_rc</code>, <code>aav_rc_rs</code>, <code>aav_routes</code>, <code>aav_track</code>, <code>aav_mppi_lag</code>, <code>aav_costmap</code>, <code>aav_planner</code>, <code>aav_navigator</code>, <code>aav_smoother</code>, <code>aav_diffusion_planner</code>, <code>aav_behaviour</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#mux-and-ego">command_mux, io_mux, ego</a></td>
@@ -208,7 +208,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><a href="#backends">can_bridge, sim</a></td>
-<td><code>aav_spine</code>, <code>aav_legacy</code>, <code>aav_turtlesim</code>, <code>aav_sim_models</code>, <code>aav_carla</code>; <code>aav_spine_bridge</code>, <code>aav_simulator</code>, <code>aav_sim_cameras</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
+<td><code>aav_spine</code>, <code>aav_legacy</code>, <code>aav_turtlesim</code>, <code>aav_sim_models</code>, <code>aav_carla</code>; <code>aav_spine_bridge</code>, <code>aav_legacy_rs</code>, <code>aav_simulator</code>, <code>aav_sim_cameras</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#perception">perception</a></td>
@@ -1094,7 +1094,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>ros2 launch aav_legacy legacy.launch.py</code> (on the Motor Pi)</td>
+<td><code>ros2 launch aav_legacy legacy.launch.py</code> (on the Motor Pi; the Rust bridge, <code>aav_legacy_rs</code>, by default since 17 Nov; <code>legacy_impl:=python</code> for this one)</td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
@@ -1702,6 +1702,16 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <td><code>aav_rc</code></td>
 <td>the RC transmitter on "RC via ROS" as a driver (priority 95, proposed)</td>
 <td><code>ros/drivers/aav_rc/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_rc_rs</code></td>
+<td><code>rc_driver</code> in Rust, the default (<code>rc_impl:=python</code> falls back)</td>
+<td><code>ros/drivers/aav_rc_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_legacy_rs</code></td>
+<td><code>legacy_uart_bridge</code> in Rust, the default (<code>legacy_impl:=python</code> falls back)</td>
+<td><code>ros/can_bridge/aav_legacy_rs/README.md</code></td>
 </tr>
 <tr>
 <td><code>aav_routes</code></td>

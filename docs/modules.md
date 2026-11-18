@@ -32,9 +32,9 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 |---|---|
 | [sources](#sensors) | `aav_sensors`, `aav_imu_yahboom`, `aav_battery_victron`, `aav_radar_ti`; `aav_camera_stream` ([one line](#more-packages-see-their-readmes)) |
 | [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading`; `aav_localization_health`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
-| [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
+| [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_rc_rs`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
 | [command_mux, io_mux, ego](#mux-and-ego) | `aav_command_mux`, `aav_io_mux`, `aav_ego` |
-| [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_sim_models`, `aav_carla`; `aav_spine_bridge`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
+| [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_sim_models`, `aav_carla`; `aav_spine_bridge`, `aav_legacy_rs`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
 | [perception](#perception) | `aav_detector`, `aav_radar_clusters`, `aav_lane_finder`, `aav_lane_geometry`; `aav_lidar`, `aav_voxels`, `aav_voxels_rs` ([one line](#more-packages-see-their-readmes)) |
 | [hud](#hud) | `aav_hud`; `aav_dev_window` ([one line](#more-packages-see-their-readmes)) |
 | [sim: bench mode](#bench) | `aav_spine_sim`, `aav_bench` |
@@ -306,7 +306,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 | **In → out** | `/control/car/actuator_cmd`, `/control/car/heartbeat`, `/safety/estop` → serial `/dev/ttyAMA0` (use `/dev/serial0`); UDP port 10111 → `/vehicle/odom` (only with `legacy_encoder`) |
 | **Origin** | ours, written for the 2025-26 protocols (`AAV_cortex`, `Wheel_Encoders`) |
 | **Status** | [[untested]] on the car. The ESP32 has no command timeout: wheels off the ground first |
-| **Run alone** | `ros2 launch aav_legacy legacy.launch.py` (on the Motor Pi) |
+| **Run alone** | `ros2 launch aav_legacy legacy.launch.py` (on the Motor Pi; the Rust bridge, `aav_legacy_rs`, by default since 17 Nov; `legacy_impl:=python` for this one) |
 | **Test** | `test/test_legacy_protocol.py` (in `tools/test.sh`) |
 | **Read first** | `aav_legacy/legacy_protocol.py` |
 
@@ -500,6 +500,8 @@ These have no card here yet. Each package's README answers the same questions.
 |---|---|---|
 | `aav_camera_stream` | one node per front camera: the camera Pi's H.264 stream, decoded, with RF-DETR inside | `ros/sources/aav_camera_stream/README.md`, then [Camera pipeline](camera-pipeline.md) |
 | `aav_rc` | the RC transmitter on "RC via ROS" as a driver (priority 95, proposed) | `ros/drivers/aav_rc/README.md` |
+| `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |
+| `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
 | `aav_routes` | street routes (Valhalla) as GPS waypoints for the navigator | `ros/drivers/aav_routes/README.md`, then [Routes](routes.md) |
 | `aav_spine_bridge` | `spine_bridge` in Rust, the default; the same node as `aav_spine`'s Python one | `ros/can_bridge/aav_spine_bridge/README.md` |
 | `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | `ros/perception/aav_lidar/README.md` |

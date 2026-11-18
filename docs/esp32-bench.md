@@ -58,7 +58,7 @@ Espressif's ESP32 emulator (QEMU).
 | Command | Does |
 |---|---|
 | `pixi run esp qemu-tools` | downloads QEMU into `vendor/qemu` (once, 22 MB; macOS on Apple silicon) |
-| `pixi run esp qemu-check` | builds with `--features qemu,uplink`, boots it, runs 6 cycles, then the RC's modes, prints three tables (`-- --no-rc` skips the RC) |
+| `pixi run esp qemu-check` | builds with `--features qemu,uplink`, boots it, runs 6 cycles, then the RC's modes, prints three tables (`-- --no-rc` skips the RC). The frames come from the Rust bridge's relay (`aav_legacy_rs`, the car's default since 17 Nov); `-- --bridge python` uses the Python bridge's |
 
 Each cycle: stand-still frames (the arming stop), drive frames (0.6 m/s), a **gap**, then
 drive frames again with no stop first. Since 24 Oct the frames are version 2, with the

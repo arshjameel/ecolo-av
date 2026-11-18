@@ -7,7 +7,7 @@
 <!-- Generated from docs/esp32-bench.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>First flash on the bench: the Rust ESP32</h1>
-<div class="meta">21 min read · 10 sections</div></header>
+<div class="meta">22 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -241,7 +241,7 @@ Espressif's ESP32 emulator (QEMU).</p>
 </tr>
 <tr>
 <td><code>pixi run esp qemu-check</code></td>
-<td>builds with <code>--features qemu,uplink</code>, boots it, runs 6 cycles, then the RC's modes, prints three tables (<code>-- --no-rc</code> skips the RC)</td>
+<td>builds with <code>--features qemu,uplink</code>, boots it, runs 6 cycles, then the RC's modes, prints three tables (<code>-- --no-rc</code> skips the RC). The frames come from the Rust bridge's relay (<code>aav_legacy_rs</code>, the car's default since 17 Nov); <code>-- --bridge python</code> uses the Python bridge's</td>
 </tr>
 </tbody>
 </table></div>

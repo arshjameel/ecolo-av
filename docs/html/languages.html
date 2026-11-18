@@ -7,7 +7,7 @@
 <!-- Generated from docs/languages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Python and Rust (and the C++ we don&#x27;t write)</h1>
-<div class="meta">8 min read · 6 sections</div></header>
+<div class="meta">9 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -162,6 +162,11 @@ programs only meet through messages.</p></div>
 <td>The sensor mux and the output mux, <code>aav_io_mux_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
 <td>Ports of <code>aav_io_mux</code>'s nodes (Ben, 17 Nov: "Rust tomorrow"): the same answers, step by step. The default; <code>io_mux_impl:=python</code> falls back</td>
+</tr>
+<tr>
+<td>The ESP32's UART bridge and rc_driver, <code>aav_legacy_rs</code>, <code>aav_rc_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>legacy_uart_bridge</code> and <code>rc_driver</code> (Ben, 17 Nov: "Rust tomorrow"): the same frames, byte for byte, packed by the firmware's own <code>legacy-link</code>. The default; <code>legacy_impl:=python</code>, <code>rc_impl:=python</code> fall back</td>
 </tr>
 <tr>
 <td>Our older ROS nodes: drivers, bridges, adapters</td>
