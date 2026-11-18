@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">113 min read · 15 sections</div></header>
+<div class="meta">114 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -450,6 +450,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-18</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="../../ros/sources/aav_camera_stream_rs/README.md">The camera stream in Rust</a> (<code>aav_camera_stream_rs</code> <code>camera_stream</code>, <code>camera_stream_impl:=</code>), the default with <code>detector:=none</code></td>
+<td>Ben, 18 Nov: "lets port them to rust": Rust where possible, for trust and speed on the car's ARM computers. The decoders stay child programs (the same ffmpeg and gst-launch-1.0 command lines, JetPack's GStreamer on the Orin); the reader, newest frame, rates, delays, stamps, lens files, OpenCV's undistortion (ported: the same grey levels), time code, preview and diagnostics ported, checked against the Python modules (462 decoder, 17 timing, 29 time-code and 40 lens vectors). The models stay Python: with RF-DETR or YOLO (the car's <code>orin.yaml</code> today) or <code>decoder:=opencv</code>, the Python node runs. <code>pixi run measure stream --pattern --detector none</code>, a Mac, 1280x720 at 15 fps: 4-6 % of a core and 41-51 MB against 14-17 % and 233-235 MB (with the decoder; three runs and two), the same 15 fps and delays (7 ms median both, time code to detections); undistorting a 720p picture 0.8 ms against OpenCV's 0.9</td>
+<td>Ben</td>
+<td>2026-11-18</td>
+<td>built</td>
 </tr>
 <tr>
 <td><a href="../designs/2026-10-30_voxels.md">Lidar as cubes, a trial</a> (<code>aav_voxels</code> <code>voxels</code>, <code>voxels:=true</code>)</td>

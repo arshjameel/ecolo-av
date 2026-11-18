@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">18 min read · 8 sections</div></header>
+<div class="meta">19 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -432,6 +432,36 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>MIT OR Apache-2.0</td>
 <td>runs (tests)</td>
 <td>reads the Rust lane finder's test pictures (<code>lane-core</code>'s vectors)</td>
+</tr>
+<tr>
+<td>OpenCV's <code>getOptimalNewCameraMatrix</code>, <code>undistortPoints</code>, <code>initUndistortRectifyMap</code>, 3 × 3 <code>invert</code>, <code>INTER_AREA</code></td>
+<td>Apache-2.0</td>
+<td>ported (the formulas)</td>
+<td>the Rust camera stream's undistortion and preview (<code>stream-core</code>, <code>aav_camera_stream_rs</code>): the same new lens and grey levels as the Python's OpenCV</td>
+</tr>
+<tr>
+<td><strong>jpeg-encoder</strong> crate (V. Ströbel), 0.7</td>
+<td>(MIT OR Apache-2.0) AND IJG: "this software is based in part on the work of the Independent JPEG Group"</td>
+<td>runs</td>
+<td>the Rust camera stream's preview JPEG (<code>stream-core</code>)</td>
+</tr>
+<tr>
+<td>GStreamer (<code>gst-launch-1.0</code>), FFmpeg (<code>ffmpeg</code>), MediaMTX</td>
+<td>LGPL-2.1; LGPL-2.1+ / GPL; MIT</td>
+<td>runs, as separate programs</td>
+<td>decoding the camera Pi's stream (both camera_stream nodes run them as child programs, linked to nothing); MediaMTX on the Pi and in <code>pixi run measure stream</code></td>
+</tr>
+<tr>
+<td>Python's <code>shlex.split</code> and <code>str.format</code></td>
+<td>PSF-2.0</td>
+<td>ported (the rules)</td>
+<td>the Rust camera stream fills and splits a GStreamer pipeline as the Python does (<code>stream-core</code>'s <code>decoders</code>)</td>
+</tr>
+<tr>
+<td><strong>libc</strong> crate; <strong>serde_yaml_ng</strong></td>
+<td>MIT OR Apache-2.0</td>
+<td>runs</td>
+<td>the Rust camera stream: stopping the decoder's process group (<code>killpg</code>); reading camera_info YAML calibrations</td>
 </tr>
 <tr>
 <td>NVIDIA TensorRT; Apple Core ML Tools</td>
