@@ -174,6 +174,8 @@ PAGES = [
     ('rust-firmware.md', 'Rust firmware', 'Rust on the chips: layers, frameworks, toolchains'),
     ('esp32-motor-pi-runbook.md', 'Flash the ESP32, upgrade the Motor Pi',
      "Senura's runbook: the order, the commands, the gates, the way back"),
+    ('rehearsal-2026-11-18.md', 'Rehearsal for 18 Nov',
+     "The Motor Pi alone against the ESP32 in QEMU: what passed, the morning's checklist"),
     ('esp32-bench.md', 'ESP32 first flash', 'The Rust ESP32 on the bench: flash, check, undo'),
     ('esp32-safety.md', 'ESP32 safety rules',
      'How the ESP32 boots, what lets it drive, what makes it brake'),
