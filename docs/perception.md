@@ -8,7 +8,7 @@ waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).
 |---|---|
 | The choices behind it: which detector, what else was tried | [Perception options](perception-and-hud-map.md), [Model comparison](model-comparison.md) |
 | The front cameras' path from the camera Pi | [Camera pipeline](camera-pipeline.md) |
-| What Nav2 does with the points | [Costmaps](costmaps.md) |
+| What navigation does with the points | [Costmaps](costmaps.md) |
 
 ## The chain
 
@@ -36,13 +36,13 @@ a person can still look at it in RViz or Lichtblick.
 | | `stop_sign_watcher` | `/perception/stop_sign` | twist_mux's lock (priority 30); the HUD; `behaviour` |
 | | `stop_sign_watcher` | `/perception/stop_sign/distance` | `behaviour` only (`behaviour:=true`, a trial): else **nobody** |
 | | `camera_obstacles` (off until Q22) | `/perception/camera_obstacles`, `/perception/camera_view` | the local costmap's `camera_layer`; `collision_monitor` with `camera_guard` |
-| Front left camera | `lane_finder` (`lane:=true`) | `/perception/lane/geometry` | `control_interface` only, the AI slot's driver. Nav2, the planner and the costmaps **don't** read lanes |
+| Front left camera | `lane_finder` (`lane:=true`) | `/perception/lane/geometry` | `control_interface` only, the AI slot's driver. Navigation, the planner and the costmaps **don't** read lanes |
 | | `lane_finder` | `/perception/lane/image` | **nobody**: for RViz |
 | Front left camera | the camera itself | `/sensors/camera/front_left/image_raw` | the detector, `lane_finder`, the HUD's picture, the sensor watchdog |
 | Front right, rear cameras | the simulators | their `image_raw` | **nobody** (on the car the front right one's detector runs inside its `camera_stream` node) |
 
 - **Labels:** only "stop sign" does anything by default. People, cars and the rest reach
-  Nav2 only through `camera_obstacles`, which is off everywhere until the cameras are
+  navigation only through `camera_obstacles`, which is off everywhere until the cameras are
   calibrated (Q22).
 - **Objects with an ID and a speed:** a first form, 14 Nov (TODO 156, `aav_things`,
   `things:=true`): the cubes grouped, one Kalman filter each, the radar's speed, a memory
@@ -67,8 +67,8 @@ a person can still look at it in RViz or Lichtblick.
 | `aav_camera_stream` | ours | the front cameras: MediaMTX's H.264 stream from the camera Pi in, RF-DETR inside each stream ([camera pipeline](camera-pipeline.md)) | [[works]] on a Mac; [[untested]] on the Orin |
 | `aav_lane_finder` | ours | lane keeping's seeing half: finds the lane lines (below) | [[works]] on the bench |
 | `aav_lane_geometry` | 2025-26 `Lane_Detection_ROS2` | lane keeping's steering half, as a driver on `/drivers/ai/cmd_vel` | [[works]] on the bench |
-| `aav_lidar` | ours | the roof lidar's points into a scan for Nav2 ([below](#the-roof-lidar)) | [[works]] against a fake lidar |
-| `aav_voxels` | ours | a trial (`voxels:=true`): the lidar's cloud as 0.25 m cubes over the fitted road, for Nav2 instead of the scan ([design](designs/2026-10-30_voxels.md)) | a trial, off by default |
+| `aav_lidar` | ours | the roof lidar's points into a scan for the costmap and the stop zone ([below](#the-roof-lidar)) | [[works]] against a fake lidar |
+| `aav_voxels` | ours | a trial (`voxels:=true`): the lidar's cloud as 0.25 m cubes over the fitted road, for the costmap instead of the scan ([design](designs/2026-10-30_voxels.md)) | a trial, off by default |
 | `aav_voxels_rs` | ours (Rust): a port of `aav_voxels`' Python node | the lidar as 0.25 m cubes over the fitted road, the same as the Python's, 8 times faster (`voxels_impl:=rust`) | [[works]] against the Python's recorded clouds |
 | `aav_sensors` `cameras.launch.py` | 2024-25 `cameras` (the calibrations) | `usb_cam` with `left.ini` and `right.ini`: for a USB camera only, not the front ribbon cameras | [[untested]] Linux only |
 
@@ -82,12 +82,12 @@ The watcher turns the detector's boxes into a lock on twist_mux.
 | Stopping | a stop sign 4.7 m away or closer, with a score of 0.5 or more | on, for 4 s: about 1 s to stop, then a 3 s wait |
 | Passing | after the 4 s | off, and signs are ignored for 10 s, so the car can drive past this one |
 
-- **The lock** has priority 30. It holds the point driver (25), Nav2 (20) and the AI slot (10), and
+- **The lock** has priority 30. It holds the point driver (25), navigation (20) and the AI slot (10), and
   never a person (joystick 100, RC 95, keyboard 90) or a test script (60, 50, 40).
 - **It only stops the car.** It can't make it move.
 - **It never expires on silence.** If the watcher dies while the lock is on, the car stays
   stopped.
-- **On the bench**, Nav2 drove toward the sign at 25 m. The lock came on 4.7 m before it,
+- **On the bench**, Nav2 (then) drove toward the sign at 25 m. The lock came on 4.7 m before it,
   the car stopped, waited, and went on to its goal 40 m away.
 
 ### How far: the box's height and the lens (24 Oct)
@@ -432,7 +432,7 @@ the speed. On a campus road the lane runs from the yellow centre line to the whi
   distance, noise is left out, old boxes are cleared. Its `PROVENANCE.md` lists them.
 - The C++ package's other programs (filters, ICP, an OctoMap) were demos, never launched:
   they went with it.
-- **Nothing reads the clusters.** Nav2 takes the radar's raw points, not the clusters:
+- **Nothing reads the clusters.** Navigation takes the radar's raw points, not the clusters:
   the local costmap's obstacle layer and `collision_monitor` read `/sensors/radar/points`
   wherever `radar:=true` (the bench and the simulators). On the car the radar part is
   still off.
@@ -447,7 +447,7 @@ the same topic.
 
 ```
 VLP-16 --UDP 2368--> lidar_driver --/sensors/lidar/packets--> lidar_cloud --/sensors/lidar/points-->
-    lidar_scan (aav_lidar) --/sensors/lidar/scan--> Nav2's lidar_layer and collision_monitor
+    lidar_scan (aav_lidar) --/sensors/lidar/scan--> the costmap's lidar_layer and the stop zone
 ```
 
 | Part | Where |
@@ -473,19 +473,19 @@ Checked 20 Oct on Ben's Mac, with `lidar_scan` too:
 | Cloud | `lidar_link`, 16 lasers a turn | 29,184 points, `lidar_link` [[works]] |
 | The post | 6 m | 5.80-6.00 m (the 15-degree lasers see it shorter) [[works]] |
 | The ring | 15 m | 14.89 m [[works]] |
-| Nav2's scan, ahead | 6 m + 0.90 m (where the lidar sits) | 6.75 m: the nearest laser inside the obstacle heights sees 5.85 m [[works]] |
+| The scan, ahead | 6 m + 0.90 m (where the lidar sits) | 6.75 m: the nearest laser inside the obstacle heights sees 5.85 m [[works]] |
 | Rates | 10 Hz | packets, cloud, scan: 9.9-10.0 Hz [[works]] |
 
 **In bench mode:** `pixi run bench lidar:=true` adds `mock_lidar`, the same packets but of
 the bench world: its boxes (`obstacle:=true`) and the flat ground, seen from where the
-model car really is. The stock driver reads them, and Nav2 and collision_monitor read its
+model car really is. The stock driver reads them, and the costmap and the stop zone read its
 points, as on the car. `pixi run bench-check --lidar` adds a check: a box that only the
 lidar sees, which the car must stop for.
 
 | Checked 20 Oct, Ben's Mac | Got |
 |---|---|
 | Cloud | 12,768 points a turn (the ground's rings and the box), 9.3 Hz [[works]] |
-| The box, 15 m ahead | Nav2's scan: 15.0 m from `base_link` [[works]] |
+| The box, 15 m ahead | the scan: 15.0 m from `base_link` [[works]] |
 | `mock_lidar`'s own cost | 8% of one core |
 
 **The roof lidar's blind zone.** It sits 1.8 m up, and its lowest laser points 15 degrees
@@ -516,7 +516,7 @@ turns them on where they run ([Platforms](platforms.md#on-the-car-what-runs-wher
 | `detector` | RF-DETR Nano, as `object_detector_<machine>` → `/perception/detections` | only for a camera that isn't streamed: off on the Orin. The laptop's reads compressed images |
 | `stop_signs` | `stop_sign_watcher` → `/perception/stop_sign` | one per car, next to the mux: the Orin |
 | `radar_clusters` | DBSCAN on `/sensors/radar/points` | off until the radar is on the car |
-| `camera_obstacles` | the boxes as points on the road → `/perception/camera_obstacles`, for Nav2's costmap | off until the cameras are calibrated (Q22); then next to `navigation`: the Orin |
+| `camera_obstacles` | the boxes as points on the road → `/perception/camera_obstacles`, for the costmap | off until the cameras are calibrated (Q22); then next to `navigation`: the Orin |
 | `lane` | `lane_finder` → `/perception/lane/geometry`, and `control_interface` → `/drivers/ai/cmd_vel` | off on every machine: it drives whenever it sees a lane |
 
 - Every detector publishes on `/perception/detections`, so the watcher hears them all.

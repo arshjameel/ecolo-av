@@ -160,7 +160,7 @@ From `ros/localization/aav_localization/config/`. Both run at 30 Hz, in 2D
 | `world_frame` | `odom` | `map` |
 | Publishes | `/localization/odom/local` | `/localization/odom/global` |
 | TF | `odom → base_link` | `map → odom` |
-| Used by | Nav2's controller and local costmap | Nav2's planner and global costmap; navsat_transform |
+| Used by | the path follower and local costmap | the planner and global costmap; navsat_transform |
 | Starts at | (0, 0), sure of it | `start_x`, `start_y`, `start_yaw` from the launch file; unsure (yaw ±18°) |
 
 Four choices worth knowing:
@@ -290,7 +290,7 @@ pose to `ekf_global` beside GPS.
 
 | | KISS-ICP into `ekf_local` (`kiss_ekf:=true`, a trial) | NDT into `ekf_global` (`ndt_ekf:=true`, a trial) |
 |---|---|---|
-| Needs a map? | **No**: each scan is matched to the last few | **Yes**: a saved map of the lot (`pixi run ndt-map drive` in Gazebo) |
+| Needs a map? | **No**: each scan is matched to the last few | **Yes**: a saved map of the lot (`pixi run ndt-map drive` in the simulator) |
 | What it says | how far the car moved since the last scan | where the car **is** on the map |
 | Drifts? | yes, slowly, like the wheels (but it doesn't slip) | no: the map holds it |
 | Fed as | a speed (`twist`), beside the wheels and the IMU | a position and heading (`pose`), beside the GPS |
@@ -320,7 +320,7 @@ From the lidar's points to cubes, the costmap and NDT, step by step:
 
 | You want to see | Run |
 |---|---|
-| Start Gazebo, with both EKFs | `pixi run sim` |
+| Start Ravensim, with both EKFs | `pixi run sim` |
 | The frame tree, and who publishes each link | `pixi run tools/ros.sh ros2 run rqt_tf_tree rqt_tf_tree` |
 | The car on the map, live | `pixi run tools/ros.sh ros2 run tf2_ros tf2_echo map base_link` |
 | The GPS correction alone | `pixi run tools/ros.sh ros2 run tf2_ros tf2_echo map odom` |
@@ -340,7 +340,7 @@ That's the GPS soaking up the drift.
 | How they start, and topic names | `ros/localization/aav_localization/launch/localization.launch.py` |
 | The IMU filter | `ros/sources/aav_sensors/config/imu_filter.yaml` |
 | The heading from the GPS velocity | `ros/localization/aav_gps_heading` (`course.py`: the sums, no ROS) |
-| Measure the heading in Gazebo | `pixi run tools/ros.sh --local python3 tools/heading_check.py` (`tools/heading_check.py`) |
+| Measure the heading in Ravensim | `pixi run tools/ros.sh --local python3 tools/heading_check.py` (`tools/heading_check.py`) |
 | Sensor positions on the car | `ros/bringup/aav_description/config/vehicle.yaml` |
 | Wheel speed into `/vehicle/odom` | `aav_spine/spine_bridge.py`, `aav_legacy` `encoder_udp.py`, `aav_sim_models/sim_adapter.py` |
 | Why the EKFs meet in TF, not on a topic | [Topic areas](naming.md) |

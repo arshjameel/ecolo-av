@@ -130,7 +130,7 @@ Which one stays is open question **Q18** (Tentative: `ublox`).
 
 From the datum:
 - x points **east**, y points **north**, in metres;
-- every map, every Nav2 goal and every GPS waypoint uses this frame;
+- every map, every goal and every GPS waypoint uses this frame;
 - set it to the test site before the car drives there.
 
 ## 6. navsat_transform: degrees in, metres out
@@ -153,7 +153,7 @@ From the datum:
 It also:
 - removes the antenna's offset, using TF `base_link → gps_link`: that's why the antenna's
   spot in `vehicle.yaml` matters (and where it is mounted: below);
-- serves `/fromLL` (lat/lon → x, y) and `/toLL` (back). A street route reaches Nav2
+- serves `/fromLL` (lat/lon → x, y) and `/toLL` (back). A street route reaches the navigator
   through `/fromLL` (`street_router`, [Street routes](routes.md)).
 
 ### Mount the antenna over the rear axle
@@ -163,7 +163,7 @@ believes it** (`map → base_link`). A heading error then moves the GPS position
 and the EKF corrects its heading from that. Driving forward, the two agree. Reversing,
 they pull the wrong way, and the heading gets worse.
 
-Measured in Gazebo (22 Oct; two runs of each; 15 s legs at 0.5 m/s, forward and back):
+Measured in Gazebo, the simulator then (22 Oct; two runs of each; 15 s legs at 0.5 m/s, forward and back):
 
 | Antenna | Heading off, reversing (median) | Forward (median) | Worst |
 |---|---:|---:|---:|
@@ -176,12 +176,12 @@ offset doesn't turn with the heading, and reversing is as good as forward. A hea
 source helps too: since 25 Oct the receiver's own velocity gives one while the car moves
 (`gps_heading`, [Learn: localization](learn-localization.md#where-the-heading-comes-from-todo-13)).
 
-## 7. GPS in Gazebo and on the bench
+## 7. GPS in the simulator and on the bench
 
-| | Gazebo (`pixi run sim`) | Bench (`pixi run bench`) | The car |
+| | Ravensim (`pixi run sim`) | Bench (`pixi run bench`) | The car |
 |---|---|---|---|
-| Made by | Gazebo's `navsat` sensor on `gps_link` | `mock_gps` | `ublox_gps` |
-| Path | `/aav/navsat` → `/vehicle/sim/navsat` → `sim_gps` → `/sensors/gps/fix` | straight to `/sensors/gps/fix` | straight to `/sensors/gps/fix` |
+| Made by | Ravensim's GPS on `gps_link` (Gazebo's numbers) | `mock_gps` | `ublox_gps` |
+| Path | `/vehicle/sim/navsat` → `sim_gps` → `/sensors/gps/fix` | straight to `/sensors/gps/fix` | straight to `/sensors/gps/fix` |
 | Rate | 5 Hz | 5 Hz | 1 Hz (factory) |
 | Noise | 4.5e-6° (about 0.5 m) per fix | 0.5 m per fix | unknown until we log it |
 | Velocity (`/sensors/gps/fix_velocity`) | `sim_gps`: the car's true motion + 0.05 m/s noise | none | `ublox_gps`, from the Doppler shift |
@@ -204,7 +204,7 @@ the real receiver, once we have logs from it (Q18).
 
 | You want to | Run |
 |---|---|
-| A GPS in Gazebo | `pixi run sim` |
+| A GPS in Ravensim | `pixi run sim` |
 | How often fixes come (expect 5 Hz) | `pixi run tools/ros.sh ros2 topic hz /sensors/gps/fix` |
 | One fix, every field | `pixi run tools/ros.sh ros2 topic echo --once /sensors/gps/fix` |
 | The same fix after `navsat_transform`, in metres | `pixi run tools/ros.sh ros2 topic echo --once /localization/gps/odom` |
@@ -226,8 +226,8 @@ and y near 11.
 | Which driver starts | `ros/sources/aav_sensors/launch/sensors.launch.py` (`gps_driver:=`) |
 | The datum, navsat_transform | `ros/localization/aav_localization/config/navsat.yaml` |
 | The antenna's spot on the car | `ros/bringup/aav_description/config/vehicle.yaml` (`gps_link`) |
-| Gazebo's GPS sensor | `ros/bringup/aav_description/urdf/aav.gazebo.xacro` (`navsat`) |
-| Gazebo → our topic name | `ros/sim/aav_sim_models/aav_sim_models/sim_gps.py` |
+| Ravensim's GPS and its noise | `ros/sim/aav_simulator/crates/sim-core/src/sim.rs` (`navsat`, `gps_horizontal_deg`) |
+| The simulator → our topic name | `ros/sim/aav_sim_models/aav_sim_models/sim_gps.py` |
 | The bench's pretend GPS | `ros/sim/aav_bench/aav_bench/sensors.py` (`MockGps`) |
 | The device name `/dev/aav/gps` | `tools/udev/99-aav.rules` |
 | The contract | `docs/interfaces.yaml`: `/sensors/gps/fix`, `/localization/gps/*` |

@@ -20,8 +20,8 @@ process, from a free-body diagram to a simulator, one step at a time.
       the default: it waits for the stands ([Tuning the speed loop](#tuning-the-speed-loop)).
     - **The lateral loop is where delays matter:** 52° of phase margin with none, 45°
       with today's 84 ms, 31° with the worst case (259 ms) at 1 m/s.
-    - **Gazebo's car steers as `vehicle.yaml` says, within 22 ms** (25 Oct; it was 0.11 s
-      late: an extra lag in Gazebo's own steering, now fixed: section 6).
+    - **The simulated car steers as `vehicle.yaml` says** (Gazebo's within 22 ms, 25 Oct; it was 0.11 s
+      late: an extra lag in Gazebo's own steering, fixed then: section 6. Ravensim steers to the model's angle itself).
     - **Nothing here drives the car.** It is for tuning, checking, and the report.
 
 [[works]] the maths and its 35 tests: 30 cases in `test_vehicle_model.py`, 5 in
@@ -376,7 +376,7 @@ All inside the unit circle: stable. At 10 ms the spine is effectively continuous
 tests check the discrete model against the continuous one at every sample, and the
 discrete speed loop against the spine's own code, line by line.
 
-## 6. Gazebo's car against the model
+## 6. Gazebo's car against the model (a record: Gazebo went on 16 Nov)
 
 Gazebo's car runs our car model (`aav_description` `car_model.py`, [One car model](car-model.md), the same
 numbers), then Gazebo's own Ackermann plugin:
@@ -391,7 +391,7 @@ numbers), then Gazebo's own Ackermann plugin:
 
 How: `actuator-test steer-rate --sim` drives the steps (centre → full lock → centre, each
 way) in the empty world, headless, on a ROS domain of its own, while
-`tools/gazebo_steering.py` records Gazebo's two steering joints (`/joint_states`, made into
+`tools/gazebo_steering.py` (deleted with Gazebo) recorded Gazebo's two steering joints (`/joint_states`, made into
 the centre wheel's angle) and the model's angle (`/vehicle/steering`), and fits the lag
 between them (`analysis.fit_follower`).
 
@@ -583,8 +583,8 @@ Three runs of each profile on Ben's Mac, beside two other helpers' simulators:
 | Where | Default (unchanged) | To try `smooth` |
 |---|---|---|
 | spine-core (`SpeedLoopConfig`) | `default()`: kp 0.3, ki 0.1, b 1, bounds only | `SpeedLoopConfig::smooth()`, or `SpeedLoopProfile::Smooth.config()`, in the board's `SpineConfig` |
-| Gazebo's actuator model | `speed_loop:=default` | `pixi run sim speed_loop:=smooth` |
-| the spine in Gazebo, the bench | `speed_loop:=default` (spine_sim) | `... spine:=true speed_loop:=smooth`, `pixi run bench speed_loop:=smooth` |
+| the simulator's actuator model | `speed_loop:=default` | `pixi run sim speed_loop:=smooth` |
+| the spine in the simulator, the bench | `speed_loop:=default` (spine_sim) | `... spine:=true speed_loop:=smooth`, `pixi run bench speed_loop:=smooth` |
 | sim-check | today's | `pixi run sim-check --speed-steps --speed-loop smooth` |
 
 Both copies of the loop, the Rust and Gazebo's Python, check the same examples
@@ -617,9 +617,9 @@ guesses: it is a starting point for the stands, not the answer.
 The margins table is the check: before raising ego's speed cap, make sure the lateral
 loop keeps 30° or more with the Orin's measured delays.
 
-### Making Gazebo's car match the real one
+### Making the simulated car match the real one
 
-Fit the car day's numbers, put them in `vehicle.yaml` (Gazebo's steering follows them:
+Fit the car day's numbers, put them in `vehicle.yaml` (the simulator's actuator model follows them;
 section 6), then compare the same step in both: that's the sim-versus-real report.
 
 ### After state space

@@ -118,7 +118,7 @@ signals: good to about **0.05 m/s**. Our driver (`ublox_gps`) publishes it on
 | the **heading** (`gps_heading`, into `ekf_global`) | the speed: no EKF reads it as a speed |
 
 !!! warning "Never seen from our receiver"
-    `ublox_gps` has never run with the car's ZED-F9R. Gazebo makes a stand-in velocity.
+    `ublox_gps` has never run with the car's ZED-F9R. The simulator makes a stand-in velocity.
 
 ## 5. Lidar localization: planned
 
@@ -161,7 +161,7 @@ The **watchdog** (`aav_safety`, `wheel_check.py`) is what catches a lying wheel 
 | speed | the wheels' change in speed vs the IMU's push, over 1.5 s | off by 0.3 m/s for 1 s |
 | gps | the wheels' speed vs a line through 10 s of GPS | off by 0.15 m/s |
 
-Then it says DISAGREE and stops Nav2 (never a person or a test script).
+Then it says DISAGREE and stops navigation (never a person or a test script).
 
 ## 7. Worked example: stopping from 1 m/s
 
@@ -202,7 +202,7 @@ That's why the control plan wants **the IMU's acceleration to help while braking
 | Use | Reads | Page |
 |---|---|---|
 | **Measuring the car**: `max_accel`, `max_brake`, `drag`, lags into `vehicle.yaml` | wheels for speed; the IMU for the g figures and the brake fit | [Actuator tests](actuator-tests.md), [Measure the car](measure-the-car.md) |
-| **Scoring a run**: rise, overshoot, hold, stop error | Gazebo's truth, else the wheels, else `ekf_global`; the stop from the EKF or a tape | `tools/atob_score.py`, [A to B](a-to-b.md) |
+| **Scoring a run**: rise, overshoot, hold, stop error | the simulator's truth, else the wheels, else `ekf_global`; the stop from the EKF or a tape | `tools/atob_score.py`, [A to B](a-to-b.md) |
 | **The speed loop's feedback**: feed-forward + PI | wheel speed; the IMU to help while braking | [the control plan](designs/2026-10-27_control-plan.md), [Learn: control](learn-control.md) |
 | **Catching a lying sensor** | wheels vs IMU vs GPS | `aav_safety` `wheel_check.py` |
 
@@ -231,7 +231,7 @@ at 0.3 m/s.
 |---|---|
 | The wheels | read the motor's speed: exactly what we want to test |
 | `ekf_local` | adds up the wheel speed: it thinks the car drove away. Ignore it on stands |
-| The watchdog | expect **DISAGREE**, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only Nav2 and friends, not `actuator-test`. Clear it after: `pixi run clear watchdog` |
+| The watchdog | expect **DISAGREE**, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only navigation and friends, not `actuator-test`. Clear it after: `pixi run clear watchdog` |
 | The preflight's check | wheels follow the command; the IMU's speed change stays under 0.4 x the wheels', the GPS's Doppler under 0.1 m/s: that's a **pass**. While it runs, an IMU that says the car moves stops it |
 
 Off the stands, the same disagreement means a fault. On the stands, it means the wheels
@@ -246,7 +246,7 @@ work and nothing else is fooled into moving.
 | GPS positions | in `ekf_global` (x, y); the watchdog's 10 s check | |
 | GPS Doppler velocity | the heading only | maybe a speed input too: an idea, not planned |
 | Lidar + NDT | ❌ | research pick 2: a map with KISS-ICP, then NDT into `ekf_global` |
-| Speed loop on wheel speed | in `spine-core` and Gazebo; today's ESP32 is open loop | the control plan, steps 1 and 3 |
+| Speed loop on wheel speed | in `spine-core` and the simulator; today's ESP32 is open loop | the control plan, steps 1 and 3 |
 | Preflight on stands | `actuator-test --stands` (steering only) | TODO 29 Oct: speed up, hold, brake, every sensor live |
 
 ## Where this lives in the code

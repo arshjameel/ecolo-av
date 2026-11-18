@@ -13,7 +13,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | Term | Plain words | Where you meet it |
 |---|---|---|
 | 120 Ω terminator | a resistor at each end of a CAN bus; without both, frames get garbled | the CAN Pal and the last wheel node |
-| A* | a classic way to find the shortest path on a grid | the 2025-26 planner, now replaced by Nav2 |
+| A* | a classic way to find the shortest path on a grid | the 2025-26 planner, replaced by Nav2's planners, then by ours (`aav_planner`) |
 | AAV | Accessible Autonomous Vehicle: Carleton's capstone car | everywhere |
 | Ackermann | how a car steers: the front wheels turn, the back ones don't, so it can't spin on the spot | ego's output |
 | `AckermannDriveStamped` | a ROS message: a speed and a steering angle, with a time stamp | `/ego/actuator_cmd` |
@@ -21,23 +21,23 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | actuator | a motor that moves something: the steering, the brake | the moving parts |
 | area | the first part of a topic name: `/sensors/`, `/drivers/`, `/control/`... | [Topic areas](naming.md) |
 | arm | to tell the spine it may drive; it ignores drive frames until armed | the service `/spine/arm` |
-| backend | the one program that plays the car: the real car, Gazebo or the turtle | `ros/can_bridge/` and `ros/sim/` |
+| backend | the one program that plays the car: the real car, Ravensim, CARLA or the turtle | `ros/can_bridge/` and `ros/sim/` |
 | bag | a recording of ROS topics, to play back later | `tools/record.sh`, `bags/` |
 | `base_link` | the car's own frame: on the ground, under the middle of the rear axle | TF |
-| behaviour planner | a trial (`behaviour:=true`, off by default): decides DRIVE, APPROACH, STOPPED, WAIT, GO or ASK, and caps Nav2's speed for a stop sign, an obstacle, the fence and the goal | `ros/drivers/aav_behaviour`, [How the car stops](stopping.md) |
+| behaviour planner | a trial (`behaviour:=true`, off by default): decides DRIVE, APPROACH, STOPPED, WAIT, GO or ASK, and caps navigation's speed for a stop sign, an obstacle, the fence and the goal | `ros/drivers/aav_behaviour`, [How the car stops](stopping.md) |
 | bench mode | the car's real software on one computer, with pretend boards and sensors | `pixi run bench`, [Bench mode](bench.md) |
 | bicycle model | the maths that turns a speed and turn rate into a steering angle | ego, `ackermann.py` |
 | bringup | the launch files that start a whole profile | `ros/bringup/aav_bringup` |
-| `bt_navigator` | Nav2's boss: runs a behaviour tree that plans, follows and recovers | Nav2 |
+| `bt_navigator` | Nav2's boss: ran a behaviour tree that planned, followed and recovered. Ours in its place: the navigator (`aav_navigator`) | Nav2, until 17 Nov |
 | CAN | Controller Area Network: two twisted wires made for cars; short messages that arrive on time | the KEFC bus |
 | CAN Pal | a small CAN transceiver board on the Orin's 40-pin header | Orin #1 (KEFC) |
 | CANable | a USB-to-CAN adapter for a laptop, to watch or test a bus | the bench test of CAN |
 | `candump` | a Linux command that prints every frame on a CAN bus | `candump can0` |
-| CARLA | a photo-real driving simulator, on Unreal Engine; next to Gazebo, for the cameras (Q31, [CARLA](carla.md)) | `ros/sim/aav_carla` |
+| CARLA | a photo-real driving simulator, on Unreal Engine; beside Ravensim, for photo-real cameras (Q31, [CARLA](carla.md)) | `ros/sim/aav_carla` |
 | checksum, CRC | a few bits worked out from a message, so a garbled one is caught | every CAN frame (CRC-8) |
 | CI | Continuous Integration: GitHub runs the tests on every pull request and push to `main` | `.github/workflows/test.yml` |
 | colcon | the tool that builds a ROS workspace | `pixi run build` |
-| `collision_monitor` | a Nav2 node that sends zero speed when something enters its stop zone | `/safety/collision_monitor/state` |
+| `collision_monitor` | Nav2's node that sent zero speed when something entered its stop zone; ported as `aav_stop_zone`, the lock since 17 Nov. Its state topic keeps the name | `/safety/collision_monitor/state` |
 | costmap | a grid on the ground: how bad it is to drive in each cell | [Costmaps](costmaps.md) |
 | counter | a number that goes up by one in every frame, so a frozen sender is caught | every CAN frame |
 
@@ -54,7 +54,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | deadman | a button you must hold to drive; let go and the car stops | the joystick's trigger |
 | diffusion planner | a trial planner (`planner:=diffusion`): a small model draws paths, a guard checks them, and the lattice's path is used when none passes | `ros/drivers/aav_diffusion_planner`, [Trials](trials.md) |
 | DIN rail | a metal rail that boxes clip onto | the Pis at the windscreen |
-| driver (ROS) | anything that proposes a command: joystick, keyboard, Nav2... | `/drivers/<name>/cmd_vel` |
+| driver (ROS) | anything that proposes a command: joystick, keyboard, navigation... | `/drivers/<name>/cmd_vel` |
 | driver (device) | the code that talks to one piece of hardware | `ros/sources/` |
 | e-stop | emergency stop | `/safety/estop`, the red button, the Kar-Tech remote |
 | ego | our node that turns the chosen twist into a speed and steering angle, within limits | `ros/ego/aav_ego` |
@@ -87,7 +87,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | I2C | a two-wire bus between chips on one board | the ESP32 to the Jrks and the DAC |
 | iBUS | the FlySky receiver's serial format | the ESP32 |
 | IMU | Inertial Measurement Unit: measures turning and acceleration | the Yahboom, `/sensors/imu/data` |
-| inflation | a soft band of cost around each obstacle in a costmap | Nav2 |
+| inflation | a soft band of cost around each obstacle in a costmap | `aav_costmap` |
 | Jazzy | the ROS 2 version we use; support ends May 2029 | everywhere |
 | JetPack | NVIDIA's Ubuntu for the Jetson boards | the Orin (Q24) |
 | Jetson AGX Orin | NVIDIA's small computer with a big GPU | Orin #1, Orin #2 |
@@ -96,7 +96,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | KEFC request | Ben's October 2026 hardware request: the CAN bus, the wheel nodes, a second Orin, a rear camera | [CAN plan](can-plan.md) |
 | KISS-ICP | lidar odometry: how far the car moved, from matching each lidar cloud to the last ones. Open source (MIT); a trial here (`kiss_icp:=true`) | `ros/localization/aav_kiss_icp`, [Trials](trials.md) |
 | KTC-100 | a linear position sensor (a potentiometer) | the steering, new (KEFC) |
-| lattice (State Lattice) | Nav2's planner that joins short pre-computed curves the car can drive, reversing too. Our default planner since 1 Nov (`planner:=lattice`); Hybrid-A* if the car may not reverse | `nav2.yaml`, [Controllers](controllers.md#planners) |
+| lattice (State Lattice) | a planner that joins short pre-computed curves the car can drive, reversing too. Nav2's, ported to Rust in `aav_planner`: our default planner since 1 Nov (`planner:=own`); Hybrid-A* with `planner_search:=hybrid` | `nav2.yaml`, [Controllers](controllers.md#planners) |
 | launch file | a Python file that starts many nodes with their settings | `ros/*/*/launch/` |
 | lidar | a laser scanner: 3D points around the car | the roof Velodyne VLP-16, stock `velodyne` driver, `/sensors/lidar/points` |
 | lock (twist_mux) | a `true`/`false` topic that blocks lower drivers | `/safety/estop`, `/perception/stop_sign` |
@@ -109,8 +109,8 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | mock | a pretend sensor or board, for tests | `mock_imu`, `spine_sim` |
 | Motor-Pi | the Raspberry Pi 4 that drives the ESP32 today, over UART | the 2025-26 path |
 | MPC | model-predictive control: each tick, solve for the best next few seconds of steering and speed on a model of the car, then use only the first step. Trials here (`tracker:=mpc`, `mpc_lag`) | `ros/drivers/aav_track`, [Trials](trials.md) |
-| MPPI | Model-predictive path integral: Nav2's controller on our car (since 22 Oct). It tries thousands of futures through a model of the car. `controller:=rpp` for Regulated Pure Pursuit instead. Our own Rust port that knows the actuators' lag is a trial (`tracker:=mppi_lag`, [its page](mppi-lag.md)) | [path followers](path-followers.md) |
-| Nav2 | ROS 2's navigation stack: plans a path and follows it | `ros/drivers/aav_navigation` |
+| MPPI | Model-predictive path integral: our path follower (since 22 Oct). It tries thousands of futures through a model of the car. Nav2's until 14 Nov; since then our Rust port, which knows the actuators' lag (`tracker:=mppi_lag`, [its page](mppi-lag.md)) | [path followers](path-followers.md) |
+| Nav2 | ROS 2's stock navigation stack: plans a path and follows it. Ours until 17 Nov; each of its parts is now a Rust port of ours ([as it was](history/nav2-as-it-was.md)). We keep `nav2_msgs` and `nav2_amcl` | `ros/drivers/aav_navigation` |
 | `NavSatFix` | a ROS message: latitude, longitude, altitude | `/sensors/gps/fix` |
 | `navsat_transform` | turns GPS fixes into map x and y, and back | `/localization/gps/odom` |
 | NDT | Normal Distributions Transform: finds where the car is by matching the lidar's cloud to a saved lidar map. Our own, in Rust; a trial (`ndt:=true`), never TF | `ros/localization/aav_ndt`, [the design](designs/2026-10-29_ndt.md) |
@@ -124,7 +124,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | `odom` | the frame where the car started today: smooth, drifts | TF |
 | odometry | how far and how fast the car moved, from its own sensors | `/vehicle/odom` |
 | open loop | sending a command with no measurement back | today's throttle |
-| Ravensim | Ravensim in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov. Its cameras need a GPU | `ros/sim/aav_simulator`, [its page](own-simulator.md) |
+| Ravensim | our own simulator, in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov, the only one since 16 Nov. With no GPU, `tools/software_gl.sh` draws its cameras (lockstep) | `ros/sim/aav_simulator`, [its page](own-simulator.md) |
 | OSM | OpenStreetMap: a free map of the world | the map window, street routes, CARLA's campus |
 | OSRM | a road router that uses OSM | the 2025-26 HUD's route (archived 25 Oct); `street_router` can ask one too |
 | Pico 2 | a Raspberry Pi microcontroller board (RP2350) | the wheel encoder; a spine program |
@@ -138,7 +138,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | raylib | a small graphics library; our Rust HUD uses it | `ros/hud/aav_hud` |
 | RC | Radio Control: a hand-held transmitter | the FlySky override |
 | RF-DETR | a neural network that finds objects in a picture; RF-DETR Nano is our default detector | `aav_detector`, `aav_camera_stream` |
-| Regulated Pure Pursuit | a Nav2 controller: steers toward a point ahead on the path. Ours until 22 Oct; `controller:=rpp` | [path followers](path-followers.md) |
+| Regulated Pure Pursuit | a Nav2 controller: steers toward a point ahead on the path. Ours until 22 Oct; gone with Nav2 (17 Nov). Our pure pursuit: `tracker:=pure_pursuit` | [path followers](path-followers.md) |
 | REP-103, REP-105 | ROS's rules for units and frames | `CLAUDE.md` |
 | RoboStack | ROS 2 packaged for Pixi and conda | `pixi.toml` |
 | ROS 2 | Robot Operating System: programs (nodes) that talk over topics | everywhere |
@@ -148,7 +148,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | Rust | the language for our firmware and hardware drivers | `firmware/spine` |
 | RViz | ROS's 3D viewer | `pixi run rviz` |
 | service | a ROS request with one quick answer | `/spine/arm`, `/fromLL` |
-| SmacPlannerHybrid (Hybrid-A*) | Nav2's planner that only plans turns a car can make. The default until 1 Nov; now only for a car that may not reverse (`planner:=hybrid`): see lattice | `nav2.yaml` |
+| SmacPlannerHybrid (Hybrid-A*) | Nav2's planner that only plans turns a car can make. The default until 1 Nov; ours now runs it with `planner_search:=hybrid`: see lattice | `nav2.yaml` |
 | SocketCAN | Linux's way to use a CAN bus like a network | `can0`, `ros2_socketcan` |
 | spine | the board that turns CAN commands into steering, brake and throttle | `firmware/spine`, `aav_spine` |
 | stamped | a message with a time stamp and frame | `TwistStamped` |
@@ -171,7 +171,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | URDF | a file that describes the car's shape and where each sensor sits | `ros/bringup/aav_description/urdf` |
 | USB | the plug on any computer | the IMU, the GPS board |
 | `vehicle.yaml` | the only file with the car's measurements | `ros/bringup/aav_description/config` |
-| voxel | a small cube of space. The lidar's cloud as 0.25 m cubes for Nav2 is a trial (`voxels:=true`) beside the flat scan | `ros/perception/aav_voxels`, [the design](designs/2026-10-30_voxels.md) |
+| voxel | a small cube of space. The lidar's cloud as 0.25 m cubes for the costmap is a trial (`voxels:=true`) beside the flat scan | `ros/perception/aav_voxels`, [the design](designs/2026-10-30_voxels.md) |
 | W5500 | an Ethernet chip for small boards | the wheel encoder today |
 | watchdog | a timer that acts if a program stops checking in | the spine, the ESP32 |
 | wheel node | a small CAN board that reads one wheel's speed | 0x200 left, 0x201 right (KEFC) |

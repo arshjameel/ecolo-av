@@ -44,7 +44,7 @@ A model is the car on paper. Ask it a question before the car can get hurt.
 | Will it pass the set speed? | the poles' damping ζ (7) | by 15 % on a sudden step |
 | Can we tune the PI without driving? | pole placement (7, [vehicle-model](vehicle-model.md#pole-placement-after-the-car-day)) | yes: pick ζ and ωn, solve for kp, ki |
 | How much camera and network delay is safe? | phase margin (8) | 0.55 s more than today's, at 1 m/s |
-| Does Gazebo behave like the car? | the same step in both, against the model | Gazebo steers 0.11 s late |
+| Does the simulator behave like the car? | the same step in both, against the model | Gazebo steered 0.11 s late (fixed 25 Oct) |
 | Is 3 m/s safe on the path? | margins at each speed (8) | worst-case delay: 27°, under the 30° rule |
 | Does body roll matter? | a roll model (10) | not for control; 2° at 3 m/s, full lock |
 | What goes in the report? | all of it: equations, poles, plots | this page and [vehicle-model](vehicle-model.md) |
@@ -194,7 +194,7 @@ e^(At) x(0) plus the input convolved with e^(At) B. The spine runs its PI every 
 the path controller every 50 ms: the same Ad, Bd ([vehicle-model, section
 5](vehicle-model.md#5-discrete-time-as-the-computers-run-it)).
 
-### Gazebo is the same idea, with more states
+### Gazebo was the same idea, with more states
 
 | | Our model | Gazebo |
 |---|---|---|
@@ -204,8 +204,8 @@ the path controller every 50 ms: the same Ad, Bd ([vehicle-model, section
 | Step | 10 or 50 ms | 1 ms (`max_step_size` in our worlds) |
 | Suspension | none | **none either**: the wheels are fixed to the body |
 
-Same loop: state now, forces, step. So Gazebo's car can't roll on springs: if roll ever
-matters, Gazebo won't show it.
+Same loop: state now, forces, step. So Gazebo's car couldn't roll on springs, and Ravensim's (a bicycle model, our simulator since 16 Nov) can't either: if roll ever
+matters, the simulator won't show it.
 
 ## 6. Transfer functions
 

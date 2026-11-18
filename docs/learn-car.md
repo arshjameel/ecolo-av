@@ -17,7 +17,7 @@ talks on. Today, and after the KEFC changes.
 
 !!! note "None of our code has run on the car yet"
     The car still runs the 2025-26 team's code, on ROS 2 Humble. Our code (Jazzy) runs in
-    the turtle, Gazebo and [bench mode](bench.md) only.
+    the turtle, Ravensim and [bench mode](bench.md) only.
 
 ## The picture
 
@@ -49,7 +49,7 @@ The [Glossary](glossary.md) explains each word.
 | Box | Does | Wire | Today | After KEFC |
 |---|---|---|---|---|
 | Jetson AGX Orin #1 | the main computer: in our plan, the EKFs, twist_mux, ego | Ethernet | runs the 2025-26 code, on Humble | keeps control; becomes the CAN master |
-| Jetson AGX Orin #2 (64 GB) | cameras, lidar, costmaps, Nav2 planning | Ethernet | not there | **new** |
+| Jetson AGX Orin #2 (64 GB) | cameras, lidar, costmaps, planning | Ethernet | not there | **new** |
 | Motor-Pi (Raspberry Pi 4) | turns ego's commands into UART frames for the ESP32 | Ethernet, UART | drives the car | kept until CAN is proven, then retired |
 | Cam1-Pi (Pi 5) | both front cameras, at the windscreen, on its two ribbon ports; MediaMTX streams them to the Orin ([Camera pipeline](camera-pipeline.md)) | Ethernet | there | the same |
 | QNX-Pi's camera | the rear camera | Ethernet | doesn't work today: no rear camera for now | **new** (Cam3) |
@@ -128,7 +128,7 @@ transceiver chip (U7) fitted? Still to check ([Audit questions](audit-questions.
 | Wheel speed | the hardware lead's Arduino → CAN → the Orin (since 23 Oct) | the same, or two wheel nodes → CAN, 100 Hz |
 | Steering position | not measured | KTC-100 pot through the Jrk |
 | GPS | ZED-F9R, taped antenna lead | new board, screw-on antenna, RTK |
-| Perception and Nav2 | on Orin #1 (in our plan) | on Orin #2 |
+| Perception and navigation | on Orin #1 (in our plan) | on Orin #2 |
 
 The rollout, from the KEFC request: write the DBC first; test on the bench with a CANable
 and `candump`; keep the Motor-Pi path until CAN is proven; **never run both at once**.

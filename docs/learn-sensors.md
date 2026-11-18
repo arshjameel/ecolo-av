@@ -1,7 +1,7 @@
 # Sensors from zero
 
 Every sensor on our car: what it measures, how often, which ROS topic and frame it uses,
-what it's good and bad at, which driver reads it, and whether Gazebo can pretend to be it.
+what it's good and bad at, which driver reads it, and whether Ravensim can pretend to be it.
 
 **You'll learn:**
 - the sensors a self-driving car needs, and why it needs more than one;
@@ -10,7 +10,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 - how to check that a sensor is really talking.
 
 !!! warning "Nothing here has run on the car yet"
-    Our drivers work in Gazebo and on the bench. On the real car, every sensor below is
+    Our drivers work in the simulator and on the bench. On the real car, every sensor below is
     [[untested]]. The audits of 16 and 21 Oct found what's fitted
     ([16 Oct](history/audit-2026-10-16-car.md), [21 Oct](history/audit-2026-10-21-car.md)).
 
@@ -29,7 +29,7 @@ Each sensor fails in its own way. Together they cover each other's gaps
 
 ## 2. All of them, on one table
 
-| Sensor | Measures | Rate | Topic | Message | Frame | In Gazebo? |
+| Sensor | Measures | Rate | Topic | Message | Frame | In Ravensim? |
 |---|---|---|---|---|---|---|
 | Wheel speed | forward speed | 50 Hz (sim); 100 Hz CAN frames on the car (`aav.dbc`) | `/vehicle/odom` | `nav_msgs/Odometry` | `base_link` | **yes**, on `main` |
 | Steering angle | front wheel angle | 50 Hz (in CAN feedback) | `/vehicle/status`, `/vehicle/joint_states` | `VehicleStatus`, `JointState` | the steering joints | yes (status) |
@@ -53,7 +53,7 @@ Every frame's position on the car is in `ros/bringup/aav_description/config/vehi
 | **Good at** | smooth, fast, never jumps |
 | **Bad at** | wheel slip; a wrong wheel size (ours, 0.30 m, is a guess) adds up |
 | **Driver** | `spine_bridge role:=sensors` on the Orin (CAN); `encoder_udp` for the 2025-26 encoder |
-| **Gazebo** | yes: `sim_adapter` reads the car model's motion |
+| **Ravensim** | yes: `sim_adapter` reads the car model's motion |
 
 ## 4. Steering angle
 
@@ -77,7 +77,7 @@ Every frame's position on the car is in `ros/bringup/aav_description/config/vehi
 | **Bad at** | the gyro drifts slowly; the magnetometer is fooled by the motor and steel. **We don't use the magnetometer yet** |
 | **Driver** | `aav_imu_yahboom` (Ben's Rust rewrite of the 2025-26 C++ driver), then the stock `imu_filter_madgwick` |
 | **Used by** | both EKFs: the **yaw rate** only |
-| **Gazebo** | yes, 50 Hz, with noise 0.02 rad/s and 0.2 m/s² |
+| **Ravensim** | yes, 50 Hz, with noise 0.02 rad/s and 0.2 m/s² |
 
 ## 6. GPS: u-blox ZED-F9R
 
@@ -89,7 +89,7 @@ Every frame's position on the car is in `ros/bringup/aav_description/config/vehi
 | **Bad at** | slow; metres off without RTK; nothing indoors; jumps near buildings |
 | **Driver** | `ublox_gps` (default; Tentative, Q18), or `nmea_navsat_driver`, or `ublox_dgnss` |
 | **On the car** | a SparkFun board on the ceiling panel, USB to a Pi; its antenna lead is taped |
-| **Gazebo** | yes, 5 Hz, about 0.5 m noise |
+| **Ravensim** | yes, 5 Hz, about 0.5 m noise |
 
 All about it: [Learn: GPS](learn-gps.md).
 
@@ -103,7 +103,7 @@ All about it: [Learn: GPS](learn-gps.md).
 | **Bad at** | few points; poor height; clutter close up. Publishes best effort: subscribe best effort |
 | **Driver** | `aav_radar_ti` (from the 2025-26 `Nav_Radar`), then `radar_clusters` (`aav_radar_clusters`, Rust) groups the points |
 | **Used by** | the local costmap's obstacle layer, and `collision_monitor` |
-| **Gazebo** | yes, in the road world: a lidar shaped like the radar (`/vehicle/sim/radar/points`, turned into ours by `sim_radar`) |
+| **Ravensim** | yes, in the road world: a lidar shaped like the radar (`/vehicle/sim/radar/points`, turned into ours by `sim_radar`) |
 | **Bench** | `mock_radar` draws points on the bench's boxes |
 
 ## 8. Cameras: one Pi 5 at the windscreen
@@ -116,7 +116,7 @@ All about it: [Learn: GPS](learn-gps.md).
 | **Bad at** | no distance by itself; glare, dark; big messages (so the pictures stay inside the Orin) |
 | **Driver** | `aav_camera_stream` on the Orin: decodes, undistorts, runs RF-DETR inside each stream ([Camera pipeline](camera-pipeline.md)). Not calibrated yet ([how](camera-calibration.md)). `usb_cam` (`cameras.launch.py`) is only for a USB camera |
 | **Used by** | `aav_detector` (stop signs, objects), `aav_lane_finder`, the HUD |
-| **Gazebo** | yes, in the road world: 640 x 360, 10 Hz, the bench camera's lens |
+| **Ravensim** | yes, in the road world: 640 x 360, 10 Hz, the bench camera's lens |
 | **Bench** | `mock_camera` draws the bench road |
 | **KEFC** | adds a rear camera (Cam3). The QNX Pi's camera doesn't work today: no rear camera for now |
 
@@ -129,18 +129,18 @@ All about it: [Learn: GPS](learn-gps.md).
 | **Good at** | exact distances, day or night |
 | **Bad at** | rain and snow; expensive; lots of data; blind close to the car, low down ([Perception](perception.md#the-roof-lidar)) |
 | **On the car** | a VLP-16 on a printed tripod, 192.168.1.201, sending UDP to the Jetson (the 16 Oct audit) |
-| **Driver** | the stock `velodyne` package (`aav_sensors lidar:=true`), then `lidar_scan` (`aav_lidar`) for Nav2. On by default on the car. Tested against `tools/fake_vlp16.py`; [[untested]] with the real lidar |
-| **Used by** | the local costmap's lidar layer, and `collision_monitor` |
-| **Gazebo** | a generic 16-beam one, on by default (`lidar:=false` to drop it) |
+| **Driver** | the stock `velodyne` package (`aav_sensors lidar:=true`), then `lidar_scan` (`aav_lidar`) for the costmap and the stop zone. On by default on the car. Tested against `tools/fake_vlp16.py`; [[untested]] with the real lidar |
+| **Used by** | the local costmap's lidar layer, and the stop zone |
+| **Ravensim** | a generic 16-beam one, on by default (`lidar:=false` to drop it) |
 | **Bench** | `pixi run bench lidar:=true`: `mock_lidar` sends VLP-16 packets of the bench world |
 
 ## Try it
 
 | You want to | Run |
 |---|---|
-| Gazebo's sensors | `pixi run sim` |
+| Ravensim's sensors | `pixi run sim` |
 | Every sensor topic that's live | `pixi run tools/ros.sh ros2 topic list` |
-| How often the IMU talks (expect 50 Hz in Gazebo) | `pixi run tools/ros.sh ros2 topic hz /sensors/imu/data` |
+| How often the IMU talks (expect 50 Hz in Ravensim) | `pixi run tools/ros.sh ros2 topic hz /sensors/imu/data` |
 | One wheel-speed message | `pixi run tools/ros.sh ros2 topic echo --once /vehicle/odom` |
 | The bench's radar and camera too | `pixi run bench`, then `pixi run tools/ros.sh ros2 topic hz /sensors/radar/points` |
 | Where each sensor sits on the car | `pixi run view` (RViz with the car model) |
@@ -157,8 +157,8 @@ All about it: [Learn: GPS](learn-gps.md).
 | Battery | `ros/sources/aav_battery_victron` |
 | Wheel speed | `ros/can_bridge/aav_spine_bridge` (Rust, the default) or `aav_spine` (Python): `spine_bridge role:=sensors`; `ros/can_bridge/aav_legacy` (the 2025-26 encoder) |
 | The front cameras | `ros/sources/aav_camera_stream` |
-| The lidar's scan for Nav2 | `ros/perception/aav_lidar` |
+| The lidar's scan for the costmap | `ros/perception/aav_lidar` |
 | Sensor positions | `ros/bringup/aav_description/config/vehicle.yaml` |
-| Gazebo's sensors | `ros/bringup/aav_description/urdf/aav.gazebo.xacro`, `ros/sim/aav_sim_models` |
+| Ravensim's sensors | `ros/sim/aav_simulator` (`sim-core`), `ros/sim/aav_sim_models` |
 | The bench's pretend sensors | `ros/sim/aav_bench/aav_bench/sensors.py` |
 | Every topic | `docs/interfaces.yaml`, shown as [Topics](interfaces.md) |

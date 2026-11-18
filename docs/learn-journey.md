@@ -1,6 +1,6 @@
 # A command's journey
 
-Follow one joystick push from your hand to the wheels, then a Nav2 goal, then the
+Follow one joystick push from your hand to the wheels, then a navigation goal, then the
 sensor data on its way back.
 
 **You'll learn:**
@@ -12,7 +12,7 @@ Words you may not know (topic, node, twist, Ackermann, CAN) are in the
 [Glossary](glossary.md). The boxes themselves are in [The car, box by box](learn-car.md).
 
 !!! note "Not on the car yet"
-    Every hop below runs in the turtle, Gazebo or [bench mode](bench.md). None of it has
+    Every hop below runs in the turtle, Ravensim or [bench mode](bench.md). None of it has
     run on the real car yet: the car still runs the 2025-26 code, on Humble.
 
 ## The whole trip in one picture
@@ -48,12 +48,12 @@ How twist_mux picks:
 | scripted test | `/drivers/scripted/cmd_vel` | 50 |
 | replay | `/drivers/replay/cmd_vel` | 40 |
 | point (drive to a GPS point) | `/drivers/point/cmd_vel` | 25 |
-| Nav2 | `/drivers/nav/cmd_vel` | 20 |
+| Navigation | `/drivers/nav/cmd_vel` | 20 |
 | AI (lane keeping) | `/drivers/ai/cmd_vel` | 10 |
 | **lock:** `/safety/estop` true | blocks everyone below 255 | 255 |
-| **lock:** `/safety/legacy_uart_bridge/lock` true: the ESP32's firmware has no timeout (`frame_version: 1`) | blocks scripted, replay, point, Nav2 and AI | 60 |
-| **lock:** `/perception/stop_sign` true | blocks point, Nav2 and AI | 30 |
-| **lock:** `/safety/sensor_watchdog/lock` true, or silent 1 s | blocks point, Nav2 and AI | 30 |
+| **lock:** `/safety/legacy_uart_bridge/lock` true: the ESP32's firmware has no timeout (`frame_version: 1`) | blocks scripted, replay, point, navigation and AI | 60 |
+| **lock:** `/perception/stop_sign` true | blocks point, navigation and AI | 30 |
+| **lock:** `/safety/sensor_watchdog/lock` true, or silent 1 s | blocks point, navigation and AI | 30 |
 
 A driver counts while its last message is under 0.5 s old. Let go of the trigger and,
 0.5 s later, twist_mux hands control to the next driver.
@@ -101,19 +101,19 @@ is `actuators:=uart` (section 2). The CAN path works on the bench, against a pre
 The frames are defined in `firmware/can/aav.dbc` ([Firmware](firmware.md)). The KEFC plan
 changes a few: [CAN plan](can-plan.md) (Proposed).
 
-## 4. A Nav2 goal
+## 4. A navigation goal
 
-Nav2 is just another driver, at priority 20. Its command joins the same path at hop 3.
+Navigation is just another driver, at priority 20. Its command joins the same path at hop 3.
 
 | # | Who | Topic | Message | Rate | What can go wrong | Watch it |
 |---|---|---|---|---|---|---|
 | 1 | You, in RViz: "2D Goal Pose" | `/goal_pose` | `geometry_msgs/PoseStamped` | once | the goal is off the map | `ros2 topic echo /goal_pose` |
-| 2 | `bt_navigator` starts the action | `/navigate_to_pose` | `NavigateToPose` action | once | | `ros2 action list` |
-| 3 | `planner_server` (SmacPlannerHybrid: paths a car can drive) | `/plan` | `nav_msgs/Path` | when asked | no path fits the turning circle | RViz shows the path |
-| 4 | `controller_server` (MPPI) | `cmd_vel_nav` | `TwistStamped` | 20 Hz | no TF `map → odom → base_link` | `ros2 topic hz /cmd_vel_nav` |
+| 2 | the navigator (`aav_navigator`) starts the action | `/navigate_to_pose` | `NavigateToPose` action | once | | `ros2 action list` |
+| 3 | the planner (`aav_planner`, the State Lattice: paths a car can drive) | `/plan` | `nav_msgs/Path` | when asked | no path fits the turning circle | RViz shows the path |
+| 4 | `mppi_lag` (MPPI with lag) | `cmd_vel_nav` | `TwistStamped` | 20 Hz | no TF `map → odom → base_link` | `ros2 topic hz /cmd_vel_nav` |
 | 5 | `velocity_smoother` | `/drivers/nav/cmd_vel`, or `/control/cmd_vel_smoothed` where the radar runs | `TwistStamped` | 20 Hz | | `ros2 topic echo /drivers/nav/cmd_vel` |
-| 6 | `collision_monitor` (only where the radar runs) | `/drivers/nav/cmd_vel` | `TwistStamped` | 20 Hz | a radar point in the 1 m stop zone, or a silent radar: it sends zero | `ros2 topic echo /safety/collision_monitor/state` |
-| 7 | `twist_mux`, then ego and the backend | as in sections 1 to 3 | | | the joystick, the keyboard or a stop sign outranks Nav2 | `ros2 topic echo /control/cmd_vel` |
+| 6 | the stop zone (`aav_stop_zone`, where the radar or lidar runs) | `/drivers/nav/cmd_vel` | `TwistStamped` | 20 Hz | a radar point in the 1 m stop zone, or a silent radar: it sends zero | `ros2 topic echo /safety/collision_monitor/state` |
+| 7 | `twist_mux`, then ego and the backend | as in sections 1 to 3 | | | the joystick, the keyboard or a stop sign outranks navigation | `ros2 topic echo /control/cmd_vel` |
 
 A street route can go in too: `street_router` (and the language tools) call the action
 `/follow_gps_waypoints` with GPS points ([Street routes](routes.md)).
@@ -129,10 +129,10 @@ The car tells the software what it really did. This closes the loop.
 | 3 | `imu_filter_madgwick` | `/sensors/imu/data` | `sensor_msgs/Imu`, with an orientation | the same | both EKFs |
 | 4 | GPS: `ublox_gps` | `/sensors/gps/fix` | `sensor_msgs/NavSatFix` | 1 Hz | `navsat_transform` |
 | 5 | `navsat_transform` | `/localization/gps/odom` | `Odometry`, in map x and y | with each fix | `ekf_global` |
-| 6 | `ekf_local` | `/localization/odom/local`, TF `odom → base_link` | `Odometry` | 30 Hz | Nav2's controller, the scripted driver |
-| 7 | `ekf_global` | `/localization/odom/global`, TF `map → odom` | `Odometry` | 30 Hz | `navsat_transform`, Nav2's planner (through TF) |
+| 6 | `ekf_local` | `/localization/odom/local`, TF `odom → base_link` | `Odometry` | 30 Hz | the path follower, the scripted driver |
+| 7 | `ekf_global` | `/localization/odom/global`, TF `map → odom` | `Odometry` | 30 Hz | `navsat_transform`, the planner (through TF) |
 | 8 | `navsat_transform` | `/localization/gps/fix` | `NavSatFix` | 30 Hz | the HUD's map |
-| 9 | the backend (spine, Gazebo) | `/vehicle/status` | `aav_interfaces/VehicleStatus` | 10 Hz | the HUD |
+| 9 | the backend (spine, Ravensim) | `/vehicle/status` | `aav_interfaces/VehicleStatus` | 10 Hz | the HUD |
 
 ![The two EKFs](img/ekf.svg)
 
@@ -181,6 +181,6 @@ with `docs/interfaces.yaml`.
 | The CAN backend | `ros/can_bridge/aav_spine/` (`spine_bridge.py`, `can_codec.py`) |
 | The CAN frames | `firmware/can/aav.dbc` |
 | The board's logic | `firmware/spine/crates/spine-core` |
-| Nav2 | `ros/drivers/aav_navigation/` |
+| Navigation | `ros/drivers/aav_navigation/` |
 | The EKFs | `ros/localization/aav_localization/config/` |
 | Every topic | `docs/interfaces.yaml`, shown as [Topics](interfaces.md) |

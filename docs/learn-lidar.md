@@ -4,14 +4,14 @@ Ben's guess (29 Oct): "the lidar returns some kind of point map and we have an N
 occupation network that reads that data and produces something cube related."
 
 **Close.** The lidar gives a cloud of dots. From those dots we can make **cubes** (what is
-around us), a **flat map for Nav2** (where we may drive), **objects** (what each thing is),
+around us), a **flat map for navigation** (where we may drive), **objects** (what each thing is),
 and with a saved map, **where we are** (NDT). This page takes them one at a time.
 
 **You'll learn:**
 - what one lidar point is, and what our VLP-16 sends;
 - cubes (voxels): filled, free, unknown;
 - why ours aren't Tesla's "occupancy network";
-- how cubes flatten into Nav2's costmap, and what runs today;
+- how cubes flatten into the costmap, and what runs today;
 - joining cubes into named objects;
 - NDT, KISS-ICP and AMCL: finding the car on a map;
 - what's built, what's planned, what's only an idea.
@@ -70,7 +70,7 @@ Seen from the side, the 16 lasers fan out like this:
 | Rings are 2° apart; at 20 m that's | 20 × tan 2° = **0.7 m** apart | a small thing far away can slip between rings |
 
 !!! warning "Never seen on our car"
-    The driver has run against `tools/fake_vlp16.py` and in Gazebo, never with the real
+    The driver has run against `tools/fake_vlp16.py` and in the simulator, never with the real
     VLP-16. Where it sits (`lidar_link`, 0.9 m forward, 1.8 m up) is a guess to measure.
 
 ## 3. Cubes (voxels)
@@ -109,7 +109,7 @@ a while **fade** back to unknown, so a person who walked away doesn't stay.
 
 !!! note "Planned, not built"
     No code makes cubes yet. The plan (TODO, "Tesla-style cubes on our HUD"): a voxel grid
-    in Rust in `hud-core`, no ROS, its own tests; Gazebo first.
+    in Rust in `hud-core`, no ROS, its own tests; the simulator first.
 
 ## 4. Not Tesla's "occupancy network"
 
@@ -127,10 +127,10 @@ at eight cameras and **guesses** which cubes are filled.
 The picture looks the same: cubes round the car, coloured by height. The way it's made
 is not. So we call ours "cubes" or a "voxel grid", not an occupancy network.
 
-## 5. From cubes to Nav2's flat map
+## 5. From cubes to the flat map
 
-Nav2 plans on a **2D costmap**: a grid seen from above, 10 cm cells, each free or
-blocked ([Learn: Nav2](learn-nav2.md)). To get there, look **down each column** of cubes.
+The planner plans on a **2D costmap**: a grid seen from above, 10 cm cells, each free or
+blocked ([Learn: navigation](learn-nav2.md)). To get there, look **down each column** of cubes.
 
 ```text
   roof + margin  2.0 m ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  above: a branch, a bridge. Ignore
@@ -175,9 +175,9 @@ The local costmap (`nav2.yaml`) stacks its layers:
 | `inflation_layer` | grows each blocked cell by 2.0 m, so the car keeps clear |
 
 A flat scan loses one thing: a table with an empty space under it looks like a wall.
-That's fine for a car. Nav2's own 3D `VoxelLayer` is there if 2D ever misses something.
+That's fine for a car. A 3D layer (as Nav2's `VoxelLayer`) could follow if 2D ever misses something.
 
-### The trial: cubes for Nav2 (`voxels:=true`)
+### The trial: cubes for the costmap (`voxels:=true`)
 
 Ben, 30 Oct: "this is a car not a needle. We need to quickly know something is in our way."
 `voxels` (`ros/perception/aav_voxels`) reads the cloud once and keeps **0.25 m cubes**.
@@ -235,7 +235,7 @@ inside a box, it gets the box's name, and the cubes give its distance.
 |---|---|
 | **Camera-to-lidar calibration** | to know where each cube lands on the picture. Research pick 4: `direct_visual_lidar_calibration` |
 | Matching times | the camera and the lidar must see the same moment |
-| Gazebo first | there every pose is exact, so a mistake is in the code, not the calibration |
+| The simulator first | there every pose is exact, so a mistake is in the code, not the calibration |
 
 ## 7. Where are we? NDT on a saved map
 
@@ -285,7 +285,7 @@ wheels' clicks come slowly ([Learn: speed](learn-speed.md)).
 
 ## 9. A trial alternative: AMCL on a 2D map
 
-**AMCL** (Adaptive Monte Carlo Localization) is Nav2's stock way to find a robot on a 2D
+**AMCL** (Adaptive Monte Carlo Localization) is Nav2's stock way (its `nav2_amcl`, kept for this trial) to find a robot on a 2D
 map. It scatters hundreds of guesses ("particles") and keeps the ones whose view matches
 the lidar's 2D scan.
 
@@ -294,7 +294,7 @@ the lidar's 2D scan.
 | Map | 3D points | 2D grid, seen from above |
 | Reads | the full cloud | `/sensors/lidar/scan` |
 | Software | not chosen: look at stock NDT localizers first | stock `nav2_amcl` |
-| First test | a recording of the real lot | Gazebo's `test_lot` world |
+| First test | a recording of the real lot | the simulator's `test_lot` world |
 
 The trials design (`docs/designs/2026-10-29_trials.md`, on branch `trials`, Tentative) runs
 AMCL **beside** `ekf_global`: its pose goes out on `/localization/amcl/pose`, it never
@@ -318,8 +318,8 @@ it starts. Built on the raylib HUD (`ros/hud/aav_hud`).
 
 | Piece | State | Where |
 |---|---|---|
-| VLP-16 → `/sensors/lidar/points` | ✅ built; Gazebo and a fake lidar; never the real one | `aav_sensors` `sensors.launch.py` |
-| Points → 2D scan → costmap and `collision_monitor` | ✅ built; Gazebo | `aav_lidar` `lidar_scan`, `nav2.yaml` |
+| VLP-16 → `/sensors/lidar/points` | ✅ built; the simulator and a fake lidar; never the real one | `aav_sensors` `sensors.launch.py` |
+| Points → 2D scan → costmap and the stop zone | ✅ built; the simulator | `aav_lidar` `lidar_scan`, `nav2.yaml` |
 | Cubes from the lidar | planned (TODO: cubes on the HUD) | `hud-core`, Rust |
 | Cubes drawn on the camera picture | planned; on the car, needs calibration | `picture.rs`, research pick 4 |
 | Cubes into named objects | planned (TODO 29 Oct) | |
@@ -327,7 +327,7 @@ it starts. Built on the raylib HUD (`ros/hud/aav_hud`).
 | NDT pose into `ekf_global` | planned (research pick 2) | |
 | AMCL beside the EKF | a trial design, Tentative | branch `trials` |
 | The debug HUD | planned (TODO 29 Oct) | |
-| Nav2's 3D `VoxelLayer` | an idea: only if 2D misses something | |
+| A 3D costmap layer (as Nav2's `VoxelLayer`) | an idea: only if 2D misses something | |
 | A small model that names cubes from the camera crop | an idea | |
 
 ## Where this lives in the code
