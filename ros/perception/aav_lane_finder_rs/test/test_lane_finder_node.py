@@ -7,6 +7,10 @@ made-up lane (aav_lane_finder's test/scenes.py) as rgb8 with a CameraInfo, then 
 picture again with no lines. The Python's LaneFinder on the same pictures gives the lane
 the node must publish; the debug picture must come too. Needs the workspace built and
 sourced: `colcon test` runs it.
+
+aav_lane_finder's modules, scenes and config are read from its source folder beside this
+one: that package depends on this one (its launch file starts either), so colcon doesn't
+put it in this package's test environment.
 """
 
 import math
@@ -18,11 +22,14 @@ import time
 
 import pytest
 
+PYTHON = Path(__file__).resolve().parents[2] / 'aav_lane_finder'
+sys.path[:0] = [str(PYTHON), str(PYTHON / 'test')]
+
 try:
     from aav_lane_finder.birds_eye import BirdsEye, Grid, Lens, Mount
     from aav_lane_finder.lane_lines import LaneFinder, Settings
     from aav_lane_geometry.msg import LaneGeometry
-    from ament_index_python.packages import get_package_prefix, get_package_share_directory
+    from ament_index_python.packages import get_package_prefix
     import numpy as np
     import rclpy
     from rclpy.qos import QoSProfile, ReliabilityPolicy
@@ -34,7 +41,6 @@ pytestmark = pytest.mark.skipif(rclpy is None, reason='needs ROS sourced: colcon
 
 CAMERA = [1.80, 0.29, 1.20]
 FOCAL = 343.0
-SCENES = Path(__file__).resolve().parents[2] / 'aav_lane_finder' / 'test'
 
 
 def environment():
@@ -62,10 +68,8 @@ def info_msg(width, height):
 
 
 def test_a_lane_is_the_pythons_lane(tmp_path):
-    sys.path.insert(0, str(SCENES))
     from scenes import picture   # noqa: I100 - the Python package's own test helper
-    config = os.path.join(get_package_share_directory('aav_lane_finder'), 'config',
-                          'lane_finder.yaml')
+    config = str(PYTHON / 'config' / 'lane_finder.yaml')
     binary = os.path.join(get_package_prefix('aav_lane_finder_rs'), 'lib',
                           'aav_lane_finder_rs', 'lane_finder')
     # As the launch file adds them; a file for the node by name, as -p loses to one.
