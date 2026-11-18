@@ -15,14 +15,16 @@ One page, in order. Each step links to the car-day section that has the details.
 |---|---|---|---|
 | 0 | The Motor Pi is alive on the network | [Car day A5](car-day.md#session-4-the-orin-and-the-motor-pi) | `ping`; `nmap -sn 192.168.1.0/24` if its address moved |
 | 1 | **Back up** the Motor Pi | [Car day A2](car-day.md#a2-back-up-every-machine) | an SD-card image, checked |
-| 2 | **The Motor Pi's UART, ready** (console off it, theirs off at boot) | [Car day A7b](car-day.md#a7b-the-motor-pis-uart-ready) | L1-L5 show nobody on `/dev/ttyAMA0` |
-| 3 | The firmware in the emulator, on a Mac | below | `pixi run esp qemu-check`: PASS |
-| 4 | **Flash the Rust ESP32**, guided | [Car day A8](car-day.md#session-6-the-esp32) | `pixi run esp first-check`: SAFE TO GO ON |
-| 5 | The on-stands checks (session 6) | [Car day A8](car-day.md#session-6-the-esp32) | every answer yes; any no rolls back |
-| 6 | Upgrade the Motor Pi to Ubuntu 24.04 | [Car day, Day B](car-day.md#day-b-upgrades-and-the-reflash) | `car_setup.sh motor_pi check`: no STOP |
+| 2 | **Our stack on the Motor Pi**, still on Ubuntu 22.04 (the car kit runs there too; CI checks it) | [Car day A5](car-day.md#session-4-the-orin-and-the-motor-pi), [Car setup step 4](car-setup.md#step-4-install-our-code) | `bash ~/car-kit/car_setup.sh motor_pi install --apply` ends with no STOP |
+| 3 | **The Motor Pi's UART, ready** (console off it, theirs off at boot) | [Car day A7b](car-day.md#a7b-the-motor-pis-uart-ready) | L1-L5 show nobody on `/dev/ttyAMA0` |
+| 4 | The firmware in the emulator, on a Mac | below | `pixi run esp qemu-check`: PASS |
+| 5 | **Flash the Rust ESP32**, guided | [Car day A8](car-day.md#session-6-the-esp32) | `pixi run esp first-check`: SAFE TO GO ON |
+| 6 | The on-stands checks (session 6): our bridge on the Pi makes the heartbeat | [Car day A8](car-day.md#session-6-the-esp32) | every answer yes; any no rolls back |
+| 7 | Upgrade the Motor Pi to Ubuntu 24.04 | [Car day, Day B](car-day.md#day-b-upgrades-and-the-reflash), [Car setup step 2](car-setup.md#step-2-the-ubuntu-2204-pis-to-2404) | `car_setup.sh motor_pi check`: no STOP |
 
-Step 2 was missing from the first draft. Without it the Pi's kernel console and the
-2025-26 bridge both write to the ESP32's wire, and `car_setup.sh motor_pi check` STOPs.
+Steps 2 and 3 were missing from the first draft. Session 6 needs our bridge running on
+the Pi (step 2), and without step 3 the Pi's kernel console and the 2025-26 bridge both
+write to the ESP32's wire.
 
 ## Before you start
 
@@ -32,9 +34,9 @@ Step 2 was missing from the first draft. Without it the Pi's kernel console and 
 | The ESP32 tools | `pixi run esp tools`, once (several minutes, needs `rustup`). On Ben's Mac already: `espflash` 4.3.0 in `vendor/cargo-tools/bin` |
 | A USB cable to the ESP32 | find its port: `ls /dev/cu.usb*` (Mac), `ls /dev/ttyUSB* /dev/ttyACM*` (Linux) |
 | The logins | [Car day, "Logins"](car-day.md) (never copy a password anywhere) |
-| The team agrees to retire the 2025-26 C++ path | needed before step 6, which is one-way |
+| The team agrees to retire the 2025-26 C++ path | needed before step 7, which is one-way |
 
-## Steps 3-5: the ESP32
+## Steps 4-6: the ESP32
 
 | Run | Does |
 |---|---|
@@ -52,26 +54,29 @@ vendor/cargo-tools/bin/espflash read-flash --port <port> 0 0x400000 esp32-cpp-ba
 Restore: `vendor/cargo-tools/bin/espflash write-bin --port <port> 0 <backup.bin>`.
 Keep the `.bin` on the laptop and the shared drive.
 
-## Step 6: the Motor Pi to 24.04
+## Step 7: the Motor Pi to 24.04
 
 On the Motor Pi, from the car kit. Run each line without `--apply` first: it shows the plan.
 
 | # | Run |
 |---|---|
 | 1 | `bash ~/car-kit/car_setup.sh motor_pi` (dry run of everything) |
-| 2 | `bash ~/car-kit/car_setup.sh motor_pi backup --apply` |
-| 3 | `bash ~/car-kit/car_setup.sh motor_pi install --apply` |
-| 4 | `bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32`, then `sudo reboot` |
-| 5 | `bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32 --release-upgrade` (22.04 to 24.04, interactive), then `sudo reboot` |
-| 6 | Clear `build/ install/ log/`, then `install --apply` again (native to 24.04) |
-| 7 | `bash ~/car-kit/car_setup.sh motor_pi services --apply --machine motor_pi_alone`, then `sudo reboot` |
-| 8 | `bash ~/car-kit/car_setup.sh motor_pi check`: the UART to the ESP32 is there |
+| 2 | `bash ~/car-kit/car_setup.sh motor_pi backup --apply` (and the SD-card image, car day A2) |
+| 3 | `bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32`, then `sudo reboot` |
+| 4 | `bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32 --release-upgrade` (22.04 to 24.04, interactive: keep the **installed** config files; say yes to the spare ssh on port 1022), then `sudo reboot` |
+| 5 | Build our code again on 24.04, from clean (as on the localization Pi): `rm -rf ~/aav-jazzy/aav/build ~/aav-jazzy/aav/install ~/aav-jazzy/aav/log`, then `bash ~/car-kit/car_setup.sh motor_pi install --apply` |
+| 6 | `bash ~/car-kit/car_setup.sh motor_pi services --apply --machine motor_pi_alone`, then `sudo reboot` |
+| 7 | `bash ~/car-kit/car_setup.sh motor_pi check`: Ubuntu 24.04, and the UART to the ESP32 is there |
+
+The upgrade doesn't need our stack installed first: it was installed in step 2 for
+session 6 anyway. `services` refuses while the 2025-26 `aav_serial_bridge` is enabled
+(step 3 disabled it).
 
 | Check first | Why |
 |---|---|
 | Free disk: `bash ~/car-kit/car_install.sh --dry-run` | the localization Pi needed a 64 GB card |
 | `motor_pi_alone` or `motor_pi` | alone: the Pi runs the mux, ego and the bridge, so the heartbeat is made beside the ESP32 and no Orin is needed. `motor_pi`: the Orin runs the mux and ego. Decide with the team |
-| `--after-esp32` | the upgrade refuses without it: step 5 must have passed |
+| `--after-esp32` | the upgrade refuses without it: step 6 must have passed |
 
 ## After: what to check
 
@@ -79,7 +84,7 @@ On the Motor Pi, from the car kit. Run each line without `--apply` first: it sho
 |---|---|
 | `~/aav-jazzy/aav.sh ros2 topic hz /control/car/link_frame` | about 10 Hz: the bridge writes frames |
 | `~/aav-jazzy/aav.sh ros2 topic echo /safety/output_mux/state --once` | the mux's state |
-| A drive on stands: `pixi run keyboard` on the laptop, `max_speed:=0.3` | the wheels turn; let go and they stop |
+| A drive on stands: the Pi started with `max_speed:=0.3`, then `pixi run keyboard` on the laptop (same `ROS_DOMAIN_ID`, 42) | the wheels turn; let go and they stop |
 
 !!! note "`/vehicle/odom` is not the Motor Pi's"
     The wheel sensors are an Arduino on the **Orin's** CAN bus (`aav.dbc` 0x200, 0x201);

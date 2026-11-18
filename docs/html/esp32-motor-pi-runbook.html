@@ -7,7 +7,7 @@
 <!-- Generated from docs/esp32-motor-pi-runbook.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Flash the ESP32, then upgrade the Motor Pi</h1>
-<div class="meta">7 min read · 7 sections</div></header>
+<div class="meta">8 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -124,7 +124,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-order">The order</a><a href="#before-you-start">Before you start</a><a href="#steps-3-5-the-esp32">Steps 3-5: the ESP32</a><a href="#step-6-the-motor-pi-to-2404">Step 6: the Motor Pi to 24.04</a><a href="#after-what-to-check">After: what to check</a><a href="#if-the-rust-nodes-misbehave">If the Rust nodes misbehave</a><a href="#rollback">Rollback</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-order">The order</a><a href="#before-you-start">Before you start</a><a href="#steps-4-6-the-esp32">Steps 4-6: the ESP32</a><a href="#step-7-the-motor-pi-to-2404">Step 7: the Motor Pi to 24.04</a><a href="#after-what-to-check">After: what to check</a><a href="#if-the-rust-nodes-misbehave">If the Rust nodes misbehave</a><a href="#rollback">Rollback</a></nav>
 <div class="lead"><p>Senura's runbook (17 Nov), checked against the repo the same night by Ben's session.
 One page, in order. Each step links to the car-day section that has the details.</p>
 <div class="admonition danger">
@@ -159,38 +159,45 @@ there, the red button and the Kar-Tech stop <strong>tested first</strong>.</p>
 </tr>
 <tr>
 <td>2</td>
+<td><strong>Our stack on the Motor Pi</strong>, still on Ubuntu 22.04 (the car kit runs there too; CI checks it)</td>
+<td><a href="car-day.html#session-4-the-orin-and-the-motor-pi">Car day A5</a>, <a href="car-setup.html#step-4-install-our-code">Car setup step 4</a></td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi install --apply</code> ends with no STOP</td>
+</tr>
+<tr>
+<td>3</td>
 <td><strong>The Motor Pi's UART, ready</strong> (console off it, theirs off at boot)</td>
 <td><a href="car-day.html#a7b-the-motor-pis-uart-ready">Car day A7b</a></td>
 <td>L1-L5 show nobody on <code>/dev/ttyAMA0</code></td>
 </tr>
 <tr>
-<td>3</td>
+<td>4</td>
 <td>The firmware in the emulator, on a Mac</td>
 <td>below</td>
 <td><code>pixi run esp qemu-check</code>: PASS</td>
 </tr>
 <tr>
-<td>4</td>
+<td>5</td>
 <td><strong>Flash the Rust ESP32</strong>, guided</td>
 <td><a href="car-day.html#session-6-the-esp32">Car day A8</a></td>
 <td><code>pixi run esp first-check</code>: SAFE TO GO ON</td>
 </tr>
 <tr>
-<td>5</td>
-<td>The on-stands checks (session 6)</td>
+<td>6</td>
+<td>The on-stands checks (session 6): our bridge on the Pi makes the heartbeat</td>
 <td><a href="car-day.html#session-6-the-esp32">Car day A8</a></td>
 <td>every answer yes; any no rolls back</td>
 </tr>
 <tr>
-<td>6</td>
+<td>7</td>
 <td>Upgrade the Motor Pi to Ubuntu 24.04</td>
-<td><a href="car-day.html#day-b-upgrades-and-the-reflash">Car day, Day B</a></td>
+<td><a href="car-day.html#day-b-upgrades-and-the-reflash">Car day, Day B</a>, <a href="car-setup.html#step-2-the-ubuntu-2204-pis-to-2404">Car setup step 2</a></td>
 <td><code>car_setup.sh motor_pi check</code>: no STOP</td>
 </tr>
 </tbody>
 </table></div>
-<p>Step 2 was missing from the first draft. Without it the Pi's kernel console and the
-2025-26 bridge both write to the ESP32's wire, and <code>car_setup.sh motor_pi check</code> STOPs.</p>
+<p>Steps 2 and 3 were missing from the first draft. Session 6 needs our bridge running on
+the Pi (step 2), and without step 3 the Pi's kernel console and the 2025-26 bridge both
+write to the ESP32's wire.</p>
 </section>
 <section class="card"><h2 id="before-you-start">Before you start</h2>
 <div class="table-wrap"><table>
@@ -219,12 +226,12 @@ there, the red button and the Kar-Tech stop <strong>tested first</strong>.</p>
 </tr>
 <tr>
 <td>The team agrees to retire the 2025-26 C++ path</td>
-<td>needed before step 6, which is one-way</td>
+<td>needed before step 7, which is one-way</td>
 </tr>
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="steps-3-5-the-esp32">Steps 3-5: the ESP32</h2>
+<section class="card"><h2 id="steps-4-6-the-esp32">Steps 4-6: the ESP32</h2>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -256,7 +263,7 @@ there, the red button and the Kar-Tech stop <strong>tested first</strong>.</p>
 <p>Restore: <code>vendor/cargo-tools/bin/espflash write-bin --port &lt;port&gt; 0 &lt;backup.bin&gt;</code>.
 Keep the <code>.bin</code> on the laptop and the shared drive.</p>
 </section>
-<section class="card"><h2 id="step-6-the-motor-pi-to-2404">Step 6: the Motor Pi to 24.04</h2>
+<section class="card"><h2 id="step-7-the-motor-pi-to-2404">Step 7: the Motor Pi to 24.04</h2>
 <p>On the Motor Pi, from the car kit. Run each line without <code>--apply</code> first: it shows the plan.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -272,34 +279,33 @@ Keep the <code>.bin</code> on the laptop and the shared drive.</p>
 </tr>
 <tr>
 <td>2</td>
-<td><code>bash ~/car-kit/car_setup.sh motor_pi backup --apply</code></td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi backup --apply</code> (and the SD-card image, car day A2)</td>
 </tr>
 <tr>
 <td>3</td>
-<td><code>bash ~/car-kit/car_setup.sh motor_pi install --apply</code></td>
-</tr>
-<tr>
-<td>4</td>
 <td><code>bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32</code>, then <code>sudo reboot</code></td>
 </tr>
 <tr>
+<td>4</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32 --release-upgrade</code> (22.04 to 24.04, interactive: keep the <strong>installed</strong> config files; say yes to the spare ssh on port 1022), then <code>sudo reboot</code></td>
+</tr>
+<tr>
 <td>5</td>
-<td><code>bash ~/car-kit/car_setup.sh motor_pi upgrade --apply --after-esp32 --release-upgrade</code> (22.04 to 24.04, interactive), then <code>sudo reboot</code></td>
+<td>Build our code again on 24.04, from clean (as on the localization Pi): <code>rm -rf ~/aav-jazzy/aav/build ~/aav-jazzy/aav/install ~/aav-jazzy/aav/log</code>, then <code>bash ~/car-kit/car_setup.sh motor_pi install --apply</code></td>
 </tr>
 <tr>
 <td>6</td>
-<td>Clear <code>build/ install/ log/</code>, then <code>install --apply</code> again (native to 24.04)</td>
-</tr>
-<tr>
-<td>7</td>
 <td><code>bash ~/car-kit/car_setup.sh motor_pi services --apply --machine motor_pi_alone</code>, then <code>sudo reboot</code></td>
 </tr>
 <tr>
-<td>8</td>
-<td><code>bash ~/car-kit/car_setup.sh motor_pi check</code>: the UART to the ESP32 is there</td>
+<td>7</td>
+<td><code>bash ~/car-kit/car_setup.sh motor_pi check</code>: Ubuntu 24.04, and the UART to the ESP32 is there</td>
 </tr>
 </tbody>
 </table></div>
+<p>The upgrade doesn't need our stack installed first: it was installed in step 2 for
+session 6 anyway. <code>services</code> refuses while the 2025-26 <code>aav_serial_bridge</code> is enabled
+(step 3 disabled it).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -318,7 +324,7 @@ Keep the <code>.bin</code> on the laptop and the shared drive.</p>
 </tr>
 <tr>
 <td><code>--after-esp32</code></td>
-<td>the upgrade refuses without it: step 5 must have passed</td>
+<td>the upgrade refuses without it: step 6 must have passed</td>
 </tr>
 </tbody>
 </table></div>
@@ -341,7 +347,7 @@ Keep the <code>.bin</code> on the laptop and the shared drive.</p>
 <td>the mux's state</td>
 </tr>
 <tr>
-<td>A drive on stands: <code>pixi run keyboard</code> on the laptop, <code>max_speed:=0.3</code></td>
+<td>A drive on stands: the Pi started with <code>max_speed:=0.3</code>, then <code>pixi run keyboard</code> on the laptop (same <code>ROS_DOMAIN_ID</code>, 42)</td>
 <td>the wheels turn; let go and they stop</td>
 </tr>
 </tbody>
