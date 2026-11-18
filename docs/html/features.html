@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">110 min read · 15 sections</div></header>
+<div class="meta">111 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -441,6 +441,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben, 17 Nov (TODO 185, as above). Clustering, the Kalman tracker with its gates, the radar's speed, the memory, the saved map's background (or its chunks) and the names, ported; the same things as the Python on 298 clouds (2,237 things: ids, kinds, positions and speeds within 5e-15). Ravensim, <code>/clock</code> 100 Hz: 1.5 % of a core against 7.5 %; road 31 MB against 78, campus 188 against 353. <code>sim-check --movers</code> 3 of 3 (the Python 2 of 3 in the same pair), <code>--lidar-obstacle</code> passes with both; the lot and University Drive tours, 2 runs each: no false holds (the Python 1), every leg (one University Drive run never started: the output mux latched STOP at start-up, <code>sim_gps</code> not yet announced on <code>/system/source</code>, a race seen in both languages' logs; 2 of 2 run again). Since 17 Nov the default in the simulator and on the car; <code>things_impl:=python</code> falls back</td>
 <td>Ben</td>
 <td>2026-11-17</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_lane_finder_rs/README.md">The lane finder in Rust</a> (<code>aav_lane_finder_rs</code> <code>lane_finder</code>, <code>lane_finder_impl:=</code>), the default</td>
+<td>Ben, 18 Nov: "the aav_lane_finder might be nice to have since it helps the car stay on the correct side"; Rust where possible, for trust and speed on the car's ARM computers. The bird's-eye warp, the paint mask, the sliding windows and the fits ported with no OpenCV (its fixed-point remap and lens model rewritten, so the masks are the same pixels; numpy's polyfit through nalgebra): the same lanes as the Python on 50 pictures (made up: straight, curved, dashed, one line, none, noise, night, tilted and distorted lenses; and 5 Ravensim frames), within 2e-14 m. Ravensim, University Drive, both side by side on the same 1,535 pictures: the same lanes to float32, 3.7 % of a core and 37 MB against 17.4 % and 175 MB. Since 18 Nov the default wherever the lane finder runs (<code>lane:=true</code>, the lane pose, the car's lane part, the bench); <code>lane_finder_impl:=python</code> falls back</td>
+<td>Ben</td>
+<td>2026-11-18</td>
 <td>sim</td>
 </tr>
 <tr>

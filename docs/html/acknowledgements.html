@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">17 min read · 8 sections</div></header>
+<div class="meta">18 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -412,13 +412,25 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>nalgebra</strong></td>
 <td>Apache-2.0</td>
 <td>runs</td>
-<td>the things' 4 × 4 Kalman matrices (<code>things-core</code>), NDT's (<code>ndt-core</code>)</td>
+<td>the things' 4 × 4 Kalman matrices (<code>things-core</code>), NDT's (<code>ndt-core</code>); the Rust lane finder's least-squares fit (<code>lane-core</code>)</td>
 </tr>
 <tr>
 <td>OpenCV</td>
 <td>Apache-2.0</td>
-<td>runs</td>
-<td>lane finding</td>
+<td>runs; ported (the formulas)</td>
+<td>lane finding (the Python <code>aav_lane_finder</code>); its <code>projectPoints</code> lens model and its fixed-point bilinear <code>remap</code> rewritten in Rust for <code>aav_lane_finder_rs</code> (<code>lane-core</code>), so the bird's-eye view has OpenCV's grey levels exactly</td>
+</tr>
+<tr>
+<td><strong>NumPy</strong>'s <code>polyfit</code>, <code>convolve</code> ('same') and <code>linspace</code></td>
+<td>BSD-3</td>
+<td>ported (the algorithms)</td>
+<td><code>lane-core</code>: the lane lines' fit, the line starts' histogram and the sliding windows' edges, as the Python lane finder computes them (<code>aav_lane_finder_rs</code>)</td>
+</tr>
+<tr>
+<td><strong>png</strong> (image-rs)</td>
+<td>MIT OR Apache-2.0</td>
+<td>runs (tests)</td>
+<td>reads the Rust lane finder's test pictures (<code>lane-core</code>'s vectors)</td>
 </tr>
 <tr>
 <td>NVIDIA TensorRT; Apple Core ML Tools</td>
