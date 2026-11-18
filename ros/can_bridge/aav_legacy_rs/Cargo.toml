@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+# legacy-bridge: the bridge's logic without ROS (aav_legacy's legacy_protocol.py,
+#   uart_relay.py, speed_control.py, uplink_reader.py and link_report.py, ported), on the
+#   firmware's own frames (legacy-link): cargo test -p legacy-bridge
+# legacy-node: the ROS node (rclrs), binary `legacy_uart_bridge`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/legacy-bridge", "crates/legacy-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
