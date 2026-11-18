@@ -202,7 +202,10 @@ mod tests {
         };
         let mut reader = Reader::start(make, Arc::clone(&latest), retry, |_| {}).expect("a thread");
         let start = Instant::now();
-        while reader.starts() < 3 && start.elapsed() < Duration::from_secs(5) {
+        // Wait for both: the third start can come before its frames are read.
+        while (reader.starts() < 3 || reader.frames() < 3)
+            && start.elapsed() < Duration::from_secs(5)
+        {
             std::thread::sleep(Duration::from_millis(10));
         }
         reader.stop();
