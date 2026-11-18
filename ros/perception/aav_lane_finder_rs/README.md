@@ -85,7 +85,7 @@ the same pixels, and the rest agrees to rounding.
 | The debug picture | OpenCV's anti-aliased lines, Hershey text | plain lines, a 5 x 7 font; the same layout, sizes and colours |
 | A distortion with the wrong number of coefficients | OpenCV raises on every picture: none published | a warning; the lens without distortion |
 | A tilted-sensor distortion (14 coefficients) | OpenCV's | refused as above (no camera of ours has one) |
-| `use_camera_info`, `debug_image` passed as `-p` with a params file naming the node | rclpy: the `-p` wins | rclrs: the file wins (launch files pass both as files, so no difference there) |
+| A parameter both in a file under the node's name and under `/**` (`-p`, or a launch dict with no namespace) | rclpy: the later one wins | rclrs: the node's name wins. `lane_finder.launch.py` gives the node `namespace='/'`, so its dict is written under `/lane_finder` and wins in both (`debug_image:=true` checked with each) |
 
 ## Invariants
 

@@ -39,6 +39,7 @@ of a straight road; start_y and start_yaw move it. A stop sign stands 25 m ahead
 right; obstacle:=true puts a 1 m box in the lane 15 m ahead (aav_bench/config/bench.yaml).
 lane:=true runs lane keeping: lane_finder reads the pretend camera, control_interface
 steers on /drivers/ai/cmd_vel. lane:=fake feeds control_interface a pretend straight lane instead.
+lane_finder_impl:=python runs the Python lane_finder in the Rust one's place (the default).
 
 arm:=true arms the spine after 12 s, once navigation is up, the way `ros2 service call
 /spine/arm std_srvs/srv/SetBool "{data: true}"` does: aav_spine's arm_when_open asks
@@ -184,7 +185,9 @@ def launch_setup(context):
         actions.append(include('aav_lane_geometry', 'lane_follower.launch.py',
                                fake=str(lane == 'fake').lower()))
     if lane == 'true':
-        actions.append(include('aav_lane_finder', 'lane_finder.launch.py'))
+        actions.append(include('aav_lane_finder', 'lane_finder.launch.py',
+                               lane_finder_impl=vehicle.check_lane_finder_impl(
+                                   LaunchConfiguration('lane_finder_impl').perform(context))))
     if flag['hud']:
         actions.append(include('aav_hud', 'hud.launch.py'))
     if flag['foxglove']:
@@ -219,6 +222,10 @@ def generate_launch_description():
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher '
                                           '(the ml environment)'),
+        DeclareLaunchArgument('lane_finder_impl',
+                              default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
+                              description='rust or python: which lane_finder finds the lane '
+                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
         DeclareLaunchArgument('lane', default_value='false',
                               description='true: lane keeping (lane_finder and control_interface, '
                                           'on /drivers/ai/cmd_vel); fake: the same on a '

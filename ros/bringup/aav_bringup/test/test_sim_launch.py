@@ -387,7 +387,7 @@ def test_the_road_worlds_full_graph(hud_package):
     sent = included(actions)
     assert sent['detector.launch.py'] == {'labels': 'stop sign', 'use_sim_time': 'true',
                                           'detector_impl': 'python'}
-    assert sent['lane_finder.launch.py'] == {}
+    assert sent['lane_finder.launch.py'] == {'lane_finder_impl': 'rust'}
     assert sent['lane_follower.launch.py'] == {'fake': 'false'}
     assert sent['hud.launch.py'] == {}   # aav_hud's window (15 Oct)
     assert sent['navigation.launch.py']['camera_obstacles'] == 'true'
@@ -751,7 +751,10 @@ def test_lane_pose_runs_the_lane_finder_and_feeds_the_global_ekf():
     assert sent['localization.launch.py']['lane_pose'] == 'true'
     # The world's own lane map, though lane_map:= is empty (the behaviour planner's).
     assert sent['localization.launch.py']['lane_map'].endswith('road.lanes.yaml')
-    assert 'lane_finder.launch.py' in sent
+    assert sent['lane_finder.launch.py'] == {'lane_finder_impl': 'rust'}
+    assert included(started(SIM, world='road', lane_pose='true',
+                            lane_finder_impl='python'))['lane_finder.launch.py'] == {
+        'lane_finder_impl': 'python'}
     assert 'lane_follower.launch.py' not in sent        # nothing steers by the lane
     with pytest.raises(ValueError, match='lane_pose'):
         started(SIM, world='road', lane_pose='true', cameras='false')

@@ -16,12 +16,11 @@
   <depend>sensor_msgs</depend>
   <depend>aav_lane_geometry</depend>
 
-  <!-- Its lane_finder.yaml: the same settings as the Python node. -->
-  <exec_depend>aav_lane_finder</exec_depend>
+  <!-- aav_lane_finder (its lane_finder.yaml, its launch file and, for the tests, its
+       Python modules) depends on this package, not the other way: no cycle. -->
 
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_cmake_test</test_depend>
-  <test_depend>aav_lane_finder</test_depend>
   <test_depend>python3-numpy</test_depend>
   <test_depend>python3-opencv</test_depend>
 

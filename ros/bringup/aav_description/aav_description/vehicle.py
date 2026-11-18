@@ -552,6 +552,24 @@ def check_rc_impl(impl):
     return name
 
 
+# Which lane_finder finds the lane lines (lane_finder.launch.py, and every profile that starts
+# it: lane:=true, lane_pose:=true, the car's lane part; lane_finder_impl:=): rust
+# (aav_lane_finder_rs, the default since Ben, 18 Nov: "it helps the car stay on the correct
+# side"; the same node name, topics, parameters and lanes, no OpenCV) or python
+# (aav_lane_finder, the fallback). Each one's package.
+LANE_FINDER_IMPLS = {'python': 'aav_lane_finder', 'rust': 'aav_lane_finder_rs'}
+DEFAULT_LANE_FINDER_IMPL = 'rust'
+
+
+def check_lane_finder_impl(impl):
+    """Return lane_finder's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in LANE_FINDER_IMPLS:
+        raise ValueError(f'lane_finder_impl:={impl}: pick one of '
+                         f'{", ".join(LANE_FINDER_IMPLS)}')
+    return name
+
+
 # Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
 # localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
 # in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or

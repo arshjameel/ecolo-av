@@ -27,11 +27,12 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [voxels_impl:=python] (rust: the same cubes from aav_voxels_rs, the Rust port)
       [ego_impl:=rust] [behaviour_impl:=rust] [watchdog_impl:=rust]
       [localization_health_impl:=rust] [lidar_impl:=rust] [things_impl:=rust]
-      [io_mux_impl:=rust] [legacy_impl:=rust] [rc_impl:=rust]
+      [io_mux_impl:=rust] [legacy_impl:=rust] [rc_impl:=rust] [lane_finder_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
                            aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
                            aav_lidar_rs, aav_things_rs, aav_io_mux_rs (both muxes),
-                           aav_legacy_rs (legacy_uart_bridge) and aav_rc_rs (rc_driver).
+                           aav_legacy_rs (legacy_uart_bridge) and aav_rc_rs (rc_driver);
+                           since 18 Nov aav_lane_finder_rs (lane_finder, the lane part).
                            python: the Python node instead, the same names and topics;
                            one switch each, the fall-back if one misbehaves.
                            docs/car-day.md)
@@ -438,7 +439,8 @@ def launch_setup(context):
              'things_impl': vehicle.check_things_impl(arg('things_impl')),
              'io_mux_impl': vehicle.check_io_mux_impl(arg('io_mux_impl')),
              'legacy_impl': vehicle.check_legacy_impl(arg('legacy_impl')),
-             'rc_impl': vehicle.check_rc_impl(arg('rc_impl'))}
+             'rc_impl': vehicle.check_rc_impl(arg('rc_impl')),
+             'lane_finder_impl': vehicle.check_lane_finder_impl(arg('lane_finder_impl'))}
     get_logger('car.launch.py').info(
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
@@ -569,7 +571,8 @@ def launch_setup(context):
         actions.append(Node(package='aav_detector', executable='camera_obstacles',
                             name='camera_obstacles', parameters=parameters))
     if on('lane'):
-        actions += [include('aav_lane_finder', 'lane_finder.launch.py', debug_image=False),
+        actions += [include('aav_lane_finder', 'lane_finder.launch.py', debug_image=False,
+                            lane_finder_impl=impls['lane_finder_impl']),
                     include('aav_lane_geometry', 'lane_follower.launch.py', fake=False)]
     if on('localization'):
         actions.append(include('aav_localization', 'localization.launch.py',
@@ -702,6 +705,10 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
                               description='python or rust: which lidar_scan flattens the '
                                           'lidar (aav_lidar, or aav_lidar_rs)'),
+        DeclareLaunchArgument('lane_finder_impl',
+                              default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
+                              description='rust or python: which lane_finder finds the lane '
+                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='python or rust: which things node tracks the '
                                           'cubes (aav_things, or aav_things_rs)'),
