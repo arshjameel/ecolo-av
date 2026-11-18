@@ -179,6 +179,24 @@ def test_the_orins_frames_move_freeze_or_break():
         unpack_frame_v2(orin.frames(values, bad_crc=True)())
 
 
+RELAY_BIN = (Path(__file__).resolve().parents[2]
+             / 'ros/can_bridge/aav_legacy_rs/target/release/examples/relay_frames')
+
+
+@pytest.mark.skipif(not RELAY_BIN.exists(), reason='relay_frames not built (esp32.sh builds it)')
+def test_the_rust_and_python_relays_send_the_qemu_check_the_same_frames():
+    rust = q.RustRelay(RELAY_BIN)
+    try:
+        mapping = q.LegacyMapping()
+        for command in (q.DRIVE, q.STAND_STILL):
+            values = q.to_legacy(*command, mapping)
+            frames = [q.Orin(relay).frames(values) for relay in (rust, None)]
+            for _ in range(3):
+                assert frames[0]() == frames[1]()
+    finally:
+        rust.close()
+
+
 # --- The uplink and the RC (TODO 50, 48) ---
 
 def up(**changes):
