@@ -16,10 +16,10 @@ pixi run drive-to-point -> /drive_to_point goal -> point_driver
 It speeds up gently, holds a cruise speed, then slows down by the distance left, so it
 stops at B. It steers by pure pursuit: first it turns towards B, then it follows the
 straight line to it. Priority 25 puts it below every person, test and script, above
-Nav2. It drives on GPS, so the stop-sign and sensor locks (30) hold it.
+navigation. It drives on GPS, so the stop-sign and sensor locks (30) hold it.
 
 ```sh
-pixi run drive-to-point --sim --ahead 20                # Gazebo, 20 m ahead of the car
+pixi run drive-to-point --sim --ahead 20                # Ravensim, 20 m ahead of the car
 pixi run drive-to-point --sim --x 30 --y 5              # a map point (x east, y north)
 pixi run drive-to-point --lat 45.38630 --lon -75.69580  # the real car: asks you to type "drive"
 ```
@@ -87,7 +87,7 @@ Modules (all but the two nodes have no ROS):
   watchdog's lock or its silence, a stale position or fix, someone else driving
   (twist_mux passing another command for 0.3 s), or the car not moving though asked to.
 - Stops when the car leaves the drive's corridor (`line.Fence`, TODO 187), apart from the
-  geofence and Nav2: over `max_off_line` from the line to B, over `max_overrun` past B, or
+  geofence and navigation: over `max_off_line` from the line to B, over `max_overrun` past B, or
   further from the start than B or a turn round, plus `max_overrun`. Not once it stands at B.
 - Also stops when the drive runs past its limits:
 

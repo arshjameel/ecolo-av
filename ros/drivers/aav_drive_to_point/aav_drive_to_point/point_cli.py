@@ -50,7 +50,8 @@ def parse(argv):
     ap.add_argument('--ahead', type=float, help="m ahead of the car's nose")
     ap.add_argument('--left', type=float, default=0.0, help='m to its left, with --ahead')
     ap.add_argument('--speed', type=float, default=0.0, help='cruise speed, m/s (0: default)')
-    ap.add_argument('--sim', action='store_true', help="Ravensim: this computer, the simulator's clock")
+    ap.add_argument('--sim', action='store_true',
+                    help="Ravensim: this computer, the simulator's clock")
     a = ap.parse_args(argv)
     kinds = [a.lat is not None or a.lon is not None, a.x is not None or a.y is not None,
              a.ahead is not None]
