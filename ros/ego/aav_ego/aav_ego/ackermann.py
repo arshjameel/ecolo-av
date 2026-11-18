@@ -22,7 +22,9 @@ silent driver, starts at once.
 
 While a person drives, the pedal (pedal.py) grades how hard a slow-down is: letting the
 stick off slows gently, pulling it back brakes by how far. A stop (no fresh command) and a
-turn's cap still brake at max_deceleration.
+turn's cap still brake at max_deceleration. And the pedal waits at a standstill before
+changing direction (pedal.may_shift): held at 0 for shift_hold, and stopped by the wheels
+when they are measured.
 """
 
 from __future__ import annotations
@@ -33,7 +35,7 @@ from typing import Callable, Optional, Tuple
 
 from aav_ego import dynamics
 from aav_ego.dynamics import Body
-from aav_ego.pedal import Pedal, slow_rate
+from aav_ego.pedal import may_shift, Pedal, slow_rate
 
 
 @dataclass
@@ -145,6 +147,10 @@ class EgoModel:
         self.accel = 0.0         # m/s^2, signed: the last tick's change of speed
         # The pedal (pedal.py) while a person drives, else None: ego_node sets it each tick.
         self.pedal: Optional[Pedal] = None
+        # A fresh measured speed (m/s), else None: ego_node sets it each tick.
+        self.wheel_speed: Optional[float] = None
+        self.direction = 0.0     # +1 or -1: the way it last moved; 0 never moved
+        self.held = 0.0          # s at a standstill (speed 0) since it last moved
 
     def step(self, cmd: Optional[Tuple[float, float]], dt: float,
              lead: Optional[Callable[[float, float, float], Tuple[float, float]]] = None
@@ -184,6 +190,11 @@ class EgoModel:
         slow_down = None
         if self.pedal is not None and cmd is not None and target_v == asked:
             slow_down = slow_rate(self.pedal, self.speed, cmd[0], lim.max_deceleration)
+        # A person asking the other way waits at a standstill, the brake on (may_shift).
+        if (self.pedal is not None and cmd is not None and self.speed == 0.0
+                and target_v * self.direction < 0.0
+                and not may_shift(self.pedal, self.held, self.wheel_speed)):
+            target_v = 0.0
         before = self.speed
         self.speed, accel = slew_speed(self.speed, target_v, lim, dt, speed_up, slow_down)
         if lim.max_jerk > 0.0 and abs(self.speed) > abs(before):
@@ -192,6 +203,13 @@ class EgoModel:
                                             lim.max_jerk, dt)
             accel = abs(signed)
         self.accel = (self.speed - before) / dt if dt > 0.0 else 0.0
+        if self.speed != 0.0:
+            self.direction = 1.0 if self.speed > 0.0 else -1.0
+            self.held = 0.0
+        elif before == 0.0:
+            self.held += dt
+        else:
+            self.held = 0.0      # it has just stopped
         step = lim.max_steering_rate * dt
         self.steering = clamp(target_d, self.steering - step, self.steering + step)
         return self.speed, self.steering, accel

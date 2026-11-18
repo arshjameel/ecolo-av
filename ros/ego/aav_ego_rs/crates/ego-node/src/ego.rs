@@ -32,6 +32,8 @@ use crate::params::{as_number, Declarer};
 const LAG_AWARE_DRIVERS: [&str; 4] = ["scripted", "point", "nav", "ai"];
 /// The people's slots that drive with the pedal.
 const PEDAL_DRIVERS: [&str; 3] = ["joy", "rc", "keyboard"];
+/// ns: a vehicle/odom speed older than this is not a wheel speed for the pedal's shift.
+const WHEEL_FRESH: i64 = 500_000_000;
 /// The stop point's step (s), as stop_ahead.py's default.
 const STOP_DT: f64 = 0.02;
 
@@ -102,6 +104,8 @@ struct Ego {
     pedal: Pedal,
     pedal_watch: LagAwareWatch,
     estop: bool,
+    /// The last vehicle/odom speed, and when it came (ns).
+    wheel: Option<(f64, i64)>,
     twin: Twin,
     trace_horizon: f64,
     trace_dt: f64,
@@ -252,16 +256,21 @@ pub fn start(node: &Node) -> Result<Running> {
     let pedal = Pedal {
         let_off: d.number("pedal_let_off", p.let_off)?,
         full: d.number("pedal_full", p.full)?,
+        shift_hold: d.number("pedal_shift_hold", p.shift_hold)?,
+        stop_speed: d.number("pedal_stop_speed", p.stop_speed)?,
     };
     if !pedal_drivers.is_empty() {
         log_info!(
             &logger,
             "the pedal for {}: let off slows at {} m/s^2, full back brakes at {} m/s^2 (a \
-             full stick: {} m/s); off during an e-stop",
+             full stick: {} m/s); the other way after {} s at a standstill (and the wheels \
+             under {} m/s, when measured); off during an e-stop",
             pedal_drivers.join(", "),
             fmt_g(pedal.let_off),
             fmt_g(limits.max_deceleration),
-            fmt_g(pedal.full)
+            fmt_g(pedal.full),
+            fmt_g(pedal.shift_hold),
+            fmt_g(pedal.stop_speed)
         );
     }
 
@@ -287,6 +296,7 @@ pub fn start(node: &Node) -> Result<Running> {
         pedal,
         pedal_watch: LagAwareWatch::new(&pedal_drivers),
         estop: false,
+        wheel: None,
         twin: Twin::new(cfg, loop_config),
         trace_horizon,
         trace_dt,
@@ -331,6 +341,7 @@ pub fn start(node: &Node) -> Result<Running> {
             let speed = msg.twist.twist.linear.x;
             if speed.is_finite() {
                 s.twin.measured(speed);
+                s.wheel = Some((speed, s.now()));
             }
         },
     )?));
@@ -595,6 +606,10 @@ impl Ego {
         }
         let step = dt.min(0.1);
         self.model.pedal = self.pedal_now(cmd);
+        self.model.wheel_speed = self
+            .wheel
+            .filter(|&(_, at)| now - at <= WHEEL_FRESH)
+            .map(|(speed, _)| speed);
         let out = self
             .model
             .step(cmd, step, lead_on.then_some(&mut self.lead));

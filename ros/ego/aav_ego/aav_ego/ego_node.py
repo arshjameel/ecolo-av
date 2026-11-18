@@ -3,6 +3,7 @@ ego: the virtual car between the command mux and the backends.
 
 Subscribes  control/cmd_vel   geometry_msgs/TwistStamped (or Twist, use_stamped:=false)
             vehicle/odom      nav_msgs/Odometry: the measured speed, for the trace's twin
+                              and the pedal's change of direction (fresh: WHEEL_FRESH s)
             drivers/<d>/lag_aware  std_msgs/Bool, latched (transient local), and
             drivers/<d>/cmd_vel    geometry_msgs/TwistStamped, for each d in
                                    lag_aware_drivers: is a lag-aware driver driving?
@@ -30,9 +31,11 @@ Parameters  the limits (ackermann.Limits) and the body (dynamics.Body: mass, pay
             trace_rate_hz, trace_speed_loop: the trace (trace_ahead.py; its twin takes each
             measured speed);
             vehicle_yaml: the car model's numbers ('' = aav_description's vehicle.yaml);
-            pedal_drivers, pedal_let_off, pedal_full: the pedal (pedal.py): while one of
-            pedal_drivers drives, the stick's position sets how hard ego slows (let off:
-            gently; pulled back: braking by how far; then reverse). [] turns it off
+            pedal_drivers, pedal_let_off, pedal_full, pedal_shift_hold, pedal_stop_speed:
+            the pedal (pedal.py): while one of pedal_drivers drives, the stick's position
+            sets how hard ego slows (let off: gently; pulled back: braking by how far; then,
+            after pedal_shift_hold s at a standstill and a fresh wheel speed, if any, under
+            pedal_stop_speed, reverse). [] turns it off
 Also        drivers/<d>/cmd_vel for each d in pedal_drivers (whose command is it?), and
             safety/estop  std_msgs/Bool: while true, the pedal is off (full braking)
 
@@ -81,6 +84,8 @@ LAG_AWARE_DRIVERS = ['scripted', 'point', 'nav', 'ai']
 # The people's slots (twist_mux.yaml) that drive with the pedal (pedal.py). The buttons
 # send one fixed speed, so they keep the plain speed.
 PEDAL_DRIVERS = ['joy', 'rc', 'keyboard']
+# s: a /vehicle/odom speed older than this is not a wheel speed for the pedal's shift.
+WHEEL_FRESH = 0.5
 
 
 class Ego(Node):
@@ -100,6 +105,7 @@ class Ego(Node):
         self.cmd_key = None      # lag_lead.command_key of it (stamped only)
         self.cmd_time = None     # rclpy Time the command arrived
         self.last_tick = None
+        self.wheel = None        # (speed, rclpy Time): the last /vehicle/odom
         self.declare_lead_and_trace(rate)
 
         if use_stamped:
@@ -189,8 +195,11 @@ class Ego(Node):
         """Declare the pedal (pedal.py): which drivers use it, and its two numbers."""
         p = self.declare_parameter
         drivers = list(p('pedal_drivers', PEDAL_DRIVERS).value)
-        self.pedal = Pedal(let_off=float(p('pedal_let_off', Pedal().let_off).value),
-                           full=float(p('pedal_full', Pedal().full).value))
+        d = Pedal()
+        self.pedal = Pedal(let_off=float(p('pedal_let_off', d.let_off).value),
+                           full=float(p('pedal_full', d.full).value),
+                           shift_hold=float(p('pedal_shift_hold', d.shift_hold).value),
+                           stop_speed=float(p('pedal_stop_speed', d.stop_speed).value))
         self.pedal_watch = LagAwareWatch(drivers)
         self.estop = False
         for driver in drivers:
@@ -205,7 +214,9 @@ class Ego(Node):
                 f'the pedal for {", ".join(drivers)}: let off slows at '
                 f'{self.pedal.let_off:g} m/s^2, full back brakes at '
                 f'{self.limits.max_deceleration:g} m/s^2 (a full stick: {self.pedal.full:g} '
-                f'm/s); off during an e-stop')
+                f'm/s); the other way after {self.pedal.shift_hold:g} s at a standstill '
+                f'(and the wheels under {self.pedal.stop_speed:g} m/s, when measured); off '
+                f'during an e-stop')
 
     def pedal_now(self, cmd):
         """Return the pedal if a pedal driver's fresh command drives and no e-stop, else None."""
@@ -247,6 +258,13 @@ class Ego(Node):
         speed = msg.twist.twist.linear.x
         if math.isfinite(speed):
             self.twin.measured(speed)
+            self.wheel = (speed, self.get_clock().now())
+
+    def wheel_speed(self, now):
+        """Return the measured speed if fresh (WHEEL_FRESH), else None."""
+        if self.wheel is None or (now - self.wheel[1]).nanoseconds * 1e-9 > WHEEL_FRESH:
+            return None
+        return self.wheel[0]
 
     def publish_trace(self):
         now = self.get_clock().now()
@@ -358,6 +376,7 @@ class Ego(Node):
             self.lead.reset()
         step = min(dt, 0.1)
         self.model.pedal = self.pedal_now(cmd)
+        self.model.wheel_speed = self.wheel_speed(now)
         speed, steering, accel = self.model.step(cmd, step, self.lead.step if lead_on else None)
         # The trace's twin: each measured speed (on_odom), then what ego sent.
         self.twin.sent(speed, steering, step)

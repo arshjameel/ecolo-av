@@ -7,14 +7,23 @@
 //!
 //! A stale command, the e-stop or a turn's cap still brake at `max_deceleration`: the
 //! node and [`crate::ackermann::EgoModel`] decide when the pedal applies.
+//!
+//! A change of direction waits at a standstill (Ben, 17 Nov: "come to a complete stop and
+//! shift into drive or reverse"): ego's speed reaches 0 by its own model while the wheels
+//! may still turn, so it holds 0, the brake on, for `shift_hold` seconds; and while a
+//! fresh wheel speed exists, until that is under `stop_speed` too ([`Pedal::may_shift`]).
 
-/// The pedal's two numbers.
+/// The pedal's numbers.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pedal {
     /// m/s²: slowing with the stick let go.
     pub let_off: f64,
     /// m/s: the speed a full stick asks for.
     pub full: f64,
+    /// s at a standstill before the other way (17 Nov; a guess to tune on stands).
+    pub shift_hold: f64,
+    /// m/s: a fresh wheel speed under this counts as stopped.
+    pub stop_speed: f64,
 }
 
 impl Default for Pedal {
@@ -22,6 +31,8 @@ impl Default for Pedal {
         Pedal {
             let_off: 1.0,
             full: 1.0,
+            shift_hold: 1.0,
+            stop_speed: 0.05,
         }
     }
 }
@@ -48,6 +59,15 @@ impl Pedal {
         let kept = 1.0_f64.min(target.abs() / current.abs());
         let_off * (1.0 - kept)
     }
+
+    /// Whether the car may change direction: `held` s at a standstill, and stopped.
+    ///
+    /// `wheel_speed` is a fresh measured speed (m/s), or `None` when there is none (the
+    /// Motor Pi alone): then the time alone decides.
+    #[must_use]
+    pub fn may_shift(&self, held: f64, wheel_speed: Option<f64>) -> bool {
+        held >= self.shift_hold && wheel_speed.is_none_or(|v| v.abs() < self.stop_speed)
+    }
 }
 
 #[cfg(test)]
@@ -61,5 +81,14 @@ mod tests {
         assert_eq!(p.slow_rate(1.0, -1.0, 2.0), 2.0);
         assert_eq!(p.slow_rate(1.0, 0.5, 2.0), 0.5);
         assert_eq!(p.slow_rate(0.0, 0.5, 2.0), 2.0);
+    }
+
+    #[test]
+    fn shifts_after_the_hold_and_once_the_wheels_stop() {
+        let p = Pedal::default();
+        assert!(!p.may_shift(0.5, None));
+        assert!(p.may_shift(1.0, None));
+        assert!(p.may_shift(2.0, Some(-0.04)));
+        assert!(!p.may_shift(2.0, Some(0.06)));
     }
 }
