@@ -15,7 +15,7 @@ owns the shared launch file and config both twins use.
 | Executable | Does |
 |---|---|
 | `spine_bridge` | the bridge (topics below) |
-| `arm_when_open` | calls `/spine/arm` each `retry` s (1.0) until armed or `give_up` s (120.0); exits 0 or 1. Stand-ins only |
+| `arm_when_open` | calls `/spine/arm` each `retry` s (1.0) until armed or `give_up` s (120.0); exits 0 or 1. Stand-ins only. The Rust one (`aav_spine_bridge`'s) is the default since 18 Nov; `arm_when_open_impl:=python` runs this one |
 
 ### `spine_bridge` topics (role `spine`)
 

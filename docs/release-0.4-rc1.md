@@ -72,6 +72,8 @@ The fall-backs, one per node (the others stay Rust):
 | legacy_uart_bridge (the ESP32's UART, the Motor Pi) | `legacy_impl:=python` |
 | rc_driver (RC via ROS) | `rc_impl:=python` |
 | lane_finder (lane keeping, the lane pose) | `lane_finder_impl:=python` |
+| point_driver (drive to a point; the Orin) and its client | `drive_to_point_impl:=python`; `pixi run drive-to-point --python ...` |
+| arm_when_open (bench and Ravensim's spine only) | `arm_when_open_impl:=python` |
 
 ## Untested on the car (everything since 13 Nov)
 

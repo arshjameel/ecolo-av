@@ -531,6 +531,8 @@ def launch_setup(context):
                 lag_scale=arg('lag_scale'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
+                arm_when_open_impl=vehicle.check_arm_when_open_impl(
+                    arg('arm_when_open_impl')),
                 esp32=arg('esp32'), esp32_loop=arg('esp32_loop'),
                 legacy_impl=vehicle.check_legacy_impl(arg('legacy_impl')),
                 camera_lockstep=arg('camera_lockstep'), graphics=arg('graphics')),
@@ -552,7 +554,9 @@ def launch_setup(context):
                 **({'screens': arg('watch_screens')} if arg('watch_screens') else {})),
         include(context, 'aav_scripted', 'scripted.launch.py', use_sim_time='true'),
         include(context, 'aav_drive_to_point', 'drive_to_point.launch.py', use_sim_time='true',
-                watchdog=arg('watchdog')),
+                watchdog=arg('watchdog'),
+                drive_to_point_impl=vehicle.check_drive_to_point_impl(
+                    arg('drive_to_point_impl'))),
         # Only the IMU filter: Ravensim stands in for the drivers.
         Node(package='imu_filter_madgwick', executable='imu_filter_madgwick_node',
              name='imu_filter_madgwick',
@@ -915,6 +919,14 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
                               description='python or rust: which lidar_scan flattens the '
                                           'lidar (aav_lidar, or aav_lidar_rs)'),
+        DeclareLaunchArgument('drive_to_point_impl',
+                              default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
+                              description='rust or python: which point_driver drives to a '
+                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
+        DeclareLaunchArgument('arm_when_open_impl',
+                              default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
+                              description='rust or python: which arm_when_open arms the spine '
+                                          "(aav_spine_bridge's, or aav_spine's)"),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '

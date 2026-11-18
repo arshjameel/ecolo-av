@@ -124,7 +124,9 @@ def spine_in_the_loop(context, v, sim_time):
         # Once the safety gate is OPEN: spine_bridge refuses before. On a steady clock,
         # not the simulated one.
         actions.append(TimerAction(period=12.0, actions=[Node(
-            package='aav_spine', executable='arm_when_open', name='arm_when_open',
+            package=vehicle.ARM_WHEN_OPEN_IMPLS[vehicle.check_arm_when_open_impl(
+                LaunchConfiguration('arm_when_open_impl').perform(context))],
+            executable='arm_when_open', name='arm_when_open',
             output='screen')]))
     return actions
 
@@ -374,6 +376,10 @@ def generate_launch_description():
         DeclareLaunchArgument('esp32_loop', default_value='pi',
                               description="with esp32:=true: the bridge's speed_loop.mode, "
                                           'pi or open'),
+        DeclareLaunchArgument('arm_when_open_impl',
+                              default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
+                              description='rust or python: which arm_when_open arms the spine '
+                                          "(aav_spine_bridge's, or aav_spine's)"),
         DeclareLaunchArgument('arm', default_value='true',
                               description='with spine:=true: arm the spine after 12 s'),
         DeclareLaunchArgument('legacy_impl', default_value=vehicle.DEFAULT_LEGACY_IMPL,

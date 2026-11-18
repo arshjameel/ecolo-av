@@ -7,7 +7,7 @@
 <!-- Generated from docs/languages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Python and Rust (and the C++ we don&#x27;t write)</h1>
-<div class="meta">9 min read · 6 sections</div></header>
+<div class="meta">12 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -125,7 +125,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-languages-fit-into-ros-2">How languages fit into ROS 2</a><a href="#what-we-use-and-where">What we use, and where</a><a href="#is-c-too-risky">Is C++ too risky?</a><a href="#what-if-everything-were-rust">What if everything were Rust?</a><a href="#rust-on-the-pi-and-the-esp32">Rust on the Pi and the ESP32</a><a href="#the-plan">The plan</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-languages-fit-into-ros-2">How languages fit into ROS 2</a><a href="#what-we-use-and-where">What we use, and where</a><a href="#is-c-too-risky">Is C++ too risky?</a><a href="#what-if-everything-were-rust">What if everything were Rust?</a><a href="#launch-overrides-namespace-on-every-rust-node">Launch overrides: namespace=&#x27;/&#x27; on every Rust node</a><a href="#rust-on-the-pi-and-the-esp32">Rust on the Pi and the ESP32</a><a href="#the-plan">The plan</a></nav>
 <div class="lead"><p>New ROS nodes are Rust (Ben, 16 Nov: "lets remove python were possible. I trust rust more
 then python"); the older ones are Python, and the firmware and hardware drivers are Rust. The C++ we
 inherited is now Rust (Ben, 10 and 15 Oct): none of our ROS code is C++. Only today's
@@ -164,6 +164,11 @@ programs only meet through messages.</p></div>
 <td>The sensor mux and the output mux, <code>aav_io_mux_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
 <td>Ports of <code>aav_io_mux</code>'s nodes (Ben, 17 Nov: "Rust tomorrow"): the same answers, step by step. The default; <code>io_mux_impl:=python</code> falls back</td>
+</tr>
+<tr>
+<td>The point driver and its client, <code>aav_drive_to_point_rs</code>; arm_when_open (<code>aav_spine_bridge</code>)</td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>aav_drive_to_point</code>'s two nodes and <code>aav_spine</code>'s <code>arm_when_open</code> (18 Nov): the same answers, drive for drive. The default; <code>drive_to_point_impl:=python</code>, <code>arm_when_open_impl:=python</code> fall back</td>
 </tr>
 <tr>
 <td>The ESP32's UART bridge and rc_driver, <code>aav_legacy_rs</code>, <code>aav_rc_rs</code></td>
@@ -318,6 +323,110 @@ change. So an old build folder links a message package without its folder. A fre
 (CI) never sees it. On your laptop, clear rclrs's kept answer and build again:</p>
 <pre class="highlight"><code class="language-sh">rm -rf build/*/target/release/build/rclrs-* build/*/target/release/.fingerprint/rclrs-*
 pixi run build</code></pre>
+</section>
+<section class="card"><h2 id="launch-overrides-namespace-on-every-rust-node">Launch overrides: <code>namespace='/'</code> on every Rust node</h2>
+<p><strong>The trap (found 18 Nov).</strong> rclrs 0.8 reads a parameter file's <code>/**</code> entries first, then
+the entry under the node's own name, whatever order the files came in. rclpy and rclcpp
+take the files in order. launch_ros writes a launch dict under <code>/**</code> when the Node has no
+namespace. So with a config YAML (<code>legacy_uart_bridge:</code>) and a launch dict:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who started</th>
+<th>The YAML says</th>
+<th>Launch says</th>
+<th>Python uses</th>
+<th>Rust used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>legacy_uart_bridge</code></td>
+<td><code>port: /dev/ttyAMA0</code></td>
+<td><code>port:=socket://...</code></td>
+<td>launch's</td>
+<td><strong>the YAML's</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The fix.</strong> Give the Node <code>namespace='/'</code> (the same names and topics). launch then writes
+its dicts under <code>/legacy_uart_bridge</code> too, and the later file wins in both languages.
+<code>tools/tests/test_rust_launch_params.py</code> fails a Rust Node with several parameter sources
+and no namespace; <code>aav_bringup</code>'s <code>test_rust_overrides.py</code> starts ego, the legacy bridge and
+the output mux in both languages and reads the values back.</p>
+<p><strong>Also:</strong> rclrs matches only <code>/**</code> and the exact name. A YAML key such as <code>/**/joy_alive</code>
+reaches the Python node and <strong>not</strong> the Rust one: name a Rust node in full.</p>
+<p>What the audit found (18 Nov, every launch profile run without starting anything):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Node (Rust)</th>
+<th>Key in both</th>
+<th>YAML</th>
+<th>Launch</th>
+<th>Was it lost?</th>
+<th>Now</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>legacy_uart_bridge</code></td>
+<td><code>max_steering_angle</code></td>
+<td>0.5 (legacy.yaml)</td>
+<td>vehicle.yaml's</td>
+<td>yes, hidden: both 0.5 today; a new measurement would never have reached Rust</td>
+<td><code>namespace='/'</code></td>
+</tr>
+<tr>
+<td><code>legacy_uart_bridge</code></td>
+<td><code>port</code>, <code>frame_version</code></td>
+<td>legacy.yaml</td>
+<td>new <code>port:=</code>, <code>frame_version:=</code></td>
+<td>(no launch argument before)</td>
+<td>tested both languages</td>
+</tr>
+<tr>
+<td><code>hud</code></td>
+<td><code>max_speed</code></td>
+<td>hud.yaml</td>
+<td>ego's cap, <code>max_speed:=</code></td>
+<td>yes, with <code>max_speed:=0.3</code>: the redline kept hud.yaml's 1.0</td>
+<td><code>namespace='/'</code></td>
+</tr>
+<tr>
+<td><code>ego</code> (rust), <code>point_driver</code></td>
+<td>-</td>
+<td>ego.yaml as a dict / one file per node</td>
+<td></td>
+<td>no</td>
+<td>already safe</td>
+</tr>
+<tr>
+<td><code>ndt</code>, <code>lane_finder</code></td>
+<td>-</td>
+<td></td>
+<td></td>
+<td>no: fixed before (5 and 18 Nov)</td>
+<td><code>namespace='/'</code></td>
+</tr>
+<tr>
+<td>spine_bridge, lidar_scan, voxels, things, mppi_lag, mpc_lag_rs, velocity_smoother, localization_health, sensor_watchdog, imu_node, behaviour, rc_driver, spine_sim</td>
+<td>none today</td>
+<td></td>
+<td></td>
+<td>no</td>
+<td><code>namespace='/'</code>, so a future key can't be lost</td>
+</tr>
+<tr>
+<td><code>joy_alive</code> (being ported)</td>
+<td>its whole YAML</td>
+<td><code>/**/joy_alive:</code></td>
+<td></td>
+<td>would be: rclrs skips wildcards</td>
+<td>name it in full when ported</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="rust-on-the-pi-and-the-esp32">Rust on the Pi and the ESP32</h2>
 <div class="table-wrap"><table>

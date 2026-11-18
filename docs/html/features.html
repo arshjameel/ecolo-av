@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">111 min read · 15 sections</div></header>
+<div class="meta">112 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -499,6 +499,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>The Gate 4 goal: drive to a GPS point and stop within 1 m; in Gazebo it stopped within 0.4 m. Called <code>aav_goto</code> until 26 Oct: renamed so the name says the job (action <code>/drive_to_point</code>, slot <code>point</code>, <code>pixi run drive-to-point</code>). Since 15 Nov it stops if the car leaves the drive's own corridor (3 m off the line, 2 m past B), whatever the cause</td>
 <td>Ben</td>
 <td>2026-10-15</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_drive_to_point_rs/README.md">Drive to point in Rust</a> (<code>aav_drive_to_point_rs</code> <code>point_driver</code> and <code>drive_to_point</code>, <code>drive_to_point_impl:=</code>) and <code>arm_when_open</code> in Rust (<code>aav_spine_bridge</code>, <code>arm_when_open_impl:=</code>), the defaults</td>
+<td>Rust where possible (Ben, 16 Nov), for trust on the car's ARM computers. The speed plan, pure pursuit, the corridor, every refusal and stop, and whole drives (to B, an e-stop, a cancel, a stuck car, speeding, a GPS jump, the stopping law, a turn round) give the Python's numbers to 1e-12 and its words exactly (shared vectors; the drive's ticks moved into <code>run.py</code>, no ROS, so both share them). TODO 94 kept as it is. <code>drive_to_point_impl:=python</code>, <code>arm_when_open_impl:=python</code> and <code>pixi run drive-to-point --python</code> fall back</td>
+<td>Ben</td>
+<td>2026-11-18</td>
 <td>sim</td>
 </tr>
 <tr>

@@ -1060,3 +1060,16 @@ def test_rewrite_follows_rewrittenyamls_rules():
     assert out['c'][0]['footprint'] == '[[1, 2]]'
     assert out['a']['b']['n'] == 2.5 and out['a']['new']['flag'] is True
     assert cfg['a']['footprint'] == 'x'          # a copy
+
+
+def test_drive_to_point_and_arm_when_open_impls_are_python_or_rust():
+    assert vehicle.DEFAULT_DRIVE_TO_POINT_IMPL == vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL == 'rust'
+    assert vehicle.DRIVE_TO_POINT_IMPLS == {'python': 'aav_drive_to_point',
+                                            'rust': 'aav_drive_to_point_rs'}
+    assert vehicle.ARM_WHEN_OPEN_IMPLS == {'python': 'aav_spine', 'rust': 'aav_spine_bridge'}
+    assert vehicle.check_drive_to_point_impl(' Python ') == 'python'
+    assert vehicle.check_arm_when_open_impl('rust') == 'rust'
+    with pytest.raises(ValueError, match='drive_to_point_impl:=c'):
+        vehicle.check_drive_to_point_impl('c')
+    with pytest.raises(ValueError, match='arm_when_open_impl:=c'):
+        vehicle.check_arm_when_open_impl('c')
