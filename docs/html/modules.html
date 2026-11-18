@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -401,7 +401,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Why</strong></td>
-<td>sees obstacles ahead, for Nav2's costmap and the collision monitor</td>
+<td>sees obstacles ahead, for the costmap and the stop zone</td>
 </tr>
 <tr>
 <td><strong>Runs on</strong></td>
@@ -640,11 +640,11 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Why</strong></td>
-<td>fill <code>vehicle.yaml</code>'s <code>actuators:</code> with measured numbers, so Gazebo moves like the car</td>
+<td>fill <code>vehicle.yaml</code>'s <code>actuators:</code> with measured numbers, so the simulator moves like the car</td>
 </tr>
 <tr>
 <td><strong>Runs on</strong></td>
-<td>the laptop on the car's network (or the Mac with Gazebo)</td>
+<td>the laptop on the car's network (or a Mac with Ravensim)</td>
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
@@ -824,7 +824,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>Nav2 set up for a car: the Smac State Lattice planner (the default since 1 Nov; Hybrid-A* if forward only), MPPI (or Regulated Pure Pursuit), costmaps, the collision monitor, and the maps</td>
+<td>our navigation, set up for a car: the launch file and settings that start our map server, costmaps, planner (the State Lattice; Hybrid-A*), navigator, <code>mppi_lag</code>, smoother and stop zone, and the maps</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -840,11 +840,11 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Origin</strong></td>
-<td>stock Nav2; our settings. Replaces 2025-26 <code>Navigation_PathPlanning_ObstacleAvoidance</code> and <code>Obstacle_Avoidance_logic</code></td>
+<td>ours, each node a port of a Nav2 server (Nav2 itself went on 17 Nov); our settings. Replaces 2025-26 <code>Navigation_PathPlanning_ObstacleAvoidance</code> and <code>Obstacle_Avoidance_logic</code></td>
 </tr>
 <tr>
 <td><strong>Status</strong></td>
-<td><span class="badge b-works">works</span> goals in Gazebo, 40 m on the bench. Open: the weave (N7)</td>
+<td><span class="badge b-works">works</span> goals in Ravensim (and in Gazebo with Nav2), 40 m on the bench. Open: the weave (N7)</td>
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
@@ -1163,11 +1163,11 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>puts Gazebo's simulated car behind the real car's topics, with an IMU and GPS; in the road world, a camera, a radar stand-in and (with <code>lidar:=true</code>) a roof lidar</td>
+<td>puts Ravensim's car behind the real car's topics, with an IMU and GPS; in the road world, a camera, a radar stand-in and (with <code>lidar:=true</code>) a roof lidar</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
-<td>Nav2 and the EKFs can be tested with the same settings as on the car</td>
+<td>navigation and the EKFs can be tested with the same settings as on the car</td>
 </tr>
 <tr>
 <td><strong>Runs on</strong></td>
@@ -1179,15 +1179,15 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Origin</strong></td>
-<td>ours, on stock Gazebo Harmonic and <code>ros_gz</code></td>
+<td>ours; first written for Gazebo Harmonic (until 16 Nov), now beside Ravensim (<code>aav_simulator</code>)</td>
 </tr>
 <tr>
 <td><strong>Status</strong></td>
-<td><span class="badge b-works">works</span> headless on Linux and a Mac; its window on a Mac</td>
+<td><span class="badge b-works">works</span> headless on a Mac; on Linux with software GL <span class="badge b-untested">untested</span> (TODO 240)</td>
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>pixi run sim</code> (<code>gui:=false</code> on a Mac)</td>
+<td><code>pixi run sim</code>; <code>pixi run ravensim</code> with the developer window</td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
@@ -1210,7 +1210,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>a CARLA car as the car: the same topics as Gazebo's, from CARLA's Python client</td>
+<td>a CARLA car as the car: the same topics as Ravensim's, from CARLA's Python client</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -1315,7 +1315,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Runs on</strong></td>
-<td>with the radar (<code>radar_clusters: false</code> on the car for now); always on the bench and in Gazebo's road world</td>
+<td>with the radar (<code>radar_clusters: false</code> on the car for now); always on the bench and in the simulator's road world</td>
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
@@ -1704,7 +1704,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_routes</code></td>
-<td>street routes (Valhalla) as GPS waypoints for Nav2</td>
+<td>street routes (Valhalla) as GPS waypoints for the navigator</td>
 <td><code>ros/drivers/aav_routes/README.md</code>, then <a href="routes.html">Routes</a></td>
 </tr>
 <tr>
@@ -1714,7 +1714,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_lidar</code></td>
-<td><code>lidar_scan</code>: the roof lidar's cloud as a 2D scan for Nav2</td>
+<td><code>lidar_scan</code>: the roof lidar's cloud as a 2D scan for the costmap and the stop zone</td>
 <td><code>ros/perception/aav_lidar/README.md</code></td>
 </tr>
 <tr>
@@ -1739,7 +1739,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_ghost</code></td>
-<td>ghost obstacles: a pretend person only Nav2 sees</td>
+<td>ghost obstacles: a pretend person only navigation sees</td>
 <td><code>ros/safety/aav_ghost/README.md</code>, then <a href="ghost-obstacles.html">Ghost obstacles</a></td>
 </tr>
 <tr>
@@ -1764,7 +1764,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_voxels</code></td>
-<td>a trial beside <code>aav_lidar</code> (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes for Nav2</td>
+<td>a trial beside <code>aav_lidar</code> (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes for the costmap</td>
 <td><code>ros/perception/aav_voxels/README.md</code>, then <a href="../designs/2026-10-30_voxels.md">the design</a></td>
 </tr>
 <tr>
@@ -1779,22 +1779,22 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_costmap</code></td>
-<td>our own costmap in Rust, a trial beside Nav2's (<code>costmap:=own</code>)</td>
+<td>our own costmap in Rust, the only one since Nav2 went (<code>costmap:=own</code>)</td>
 <td><code>ros/drivers/aav_costmap/README.md</code>, then <a href="own-costmap.html">Our costmap</a></td>
 </tr>
 <tr>
 <td><code>aav_planner</code></td>
-<td>our own path planner in Rust, a trial (<code>planner:=own</code>): Nav2's Smac State Lattice ported</td>
+<td>our own path planner in Rust, the default (<code>planner:=own</code>): Nav2's Smac State Lattice ported</td>
 <td><code>ros/drivers/aav_planner/README.md</code>, then <a href="own-planner.html">Our planner</a></td>
 </tr>
 <tr>
 <td><code>aav_navigator</code></td>
-<td>our own navigator in Rust, a trial (<code>navigator:=own</code>), in <code>bt_navigator</code>'s place</td>
+<td>our own navigator in Rust, the only one (<code>navigator:=own</code>), in <code>bt_navigator</code>'s old place</td>
 <td><code>ros/drivers/aav_navigator/README.md</code>, then <a href="own-navigator.html">Our navigator</a></td>
 </tr>
 <tr>
 <td><code>aav_smoother</code></td>
-<td>our own velocity smoother in Rust, a trial (<code>smoother:=own</code>)</td>
+<td>our own velocity smoother in Rust, the only one (<code>smoother:=own</code>)</td>
 <td><code>ros/drivers/aav_smoother/README.md</code>, then <a href="own-smoother.html">Our smoother</a></td>
 </tr>
 <tr>
@@ -1804,7 +1804,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_behaviour</code></td>
-<td>the behaviour planner, a trial (<code>behaviour:=true</code>): six states and a speed cap on Nav2</td>
+<td>the behaviour planner, a trial (<code>behaviour:=true</code>): six states and a speed cap on navigation</td>
 <td><code>ros/drivers/aav_behaviour/README.md</code>, then <a href="stopping.html">How the car stops</a></td>
 </tr>
 <tr>

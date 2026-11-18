@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -123,21 +123,22 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#scores-8-nov-our-simulator">Scores (8 Nov, our simulator)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
-<div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
+<div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it won. The
 order: the costmap (<a href="own-costmap.html">done</a>), the planner (<a href="own-planner.html">done</a>), then
 <strong>the navigator</strong> (this page), the last piece. Since 14 Nov ours is the simulator's
-default (<code>stack:=ours</code>; Nav2's with <code>navigator:=nav2</code> or <code>stack:=stock</code>). Nav2 stays on the car.</p>
+default (<code>stack:=ours</code>).
+Nav2 went on 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>): ours is the only one, in the sim and on the car. The comparisons with Nav2's below are the record.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
 <li><strong>Switch:</strong> <code>navigator:=own</code>. Package <code>aav_navigator</code> (Rust).</li>
 <li>
-<p><strong>What it is:</strong> what Nav2's <code>bt_navigator</code>, our behaviour trees and
+<p><strong>What it is:</strong> what Nav2's <code>bt_navigator</code>, our behaviour trees for it and
   <code>waypoint_follower</code> do for the car, as one state machine.</p>
 </li>
 <li>
 <p><strong>Drop-in:</strong> Nav2's four actions, under Nav2's own names (<code>/navigate_to_pose</code>...),
-  in <code>bt_navigator</code>'s and <code>waypoint_follower</code>'s place. No goal sender knows which runs.</p>
+  in <code>bt_navigator</code>'s and <code>waypoint_follower</code>'s place. No goal sender had to change.</p>
 </li>
 <li>
 <p><strong>All ours:</strong> <code>navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code>. Then no
@@ -153,16 +154,16 @@ default (<code>stack:=ours</code>; Nav2's with <code>navigator:=nav2</code> or <
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
 <pre class="highlight"><code>goal senders ──▶ navigator (ours) ──ComputePathToPose──────────▶ planner (ours or Nav2's)
  RViz, map,          │            ──ComputePathThroughPoses────▶
- street_router,      │            ──FollowPath─────────────────▶ mppi_lag (or controller_server)
+ street_router,      │            ──FollowPath─────────────────▶ mppi_lag (or a tracker)
  language_drive,     │            ──ClearEntireCostmap─────────▶ costmaps (ours or Nav2's)
  the tools           └──────────── /drivers/nav/navigator/status
-                                   mppi_lag ─▶ velocity smoother ─▶ collision_monitor ─▶ twist_mux</code></pre>
-<p>The safety locks, collision_monitor and twist_mux never change.</p>
+                                   mppi_lag ─▶ velocity smoother ─▶ stop zone ─▶ twist_mux</code></pre>
+<p>The safety locks, the stop zone and twist_mux never change.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Action (the same name for both)</th>
-<th>Nav2's server</th>
+<th>Action (Nav2's name, kept)</th>
+<th>Nav2's server it replaced</th>
 <th>Used by</th>
 </tr>
 </thead>
@@ -264,8 +265,9 @@ send to the same place whichever runs. <code>/goal_pose</code> reaches ours too.
 </tbody>
 </table></div>
 <p>Each change is in <code>ros/drivers/aav_navigator/PROVENANCE.md</code>.</p>
-<p><strong>What all ours leaves running from Nav2:</strong> <code>map_server</code> (the map), the velocity
-smoother, and collision_monitor (the command line in front of the safety locks).</p>
+<p><strong>What all ours left running from Nav2, until 17 Nov:</strong> <code>map_server</code> (the map), the
+velocity smoother, and collision_monitor. Each is ours now: <code>aav_costmap</code>'s map server,
+<code>aav_smoother</code>, <code>aav_stop_zone</code> (<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>).</p>
 </section>
 <section class="card"><h2 id="try-it">Try it</h2>
 <div class="table-wrap"><table>
@@ -281,12 +283,12 @@ smoother, and collision_monitor (the command line in front of the safety locks).
 <td><code>pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag</code> (reversing since 14 Nov; <code>reversing:=false</code> for forward only)</td>
 </tr>
 <tr>
-<td>Score all ours against all Nav2</td>
-<td><code>pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3</code></td>
+<td>Score all ours (against all Nav2 until 17 Nov)</td>
+<td><code>pixi run measure controllers --stacks own --tours lot obstacle --runs 3</code></td>
 </tr>
 <tr>
 <td>The campus route</td>
-<td><code>pixi run measure controllers --stacks nav2 own --tours fieldhouse --speed 2.5</code></td>
+<td><code>pixi run measure controllers --stacks own --tours fieldhouse --speed 2.5</code></td>
 </tr>
 <tr>
 <td>The graph and a goal</td>
@@ -470,10 +472,10 @@ again. A goal a few metres past the exit would avoid it.</p>
   not yet scored against all Nav2 with <code>--reversing</code>.</p>
 </li>
 <li>
-<p><strong>On the car:</strong> untested; <code>car.launch.py</code> always passes <code>navigator:=nav2</code>.</p>
+<p><strong>On the car:</strong> untested; <code>car.launch.py</code> runs ours (the only navigator since 17 Nov).</p>
 </li>
 <li><strong><code>IsPathValid</code></strong> on the final approach (14 Nov): once a second it asks the planner
-  (planner_server's, or ours, <code>aav_planner</code>, where none runs); a blocked path is planned
+  (ours, <code>aav_planner</code>); a blocked path is planned
   again. Not yet seen in a sim run.</li>
 <li><strong>Back up</strong> calls Nav2's <code>behavior_server</code> where it runs (reversing only). All ours runs
   none: since 14 Nov the navigator then backs up through the follower, <code>mppi_lag</code>, on a

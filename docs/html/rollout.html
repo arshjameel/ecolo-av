@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -225,7 +225,7 @@ name in <code>/etc/hosts</code>, reboot. Then update the Keychain entry's name a
 <tr>
 <td>Orin</td>
 <td>the lidar (network), CAN</td>
-<td>the brain: ego, Nav2, localization, perception</td>
+<td>the brain: ego, navigation, localization, perception</td>
 <td><code>machines/orin.yaml</code></td>
 </tr>
 <tr>
@@ -348,12 +348,12 @@ stay as they were.</strong> The new pieces are off, or run only in the simulator
 <td><code>/ego/trace</code>, <code>/ego/stop_point</code></td>
 </tr>
 <tr>
-<td>Nav2</td>
-<td>Still the default: costmap, planner, navigator, smoother</td>
-<td></td>
+<td>Navigation</td>
+<td>Ours since 17 Nov: costmap, planner, navigator, <code>mppi_lag</code>, smoother, stop zone (Nav2 deleted)</td>
+<td><a href="../history/nav2-as-it-was.md">Nav2, as it was</a></td>
 </tr>
 <tr>
-<td>Our costmap, planner, navigator, smoother, MPPI with lag, MPC with lag</td>
+<td>MPC with lag, the other trials</td>
 <td>Simulator switches only</td>
 <td><a href="switches.html">Switches</a></td>
 </tr>

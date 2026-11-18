@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -122,7 +122,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#1-the-three-ways">1. The three ways</a><a href="#2-way-1-the-scripted-drive-today">2. Way 1: the scripted drive (today)</a><a href="#3-way-2-nav2-to-a-gps-point-today">3. Way 2: Nav2 to a GPS point (today)</a><a href="#4-way-3-the-point-driver">4. Way 3: the point driver</a><a href="#5-where-am-i-is-the-hard-part">5. &quot;Where am I?&quot; is the hard part</a><a href="#6-do-we-need-a-costmap-or-a-map">6. Do we need a costmap or a map?</a><a href="#7-test-it-step-by-step">7. Test it, step by step</a><a href="#8-what-to-do-first">8. What to do first</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#1-the-three-ways">1. The three ways</a><a href="#2-way-1-the-scripted-drive-today">2. Way 1: the scripted drive (today)</a><a href="#3-way-2-navigation-to-a-gps-point-today">3. Way 2: navigation to a GPS point (today)</a><a href="#4-way-3-the-point-driver">4. Way 3: the point driver</a><a href="#5-where-am-i-is-the-hard-part">5. &quot;Where am I?&quot; is the hard part</a><a href="#6-do-we-need-a-costmap-or-a-map">6. Do we need a costmap or a map?</a><a href="#7-test-it-step-by-step">7. Test it, step by step</a><a href="#8-what-to-do-first">8. What to do first</a></nav>
 <div class="lead"><p>Written 15 October 2026, checked 25 October. The goal: the car drives in a straight line from point
 A to point B, speeding up, holding a speed, slowing down and stopping. This is the KEFC
 request's "accelerate / hold / stop" demo, and the first step to GPS point-to-point.</p>
@@ -133,7 +133,7 @@ request's "accelerate / hold / stop" demo, and the first step to GPS point-to-po
 <li><strong><code>pixi run drive-to-point --lat .. --lon ..</code></strong> drives to B and stops there, slowing at <strong>half the measured braking</strong>.</li>
 <li>A straight drive in an empty lot needs <strong>no costmap and no map</strong>: only "where am I" and "where is B".</li>
 <li>The hard part isn't the driving. It's <strong>knowing where the car is and which way it faces</strong> at the start.</li>
-<li>Test it on the turtle, then the bench, then Gazebo, then the car on stands, then the car.</li>
+<li>Test it on the turtle, then the bench, then Ravensim, then the car on stands, then the car.</li>
 <li><strong><code>pixi run measure atob</code></strong> scores a recorded run: speeding up, holding, the stop on B (<a href="#scoring-a-run">Scoring a run</a>).</li>
 </ul>
 </blockquote></div>
@@ -143,7 +143,7 @@ request's "accelerate / hold / stop" demo, and the first step to GPS point-to-po
 <tr>
 <th></th>
 <th>1. Scripted drive</th>
-<th>2. Nav2 to a GPS point</th>
+<th>2. Navigation to a GPS point</th>
 <th>3. The point driver (<code>aav_drive_to_point</code>)</th>
 </tr>
 </thead>
@@ -151,7 +151,7 @@ request's "accelerate / hold / stop" demo, and the first step to GPS point-to-po
 <tr>
 <td>Idea</td>
 <td>drive a speed profile: speed up, hold for a distance, stop</td>
-<td>give Nav2 point B as latitude/longitude; it plans and steers</td>
+<td>give the navigator point B as latitude/longitude; it plans and steers</td>
 <td>drive the straight line from A to B, holding the line, and stop at B</td>
 </tr>
 <tr>
@@ -169,13 +169,13 @@ request's "accelerate / hold / stop" demo, and the first step to GPS point-to-po
 <tr>
 <td>Stops exactly at B?</td>
 <td>no: after a distance from the start</td>
-<td>yes, within Nav2's goal tolerance</td>
+<td>yes, within the navigator's goal tolerance</td>
 <td>yes</td>
 </tr>
 <tr>
 <td>Speed profile you choose?</td>
 <td><strong>yes</strong>: acceleration, speed, deceleration</td>
-<td>roughly: Nav2's limits (1 m/s, 1 m/s²)</td>
+<td>roughly: navigation's limits (1 m/s, 1 m/s²)</td>
 <td><strong>yes</strong></td>
 </tr>
 <tr>
@@ -187,13 +187,13 @@ request's "accelerate / hold / stop" demo, and the first step to GPS point-to-po
 <tr>
 <td>Exists today?</td>
 <td>✅ <code>aav_scripted</code></td>
-<td>✅ Nav2 + <code>navsat_transform</code></td>
+<td>✅ our navigator + <code>navsat_transform</code></td>
 <td>✅ <code>aav_drive_to_point</code> (15 Oct)</td>
 </tr>
 <tr>
 <td>Tested</td>
 <td>turtle, bench</td>
-<td>Gazebo (goals of 8 m and 9.5 m), bench (40 m)</td>
+<td>Gazebo with Nav2 (goals of 8 m and 9.5 m), bench (40 m)</td>
 <td>Gazebo: 10-60 m, any angle, 1 and 3 m/s (<a href="#4-way-3-the-point-driver">section 4</a>)</td>
 </tr>
 <tr>
@@ -252,16 +252,16 @@ for the GPS A-to-B demo (tests.md 5.2). Use <strong>2</strong> where there are o
 <li><strong>Or in plain English:</strong> <code>pixi run -e llm talk</code>, then type "drive 10 m forward". A local model plans the goal (the whole 10 m, ramps included), shows it, and drives only after you type yes. Stand-ins only for now: <a href="plain-english.html">docs/plain-english.md</a>.</li>
 </ul>
 </section>
-<section class="card"><h2 id="3-way-2-nav2-to-a-gps-point-today">3. Way 2: Nav2 to a GPS point (today)</h2>
-<p>Nav2 plans a path from where the car is to B and steers along it.</p>
-<pre class="highlight"><code class="language-text"> B (lat, lon) ─► /fromLL ─► B (x, y on the map) ─► Nav2 plans ─► Nav2 steers ─► stops at B</code></pre>
+<section class="card"><h2 id="3-way-2-navigation-to-a-gps-point-today">3. Way 2: navigation to a GPS point (today)</h2>
+<p>Our stack (<code>stack:=ours</code>) plans a path from where the car is to B and steers along it.</p>
+<pre class="highlight"><code class="language-text"> B (lat, lon) ─► /fromLL ─► B (x, y on the map) ─► planner plans ─► mppi_lag steers ─► stops at B</code></pre>
 <pre class="highlight"><code class="language-bash">ros2 action send_goal /follow_gps_waypoints nav2_msgs/action/FollowGPSWaypoints \
   "{gps_poses: [{position: {latitude: 45.38612, longitude: -75.69588, altitude: 0.0},
                  orientation: {w: 1.0}}]}" --feedback</code></pre>
 <ul>
 <li><code>street_router</code> (<a href="routes.html">Street routes</a>) and the language tools use this same action.</li>
-<li>On an <strong>empty map</strong> (the default, 200 m × 200 m, all free), Nav2's plan is close to a straight line; the planner only respects the car's turning circle.</li>
-<li>Nav2's speed: up to 1.0 m/s, speeding up at up to 1.0 m/s², slowing near the goal (<code>nav2.yaml</code>).</li>
+<li>On an <strong>empty map</strong> (the default, 200 m × 200 m, all free), the plan is close to a straight line; the planner only respects the car's turning circle.</li>
+<li>Navigation's speed: up to 1.0 m/s, speeding up at up to 1.0 m/s², slowing near the goal (<code>nav2.yaml</code>).</li>
 <li>The radar and the roof lidar still fill the local costmap, and collision_monitor still stops for something ahead.</li>
 </ul>
 </section>
@@ -311,13 +311,13 @@ for the GPS A-to-B demo (tests.md 5.2). Use <strong>2</strong> where there are o
        A                    B</code></pre>
 <p>Slowing by the distance left, not by the clock, corrects itself: if the car slows a little
 late, the distance shrinks faster and the command drops to match.</p>
-<h3 id="why-a-line-driver-and-not-nav2-or-the-scripted-drive">Why a line driver, and not Nav2 or the scripted drive</h3>
+<h3 id="why-a-line-driver-and-not-navigation-or-the-scripted-drive">Why a line driver, and not navigation or the scripted drive</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Question</th>
 <th>Line driver (point)</th>
-<th>Nav2</th>
+<th>Navigation</th>
 <th>Scripted</th>
 </tr>
 </thead>
@@ -354,7 +354,7 @@ late, the distance shrinks faster and the command drops to match.</p>
 </tr>
 </tbody>
 </table></div>
-<p>So: <strong>the line driver for the open-lot demo, Nav2 for anything with obstacles.</strong>
+<p>So: <strong>the line driver for the open-lot demo, navigation for anything with obstacles.</strong>
 <code>speed_profile.py</code> (the scripted drive's maths) doesn't fit: it slows at a fixed rate from
 wherever it is, so the stop doesn't land on B. <code>approach.py</code> explains it at the top.</p>
 <h3 id="its-safety">Its safety</h3>
@@ -368,7 +368,7 @@ wherever it is, so the stop doesn't land on B. <code>approach.py</code> explains
 <tbody>
 <tr>
 <td>Has its own twist_mux slot</td>
-<td>priority <strong>25</strong>: below every person, test and script; above Nav2; held by the stop-sign and watchdog locks (30)</td>
+<td>priority <strong>25</strong>: below every person, test and script; above navigation; held by the stop-sign and watchdog locks (30)</td>
 </tr>
 <tr>
 <td>Stops at once</td>
@@ -394,7 +394,7 @@ pixi run drive-to-point --sim --ahead 20                   # 20 m ahead of the c
 pixi run drive-to-point --sim --ahead 30 --left 10         # ... and 10 m to its left
 pixi run drive-to-point --sim --x 30 --y 5                 # a map point (x east, y north, metres)
 pixi run drive-to-point --lat 45.38630 --lon -75.69580     # the real car: a GPS point; it asks first
-pixi run sim-check --drive-to-point-only                   # the Gazebo proof below (8 minutes)</code></pre>
+pixi run sim-check --drive-to-point-only                   # the proof below (then in Gazebo) (8 minutes)</code></pre>
 <p>Or the action itself: <code>ros2 action send_goal /drive_to_point aav_interfaces/action/DriveToPoint "{x: 20.0, y: 0.0}" --feedback</code>.</p>
 <h3 id="proven-in-gazebo-15-oct">Proven in Gazebo (15 Oct)</h3>
 <p><code>pixi run sim-check --drive-to-point-only</code>, Gazebo's truth as the judge:</p>
@@ -427,7 +427,7 @@ pixi run sim-check --drive-to-point-only                   # the Gazebo proof be
 <p>Untested on the bench and on the car: the car needs the brake test (4.3) for <code>max_brake</code> first.</p>
 <h3 id="scoring-a-run">Scoring a run</h3>
 <p><code>pixi run measure atob</code> turns one recorded run into numbers: how well the car sped up, held
-its speed, and stopped on B. The same numbers for Gazebo and for the car.</p>
+its speed, and stopped on B. The same numbers for the simulator and for the car.</p>
 <pre class="highlight"><code class="language-bash">pixi run measure atob bags/&lt;run&gt;                              # B from the point driver's feedback
 pixi run measure atob bags/&lt;run&gt; --b-latlon 45.38630 -75.69580  # or give B (or --b-xy X Y)
 pixi run measure atob bags/&lt;run&gt; --taped -0.12 0.05           # the car: the tape's stop error
@@ -489,7 +489,7 @@ pixi run measure atob bags/&lt;run&gt; --save-csv run.csv           # the run as
 </tr>
 <tr>
 <td>Stop: past B, left of the line</td>
-<td>where it stopped, by the EKF, the truth (Gazebo) or the tape (car)</td>
+<td>where it stopped, by the EKF, the truth (the simulator) or the tape (car)</td>
 <td>m</td>
 </tr>
 <tr>
@@ -504,7 +504,7 @@ pixi run measure atob bags/&lt;run&gt; --save-csv run.csv           # the run as
 </tr>
 </tbody>
 </table></div>
-<p>The speeds come from Gazebo's truth in the sim, from the wheels (<code>/vehicle/odom</code>) on the
+<p>The speeds come from the simulator's truth, from the wheels (<code>/vehicle/odom</code>) on the
 car. <code>tools/atob_score.py</code>'s header says which topic gives each number.</p>
 <h3 id="why-tape-the-stop-on-the-car">Why tape the stop on the car</h3>
 <p>The EKF's stop error says how well the <strong>controller</strong> did: the car stopped where it
@@ -532,11 +532,11 @@ car. <code>tools/atob_score.py</code>'s header says which topic gives each numbe
 </table></div>
 <p>So at the car: mark B on the ground, drive, and tape the stop from the mark (along the
 line, then across it). <code>--taped ALONG ACROSS</code> gives the scorer the real answer, and it
-splits the two errors. In Gazebo the truth does the tape's job. The B mark is only as
+splits the two errors. In the simulator the truth does the tape's job. The B mark is only as
 good as the GPS that placed it: average the fix for 30 s (section 5).</p>
 <p>To record a run: <code>tools/record.sh</code> records the EKF, the wheels and <code>/control/cmd_vel</code>.
 For B from the point driver's feedback, also record <code>/drive_to_point/_action/feedback</code> (a hidden topic:
-<code>ros2 bag record --include-hidden-topics</code>), <code>/drivers/point/cmd_vel</code>, and in Gazebo
+<code>ros2 bag record --include-hidden-topics</code>), <code>/drivers/point/cmd_vel</code>, and in the simulator
 <code>/vehicle/sim/truth</code>.</p>
 </section>
 <section class="card"><h2 id="5-where-am-i-is-the-hard-part">5. "Where am I?" is the hard part</h2>
@@ -624,12 +624,12 @@ car moves; then the ZED-F9R's heading if that isn't enough.</p>
 <td>nothing: no GPS, no map</td>
 </tr>
 <tr>
-<td>Way 2 (Nav2)</td>
+<td>Way 2 (navigation)</td>
 <td>the empty map (exists) + the datum at the test site + the sensors for obstacles</td>
 </tr>
 <tr>
 <td>Way 3 (point driver)</td>
-<td>the datum, A and B; no costmap. ⚠️ collision_monitor guards only Nav2's commands, not the point driver's</td>
+<td>the datum, A and B; no costmap. ⚠️ the stop zone guards only navigation's commands, not the point driver's</td>
 </tr>
 <tr>
 <td>Later: a route with curbs and lanes</td>
@@ -665,14 +665,14 @@ map with <code>tools/make_map.py</code> (it already makes <code>empty</code> and
 </tr>
 <tr>
 <td>3</td>
-<td>Gazebo</td>
+<td>Ravensim</td>
 <td><code>pixi run sim</code>, then the GPS goal above; <code>pixi run sim-check --drive-to-point</code></td>
-<td>GPS, both EKFs, Nav2, stopping at B; the point driver's stop</td>
+<td>GPS, both EKFs, navigation, stopping at B; the point driver's stop</td>
 </tr>
 <tr>
 <td>3b</td>
-<td>Gazebo, the whole picture</td>
-<td><code>pixi run demo</code>: Gazebo, RViz, the HUD and the map window in one go. Give a goal with RViz's "2D Goal Pose", or the map window's search, then DRIVE HERE and CONFIRM. With a box in the lane and the screens: <code>pixi run sim obstacle:=true hud:=true map:=true</code></td>
+<td>Ravensim, the whole picture</td>
+<td><code>pixi run demo</code>: Ravensim, RViz, the HUD and the map window in one go. Give a goal with RViz's "2D Goal Pose", or the map window's search, then DRIVE HERE and CONFIRM. With a box in the lane and the screens: <code>pixi run sim obstacle:=true hud:=true map:=true</code></td>
 <td>Nav2 planning round things, the screens, a goal set by a person</td>
 </tr>
 <tr>
@@ -722,7 +722,7 @@ map with <code>tools/make_map.py</code> (it already makes <code>empty</code> and
 </tr>
 <tr>
 <td>5</td>
-<td>A Gazebo world shaped like the test lot</td>
+<td>A simulator world shaped like the test lot</td>
 <td>ours</td>
 </tr>
 </tbody>

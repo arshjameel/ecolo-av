@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -124,7 +124,8 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#why">Why</a><a href="#how-it-fits">How it fits</a><a href="#one-tick-20-hz">One tick (20 Hz)</a><a href="#try-it">Try it</a><a href="#scores-8-nov-our-simulator">Scores (8 Nov, our simulator)</a><a href="#where-it-came-from">Where it came from</a></nav>
 <div class="lead"><p>Ben, 8 Nov: a velocity smoother that <strong>knows it drives a car</strong>, beside Nav2's, as the
-challenger. Nav2 stays the default, and stays on the car.</p>
+challenger at first. The default since 17 Nov, when Nav2's went
+(<a href="../history/nav2-as-it-was.md">as it was</a>); the comparisons with Nav2's below are the record.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -184,7 +185,7 @@ spot. A car can't:</p>
 the tighter of the steering actuator's (<code>actuators.steer_rate</code>) and ego's ramp.</p>
 </section>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
-<pre class="highlight"><code>follower (MPPI, mppi_lag, ...) ─▶ cmd_vel_nav ─▶ velocity_smoother ─▶ collision_monitor ─▶ /drivers/nav/cmd_vel
+<pre class="highlight"><code>follower (MPPI, mppi_lag, ...) ─▶ cmd_vel_nav ─▶ velocity_smoother ─▶ stop zone ─▶ /drivers/nav/cmd_vel
                                                   (Nav2's, or ours
                                                    under its name)</code></pre>
 <div class="table-wrap"><table>
@@ -204,7 +205,7 @@ the tighter of the steering actuator's (<code>actuators.steer_rate</code>) and e
 <tr>
 <td><code>/control/cmd_vel_smoothed</code> or <code>/drivers/nav/cmd_vel</code></td>
 <td>TwistStamped</td>
-<td>out: to collision_monitor, or to twist_mux</td>
+<td>out: to the stop zone, or to twist_mux</td>
 </tr>
 </tbody>
 </table></div>
@@ -362,7 +363,7 @@ test lot at 1 m/s, <strong>3 runs each</strong>, behind Nav2's smoother and behi
 <li><strong>Not run yet</strong> (cut short for car day, 9 Nov): the campus at 2.5 m/s, and
   <code>tracker:=mppi_lag</code> under Nav2's navigator. <code>--stacks own --smoothers nav2 own
   --tours campus --speed 2.5 --runs 2</code> and <code>--trackers mppi_lag --smoothers nav2 own</code>.</li>
-<li>Nav2 stays the default; the car always runs Nav2's.</li>
+<li>Ours is the only smoother since 17 Nov, in the sim and on the car.</li>
 </ul>
 </section>
 <section class="card"><h2 id="where-it-came-from">Where it came from</h2>

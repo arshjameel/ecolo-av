@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -285,12 +285,12 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td><code>aav_navigation</code></td>
-<td>Nav2 set up for a car, and the maps</td>
+<td>our navigation set up for a car (each node a port of a Nav2 server), and the maps</td>
 <td>drivers</td>
 </tr>
 <tr>
 <td><code>aav_routes</code></td>
-<td>street routes (Valhalla) as GPS waypoints for Nav2</td>
+<td>street routes (Valhalla) as GPS waypoints for the navigator</td>
 <td>drivers</td>
 </tr>
 <tr>
@@ -340,7 +340,7 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td><code>aav_safety</code>, <code>aav_ghost</code></td>
-<td>the sensor watchdog, the geofence, the stop hold and the joystick-alive check (twist_mux locks); a pretend person only Nav2 sees</td>
+<td>the sensor watchdog, the geofence, the stop hold and the joystick-alive check (twist_mux locks); a pretend person only navigation sees</td>
 <td>safety</td>
 </tr>
 <tr>
@@ -400,7 +400,7 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td><code>aav_lidar</code></td>
-<td>the roof lidar's cloud as a 2D scan for Nav2</td>
+<td>the roof lidar's cloud as a 2D scan for the costmap and the stop zone</td>
 <td>perception</td>
 </tr>
 </tbody>
@@ -424,7 +424,7 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td><code>aav_voxels</code></td>
-<td>the lidar as 0.25 m cubes for Nav2</td>
+<td>the lidar as 0.25 m cubes for the costmap</td>
 <td>perception</td>
 </tr>
 <tr>
@@ -434,7 +434,7 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td><code>aav_costmap</code>, <code>aav_planner</code>, <code>aav_navigator</code>, <code>aav_smoother</code></td>
-<td>Nav2's costmap, State Lattice planner, navigator and velocity smoother, in Rust</td>
+<td>Nav2's costmap, State Lattice planner, navigator and velocity smoother, ported to Rust: the defaults since 17 Nov</td>
 <td>drivers</td>
 </tr>
 <tr>
@@ -444,7 +444,7 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td><code>aav_behaviour</code></td>
-<td>the behaviour planner: a speed cap on Nav2 before a stop sign, an obstacle, the fence and the goal</td>
+<td>the behaviour planner: a speed cap on navigation before a stop sign, an obstacle, the fence and the goal</td>
 <td>drivers</td>
 </tr>
 </tbody>
@@ -518,7 +518,7 @@ also write our own algorithms, each a trial beside its stock default (the second
 </tr>
 <tr>
 <td>Localization</td>
-<td><code>nav2_amcl</code>; KISS-ICP (not ROS, MIT)</td>
+<td><code>nav2_amcl</code> (kept, with its lifecycle manager, when the rest of Nav2 went); KISS-ICP (not ROS, MIT)</td>
 <td>trials beside the EKFs, off by default</td>
 </tr>
 <tr>
@@ -532,9 +532,9 @@ also write our own algorithms, each a trial beside its stock default (the second
 <td>driving from a laptop's keyboard</td>
 </tr>
 <tr>
-<td>Drivers</td>
-<td>Nav2: 8 servers (map, planner, controller, behaviours, navigator, waypoints, velocity smoother, lifecycle)</td>
-<td>plans and drives to a goal</td>
+<td>Messages</td>
+<td><code>nav2_msgs</code></td>
+<td>Nav2's action and message types: our navigator, planner and follower serve Nav2's names, so goal senders never changed. Nav2's servers went on 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>)</td>
 </tr>
 <tr>
 <td>The mux</td>

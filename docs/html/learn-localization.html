@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -482,8 +482,8 @@ metres, radians, x forward, y left, z up.</p>
 </tr>
 <tr>
 <td>Used by</td>
-<td>Nav2's controller and local costmap</td>
-<td>Nav2's planner and global costmap; navsat_transform</td>
+<td>the path follower and local costmap</td>
+<td>the planner and global costmap; navsat_transform</td>
 </tr>
 <tr>
 <td>Starts at</td>
@@ -771,7 +771,7 @@ pose to <code>ekf_global</code> beside GPS.</p>
 <tr>
 <td>Needs a map?</td>
 <td><strong>No</strong>: each scan is matched to the last few</td>
-<td><strong>Yes</strong>: a saved map of the lot (<code>pixi run ndt-map drive</code> in Gazebo)</td>
+<td><strong>Yes</strong>: a saved map of the lot (<code>pixi run ndt-map drive</code> in the simulator)</td>
 </tr>
 <tr>
 <td>What it says</td>
@@ -823,7 +823,7 @@ numpy only). Each ends within about 2 cm.</p>
 </thead>
 <tbody>
 <tr>
-<td>Start Gazebo, with both EKFs</td>
+<td>Start Ravensim, with both EKFs</td>
 <td><code>pixi run sim</code></td>
 </tr>
 <tr>
@@ -885,7 +885,7 @@ That's the GPS soaking up the drift.</p>
 <td><code>ros/localization/aav_gps_heading</code> (<code>course.py</code>: the sums, no ROS)</td>
 </tr>
 <tr>
-<td>Measure the heading in Gazebo</td>
+<td>Measure the heading in Ravensim</td>
 <td><code>pixi run tools/ros.sh --local python3 tools/heading_check.py</code> (<code>tools/heading_check.py</code>)</td>
 </tr>
 <tr>

@@ -7,7 +7,7 @@
 <!-- Generated from docs/car_measurements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car measurements and the URDF</h1>
-<div class="meta">10 min read · 6 sections</div></header>
+<div class="meta">11 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -122,7 +122,7 @@
 <a class="here" href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#what-is-measured-and-what-is-still-a-guess">What is measured, and what is still a guess</a><a href="#the-frames">The frames</a><a href="#how-to-measure">How to measure</a><a href="#weight-and-balance">Weight and balance</a><a href="#look-at-it">Look at it</a><a href="#in-gazebo">In Gazebo</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-is-measured-and-what-is-still-a-guess">What is measured, and what is still a guess</a><a href="#the-frames">The frames</a><a href="#how-to-measure">How to measure</a><a href="#weight-and-balance">Weight and balance</a><a href="#look-at-it">Look at it</a><a href="#in-ravensim">In Ravensim</a></nav>
 <div class="lead"><p>The car's measurements live in one file, <code>ros/bringup/aav_description/config/vehicle.yaml</code>. Every
 other part reads them from there, so a number only ever changes in one place.</p>
 <div class="table-wrap"><table>
@@ -154,8 +154,8 @@ other part reads them from there, so a number only ever changes in one place.</p
 <td>footprint (both costmaps), minimum turning radius (SmacPlannerHybrid), reverse speed</td>
 </tr>
 <tr>
-<td><code>aav_turtlesim</code>, <code>aav_sim_models</code></td>
-<td>wheelbase, and in Gazebo the whole model</td>
+<td><code>aav_turtlesim</code>, <code>aav_sim_models</code>, <code>aav_simulator</code></td>
+<td>wheelbase, and in Ravensim the whole model</td>
 </tr>
 <tr>
 <td><code>aav_drive_to_point</code>, <code>carla_adapter</code></td>
@@ -403,9 +403,9 @@ x, height = vehicle.centre_of_mass(v, front=FL + FR, rear=RL + RR,
 z up). Each sensor is an orange box. A slider window moves the steering and wheel joints.</p>
 <p>The shapes are only for looking at, and every size comes from <code>vehicle.yaml</code>: a red tub
 over the wheels, a cabin with a white roof and a seat, a bumper and headlights at the
-front, and a white mark on each wheel so you can see it turn. Physics and Nav2 use only
+front, and a white mark on each wheel so you can see it turn. The simulator and the planner use only
 the collision shapes: the body's outline between the bumpers, and the four wheels.</p>
-<p><img alt="The car model in Gazebo" src="../img/gazebo-car.png" /></p>
+<p><img alt="The car model in Gazebo (before 16 Nov)" src="../img/gazebo-car.png" /></p>
 <p>After editing <code>vehicle.yaml</code>, rebuild and relaunch:</p>
 <pre class="highlight"><code class="language-bash">colcon build --packages-select aav_description --symlink-install</code></pre>
 <p>With <code>--symlink-install</code>, later edits to <code>vehicle.yaml</code> only need a relaunch.</p>
@@ -415,16 +415,14 @@ the collision shapes: the body's outline between the bumpers, and the four wheel
 <li>Draw the frame tree as a diagram: <code>ros2 run rqt_tf_tree rqt_tf_tree</code>.</li>
 </ul>
 </section>
-<section class="card"><h2 id="in-gazebo">In Gazebo</h2>
-<p><code>aav.gazebo.xacro</code> adds the simulation parts when <code>sim:=true</code>:</p>
-<ul>
-<li>the Ackermann steering system (gz-sim 8);</li>
-<li>IMU and NavSat sensors;</li>
-<li>the joint-state publisher.</li>
-</ul>
-<p>Gazebo builds the simulated car from the same <code>vehicle.yaml</code>, so the simulated car turns
-like the real one. Its odometry frames are bridged but its TF is not:
-<code>robot_localization</code> owns <code>odom -&gt; base_link</code>, exactly as on the car.</p></section>
+<section class="card"><h2 id="in-ravensim">In Ravensim</h2>
+<p>Ravensim (<code>aav_simulator</code>, <a href="own-simulator.html">its page</a>) builds the simulated car from the
+same <code>vehicle.yaml</code>: the wheelbase, the steering's full lock, the outline it hits things
+with, and where each sensor sits. So the simulated car turns like the real one. It
+publishes its own odometry on <code>/vehicle/sim/odom</code>, but no TF: <code>robot_localization</code> owns
+<code>odom -&gt; base_link</code>, exactly as on the car.</p>
+<p>Until 16 Nov Gazebo did this job, with <code>aav.gazebo.xacro</code> adding its Ackermann steering,
+IMU and NavSat plugins (<a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>).</p></section>
 <nav class="prevnext"><a class="prev" href="interfaces.html"><small>Previous</small>← Topics</a>
 <a class="next" href="hud.html"><small>Next</small>HUD →</a></nav>
 </main>

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ghost obstacles: a pretend person for Nav2 · AAV 2026–27</title>
+<title>Ghost obstacles: a pretend person for navigation · AAV 2026–27</title>
 <link rel="stylesheet" href="style.css">
 </head><body>
 <!-- Generated from docs/ghost-obstacles.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
-<h1>Ghost obstacles: a pretend person for Nav2</h1>
+<h1>Ghost obstacles: a pretend person for navigation</h1>
 <div class="meta">4 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -122,18 +122,18 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#why-it-cant-hide-a-real-obstacle">Why it can&#x27;t hide a real obstacle</a><a href="#the-commands">The commands</a><a href="#its-settings">Its settings</a><a href="#on-the-real-car">On the real car</a><a href="#the-test-in-gazebo">The test in Gazebo</a></nav>
-<div class="lead"><p>A ghost is a person (or a post) that only Nav2 can see. Use it to test stopping on the
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#why-it-cant-hide-a-real-obstacle">Why it can&#x27;t hide a real obstacle</a><a href="#the-commands">The commands</a><a href="#its-settings">Its settings</a><a href="#on-the-real-car">On the real car</a><a href="#the-test-in-ravensim">The test in Ravensim</a></nav>
+<div class="lead"><p>A ghost is a person (or a post) that only navigation can see. Use it to test stopping on the
 real car, with nothing real to hit. plan.md item S4, built 16 Oct.</p>
 <div class="admonition note">
 <p class="admonition-title">The short version</p>
 <ul>
 <li>Start with <code>ghost:=true</code>: <code>pixi run sim ghost:=true</code>, or <code>pixi run car &lt;machine&gt;
-  ghost:=true</code> on the computer that runs Nav2. Off by default.</li>
+  ghost:=true</code> on the computer that runs navigation. Off by default.</li>
 <li>Place it: <code>pixi run ghost ahead 10</code> (10 m past the front bumper). Take it away:
-  <code>pixi run ghost off</code>. In Gazebo, add <code>--local</code>: <code>pixi run ghost --local ahead 10</code>.</li>
+  <code>pixi run ghost off</code>. In Ravensim, add <code>--local</code>: <code>pixi run ghost --local ahead 10</code>.</li>
 <li>It <strong>only adds</strong>. It never clears or hides what the radar or the lidar sees.</li>
-<li>It only stops <strong>Nav2</strong>. The joystick, the keyboard and the tests drive through it.</li>
+<li>It only stops <strong>navigation</strong>. The joystick, the keyboard and the tests drive through it.</li>
 </ul>
 </div></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
@@ -207,7 +207,7 @@ and <code>inf</code> everywhere else. With no ghost, the scan is all <code>inf</
 </tr>
 <tr>
 <td><code>pixi run ghost --local ...</code></td>
-<td>the same, for Gazebo or the bench on this computer</td>
+<td>the same, for Ravensim or the bench on this computer</td>
 </tr>
 </tbody>
 </table></div>
@@ -260,25 +260,25 @@ and <code>inf</code> everywhere else. With no ghost, the scan is all <code>inf</
 </section>
 <section class="card"><h2 id="on-the-real-car">On the real car</h2>
 <ol>
-<li>Start the car with <code>ghost:=true</code> on the machine that runs Nav2.</li>
+<li>Start the car with <code>ghost:=true</code> on the machine that runs navigation.</li>
 <li>Clear lot, wheels on the ground, the safety driver holding the joystick.</li>
-<li><code>pixi run ghost ahead 15</code>, then send Nav2 a goal past it.</li>
+<li><code>pixi run ghost ahead 15</code>, then send a goal past it.</li>
 <li>The car must stop 0-2 m before the ghost. <code>pixi run ghost off</code>: it drives on.</li>
 </ol>
 <div class="admonition warning">
 <p class="admonition-title">A ghost is not a safety test of the sensors</p>
-<p>It tests Nav2's reaction: the costmap, the controller, collision_monitor, ego, the
+<p>It tests navigation's reaction: the costmap, the follower, the stop zone, ego, the
 brakes. It doesn't test whether the radar or the lidar would have <strong>seen</strong> a person.</p>
 </div>
 <div class="admonition note">
-<p class="admonition-title">A silent ghost stops Nav2</p>
-<p>With <code>ghost:=true</code>, collision_monitor expects the scan. If <code>ghost_obstacle</code> dies, Nav2
+<p class="admonition-title">A silent ghost stops navigation</p>
+<p>With <code>ghost:=true</code>, the stop zone expects the scan. If <code>ghost_obstacle</code> dies, navigation
 stops after 1 s, like a silent radar. That's on purpose: fail-safe.</p>
 </div>
 </section>
-<section class="card"><h2 id="the-test-in-gazebo">The test in Gazebo</h2>
-<p><code>pixi run sim-check --ghost</code> (<code>tests.md</code> 1.15): a second Gazebo
-run with <code>ghost:=true</code>. A ghost 15 m ahead; Nav2 drives 30 m.</p>
+<section class="card"><h2 id="the-test-in-ravensim">The test in Ravensim</h2>
+<p><code>pixi run sim-check --ghost</code> (<code>tests.md</code> 1.15): a second simulator
+run with <code>ghost:=true</code>. A ghost 15 m ahead; the car drives 30 m.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -289,7 +289,7 @@ run with <code>ghost:=true</code>. A ghost 15 m ahead; Nav2 drives 30 m.</p>
 <tbody>
 <tr>
 <td>stop 0-2 m before the ghost</td>
-<td>the bumper to the ghost, in the ghost's own scan: what Nav2 sees</td>
+<td>the bumper to the ghost, in the ghost's own scan: what navigation sees</td>
 </tr>
 <tr>
 <td>who stopped it</td>
@@ -301,7 +301,7 @@ run with <code>ghost:=true</code>. A ghost 15 m ahead; Nav2 drives 30 m.</p>
 </tr>
 <tr>
 <td>drive on once it's off</td>
-<td>Nav2's goal reached, past where the ghost stood</td>
+<td>the goal reached, past where the ghost stood</td>
 </tr>
 </tbody>
 </table></div></section>

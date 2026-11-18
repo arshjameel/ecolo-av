@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -130,7 +130,7 @@ deeper on two parts of this page.</p>
 <p><strong>The short version</strong></p>
 <ul>
 <li>The car is <strong>layers</strong>. Each one only talks to the layer above and the one below.</li>
-<li>Every layer can be tested on its own: the <strong>turtle</strong>, the <strong>bench</strong>, the <strong>simulator</strong> (ours, or Gazebo), then the <strong>car</strong>.</li>
+<li>Every layer can be tested on its own: the <strong>turtle</strong>, the <strong>bench</strong>, the <strong>simulator</strong> (Ravensim), then the <strong>car</strong>.</li>
 <li>At start-up, each computer runs <strong>one command</strong>. Its machine file says which parts run there. They find each other on the network by themselves.</li>
 <li>Nothing moves until a <strong>driver</strong> asks, the <strong>mux</strong> allows it, and the <strong>backend</strong> is <strong>armed</strong>.</li>
 <li><strong>The whole start-up has not run on the real car yet.</strong> The car drove on 13 Nov with only the localization update installed; the full suite is not on it. The start-up below is the design, tested in simulation and on the bench.</li>
@@ -139,10 +139,10 @@ deeper on two parts of this page.</p>
 <section class="card"><h2 id="1-the-layers-bottom-to-top">1. The layers, bottom to top</h2>
 <pre class="highlight"><code class="language-text"> 8  People      HUD screen, laptop (Foxglove, RViz), e-stop buttons
  7  Choose      twist_mux picks ONE driver → ego turns it into speed + steering angle
- 6  Drivers     keyboard, joystick, scripted drive, Nav2, AI (lane keeping), replay
+ 6  Drivers     keyboard, joystick, scripted drive, navigation, AI (lane keeping), replay
  5  Perception  RF-DETR (cameras), radar clusters, lidar scan, lane finder → costmap, stop sign
  4  Where am I  ekf_local, ekf_global, navsat_transform
- 3  Backend     ONE of: legacy (UART, today), spine (CAN, later), Gazebo, bench, turtle
+ 3  Backend     ONE of: legacy (UART, today), spine (CAN, later), Ravensim, bench, turtle
  2  Sensors     drivers for camera, radar, lidar, IMU, GPS, and the wheels (CAN)
  1  Boards      ESP32 control board, wheel nodes, Jrk G2s, the GPS and IMU chips
  0  Wires       power, Ethernet, CAN, USB, UART</code></pre>
@@ -169,7 +169,7 @@ deeper on two parts of this page.</p>
 <td>Sensors</td>
 <td><code>/sensors/...</code> topics</td>
 <td>the Pi or Orin the device plugs into</td>
-<td>Gazebo (all sensors); the car</td>
+<td>Ravensim (all sensors); the car</td>
 </tr>
 <tr>
 <td>3</td>
@@ -183,21 +183,21 @@ deeper on two parts of this page.</p>
 <td>Where am I</td>
 <td>TF <code>map → odom → base_link</code>, <code>/localization/...</code></td>
 <td>Orin #1</td>
-<td>turtle (local only), bench, Gazebo, replay a bag</td>
+<td>turtle (local only), bench, Ravensim, replay a bag</td>
 </tr>
 <tr>
 <td>5</td>
 <td>Perception</td>
 <td><code>/perception/...</code></td>
 <td>Orin #2 (later); Orin #1 or a laptop today</td>
-<td>bench (<code>--perception</code>), Gazebo road world</td>
+<td>bench (<code>--perception</code>), the simulator's road world</td>
 </tr>
 <tr>
 <td>6</td>
 <td>Drivers</td>
 <td><code>/drivers/&lt;name&gt;/cmd_vel</code></td>
 <td>Orin; laptop for keyboard/joystick</td>
-<td>turtle, bench, Gazebo</td>
+<td>turtle, bench, Ravensim</td>
 </tr>
 <tr>
 <td>7</td>
@@ -242,16 +242,16 @@ deeper on two parts of this page.</p>
 <td>USB</td>
 <td><code>aav_radar_ti</code> (inherited)</td>
 <td><code>/sensors/radar/points</code></td>
-<td>radar clusters, Nav2's local costmap, collision_monitor</td>
-<td>✅ bench, Gazebo; ❌ car</td>
+<td>radar clusters, the local costmap, the stop zone</td>
+<td>✅ bench, simulator; ❌ car</td>
 </tr>
 <tr>
 <td>Lidar (roof Velodyne VLP-16)</td>
 <td>Ethernet</td>
 <td>the stock <code>velodyne</code> driver, on by default on the car</td>
 <td><code>/sensors/lidar/points</code></td>
-<td>Nav2's costmap, collision_monitor</td>
-<td>✅ Gazebo, bench, a pretend VLP-16; ❌ the real lidar</td>
+<td>the costmap, the stop zone</td>
+<td>✅ simulator, bench, a pretend VLP-16; ❌ the real lidar</td>
 </tr>
 <tr>
 <td>IMU (Yahboom)</td>
@@ -259,7 +259,7 @@ deeper on two parts of this page.</p>
 <td><code>aav_imu_yahboom</code> (Rust) + Madgwick filter</td>
 <td><code>/sensors/imu/data</code></td>
 <td>both EKFs</td>
-<td>✅ Gazebo; ❌ car</td>
+<td>✅ simulator; ❌ car</td>
 </tr>
 <tr>
 <td>GPS (ZED-F9R)</td>
@@ -267,7 +267,7 @@ deeper on two parts of this page.</p>
 <td><code>ublox_gps</code> (stock)</td>
 <td><code>/sensors/gps/fix</code></td>
 <td>navsat_transform, HUD</td>
-<td>✅ Gazebo; ❌ car</td>
+<td>✅ simulator; ❌ car</td>
 </tr>
 <tr>
 <td>Wheel speed, today</td>
@@ -324,7 +324,7 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 <tbody>
 <tr>
 <td><code>orin</code></td>
-<td>car model, mux, ego, scripted, drive to point, lidar, the two camera streams (RF-DETR inside), stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove</td>
+<td>car model, mux, ego, scripted, drive to point, lidar, the two camera streams (RF-DETR inside), stop-sign watcher, localization, navigation (ours), the CAN bus (wheels), Foxglove</td>
 </tr>
 <tr>
 <td><code>motor_pi</code></td>
@@ -391,8 +391,8 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 </tr>
 <tr>
 <td>7</td>
-<td>Nav2 starts its servers in order (lifecycle), loads the map, and waits for a goal</td>
-<td><code>ros2 lifecycle get /bt_navigator</code></td>
+<td>Navigation's nodes start on their own (no lifecycle; each respawns 1 s after it dies): the map server loads the map, the navigator waits for a goal</td>
+<td><code>ros2 action list</code> shows <code>/navigate_to_pose</code></td>
 </tr>
 <tr>
 <td>8</td>
@@ -416,7 +416,7 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 </tr>
 <tr>
 <td>12</td>
-<td>Now a driver can move the car: hold the joystick trigger, send a scripted drive, or give Nav2 a goal</td>
+<td>Now a driver can move the car: hold the joystick trigger, send a scripted drive, or give navigation a goal</td>
 <td>the HUD</td>
 </tr>
 </tbody>
@@ -480,13 +480,13 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 </tr>
 <tr>
 <td>An obstacle</td>
-<td>collision_monitor</td>
-<td>Nav2's command, before the mux</td>
+<td>the stop zone (<code>aav_stop_zone</code>)</td>
+<td>navigation's command, before the mux</td>
 </tr>
 <tr>
 <td>The person drives</td>
 <td>any higher-priority driver</td>
-<td>the mux picks them over Nav2</td>
+<td>the mux picks them over navigation</td>
 </tr>
 </tbody>
 </table></div>
@@ -518,13 +518,13 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 <td>3. Bench</td>
 <td><code>pixi run bench</code>, <code>pixi run bench-check</code></td>
 <td>pretend sensors, the real CAN frames, the spine's own logic</td>
-<td>the car's software path, e-stops, Nav2, stop sign</td>
+<td>the car's software path, e-stops, navigation, stop sign</td>
 </tr>
 <tr>
 <td>4. Simulator</td>
 <td><code>pixi run sim world:=road</code> (or <code>world:=test_lot</code>), every sensor on: Ravensim, our own simulator</td>
 <td>a 3D world, every sensor</td>
-<td>localization, Nav2, perception, A to B</td>
+<td>localization, navigation, perception, A to B</td>
 </tr>
 <tr>
 <td>5. Replay</td>
@@ -579,7 +579,7 @@ pixi run -e ml car laptop   # on a laptop at the car: joystick, RF-DETR on its G
 </tr>
 <tr>
 <td>see what the car sees</td>
-<td><code>pixi run hud</code> next to the bench or Gazebo</td>
+<td><code>pixi run hud</code> next to the bench or Ravensim</td>
 </tr>
 <tr>
 <td>drive A to B</td>

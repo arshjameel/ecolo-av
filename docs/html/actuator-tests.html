@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -122,14 +122,14 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-tests">The tests</a><a href="#in-gazebo">In Gazebo</a><a href="#on-the-car">On the car</a><a href="#find-the-steering-actuators-ends-and-centre">Find the steering actuator&#x27;s ends and centre</a><a href="#the-preflight-on-stands">The preflight on stands</a><a href="#trusting-the-fits">Trusting the fits</a><a href="#the-speed-loops-profile-todo-27">The speed loop&#x27;s profile (TODO 27)</a><a href="#what-it-saves">What it saves</a><a href="#proven-in-gazebo-15-oct">Proven in Gazebo (15 Oct)</a><a href="#the-code">The code</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-tests">The tests</a><a href="#in-ravensim">In Ravensim</a><a href="#on-the-car">On the car</a><a href="#find-the-steering-actuators-ends-and-centre">Find the steering actuator&#x27;s ends and centre</a><a href="#the-preflight-on-stands">The preflight on stands</a><a href="#trusting-the-fits">Trusting the fits</a><a href="#the-speed-loops-profile-todo-27">The speed loop&#x27;s profile (TODO 27)</a><a href="#what-it-saves">What it saves</a><a href="#proven-in-gazebo-15-oct">Proven in Gazebo (15 Oct)</a><a href="#the-code">The code</a></nav>
 <div class="lead"><p>One script runs the stage-3 and stage-4 tests of <code>tests.md</code>: it drives the car,
-logs what happened, and prints the numbers for <code>vehicle.yaml</code>. Built and proven in Gazebo
+logs what happened, and prints the numbers for <code>vehicle.yaml</code>. Built and proven in Gazebo, the simulator then
 (15 Oct); the same script runs on the car.</p>
 <div class="admonition note">
 <p class="admonition-title">The short version</p>
 <ul>
-<li><code>pixi run actuator-test --list</code> shows the tests. Add <code>--sim</code> for Gazebo.</li>
+<li><code>pixi run actuator-test --list</code> shows the tests. Add <code>--sim</code> for Ravensim.</li>
 <li><strong>On the car:</strong> stage 3 on stands (<code>--stands</code>), stage 4 in an empty lot. It asks you
   to type the test's name first, and never goes above 1 m/s (0.3 on stands).</li>
 <li><strong>To stop:</strong> Ctrl-C, the e-stop, or the joystick's deadman. Any of them, any time.</li>
@@ -138,13 +138,13 @@ logs what happened, and prints the numbers for <code>vehicle.yaml</code>. Built 
 </div></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
 <pre class="highlight"><code class="language-text"> actuator_test ──/drivers/tests/cmd_vel──► twist_mux ──► ego ──► backend ──► the car
-   (priority 60)                               ▲                    (or Gazebo)
+   (priority 60)                               ▲                    (or Ravensim)
  joystick 100, RC 95, keyboard 90 ─────────────┘ always win
         │
         └── reads back: /vehicle/odom (speed), /vehicle/steering, /throttle, /brake,
             the IMU, /localization/odom/local, GPS, /safety/estop, /system/source</code></pre>
 <p>It's a driver like any other (<a href="howto-driver.html">Build a driver</a>), in twist_mux's <code>tests</code>
-slot: below every person (joystick, RC, keyboard), above Nav2 and every other program.</p>
+slot: below every person (joystick, RC, keyboard), above navigation and every other program.</p>
 </section>
 <section class="card"><h2 id="the-tests">The tests</h2>
 <div class="table-wrap"><table>
@@ -231,15 +231,15 @@ slot: below every person (joystick, RC, keyboard), above Nav2 and every other pr
 </tbody>
 </table></div>
 <p>The steering tests creep at 0.2 m/s: ego only turns the wheels while the car moves. On
-stands the wheels spin slowly; in Gazebo the car crawls in arcs.</p>
+stands the wheels spin slowly; in the simulator the car crawls in arcs.</p>
 </section>
-<section class="card"><h2 id="in-gazebo">In Gazebo</h2>
-<pre class="highlight"><code class="language-bash">pixi run sim world:=empty gui:=false rviz:=false nav:=false sim_speed:=3   # terminal 1
+<section class="card"><h2 id="in-ravensim">In Ravensim</h2>
+<pre class="highlight"><code class="language-bash">pixi run sim world:=empty rviz:=false nav:=false sim_speed:=3              # terminal 1
 pixi run actuator-test speed-up --sim                                      # terminal 2</code></pre>
 <ul>
 <li><code>sim_speed:=3</code> lets ego go to 3 m/s, so <code>speed-up</code> and <code>brake</code> reach 2 and 3 m/s.</li>
-<li><code>--sim</code> keeps ROS on this computer and uses Gazebo's clock. The script refuses to run
-  without it when Gazebo announces SIM, and with it when anything announces REAL.</li>
+<li><code>--sim</code> keeps ROS on this computer and uses the simulator's clock. The script refuses to run
+  without it when the simulator announces SIM, and with it when anything announces REAL.</li>
 <li><code>nav:=false</code>: nothing else drives. The empty world has room for the circles.</li>
 </ul>
 </section>
@@ -284,7 +284,7 @@ then run the rest. Start at walking pace: <code>--max-speed 0.5</code>.</p>
 </tr>
 <tr>
 <td><strong>ego must answer</strong></td>
-<td>on the car, no answer from ego (its speed cap and steering limits): refused. In Gazebo, a warning</td>
+<td>on the car, no answer from ego (its speed cap and steering limits): refused. In the simulator, a warning</td>
 </tr>
 <tr>
 <td><strong>Stage check</strong></td>
@@ -758,7 +758,7 @@ pull request, with the sheet's photo; the hardware lead reviews it.</p>
 <section class="card"><h2 id="the-preflight-on-stands">The preflight on stands</h2>
 <p>One run before the car goes on the ground (Ben, 29 Oct; the design:
 <code>docs/designs/2026-10-29_preflight.md</code>). It drives and checks every sensor at once.</p>
-<pre class="highlight"><code class="language-bash">pixi run actuator-test preflight --stands --sim                          # Gazebo (pixi run sim first)
+<pre class="highlight"><code class="language-bash">pixi run actuator-test preflight --stands --sim                          # Ravensim (pixi run sim first)
 pixi run actuator-test preflight --stands --bench                        # bench mode (pixi run bench first)
 pixi run actuator-test preflight --stands --no-drive --skip steering     # the car today: the sensors only
 pixi run actuator-test preflight --stands --skip steering gps lidar      # the car, once it has a rear-wheel speed</code></pre>
@@ -831,7 +831,7 @@ pixi run actuator-test preflight --stands --skip steering gps lidar      # the c
 <code>--no-drive</code>: the sensors only, nothing moves. Also refused: the C++ ESP32 (its
 no-timeout lock), and the bridge on <code>speed_loop.mode pi</code>.</p>
 </div>
-<p>In Gazebo and on the bench the car is <strong>on the ground</strong>, so the stands lines check the
+<p>In the simulator and on the bench the car is <strong>on the ground</strong>, so the stands lines check the
 opposite (the IMU and GPS agree with the wheels) and say so. Who must be there on the car:
 the <strong>e-stop person</strong> (they are the stop), someone watching the <strong>rear wheels</strong> with a
 tachometer app, the laptop person; run it on the Orin (ssh + tmux) or a wired laptop.
@@ -1051,7 +1051,7 @@ Older logs (no <code>t_*</code> columns, no <code>shaping</code>) still work: th
 <tbody>
 <tr>
 <td><code>backend</code></td>
-<td><code>legacy</code>, <code>spine</code>, <code>gazebo</code>, <code>gazebo-spine</code>, <code>bench</code></td>
+<td><code>legacy</code>, <code>spine</code>, <code>ravensim</code>, <code>ravensim-spine</code>, <code>ravensim-ideal</code>, <code>bench</code> (<code>gazebo...</code> in runs before 16 Nov)</td>
 <td><code>unknown</code></td>
 </tr>
 <tr>

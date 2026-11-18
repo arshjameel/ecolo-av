@@ -79,8 +79,8 @@ velocity smoother, and collision_monitor. Each is ours now: `aav_costmap`'s map 
 | To | Run |
 |---|---|
 | See it | `pixi run sim navigator:=own planner:=own costmap:=own tracker:=mppi_lag` (reversing since 14 Nov; `reversing:=false` for forward only) |
-| Score all ours against all Nav2 | `pixi run measure controllers --stacks nav2 own --tours lot obstacle --runs 3` |
-| The campus route | `pixi run measure controllers --stacks nav2 own --tours fieldhouse --speed 2.5` |
+| Score all ours (against all Nav2 until 17 Nov) | `pixi run measure controllers --stacks own --tours lot obstacle --runs 3` |
+| The campus route | `pixi run measure controllers --stacks own --tours fieldhouse --speed 2.5` |
 | The graph and a goal | `pixi run sim-check --navigator own --planner own --costmap own --tracker mppi_lag` |
 | Test the maths | `cd ros/drivers/aav_navigator && cargo test -p navigator` |
 

@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -168,7 +168,7 @@ programs only meet through messages.</p></div>
 <td>That's how ROS 2 launch works</td>
 </tr>
 <tr>
-<td>Stock packages: Nav2, the EKFs, twist_mux</td>
+<td>Stock packages: the EKFs, twist_mux (Nav2 until 17 Nov)</td>
 <td>C++</td>
 <td>Not ours: we only configure them</td>
 </tr>
@@ -213,9 +213,9 @@ programs only meet through messages.</p></div>
 <td>Bevy only off the car: the Orin runs no graphics and no simulator (Ben, 5 Nov)</td>
 </tr>
 <tr>
-<td>Our trials beside Nav2 (costmap, planner, navigator, smoother, MPPI with lag) and our simulator</td>
+<td>Our navigation (costmap, planner, navigator, smoother, MPPI with lag, stop zone) and our simulator</td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>Where Rust pays off; stock stays the default until ours wins</td>
+<td>Where Rust pays off; each replaced Nav2's or Gazebo's part once it won</td>
 </tr>
 <tr>
 <td>Bench mode's spine, <code>aav_spine_sim</code></td>
@@ -276,7 +276,7 @@ programs only meet through messages.</p></div>
 </tr>
 <tr>
 <td></td>
-<td>Nothing in Nav2 or robot_localization: they stay C++, and we'd still only configure them</td>
+<td>Nothing in robot_localization or twist_mux: they stay C++, and we only configure them</td>
 </tr>
 <tr>
 <td></td>
@@ -349,7 +349,7 @@ pixi run build</code></pre>
 </tr>
 <tr>
 <td>Done</td>
-<td>the first <code>rclrs</code> nodes: the IMU, the radar clustering, the CAN bridge, the HUD; since 5 Nov our own trials beside Nav2 and our simulator</td>
+<td>the first <code>rclrs</code> nodes: the IMU, the radar clustering, the CAN bridge, the HUD; since 5 Nov our own navigation (Nav2's parts ported) and our simulator</td>
 </tr>
 <tr>
 <td>Later</td>

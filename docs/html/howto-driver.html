@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a class="here" href="howto-driver.html">Build a driver</a>
@@ -123,7 +123,7 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#what-a-driver-does-and-doesnt">What a driver does, and doesn&#x27;t</a><a href="#the-priorities-today">The priorities today</a><a href="#1-make-the-package">1. Make the package</a><a href="#2-write-the-node">2. Write the node</a><a href="#3-register-it">3. Register it</a><a href="#4-try-it">4. Try it</a><a href="#5-before-you-commit">5. Before you commit</a><a href="#safety-rules">Safety rules</a><a href="#whats-been-tested">What&#x27;s been tested</a><a href="#a-sensor-driver-is-different">A sensor driver is different</a></nav>
-<div class="lead"><p>A driver is anything that proposes how to move: a joystick, a script, Nav2, one day a
+<div class="lead"><p>A driver is anything that proposes how to move: a joystick, a script, navigation, one day a
 learned model. Every driver publishes the same kind of message on its own topic, and
 <code>twist_mux</code> picks one. This page builds a small example driver, <code>aav_circle</code>, from an
 empty folder to a turtle driving in circles.</p></div>
@@ -219,7 +219,7 @@ driver is added.</p>
 <td>25</td>
 </tr>
 <tr>
-<td>Nav2</td>
+<td>Navigation</td>
 <td><code>/drivers/nav/cmd_vel</code></td>
 <td>20</td>
 </tr>
@@ -344,7 +344,7 @@ pixi run graph                                             # terminal 3</code></
   once. Let go, and the circle comes back after half a second;</li>
 <li><code>pixi run estop</code> stops everything, and <code>pixi run clear estop</code> lets it go again.</li>
 </ul>
-<p>Then <code>pixi run check turtle</code> should still say <code>0 failed</code>, and Gazebo is the next rung:
+<p>Then <code>pixi run check turtle</code> should still say <code>0 failed</code>, and Ravensim is the next rung:
 <code>pixi run sim</code>.</p>
 </section>
 <section class="card"><h2 id="5-before-you-commit">5. Before you commit</h2>
@@ -383,7 +383,7 @@ pixi run graph                                             # terminal 3</code></
    driver after 0.5 s.</li>
 <li><strong>Never publish <code>/control/cmd_vel</code> or <code>/ego/actuator_cmd</code> yourself.</strong> Everything goes through
    the mux and ego, so the limits and the e-stop always apply.</li>
-<li><strong>Climb the test ladder:</strong> the turtle, then Gazebo, then the car on stands, then the
+<li><strong>Climb the test ladder:</strong> the turtle, then Ravensim, then the car on stands, then the
    car with a safety driver. See <a href="simulation.html#the-test-ladder">Simulation</a>.</li>
 </ol>
 </section>

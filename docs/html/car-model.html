@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -162,7 +162,7 @@ steering, braking and acceleration ... have the algorithms know about lag".</p>
 </tbody>
 </table></div>
 <p>Why <code>aav_description</code>: it already holds <code>vehicle.yaml</code> and <code>vehicle.py</code>, and ego and
-Gazebo both depend on it. The model is part of "what the car is".</p>
+the simulator both depend on it. The model is part of "what the car is".</p>
 </section>
 <section class="card"><h2 id="the-picture">The picture</h2>
 <pre class="highlight"><code> command ──▶ dead time ──▶ lag ──▶ speed ──────────────┐
@@ -380,7 +380,7 @@ it passes the winner's message on <strong>unchanged</strong>. So ego keeps each 
 <tbody>
 <tr>
 <td><code>nav</code></td>
-<td><code>aav_track</code>'s lag-aware trackers, the Rust MPPI (both drive through Nav2)</td>
+<td><code>aav_track</code>'s lag-aware trackers, the Rust MPPI (both drive through navigation's slot)</td>
 </tr>
 <tr>
 <td><code>scripted</code>, <code>point</code>, <code>ai</code></td>
@@ -441,7 +441,7 @@ into <code>odom</code> with TF at the stamp, then matches it against its plan.</
 </tr>
 <tr>
 <td><code>aav_sim_models/test/test_actuator_model.py</code></td>
-<td>Gazebo's car is unchanged</td>
+<td>the simulated car is unchanged</td>
 </tr>
 <tr>
 <td><code>aav_ego/test/test_lag_lead.py</code></td>

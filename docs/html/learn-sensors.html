@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -124,7 +124,7 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#1-why-so-many-sensors">1. Why so many sensors?</a><a href="#2-all-of-them-on-one-table">2. All of them, on one table</a><a href="#3-wheel-speed">3. Wheel speed</a><a href="#4-steering-angle">4. Steering angle</a><a href="#5-imu-yahboom-10-axis">5. IMU: Yahboom 10-axis</a><a href="#6-gps-u-blox-zed-f9r">6. GPS: u-blox ZED-F9R</a><a href="#7-radar-ti-mmwave">7. Radar: TI mmWave</a><a href="#8-cameras-one-pi-5-at-the-windscreen">8. Cameras: one Pi 5 at the windscreen</a><a href="#9-lidar-velodyne-vlp-16-on-the-roof">9. Lidar: Velodyne VLP-16 on the roof</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
 <div class="lead"><p>Every sensor on our car: what it measures, how often, which ROS topic and frame it uses,
-what it's good and bad at, which driver reads it, and whether Gazebo can pretend to be it.</p>
+what it's good and bad at, which driver reads it, and whether Ravensim can pretend to be it.</p>
 <p><strong>You'll learn:</strong></p>
 <ul>
 <li>the sensors a self-driving car needs, and why it needs more than one;</li>
@@ -134,7 +134,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Nothing here has run on the car yet</p>
-<p>Our drivers work in Gazebo and on the bench. On the real car, every sensor below is
+<p>Our drivers work in the simulator and on the bench. On the real car, every sensor below is
 <span class="badge b-untested">untested</span>. The audits of 16 and 21 Oct found what's fitted
 (<a href="../history/audit-2026-10-16-car.md">16 Oct</a>, <a href="../history/audit-2026-10-21-car.md">21 Oct</a>).</p>
 </div></div>
@@ -182,7 +182,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <th>Topic</th>
 <th>Message</th>
 <th>Frame</th>
-<th>In Gazebo?</th>
+<th>In Ravensim?</th>
 </tr>
 </thead>
 <tbody>
@@ -300,7 +300,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <td><code>spine_bridge role:=sensors</code> on the Orin (CAN); <code>encoder_udp</code> for the 2025-26 encoder</td>
 </tr>
 <tr>
-<td><strong>Gazebo</strong></td>
+<td><strong>Ravensim</strong></td>
 <td>yes: <code>sim_adapter</code> reads the car model's motion</td>
 </tr>
 </tbody>
@@ -380,7 +380,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <td>both EKFs: the <strong>yaw rate</strong> only</td>
 </tr>
 <tr>
-<td><strong>Gazebo</strong></td>
+<td><strong>Ravensim</strong></td>
 <td>yes, 50 Hz, with noise 0.02 rad/s and 0.2 m/s²</td>
 </tr>
 </tbody>
@@ -420,7 +420,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <td>a SparkFun board on the ceiling panel, USB to a Pi; its antenna lead is taped</td>
 </tr>
 <tr>
-<td><strong>Gazebo</strong></td>
+<td><strong>Ravensim</strong></td>
 <td>yes, 5 Hz, about 0.5 m noise</td>
 </tr>
 </tbody>
@@ -461,7 +461,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <td>the local costmap's obstacle layer, and <code>collision_monitor</code></td>
 </tr>
 <tr>
-<td><strong>Gazebo</strong></td>
+<td><strong>Ravensim</strong></td>
 <td>yes, in the road world: a lidar shaped like the radar (<code>/vehicle/sim/radar/points</code>, turned into ours by <code>sim_radar</code>)</td>
 </tr>
 <tr>
@@ -505,7 +505,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <td><code>aav_detector</code> (stop signs, objects), <code>aav_lane_finder</code>, the HUD</td>
 </tr>
 <tr>
-<td><strong>Gazebo</strong></td>
+<td><strong>Ravensim</strong></td>
 <td>yes, in the road world: 640 x 360, 10 Hz, the bench camera's lens</td>
 </tr>
 <tr>
@@ -550,14 +550,14 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 </tr>
 <tr>
 <td><strong>Driver</strong></td>
-<td>the stock <code>velodyne</code> package (<code>aav_sensors lidar:=true</code>), then <code>lidar_scan</code> (<code>aav_lidar</code>) for Nav2. On by default on the car. Tested against <code>tools/fake_vlp16.py</code>; <span class="badge b-untested">untested</span> with the real lidar</td>
+<td>the stock <code>velodyne</code> package (<code>aav_sensors lidar:=true</code>), then <code>lidar_scan</code> (<code>aav_lidar</code>) for the costmap and the stop zone. On by default on the car. Tested against <code>tools/fake_vlp16.py</code>; <span class="badge b-untested">untested</span> with the real lidar</td>
 </tr>
 <tr>
 <td><strong>Used by</strong></td>
-<td>the local costmap's lidar layer, and <code>collision_monitor</code></td>
+<td>the local costmap's lidar layer, and the stop zone</td>
 </tr>
 <tr>
-<td><strong>Gazebo</strong></td>
+<td><strong>Ravensim</strong></td>
 <td>a generic 16-beam one, on by default (<code>lidar:=false</code> to drop it)</td>
 </tr>
 <tr>
@@ -577,7 +577,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 </thead>
 <tbody>
 <tr>
-<td>Gazebo's sensors</td>
+<td>Ravensim's sensors</td>
 <td><code>pixi run sim</code></td>
 </tr>
 <tr>
@@ -585,7 +585,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <td><code>pixi run tools/ros.sh ros2 topic list</code></td>
 </tr>
 <tr>
-<td>How often the IMU talks (expect 50 Hz in Gazebo)</td>
+<td>How often the IMU talks (expect 50 Hz in Ravensim)</td>
 <td><code>pixi run tools/ros.sh ros2 topic hz /sensors/imu/data</code></td>
 </tr>
 <tr>
@@ -645,7 +645,7 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <td><code>ros/sources/aav_camera_stream</code></td>
 </tr>
 <tr>
-<td>The lidar's scan for Nav2</td>
+<td>The lidar's scan for the costmap</td>
 <td><code>ros/perception/aav_lidar</code></td>
 </tr>
 <tr>
@@ -653,8 +653,8 @@ what it's good and bad at, which driver reads it, and whether Gazebo can pretend
 <td><code>ros/bringup/aav_description/config/vehicle.yaml</code></td>
 </tr>
 <tr>
-<td>Gazebo's sensors</td>
-<td><code>ros/bringup/aav_description/urdf/aav.gazebo.xacro</code>, <code>ros/sim/aav_sim_models</code></td>
+<td>Ravensim's sensors</td>
+<td><code>ros/sim/aav_simulator</code> (<code>sim-core</code>), <code>ros/sim/aav_sim_models</code></td>
 </tr>
 <tr>
 <td>The bench's pretend sensors</td>

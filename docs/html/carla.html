@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -124,7 +124,7 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#the-picture">The picture</a><a href="#which-carla-5-unreal-engine-5-or-4">Which CARLA: 5 (Unreal Engine 5) or 4?</a><a href="#what-you-need">What you need</a><a href="#1-start-the-server-headless">1. Start the server, headless</a><a href="#2-give-the-adapter-carlas-python-client">2. Give the adapter CARLA&#x27;s Python client</a><a href="#3-run-the-stack">3. Run the stack</a><a href="#what-the-adapter-publishes">What the adapter publishes</a><a href="#a-digital-twin-of-carleton">A digital twin of Carleton</a><a href="#cloud-gpu-instead">Cloud GPU instead</a><a href="#other-ways-we-didnt-pick">Other ways we didn&#x27;t pick</a><a href="#what-works-and-whats-untested">What works and what&#x27;s untested</a><a href="#licences">Licences</a><a href="#sources">Sources</a></nav>
 <div class="lead"><p>CARLA is a driving simulator built on Unreal Engine: real-looking towns, traffic and
-cameras. Gazebo stays our everyday simulator. CARLA is for what Gazebo can't do well:
+cameras. Ravensim stays our everyday simulator. CARLA is for what Ravensim can't do well:
 testing the cameras and the detectors on real-looking streets.</p>
 <p><strong>Status (15 Oct):</strong> the research is done and the ROS side is built and tested without a
 server. <strong>It has never run against a CARLA server</strong>: there is none here, and CARLA has
@@ -134,7 +134,7 @@ no Mac version. Running it needs the team's NVIDIA Linux computer, or a cloud GP
  +---------------------------+   TCP 2000-2001  +----------------------------------+
  | CARLA server, headless     | &lt;-------------&gt; | carla_adapter (CARLA's Python    |
  | (Docker or the package)    |  CARLA's own    |   client) -&gt; our topics          |
- | Town10, or Carleton's roads|  protocol       | mux, ego, EKFs, Nav2, watchdog   |
+ | Town10, or Carleton's roads|  protocol       | mux, ego, EKFs, nav, watchdog    |
  +---------------------------+                  +----------------------------------+
                                                      | ROS 2 (only if you share it)
                                                      v
@@ -355,7 +355,7 @@ over TCP, not ROS.</p>
 &lt;the CARLA computer&gt;</code>, then <code>ws://localhost:8765</code> (<a href="foxglove.html">Watch from a laptop</a>).</p>
 </section>
 <section class="card"><h2 id="what-the-adapter-publishes">What the adapter publishes</h2>
-<p>The same topics as Gazebo, so nothing else can tell them apart
+<p>The same topics as Ravensim, so nothing else can tell them apart
 (<a href="interfaces.html">Interfaces</a>):</p>
 <div class="table-wrap"><table>
 <thead>
@@ -379,7 +379,7 @@ over TCP, not ROS.</p>
 </tr>
 <tr>
 <td><code>/sensors/camera/{front_left,front_right,rear}/image_raw</code> and <code>camera_info</code></td>
-<td>CARLA's cameras, with Gazebo's lens (640 x 360)</td>
+<td>CARLA's cameras, with the simulators' lens (640 x 360)</td>
 </tr>
 <tr>
 <td><code>/sensors/radar/points</code></td>
@@ -387,7 +387,7 @@ over TCP, not ROS.</p>
 </tr>
 <tr>
 <td><code>/sensors/lidar/points</code></td>
-<td>CARLA's lidar, 16 beams like Gazebo's</td>
+<td>CARLA's lidar, 16 beams like Ravensim's</td>
 </tr>
 <tr>
 <td><code>/clock</code>, <code>/system/source</code> (all SIM), <code>/vehicle/carla/truth</code></td>
@@ -460,7 +460,7 @@ x east, y north. The adapter builds the CARLA map with a projection centred on t
 <li>CARLA's world origin <strong>is</strong> the datum, and its x points east;</li>
 <li><code>frame:=auto</code> sees that (CARLA's own georeference puts the origin within 20 km of the
   datum) and uses CARLA's world as our map frame;</li>
-<li>the GPS, Nav2's maps, GPS goals and the map window all agree with the streets CARLA
+<li>the GPS, the navigation maps, GPS goals and the map window all agree with the streets CARLA
   draws.</li>
 </ul>
 <p>A Digital Twin Tool map lines up the same way if its georeference is right: the adapter

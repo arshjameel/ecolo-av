@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -189,8 +189,8 @@ tests, and how a change goes from an idea to the car.</p></div>
     localization/       the two EKFs and navsat_transform, the GPS heading, NDT and KISS-ICP
     perception/         the detector (RF-DETR, YOLO), radar clustering, lanes, the lidar, voxels
     drivers/            everything that proposes a command: teleop, RC, actuator tests, scripted,
-                        drive to point, plain English, Nav2, street routes, and our own
-                        trials beside Nav2 (costmap, planner, navigator, smoother, MPPI)
+                        drive to point, plain English, navigation (ours, in Rust: costmap,
+                        planner, navigator, smoother, MPPI with lag), street routes, trials
     command_mux/        twist_mux: picks one command
     io_mux/             the sensor mux and the output mux: real or simulated, never mixed
     ego/                the virtual car: one command into speed and steering
@@ -239,7 +239,7 @@ the checks tell you if the two disagree.</p>
 <tr>
 <td><code>ros/bringup/aav_description/config/vehicle.yaml</code></td>
 <td>every measurement of the car</td>
-<td>its unit test; ego, the URDF, Nav2 and the adapters all read it</td>
+<td>its unit test; ego, the URDF, navigation and the simulator all read it</td>
 <td>measure the car: <a href="car_measurements.html">Car numbers</a></td>
 </tr>
 </tbody>
@@ -441,7 +441,7 @@ Every one, with what it does: README's <a href="../../README.md#every-command">E
 </tr>
 <tr>
 <td><code>make_map.py</code></td>
-<td>draws a Nav2 map from a short spec</td>
+<td>draws a map (PGM and YAML, Nav2's format) from a short spec</td>
 <td><code>pixi run python tools/make_map.py &lt;spec&gt;</code></td>
 </tr>
 <tr>
@@ -563,13 +563,13 @@ changes.</p>
 <td><code>replay</code></td>
 <td><code>ros2 launch aav_bringup replay.launch.py</code>, with a bag playing</td>
 <td>a recorded drive</td>
-<td>localization (and Nav2) on real sensor data</td>
+<td>localization (and navigation) on real sensor data</td>
 </tr>
 <tr>
 <td><code>bench</code></td>
 <td><code>pixi run bench</code></td>
 <td>a model car, driven by the spine's own firmware logic</td>
-<td>the car's whole graph: the spine bridge, both EKFs with GPS, Nav2, and pretend sensors</td>
+<td>the car's whole graph: the spine bridge, both EKFs with GPS, navigation, and pretend sensors</td>
 </tr>
 </tbody>
 </table></div>
@@ -829,7 +829,7 @@ was</a>.</p>
 <p>Without a sign-in GitHub allows 60 of these calls an hour, so don't poll fast. A step keeps
 at most 10 annotations: 9 failing tests, then the rest by name, or the log's last 40 lines.</p>
 <p>The <code>sim</code> job's annotations (<code>ci_annotate.py --sim</code>): each <code>FAIL</code> line of sim-check, then
-the launch log's last errors (Gazebo's crash, a node that died). Its whole logs (sim-check's
+the launch log's last errors (a simulator crash, a node that died). Its whole logs (sim-check's
 output, the launch log, every node's ROS log) are kept 14 days as the artifact <code>sim-logs</code>.
 Anyone can list artifacts
 (<code>https://api.github.com/repos/AAV-2025-2026/ecolo-av/actions/artifacts</code>), but downloading one

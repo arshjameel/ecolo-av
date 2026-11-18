@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -163,7 +163,7 @@ files you'll work in, and the open questions you own. Everyone starts with
 </tr>
 <tr>
 <td><a href="#navigation-and-costmaps">Navigation and costmaps</a></td>
-<td>Nav2: plan through a map and follow the path</td>
+<td>our navigation (Rust): plan through a map and follow the path</td>
 <td>1b–2 and 3</td>
 </tr>
 <tr>
@@ -178,7 +178,7 @@ files you'll work in, and the open questions you own. Everyone starts with
 </tr>
 <tr>
 <td><a href="#simulation-and-testing">Simulation and testing</a></td>
-<td>Gazebo, replay, and the test ladder</td>
+<td>Ravensim, replay, and the test ladder</td>
 <td>every phase, before the car</td>
 </tr>
 </tbody>
@@ -365,19 +365,19 @@ the e-stop, until the spine's watchdog exists.</p>
 </tr>
 <tr>
 <td>Run first</td>
-<td><code>pixi run sim world:=test_lot</code>, then send a Nav2 goal from RViz</td>
+<td><code>pixi run sim world:=test_lot</code>, then send a goal from RViz</td>
 </tr>
 <tr>
 <td>First tasks</td>
-<td>1. Draw your first map: copy <code>maps/example_lot.spec.yaml</code>, change a wall, run <code>tools/make_map.py</code>, and drive it in Gazebo. 2. The real test site (Q21): survey the datum, measure, draw. 3. Nav2's lookahead: its turn command flips sign about once a second in the sim (N7). 4. GPS waypoints for A→B</td>
+<td>1. Draw your first map: copy <code>maps/example_lot.spec.yaml</code>, change a wall, run <code>tools/make_map.py</code>, and drive it in Ravensim. 2. The real test site (Q21): survey the datum, measure, draw. 3. The follower's sway: its turn command flips sign about once a second in the sim (N7). 4. GPS waypoints for A→B</td>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>ros/drivers/aav_navigation/</code> (<code>config/nav2.yaml</code>, <code>maps/</code>), <code>tools/make_map.py</code>, <code>ros/localization/aav_localization/config/navsat.yaml</code> (the datum)</td>
+<td><code>ros/drivers/aav_navigation/</code> (<code>config/nav2.yaml</code>, <code>maps/</code>), <code>aav_planner</code>, <code>aav_mppi_lag</code>, <code>aav_navigator</code>, <code>aav_costmap</code>, <code>tools/make_map.py</code>, <code>ros/localization/aav_localization/config/navsat.yaml</code> (the datum)</td>
 </tr>
 <tr>
 <td>Open questions</td>
-<td>Q21, and the Proposed Nav2 setup</td>
+<td>Q21</td>
 </tr>
 </tbody>
 </table></div>
@@ -465,11 +465,11 @@ the e-stop, until the spine's watchdog exists.</p>
 </tr>
 <tr>
 <td>First tasks</td>
-<td>1. Gazebo's window and RViz on a Mac: confirm what they show. 2. The test lot world against the real site, once Q21 is answered. 3. Recordings from the car, for replay. 4. CARLA on the NVIDIA computer: the adapter, <code>aav_carla</code>, is ready (<a href="carla.html">CARLA</a>, Q31)</td>
+<td>1. The developer window (<code>pixi run ravensim</code>) and RViz on a Mac: confirm what they show. 2. The test lot world against the real site, once Q21 is answered. 3. Recordings from the car, for replay. 4. CARLA on the NVIDIA computer: the adapter, <code>aav_carla</code>, is ready (<a href="carla.html">CARLA</a>, Q31)</td>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>ros/sim/aav_sim_models/</code>, <code>ros/bringup/aav_bringup/launch/sim.launch.py</code> and <code>replay.launch.py</code>, <code>tools/check_graph.py</code></td>
+<td><code>ros/sim/aav_simulator/</code>, <code>ros/sim/aav_sim_models/</code>, <code>ros/bringup/aav_bringup/launch/sim.launch.py</code> and <code>replay.launch.py</code>, <code>tools/check_graph.py</code></td>
 </tr>
 <tr>
 <td>Open questions</td>

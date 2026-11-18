@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -259,7 +259,7 @@ the ESP32, and the CAN bus goes to the Orin with the wheel sensors on it
 <tbody>
 <tr>
 <td><code>orin.yaml</code></td>
-<td>description, mux, ego, scripted, drive_to_point, the roof lidar (Velodyne), localization, Nav2, Foxglove; the two front camera streams (<code>camera_stream</code>, RF-DETR inside each) and the stop-sign watcher; the CAN bus (<code>spine_bridge role:=sensors</code>: the wheels)</td>
+<td>description, mux, ego, scripted, drive_to_point, the roof lidar (Velodyne), localization, navigation, Foxglove; the two front camera streams (<code>camera_stream</code>, RF-DETR inside each) and the stop-sign watcher; the CAN bus (<code>spine_bridge role:=sensors</code>: the wheels)</td>
 </tr>
 <tr>
 <td><code>motor_pi.yaml</code></td>
@@ -353,11 +353,11 @@ hardware: the cameras (Q22), the radar, or which USB port a device is on.</p>
 </tr>
 <tr>
 <td><code>camera_obstacles</code></td>
-<td>the detectors' boxes as points on the road, for Nav2's costmap (<a href="costmaps.html">Costmaps</a>)</td>
+<td>the detectors' boxes as points on the road, for the costmap (<a href="costmaps.html">Costmaps</a>)</td>
 </tr>
 <tr>
 <td><code>localization</code>, <code>navigation</code></td>
-<td>the two EKFs and <code>navsat_transform</code>; Nav2. Its costmap reads the <code>radar</code> and <code>camera_obstacles</code> parts on the same computer, and <code>collision_monitor</code> comes with the radar</td>
+<td>the two EKFs and <code>navsat_transform</code>; navigation (ours). Its costmap reads the <code>radar</code> and <code>camera_obstacles</code> parts on the same computer, and the stop zone comes with the radar</td>
 </tr>
 <tr>
 <td><code>spine</code></td>
@@ -396,7 +396,7 @@ skipped with a warning, and the rest starts.</p>
 </tr>
 <tr>
 <td><code>map:=</code>, <code>start_x:=</code>, <code>start_y:=</code>, <code>start_yaw:=</code></td>
-<td>Nav2's map, and where the car starts on it</td>
+<td>the navigation map, and where the car starts on it</td>
 </tr>
 <tr>
 <td><code>lidar:=false</code></td>

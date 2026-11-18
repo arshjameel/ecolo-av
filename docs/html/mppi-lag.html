@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -126,7 +126,9 @@
 <div class="lead"><p>Ben, 7 Nov (0.3): <strong>"have the algorithms know about lag"</strong>.</p>
 <p>Nav2's MPPI plans as if the car obeys at once. It can't take our lag model without a C++
 plugin, and we write no C++. So MPPI is <strong>ported to Rust</strong>, with the lag in its model.
-Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, beside Nav2's MPPI.</p>
+It began as a trial beside Nav2's MPPI; since 14 Nov it is the follower in <code>stack:=ours</code>,
+and since Nav2 went (17 Nov, <a href="../history/nav2-as-it-was.md">as it was</a>) the only MPPI.
+The comparisons with Nav2's MPPI below are the record.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -156,7 +158,7 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
   Open: TODO 152 (slow earlier near the goal, fewer futures, time it on the Orin).</p>
 </li>
 <li>
-<p><strong>Costmap:</strong> Nav2's local costmap, or ours with <code>costmap:=own</code> (<a href="own-costmap.html">page</a>).</p>
+<p><strong>Costmap:</strong> our local costmap (<a href="own-costmap.html">page</a>); Nav2's until 17 Nov.</p>
 </li>
 <li>
 <p><strong>No wiggle at speed</strong> (15 Nov, TODO 168): at 2.5 m/s the steering noise sized for
@@ -172,9 +174,9 @@ Nav2 still plans the path; ours follows it. It is a <strong>trial</strong>, besi
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
-<pre class="highlight"><code>planner (Nav2) ──path──▶ bt_navigator ──FollowPath──▶ mppi_lag ──cmd_vel_nav──▶ smoother
-                                                         ▲          ──▶ collision_monitor
-            odometry, /vehicle/steering, throttle, brake ┘          ──▶ twist_mux ──▶ ego</code></pre>
+<pre class="highlight"><code>planner (ours) ──path──▶ navigator ──FollowPath──▶ mppi_lag ──cmd_vel_nav──▶ smoother
+                                                     ▲          ──▶ stop zone
+        odometry, /vehicle/steering, throttle, brake ┘          ──▶ twist_mux ──▶ ego</code></pre>
 <p>The same place as <code>aav_track</code>'s trackers: controller_server's <code>follow_path</code> is renamed
 <code>follow_path_unused</code>. Everything after <code>cmd_vel_nav</code> is unchanged: the safety chain too.</p>
 </section>
@@ -1364,7 +1366,7 @@ faster than Nav2 (1.98 against 1.60 m/s) and still sways less.</p>
 </tbody>
 </table></div>
 <p>Every switch stays: <code>plan_smoothing:=nav2</code>, <code>map_correction:=newest</code> and
-<code>mppi_lag_steer_gamma:=</code> (empty) give the old ours; <code>stack:=stock</code> is unchanged.</p>
+<code>mppi_lag_steer_gamma:=</code> (empty) give the old ours.</p>
 <h3 id="still-open">Still open</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -1437,7 +1439,7 @@ to 9 cm beside the car. The follower sees a cross-track error and steers at it.<
 </tr>
 <tr>
 <td>Status</td>
-<td><strong>the sim's <code>ours</code> stack takes it</strong> (15 Nov, with the <a href="#the-sway-that-was-left">two fixes above</a>); <code>navigation.launch.py</code>, the car and <code>stack:=stock</code> keep <code>newest</code>. The obstacle check's stall (TODO 193) happens with <code>newest</code> too</td>
+<td><strong>the sim's <code>ours</code> stack takes it</strong> (15 Nov, with the <a href="#the-sway-that-was-left">two fixes above</a>); <code>navigation.launch.py</code> and the car keep <code>newest</code>. The obstacle check's stall (TODO 193) happens with <code>newest</code> too</td>
 </tr>
 <tr>
 <td>Watch it</td>
@@ -1603,7 +1605,7 @@ busy; <code>--example timing</code> prints both).</p>
 <p>Ego's lead (0.3) cancels lag for drivers that don't know about it. It must turn off while
 a lag-aware driver drives.</p>
 <p>Ego's contract: <code>/drivers/&lt;slot&gt;/lag_aware</code>, <code>std_msgs/Bool</code>, reliable, transient local,
-depth 1. This drives through Nav2's slot: <code>/drivers/nav/lag_aware</code>.</p>
+depth 1. This drives through navigation's slot: <code>/drivers/nav/lag_aware</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1676,7 +1678,7 @@ cd ros/drivers/aav_mppi_lag &amp;&amp; cargo test --release -p mppi-lag</code></
 </tr>
 <tr>
 <td>A gap in odometry</td>
-<td>gives up after 1 s, as <code>aav_track</code>; Nav2's MPPI drives on: decide which is right</td>
+<td>gives up after 1 s, as <code>aav_track</code> (Nav2's MPPI drove on)</td>
 </tr>
 <tr>
 <td>A live swap</td>

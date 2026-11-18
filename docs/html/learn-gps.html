@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -122,7 +122,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#1-gnss-satellites-and-clocks">1. GNSS: satellites and clocks</a><a href="#2-fix-types-how-good-is-this-fix">2. Fix types: how good is this fix?</a><a href="#3-our-receiver-u-blox-zed-f9r">3. Our receiver: u-blox ZED-F9R</a><a href="#4-the-message-sensor_msgsnavsatfix">4. The message: sensor_msgs/NavSatFix</a><a href="#5-the-datum-where-degrees-meet-metres">5. The datum: where degrees meet metres</a><a href="#6-navsat_transform-degrees-in-metres-out">6. navsat_transform: degrees in, metres out</a><a href="#7-gps-in-gazebo-and-on-the-bench">7. GPS in Gazebo and on the bench</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#1-gnss-satellites-and-clocks">1. GNSS: satellites and clocks</a><a href="#2-fix-types-how-good-is-this-fix">2. Fix types: how good is this fix?</a><a href="#3-our-receiver-u-blox-zed-f9r">3. Our receiver: u-blox ZED-F9R</a><a href="#4-the-message-sensor_msgsnavsatfix">4. The message: sensor_msgs/NavSatFix</a><a href="#5-the-datum-where-degrees-meet-metres">5. The datum: where degrees meet metres</a><a href="#6-navsat_transform-degrees-in-metres-out">6. navsat_transform: degrees in, metres out</a><a href="#7-gps-in-the-simulator-and-on-the-bench">7. GPS in the simulator and on the bench</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
 <div class="lead"><p>GPS tells the car where it is on the earth, as a latitude and longitude. This page
 explains how that works, how good it is, and how our car turns it into metres on a map.</p>
 <p><strong>You'll learn:</strong></p>
@@ -431,7 +431,7 @@ the car: is there any data at all?</p>
 <p>From the datum:</p>
 <ul>
 <li>x points <strong>east</strong>, y points <strong>north</strong>, in metres;</li>
-<li>every map, every Nav2 goal and every GPS waypoint uses this frame;</li>
+<li>every map, every goal and every GPS waypoint uses this frame;</li>
 <li>set it to the test site before the car drives there.</li>
 </ul>
 </section>
@@ -484,7 +484,7 @@ the car: is there any data at all?</p>
 <ul>
 <li>removes the antenna's offset, using TF <code>base_link → gps_link</code>: that's why the antenna's
   spot in <code>vehicle.yaml</code> matters (and where it is mounted: below);</li>
-<li>serves <code>/fromLL</code> (lat/lon → x, y) and <code>/toLL</code> (back). A street route reaches Nav2
+<li>serves <code>/fromLL</code> (lat/lon → x, y) and <code>/toLL</code> (back). A street route reaches the navigator
   through <code>/fromLL</code> (<code>street_router</code>, <a href="routes.html">Street routes</a>).</li>
 </ul>
 <h3 id="mount-the-antenna-over-the-rear-axle">Mount the antenna over the rear axle</h3>
@@ -492,7 +492,7 @@ the car: is there any data at all?</p>
 believes it</strong> (<code>map → base_link</code>). A heading error then moves the GPS position sideways,
 and the EKF corrects its heading from that. Driving forward, the two agree. Reversing,
 they pull the wrong way, and the heading gets worse.</p>
-<p>Measured in Gazebo (22 Oct; two runs of each; 15 s legs at 0.5 m/s, forward and back):</p>
+<p>Measured in Gazebo, the simulator then (22 Oct; two runs of each; 15 s legs at 0.5 m/s, forward and back):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -523,12 +523,12 @@ offset doesn't turn with the heading, and reversing is as good as forward. A hea
 source helps too: since 25 Oct the receiver's own velocity gives one while the car moves
 (<code>gps_heading</code>, <a href="learn-localization.html#where-the-heading-comes-from-todo-13">Learn: localization</a>).</p>
 </section>
-<section class="card"><h2 id="7-gps-in-gazebo-and-on-the-bench">7. GPS in Gazebo and on the bench</h2>
+<section class="card"><h2 id="7-gps-in-the-simulator-and-on-the-bench">7. GPS in the simulator and on the bench</h2>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
-<th>Gazebo (<code>pixi run sim</code>)</th>
+<th>Ravensim (<code>pixi run sim</code>)</th>
 <th>Bench (<code>pixi run bench</code>)</th>
 <th>The car</th>
 </tr>
@@ -536,13 +536,13 @@ source helps too: since 25 Oct the receiver's own velocity gives one while the c
 <tbody>
 <tr>
 <td>Made by</td>
-<td>Gazebo's <code>navsat</code> sensor on <code>gps_link</code></td>
+<td>Ravensim's GPS on <code>gps_link</code> (Gazebo's numbers)</td>
 <td><code>mock_gps</code></td>
 <td><code>ublox_gps</code></td>
 </tr>
 <tr>
 <td>Path</td>
-<td><code>/aav/navsat</code> → <code>/vehicle/sim/navsat</code> → <code>sim_gps</code> → <code>/sensors/gps/fix</code></td>
+<td><code>/vehicle/sim/navsat</code> → <code>sim_gps</code> → <code>/sensors/gps/fix</code></td>
 <td>straight to <code>/sensors/gps/fix</code></td>
 <td>straight to <code>/sensors/gps/fix</code></td>
 </tr>
@@ -619,7 +619,7 @@ the real receiver, once we have logs from it (Q18).</p>
 </thead>
 <tbody>
 <tr>
-<td>A GPS in Gazebo</td>
+<td>A GPS in Ravensim</td>
 <td><code>pixi run sim</code></td>
 </tr>
 <tr>
@@ -678,11 +678,11 @@ and y near 11.</p>
 <td><code>ros/bringup/aav_description/config/vehicle.yaml</code> (<code>gps_link</code>)</td>
 </tr>
 <tr>
-<td>Gazebo's GPS sensor</td>
-<td><code>ros/bringup/aav_description/urdf/aav.gazebo.xacro</code> (<code>navsat</code>)</td>
+<td>Ravensim's GPS and its noise</td>
+<td><code>ros/sim/aav_simulator/crates/sim-core/src/sim.rs</code> (<code>navsat</code>, <code>gps_horizontal_deg</code>)</td>
 </tr>
 <tr>
-<td>Gazebo → our topic name</td>
+<td>The simulator → our topic name</td>
 <td><code>ros/sim/aav_sim_models/aav_sim_models/sim_gps.py</code></td>
 </tr>
 <tr>

@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -143,7 +143,7 @@ waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).</p>
 <td><a href="camera-pipeline.html">Camera pipeline</a></td>
 </tr>
 <tr>
-<td>What Nav2 does with the points</td>
+<td>What navigation does with the points</td>
 <td><a href="costmaps.html">Costmaps</a></td>
 </tr>
 </tbody>
@@ -230,7 +230,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 <td>Front left camera</td>
 <td><code>lane_finder</code> (<code>lane:=true</code>)</td>
 <td><code>/perception/lane/geometry</code></td>
-<td><code>control_interface</code> only, the AI slot's driver. Nav2, the planner and the costmaps <strong>don't</strong> read lanes</td>
+<td><code>control_interface</code> only, the AI slot's driver. Navigation, the planner and the costmaps <strong>don't</strong> read lanes</td>
 </tr>
 <tr>
 <td></td>
@@ -254,7 +254,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 </table></div>
 <ul>
 <li><strong>Labels:</strong> only "stop sign" does anything by default. People, cars and the rest reach
-  Nav2 only through <code>camera_obstacles</code>, which is off everywhere until the cameras are
+  navigation only through <code>camera_obstacles</code>, which is off everywhere until the cameras are
   calibrated (Q22).</li>
 <li><strong>Objects with an ID and a speed:</strong> a first form, 14 Nov (TODO 156, <code>aav_things</code>,
   <code>things:=true</code>): the cubes grouped, one Kalman filter each, the radar's speed, a memory
@@ -330,13 +330,13 @@ a person can still look at it in RViz or Lichtblick.</p>
 <tr>
 <td><code>aav_lidar</code></td>
 <td>ours</td>
-<td>the roof lidar's points into a scan for Nav2 (<a href="#the-roof-lidar">below</a>)</td>
+<td>the roof lidar's points into a scan for the costmap and the stop zone (<a href="#the-roof-lidar">below</a>)</td>
 <td><span class="badge b-works">works</span> against a fake lidar</td>
 </tr>
 <tr>
 <td><code>aav_voxels</code></td>
 <td>ours</td>
-<td>a trial (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes over the fitted road, for Nav2 instead of the scan (<a href="../designs/2026-10-30_voxels.md">design</a>)</td>
+<td>a trial (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes over the fitted road, for the costmap instead of the scan (<a href="../designs/2026-10-30_voxels.md">design</a>)</td>
 <td>a trial, off by default</td>
 </tr>
 <tr>
@@ -383,12 +383,12 @@ a person can still look at it in RViz or Lichtblick.</p>
 </tbody>
 </table></div>
 <ul>
-<li><strong>The lock</strong> has priority 30. It holds the point driver (25), Nav2 (20) and the AI slot (10), and
+<li><strong>The lock</strong> has priority 30. It holds the point driver (25), navigation (20) and the AI slot (10), and
   never a person (joystick 100, RC 95, keyboard 90) or a test script (60, 50, 40).</li>
 <li><strong>It only stops the car.</strong> It can't make it move.</li>
 <li><strong>It never expires on silence.</strong> If the watcher dies while the lock is on, the car stays
   stopped.</li>
-<li><strong>On the bench</strong>, Nav2 drove toward the sign at 25 m. The lock came on 4.7 m before it,
+<li><strong>On the bench</strong>, Nav2 (then) drove toward the sign at 25 m. The lock came on 4.7 m before it,
   the car stopped, waited, and went on to its goal 40 m away.</li>
 </ul>
 <h3 id="how-far-the-boxs-height-and-the-lens-24-oct">How far: the box's height and the lens (24 Oct)</h3>
@@ -1064,7 +1064,7 @@ the speed. On a campus road the lane runs from the yellow centre line to the whi
   distance, noise is left out, old boxes are cleared. Its <code>PROVENANCE.md</code> lists them.</li>
 <li>The C++ package's other programs (filters, ICP, an OctoMap) were demos, never launched:
   they went with it.</li>
-<li><strong>Nothing reads the clusters.</strong> Nav2 takes the radar's raw points, not the clusters:
+<li><strong>Nothing reads the clusters.</strong> Navigation takes the radar's raw points, not the clusters:
   the local costmap's obstacle layer and <code>collision_monitor</code> read <code>/sensors/radar/points</code>
   wherever <code>radar:=true</code> (the bench and the simulators). On the car the radar part is
   still off.</li>
@@ -1077,7 +1077,7 @@ Jetson only). We write no driver: the stock ROS <code>velodyne</code> package (B
 reads it. There is no Rust ROS driver for it; if one appears, it can replace this behind
 the same topic.</p>
 <pre class="highlight"><code>VLP-16 --UDP 2368--&gt; lidar_driver --/sensors/lidar/packets--&gt; lidar_cloud --/sensors/lidar/points--&gt;
-    lidar_scan (aav_lidar) --/sensors/lidar/scan--&gt; Nav2's lidar_layer and collision_monitor</code></pre>
+    lidar_scan (aav_lidar) --/sensors/lidar/scan--&gt; the costmap's lidar_layer and the stop zone</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1135,7 +1135,7 @@ pixi run bash -c 'tools/ros.sh --local ros2 launch aav_sensors sensors.launch.py
 <td>14.89 m <span class="badge b-works">works</span></td>
 </tr>
 <tr>
-<td>Nav2's scan, ahead</td>
+<td>The scan, ahead</td>
 <td>6 m + 0.90 m (where the lidar sits)</td>
 <td>6.75 m: the nearest laser inside the obstacle heights sees 5.85 m <span class="badge b-works">works</span></td>
 </tr>
@@ -1148,7 +1148,7 @@ pixi run bash -c 'tools/ros.sh --local ros2 launch aav_sensors sensors.launch.py
 </table></div>
 <p><strong>In bench mode:</strong> <code>pixi run bench lidar:=true</code> adds <code>mock_lidar</code>, the same packets but of
 the bench world: its boxes (<code>obstacle:=true</code>) and the flat ground, seen from where the
-model car really is. The stock driver reads them, and Nav2 and collision_monitor read its
+model car really is. The stock driver reads them, and the costmap and the stop zone read its
 points, as on the car. <code>pixi run bench-check --lidar</code> adds a check: a box that only the
 lidar sees, which the car must stop for.</p>
 <div class="table-wrap"><table>
@@ -1165,7 +1165,7 @@ lidar sees, which the car must stop for.</p>
 </tr>
 <tr>
 <td>The box, 15 m ahead</td>
-<td>Nav2's scan: 15.0 m from <code>base_link</code> <span class="badge b-works">works</span></td>
+<td>the scan: 15.0 m from <code>base_link</code> <span class="badge b-works">works</span></td>
 </tr>
 <tr>
 <td><code>mock_lidar</code>'s own cost</td>
@@ -1242,7 +1242,7 @@ turns them on where they run (<a href="platforms.html#on-the-car-what-runs-where
 </tr>
 <tr>
 <td><code>camera_obstacles</code></td>
-<td>the boxes as points on the road → <code>/perception/camera_obstacles</code>, for Nav2's costmap</td>
+<td>the boxes as points on the road → <code>/perception/camera_obstacles</code>, for the costmap</td>
 <td>off until the cameras are calibrated (Q22); then next to <code>navigation</code>: the Orin</td>
 </tr>
 <tr>

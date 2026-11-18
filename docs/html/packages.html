@@ -7,7 +7,7 @@
 <!-- Generated from docs/packages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>What each package does</h1>
-<div class="meta">22 min read · 10 sections</div></header>
+<div class="meta">23 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -270,14 +270,14 @@ each one's README has its topics.</p></div>
 <tr>
 <td><code>aav_navigation</code></td>
 <td>drivers</td>
-<td>Nav2, set up for a car, and the maps</td>
-<td><span class="badge b-works">works</span> goals reached in Gazebo</td>
+<td>our navigation, set up for a car (each node a port of a Nav2 server), and the maps</td>
+<td><span class="badge b-works">works</span> goals reached in Ravensim</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_routes</code></td>
 <td>drivers</td>
-<td>street routes (Valhalla) as GPS waypoints for Nav2; directions on the campus (<code>router:=campus</code>)</td>
+<td>street routes (Valhalla) as GPS waypoints for the navigator; directions on the campus (<code>router:=campus</code>)</td>
 <td><span class="badge b-works">works</span> in Gazebo</td>
 <td>new</td>
 </tr>
@@ -292,35 +292,35 @@ each one's README has its topics.</p></div>
 <td><code>aav_mppi_lag</code></td>
 <td>drivers</td>
 <td>Nav2's MPPI in Rust, on a car model that knows the actuators' lag (<code>tracker:=mppi_lag</code>)</td>
-<td>built 7 Nov; a trial (<a href="mppi-lag.html">its page</a>)</td>
+<td>built 7 Nov; the default follower (<a href="mppi-lag.html">its page</a>)</td>
 <td>new: a port of Nav2's MPPI (<code>PROVENANCE.md</code>)</td>
 </tr>
 <tr>
 <td><code>aav_costmap</code></td>
 <td>drivers</td>
-<td>our own costmap in Rust (<code>costmap:=own</code>), beside Nav2's</td>
-<td>built 8 Nov; a trial (<a href="own-costmap.html">its page</a>)</td>
+<td>our own costmap in Rust (<code>costmap:=own</code>)</td>
+<td>built 8 Nov; the only one since 17 Nov (<a href="own-costmap.html">its page</a>)</td>
 <td>new: a port of Nav2's <code>costmap_2d</code> layers</td>
 </tr>
 <tr>
 <td><code>aav_planner</code></td>
 <td>drivers</td>
 <td>our own path planner in Rust (<code>planner:=own</code>): Nav2's Smac State Lattice ported</td>
-<td>built 8 Nov; a trial (<a href="own-planner.html">its page</a>)</td>
+<td>built 8 Nov; the default (<a href="own-planner.html">its page</a>)</td>
 <td>new: a port of Nav2's planner</td>
 </tr>
 <tr>
 <td><code>aav_navigator</code></td>
 <td>drivers</td>
 <td>our own navigator in Rust (<code>navigator:=own</code>): what <code>bt_navigator</code> and <code>waypoint_follower</code> do</td>
-<td>built 8 Nov; a trial (<a href="own-navigator.html">its page</a>)</td>
+<td>built 8 Nov; the only one since 17 Nov (<a href="own-navigator.html">its page</a>)</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_smoother</code></td>
 <td>drivers</td>
 <td>our own velocity smoother in Rust (<code>smoother:=own</code>): the turn rate from where the wheels can be</td>
-<td>built 8 Nov; a trial (<a href="own-smoother.html">its page</a>)</td>
+<td>built 8 Nov; the only one since 17 Nov (<a href="own-smoother.html">its page</a>)</td>
 <td>new</td>
 </tr>
 <tr>
@@ -333,7 +333,7 @@ each one's README has its topics.</p></div>
 <tr>
 <td><code>aav_behaviour</code></td>
 <td>drivers</td>
-<td>the behaviour planner, a trial (<code>behaviour:=true</code>): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on Nav2</td>
+<td>the behaviour planner, a trial (<code>behaviour:=true</code>): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on navigation</td>
 <td>built 7 Nov; off by default (<a href="stopping.html">How the car stops</a>)</td>
 <td>new</td>
 </tr>
@@ -396,7 +396,7 @@ each one's README has its topics.</p></div>
 <tr>
 <td><code>aav_sim_models</code></td>
 <td>sim</td>
-<td>Gazebo's car behind the real car's topics; its adapters run with Ravensim too</td>
+<td>Ravensim's car behind the real car's topics: the adapters, worlds and models (<code>aav_gazebo</code> until 16 Nov)</td>
 <td><span class="badge b-works">works</span> headless</td>
 <td>new</td>
 </tr>
@@ -452,9 +452,16 @@ each one's README has its topics.</p></div>
 <tr>
 <td><code>aav_ghost</code></td>
 <td>safety</td>
-<td>ghost obstacles: a pretend person only Nav2 sees</td>
+<td>ghost obstacles: a pretend person only navigation sees</td>
 <td><span class="badge b-works">works</span> in Gazebo</td>
 <td>new</td>
+</tr>
+<tr>
+<td><code>aav_stop_zone</code></td>
+<td>safety</td>
+<td>the stop zone (Rust): zeroes navigation's command when the radar or lidar sees points just ahead, or goes silent; the lock since 17 Nov</td>
+<td><span class="badge b-works">works</span> in Ravensim: stopped every time Nav2's <code>collision_monitor</code> did, in its shadow run (<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>)</td>
+<td>new: a port of Nav2's <code>collision_monitor</code></td>
 </tr>
 <tr>
 <td><code>aav_interfaces</code></td>
@@ -494,14 +501,14 @@ each one's README has its topics.</p></div>
 <tr>
 <td><code>aav_lidar</code></td>
 <td>perception</td>
-<td><code>lidar_scan</code>: the roof lidar's cloud as a 2D scan for Nav2</td>
+<td><code>lidar_scan</code>: the roof lidar's cloud as a 2D scan for the costmap and the stop zone</td>
 <td><span class="badge b-works">works</span> in Gazebo and the bench</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_voxels</code></td>
 <td>perception</td>
-<td>a trial beside <code>aav_lidar</code> (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes for Nav2</td>
+<td>a trial beside <code>aav_lidar</code> (<code>voxels:=true</code>): the lidar's cloud as 0.25 m cubes for the costmap</td>
 <td>built 30 Oct; a trial, off by default</td>
 <td>new</td>
 </tr>
@@ -831,12 +838,12 @@ Only one runs at a time.</p>
 <tr>
 <td><code>aav_sim_models</code></td>
 <td><code>/vehicle/sim/cmd_vel</code></td>
-<td>turns Gazebo's IMU and GPS into <code>/sensors/imu/data_raw</code> and <code>/sensors/gps/fix</code></td>
+<td>turns Ravensim's IMU and GPS into <code>/sensors/imu/data_raw</code> and <code>/sensors/gps/fix</code></td>
 </tr>
 <tr>
 <td><code>aav_carla</code></td>
 <td>CARLA's Python client (TCP to the server)</td>
-<td>the same sensor topics as Gazebo; untested (<a href="carla.html">CARLA</a>)</td>
+<td>the same sensor topics as Ravensim; untested (<a href="carla.html">CARLA</a>)</td>
 </tr>
 </tbody>
 </table></div>

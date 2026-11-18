@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -299,7 +299,7 @@ Check it at the car, and fix it on the router.</p>
 <td><code>front_left_stream</code>, <code>front_right_stream</code></td>
 <td><code>/perception/detections</code>, only its camera's <code>frame_id</code></td>
 <td>quiet 1 s; NaN in a box</td>
-<td>stop Nav2 and the AI slot</td>
+<td>stop navigation and the AI slot</td>
 </tr>
 </tbody>
 </table></div>
@@ -474,7 +474,7 @@ runs its <code>gst-launch-1.0</code> as the child program, as on the Orin.</p>
 </section>
 <section class="card"><h2 id="measured-on-a-mac-24-oct">Measured on a Mac (24 Oct)</h2>
 <p><code>pixi run -e ml measure stream</code>, Ben's Mac (Apple silicon), other helpers' work running
-(load average 5-12). Gazebo's road world, the car rolling at 0.3 m/s towards the stop
+(load average 5-12). Gazebo's road world (the simulator then), the car rolling at 0.3 m/s towards the stop
 sign, 60 s each. <strong>measured</strong>:</p>
 <div class="table-wrap"><table>
 <thead>

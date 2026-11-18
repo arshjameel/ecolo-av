@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -130,7 +130,7 @@ car move. Ben asked for it on 15 October: type what we want in plain English, li
 ReAct commands.</p>
 <div class="admonition warning">
 <p class="admonition-title">Stand-ins only, for now</p>
-<p>It drives the turtle, Gazebo and bench mode. It refuses the real car unless it's
+<p>It drives the turtle, Ravensim and bench mode. It refuses the real car unless it's
 started with <code>--car</code>, and nobody should do that before the car has been tested on
 stands with a safety driver (see <a href="#why-not-on-the-car-yet">Why not on the car yet</a>).</p>
 </div></div>
@@ -140,7 +140,7 @@ stands with a safety driver (see <a href="#why-not-on-the-car-yet">Why not on th
                                 │  Thought → Action → Observation, again and again
                                 │
                                 ├──MCP, stdio──► drive server ──► /scripted_drive ──► scripted_driver
-                                │                (the rules)   ──► /follow_gps_waypoints (Nav2)
+                                │                (the rules)   ──► /follow_gps_waypoints (the navigator)
                                 │                              ──► /safety/estop (true only)
                                 ▼
                  "The plan: 1. drive(distance_m=10)   Type yes to drive it"</code></pre>
@@ -211,7 +211,7 @@ the car; this one exists to.</p>
 </tr>
 <tr>
 <td><code>go_to_gps(lat, lon)</code></td>
-<td>Nav2 drives to a point (only when Nav2 runs)</td>
+<td>navigation drives to a point (only when navigation runs)</td>
 <td>yes</td>
 </tr>
 <tr>
@@ -312,7 +312,7 @@ server checks it.</p>
 </tr>
 <tr>
 <td>A twist_mux lock</td>
-<td>refused while a lock holds the driver that would carry the move: the stop-sign and sensor locks (30) hold Nav2 (20), so <code>go_to_gps</code>; not the scripted driver (50), so not <code>drive</code> or <code>turn</code></td>
+<td>refused while a lock holds the driver that would carry the move: the stop-sign and sensor locks (30) hold navigation (20), so <code>go_to_gps</code>; not the scripted driver (50), so not <code>drive</code> or <code>turn</code></td>
 <td><code>safety.holding_locks</code></td>
 </tr>
 <tr>
@@ -571,7 +571,7 @@ small (23 requests): one or two answers either way is noise.</p>
 <td><code>pixi run -e llm talk</code></td>
 </tr>
 <tr>
-<td><code>pixi run sim</code> (Gazebo)</td>
+<td><code>pixi run sim</code> (Ravensim)</td>
 <td><code>pixi run -e llm talk</code></td>
 </tr>
 <tr>
@@ -629,7 +629,7 @@ Cancelled: nothing moved.
 <section class="card"><h2 id="claude-as-the-driver">Claude as the driver</h2>
 <p>The drive server doesn't care which model calls its tools. Claude Code can be the "brain"
 instead of the local model: same tools, same limits, same mux priority.</p>
-<pre class="highlight"><code class="language-text">  you ──► Claude Code ──MCP, stdio──► drive server ──► /scripted_drive, Nav2 ──► twist_mux ──► ego</code></pre>
+<pre class="highlight"><code class="language-text">  you ──► Claude Code ──MCP, stdio──► drive server ──► /scripted_drive, the navigator ──► twist_mux ──► ego</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -673,7 +673,7 @@ entry to its own config, with <code>cwd</code> set to this folder.</p>
 </tr>
 <tr>
 <td>Does Claude steer?</td>
-<td>No. Each tool runs a whole move here, ramps included, through the scripted driver (priority 50) or Nav2 (20). The joystick and keyboard always win; the e-stop and the watchdog still apply</td>
+<td>No. Each tool runs a whole move here, ramps included, through the scripted driver (priority 50) or navigation (20). The joystick and keyboard always win; the e-stop and the watchdog still apply</td>
 </tr>
 <tr>
 <td>What if the internet drops?</td>

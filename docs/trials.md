@@ -52,7 +52,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 | NDT's pose into the global EKF | the global EKF on GPS alone | `ndt_ekf:=true` |
 | KISS-ICP lidar odometry (how far the car moved, no map) | `ekf_local` (wheels and IMU) | `kiss_icp:=true` (after `pixi install --locked -e kiss`) |
 | KISS-ICP's twist into the local EKF | `ekf_local` on the wheels and IMU alone | `kiss_ekf:=true` |
-| State Lattice planner, our primitives | Hybrid-A* | `planner:=lattice`: **won, the default since 1 Nov** (`lattice_headings:=32`: the 32-heading file, still a trial) |
+| State Lattice planner, our primitives | Hybrid-A* | `planner:=own` (Nav2's then, `planner:=lattice`): **won, the default since 1 Nov** (`lattice_headings:=32`: the 32-heading file, still a trial) |
 | Smac 2D, NavFn, Theta* planners (Nav2's; ignored the turning circle) | the lattice | gone with Nav2 (17 Nov) |
 | Smooth lattice moves: curvature no faster than the steering turns, the smoother off ([page](controllers.md#smooth-moves-a-trial-14-nov)) | Nav2's moves | `lattice_moves:=smooth` (1 m/s) or `smooth_fast` (2.5 m/s), with `planner:=lattice` or `own`; `measure controllers --planners lattice lattice_smooth own own_smooth` |
 | The lidar as 0.25 m cubes over the fitted road (`aav_voxels`) | the flat scan (`lidar_scan`) | `voxels:=true` |
@@ -1437,6 +1437,6 @@ centre by `lane_score.lane_error` on the campus's `lanes.yaml`.
   the time). Sway and the lane's centre: no worse, within one run to the next.
 - **Ours' default since 17 Nov** (`stacks.yaml`, pose level `ekf_lane`): on where the
   world has a camera and a lane map, off elsewhere (the test lot, `cameras:=false`).
-  `pose:=ekf` turns it off; `stack:=stock` never has it.
+  `pose:=ekf` turns it off.
 - Under a load of 15-20 (two simulators) the lane finder saw no line and the runs were
   lost to stalls (`sensor_watchdog`): those runs are left out.

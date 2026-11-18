@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -188,9 +188,9 @@ step at a time, with our car in every step. Our own numbers live in
 <td>0.55 s more than today's, at 1 m/s</td>
 </tr>
 <tr>
-<td>Does Gazebo behave like the car?</td>
+<td>Does the simulator behave like the car?</td>
 <td>the same step in both, against the model</td>
-<td>Gazebo steers 0.11 s late</td>
+<td>Gazebo steered 0.11 s late (fixed 25 Oct)</td>
 </tr>
 <tr>
 <td>Is 3 m/s safe on the path?</td>
@@ -384,7 +384,7 @@ fixes it: 10 times smaller dt, 10 times less error.</p>
 e^(At) x(0) plus the input convolved with e^(At) B. The spine runs its PI every 10 ms,
 the path controller every 50 ms: the same Ad, Bd (<a href="vehicle-model.html#5-discrete-time-as-the-computers-run-it">vehicle-model, section
 5</a>).</p>
-<h3 id="gazebo-is-the-same-idea-with-more-states">Gazebo is the same idea, with more states</h3>
+<h3 id="gazebo-was-the-same-idea-with-more-states">Gazebo was the same idea, with more states</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -421,8 +421,8 @@ the path controller every 50 ms: the same Ad, Bd (<a href="vehicle-model.html#5-
 </tr>
 </tbody>
 </table></div>
-<p>Same loop: state now, forces, step. So Gazebo's car can't roll on springs: if roll ever
-matters, Gazebo won't show it.</p>
+<p>Same loop: state now, forces, step. So Gazebo's car couldn't roll on springs, and Ravensim's (a bicycle model, our simulator since 16 Nov) can't either: if roll ever
+matters, the simulator won't show it.</p>
 </section>
 <section class="card"><h2 id="6-transfer-functions">6. Transfer functions</h2>
 <p><strong>Laplace turns a derivative into s.</strong> With zero starting values, x' → s X(s), so

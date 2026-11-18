@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">60 min read · 17 sections</div></header>
+<div class="meta">61 min read · 17 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -179,7 +179,7 @@ answer.</p>
 </tr>
 <tr>
 <td>3</td>
-<td>Stock ROS packages: robot_localization (two EKFs), Nav2, nav2_costmap_2d, twist_mux</td>
+<td>Stock ROS packages: robot_localization (two EKFs), Nav2, nav2_costmap_2d, twist_mux (Nav2 and its costmaps replaced by our Rust ports, 17 Nov: below)</td>
 <td>They replace the previous team's own estimator, planner, costmaps and command picking, where most of its bugs were</td>
 </tr>
 <tr>
@@ -288,7 +288,7 @@ answer.</p>
 </tr>
 <tr>
 <td>A car-safe Nav2: SmacPlannerHybrid with Regulated Pure Pursuit (or MPPI's Ackermann model), and no Spin in the behaviour tree</td>
-<td>A car can't turn on the spot. The config already does this. (MPPI is the default follower since 22 Oct, the State Lattice the default planner since 1 Nov: see below)</td>
+<td>A car can't turn on the spot. The config already does this. (MPPI is the default follower since 22 Oct, the State Lattice the default planner since 1 Nov: see below. Since 17 Nov our ports do the same: no Spin, the lattice, <code>mppi_lag</code>)</td>
 </tr>
 <tr>
 <td>The RC transmitter stays the top-priority override, in hardware</td>
@@ -369,7 +369,7 @@ answer.</p>
 </tr>
 <tr>
 <td>Simulators</td>
-<td>our own simulator (the default since 8 Nov) and bench mode every day; Gazebo with <code>simulator:=gazebo</code>; CARLA for the cameras, once the NVIDIA computer runs it (Q31, reopened 15 Oct)</td>
+<td>our own simulator (the default since 8 Nov) and bench mode every day; Gazebo until 16 Nov; CARLA for the cameras, once the NVIDIA computer runs it (Q31, reopened 15 Oct)</td>
 </tr>
 <tr>
 <td>Trials</td>
@@ -531,7 +531,7 @@ answer.</p>
 <td>Ben, 23 Oct: "yes lets do it"</td>
 </tr>
 <tr>
-<td><strong>MPPI is Nav2's default path follower</strong>; Regulated Pure Pursuit stays as <code>controller:=rpp</code></td>
+<td><strong>MPPI is Nav2's default path follower</strong>; Regulated Pure Pursuit stays as <code>controller:=rpp</code> (both went with Nav2 on 17 Nov; our <code>mppi_lag</code> follows)</td>
 <td>In every lot run in Gazebo it did at least as well. It reached the first goal cleanly in 4 of 4 runs; Pure Pursuit looped there in 2 of 3, as it aims at a point and arrives facing the wrong way (<a href="path-followers.html">Path followers</a>)</td>
 <td>Ben, 22 Oct: "I thought we decided to go mppi"</td>
 </tr>
@@ -604,7 +604,7 @@ answer.</p>
 <td>Ben, 24 Oct: "aav detector yes"</td>
 </tr>
 <tr>
-<td><strong>A HUD that drops out holds Nav2 until a person clears it</strong> (latched, <code>hud LOST</code>). One dropout within 5 s of its first beat is forgiven; any other latches, even once it beats again. A person checks the screen, then <code>pixi run clear watchdog</code> (the same service as a GPS jump)</td>
+<td><strong>A HUD that drops out holds navigation until a person clears it</strong> (latched, <code>hud LOST</code>). One dropout within 5 s of its first beat is forgiven; any other latches, even once it beats again. A person checks the screen, then <code>pixi run clear watchdog</code> (the same service as a GPS jump)</td>
 <td>The safety drivers rely on the screen. A HUD that crashed once may crash again; driving on by itself after systemd restarts it hides that. A window's slow first frames shouldn't need a person, so start-up gets one free dropout. The watchdog's own stalls never latch it (<a href="hud.html#the-heartbeat">HUD</a>)</td>
 <td>Ben, 24 Oct</td>
 </tr>
@@ -705,7 +705,7 @@ answer.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Nav2 keeps its path for the last 8 m to a goal</strong> (<code>navigate_to_pose_car*.xml</code>): it replans every second elsewhere, but near the goal only if the path is blocked, for another goal, or 20 s old. 8 m = <code>vehicle.final_approach</code>, 2 of the planner's turning radii</td>
+<td><strong>Nav2 keeps its path for the last 8 m to a goal</strong> (<code>navigate_to_pose_car*.xml</code>; our navigator does the same since): it replans every second elsewhere, but near the goal only if the path is blocked, for another goal, or 20 s old. 8 m = <code>vehicle.final_approach</code>, 2 of the planner's turning radii</td>
 <td>Replanning there made the car circle goals: a new path from a little behind on the last bend is a 21-25 m loop for a car, and each new path resets Nav2's goal checker. Gazebo, first leg, 12 runs each way: loop plans in 10 before, none after; 3 loops driven before, none after (<a href="path-followers.html#circling-a-goal-found-and-fixed-29-october-todo-17">Path followers</a>)</td>
 <td>TODO 17, from the Gazebo runs</td>
 </tr>
@@ -815,12 +815,12 @@ answer.</p>
 </tr>
 <tr>
 <td>8 Nov</td>
-<td><strong>Our own simulator is the default</strong> (<code>simulator:=own</code>); <code>simulator:=gazebo</code> for computers with no GPU</td>
+<td><strong>Our own simulator is the default</strong> (<code>simulator:=own</code>); <code>simulator:=gazebo</code> for computers with no GPU (until 16 Nov: the camera lockstep took that job)</td>
 <td>Ben, after the head-to-head runs</td>
 </tr>
 <tr>
 <td>8 Nov</td>
-<td><strong>Off Nav2 one piece at a time</strong> (costmap, planner, navigator, smoother), each beside Nav2 until it wins; <strong>Nav2 stays the default and on the car</strong></td>
+<td><strong>Off Nav2 one piece at a time</strong> (costmap, planner, navigator, smoother), each beside Nav2 until it wins; <strong>Nav2 stays the default and on the car</strong> (until 17 Nov: below)</td>
 <td>Ben</td>
 </tr>
 <tr>
@@ -1303,7 +1303,7 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 <td>restart a sensor driver when it dies?</td>
 </tr>
 <tr>
-<td>Nav2's lookahead (N7)</td>
+<td>The follower's lookahead (N7; Nav2's then)</td>
 <td>its turn command flips sign about once a second in the sim. Still open: "the wiggle" (TODO 124, 149); the single-goal tree's replanning at 1 Hz is the suspect</td>
 </tr>
 <tr>
@@ -1316,7 +1316,7 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 </tr>
 <tr>
 <td>Stop signs as a twist_mux lock</td>
-<td>priority 30: it holds Nav2 and the AI slot, never a person or a test script; 4 s stop, then 10 s to drive past. Built and working on the bench (Proposed)</td>
+<td>priority 30: it holds navigation and the AI slot, never a person or a test script; 4 s stop, then 10 s to drive past. Built and working on the bench (Proposed)</td>
 </tr>
 <tr>
 <td>The steering on an e-stop</td>

@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -181,7 +181,7 @@ picture (<strong>camera lockstep</strong>, 16 Nov): <code>tools/software_gl.sh p
                       (actuator model)                      │ world: SDF files      
                                                             │ car, rays, IMU, GPS, clock
  sim_imu, sim_gps, sim_radar, sim_adapter &lt;─────┘ /vehicle/sim/*: Gazebo's rates, QoS
-   └─&gt; /sensors/*, /vehicle/*  ─&gt; localization, Nav2, safety: unchanged</code></pre>
+   └─&gt; /sensors/*, /vehicle/*  ─&gt; localization, navigation, safety: unchanged</code></pre>
 <p>It replaced <code>gz sim</code> <strong>and</strong> its bridges. Every node above them is the one Gazebo used.</p>
 </section>
 <section class="card"><h2 id="what-it-gives">What it gives</h2>
@@ -408,11 +408,11 @@ detectors see the same red and white. The lane finder did a little better on rea
 <tbody>
 <tr>
 <td>Today</td>
-<td><code>sim_adapter</code>'s actuator model, then Gazebo's AckermannSteering (±10 m/s², the wheels steer at once), then the bicycle</td>
+<td><code>sim_adapter</code>'s actuator model, then <code>TwistFollower</code> (Gazebo's AckermannSteering, copied: ±10 m/s², the wheels steer at once), then the bicycle</td>
 </tr>
 <tr>
 <td>Hitting things</td>
-<td>the outline (<code>vehicle.yaml</code> <code>body:</code>) stops at what it meets, at 0.35, 0.8 and 1.3 m up, as Gazebo's physics does. The log says "the car hit something"</td>
+<td>the outline (<code>vehicle.yaml</code> <code>body:</code>) stops at what it meets, at 0.35, 0.8 and 1.3 m up, as Gazebo's physics did. The log says "the car hit something"</td>
 </tr>
 <tr>
 <td>The ground (8 Nov)</td>
@@ -594,7 +594,7 @@ time (<code>simulator:=</code>).</p>
 <td>pass (5 Nov)</td>
 </tr>
 <tr>
-<td>A Nav2 goal, (14, 0) in the test lot</td>
+<td>A goal (then Nav2's), (14, 0) in the test lot</td>
 <td>succeeded; the truth 0.4 m short, 0.9 m aside</td>
 <td>succeeded (5 Nov)</td>
 </tr>
@@ -711,11 +711,11 @@ Their own page has the details: <a href="own-simulator-cameras.html">the cameras
 </tr>
 <tr>
 <td>The Bevy window drawing ours</td>
-<td>the window reads the same topics, so it works as with Gazebo; not run yet</td>
+<td><code>pixi run ravensim</code> starts it on Ravensim (17 Nov); a person still has to look it over</td>
 </tr>
 <tr>
 <td><code>ActuatorCar</code> driving the node</td>
-<td>the Python actuator model stays in front, as with Gazebo</td>
+<td>the Python actuator model stays in front</td>
 </tr>
 </tbody>
 </table></div></section>

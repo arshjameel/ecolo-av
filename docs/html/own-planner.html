@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -123,10 +123,10 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does">What it does</a><a href="#try-it">Try it</a><a href="#hand-made-maps-no-ros">Hand-made maps (no ROS)</a><a href="#in-our-simulator-8-nov">In our simulator (8 Nov)</a><a href="#hybrid-a-a-second-search-14-nov">Hybrid-A*: a second search (14 Nov)</a><a href="#the-staircase-and-the-strong-smoother-15-nov">The staircase and the strong smoother (15 Nov)</a><a href="#re-timed-in-the-sim-16-nov-todo-152">Re-timed in the sim (16 Nov, TODO 152)</a><a href="#the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (path:=lane, 16 Nov)</a><a href="#passing-something-parked-16-nov">Passing something parked (16 Nov)</a><a href="#far-goals-in-steps-16-nov-todo-175">Far goals in steps (16 Nov, TODO 175)</a><a href="#routing-on-lanelet2-lane_graphlanelet2-16-nov-todo-175">Routing on Lanelet2 (lane_graph:=lanelet2, 16 Nov, TODO 175)</a><a href="#whats-missing">What&#x27;s missing</a></nav>
-<div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it wins. The
+<div class="lead"><p>Ben, 8 Nov: move off Nav2 <strong>one piece at a time</strong>, each beside Nav2 until it won. The
 order: the costmap (<a href="own-costmap.html">done</a>), then <strong>the path planner</strong> (this page), then
-the navigator. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>; Nav2's
-lattice with <code>planner:=lattice</code> or <code>stack:=stock</code>). Nav2 stays on the car.</p>
+the navigator. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>).
+Nav2 went on 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>): ours is the only one, in the sim and on the car. The comparisons with Nav2's below are the record.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -174,13 +174,11 @@ lattice with <code>planner:=lattice</code> or <code>stack:=stock</code>). Nav2 s
 </ul>
 </blockquote></div>
 <section class="card"><h2 id="how-it-fits">How it fits</h2>
-<pre class="highlight"><code>global costmap ───────────┐   Nav2's /global_costmap/costmap_raw (costmap:=nav2)
-                          │   or ours, /drivers/nav/costmap/global_raw (costmap:=own)
+<pre class="highlight"><code>global costmap (ours) ────┐   /drivers/nav/costmap/global_raw
 /tf (map → odom → car) ───┤
                           ▼
-bt_navigator ──ComputePathToPose──▶ planner (ours) ──▶ /plan ──▶ the follower, screens
-                                           └──────────▶ /drivers/nav/planner/status
-planner_server (Nav2's lattice) keeps running beside it: /compute_path_to_pose</code></pre>
+navigator ──ComputePathToPose──▶ planner (ours) ──▶ /plan ──▶ the follower, screens
+                                        └──────────▶ /drivers/nav/planner/status</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -193,7 +191,7 @@ planner_server (Nav2's lattice) keeps running beside it: /compute_path_to_pose</
 <tr>
 <td><code>/drivers/nav/planner/compute_path_to_pose</code></td>
 <td>action, Nav2's ComputePathToPose</td>
-<td>bt_navigator (remapped here)</td>
+<td>the navigator</td>
 </tr>
 <tr>
 <td><code>/plan</code></td>
@@ -205,16 +203,12 @@ planner_server (Nav2's lattice) keeps running beside it: /compute_path_to_pose</
 <td>DiagnosticStatus</td>
 <td>each plan's times, length, cusps, or why none</td>
 </tr>
-<tr>
-<td><code>/drivers/nav/planner/nav2_plan</code></td>
-<td>nav_msgs/Path</td>
-<td>Nav2's lattice's own <code>/plan</code>, moved aside</td>
-</tr>
 </tbody>
 </table></div>
-<p><strong>How the swap works.</strong> <code>navigation.launch.py</code> remaps two names in <code>bt_navigator</code>:
-<code>compute_path_to_pose</code> and <code>compute_path_through_poses</code> → ours. The costmap step did the
-same with the clear service. Our navigator (<a href="own-navigator.html">page</a>) calls both too.</p>
+<p><strong>How the swap worked.</strong> Until 17 Nov <code>navigation.launch.py</code> remapped two names in Nav2's
+<code>bt_navigator</code> (<code>compute_path_to_pose</code> and <code>compute_path_through_poses</code>) to ours, with
+Nav2's <code>planner_server</code> running beside it. Now our navigator (<a href="own-navigator.html">page</a>)
+calls ours directly, and Nav2's planner is gone (<a href="../history/nav2-as-it-was.md">as it was</a>).</p>
 </section>
 <section class="card"><h2 id="what-it-does">What it does</h2>
 <pre class="highlight"><code>start ─▶ A* over the moves ─▶ now and then: one curve straight to the goal? ─▶ smooth ─▶ path
@@ -282,8 +276,8 @@ same with the clear service. Our navigator (<a href="own-navigator.html">page</a
 <td><code>pixi run sim planner:=own</code>, then send a goal</td>
 </tr>
 <tr>
-<td>Score it beside Nav2's</td>
-<td><code>pixi run measure controllers --planners lattice own --reversing --tours lot</code></td>
+<td>Score it against our Hybrid-A*</td>
+<td><code>pixi run measure controllers --planners own own_hybrid --reversing --tours lot</code></td>
 </tr>
 <tr>
 <td>On our costmap too</td>
@@ -731,7 +725,7 @@ take out wiggles shorter than ~2 m, so the steps stay, and the follower drives t
 <tbody>
 <tr>
 <td><code>plan_smoothing:=nav2</code></td>
-<td>Nav2's weights (<code>navigation.launch.py</code>'s default; <code>stack:=stock</code>; the car)</td>
+<td>Nav2's weights (<code>navigation.launch.py</code>'s default; the car)</td>
 </tr>
 <tr>
 <td><code>plan_smoothing:=strong</code></td>

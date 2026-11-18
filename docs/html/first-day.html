@@ -7,7 +7,7 @@
 <!-- Generated from docs/first-day.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Your first day</h1>
-<div class="meta">6 min read · 9 sections</div></header>
+<div class="meta">7 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -122,10 +122,10 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#what-you-need">What you need</a><a href="#1-install-everything-once-about-20-minutes">1. Install everything (once, about 20 minutes)</a><a href="#2-drive-the-turtle-10-minutes">2. Drive the turtle (10 minutes)</a><a href="#3-see-the-graph-5-minutes">3. See the graph (5 minutes)</a><a href="#4-ravensim-the-simulated-car-15-minutes">4. Ravensim: the simulated car (15 minutes)</a><a href="#5-a-nav2-goal-through-a-costmap-10-minutes">5. A Nav2 goal through a costmap (10 minutes)</a><a href="#whats-been-tested">What&#x27;s been tested</a><a href="#where-next">Where next</a><a href="#when-something-doesnt-work">When something doesn&#x27;t work</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-you-need">What you need</a><a href="#1-install-everything-once-about-20-minutes">1. Install everything (once, about 20 minutes)</a><a href="#2-drive-the-turtle-10-minutes">2. Drive the turtle (10 minutes)</a><a href="#3-see-the-graph-5-minutes">3. See the graph (5 minutes)</a><a href="#4-ravensim-the-simulated-car-15-minutes">4. Ravensim: the simulated car (15 minutes)</a><a href="#5-a-goal-through-a-costmap-10-minutes">5. A goal through a costmap (10 minutes)</a><a href="#whats-been-tested">What&#x27;s been tested</a><a href="#where-next">Where next</a><a href="#when-something-doesnt-work">When something doesn&#x27;t work</a></nav>
 <div class="lead"><p>New to the team? Start here. In about an hour you'll have ROS on your laptop, drive a
 turtle that steers like the car, see every node and topic in rqt_graph, drive the
-simulated car, and watch Nav2 plan a path through a costmap. Each step says what
+simulated car in Ravensim, and watch our stack plan a path through a costmap. Each step says what
 you should see.</p></div>
 <section class="card"><h2 id="what-you-need">What you need</h2>
 <div class="table-wrap"><table>
@@ -174,7 +174,7 @@ in: <a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
 laptop is set up. If not, see <a href="#when-something-doesnt-work">When something doesn't work</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">What did that install?</p>
-<p>Pixi put ROS 2 Jazzy, Gazebo, Nav2, Python, Rust and the compilers inside the <code>.pixi</code>
+<p>Pixi put ROS 2 Jazzy, Python, Rust and the compilers inside the <code>.pixi</code>
 folder of the repo. Nothing else on your laptop changed, except one line in your shell
 settings so that the <code>pixi</code> command is found.</p>
 </div>
@@ -256,29 +256,58 @@ tools/software_gl.sh pixi run sim   # a computer with no GPU (slower than real t
 <ul>
 <li><strong>RViz:</strong> the car model, the map, and the costmaps around the car.</li>
 </ul>
-<p>Ravensim is Ravensim (<a href="own-simulator.html">its page</a>). It has no window of its
-own: watch in RViz (or Lichtblick, <a href="foxglove.html">Foxglove</a>).</p>
+<p>Ravensim is our own simulator, in Rust (<a href="own-simulator.html">its page</a>). Watch it in RViz,
+in Lichtblick (<a href="foxglove.html">Foxglove</a>), or in the developer window: <code>pixi run ravensim</code>
+starts the sim and the window together.</p>
 <p>Drive it with <code>pixi run keyboard --sim</code> in another terminal. Then run
 <code>pixi run check sim</code>: it should say <code>0 failed</code>.</p>
 </section>
-<section class="card"><h2 id="5-a-nav2-goal-through-a-costmap-10-minutes">5. A Nav2 goal through a costmap (10 minutes)</h2>
+<section class="card"><h2 id="5-a-goal-through-a-costmap-10-minutes">5. A goal through a costmap (10 minutes)</h2>
 <p>In RViz:</p>
 <ol>
 <li>Click <strong>2D Goal Pose</strong> in the toolbar.</li>
 <li>Click on the map about 8 m ahead of the car, and drag to set the direction.</li>
 </ol>
 <p><strong>You should see</strong> a planned path appear, and the car drive along it and stop at the goal.
-Any keyboard or joystick input overrides Nav2 at once.</p>
-<p>The costmaps are the grids that Nav2 plans through:</p>
-<ul>
-<li><strong>local</strong>: 20 m × 20 m around the car;</li>
-<li><strong>global</strong>: the whole map.</li>
-</ul>
+Any keyboard or joystick input overrides the navigator at once.</p>
+<p>Our stack (<code>stack:=ours</code>) does it, all in Rust:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Package</th>
+<th>Job</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>navigator</td>
+<td><code>aav_navigator</code></td>
+<td>takes the goal, replans, recovers</td>
+</tr>
+<tr>
+<td>planner</td>
+<td><code>aav_planner</code></td>
+<td>the path, through the costmap</td>
+</tr>
+<tr>
+<td>path follower</td>
+<td><code>aav_mppi_lag</code></td>
+<td>follows the path</td>
+</tr>
+<tr>
+<td>costmap</td>
+<td><code>aav_costmap</code></td>
+<td>the grids it plans through: <strong>local</strong> (20 m × 20 m around the car) and <strong>global</strong> (the whole map)</td>
+</tr>
+</tbody>
+</table></div>
 <p>For walls to plan around, start Ravensim with the test lot instead:
 <code>pixi run sim world:=test_lot</code>. <a href="costmaps.html">Costmaps</a> explains how to draw your own.</p>
 <div class="admonition note">
 <p class="admonition-title">The same goal from a terminal</p>
-<p><code>pixi run tools/ros.sh ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose "{pose: {header: {frame_id: map}, pose: {position: {x: 8.0, y: 0.0}, orientation: {w: 1.0}}}}"</code></p>
+<p>The navigator serves Nav2's action name and message, so goal senders stay the same:
+<code>pixi run tools/ros.sh ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose "{pose: {header: {frame_id: map}, pose: {position: {x: 8.0, y: 0.0}, orientation: {w: 1.0}}}}"</code></p>
 </div>
 </section>
 <section class="card"><h2 id="whats-been-tested">What's been tested</h2>
@@ -307,14 +336,14 @@ Any keyboard or joystick input overrides Nav2 at once.</p>
 <td><span class="badge b-works">works</span> the check. The window opened; a person still has to look at it</td>
 </tr>
 <tr>
-<td>4. Gazebo without its window</td>
-<td><span class="badge b-works">works</span></td>
+<td>4. Ravensim, headless (<code>sim-check</code>)</td>
+<td><span class="badge b-untested">untested</span> with software GL (TODO 240)</td>
 <td><span class="badge b-works">works</span></td>
 </tr>
 <tr>
-<td>4. Gazebo's window</td>
+<td>4. Ravensim with the developer window (<code>pixi run ravensim</code>)</td>
 <td><span class="badge b-untested">untested</span> (no screen on oirp-spss)</td>
-<td><span class="badge b-works">works</span> 10 Oct: the car drives in it, and the camera follows</td>
+<td><span class="badge b-untested">untested</span> (new, 17 Nov)</td>
 </tr>
 <tr>
 <td>4. RViz</td>
@@ -322,9 +351,9 @@ Any keyboard or joystick input overrides Nav2 at once.</p>
 <td><span class="badge b-untested">untested</span> it opens; nobody has looked at it yet</td>
 </tr>
 <tr>
-<td>5. A Nav2 goal</td>
-<td><span class="badge b-works">works</span></td>
-<td><span class="badge b-works">works</span> from a terminal: 8 m in 13 s</td>
+<td>5. A goal</td>
+<td><span class="badge b-untested">untested</span> (TODO 240)</td>
+<td><span class="badge b-works">works</span> (<code>sim-check</code>'s drive)</td>
 </tr>
 </tbody>
 </table></div>

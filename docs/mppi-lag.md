@@ -556,7 +556,7 @@ faster than Nav2 (1.98 against 1.60 m/s) and still sways less.
 | + `mppi_lag_steer_gamma:=0.05` | campus to 0.099; the lot to 0.021 |
 
 Every switch stays: `plan_smoothing:=nav2`, `map_correction:=newest` and
-`mppi_lag_steer_gamma:=` (empty) give the old ours; `stack:=stock` is unchanged.
+`mppi_lag_steer_gamma:=` (empty) give the old ours.
 
 ### Still open
 
@@ -596,7 +596,7 @@ to 9 cm beside the car. The follower sees a cross-track error and steers at it.
 | Measured at the car | a 1° turn about odom's origin 100 m away is 1.7 m there, but 0 at the car |
 | The snap | past `map_correction_snap_distance` (2 m) or `_snap_angle` (10°): taken at once |
 | Off | `map_correction:=newest` (the launch's default): each new path by the newest. On: `map_correction:=slow` |
-| Status | **the sim's `ours` stack takes it** (15 Nov, with the [two fixes above](#the-sway-that-was-left)); `navigation.launch.py`, the car and `stack:=stock` keep `newest`. The obstacle check's stall (TODO 193) happens with `newest` too |
+| Status | **the sim's `ours` stack takes it** (15 Nov, with the [two fixes above](#the-sway-that-was-left)); `navigation.launch.py` and the car keep `newest`. The obstacle check's stall (TODO 193) happens with `newest` too |
 | Watch it | `map_gap_m` on `/drivers/nav/track/status`: the held one's gap at the car |
 
 Why 0.1 m/s: odometry drifts 1-2 % of the distance (0.05 m/s at 2.5 m/s), so the held

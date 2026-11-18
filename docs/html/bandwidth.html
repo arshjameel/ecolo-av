@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -139,7 +139,7 @@ sends each front camera as <strong>H.264, 1280x720, 15 fps, 2 Mbit/s</strong> (M
 Orin decodes it and runs the detector in one process, so raw pictures never cross
 the network: <a href="camera-pipeline.html">Camera pipeline</a>. The raw and JPEG camera rows
 below are what that avoids, and still hold for a USB camera (<code>usb_cam</code>).
-<span class="badge b-untested">untested</span> on the car. The measurements below are Gazebo's, 23-24 Oct.</p>
+<span class="badge b-untested">untested</span> on the car. The measurements below are Gazebo's, 23-24 Oct (our simulator then; Ravensim publishes the same topics at the same rates).</p>
 </div>
 <p>How sure each number is:</p>
 <div class="table-wrap"><table>
@@ -312,7 +312,7 @@ below are what that avoids, and still hold for a USB camera (<code>usb_cam</code
 <td>guess (~30,000 points x 22 B)</td>
 </tr>
 <tr>
-<td>Lidar, flattened for Nav2</td>
+<td>Lidar, flattened for the costmap</td>
 <td><code>/sensors/lidar/scan</code></td>
 <td style="text-align: right;">10</td>
 <td style="text-align: right;">2.9 kB</td>
@@ -320,7 +320,7 @@ below are what that avoids, and still hold for a USB camera (<code>usb_cam</code
 <td style="text-align: right;">0.2</td>
 <td>Orin</td>
 <td>stays</td>
-<td>costmap, collision_monitor</td>
+<td>costmap, the stop zone</td>
 <td>measured</td>
 </tr>
 <tr>
@@ -332,7 +332,7 @@ below are what that avoids, and still hold for a USB camera (<code>usb_cam</code
 <td style="text-align: right;">&lt;0.4</td>
 <td>the Pi it's plugged into</td>
 <td>USB serial, then Ethernet</td>
-<td>radar_clusters, Nav2</td>
+<td>radar_clusters, the costmap and the stop zone</td>
 <td>guess (its serial port tops out at 0.09 MB/s)</td>
 </tr>
 <tr>
@@ -404,7 +404,7 @@ below are what that avoids, and still hold for a USB camera (<code>usb_cam</code
 <td style="text-align: right;">0.6</td>
 <td>Orin</td>
 <td>stays</td>
-<td>Nav2, the HUD's map</td>
+<td>navigation, the HUD's map</td>
 <td>measured</td>
 </tr>
 <tr>
@@ -433,7 +433,7 @@ below are what that avoids, and still hold for a USB camera (<code>usb_cam</code
 </tr>
 <tr>
 <td>Global costmap</td>
-<td><code>/global_costmap/costmap</code></td>
+<td><code>/drivers/nav/costmap/global</code> (Nav2's <code>/global_costmap/costmap</code> then)</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">640 kB</td>
 <td style="text-align: right;">0.64</td>
@@ -444,7 +444,7 @@ below are what that avoids, and still hold for a USB camera (<code>usb_cam</code
 <td>measured (Gazebo's road map; grows with the map)</td>
 </tr>
 <tr>
-<td>Nav2's plan</td>
+<td>The plan</td>
 <td><code>/plan</code></td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">4-7 kB</td>
@@ -761,7 +761,7 @@ car). Watching over Foxglove or Lichtblick (port 8765) costs only what you open:
 <tr>
 <td>7</td>
 <td><strong>Viewers subscribe to one costmap</strong>, not every layer</td>
-<td>each Nav2 layer is its own 40-640 kB topic. RViz or Foxglove opening all of them is 5 MB/s</td>
+<td>each of Nav2's layers was its own 40-640 kB topic (Gazebo days). RViz or Foxglove opening all of them is 5 MB/s</td>
 </tr>
 <tr>
 <td>8</td>

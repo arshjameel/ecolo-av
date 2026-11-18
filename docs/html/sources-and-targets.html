@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -131,8 +131,8 @@ everything is real. Package <code>aav_io_mux</code>, built 23 Oct.</p>
 <p class="admonition-title">The short version</p>
 <ul>
 <li><strong>Source:</strong> where the sensor data comes from: <code>real</code>, <code>sim</code>, <code>bench</code> or <code>replay</code>.</li>
-<li><strong>Target:</strong> who plays the car: <code>car</code>, <code>sim</code> (any simulator: ours or Gazebo), <code>bench</code>,
-  <code>turtle</code> or <code>carla</code>. (<code>stack.launch.py</code> still spells the sim profile <code>target:=gazebo</code>.)</li>
+<li><strong>Target:</strong> who plays the car: <code>car</code>, <code>sim</code> (any simulator: Ravensim), <code>bench</code>,
+  <code>turtle</code> or <code>carla</code>. (<code>stack.launch.py</code> spells the sim profile <code>target:=ravensim</code> (the mux's target: <code>sim</code>); the old <code>target:=gazebo</code> works until after 0.4-rc1, TODO 241.)</li>
 <li>Every backend reads only its own target's topic, <code>/control/&lt;target&gt;/actuator_cmd</code>.
   Nothing reads <code>/ego/actuator_cmd</code> directly any more.</li>
 <li>The real car's topic carries commands only while <strong>every</strong> source is REAL. One SIM
@@ -147,7 +147,7 @@ everything is real. Package <code>aav_io_mux</code>, built 23 Oct.</p>
 <pre class="highlight"><code class="language-text"> sources                       checked by                    targets
  ───────                       ──────────                    ───────
  real drivers ─┐                                       ┌─► /control/car/... ──► spine_bridge
- Gazebo        ├─► /sensors/... ──► sensor_mux         │                        legacy_uart_bridge
+ Ravensim      ├─► /sensors/... ──► sensor_mux         │                        legacy_uart_bridge
  bench mocks   │   /vehicle/...      │ /system/sensor_mux/state
  a bag (replay)┘   /system/source ───┤ (ok? which source?)
                                      ▼                 ├─► /control/sim/.. ──► sim_adapter
@@ -178,7 +178,7 @@ everything is real. Package <code>aav_io_mux</code>, built 23 Oct.</p>
 </table></div>
 <p>Both forget an announcement once the node that made it has gone. The real car's stock
 drivers (u-blox, Velodyne, usb_cam) can't announce, so an unannounced sensor counts as
-REAL. Every stand-in announces (Gazebo, the bench's mocks, <code>spine_bridge</code> off the car, a
+REAL. Every stand-in announces (Ravensim, the bench's mocks, <code>spine_bridge</code> off the car, a
 replay), so it can't pass for real.</p>
 </section>
 <section class="card"><h2 id="open-wait-stop">Open, wait, stop</h2>
@@ -314,20 +314,20 @@ gate is shut (Ben, 24 Oct), and says why.</p>
 <ul>
 <li>Disarming always works.</li>
 <li>Both bridges, Rust and Python, say the same words (<code>spine-bridge</code>'s <code>gate.rs</code>,
-  <code>aav_spine/output_gate.py</code>). Their clock for "quiet" is a steady one, not Gazebo's.</li>
+  <code>aav_spine/output_gate.py</code>). Their clock for "quiet" is a steady one, not the simulator's.</li>
 <li><code>role:=sensors</code> has no <code>/spine/arm</code>, so nothing to refuse.</li>
 <li><code>legacy_uart_bridge</code> (today's car, through the Motor Pi) has no arm step: the output
   mux's silence makes it brake after 0.3 s.</li>
-<li>The bench and Gazebo (<code>arm:=true</code>) start <code>arm_when_open</code> (<code>aav_spine</code>) after 12 s. It
+<li>The bench and Ravensim (<code>arm:=true</code>) start <code>arm_when_open</code> (<code>aav_spine</code>) after 12 s. It
   asks each second until the gate opens, then exits. It gives up after 120 s, or at once
   on an e-stop. <code>bench_check.py</code> and <code>sim_check.py</code> also wait for OPEN before they arm.</li>
 </ul>
 <p>When it sends nothing, each backend's own timeout brakes, as when ego stops: <code>spine_bridge</code>
-after 0.1 s (then the spine's 100 ms watchdog), <code>legacy_uart_bridge</code> after 0.3 s, Gazebo
+after 0.1 s (then the spine's 100 ms watchdog), <code>legacy_uart_bridge</code> after 0.3 s, Ravensim
 after 0.2 s. The clear service refuses while anything is still wrong, and says what.</p>
 </section>
 <section class="card"><h2 id="one-launch-target">One launch, <code>target:=</code></h2>
-<pre class="highlight"><code class="language-text">ros2 launch aav_bringup stack.launch.py target:=gazebo world:=road</code></pre>
+<pre class="highlight"><code class="language-text">ros2 launch aav_bringup stack.launch.py target:=ravensim world:=road</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -343,7 +343,7 @@ after 0.2 s. The clear service refuses while anything is still wrong, and says w
 <td>sim</td>
 </tr>
 <tr>
-<td><code>gazebo</code></td>
+<td><code>ravensim</code> (<code>gazebo</code>, its old name, until after 0.4-rc1)</td>
 <td><code>sim.launch.py</code> (our simulator by default; the mux's target is <code>sim</code>)</td>
 <td>sim</td>
 </tr>
@@ -392,7 +392,7 @@ instead, and let each launch start only the chosen source:</p>
 </tr>
 <tr>
 <td>If the mux dies</td>
-<td>the sensors stop (the watchdog stops Nav2)</td>
+<td>the sensors stop (the watchdog stops navigation)</td>
 <td>the output mux stops the car within 3 s</td>
 </tr>
 <tr>
@@ -447,7 +447,7 @@ own. The frame: <a href="rust-firmware.html#the-heartbeat-version-2-of-the-seria
 <ul>
 <li>A stand-in that announces nothing and runs <strong>instead of</strong> the real driver (one
   publisher, unannounced): it looks real. Every stand-in of ours announces.</li>
-<li>Ghost obstacles: they only add an obstacle to Nav2's view, never a sensor, so they're
+<li>Ghost obstacles: they only add an obstacle to navigation's view, never a sensor, so they're
   allowed on the car (<a href="ghost-obstacles.html">ghost obstacles</a>).</li>
 <li>The first 4 s after start: the sensor mux stays quiet 2 s while discovery settles, and
   the output mux waits 2 s more. Nothing drives in that time.</li>

@@ -7,7 +7,7 @@
 <!-- Generated from docs/glossary.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Glossary</h1>
-<div class="meta">17 min read · 7 sections</div></header>
+<div class="meta">18 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -148,7 +148,7 @@
 <tr>
 <td>A*</td>
 <td>a classic way to find the shortest path on a grid</td>
-<td>the 2025-26 planner, now replaced by Nav2</td>
+<td>the 2025-26 planner, replaced by Nav2's planners, then by ours (<code>aav_planner</code>)</td>
 </tr>
 <tr>
 <td>AAV</td>
@@ -187,7 +187,7 @@
 </tr>
 <tr>
 <td>backend</td>
-<td>the one program that plays the car: the real car, Gazebo or the turtle</td>
+<td>the one program that plays the car: the real car, Ravensim, CARLA or the turtle</td>
 <td><code>ros/can_bridge/</code> and <code>ros/sim/</code></td>
 </tr>
 <tr>
@@ -202,7 +202,7 @@
 </tr>
 <tr>
 <td>behaviour planner</td>
-<td>a trial (<code>behaviour:=true</code>, off by default): decides DRIVE, APPROACH, STOPPED, WAIT, GO or ASK, and caps Nav2's speed for a stop sign, an obstacle, the fence and the goal</td>
+<td>a trial (<code>behaviour:=true</code>, off by default): decides DRIVE, APPROACH, STOPPED, WAIT, GO or ASK, and caps navigation's speed for a stop sign, an obstacle, the fence and the goal</td>
 <td><code>ros/drivers/aav_behaviour</code>, <a href="stopping.html">How the car stops</a></td>
 </tr>
 <tr>
@@ -222,8 +222,8 @@
 </tr>
 <tr>
 <td><code>bt_navigator</code></td>
-<td>Nav2's boss: runs a behaviour tree that plans, follows and recovers</td>
-<td>Nav2</td>
+<td>Nav2's boss: ran a behaviour tree that planned, followed and recovered. Ours in its place: the navigator (<code>aav_navigator</code>)</td>
+<td>Nav2, until 17 Nov</td>
 </tr>
 <tr>
 <td>CAN</td>
@@ -247,7 +247,7 @@
 </tr>
 <tr>
 <td>CARLA</td>
-<td>a photo-real driving simulator, on Unreal Engine; next to Gazebo, for the cameras (Q31, <a href="carla.html">CARLA</a>)</td>
+<td>a photo-real driving simulator, on Unreal Engine; beside Ravensim, for photo-real cameras (Q31, <a href="carla.html">CARLA</a>)</td>
 <td><code>ros/sim/aav_carla</code></td>
 </tr>
 <tr>
@@ -267,7 +267,7 @@
 </tr>
 <tr>
 <td><code>collision_monitor</code></td>
-<td>a Nav2 node that sends zero speed when something enters its stop zone</td>
+<td>Nav2's node that sent zero speed when something entered its stop zone; ported as <code>aav_stop_zone</code>, the lock since 17 Nov. Its state topic keeps the name</td>
 <td><code>/safety/collision_monitor/state</code></td>
 </tr>
 <tr>
@@ -340,7 +340,7 @@
 </tr>
 <tr>
 <td>driver (ROS)</td>
-<td>anything that proposes a command: joystick, keyboard, Nav2...</td>
+<td>anything that proposes a command: joystick, keyboard, navigation...</td>
 <td><code>/drivers/&lt;name&gt;/cmd_vel</code></td>
 </tr>
 <tr>
@@ -494,7 +494,7 @@
 <tr>
 <td>inflation</td>
 <td>a soft band of cost around each obstacle in a costmap</td>
-<td>Nav2</td>
+<td><code>aav_costmap</code></td>
 </tr>
 <tr>
 <td>Jazzy</td>
@@ -538,7 +538,7 @@
 </tr>
 <tr>
 <td>lattice (State Lattice)</td>
-<td>Nav2's planner that joins short pre-computed curves the car can drive, reversing too. Our default planner since 1 Nov (<code>planner:=lattice</code>); Hybrid-A* if the car may not reverse</td>
+<td>a planner that joins short pre-computed curves the car can drive, reversing too. Nav2's, ported to Rust in <code>aav_planner</code>: our default planner since 1 Nov (<code>planner:=own</code>); Hybrid-A* with <code>planner_search:=hybrid</code></td>
 <td><code>nav2.yaml</code>, <a href="controllers.html#planners">Controllers</a></td>
 </tr>
 <tr>
@@ -603,12 +603,12 @@
 </tr>
 <tr>
 <td>MPPI</td>
-<td>Model-predictive path integral: Nav2's controller on our car (since 22 Oct). It tries thousands of futures through a model of the car. <code>controller:=rpp</code> for Regulated Pure Pursuit instead. Our own Rust port that knows the actuators' lag is a trial (<code>tracker:=mppi_lag</code>, <a href="mppi-lag.html">its page</a>)</td>
+<td>Model-predictive path integral: our path follower (since 22 Oct). It tries thousands of futures through a model of the car. Nav2's until 14 Nov; since then our Rust port, which knows the actuators' lag (<code>tracker:=mppi_lag</code>, <a href="mppi-lag.html">its page</a>)</td>
 <td><a href="path-followers.html">path followers</a></td>
 </tr>
 <tr>
 <td>Nav2</td>
-<td>ROS 2's navigation stack: plans a path and follows it</td>
+<td>ROS 2's stock navigation stack: plans a path and follows it. Ours until 17 Nov; each of its parts is now a Rust port of ours (<a href="../history/nav2-as-it-was.md">as it was</a>). We keep <code>nav2_msgs</code> and <code>nav2_amcl</code></td>
 <td><code>ros/drivers/aav_navigation</code></td>
 </tr>
 <tr>
@@ -666,7 +666,7 @@
 </tr>
 <tr>
 <td>Ravensim</td>
-<td>Ravensim in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov. Its cameras need a GPU</td>
+<td>our own simulator, in Rust, in Gazebo's place: the same worlds and topics; the default since 8 Nov, the only one since 16 Nov. With no GPU, <code>tools/software_gl.sh</code> draws its cameras (lockstep)</td>
 <td><code>ros/sim/aav_simulator</code>, <a href="own-simulator.html">its page</a></td>
 </tr>
 <tr>
@@ -736,7 +736,7 @@
 </tr>
 <tr>
 <td>Regulated Pure Pursuit</td>
-<td>a Nav2 controller: steers toward a point ahead on the path. Ours until 22 Oct; <code>controller:=rpp</code></td>
+<td>a Nav2 controller: steers toward a point ahead on the path. Ours until 22 Oct; gone with Nav2 (17 Nov). Our pure pursuit: <code>tracker:=pure_pursuit</code></td>
 <td><a href="path-followers.html">path followers</a></td>
 </tr>
 <tr>
@@ -786,7 +786,7 @@
 </tr>
 <tr>
 <td>SmacPlannerHybrid (Hybrid-A*)</td>
-<td>Nav2's planner that only plans turns a car can make. The default until 1 Nov; now only for a car that may not reverse (<code>planner:=hybrid</code>): see lattice</td>
+<td>Nav2's planner that only plans turns a car can make. The default until 1 Nov; ours now runs it with <code>planner_search:=hybrid</code>: see lattice</td>
 <td><code>nav2.yaml</code></td>
 </tr>
 <tr>
@@ -889,7 +889,7 @@
 </tr>
 <tr>
 <td>voxel</td>
-<td>a small cube of space. The lidar's cloud as 0.25 m cubes for Nav2 is a trial (<code>voxels:=true</code>) beside the flat scan</td>
+<td>a small cube of space. The lidar's cloud as 0.25 m cubes for the costmap is a trial (<code>voxels:=true</code>) beside the flat scan</td>
 <td><code>ros/perception/aav_voxels</code>, <a href="../designs/2026-10-30_voxels.md">the design</a></td>
 </tr>
 <tr>

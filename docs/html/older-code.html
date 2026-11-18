@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -248,7 +248,7 @@ be private (an org's private repos don't show to non-members), or not on GitHub.
 <td>C++17</td>
 <td>prototype</td>
 <td>no</td>
-<td>no: Nav2 does this</td>
+<td>no: our navigation does this (Nav2's, then our Rust ports)</td>
 </tr>
 <tr>
 <td>Navigation_PathPlanning_ObstacleAvoidance</td>
@@ -256,7 +256,7 @@ be private (an org's private repos don't show to non-members), or not on GitHub.
 <td>C++, PCL; Orin</td>
 <td>prototype, with a crash bug</td>
 <td>no</td>
-<td>no: Nav2 does this</td>
+<td>no: our navigation does this (Nav2's, then our Rust ports)</td>
 </tr>
 <tr>
 <td>Obstacle_Avoidance_logic</td>
@@ -264,7 +264,7 @@ be private (an org's private repos don't show to non-members), or not on GitHub.
 <td>one C++ file</td>
 <td>can't build: no package files</td>
 <td>no</td>
-<td>no: Nav2's obstacle layer and collision monitor</td>
+<td>no: the costmap's obstacle layer and the stop zone (Nav2's, then ours)</td>
 </tr>
 <tr>
 <td>Odometry</td>
@@ -455,7 +455,7 @@ be private (an org's private repos don't show to non-members), or not on GitHub.
 <tr>
 <td>Navigation</td>
 <td>any planner whose output reached the motors; the HUD's route into GPS waypoints; lidar or radar costmap inputs</td>
-<td><span class="badge b-works">works</span> Nav2 in Gazebo</td>
+<td><span class="badge b-works">works</span> our navigation in Ravensim (Nav2 in Gazebo before)</td>
 </tr>
 <tr>
 <td>Drivers</td>
@@ -480,7 +480,7 @@ be private (an org's private repos don't show to non-members), or not on GitHub.
 <tr>
 <td>Simulation</td>
 <td>a whole-car simulator</td>
-<td><span class="badge b-works">works</span> Gazebo</td>
+<td><span class="badge b-works">works</span> Ravensim (Gazebo until 16 Nov)</td>
 </tr>
 </tbody>
 </table></div>

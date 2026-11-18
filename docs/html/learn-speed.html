@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -330,7 +330,7 @@ signals: good to about <strong>0.05 m/s</strong>. Our driver (<code>ublox_gps</c
 </table></div>
 <div class="admonition warning">
 <p class="admonition-title">Never seen from our receiver</p>
-<p><code>ublox_gps</code> has never run with the car's ZED-F9R. Gazebo makes a stand-in velocity.</p>
+<p><code>ublox_gps</code> has never run with the car's ZED-F9R. The simulator makes a stand-in velocity.</p>
 </div>
 </section>
 <section class="card"><h2 id="5-lidar-localization-planned">5. Lidar localization: planned</h2>
@@ -447,7 +447,7 @@ slowly. If the wheels lie, the EKF's speed lies too.</p>
 </tr>
 </tbody>
 </table></div>
-<p>Then it says DISAGREE and stops Nav2 (never a person or a test script).</p>
+<p>Then it says DISAGREE and stops navigation (never a person or a test script).</p>
 </section>
 <section class="card"><h2 id="7-worked-example-stopping-from-1-ms">7. Worked example: stopping from 1 m/s</h2>
 <p>The car drives at 1.0 m/s and brakes gently at 1.0 m/s². It stops after <strong>1 s</strong>,
@@ -577,7 +577,7 @@ in <strong>0.5 m</strong> (distance = speed² ÷ (2 × braking) = 1 ÷ 2).</p>
 </tr>
 <tr>
 <td><strong>Scoring a run</strong>: rise, overshoot, hold, stop error</td>
-<td>Gazebo's truth, else the wheels, else <code>ekf_global</code>; the stop from the EKF or a tape</td>
+<td>the simulator's truth, else the wheels, else <code>ekf_global</code>; the stop from the EKF or a tape</td>
 <td><code>tools/atob_score.py</code>, <a href="a-to-b.html">A to B</a></td>
 </tr>
 <tr>
@@ -627,7 +627,7 @@ below needs a rear-wheel speed; until then the preflight only checks the sensors
 </tr>
 <tr>
 <td>The watchdog</td>
-<td>expect <strong>DISAGREE</strong>, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only Nav2 and friends, not <code>actuator-test</code>. Clear it after: <code>pixi run clear watchdog</code></td>
+<td>expect <strong>DISAGREE</strong>, latched: 0.3 m/s of wheels against a still GPS is over its 0.15 m/s limit. It holds only navigation and friends, not <code>actuator-test</code>. Clear it after: <code>pixi run clear watchdog</code></td>
 </tr>
 <tr>
 <td>The preflight's check</td>
@@ -675,7 +675,7 @@ work and nothing else is fooled into moving.</p>
 </tr>
 <tr>
 <td>Speed loop on wheel speed</td>
-<td>in <code>spine-core</code> and Gazebo; today's ESP32 is open loop</td>
+<td>in <code>spine-core</code> and the simulator; today's ESP32 is open loop</td>
 <td>the control plan, steps 1 and 3</td>
 </tr>
 <tr>

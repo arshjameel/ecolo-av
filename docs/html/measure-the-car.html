@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -668,10 +668,10 @@ rear axle's line.</p>
 <div class="admonition note">
 <p class="admonition-title">Two wheel angles, one number</p>
 <p><code>max_steering_angle</code> in <code>vehicle.yaml</code> is neither wheel: it's the <strong>middle</strong> of the
-front axle (the bicycle model, which ego and Nav2 use). The inside wheel turns
+front axle (the bicycle model, which ego and the planner use). The inside wheel turns
 further, the outside one less. To get it from M5's two angles (in radians):
 <code>vehicle.centre_angle(v, inside, outside)</code> in <code>aav_description/vehicle.py</code>.
-Use the smaller of left and right. Gazebo's own number is worked out from it.</p>
+Use the smaller of left and right. The simulator's own number is worked out from it.</p>
 </div>
 </section>
 <section class="card"><h2 id="5-where-each-sensor-is">5. Where each sensor is</h2>

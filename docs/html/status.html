@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a class="here" href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -312,24 +312,24 @@ car, in what order: <a href="rollout.html">Rolling out</a>.</p>
 <td><span class="badge b-works">works</span> on the Mac, 15 Oct, in Gazebo: the car's camera (10 Hz), radar stand-in (10 Hz) and a roof lidar (10 Hz) render headless; <code>pixi run sim-check</code>, <code>--obstacle</code>, <code>--lidar-obstacle</code>, <code>--faults</code>, <code>--spine</code> and <code>--perception</code> pass. On Linux with no GPU, through <code>tools/software_gl.sh</code>: <span class="badge b-works">works</span> on oirp-spss, 23 Oct (<code>sim-check --obstacle</code>: the sensors and the stop; the nightly CI job uses it) (<a href="simulation.html">Simulation</a>)</td>
 </tr>
 <tr>
-<td>The lidar in Nav2, in Gazebo (15 Oct)</td>
-<td><code>aav_lidar</code> <code>lidar_scan</code> -&gt; the local costmap's <code>lidar_layer</code> and <code>collision_monitor</code></td>
+<td>The lidar in navigation, in Gazebo (15 Oct)</td>
+<td><code>aav_lidar</code> <code>lidar_scan</code> -&gt; the local costmap's <code>lidar_layer</code> and the stop zone (Nav2's <code>collision_monitor</code> then)</td>
 <td><span class="badge b-works">works</span> with the radar off: it stopped the car 0.16-0.57 m before a person-sized post. <strong>Under load it can be late:</strong> beside other jobs on the Mac it stopped 0.13 m past the post (20 Oct). Watch the Orin's load on the car</td>
 </tr>
 <tr>
-<td>The lidar in Nav2, in bench mode (20 Oct)</td>
+<td>The lidar in navigation, in bench mode (20 Oct)</td>
 <td><code>bench lidar:=true</code>, <code>mock_lidar</code></td>
 <td><span class="badge b-works">works</span> on oirp-spss: <code>bench-check --lidar</code> stopped 0.88 m before a box only the lidar saw. On a loaded Mac it failed (the spine latched). <strong>Open:</strong> the contract check missed the bench IMU's (or camera's) publisher in 3 of 3 runs, while the EKF got its data. Not yet explained</td>
 </tr>
 <tr>
-<td>The lidar in Nav2, on the car</td>
+<td>The lidar in navigation, on the car</td>
 <td>the stock velodyne driver, on in <code>orin.yaml</code> and <code>all.yaml</code> (20 Oct)</td>
 <td><span class="badge b-works">works</span> against a pretend VLP-16 (<code>tools/fake_vlp16.py</code>), 10 Hz. The roof lidar can't see a 1 m box inside the stop zone: the radar's job (<a href="perception.html">Perception</a>). <span class="badge b-untested">untested</span> with the real lidar</td>
 </tr>
 <tr>
 <td>Sensor watchdog (15 Oct)</td>
 <td><code>aav_safety</code> <code>sensor_watchdog</code>: a twist_mux lock, the HUD's banner</td>
-<td><span class="badge b-works">works</span> in Gazebo: the faults on purpose (<code>pixi run sim-fault</code>, <code>sim-check --faults</code>) stop Nav2 and say why, 14 now with the HUD's heartbeat (23 Oct: a frozen or dead HUD stops Nav2 on the car, <code>watch_hud</code>; <a href="hud.html#the-heartbeat">HUD</a>), frozen wheels (cross-checked with the IMU and GPS) and the watchdog's own death (a fail-safe lock) too. Frozen wheels: 25 of 25 since 24 Oct (MPPI had hidden them; the GPS check now fits 10 s: <a href="simulation.html#frozen-wheels-and-mppi">frozen wheels and MPPI</a>). On the bench, <code>bench-check</code> passes with it, and it flagged a 2.5 s stall of the whole Mac there, then let go. <span class="badge b-untested">untested</span> on the car (<a href="simulation.html#sensor-failures-on-purpose">Simulation</a>)</td>
+<td><span class="badge b-works">works</span> in Gazebo: the faults on purpose (<code>pixi run sim-fault</code>, <code>sim-check --faults</code>) stop navigation and say why, 14 now with the HUD's heartbeat (23 Oct: a frozen or dead HUD stops Nav2 on the car, <code>watch_hud</code>; <a href="hud.html#the-heartbeat">HUD</a>), frozen wheels (cross-checked with the IMU and GPS) and the watchdog's own death (a fail-safe lock) too. Frozen wheels: 25 of 25 since 24 Oct (MPPI had hidden them; the GPS check now fits 10 s: <a href="simulation.html#frozen-wheels-and-mppi">frozen wheels and MPPI</a>). On the bench, <code>bench-check</code> passes with it, and it flagged a 2.5 s stall of the whole Mac there, then let go. <span class="badge b-untested">untested</span> on the car (<a href="simulation.html#sensor-failures-on-purpose">Simulation</a>)</td>
 </tr>
 <tr>
 <td>Real car</td>
@@ -449,7 +449,7 @@ car, in what order: <a href="rollout.html">Rolling out</a>.</p>
 <tr>
 <td>Street routes (16 Oct)</td>
 <td><code>aav_routes</code> (Valhalla, offline)</td>
-<td><span class="badge b-works">works</span> in Gazebo: a street route drove to 0.5 m of its end through Nav2 (<a href="routes.html">Street routes</a>). <span class="badge b-untested">untested</span> on the car</td>
+<td><span class="badge b-works">works</span> in Gazebo: a street route drove to 0.5 m of its end through Nav2's waypoint follower then (<a href="routes.html">Street routes</a>). <span class="badge b-untested">untested</span> on the car</td>
 </tr>
 <tr>
 <td>Ghost obstacles (16 Oct)</td>
@@ -740,8 +740,8 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td><span class="badge b-works">works</span> on <code>main</code>, 11 Oct: the default checks, the stop sign, lane keeping and the obstacle</td>
 </tr>
 <tr>
-<td>Sim, headless: drive commands (the keyboard's topic) and Nav2 goals</td>
-<td><span class="badge b-works">works</span></td>
+<td>Sim, headless: drive commands (the keyboard's topic) and goals</td>
+<td><span class="badge b-works">works</span> (Ravensim)</td>
 </tr>
 <tr>
 <td>Replay of a recorded drive</td>
@@ -756,12 +756,12 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td><span class="badge b-works">works</span> on an Apple Silicon Mac (macOS 27), 10 Oct: build 18 s, <code>pixi run test</code> all green after one fix (GNU <code>coreutils</code>, see <a href="mac.html">Your Mac</a>)</td>
 </tr>
 <tr>
-<td>On the Mac: the turtle, Gazebo headless, a Nav2 goal, the docs, <code>pixi run doctor</code>, recording a drive</td>
+<td>On the Mac: the turtle, Ravensim headless, a goal, the docs, <code>pixi run doctor</code>, recording a drive</td>
 <td><span class="badge b-works">works</span></td>
 </tr>
 <tr>
-<td>On the Mac: Gazebo's window</td>
-<td><span class="badge b-works">works</span> <code>pixi run sim</code> opens it, and the camera follows the car</td>
+<td>On the Mac: Ravensim's developer window</td>
+<td><span class="badge b-untested">untested</span> by a person: <code>pixi run ravensim</code> opens it beside the sim (17 Nov)</td>
 </tr>
 <tr>
 <td>On the Mac: RViz, rqt_graph</td>

@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -206,7 +206,7 @@ Open → Open (<a href="mac.html#watch-without-ros-lichtblick">Your Mac</a>).</p
 <tr>
 <td><strong>Driving</strong></td>
 <td><code>tools/foxglove/driving.json</code></td>
-<td>3D view following the car: its model, the lidar's scan, the local costmap, Nav2's plan and goal, the radar and its clusters, the camera's obstacles, the stop zone. The camera preview. Speed and steering, measured against commanded. E-stop, the sensor watchdog, the output gate</td>
+<td>3D view following the car: its model, the lidar's scan, the local costmap, the plan and goal, the radar and its clusters, the camera's obstacles, the stop zone. The camera preview. Speed and steering, measured against commanded. E-stop, the sensor watchdog, the output gate</td>
 </tr>
 <tr>
 <td><strong>Sensors health</strong></td>
@@ -235,8 +235,8 @@ it shows the dots on a blank map.</p>
 <p><strong>The Drive screen</strong> (Ben, 3 Nov: "the gazeboo with nav2 selection with cubes and stuff
 all as a single screen and then hardware as a seperate screen. Just the stuff we
 control."). Every driving detail on one screen, like Foxglove's nuScenes demo. For
-Gazebo, the bench, a replayed bag, and the car (watch only).</p>
-<p><img alt="The cockpit in Lichtblick, live in Gazebo's test lot: the Algorithms table, the localizers, the cubes" src="../img/cockpit-drive.jpg" /></p>
+Ravensim, the bench, a replayed bag, and the car (watch only).</p>
+<p><img alt="The cockpit in Lichtblick, live in Gazebo's test lot, 3 Nov: the Algorithms table, the localizers, the cubes" src="../img/cockpit-drive.jpg" /></p>
 <p><em>3 Nov, in Lichtblick, live: <code>pixi run sim world:=test_lot foxglove:=true voxels:=true
 ndt:=true kiss_icp:=true amcl:=true</code>, driving to a goal 18 m ahead.</em></p>
 <pre class="highlight"><code class="language-text">┌──────────────┬────────────┬──────────────────┐
@@ -266,7 +266,7 @@ ndt:=true kiss_icp:=true amcl:=true</code>, driving to a goal 18 m ahead.</em></
 </tr>
 <tr>
 <td>Chase camera</td>
-<td>Gazebo's picture from behind the car (sim only)</td>
+<td>the simulator's picture from behind the car (sim only)</td>
 <td><code>/vehicle/sim/chase_camera/compressed</code></td>
 </tr>
 <tr>
@@ -281,7 +281,7 @@ ndt:=true kiss_icp:=true amcl:=true</code>, driving to a goal 18 m ahead.</em></
 </tr>
 <tr>
 <td>3D</td>
-<td>the car, lidar scan, voxel cubes, local costmap, Nav2's <code>/map</code>, plan, goal, radar, stop zone</td>
+<td>the car, lidar scan, voxel cubes, local costmap, the map (<code>/map</code>), plan, goal, radar, stop zone</td>
 <td>as in Driving, plus <code>/perception/voxels/cubes</code>, <code>/map</code></td>
 </tr>
 <tr>
@@ -345,7 +345,7 @@ into this cockpit. 0.3 merged on 9 Nov with the cockpit as it was.</p>
 <tbody>
 <tr>
 <td><strong>Drive</strong> (this cockpit)</td>
-<td>Gazebo's view, Nav2's goal, the cubes, the localizers, which algorithms run</td>
+<td>the simulator's view, the goal, the cubes, the localizers, which algorithms run</td>
 <td>absorbs the debug screen: NDT's map and match, the kept cubes (dropped 5 Nov: above)</td>
 </tr>
 <tr>
@@ -362,7 +362,7 @@ into this cockpit. 0.3 merged on 9 Nov with the cockpit as it was.</p>
 </table></div>
 <h3 id="send-a-goal-sim-bench">Send a goal (sim, bench)</h3>
 <p>In the 3D panel: the <strong>Publish</strong> tool (top right), set to <strong>Pose</strong>, then click and drag
-on the road. It sends <code>/goal_pose</code>; Nav2 plans and drives. The car's bridge is watch
+on the road. It sends <code>/goal_pose</code>; our navigator plans and drives. The car's bridge is watch
 only: the click does nothing there.</p>
 <h3 id="swap-the-tracker-sim-only">Swap the tracker (sim only)</h3>
 <div class="table-wrap"><table>
@@ -387,11 +387,11 @@ only: the click does nothing there.</p>
 </tr>
 </tbody>
 </table></div>
-<p><code>none</code> (Nav2's own MPPI) is a launch switch: with it, there is no <code>/track</code> to call. The
+<p><code>mppi_lag</code> (the default) is its own node: with it, there is no <code>/track</code> to call. The
 car refuses a swap (<code>live_swap</code> is on only in <code>sim.launch.py</code>).</p>
 <h3 id="the-chase-camera">The chase camera</h3>
 <p>A camera fixed 7 m behind the car and 3.5 m up, looking down at the road ahead. Simulators
-only (Gazebo's, and <code>aav_sim_cameras</code> for Ravensim), in the worlds that render
+only (<code>aav_sim_cameras</code> for Ravensim; Gazebo's until 16 Nov), in the worlds that render
 sensors (road, test_lot, campus): <code>chase_camera:=false</code> drops it. The numbers below are Gazebo's.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -496,13 +496,13 @@ list leaves these out:</p>
 <td><code>/sensors/lidar/scan</code>, 3 kB</td>
 </tr>
 <tr>
-<td>Nav2's costmap layers one by one</td>
+<td>the costmap's layers one by one</td>
 <td>40-640 kB each</td>
-<td><code>/local_costmap/costmap</code>, all layers in one</td>
+<td><code>/drivers/nav/costmap/local</code>, all layers in one</td>
 </tr>
 </tbody>
 </table></div>
-<p>Measured, 24 Oct, in Gazebo's road world, while Nav2 drove: <strong>all three layouts open at
+<p>Measured, 24 Oct, in Gazebo's road world, while Nav2 (then) drove: <strong>all three layouts open at
 once: 170 kB/s (1.4 Mbit/s)</strong>. The costmap is the biggest part (64 kB/s), then the odometry
 and the scan. On a cable, <code>ros2 launch aav_bringup foxglove.launch.py foxglove_topics:=all</code>
 lets everything through.</p>

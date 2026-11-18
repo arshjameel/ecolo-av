@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -603,8 +603,8 @@ Each has a TODO row to port its idea.</p>
 <tr>
 <td><strong>Gazebo</strong> (Open Robotics)</td>
 <td>Apache-2.0</td>
-<td>runs, idea</td>
-<td>the first simulator, now a yardstick; its world files (SDF) and sensor models are what ours copies the numbers from</td>
+<td>ran (until 16 Nov), idea</td>
+<td>the first simulator, deleted 16 Nov (<a href="../history/gazebo-as-it-was.md">as it was</a>); its source stays in <code>vendor/gazebo/</code> to read; its world files (SDF) and sensor models are what ours copies the numbers from</td>
 </tr>
 <tr>
 <td>CARLA</td>
@@ -622,7 +622,7 @@ Each has a TODO row to port its idea.</p>
 <td><strong>Mesa</strong> (llvmpipe, lavapipe), from conda-forge</td>
 <td>MIT</td>
 <td>runs</td>
-<td>drawing with no GPU (<code>tools/software_gl.sh</code>): Gazebo's cameras through OpenGL, ours through Vulkan (lavapipe, 15 Nov)</td>
+<td>drawing with no GPU (<code>tools/software_gl.sh</code>): Gazebo's cameras through OpenGL (until 16 Nov), Ravensim's through Vulkan (lavapipe, 15 Nov)</td>
 </tr>
 <tr>
 <td>Khronos Vulkan loader (<code>libvulkan-loader</code>, conda-forge)</td>

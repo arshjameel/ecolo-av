@@ -599,7 +599,7 @@ straight from there. `--check` now refuses a file like that.
 ![Every move in the list, from the middle: straight lines and arcs of 3.6 m or wider](img/lattice-primitives.png)
 
 The file is `ros/drivers/aav_navigation/config/lattice_ackermann.json`. If someone changes
-the wheelbase, the steering lock or a map's cells, the launch refuses `planner:=lattice`
+the wheelbase, the steering lock or a map's cells, the launch refuses the lattice (`planner:=own`)
 until the list is made again; a test fails too.
 
 ### Smooth moves (a trial, 14 Nov)
@@ -635,7 +635,7 @@ no ROS) draws them, in Nav2's file format: Nav2's lattice and ours read it uncha
 ```bash
 pixi run python3 tools/lattice_smooth.py          # makes both files and their pictures
 pixi run python3 tools/lattice_smooth.py --check  # still right for vehicle.yaml and ego.yaml?
-pixi run sim planner:=own lattice_moves:=smooth   # or planner:=lattice
+pixi run sim planner:=own lattice_moves:=smooth
 ```
 
 With smooth moves the launch turns the lattice's **smoother off**: Nav2's smoother joins

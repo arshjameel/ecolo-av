@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -123,8 +123,8 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#who-it-stops">Who it stops</a><a href="#the-stopping-path">The stopping path</a><a href="#the-states">The states</a><a href="#on-the-car">On the car</a><a href="#other-parts-that-know-the-fence">Other parts that know the fence</a><a href="#what-we-measured-bench-29-oct">What we measured (bench, 29 Oct)</a><a href="#try-it">Try it</a></nav>
-<div class="lead"><p>An area the computer's drivers may not leave. It works <strong>without Nav2</strong>: it stops the
-point driver, a script, a replay and the language server the same way it stops Nav2.</p>
+<div class="lead"><p>An area the computer's drivers may not leave. It works <strong>without navigation</strong>: it stops the
+point driver, a script, a replay and the language server the same way it stops navigation.</p>
 <p>People are never held. The safety driver on the joystick can always drive.</p></div>
 <section class="card"><h2 id="in-one-picture">In one picture</h2>
 <pre class="highlight"><code>            the fence (a 30 m circle round the start spot, or the lot's polygon)
@@ -158,7 +158,7 @@ point driver, a script, a replay and the language server the same way it stops N
 <td>no: they <strong>stop themselves</strong> on its state</td>
 </tr>
 <tr>
-<td>scripted, replay, point, Nav2, AI</td>
+<td>scripted, replay, point, navigation, AI</td>
 <td>50 … 10</td>
 <td><strong>yes</strong></td>
 </tr>
@@ -361,7 +361,7 @@ stop, <code>actuators.pi_loop_decel</code>. And never run <code>pi</code> on sta
 </tr>
 </tbody>
 </table></div>
-<p>Not yet run: Gazebo with a fence you can reach, and the real car.</p>
+<p>Not yet run: Ravensim with a fence you can reach, and the real car.</p>
 </section>
 <section class="card"><h2 id="try-it">Try it</h2>
 <pre class="highlight"><code class="language-sh">pixi run bench-check --geofence     # a scripted drive at a 12 m fence must stop inside it

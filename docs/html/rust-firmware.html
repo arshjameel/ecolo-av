@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -982,7 +982,7 @@ leaving holds where the wheels are, and 100 ms without the Orin's heartbeat ends
 <tr>
 <td>low (below 1301)</td>
 <td><strong>computer</strong></td>
-<td>Nav2, the joystick...</td>
+<td>navigation, the joystick...</td>
 <td>the Pi's frames</td>
 </tr>
 <tr>
@@ -2167,11 +2167,11 @@ firmware's own <code>spine-core</code> code, so both ends of the bus share one i
 </tr>
 <tr>
 <td>Commands</td>
-<td><code>/control/&lt;target&gt;/actuator_cmd</code> from the output mux, by the <code>source</code> parameter (real: <code>car</code>, bench: <code>bench</code>, sim: <code>gazebo</code>), as the Python node: never <code>/ego/actuator_cmd</code></td>
+<td><code>/control/&lt;target&gt;/actuator_cmd</code> from the output mux, by the <code>source</code> parameter (real: <code>car</code>, bench: <code>bench</code>, sim: <code>sim</code>), as the Python node: never <code>/ego/actuator_cmd</code></td>
 </tr>
 <tr>
 <td>The bus</td>
-<td>the same <code>/can/tx</code> and <code>/can/rx</code> topics as the Python node: <code>ros2_socketcan</code> on the Orin (Linux); <code>spine_sim</code> on the bench and in Gazebo, so Macs work too</td>
+<td>the same <code>/can/tx</code> and <code>/can/rx</code> topics as the Python node: <code>ros2_socketcan</code> on the Orin (Linux); <code>spine_sim</code> on the bench and in the simulator, so Macs work too</td>
 </tr>
 <tr>
 <td>Tests</td>
@@ -2183,7 +2183,7 @@ firmware's own <code>spine-core</code> code, so both ends of the bus share one i
 </tr>
 <tr>
 <td>Default</td>
-<td>Rust since 23 Oct, in <code>spine.launch.py</code>, the bench and Gazebo's spine profile. <code>bridge:=python</code> runs aav_spine's node, kept until the Rust one has run on the car</td>
+<td>Rust since 23 Oct, in <code>spine.launch.py</code>, the bench and the simulator's spine profile. <code>bridge:=python</code> runs aav_spine's node, kept until the Rust one has run on the car</td>
 </tr>
 </tbody>
 </table></div>

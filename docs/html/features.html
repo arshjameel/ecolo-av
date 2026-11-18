@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -203,7 +203,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Roof lidar: the stock <code>velodyne</code> driver</td>
-<td>The car's VLP-16 already speaks to this stock driver; it gives Nav2 a view all round the car</td>
+<td>The car's VLP-16 already speaks to this stock driver; it gives navigation a view all round the car</td>
 <td>Ben</td>
 <td>2026-10-20</td>
 <td>built</td>
@@ -422,7 +422,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Lidar to a 2D scan (<code>aav_lidar</code> <code>lidar_scan</code>)</td>
-<td>Nav2's costmap and stop zone need a flat scan, without the car's own body in it</td>
+<td>The costmap and the stop zone need a flat scan, without the car's own body in it</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
@@ -465,7 +465,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tbody>
 <tr>
 <td>Keyboard driving (<code>teleop_twist_keyboard</code>)</td>
-<td>Drive the turtle, Gazebo or the car from any laptop, with no joystick</td>
+<td>Drive the turtle, the simulated car or the real one from any laptop, with no joystick</td>
 <td>Ben</td>
 <td>2026-10-09</td>
 <td>sim</td>
@@ -556,7 +556,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="path-followers.html">MPPI path follower</a>, Pure Pursuit as an option</td>
+<td><a href="path-followers.html">MPPI path follower</a>, Pure Pursuit as an option (Nav2's; <code>aav_mppi_lag</code> and <code>tracker:=pure_pursuit</code> since 17 Nov)</td>
 <td>MPPI reached the first goal cleanly in 4 of 4 Gazebo runs; Pure Pursuit looped in 2 of 3</td>
 <td>Ben</td>
 <td>2026-10-22</td>
@@ -682,7 +682,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="controllers.html#planners">Trial planners</a> (<code>planner:=</code> hybrid, lattice, smac2d, navfn or theta_star; the lattice on our own primitives, <code>pixi run python3 tools/lattice_primitives.py</code>, 16 headings or 32 with <code>lattice_headings:=32</code>)</td>
+<td><a href="controllers.html#planners">Trial planners</a> (then <code>planner:=</code> hybrid, lattice, smac2d, navfn or theta_star; now <code>planner:=own</code> with <code>planner_search:=</code>; the lattice on our own primitives, <code>pixi run python3 tools/lattice_primitives.py</code>, 16 headings or 32 with <code>lattice_headings:=32</code>)</td>
 <td>To see whether another of Nav2's planners plans better or faster than Hybrid-A<em> on the same routes, scored by <code>measure controllers --planners</code> (<code>--reversing</code> for the car's own setting, <code>lattice32</code> for the 32-heading file), before any replaces the default. The lattice won (30 Oct, reversing: every leg, 29 s quicker a tour) and is the default since 1 Nov; the car, forward only until H5, keeps Hybrid-A</em>. Only hybrid and lattice keep to the turning radius, so the car refused the other three. Deleted with Nav2 on 17 Nov: our planner (<code>planner:=own</code>, the lattice and Hybrid-A* ported) took their place</td>
 <td>Ben</td>
 <td>2026-10-29</td>
@@ -711,7 +711,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="routes.html">Street routes</a> (<code>aav_routes</code>, Valhalla)</td>
-<td>Turns a destination into GPS waypoints along real streets, for Nav2 to follow</td>
+<td>Turns a destination into GPS waypoints along real streets, for the navigator to follow</td>
 <td>Ben</td>
 <td>2026-10-16</td>
 <td>sim</td>
@@ -918,7 +918,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="simulation.html#sensor-failures-on-purpose">Sensor watchdog</a> (<code>aav_safety</code>)</td>
-<td>When a sensor fails or freezes, Nav2 stops loudly and says why, instead of driving blind; since 15 Nov it also warns (never stops) when one of our own nodes leaves the ROS graph 15 Nov (TODO 207): an actuator that doesn't follow its command latches STUCK: the steering stuck in a bend, noticed 3.6 s after in the sim (before: never); 16 Nov (TODO 207): the car over ego's speed while not slowing latches OVERSPEED: a throttle stuck while speeding up, 4.6 s after, and a dead brake, in the sim; only fresh numbers count (16 Nov): quiet wheels no longer latch OVERSPEED (<code>sim-check --faults</code>: all 14 cases on the first run; later runs lose some to a navigation flake after the odom faults, TODO 207)</td>
+<td>When a sensor fails or freezes, navigation stops loudly and says why, instead of driving blind; since 15 Nov it also warns (never stops) when one of our own nodes leaves the ROS graph 15 Nov (TODO 207): an actuator that doesn't follow its command latches STUCK: the steering stuck in a bend, noticed 3.6 s after in the sim (before: never); 16 Nov (TODO 207): the car over ego's speed while not slowing latches OVERSPEED: a throttle stuck while speeding up, 4.6 s after, and a dead brake, in the sim; only fresh numbers count (16 Nov): quiet wheels no longer latch OVERSPEED (<code>sim-check --faults</code>: all 14 cases on the first run; later runs lose some to a navigation flake after the odom faults, TODO 207)</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
@@ -939,7 +939,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>HUD heartbeat and latch</td>
-<td>The safety drivers rely on the screen, so a frozen HUD holds Nav2 until a person clears it</td>
+<td>The safety drivers rely on the screen, so a frozen HUD holds navigation until a person clears it</td>
 <td>Ben</td>
 <td>2026-10-23</td>
 <td>sim</td>
@@ -995,7 +995,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Stand-ins stay local (<code>tools/ros.sh --local</code>)</td>
-<td>A pretend car in the turtle, Gazebo or bench mode can never reach the real one</td>
+<td>A pretend car in the turtle, Ravensim or bench mode can never reach the real one</td>
 <td>Ben</td>
 <td>2026-10-10</td>
 <td>sim</td>
@@ -1242,7 +1242,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </thead>
 <tbody>
 <tr>
-<td><a href="simulation.html">Gazebo road world</a></td>
+<td><a href="simulation.html#the-road-world-the-cars-whole-graph">Road world</a> (Gazebo's until 16 Nov, Ravensim's since)</td>
 <td>Lane lines, a stop sign, an obstacle, and the car's camera, radar and roof lidar, to test the whole graph</td>
 <td>Ben</td>
 <td>2026-10-11</td>
@@ -1250,7 +1250,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Actuator model</td>
-<td>Lag and limits between ego and Gazebo, so the simulated car answers like a real one; since 7 Nov it is the shared car model (<code>aav_description</code> <code>car_model.py</code>), so ego predicts with the same car Gazebo drives</td>
+<td>Lag and limits between ego and the simulator, so the simulated car answers like a real one; since 7 Nov it is the shared car model (<code>aav_description</code> <code>car_model.py</code>), so ego predicts with the same car the simulator drives</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
@@ -1271,14 +1271,14 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>The spine in the loop (<code>sim spine:=true</code>)</td>
-<td>Gazebo drives through the spine's real logic, so its stops and e-stops get tested</td>
+<td>The simulator drives through the spine's real logic, so its stops and e-stops get tested</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
 </tr>
 <tr>
 <td>Today's car in the loop (<code>sim esp32:=true</code>, <code>sim_esp32</code>)</td>
-<td>Today's car runs the 2025-26 C++ ESP32, not the spine: Gazebo drives through the real UART bridge and that firmware's throttle ramp and brake, so its speed loop is tested before car day</td>
+<td>Today's car runs the 2025-26 C++ ESP32, not the spine: the simulator drives through the real UART bridge and that firmware's throttle ramp and brake, so its speed loop is tested before car day</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
@@ -1320,7 +1320,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="ghost-obstacles.html">Ghost obstacles</a> (<code>aav_ghost</code>)</td>
-<td>A pretend person only Nav2 sees, to test stopping with nothing real to hit</td>
+<td>A pretend person only navigation sees, to test stopping with nothing real to hit</td>
 <td>Ben</td>
 <td>2026-10-16</td>
 <td>sim</td>
@@ -1384,7 +1384,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Map window: offline street map and place search</td>
-<td>A big-screen map of Nav2's plan over real streets, and a destination picked by name</td>
+<td>A big-screen map of the plan over real streets, and a destination picked by name</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
@@ -1425,7 +1425,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="campus.html">The campus</a> (<code>pixi run campus</code>, <code>world:=campus</code>): Carleton from OpenStreetMap: a Gazebo world with bump-mapped pavement, kerbs, grass, trees and buildings; one Nav2 map of the whole campus; a guessed NDT map</td>
+<td><a href="campus.html">The campus</a> (<code>pixi run campus</code>, <code>world:=campus</code>): Carleton from OpenStreetMap: an SDF world (Ravensim's, and its RavenTiles) with bump-mapped pavement, kerbs, grass, trees and buildings; one costmap map of the whole campus; a guessed NDT map</td>
 <td>Practice on the real place's shapes while the hardware catches up, then replace the guess with real drives. Painted roads have a yellow centre line and white edge lines (8 Nov), for lane keeping. Runs in Gazebo and in ours: not yet checked against the real campus</td>
 <td>Ben</td>
 <td>2026-11-08</td>
@@ -1694,7 +1694,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tbody>
 <tr>
 <td>One workspace with Pixi and RoboStack, Macs included</td>
-<td>ROS 2 Jazzy, Gazebo, Nav2 and Rust on any Linux or Mac, with no admin rights</td>
+<td>ROS 2 Jazzy and Rust on any Linux or Mac, with no admin rights</td>
 <td>Ben</td>
 <td>2026-10-09</td>
 <td>sim</td>

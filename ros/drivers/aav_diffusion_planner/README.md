@@ -68,7 +68,7 @@ pixi run diffusion train --data models/diffusion/data models/diffusion/data_utur
 pixi run diffusion export --fp16   # planner_fp16.onnx too, for a GPU
 pixi run measure diffusion         # the time a plan, against the budget
 pixi run sim world:=test_lot planner:=diffusion
-pixi run measure controllers --planners lattice diffusion --reversing --tours lot \
+pixi run measure controllers --planners own diffusion --reversing --tours lot \
     --diffusion-record log/diffusion-plans
 pixi run diffusion replay log/diffusion-plans --model <another .onnx>
 ```

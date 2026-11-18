@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -123,18 +123,18 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#the-picture">The picture</a><a href="#which-router-the-survey">Which router? (the survey)</a><a href="#run-it">Run it</a><a href="#on-the-campus">On the campus</a><a href="#the-parts">The parts</a><a href="#topics">Topics</a><a href="#what-was-tested-16-october-a-mac">What was tested (16 October, a Mac)</a><a href="#things-to-know">Things to know</a></nav>
-<div class="lead"><p>Pick a destination, get the way there <strong>along real streets</strong>, and hand it to Nav2 as GPS
+<div class="lead"><p>Pick a destination, get the way there <strong>along real streets</strong>, and hand it to our navigator as GPS
 waypoints. Built 16 October. <strong>On the campus</strong> (7 Nov): by a building's name, on the
 campus's own road graph, no server: <a href="#on-the-campus">On the campus</a>.</p>
 <div class="admonition warning">
 <p class="admonition-title">For real streets later: the lot first</p>
 <p>This is for driving on streets, after the car has proven itself in a lot (PLAN C8, C9).
-A route is only a <strong>suggestion</strong>. Nav2 still plans every step on its own costmaps, and
+A route is only a <strong>suggestion</strong>. The navigator still plans every step on its own costmaps, and
 twist_mux, the e-stop, ego's limits and timeout, the sensor watchdog and the spine stay
-in charge. Nothing goes to Nav2 until a person asks.</p>
+in charge. Nothing goes to the navigator until a person asks.</p>
 </div></div>
 <section class="card"><h2 id="the-picture">The picture</h2>
-<p><img alt="Street routes: destination and GPS fix in, Valhalla asked, waypoints out, Nav2 only on request" src="../img/routes.svg" /></p>
+<p><img alt="Street routes: destination and GPS fix in, Valhalla asked, waypoints out, the navigator only on request" src="../img/routes.svg" /></p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -167,7 +167,7 @@ in charge. Nothing goes to Nav2 until a person asks.</p>
 <tr>
 <td>5</td>
 <td>you</td>
-<td><code>/drivers/nav/route/follow</code>: only now does Nav2 get the route (<code>/follow_gps_waypoints</code>)</td>
+<td><code>/drivers/nav/route/follow</code>: only now does the navigator get the route (<code>/follow_gps_waypoints</code>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -254,7 +254,7 @@ own extract (Geofabrik's Ontario, 1 GB, for a bigger area).</p>
 </section>
 <section class="card"><h2 id="on-the-campus">On the campus</h2>
 <p>Directions to a building, Tesla-like (Ben, 7 Nov: TODO 140). Say where; the car gets the
-way along the campus roads, as waypoints for Nav2.</p>
+way along the campus roads, as waypoints for the navigator.</p>
 <pre class="highlight"><code>"Fieldhouse"  ──►  the place's middle  ──►  the nearest road the car may use
 car's GPS fix ──►  the nearest road    ──►  shortest way on the campus graph ──► waypoints</code></pre>
 <h3 id="run-it_1">Run it</h3>
@@ -310,12 +310,12 @@ map frame, latched): the map window, RViz, Foxglove.</p>
 </tr>
 <tr>
 <td>Its map</td>
-<td><code>maps/carla/carleton.osm</code>, the one Gazebo's world and Nav2's map come from</td>
+<td><code>maps/carla/carleton.osm</code>, the one the campus world and its map come from</td>
 <td>a <code>.pbf</code>: a second download or a conversion</td>
 </tr>
 <tr>
 <td>Roads</td>
-<td>exactly the kinds <code>campus_world.py</code> draws free on Nav2's map</td>
+<td>exactly the kinds <code>campus_world.py</code> draws free on the campus map</td>
 <td>its car profile avoids parking aisles and private service roads: most of a campus</td>
 </tr>
 <tr>
@@ -405,7 +405,7 @@ up to 56 m away (Tory). Add <code>stop: [lat, lon]</code> to a place for the rea
 </tbody>
 </table></div>
 <p>Long ways round are the map's: one-way roads, and buildings whose nearest road is a dead
-end. Gazebo's map lets Nav2 go either way on a one-way road; the route doesn't.</p>
+end. The campus map lets the planner go either way on a one-way road; the route doesn't.</p>
 <h3 id="what-was-tested-7-8-nov-a-mac">What was tested (7-8 Nov, a Mac)</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -429,7 +429,7 @@ end. Gazebo's map lets Nav2 go either way on a one-way road; the route doesn't.<
 </tr>
 </tbody>
 </table></div>
-<p>The route, the waypoints and the follow call all worked. Nav2 did not finish the drive:</p>
+<p>The route, the waypoints and the follow call all worked. Nav2 (then) did not finish the drive:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -455,7 +455,7 @@ end. Gazebo's map lets Nav2 go either way on a one-way road; the route doesn't.<
 </tbody>
 </table></div>
 <p><strong>What it shows.</strong> Straight roads are fine: about 1.4 m/s between the bends. The bends are
-not. Each waypoint is a Nav2 goal <em>at</em> the corner, facing the next road, so the car must
+not. Each waypoint was a goal <em>at</em> the corner, facing the next road, so the car had to
 stop on the corner already turned. Our car can't turn that tightly there.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -467,11 +467,11 @@ stop on the corner already turned. Our car can't turn that tightly there.</p>
 <tbody>
 <tr>
 <td>put a bend's waypoint a few metres <em>before</em> the corner, facing along the road in</td>
-<td>no stop half-turned at a corner; Nav2 plans the turn itself</td>
+<td>no stop half-turned at a corner; the planner plans the turn itself</td>
 </tr>
 <tr>
-<td>or send one goal through all the points (Nav2's <code>navigate_through_poses</code>)</td>
-<td>no stop at each waypoint at all. <strong>Our navigator does this</strong> (<code>navigator:=own</code>, a trial): 8 Nov, our simulator, 2 runs: it arrived 1 of 2 (263 s), Nav2 0 of 2 (<a href="own-navigator.html#the-campus-25-ms-2-runs">scores</a>)</td>
+<td>or send one goal through all the points (<code>navigate_through_poses</code>)</td>
+<td>no stop at each waypoint at all. <strong>Our navigator does this</strong> (the default since 17 Nov: <code>waypoints: pass_through</code>): 8 Nov, our simulator, 2 runs: it arrived 1 of 2 (263 s), Nav2 0 of 2 (<a href="own-navigator.html#the-campus-25-ms-2-runs">scores</a>)</td>
 </tr>
 <tr>
 <td><code>stop:</code> points for the places, measured on the day</td>
@@ -524,7 +524,7 @@ stop on the corner already turned. Our car can't turn that tightly there.</p>
 <tr>
 <td>The map window</td>
 <td><code>aav_hud</code> (Rust)</td>
-<td>draws <code>/drivers/nav/route/path</code> in violet, under Nav2's blue plan</td>
+<td>draws <code>/drivers/nav/route/path</code> in violet, under the blue plan</td>
 </tr>
 <tr>
 <td>The tasks</td>
@@ -534,7 +534,7 @@ stop on the corner already turned. Our car can't turn that tightly there.</p>
 </tbody>
 </table></div>
 <p>The waypoints reuse the route maths from the 2025-26 HUD's back end, now
-<code>aav_routes/route.py</code> (no ROS, tested): bends kept, headings along the street. Ours adds the gaps Nav2 needs:</p>
+<code>aav_routes/route.py</code> (no ROS, tested): bends kept, headings along the street. Ours adds the gaps the navigator needs:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -547,12 +547,12 @@ stop on the corner already turned. Our car can't turn that tightly there.</p>
 <tr>
 <td><code>min_spacing</code></td>
 <td>10 m</td>
-<td>Nav2 slows at each waypoint: not too many</td>
+<td>a waypoint the navigator stops at (<code>stop_at_each</code>) slows the car: not too many</td>
 </tr>
 <tr>
 <td><code>max_spacing</code></td>
 <td>30 m</td>
-<td>each goal stays near the car, inside Nav2's costmaps</td>
+<td>each goal stays near the car, inside the costmaps</td>
 </tr>
 <tr>
 <td><code>tolerance</code></td>
@@ -572,7 +572,7 @@ stop on the corner already turned. Our car can't turn that tightly there.</p>
 <tr>
 <td><code>follow_at_once</code></td>
 <td>false</td>
-<td>true sends every route to Nav2 by itself: not on the car</td>
+<td>true sends every route to the navigator by itself: not on the car</td>
 </tr>
 </tbody>
 </table></div>
@@ -620,7 +620,7 @@ stop on the corner already turned. Our car can't turn that tightly there.</p>
 <tr>
 <td><code>/drivers/nav/route/follow</code></td>
 <td><code>std_srvs/Trigger</code> (a service)</td>
-<td>a person sends the route to Nav2</td>
+<td>a person sends the route to the navigator</td>
 </tr>
 </tbody>
 </table></div>
@@ -640,8 +640,8 @@ stop on the corner already turned. Our car can't turn that tightly there.</p>
 <td>all pass</td>
 </tr>
 <tr>
-<td><code>street_router</code> with a fake router, fake <code>/fromLL</code> and fake Nav2 (<code>colcon test</code>): 4</td>
-<td>all pass; nothing reaches Nav2 before <code>follow</code></td>
+<td><code>street_router</code> with a fake router, fake <code>/fromLL</code> and a fake navigator (<code>colcon test</code>): 4</td>
+<td>all pass; nothing reaches the navigator before <code>follow</code></td>
 </tr>
 <tr>
 <td><code>get routes</code> on this Mac</td>
@@ -702,11 +702,11 @@ the end. Gazebo's empty world has no streets drawn: the car drove on open ground
   failed... Finland"). Harmless: a city extract has no country boundaries.</li>
 <li><strong><code>driving_side: "left"</code></strong> in Valhalla's OSRM answers, even in Ottawa. We don't read it.</li>
 <li>The router's time is for <strong>a normal car</strong> on the speed limit, not ours (1 m/s to start).</li>
-<li>Nav2 drives to each waypoint in turn and slows at each: that's why they're 10-30 m apart.</li>
+<li>The navigator drives through the waypoints as one goal (<code>pass_through</code>); with <code>stop_at_each</code> it slows at each: that's why they're 10-30 m apart.</li>
 <li>The data: © OpenStreetMap contributors, ODbL. BBBike's extract changes every week, so
   <code>get routes</code> checks it against BBBike's own checksum, not a fixed one.</li>
 <li><strong>No older code copied.</strong> The 2025-26 team's Navigation-LocalPathGenerator read OSRM
-  routes too, and followed them itself (<a href="older-code.html">Older code</a>). Here Nav2 follows,
+  routes too, and followed them itself (<a href="older-code.html">Older code</a>). Here the navigator follows,
   so only a small parser was needed: written new, with tests.</li>
 <li>No API keys, no paid service. A public demo server only for a one-off check by hand,
   never as the default.</li>

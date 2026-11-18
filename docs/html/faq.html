@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -179,8 +179,8 @@ boards that move the actuators.</p>
 <td>the command path, on a turtle that steers like the car</td>
 </tr>
 <tr>
-<td>Gazebo</td>
-<td>the whole stack: the EKFs, Nav2 driving to a goal</td>
+<td>Ravensim</td>
+<td>the whole stack: the EKFs, navigation driving to a goal</td>
 </tr>
 <tr>
 <td>Bench mode</td>
@@ -226,7 +226,7 @@ network, so every computer moves together. Decided by the team (Decision 6 in
 <a href="decisions.html">Decisions</a>).</p>
 <h3 id="why-not-just-keep-the-2025-26-teams-code">Why not just keep the 2025-26 team's code?</h3>
 <p>Most of their own estimator, planner and command picker was where the bugs were. Stock
-ROS packages now do those jobs:</p>
+ROS packages took those jobs, and since 17 Nov our own Rust ports of some of them:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -241,7 +241,7 @@ ROS packages now do those jobs:</p>
 </tr>
 <tr>
 <td>their grid planner (A<em>, D</em> Lite)</td>
-<td>Nav2</td>
+<td>Nav2's planners, then ours (<code>aav_planner</code>, Rust)</td>
 </tr>
 <tr>
 <td>the QNX command picker</td>
@@ -249,7 +249,7 @@ ROS packages now do those jobs:</p>
 </tr>
 <tr>
 <td>their lidar costmap and e-stop</td>
-<td>Nav2's costmaps and <code>collision_monitor</code></td>
+<td>Nav2's costmaps and <code>collision_monitor</code>, then our Rust ports (<code>aav_costmap</code>, <code>aav_stop_zone</code>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -347,7 +347,7 @@ The HUD's button only ever sets it: clearing is always a person's deliberate act
 <td>25</td>
 </tr>
 <tr>
-<td>Nav2</td>
+<td>Navigation</td>
 <td>20</td>
 </tr>
 <tr>
@@ -357,13 +357,13 @@ The HUD's button only ever sets it: clearing is always a person's deliberate act
 </tbody>
 </table></div>
 <p>A lock holds every driver below its priority. A stop sign (30) and the sensor watchdog
-(30) hold go-to, Nav2 and the AI, never a person or a test. The no-timeout lock (60)
+(30) hold go-to, navigation and the AI, never a person or a test. The no-timeout lock (60)
 holds every program while the car's ESP32 runs firmware with no command timeout
 (<code>frame_version: 1</code>): only people and the actuator tests drive then. The e-stop (255)
 holds everyone. The table lives in <code>ros/command_mux/aav_command_mux/config/twist_mux.yaml</code>.</p>
 <h3 id="what-happens-when-i-let-go-of-the-joystick">What happens when I let go of the joystick?</h3>
 <p>Nothing is sent for 0.5 s, then twist_mux hands control to the next driver that is
-talking, such as Nav2. Whether it should stay stopped instead is open (Q28).</p>
+talking, such as navigation. Whether it should stay stopped instead is open (Q28).</p>
 </section>
 <section class="card"><h2 id="the-hardware">The hardware</h2>
 <h3 id="why-move-from-the-motor-pi-to-can">Why move from the Motor-Pi to CAN?</h3>
@@ -405,13 +405,13 @@ car. The team's Tentative choice was a new Pico 2 or STM32, and a Pico 2 program
 (untested on a chip). The <a href="can-plan.html">CAN plan</a> proposes the ESP32.</p>
 <h3 id="why-two-orins">Why two Orins?</h3>
 <p>The KEFC request splits the work. Orin #1 keeps control (the EKFs, twist_mux, ego, the
-CAN master); Orin #2 (new) does the heavy seeing: cameras, lidar, costmaps and Nav2. A
+CAN master); Orin #2 (new) does the heavy seeing: cameras, lidar, costmaps and navigation. A
 slow camera frame then can't delay a brake command. See <a href="learn-car.html">The car, box by box</a>.</p>
 <h3 id="is-there-a-lidar">Is there a lidar?</h3>
 <p>Yes: a Velodyne VLP-16 on the roof (the 16 Oct audit). We run the stock ROS <code>velodyne</code>
 driver for it, no code of our own: <code>pixi run car orin</code> starts it on the Jetson, where the
-lidar sends its data (<a href="perception.html#the-roof-lidar">Perception</a>). Gazebo has a generic
-one too: <code>pixi run sim world:=road</code> (<a href="simulation.html#the-lidar-gazebo-only">Simulation</a>).</p>
+lidar sends its data (<a href="perception.html#the-roof-lidar">Perception</a>). Ravensim has a generic
+one too: <code>pixi run sim world:=road</code> (<a href="simulation.html#the-lidar-the-sim-only">Simulation</a>).</p>
 <h3 id="how-does-the-car-know-where-it-is">How does the car know where it is?</h3>
 <p>Two EKFs from <code>robot_localization</code>:</p>
 <div class="table-wrap"><table>
@@ -437,10 +437,10 @@ one too: <code>pixi run sim world:=road</code> (<a href="simulation.html#the-lid
 </table></div>
 <p>GPS meets the map at one point, the datum: today a placeholder near Carleton. See
 <code>maps-and-position.md</code> and <a href="naming.html#why-the-two-ekfs-dont-talk">Topic areas</a>.</p>
-<h3 id="does-nav2-follow-the-roads">Does Nav2 follow the roads?</h3>
+<h3 id="does-navigation-follow-the-roads">Does navigation follow the roads?</h3>
 <p>Not by itself. <code>street_router</code> (<code>aav_routes</code>) asks Valhalla, an offline router on
-OpenStreetMap, for the way along the streets, and gives Nav2 that route as GPS points.
-Nav2 doesn't know where the road is between them. Staying in the lane is lane keeping's
+OpenStreetMap, for the way along the streets, and gives the navigator that route as GPS points.
+The planner doesn't know where the road is between them, unless the lane map is on (<code>path:=lane</code>, in <code>stack:=ours</code>). Staying in the lane is lane keeping's
 job. See <a href="routes.html">Street routes</a>.</p>
 </section>
 <section class="card"><h2 id="working-on-it">Working on it</h2>
@@ -460,7 +460,7 @@ job. See <a href="routes.html">Street routes</a>.</p>
 </tr>
 <tr>
 <td><code>pixi run sim</code></td>
-<td>Gazebo: the car, its IMU, GPS and wheel speed; <code>world:=road</code> adds its camera and radar</td>
+<td>Ravensim: the car, its IMU, GPS and wheel speed; <code>world:=road</code> adds its camera and radar</td>
 </tr>
 <tr>
 <td><code>pixi run bench</code></td>

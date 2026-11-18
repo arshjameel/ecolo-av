@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -305,7 +305,7 @@ I term, so it can't grow huge while the car is stuck.</p>
 <td><strong>Path</strong></td>
 <td>where the car is (<code>ekf_local</code>) vs the plan</td>
 <td>speed and turn rate</td>
-<td>Orin #1: Nav2's MPPI</td>
+<td>Orin #1: MPPI with lag (<code>mppi_lag</code>)</td>
 <td>20 Hz</td>
 </tr>
 <tr>
@@ -333,7 +333,7 @@ I term, so it can't grow huge while the car is stuck.</p>
 <td>Plan</td>
 <td>the costmap and the goal</td>
 <td>a new path</td>
-<td>Orin: Nav2's planner</td>
+<td>Orin: our planner (<code>aav_planner</code>)</td>
 <td>1 Hz</td>
 </tr>
 </tbody>
@@ -431,7 +431,7 @@ second. <code>ros/ego/aav_ego/aav_ego/ackermann.py</code>:</p>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Example:</strong> Nav2 asks for 2.0 m/s and 0.4 rad/s (a 5 m circle). δ = atan(1.57 × 0.4 ÷
+<p><strong>Example:</strong> navigation asks for 2.0 m/s and 0.4 rad/s (a 5 m circle). δ = atan(1.57 × 0.4 ÷
 2.0) = <strong>0.304 rad</strong>. ego caps the speed at 1.0 m/s but keeps 0.304 rad: still a 5 m circle,
 just slower.</p>
 </section>
@@ -443,7 +443,7 @@ behind a stop that a higher layer asked for.</p>
 <tr>
 <th>Limit</th>
 <th>ego (<code>ego.yaml</code>)</th>
-<th>Nav2 velocity smoother</th>
+<th>The velocity smoother (<code>aav_smoother</code>)</th>
 <th>The spine (<code>spine.rs</code>)</th>
 </tr>
 </thead>
@@ -547,9 +547,9 @@ behind a stop that a higher layer asked for.</p>
 <td>throttle off, brake on, latched</td>
 </tr>
 <tr>
-<td><code>collision_monitor</code></td>
+<td>the stop zone (<code>aav_stop_zone</code>)</td>
 <td>1.0 s with no radar or lidar (where it reads one)</td>
-<td>stops Nav2's commands</td>
+<td>stops navigation's commands</td>
 </tr>
 </tbody>
 </table></div>
@@ -679,7 +679,7 @@ does. The spine only listens to it (<a href="firmware.html">Firmware</a>).</p>
 <td><code>ros/ego/aav_ego/aav_ego/vehicle_model.py</code>, <code>pixi run python3 tools/vehicle_model.py</code> (<a href="vehicle-model.html">The car as a linear model</a>)</td>
 </tr>
 <tr>
-<td>Nav2's controller and smoother</td>
+<td>The follower's and smoother's settings</td>
 <td><code>ros/drivers/aav_navigation/config/nav2.yaml</code></td>
 </tr>
 <tr>

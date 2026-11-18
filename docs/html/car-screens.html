@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -154,7 +154,7 @@ are still to read with <code>--list</code>.</p>
 <tr>
 <td>Innoview monitor, right</td>
 <td>~15"</td>
-<td>the map: Nav2's map over Ottawa's streets, place search</td>
+<td>the map: the navigation map over Ottawa's streets, place search</td>
 <td><code>map</code></td>
 <td><code>aav-map.service</code></td>
 </tr>
@@ -176,7 +176,7 @@ in the car, on the dash Pi; laptop screens can be Bevy; the Orin runs no graphic
 <tbody>
 <tr>
 <td><strong>Drive</strong>: the <a href="foxglove.html#cockpit">cockpit</a> (Lichtblick)</td>
-<td>the chase camera's view, Nav2's goal, the cubes, the localizers, which algorithms run</td>
+<td>the chase camera's view, the goal, the cubes, the localizers, which algorithms run</td>
 <td>stays, as a layout</td>
 </tr>
 <tr>
@@ -405,11 +405,11 @@ bash /media/$USER/&lt;stick&gt;/car-kit/car_install.sh --screens             # b
 </tbody>
 </table></div>
 <blockquote>
-<p><strong>No HUD, no Nav2.</strong> The HUD sends a <a href="hud.html#the-heartbeat">heartbeat</a>. On the car,
-the sensor watchdog stops Nav2 and the AI slot while it's missing: stopping <code>aav-hud</code>
+<p><strong>No HUD, no navigation.</strong> The HUD sends a <a href="hud.html#the-heartbeat">heartbeat</a>. On the car,
+the sensor watchdog stops navigation and the AI slot while it's missing: stopping <code>aav-hud</code>
 holds them too. A session with no HUD screen: <code>car.launch.py watch_hud:=false</code>, written
 on the test card.</p>
-<p><strong>Latched (24 Oct).</strong> Once the HUD has run 5 s, a crash, freeze or stop holds Nav2
+<p><strong>Latched (24 Oct).</strong> Once the HUD has run 5 s, a crash, freeze or stop holds navigation
 even after systemd restarts it: the screen says <strong>AUTO STOP, HUD LOST</strong>. A person
 checks the screen, then <code>pixi run clear watchdog</code>.</p>
 </blockquote>

@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -150,7 +150,7 @@ match a folder under <code>ros/</code> (the <code>/sensors/</code> topics come f
 <tr>
 <td><code>/vehicle/</code></td>
 <td>what the car says about itself</td>
-<td>the backend (spine, legacy, Gazebo, bench)</td>
+<td>the backend (spine, legacy, Ravensim, bench)</td>
 </tr>
 <tr>
 <td><code>/can/</code></td>
@@ -170,7 +170,7 @@ match a folder under <code>ros/</code> (the <code>/sensors/</code> topics come f
 <tr>
 <td><code>/drivers/</code></td>
 <td>one command per driver</td>
-<td>joystick, RC, keyboard, tests, scripted, replay, go-to, Nav2, AI</td>
+<td>joystick, RC, keyboard, tests, scripted, replay, go-to, navigation, AI</td>
 </tr>
 <tr>
 <td><code>/control/</code></td>
@@ -206,8 +206,8 @@ match a folder under <code>ros/</code> (the <code>/sensors/</code> topics come f
 </table></div>
 <p>Global names stay global, because every ROS tool expects them: <code>/tf</code>, <code>/tf_static</code>,
 <code>/clock</code>, <code>/robot_description</code>, <code>/joint_states</code>, <code>/diagnostics</code>, <code>/rosout</code>,
-<code>/parameter_events</code>. Nav2 keeps its own names for now: <code>/map</code>, <code>/plan</code>, <code>/goal_pose</code>, its
-actions, <code>/cmd_vel_nav</code> and the costmaps' topics.</p>
+<code>/parameter_events</code>. Nav2's old names stay (our nodes took over its jobs on 17 Nov, names and all): <code>/map</code>, <code>/plan</code>, <code>/goal_pose</code>, its
+actions and <code>/cmd_vel_nav</code>. Our costmaps are in the area: <code>/drivers/nav/costmap/*</code>.</p>
 </section>
 <section class="card"><h2 id="how-the-drivers-get-their-names">How the drivers get their names</h2>
 <div class="table-wrap"><table>
@@ -250,8 +250,8 @@ actions, <code>/cmd_vel_nav</code> and the costmaps' topics.</p>
 <td><code>/drivers/point/cmd_vel</code></td>
 </tr>
 <tr>
-<td>Nav2</td>
-<td><code>velocity_smoother</code> or <code>collision_monitor</code>, remapped</td>
+<td>navigation</td>
+<td><code>velocity_smoother</code> (<code>aav_smoother</code>) or the stop zone (<code>aav_stop_zone</code>)</td>
 <td><code>/drivers/nav/cmd_vel</code></td>
 </tr>
 <tr>
@@ -335,7 +335,7 @@ config files name their nodes <code>/**/joy_node</code> and so on, so they match
 <td>unchanged</td>
 </tr>
 <tr>
-<td>(new: each wheel's speed: Gazebo, and the CAN wheel nodes)</td>
+<td>(new: each wheel's speed: Ravensim, and the CAN wheel nodes)</td>
 <td><code>/vehicle/wheels</code> (one topic for both)</td>
 </tr>
 <tr>
@@ -440,7 +440,7 @@ config files name their nodes <code>/**/joy_node</code> and so on, so they match
 <tbody>
 <tr>
 <td><code>/fromLL</code>, <code>/toLL</code>, <code>/datum</code> (navsat_transform's services)</td>
-<td>Nav2's <code>waypoint_follower</code> calls <code>/fromLL</code> by its absolute name. Moving them needs a remap on two nodes, one of them inside Nav2: not a clean remap</td>
+<td>Nav2's <code>waypoint_follower</code> called <code>/fromLL</code> by its absolute name, and our navigator, <code>street_router</code> and <code>point_driver</code> do too. Moving them needs a remap on each: not done</td>
 </tr>
 <tr>
 <td><code>/spine/arm</code>, <code>/scripted_drive</code>, <code>/ekf_*/set_pose</code></td>
@@ -448,11 +448,11 @@ config files name their nodes <code>/**/joy_node</code> and so on, so they match
 </tr>
 <tr>
 <td><code>/vehicle/sim/cmd_vel</code>, <code>/vehicle/sim/odom</code>, <code>/vehicle/sim/imu</code>, <code>/vehicle/sim/navsat</code></td>
-<td>Gazebo's own side of <code>sim_adapter</code> and its sensor nodes, like <code>/turtle1/...</code> for turtlesim; not in the contract</td>
+<td>Ravensim's own side of <code>sim_adapter</code> and its sensor nodes, like <code>/turtle1/...</code> for turtlesim; not in the contract</td>
 </tr>
 <tr>
-<td><code>/map</code>, <code>/plan</code>, <code>/goal_pose</code>, <code>/cmd_vel_nav</code>, the costmaps</td>
-<td>Nav2's own, for now</td>
+<td><code>/map</code>, <code>/plan</code>, <code>/goal_pose</code>, <code>/cmd_vel_nav</code></td>
+<td>Nav2's names, kept by our nodes so every sender and screen stayed the same</td>
 </tr>
 <tr>
 <td>Bags recorded before 15 Oct</td>
@@ -490,8 +490,8 @@ standard setup. Each one fuses the raw sensors itself.</p>
 </tr>
 <tr>
 <td>Who uses it</td>
-<td>Nav2's controller (steering)</td>
-<td>Nav2's planner, the HUD's map</td>
+<td>the path follower (steering)</td>
+<td>the planner, the HUD's map</td>
 </tr>
 </tbody>
 </table></div>

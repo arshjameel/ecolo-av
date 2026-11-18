@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a class="here" href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -136,7 +136,7 @@
 <li><strong>Local EKF:</strong> "how I've moved since I started". Smooth, but it slowly drifts.</li>
 <li><strong>Global EKF:</strong> the same, plus GPS. "Where I am on the earth". True, but it can jump a little.</li>
 <li>The <strong>map frame</strong> is a flat grid in metres, pinned to one GPS point (the <strong>datum</strong>). That's how x/y and latitude/longitude meet.</li>
-<li><strong>OpenStreetMap is only for people and routes:</strong> the HUD's map window (streets, place search) and the street router (Valhalla). Nav2 never reads it.</li>
+<li><strong>OpenStreetMap is only for people and routes:</strong> the HUD's map window (streets, place search) and the street router (Valhalla). Navigation never reads it.</li>
 <li><strong>Costmaps</strong> are grids of "how bad is it to drive here". The <strong>global</strong> one is big and coarse (for the whole route). The <strong>local</strong> one is small, fine and live (for what's in front of the car right now).</li>
 </ul>
 </blockquote></div>
@@ -231,12 +231,12 @@
 <ul>
 <li><code>navsat_transform</code> turns each GPS fix into x/y metres from the datum.</li>
 <li>It also answers on request: <code>/fromLL</code> (lat/lon → x/y) and <code>/toLL</code> (x/y → lat/lon).</li>
-<li>That's how a GPS goal becomes a Nav2 goal.</li>
+<li>That's how a GPS goal becomes a navigation goal.</li>
 </ul>
 </section>
 <section class="card"><h2 id="4-where-openstreetmap-comes-in">4. Where OpenStreetMap comes in</h2>
 <p>OpenStreetMap (OSM) is a free map of the world's roads and places. <strong>We use it for people
-and for routes</strong>, never inside Nav2. Everything works offline: the data are files.</p>
+and for routes</strong>, never inside navigation. Everything works offline: the data are files.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -250,7 +250,7 @@ and for routes</strong>, never inside Nav2. Everything works offline: the data a
 <tr>
 <td>Draw the street map</td>
 <td>Ottawa's streets as vector tiles (Protomaps, 40 MB)</td>
-<td>the HUD's map window, under Nav2's map (<a href="hud.html#the-street-map-under-it">HUD</a>)</td>
+<td>the HUD's map window, under the navigation map (<a href="hud.html#the-street-map-under-it">HUD</a>)</td>
 <td>no: <code>pixi run get street-map</code></td>
 </tr>
 <tr>
@@ -268,18 +268,18 @@ and for routes</strong>, never inside Nav2. Everything works offline: the data a
 </tbody>
 </table></div>
 <p>A place reaches the car in one of two ways:</p>
-<pre class="highlight"><code class="language-text"> map window: pick a place ─► DRIVE HERE, CONFIRM ─► /goal_pose (inside Nav2's map only)
+<pre class="highlight"><code class="language-text"> map window: pick a place ─► DRIVE HERE, CONFIRM ─► /goal_pose (inside the navigation map only)
 
  street_router: a destination ─► Valhalla: a street route (lat/lon points)
-     ─► a person calls /drivers/nav/route/follow ─► Nav2: FollowGPSWaypoints
-     ─► /fromLL: each point to map x/y ─► Nav2 drives point to point</code></pre>
+     ─► a person calls /drivers/nav/route/follow ─► the navigator: FollowGPSWaypoints
+     ─► /fromLL: each point to map x/y ─► the navigator drives through them</code></pre>
 <blockquote>
-<p>⚠️ <strong>Nav2 doesn't know where the road is.</strong> The route's points follow the road, but Nav2
+<p>⚠️ <strong>The planner doesn't know where the road is</strong> (except with <code>path:=lane</code>, the lane map). The route's points follow the road, but the planner
 only sees the points, not the road. Between two points it plans across its costmap,
 which today is empty (all free). Staying in the lane is the lane keeper's job
 (<code>aav_lane_finder</code>, <code>aav_lane_geometry</code>). A lane layer in the costmap would be the next step.</p>
 </blockquote>
-<p>Both ways work in Gazebo (16 Oct); neither has run on the car.</p>
+<p>Both ways worked in Gazebo (16 Oct), with Nav2; neither has run on the car.</p>
 </section>
 <section class="card"><h2 id="5-costmaps-the-fine-grained-part">5. Costmaps: the fine-grained part</h2>
 <p>A <strong>costmap</strong> is a grid laid on the ground. Each cell holds a cost:</p>
@@ -356,7 +356,7 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 <td>tens of metres</td>
 <td>GPS waypoints</td>
 <td>one point every few tens of metres</td>
-<td>breadcrumbs for Nav2</td>
+<td>breadcrumbs for the navigator</td>
 </tr>
 <tr>
 <td>200 m</td>
@@ -372,9 +372,9 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 </tr>
 <tr>
 <td>a few metres</td>
-<td>collision_monitor</td>
-<td>its stop zone</td>
-<td>last-moment stop, whatever Nav2 thinks</td>
+<td>the stop zone (<code>aav_stop_zone</code>)</td>
+<td>a box just ahead</td>
+<td>last-moment stop, whatever navigation thinks</td>
 </tr>
 <tr>
 <td>centimetres</td>
@@ -396,11 +396,11 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 <tbody>
 <tr>
 <td><code>ekf_local</code>, <code>ekf_global</code>, <code>navsat_transform</code></td>
-<td>✅ in Gazebo and on the bench. ❌ never on the car</td>
+<td>✅ in the simulator and on the bench. ❌ never on the car</td>
 </tr>
 <tr>
-<td>Nav2 with both costmaps</td>
-<td>✅ in Gazebo and on the bench</td>
+<td>Navigation with both costmaps</td>
+<td>✅ in the simulator and on the bench</td>
 </tr>
 <tr>
 <td>Radar and cameras in the local costmap</td>
@@ -415,16 +415,16 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 <td>❌ a placeholder: set it at the test site</td>
 </tr>
 <tr>
-<td>A street route → Nav2</td>
-<td>✅ in Gazebo (<a href="routes.html">Street routes</a>); untested on the car</td>
+<td>A street route → the navigator</td>
+<td>✅ in the simulator (<a href="routes.html">Street routes</a>); untested on the car</td>
 </tr>
 <tr>
 <td>A map of the real test site</td>
 <td>❌ only <code>empty</code> and an example lot</td>
 </tr>
 <tr>
-<td>Nav2 knowing about roads and lanes</td>
-<td>❌ the next big step</td>
+<td>Navigation knowing about roads and lanes</td>
+<td>🔧 the lane map and <code>path:=lane</code> (16 Nov, in <code>stack:=ours</code>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -458,7 +458,7 @@ which today is empty (all free). Staying in the lane is the lane keeper's job
 </table></div>
 <p>More: <a href="costmaps.html">Costmaps</a>, <a href="how-it-fits.html">How it fits</a>, <a href="hud.html">HUD</a>.</p></section>
 <nav class="prevnext"><a class="prev" href="campus.html"><small>Previous</small>← The campus</a>
-<a class="next" href="learn-nav2.html"><small>Next</small>Learn: Nav2 →</a></nav>
+<a class="next" href="learn-nav2.html"><small>Next</small>Learn: navigation →</a></nav>
 </main>
 <footer>Source: <code>docs/maps-and-position.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

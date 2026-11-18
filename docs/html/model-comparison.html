@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -672,7 +672,7 @@ Orin itself.</p>
 <p>The run itself used a scratch Pixi environment in <code>~/aav-models/s6-env</code> with the same
 packages, so the shared <code>.pixi</code> wasn't changed under other people's runs.</p>
 <h3 id="run-it-again">Run it again</h3>
-<pre class="highlight"><code class="language-bash">pixi run python3 tools/sim_frames.py --out ~/aav-models/frames      # Gazebo frames (1 min)
+<pre class="highlight"><code class="language-bash">pixi run python3 tools/sim_frames.py --out ~/aav-models/frames      # the sim's frames (written for Gazebo; untried with Ravensim, TODO 242)
 pixi run -e ml python3 tools/compare_detectors.py --fetch           # the photos
 pixi run -e ml python3 tools/compare_detectors.py --out ~/aav-models/detectors.json</code></pre>
 <p>The weights go in <code>~/aav-models/weights/</code> (their URLs are in the script, <code>MODELS</code>), never

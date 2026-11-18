@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -157,7 +157,7 @@ don't.</p>
 <tr>
 <td><code>nav</code></td>
 <td><code>true</code></td>
-<td>Nav2: goals from RViz's 2D Goal Pose</td>
+<td>navigation (our stack): goals from RViz's 2D Goal Pose</td>
 </tr>
 <tr>
 <td><code>teleop</code></td>
@@ -192,27 +192,27 @@ don't.</p>
 <tr>
 <td><code>obstacle</code></td>
 <td><code>false</code></td>
-<td>a 1 m box in the lane 15 m ahead, which only the pretend radar sees: Nav2 stops for it</td>
+<td>a 1 m box in the lane 15 m ahead, which only the pretend radar sees: navigation stops for it</td>
 </tr>
 <tr>
 <td><code>camera_obstacles</code></td>
 <td><code>false</code></td>
-<td>the detectors' boxes into Nav2's local costmap (<a href="costmaps.html">Costmaps</a>)</td>
+<td>the detectors' boxes into the local costmap (<a href="costmaps.html">Costmaps</a>)</td>
 </tr>
 <tr>
 <td><code>lidar</code></td>
 <td><code>false</code></td>
-<td>the roof lidar: <code>mock_lidar</code>'s packets through the stock velodyne driver, into Nav2</td>
+<td>the roof lidar: <code>mock_lidar</code>'s packets through the stock velodyne driver, into the costmap and the stop zone</td>
 </tr>
 <tr>
 <td><code>plan_around</code></td>
 <td><code>true</code></td>
-<td>Nav2 plans round what the radar and lidar see; <code>false</code>: the car stops for it</td>
+<td>the planner plans round what the radar and lidar see; <code>false</code>: the car stops for it</td>
 </tr>
 <tr>
 <td><code>reversing</code></td>
 <td><code>true</code></td>
-<td>Nav2 may drive backwards</td>
+<td>navigation may drive backwards</td>
 </tr>
 <tr>
 <td><code>bridge</code></td>
@@ -357,7 +357,7 @@ can tell the difference.</p>
 (the GPS datum), facing east. A stop sign stands 25 m ahead, 2 m to the right. With
 <code>obstacle:=true</code>, a 1 m box stands in the lane 15 m ahead; a test can move it, or take it
 away, with <code>mock_radar</code>'s parameters.</p>
-<p>Nav2 on the bench always has the radar in its local costmap, and <code>collision_monitor</code>
+<p>Navigation on the bench always has the radar in its local costmap, and the stop zone
 between it and the mux, as on a car with a radar.</p>
 <h3 id="the-model-car">The model car</h3>
 <div class="table-wrap"><table>
@@ -419,7 +419,7 @@ between it and the mux, as on a car with a radar.</p>
 <td><code>ros2 action send_goal /scripted_drive aav_interfaces/action/ScriptedDrive "{target_speed: 1.0, acceleration: 0.5, deceleration: 1.0, hold_time: 5.0}"</code></td>
 </tr>
 <tr>
-<td>A Nav2 goal</td>
+<td>A goal</td>
 <td>RViz's 2D Goal Pose, or the command in <a href="first-day.html">Your first day</a></td>
 </tr>
 <tr>
@@ -492,22 +492,22 @@ nothing on the network sees it. Then it runs these checks. Results on Ben's Mac,
 </tr>
 <tr>
 <td>Stop sign (<code>pixi run -e ml bench-check --perception</code>)</td>
-<td>Nav2 drives 40 m east: the car stops before the sign, waits, and reaches the goal</td>
+<td>navigation drives 40 m east: the car stops before the sign, waits, and reaches the goal</td>
 <td><span class="badge b-works">works</span> locked 4.7 m before the sign, stopped, reached the goal</td>
 </tr>
 <tr>
 <td>Obstacle (<code>pixi run bench-check --obstacle</code>)</td>
-<td>a box as wide as the lane, 15 m ahead, Nav2 driving 30 m: <code>collision_monitor</code>'s stop zone stops the car before it; with the box gone, the car reaches the goal. If a busy computer latches the spine, the check arms it again</td>
+<td>a box as wide as the lane, 15 m ahead, navigation driving 30 m: the stop zone stops the car before it; with the box gone, the car reaches the goal. If a busy computer latches the spine, the check arms it again</td>
 <td><span class="badge b-works">works</span> on <code>main</code>, 11 Oct: stood still 0.44 m before the box, from 0.95 m/s; reached the goal once the box was gone</td>
 </tr>
 <tr>
 <td>Weave (<code>pixi run bench-check --weave</code>)</td>
-<td>Nav2 drives 40 m straight, nothing in the way: the car's side-to-side swing round its own 4 s average is under 0.1 m RMS. Also says how far it strays from its best straight line, and how often a second Nav2's turn command changes sign (N7)</td>
+<td>navigation drives 40 m straight, nothing in the way: the car's side-to-side swing round its own 4 s average is under 0.1 m RMS. Also says how far it strays from its best straight line, and how often a second Nav2's turn command changes sign (N7)</td>
 <td>untested</td>
 </tr>
 <tr>
 <td>Stop zone's edge (<code>pixi run bench-check --zone-edge</code>)</td>
-<td>the car stands still, a box as wide as the lane right at the far edge of the stop zone, Nav2 asked to drive on, for 20 s: after the first stop no forward command reaches ego, and the car creeps under 0.1 m. Says how often collision_monitor itself flickered (<code>stop_hold</code> keeps it from reaching the car)</td>
+<td>the car stands still, a box as wide as the lane right at the far edge of the stop zone, navigation asked to drive on, for 20 s: after the first stop no forward command reaches ego, and the car creeps under 0.1 m. Says how often collision_monitor itself flickered (<code>stop_hold</code> keeps it from reaching the car)</td>
 <td>untested</td>
 </tr>
 </tbody>
@@ -556,7 +556,7 @@ pixi run bench-check --lane                         # the same, measured: 1 more
   0.15 m lines and 0.5 m of tarmac outside them.</li>
 <li><strong>The picture follows the car:</strong> each pixel below the horizon is traced down to the
   ground and coloured by where it lands on the road. About 4 ms a picture.</li>
-<li><strong>Nothing else drives:</strong> <code>nav:=false</code> leaves out Nav2, which outranks lane keeping.</li>
+<li><strong>Nothing else drives:</strong> <code>nav:=false</code> leaves out navigation, which outranks lane keeping.</li>
 </ul>
 <h3 id="what-bench-check-lane-checks">What <code>bench-check --lane</code> checks</h3>
 <p>After the usual checks, it starts the bench again, with lane keeping, the car 0.3 m left of

@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -518,7 +518,7 @@ repo yet: fill them in from the vault.</p>
 </tr>
 </tbody>
 </table></div>
-<p>Autonomy (Nav2 goals on the ground) comes after A11, on another day: <a href="tests.html">Every test</a>, stage 5.</p>
+<p>Autonomy (navigation goals on the ground) comes after A11, on another day: <a href="tests.html">Every test</a>, stage 5.</p>
 </section>
 <section class="card"><h2 id="ready-for-car-day-the-02-checklist">Ready for car day (the 0.2 checklist)</h2>
 <p>0.2 is "car-ready" when every box here is ticked. <a href="release-notes.html#whats-left">Release 0.2</a> links here.</p>
@@ -2044,7 +2044,7 @@ before, without the positions coming back.</p>
 </tr>
 <tr>
 <td>☐</td>
-<td>with the C++ (1): the bridge's log says <code>no-timeout lock ON</code>. twist_mux then holds every program (scripted, point, Nav2, AI); the keyboard and the actuator tests below still drive. Leave <code>allow_programs_without_timeout: false</code></td>
+<td>with the C++ (1): the bridge's log says <code>no-timeout lock ON</code>. twist_mux then holds every program (scripted, point, navigation, AI); the keyboard and the actuator tests below still drive. Leave <code>allow_programs_without_timeout: false</code></td>
 </tr>
 <tr>
 <td>☐</td>
@@ -2418,7 +2418,7 @@ the lattice has driven the same goals on the ground (<a href="tests.html#4f-reve
 </tr>
 <tr>
 <td>The speed</td>
-<td><strong>0.5 m/s at most</strong> for ego, Nav2 and the geofence; <code>max_speed:=</code> above 0.5 is <strong>refused</strong></td>
+<td><strong>0.5 m/s at most</strong> for ego, navigation and the geofence; <code>max_speed:=</code> above 0.5 is <strong>refused</strong></td>
 <td>new</td>
 </tr>
 <tr>
@@ -2433,7 +2433,7 @@ the lattice has driven the same goals on the ground (<a href="tests.html#4f-reve
 </tr>
 <tr>
 <td>A person</td>
-<td>the joystick or keyboard outranks Nav2; the Kar-Tech stop</td>
+<td>the joystick or keyboard outranks navigation; the Kar-Tech stop</td>
 <td>no</td>
 </tr>
 </tbody>
@@ -2728,7 +2728,7 @@ record goes to the team before another run.</p>
 </ol>
 <p>At home: the delay goes in <code>orin.yaml</code>'s <code>camera_stream</code> <code>delay</code> (0.06 s today); commit
 the two calibration files (<code>docs/camera-calibration.md</code>). Until they're in, the stop-sign
-rule uses Gazebo's lens and the car stops too early.</p>
+rule uses the simulator's lens and the car stops too early.</p>
 <p><strong>Stop point:</strong> both streams at 15 fps on the Orin, the delay measured, both cameras calibrated.</p>
 </section>
 <section class="card"><h2 id="session-7-can-read-only">Session 7: CAN, read-only</h2>
@@ -3065,7 +3065,7 @@ can't). At the drive, Ben's MacBook is the ground station: it does everything el
 </tr>
 <tr>
 <td>4</td>
-<td><strong>The rehearsal:</strong> <code>pixi run carla-car host:=127.0.0.1</code>, then the car day's own steps: the keyboard, a scripted drive, a Nav2 goal, a goal behind (the U-turn)</td>
+<td><strong>The rehearsal:</strong> <code>pixi run carla-car host:=127.0.0.1</code>, then the car day's own steps: the keyboard, a scripted drive, a goal, a goal behind (the U-turn)</td>
 <td>the car drives each, in CARLA</td>
 <td>write down what failed: fix it before the day</td>
 </tr>

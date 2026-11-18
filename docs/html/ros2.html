@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -124,7 +124,7 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#the-three-parts">The three parts</a><a href="#three-ways-for-nodes-to-talk">Three ways for nodes to talk</a><a href="#the-other-words">The other words</a><a href="#building-packages-colcon-ament">Building: packages, colcon, ament</a><a href="#stock-packages-vs-our-nodes">Stock packages vs our nodes</a><a href="#adding-a-node-in-five-steps">Adding a node, in five steps</a><a href="#looking-inside-a-running-system">Looking inside a running system</a></nav>
 <div class="lead"><p>ROS 2 is three things: a way for programs to send each other messages, a library of
-ready-made programs (Nav2, robot_localization, twist_mux …), and tools to build them and
+ready-made programs (robot_localization, twist_mux …), and tools to build them and
 look inside. We configure the ready-made programs, and write a few of our own.</p></div>
 <section class="card"><h2 id="the-three-parts">The three parts</h2>
 <div class="table-wrap"><table>
@@ -144,7 +144,7 @@ look inside. We configure the ready-made programs, and write a few of our own.</
 <tr>
 <td>Packages</td>
 <td>Thousands of open-source nodes, configured with YAML</td>
-<td>Nav2, robot_localization, twist_mux, turtlesim</td>
+<td>robot_localization, twist_mux, turtlesim (Nav2, until we ported it)</td>
 </tr>
 <tr>
 <td>Tools</td>
@@ -287,8 +287,8 @@ look inside. We configure the ready-made programs, and write a few of our own.</
 <tbody>
 <tr>
 <td>Examples</td>
-<td>Nav2, robot_localization, twist_mux, joy, teleop, turtlesim</td>
-<td>ego, <code>scripted_driver</code>, <code>spine_bridge</code>, the turtlesim and Gazebo adapters</td>
+<td>robot_localization, twist_mux, joy, teleop, turtlesim</td>
+<td>ego, <code>scripted_driver</code>, <code>spine_bridge</code>, the turtlesim and Ravensim adapters</td>
 </tr>
 <tr>
 <td>We change</td>

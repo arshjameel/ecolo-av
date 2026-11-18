@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -124,9 +124,9 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#what-it-does-layer-by-layer">What it does, layer by layer</a><a href="#the-radar-forgets-what-has-gone-15-nov-todo-193">The radar forgets what has gone (15 Nov, TODO 193)</a><a href="#the-lanes-layer-15-nov-todo-148-a-challenger">The lanes layer (15 Nov, TODO 148, a challenger)</a><a href="#threads-and-bounds-14-nov">Threads and bounds (14 Nov)</a><a href="#from-map-chunks-on-every-core-16-nov-todo-175-195">From map chunks, on every core (16 Nov, TODO 175, 195)</a><a href="#try-it">Try it</a><a href="#the-scores-8-nov">The scores (8 Nov)</a><a href="#without-ros">Without ROS</a><a href="#whats-missing">What&#x27;s missing</a></nav>
 <div class="lead"><p>Ben, 8 Nov: move off Nav2 to <strong>our own versions, one piece at a time</strong>, each beside Nav2
-until it wins. The order: the costmap, then a path planner in Rust, then the navigator.
-This page is the first piece. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>;
-Nav2's with <code>costmap:=nav2</code> or <code>stack:=stock</code>). Nav2 stays on the car.</p>
+until it won. The order: the costmap, then a path planner in Rust, then the navigator.
+This page is the first piece. Since 14 Nov ours is the simulator's default (<code>stack:=ours</code>).
+Nav2 went on 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>): ours is the only one, in the sim and on the car. The comparisons with Nav2's below are the record.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
 <ul>
@@ -293,9 +293,9 @@ the radar's block in <code>nav2.yaml</code>, 120° (the TI radar's, and the simu
 <li>One ray every 0.5° (<code>obstacle::view_points</code>): 7 cm apart at 8.4 m.</li>
 <li>The rays end past <code>obstacle_max_range</code>, so they never mark.</li>
 <li>Only the radar's own layer: the lidar's and the cameras' marks are never touched.</li>
-<li>Nav2's costmap has no such setting and ignores it (<code>stack:=stock</code> keeps the old way).</li>
+<li>Nav2's costmap had no such setting.</li>
 <li>A real radar's sparse frames: a thing it misses in both frames of 0.2 s is cleared, and
-  marked again at the next frame that sees it. collision_monitor still reads the radar
+  marked again at the next frame that sees it. the stop zone still reads the radar
   itself, not the costmap.</li>
 </ul>
 </section>
@@ -929,10 +929,6 @@ one from <code>/map</code>) stays a challenger.</p>
 <td><code>amcl:=true</code>, without its own map</td>
 </tr>
 <tr>
-<td>Nav2's costmaps</td>
-<td><code>costmap:=nav2</code> (not ours)</td>
-</tr>
-<tr>
 <td><code>sim_check.py</code></td>
 <td>its checks</td>
 </tr>
@@ -1127,7 +1123,7 @@ Nav2's in every cell each time. Three runs can't prove run 2's stall is gone for
 <li><strong>It is lighter:</strong> both of ours together use about half the CPU of Nav2's local one.</li>
 <li><strong>As good on these legs, once it can be cleared:</strong> 3 of 3 since the clear service, as
   Nav2's. Not yet a winner: six runs a leg is little, it went past the post once (run 3),
-  and the radar and cameras are untested. Nav2 stays the default.</li>
+  and the radar and cameras are untested. (Nav2 then stayed the default.)</li>
 </ul>
 </section>
 <section class="card"><h2 id="without-ros">Without ROS</h2>
@@ -1199,7 +1195,7 @@ Nav2's in every cell each time. Three runs can't prove run 2's stall is gone for
   still clear Nav2's global costmap.</li>
 <li><strong>Radar, cubes and cameras</strong> (point clouds, placed by <code>/tf_static</code>'s mounts): built,
   but untested; the sim's runs had the lidar's scan alone.</li>
-<li><strong>On the car:</strong> untested. Nav2 stays there.</li>
+<li><strong>On the car:</strong> untested; ours is the car's costmap since 17 Nov.</li>
 </ul></section>
 <nav class="prevnext"><a class="prev" href="mppi-lag.html"><small>Previous</small>← MPPI with lag</a>
 <a class="next" href="own-planner.html"><small>Next</small>Our own planner →</a></nav>

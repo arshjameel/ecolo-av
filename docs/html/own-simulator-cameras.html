@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -246,7 +246,7 @@ with none, Mesa's software renderer draws them (<a href="#with-no-gpu-15-nov">be
 </tr>
 <tr>
 <td><code>pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0</code></td>
-<td>a Gazebo world (the core's reader), parked at x, y, yaw</td>
+<td>an SDF world (the core's reader), parked at x, y, yaw</td>
 </tr>
 <tr>
 <td><code>pixi run sim world:=road</code></td>
@@ -624,15 +624,15 @@ logs <code>camera lockstep on</code>, and in each 30 s report how often it held 
 </tr>
 <tr>
 <td>Faults (freeze, stop)</td>
-<td><code>sim_camera_relay</code> does them for Gazebo; the simulator's fault switch should cover these</td>
+<td><code>sim_camera_relay</code> does them (as it did for Gazebo); the simulator's fault switch should cover these</td>
 </tr>
 <tr>
 <td>The JPEG topics</td>
-<td>Gazebo has none either: <code>chase_jpeg</code> and <code>preview_jpeg</code> still make them</td>
+<td>Gazebo had none either: <code>chase_jpeg</code> and <code>preview_jpeg</code> still make them</td>
 </tr>
 <tr>
 <td>Lifelike pictures</td>
-<td>a non-goal: Gazebo's aren't either</td>
+<td>a non-goal: Gazebo's weren't either</td>
 </tr>
 </tbody>
 </table></div></section>

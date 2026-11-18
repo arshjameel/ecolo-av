@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a class="here" href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -123,7 +123,7 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#whats-real-and-whats-guessed">What&#x27;s real and what&#x27;s guessed</a><a href="#what-it-makes">What it makes</a><a href="#what-was-measured-gazebo-5-nov">What was measured (Gazebo, 5 Nov)</a><a href="#ndts-score-floor">NDT&#x27;s score floor</a><a href="#found-along-the-way">Found along the way</a><a href="#next-the-real-lidar-drive">Next: the real lidar drive</a></nav>
-<div class="lead"><p>Carleton in Ravensim (Gazebo too, until 16 Nov), on one Nav2 costmap, with a guessed NDT map. It's for practice while the
+<div class="lead"><p>Carleton in Ravensim (Gazebo too, until 16 Nov), on one costmap, with a guessed NDT map. It's for practice while the
 hardware catches up (Ben, 5 Nov). Nothing here has met the real campus yet. Its map, cut
 into 64 m chunks (<code>maps/campus/chunks/</code>), is <strong>RavenTiles</strong> (<a href="own-costmap.html">Own costmap</a>).</p>
 <pre class="highlight"><code class="language-sh">pixi run campus                                       # builds maps/campus/ (about 10 s)
@@ -180,7 +180,7 @@ you read by hand are for checking it.</p>
 </tr>
 <tr>
 <td><code>maps/campus/campus.pgm</code>, <code>.yaml</code></td>
-<td>one Nav2 map: 1.6 x 1.6 km at 0.25 m (6400 x 6400 cells)</td>
+<td>one map (Nav2's format): 1.6 x 1.6 km at 0.25 m (6400 x 6400 cells)</td>
 </tr>
 <tr>
 <td><code>maps/campus/place.yaml</code></td>
@@ -201,10 +201,10 @@ solid white line 0.5 m in from each edge, so the lane finder sees both sides of 
 Other roads have none.</p>
 <p><strong>The shape (Ben, 5 Nov):</strong> everything that isn't pavement is a foot up, held in by a concrete
 kerb, with grass on top.</p>
-<p><strong>One costmap, no segments.</strong> It works on a Mac: only roads and lots are free. Gazebo held
-real time (0.98-1.01). Nav2's planner loop runs at about 8 Hz, not the 20 Hz it wants, and warns
+<p><strong>One costmap, no segments.</strong> It works on a Mac: only roads and lots are free. Gazebo (then) held
+real time (0.98-1.01). Nav2's planner loop ran at about 8 Hz, not the 20 Hz it wanted, and warned
 about it in the console. Paths and grass are blocked: the car stays on roads and lots.</p>
-<p><strong>Sent once.</strong> At this size Nav2 sending the whole costmap every second froze the window (up to
+<p><strong>Sent once.</strong> At this size Nav2's costmap sending the whole grid every second froze the window (up to
 1.66 s) and may have caused the flashing. <code>world:=campus</code> sends it once, then only changes. The
 window also skips a grid it already has.</p>
 </section>
@@ -243,7 +243,7 @@ world, so of course it fits here.</p>
 score about 1.6-1.9 on the guess, and 2.00-2.31 on a recorded map. So this world uses 1.5.</p>
 <p><strong>Floors.</strong> The grass is at 0.30 m, right on the car's usual 0.3 m floor. NDT looked at it and
 got lost, so here NDT looks above 0.45 m. The window's cubes look down to 0.12 m, so kerbs and
-grass show as the lidar's rings. Nav2's flat scan keeps 0.3 m: untested against kerbs (TODO 119).</p>
+grass show as the lidar's rings. The flat scan keeps 0.3 m: untested against kerbs (TODO 119).</p>
 <p><strong>Not measured:</strong> how high a <em>wrong</em> pose scores here. Until it is, leave <code>ndt_ekf</code> off on the
 campus: NDT is watched, and doesn't steer the estimate.</p>
 </section>
@@ -269,7 +269,7 @@ campus: NDT is watched, and doesn't steer the estimate.</p>
 <td>TODO 124; to be tested on its own (TODO 149)</td>
 </tr>
 <tr>
-<td>Kerbs sit at Nav2's 0.3 m floor</td>
+<td>Kerbs sit at the flat scan's 0.3 m floor</td>
 <td>TODO 119: test it now this world exists</td>
 </tr>
 <tr>

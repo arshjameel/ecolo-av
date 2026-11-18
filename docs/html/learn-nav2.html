@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nav2 from zero · AAV 2026–27</title>
+<title>Navigation from zero · AAV 2026–27</title>
 <link rel="stylesheet" href="style.css">
 </head><body>
 <!-- Generated from docs/learn-nav2.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
-<h1>Nav2 from zero</h1>
-<div class="meta">13 min read · 11 sections</div></header>
+<h1>Navigation from zero</h1>
+<div class="meta">12 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a class="here" href="learn-nav2.html">Learn: Nav2</a>
+<a class="here" href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -122,29 +122,33 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-picture">The picture</a><a href="#1-the-planner-smac-hybrid-a">1. The planner: Smac Hybrid-A*</a><a href="#2-the-controller-regulated-pure-pursuit">2. The controller: Regulated Pure Pursuit</a><a href="#3-costmaps-in-one-line-each">3. Costmaps, in one line each</a><a href="#4-the-behaviour-tree-the-boss">4. The behaviour tree: the boss</a><a href="#reversing">Reversing</a><a href="#5-collision_monitor-the-last-word">5. collision_monitor: the last word</a><a href="#6-gps-waypoints">6. GPS waypoints</a><a href="#how-well-it-works">How well it works</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
-<div class="lead"><p><strong>Nav2</strong> is ROS's stock navigation system: give it a goal, and it plans a path and
-steers along it. On our car it is <strong>just one more driver</strong>: it proposes a speed and a
-turn rate, like the joystick does.</p>
+<nav class="toc"><span>On this page:</span><a href="#the-picture">The picture</a><a href="#1-the-planner-a-lattice-of-car-moves">1. The planner: a lattice of car moves</a><a href="#2-the-path-follower">2. The path follower</a><a href="#3-costmaps-in-one-line-each">3. Costmaps, in one line each</a><a href="#4-the-navigator-the-boss">4. The navigator: the boss</a><a href="#reversing">Reversing</a><a href="#5-the-stop-zone-the-last-word">5. The stop zone: the last word</a><a href="#6-gps-waypoints">6. GPS waypoints</a><a href="#how-well-it-works">How well it works</a><a href="#try-it">Try it</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
+<div class="lead"><p><strong>Navigation</strong> turns a goal into driving: plan a path, then steer along it. On our car it
+is <strong>just one more driver</strong>: it proposes a speed and a turn rate, like the joystick does.</p>
+<p>Our stack (<code>stack:=ours</code>) does it, every part in Rust. Each part is a port of a part of
+<strong>Nav2</strong>, ROS's stock navigation, which drove the simulated car from 10 Oct to 17 Nov
+(<a href="../history/nav2-as-it-was.md">Nav2, as it was</a>). The ideas below are Nav2's; the code is ours.</p>
 <p><strong>You'll learn:</strong></p>
 <ul>
-<li>the parts: goal, planner, controller, costmaps, behaviour tree;</li>
-<li>how Smac Hybrid-A* plans paths a car can really drive;</li>
-<li>how Regulated Pure Pursuit steers, with one example in numbers;</li>
-<li>what happens when things go wrong: recovery and <code>collision_monitor</code>;</li>
-<li>how GPS waypoints become Nav2 goals;</li>
+<li>the parts: goal, navigator, planner, path follower, costmaps, smoother, stop zone;</li>
+<li>how a lattice planner finds paths a car can really drive;</li>
+<li>how pure pursuit steers, with one example in numbers;</li>
+<li>what happens when things go wrong: recoveries and the stop zone;</li>
+<li>how GPS waypoints become goals;</li>
 <li>our settings, and where they live.</li>
 </ul>
 <p>Costmaps have their own page: <a href="costmaps.html">Costmaps</a>. The big picture of maps and
 GPS is in <a href="maps-and-position.html">Maps and position</a>.</p></div>
 <section class="card"><h2 id="the-picture">The picture</h2>
-<p><img alt="Nav2 on our car: plan once a second, steer twenty times a second" src="../img/nav2-flow.svg" /></p>
+<pre class="highlight"><code class="language-text">goal ─► navigator ─► planner ─► path follower ─► smoother ─► stop zone ─► /drivers/nav/cmd_vel
+        (replan,     (lattice)   (mppi_lag)                  (radar,        ─► twist_mux ─► ego
+         recover)        └── costmaps ──┘                     lidar)</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Part</th>
 <th>Job</th>
-<th>Ours</th>
+<th>Ours (package)</th>
 </tr>
 </thead>
 <tbody>
@@ -154,29 +158,34 @@ GPS is in <a href="maps-and-position.html">Maps and position</a>.</p></div>
 <td>RViz's 2D Goal Pose, an action call, or GPS waypoints from <code>street_router</code> or the language tools</td>
 </tr>
 <tr>
-<td><strong>bt_navigator</strong></td>
-<td>the boss: runs a behaviour tree that calls the others</td>
-<td><code>behavior_trees/navigate_to_pose_car.xml</code></td>
+<td><strong>Navigator</strong></td>
+<td>the boss: plan, follow, replan, recover</td>
+<td><code>aav_navigator</code> (<a href="own-navigator.html">page</a>)</td>
 </tr>
 <tr>
 <td><strong>Planner</strong></td>
 <td>finds a path from here to the goal</td>
-<td>Smac Hybrid-A*, on the global costmap</td>
+<td><code>aav_planner</code>: the State Lattice; Hybrid-A* with <code>planner_search:=hybrid</code> (<a href="own-planner.html">page</a>)</td>
 </tr>
 <tr>
-<td><strong>Controller</strong></td>
-<td>steers along that path</td>
-<td>MPPI (or Regulated Pure Pursuit: <code>controller:=rpp</code>), on the local costmap, 20 Hz (<a href="path-followers.html">path followers</a>)</td>
+<td><strong>Path follower</strong></td>
+<td>steers along that path, 20 Hz</td>
+<td><code>aav_mppi_lag</code>: MPPI that knows the actuators' lag (<a href="mppi-lag.html">page</a>); trials with <code>tracker:=</code> (<a href="trials.html">Trials</a>)</td>
 </tr>
 <tr>
-<td><strong>Velocity smoother</strong></td>
-<td>caps speed and acceleration</td>
-<td>1.0 m/s, 1.0 m/s² up, 2.0 m/s² down</td>
+<td><strong>Costmaps</strong></td>
+<td>what is in the way</td>
+<td><code>aav_costmap</code> (<a href="own-costmap.html">page</a>)</td>
 </tr>
 <tr>
-<td><strong>collision_monitor</strong></td>
+<td><strong>Smoother</strong></td>
+<td>caps speed, acceleration and the steering's rate</td>
+<td><code>aav_smoother</code> (<a href="own-smoother.html">page</a>)</td>
+</tr>
+<tr>
+<td><strong>Stop zone</strong></td>
 <td>last-moment stop for radar or lidar points ahead</td>
-<td>where the radar or the lidar runs</td>
+<td><code>aav_stop_zone</code>, a safety lock</td>
 </tr>
 <tr>
 <td><strong>Out</strong></td>
@@ -185,82 +194,54 @@ GPS is in <a href="maps-and-position.html">Maps and position</a>.</p></div>
 </tr>
 </tbody>
 </table></div>
-<p>Nav2 never talks to the wheels. ego turns its turn rate into a steering angle (<a href="learn-control.html">Learn:
-control</a>).</p>
+<p>Navigation never talks to the wheels. ego turns its turn rate into a steering angle
+(<a href="learn-control.html">Learn: control</a>).</p>
 </section>
-<section class="card"><h2 id="1-the-planner-smac-hybrid-a">1. The planner: Smac Hybrid-A*</h2>
+<section class="card"><h2 id="1-the-planner-a-lattice-of-car-moves">1. The planner: a lattice of car moves</h2>
 <p><strong>A*</strong> searches a grid for the cheapest way from A to B. A plain grid search gives
 paths with sharp corners: fine for a robot that spins on the spot, not for a car.</p>
-<p><strong>Hybrid-A*</strong> searches in (x, y, <strong>heading</strong>), and only uses moves a car can make:</p>
+<p>A <strong>lattice planner</strong> searches in (x, y, <strong>heading</strong>), and only joins moves a car can
+make: straight on, and arcs no tighter than the car's turning radius (<strong>2.87 m</strong>, from
+<code>vehicle.yaml</code>). The moves are made once, ahead of time, into a file
+(<code>config/lattice_ackermann*.json</code>). So every path it returns is one our car can follow.</p>
+<p><strong>Hybrid-A*</strong> (<code>planner_search:=hybrid</code>) is the same idea, with the arcs worked out as
+it searches.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Move</th>
-<th></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>straight on</td>
-<td></td>
-</tr>
-<tr>
-<td>left, at the tightest turn</td>
-<td>radius <strong>2.87 m</strong> (from <code>vehicle.yaml</code>)</td>
-</tr>
-<tr>
-<td>right, at the tightest turn</td>
-<td>the same</td>
-</tr>
-</tbody>
-</table></div>
-<p>So every path it returns is one our car can follow.</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Setting (<code>nav2.yaml</code>)</th>
+<th>Setting (<code>nav2.yaml</code>'s lattice block)</th>
 <th>Ours</th>
 <th>Means</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>motion_model_for_search</code></td>
-<td><code>DUBIN</code></td>
-<td>forward only. <code>REEDS_SHEPP</code> (forward and back) with <code>reversing:=true</code> (<a href="#reversing">Reversing</a>)</td>
+<td><code>allow_reverse_expansion</code></td>
+<td>true with <code>reversing:=true</code></td>
+<td>forward and back (<a href="#reversing">Reversing</a>)</td>
 </tr>
 <tr>
-<td><code>minimum_turning_radius</code></td>
-<td>3.59 m</td>
-<td>set by the launch file: wheelbase ÷ tan(max steer) = 2.87 m, × 1.25, so the controller has steering to spare</td>
+<td><code>reverse_penalty</code></td>
+<td>2.0</td>
+<td>a reverse metre costs twice a forward one</td>
 </tr>
 <tr>
-<td><code>angle_quantization_bins</code></td>
-<td>72</td>
-<td>headings in 5° steps</td>
+<td><code>cusp_penalty</code></td>
+<td>4 m</td>
+<td>each change of gear costs as much as 4 m of driving (<a href="own-planner.html">own planner</a>)</td>
 </tr>
 <tr>
-<td><code>max_planning_time</code></td>
-<td>5.0 s</td>
-<td>give up after this</td>
-</tr>
-<tr>
-<td><code>tolerance</code></td>
-<td>0.5 m</td>
-<td>a goal inside an obstacle: plan to within 0.5 m</td>
-</tr>
-<tr>
-<td><code>smooth_path</code></td>
-<td>true</td>
-<td>smooth the corners afterwards</td>
+<td>headings</td>
+<td>16 (32 with <code>lattice_headings:=32</code>)</td>
+<td>the directions a path may point in</td>
 </tr>
 </tbody>
 </table></div>
 </section>
-<section class="card"><h2 id="2-the-controller-regulated-pure-pursuit">2. The controller: Regulated Pure Pursuit</h2>
-<p>Since 22 Oct the default is MPPI, which tries 2000 futures through a model of the car
-(<a href="path-followers.html">path followers</a>). Pure pursuit is still the easiest way in, and
-<code>controller:=rpp</code> brings it back.</p>
+<section class="card"><h2 id="2-the-path-follower">2. The path follower</h2>
+<p>Our follower is <strong>MPPI</strong>: it tries 2000 futures through a model of the car, and picks a
+blend of the best (<a href="mppi-lag.html">MPPI with lag</a>). <strong>Pure pursuit</strong> is the easiest way in,
+and <code>tracker:=pure_pursuit</code> runs it (<a href="trials.html">Trials</a>).</p>
 <p><strong>Pure pursuit</strong> is how you steer a bike: look at a point on the path a little ahead (the
 <strong>carrot</strong>), and turn so you'd arc through it.</p>
 <pre class="highlight"><code class="language-text">            carrot ●   (on the path, the lookahead distance ahead)
@@ -295,114 +276,57 @@ paths with sharp corners: fine for a robot that spins on the spot, not for a car
 </tr>
 </tbody>
 </table></div>
-<p><strong>Regulated</strong> means it also slows down when it should:</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Slows down</th>
-<th>Our setting</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>in turns tighter than 3.0 m radius</td>
-<td>down to 0.25 m/s</td>
-</tr>
-<tr>
-<td>near the goal</td>
-<td>from 1.0 m out</td>
-</tr>
-<tr>
-<td>if a collision is less than 1.0 s ahead</td>
-<td><code>use_collision_detection: true</code></td>
-</tr>
-</tbody>
-</table></div>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Ours</th>
-<th>Why</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>desired_linear_vel</code></td>
-<td>1.0 m/s</td>
-<td>start slow; ego caps it too</td>
-</tr>
-<tr>
-<td>Lookahead</td>
-<td>speed × 1.5 s, kept between 1.5 and 4.0 m</td>
-<td>short weaves, long cuts corners. About the wheelbase or more</td>
-</tr>
-<tr>
-<td><code>use_rotate_to_heading</code></td>
-<td><strong>false</strong></td>
-<td>a car can't spin on the spot</td>
-</tr>
-<tr>
-<td><code>allow_reversing</code></td>
-<td>false</td>
-<td>true with <code>reversing:=true</code>: it follows a path backwards (<a href="#reversing">Reversing</a>)</td>
-</tr>
-</tbody>
-</table></div>
 <p><strong>Done</strong> when within 1.0 m and 0.75 rad (43°) of the goal: no tighter than GPS without RTK
-can tell (22 Oct; tighter, the car looped to fix misses it couldn't see). <strong>Stuck</strong> if in 10 s it neither moves
-0.5 m nor turns 0.5 rad (29°): rocking back and forth in a three-point turn still counts.</p>
+can tell (22 Oct; tighter, the car looped to fix misses it couldn't see). <strong>Stuck</strong> if in
+10 s it neither moves 0.5 m nor turns 0.5 rad (29°): rocking back and forth in a
+three-point turn still counts.</p>
 </section>
 <section class="card"><h2 id="3-costmaps-in-one-line-each">3. Costmaps, in one line each</h2>
 <ul>
 <li><strong>Global:</strong> for the planner, in <code>map</code>, the map file's size.</li>
-<li><strong>Local:</strong> for the controller, in <code>odom</code>, 20 m × 20 m around the car.</li>
+<li><strong>Local:</strong> for the follower, in <code>odom</code>, 20 m × 20 m around the car.</li>
 </ul>
 <p>Sizes, layers, sensors and inflation: <a href="costmaps.html#the-two-costmaps">Costmaps</a>.</p>
 </section>
-<section class="card"><h2 id="4-the-behaviour-tree-the-boss">4. The behaviour tree: the boss</h2>
-<p>A <strong>behaviour tree</strong> (BT) is a flowchart that runs over and over. Ours is Nav2's
-standard tree, changed for a car.</p>
-<pre class="highlight"><code class="language-text">Navigate (up to 6 tries)
- ├─ every 1 s: plan a path  ── fails? clear the global costmap, try again
- │    (not in the last 8 m: keep the path, unless blocked or 20 s old)
- ├─ follow the path         ── fails? clear the local costmap, try again
- └─ still failing? take turns: clear both costmaps, or wait 5 s</code></pre>
+<section class="card"><h2 id="4-the-navigator-the-boss">4. The navigator: the boss</h2>
+<p>The navigator is one state machine (<a href="own-navigator.html">our navigator</a>). It does what
+Nav2's behaviour trees did for a car:</p>
+<pre class="highlight"><code class="language-text">goal ─► plan ─► follow ─► plan again, at most every second
+          │        │        (not in the last 8 m: keep the path, unless blocked or 20 s old)
+          ▼        ▼
+   clear global  clear local      ◀── a failure a recovery can fix
+          └────────┴─► in turn: clear both ─► wait 5 s ─► back up 1 m (reversing only)
+                       up to 6 times, then give up</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Changed for a car</th>
+<th>Made for a car</th>
 <th>Why</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>No Spin</strong></td>
+<td><strong>No spin</strong></td>
 <td>a car can't turn on the spot</td>
 </tr>
 <tr>
-<td><strong>BackUp only with reversing</strong></td>
-<td>the <code>*_car_reversing.xml</code> trees back up 1 m at 0.25 m/s after the wait. Without something that sees behind the car, the <code>*_car.xml</code> trees: no BackUp</td>
-</tr>
-<tr>
-<td>Server timeouts 1 s, not Nav2's 20 ms</td>
-<td>a busy computer failed whole goals (the bench, 11 Oct)</td>
+<td><strong>Back up only with reversing</strong></td>
+<td>1 m at 0.25 m/s, after the wait; only when something sees behind the car</td>
 </tr>
 <tr>
 <td><strong>Keep the path for the last 8 m</strong></td>
-<td>a path planned a few metres from the goal is often a loop for a car, and each new path resets the goal checker: the car circled goals (<a href="path-followers.html#circling-a-goal-found-and-fixed-29-october-todo-17">TODO 17</a>)</td>
+<td>a path planned a few metres from the goal is often a loop for a car: the car circled goals (<a href="path-followers.html#circling-a-goal-found-and-fixed-29-october-todo-17">TODO 17</a>)</td>
 </tr>
 </tbody>
 </table></div>
 </section>
 <section class="card"><h2 id="reversing">Reversing</h2>
-<p>One switch, <code>reversing:=</code>, on <code>navigation.launch.py</code>. <strong>On everywhere: Gazebo, the bench,
-and the car since 1 Nov</strong> (Ben: "reverse and uturn should be in"; off on the car 26 Oct-1
-Nov, design review F2). The wheel sensors can't tell direction yet (H5), so the speed's
-sign is the last command's: wrong only if the car is pushed or rolls back (<a href="tests.html">tests</a>,
-4.25). On the car it works only where something sees behind it: the roof lidar (the radar faces forward; the
-rear camera, later). Without one, <code>car.launch.py</code> keeps Nav2 forward only and says why
-(<code>vehicle.blind_behind</code>).</p>
+<p>One switch, <code>reversing:=</code>. <strong>On everywhere: Ravensim, the bench, and the car since
+1 Nov</strong> (Ben: "reverse and uturn should be in"). The wheel sensors can't tell direction
+yet (H5), so the speed's sign is the last command's: wrong only if the car is pushed or
+rolls back (<a href="tests.html">tests</a>, 4.25). On the car it works only where something sees
+behind it: the roof lidar (the radar faces forward; the rear camera, later). Without one,
+<code>car.launch.py</code> keeps navigation forward only and says why (<code>vehicle.blind_behind</code>).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -413,14 +337,9 @@ rear camera, later). Without one, <code>car.launch.py</code> keeps Nav2 forward 
 </thead>
 <tbody>
 <tr>
-<td>Planner (<code>motion_model_for_search</code>)</td>
-<td><code>DUBIN</code>: forward only</td>
-<td><code>REEDS_SHEPP</code>: forward and back; a reverse metre costs 2x (<code>reverse_penalty</code>)</td>
-</tr>
-<tr>
-<td>Controller (<code>allow_reversing</code>)</td>
-<td>false</td>
-<td>true: follows the backward parts</td>
+<td>Planner</td>
+<td>forward only</td>
+<td>forward and back; a reverse metre costs 2x, a change of gear 4 m</td>
 </tr>
 <tr>
 <td>MPPI's <code>vx_min</code></td>
@@ -428,19 +347,19 @@ rear camera, later). Without one, <code>car.launch.py</code> keeps Nav2 forward 
 <td>-0.5 m/s</td>
 </tr>
 <tr>
-<td>Velocity smoother's lowest speed</td>
+<td>Smoother's lowest speed</td>
 <td>0</td>
 <td>-0.5 m/s</td>
 </tr>
 <tr>
-<td>Behaviour trees</td>
-<td><code>*_car.xml</code>: no BackUp</td>
-<td><code>*_car_reversing.xml</code>: BackUp 1 m at 0.25 m/s</td>
+<td>Navigator's recoveries</td>
+<td>no back-up</td>
+<td>back up 1 m at 0.25 m/s</td>
 </tr>
 <tr>
-<td>collision_monitor</td>
+<td>Stop zone</td>
 <td>the box ahead</td>
-<td>the box ahead going forward, a box behind reversing (<a href="#5-collision_monitor-the-last-word">5</a>)</td>
+<td>the box ahead going forward, a box behind reversing (<a href="#5-the-stop-zone-the-last-word">5</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -461,27 +380,29 @@ reversing at the same number, whoever drives.</p>
 </tr>
 <tr>
 <td><code>aav_description/vehicle.py</code></td>
-<td><code>nav2_rewrites(v, reversing)</code> (planner, controller, MPPI) and <code>nav2_tuned(...)</code> (the smoother's list, written into a copy of <code>nav2.yaml</code>)</td>
+<td><code>nav2_rewrites(...)</code> and <code>nav2_tuned(...)</code> write it into a copy of <code>nav2.yaml</code>, the settings our nodes read</td>
 </tr>
 <tr>
 <td><code>car.launch.py</code>, <code>sim.launch.py</code>, <code>bench.launch.py</code></td>
 <td><code>reversing:=true</code> by default in each; on the car it needs the lidar running, or it stays forward only</td>
 </tr>
 <tr>
-<td>Gazebo check</td>
-<td><code>pixi run sim-check --rear-obstacle</code>: backing up, the car stops for a post behind it (0.75 m short, 22 Oct)</td>
+<td>Ravensim check</td>
+<td><code>pixi run sim-check --rear-obstacle</code>: backing up, the car stops for a post behind it</td>
 </tr>
 <tr>
 <td>Tests</td>
-<td><code>test_vehicle.py</code> (the values, and that each rewrite lands on a real key); <code>test_behavior_trees.py</code> (the two trees differ only by BackUp, inside the reverse speed)</td>
+<td><code>test_vehicle.py</code> (the values, and that each rewrite lands on a real key)</td>
 </tr>
 </tbody>
 </table></div>
-<p>People can always reverse (joystick, keyboard, RC): this switch is Nav2's only.</p>
+<p>People can always reverse (joystick, keyboard, RC): this switch is navigation's only.</p>
 </section>
-<section class="card"><h2 id="5-collision_monitor-the-last-word">5. collision_monitor: the last word</h2>
-<p>It sits between the smoother and <code>twist_mux</code>, and reads the <strong>radar's and the lidar's own
-points</strong>, not the costmap. So it still stops the car if the planner, the controller or the costmap goes wrong.</p>
+<section class="card"><h2 id="5-the-stop-zone-the-last-word">5. The stop zone: the last word</h2>
+<p><code>aav_stop_zone</code> sits between the smoother and <code>twist_mux</code>, and reads the <strong>radar's and the
+lidar's own points</strong>, not the costmap. So it still stops the car if the planner, the
+follower or the costmap goes wrong. It is a port of Nav2's <code>collision_monitor</code>, which it
+replaced on 17 Nov after a shadow run (<a href="../history/nav2-as-it-was.md#the-swap-of-the-stop-zone">the swap</a>).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -492,7 +413,7 @@ points</strong>, not the costmap. So it still stops the car if the planner, the 
 <tbody>
 <tr>
 <td>Stop zone</td>
-<td>going forward (or standing): a box from the front bumper to 1 m ahead. Reversing: a box from the rear bumper to 1 m behind. Each 0.2 m wider than the car each side. Nav2's <code>velocity_polygon</code> picks one by the command's speed</td>
+<td>going forward (or standing): a box from the front bumper to 1 m ahead. Reversing: a box from the rear bumper to 1 m behind. Each 0.2 m wider than the car each side. The command's speed picks the box</td>
 </tr>
 <tr>
 <td>Behind the car</td>
@@ -508,24 +429,23 @@ points</strong>, not the costmap. So it still stops the car if the planner, the 
 </tr>
 <tr>
 <td>Guards</td>
-<td><strong>only Nav2</strong>. The joystick and keyboard reach <code>twist_mux</code> without it</td>
+<td><strong>only navigation</strong>. The joystick and keyboard reach <code>twist_mux</code> without it</td>
 </tr>
 </tbody>
 </table></div>
-<p>It runs with the radar or the lidar: on the bench, on the car, and in Gazebo's road and
-test_lot worlds.</p>
-<p>When it stops the car backing up, the controller may pull forward and try again; each
+<p>It runs with the radar or the lidar: on the bench, on the car, and in Ravensim.</p>
+<p>When it stops the car backing up, the follower may pull forward and try again; each
 try stops at the box. Nothing is hit, but the car rocks until the way is clear.</p>
 </section>
 <section class="card"><h2 id="6-gps-waypoints">6. GPS waypoints</h2>
-<pre class="highlight"><code class="language-text">street route (lat/lon points) ─► follow_gps_waypoints ─► /fromLL: each to map x, y ─► one goal after another</code></pre>
+<pre class="highlight"><code class="language-text">street route (lat/lon points) ─► follow_gps_waypoints ─► each to map x, y (the datum) ─► one goal after another</code></pre>
 <ul>
-<li><code>street_router</code> and the language tools send the route; <code>waypoint_follower</code> serves
-  <code>/follow_gps_waypoints</code> (<code>nav2_msgs/action/FollowGPSWaypoints</code>).</li>
-<li>It turns each point into map x, y with navsat_transform's <code>/fromLL</code>
-  (<a href="learn-gps.html">Learn: GPS</a>).</li>
-<li>Nav2 doesn't know where the road is. It plans across its costmap between points.
-  Staying in the lane is the lane keeper's job.</li>
+<li><code>street_router</code> and the language tools send the route; the navigator serves
+  <code>/follow_gps_waypoints</code> (<code>nav2_msgs/action/FollowGPSWaypoints</code>: Nav2's name and message,
+  so no sender changed).</li>
+<li>It turns each point into map x, y from the datum (<a href="learn-gps.html">Learn: GPS</a>).</li>
+<li>The planner doesn't know where the road is: it plans across its costmap between points.
+  Staying in the lane is the lane planner's (<code>path:=lane</code>) and the lane keeper's job.</li>
 </ul>
 </section>
 <section class="card"><h2 id="how-well-it-works">How well it works</h2>
@@ -538,20 +458,20 @@ try stops at the box. Nothing is hit, but the car rocks until the way is clear.<
 </thead>
 <tbody>
 <tr>
-<td>Gazebo</td>
-<td>reaches 8 m and 9.5 m goals</td>
+<td>Ravensim</td>
+<td>the league's scores (<a href="league.html">The league</a>)</td>
 </tr>
 <tr>
 <td>Bench</td>
-<td>drives 40 m past a stop sign; stops for a box in the road</td>
+<td>the whole car graph with stand-ins (<code>pixi run bench-check</code>)</td>
 </tr>
 <tr>
 <td>The car</td>
 <td>never run yet</td>
 </tr>
 <tr>
-<td>A street route → Nav2's GPS waypoints</td>
-<td>✅ in Gazebo (Valhalla, <a href="routes.html">Street routes</a>); untested on the car</td>
+<td>A street route → GPS waypoints</td>
+<td>✅ in the simulator (<a href="routes.html">Street routes</a>); untested on the car</td>
 </tr>
 </tbody>
 </table></div>
@@ -566,7 +486,7 @@ try stops at the box. Nothing is hit, but the car rocks until the way is clear.<
 </thead>
 <tbody>
 <tr>
-<td>Start Gazebo with Nav2 and RViz</td>
+<td>Start Ravensim with our stack and RViz</td>
 <td><code>pixi run sim</code></td>
 </tr>
 <tr>
@@ -586,12 +506,12 @@ try stops at the box. Nothing is hit, but the car rocks until the way is clear.<
 <td><code>pixi run tools/ros.sh ros2 topic echo --once /plan</code></td>
 </tr>
 <tr>
-<td>See Nav2's command</td>
+<td>See navigation's command</td>
 <td><code>pixi run tools/ros.sh ros2 topic echo /drivers/nav/cmd_vel</code></td>
 </tr>
 <tr>
-<td>Watch collision_monitor stop the car</td>
-<td><code>pixi run bench</code>, then <code>pixi run bench-check</code></td>
+<td>Watch the stop zone stop the car</td>
+<td><code>pixi run sim-check --obstacle</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -606,16 +526,12 @@ try stops at the box. Nothing is hit, but the car rocks until the way is clear.<
 </thead>
 <tbody>
 <tr>
-<td>Every Nav2 setting</td>
+<td>The settings our nodes read (in Nav2's layout)</td>
 <td><code>ros/drivers/aav_navigation/config/nav2.yaml</code></td>
 </tr>
 <tr>
-<td>Which servers start; radar and camera switches</td>
+<td>Which nodes start; radar and lidar switches</td>
 <td><code>ros/drivers/aav_navigation/launch/navigation.launch.py</code></td>
-</tr>
-<tr>
-<td>The car's behaviour trees</td>
-<td><code>ros/drivers/aav_navigation/behavior_trees/</code></td>
 </tr>
 <tr>
 <td>Maps</td>
@@ -626,7 +542,7 @@ try stops at the box. Nothing is hit, but the car rocks until the way is clear.<
 <td><code>ros/bringup/aav_description/aav_description/vehicle.py</code></td>
 </tr>
 <tr>
-<td>Nav2's place among the drivers</td>
+<td>Navigation's place among the drivers</td>
 <td><code>ros/command_mux/aav_command_mux/config/twist_mux.yaml</code></td>
 </tr>
 <tr>

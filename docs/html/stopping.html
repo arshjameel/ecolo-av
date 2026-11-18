@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -123,7 +123,7 @@
 <a href="hud.html">HUD</a></nav>
 <main>
 <nav class="toc"><span>On this page:</span><a href="#1-the-stopping-law">1. The stopping law</a><a href="#2-the-behaviour-planner">2. The behaviour planner</a><a href="#3-where-the-car-really-stops">3. Where the car really stops</a><a href="#4-a-heavier-car-the-adaptive-brake">4. A heavier car: the adaptive brake</a></nav>
-<div class="lead"><p>One stopping law for every planned stop, a behaviour planner that uses it to slow Nav2,
+<div class="lead"><p>One stopping law for every planned stop, a behaviour planner that uses it to slow navigation,
 and a check of where the car really stops. Ben, 7 Nov: "we can use that to say if we have
 turned enough or slowing down enough". The designs:
 <a href="../designs/2026-11-05_how-the-car-stops.md">how the car stops</a>,
@@ -252,7 +252,7 @@ the pretend car. <code>loop=None</code> gives the design's ρ 0.35.</p>
 </tr>
 </tbody>
 </table></div>
-<h3 id="point-driver-pretend-car-ego-and-gazebos-actuator-model">Point driver, pretend car (ego and Gazebo's actuator model)</h3>
+<h3 id="point-driver-pretend-car-ego-and-the-sims-actuator-model">Point driver, pretend car (ego and the sim's actuator model)</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -294,12 +294,12 @@ the pretend car. <code>loop=None</code> gives the design's ρ 0.35.</p>
 </tr>
 </tbody>
 </table></div>
-<p>Gentler at speed, 5 cm further past B. Not yet run in Gazebo.</p>
+<p>Gentler at speed, 5 cm further past B. Not yet run in the simulator.</p>
 </section>
 <section class="card"><h2 id="2-the-behaviour-planner">2. The behaviour planner</h2>
 <p><code>aav_behaviour</code> (a trial, <strong>off by default</strong>): <code>pixi run sim world:=road behaviour:=true</code>.
-It knows why the car should slow, and sends Nav2 a speed cap. <strong>It can't stop the car</strong>:
-a lock or Nav2's goal check makes every final stop.</p>
+It knows why the car should slow, and sends navigation a speed cap. <strong>It can't stop the car</strong>:
+a lock or the navigator's goal check makes every final stop.</p>
 <pre class="highlight"><code class="language-text"> DRIVE ─► APPROACH ─► STOPPED ─► WAIT ─► GO ─► DRIVE
   (no cap)  (cap falls)  (lock on,  (lock on)  (cap rises)
                          still)        │
@@ -336,7 +336,7 @@ a lock or Nav2's goal check makes every final stop.</p>
 <tr>
 <td>The goal</td>
 <td>along the plan to its end</td>
-<td>Nav2's goal check</td>
+<td>the navigator's goal check</td>
 </tr>
 </tbody>
 </table></div>
@@ -545,8 +545,8 @@ aborted. Each held every time.</p>
 <td>the stopping law, above</td>
 </tr>
 <tr>
-<td>0.0, or between 0.3 m/s and Nav2's top speed</td>
-<td>Nav2 reads 0.0 as <strong>no limit</strong></td>
+<td>0.0, or between 0.3 m/s and the top speed</td>
+<td>0.0 reads as <strong>no limit</strong></td>
 </tr>
 <tr>
 <td>Falls no faster than 2 m/s²</td>
@@ -653,7 +653,7 @@ is in <code>/tf</code>), the lookup at the picture's stamp (220 of 220 found, pa
 picture now logs <code>stop sign dropped: &lt;why&gt;</code>.</p>
 <h3 id="the-obstacle-leg-a-wall-across-the-road-15-nov-todo-162">The obstacle leg: a wall across the road (15 Nov, TODO 162)</h3>
 <p><strong>Why it failed:</strong> <code>plan_around:=false</code> hides the box only from the planner. The path
-follower's own local costmap (Nav2's MPPI, or <code>mppi_lag</code> on ours) still sees it, and
+follower's own local costmap (<code>mppi_lag</code>; Nav2's MPPI then) still sees it, and
 steers round a 1 m box when there is room. At 1 m/s the stopping law's cap binds only in
 the last 2 m, so by then the car was already beside the box: no APPROACH(obstacle), no stop
 zone. It went round 2 of 4 runs on 8 Nov, and on 14 Nov; it stopped on 15 Nov. A coin toss.</p>
@@ -682,7 +682,7 @@ waited for. Passing a parked box is <code>--behaviour-things</code>' leg. So <co
 <td><strong>passed</strong>: stop zone at 0.45 m/s, 0.94 m before it, goal reached</td>
 </tr>
 <tr>
-<td>stock (Nav2), the wall across</td>
+<td>stock (Nav2, its last runs), the wall across</td>
 <td><strong>passed</strong>: stop zone at 0.33 m/s, 1.04 m before it, goal reached</td>
 </tr>
 </tbody>
@@ -699,7 +699,7 @@ waited for. Passing a parked box is <code>--behaviour-things</code>' leg. So <co
 <tbody>
 <tr>
 <td>The <code>patient</code> progress checker</td>
-<td>a stock tree edit; holds over 10 s still look stuck to Nav2</td>
+<td>holds over 10 s still look stuck to the navigator's progress check</td>
 </tr>
 <tr>
 <td>ASK's reply (<code>/hud/ask/answer</code>)</td>
@@ -740,7 +740,7 @@ waited for. Passing a parked box is <code>--behaviour-things</code>' leg. So <co
 </tr>
 <tr>
 <td>5</td>
-<td>scored against Gazebo's truth and the global EKF</td>
+<td>scored against the simulator's truth and the global EKF</td>
 </tr>
 </tbody>
 </table></div>

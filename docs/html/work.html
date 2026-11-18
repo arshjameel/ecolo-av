@@ -54,7 +54,7 @@
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
 <a href="maps-and-position.html">Maps and position</a>
-<a href="learn-nav2.html">Learn: Nav2</a>
+<a href="learn-nav2.html">Learn: navigation</a>
 <a href="learn-can.html">Learn: CAN</a>
 <a href="status.html">Status</a>
 <a href="howto-driver.html">Build a driver</a>
@@ -144,7 +144,7 @@ steps, what's done, and the work left in each area. Who owns each area is Q33: s
 <tbody>
 <tr>
 <td>The software stack</td>
-<td><span class="badge b-works">works</span> end to end in simulation: the turtle, Gazebo, Nav2 goals, replay. On Linux, and on a Mac since 10 Oct</td>
+<td><span class="badge b-works">works</span> end to end in simulation: the turtle, Ravensim, navigation goals, replay. On Linux, and on a Mac since 10 Oct</td>
 </tr>
 <tr>
 <td>The car</td>
@@ -235,12 +235,12 @@ steps, what's done, and the work left in each area. Who owns each area is Q33: s
 </tr>
 <tr>
 <td>11</td>
-<td><strong>Phase 0:</strong> CAN to the Orin and the spine, then the <code>car</code> profile on stands with localization and Nav2 off, then on the ground at walking pace</td>
+<td><strong>Phase 0:</strong> CAN to the Orin and the spine, then the <code>car</code> profile on stands with localization and navigation off, then on the ground at walking pace</td>
 <td><span class="badge b-missing">missing</span></td>
 </tr>
 <tr>
 <td>12</td>
-<td><strong>Phase 1:</strong> the scripted drive on the car. GPS A→B in Gazebo first, then on the car</td>
+<td><strong>Phase 1:</strong> the scripted drive on the car. GPS A→B in Ravensim first, then on the car</td>
 <td><span class="badge b-missing">missing</span></td>
 </tr>
 </tbody>
@@ -323,9 +323,9 @@ steps, what's done, and the work left in each area. Who owns each area is Q33: s
 </ul>
 <h3 id="navigation-and-costmaps">Navigation and costmaps</h3>
 <ul>
-<li>Draw the real test site (Q21) and drive it in Gazebo first.</li>
-<li>Nav2's lookahead (N7): its turn command flips sign about once a second.</li>
-<li>Restart crashed sensor drivers (N3): Nav2 gives up without TF.</li>
+<li>Draw the real test site (Q21) and drive it in Ravensim first.</li>
+<li>The follower's lookahead (N7, found with Nav2): its turn command flips sign about once a second.</li>
+<li>Restart crashed sensor drivers (N3): navigation gives up without TF.</li>
 <li>Later: the radar obstacle layer, and the collision monitor. The radar's clusters are ready on <code>/perception/radar/clusters</code>.</li>
 </ul>
 <h3 id="drivers-and-teleop">Drivers and teleop</h3>
@@ -349,7 +349,7 @@ steps, what's done, and the work left in each area. Who owns each area is Q33: s
 </ul>
 <h3 id="simulation">Simulation</h3>
 <ul>
-<li>Look at the Gazebo window and RViz on a Mac, and say what they show.</li>
+<li>Look at the developer window (<code>pixi run ravensim</code>) and RViz on a Mac, and say what they show.</li>
 <li>Make the bench's model car match the measured car (Q1-Q5), once it's measured.</li>
 <li>CARLA on the NVIDIA computer: the adapter is ready (<a href="carla.html">CARLA</a>, Q31).</li>
 </ul>
