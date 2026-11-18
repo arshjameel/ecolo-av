@@ -24,7 +24,7 @@ feed-forward alone. Its PI compares the car with ego's speed delayed by `respons
 The **smooth stop** (Autoware's design, Apache-2.0, our own code): when ego reaches 0 the car
 keeps slowing as it was, then the slowing fades with the speed, so it stops without a
 jolt; stopped, the brake rises gently to `stopped_brake` and holds.
-In Gazebo: `pixi run sim esp32:=true`, the C++ firmware standing in (`aav_sim_models`). The design: `docs/designs/2026-10-27_control-plan.md`, step 1.
+In Ravensim: `pixi run sim esp32:=true`, the C++ firmware standing in (`aav_sim_models`). The design: `docs/designs/2026-10-27_control-plan.md`, step 1.
 
 ### The no-timeout lock
 

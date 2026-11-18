@@ -81,5 +81,5 @@ cd ros/perception/aav_lane_finder && python3 -m pytest -q      # the logic, no R
 pixi run build && colcon test --packages-select aav_lane_finder && colcon test-result --verbose
 ```
 
-`tools/test.sh` runs the first; `pixi run test` runs everything. In Gazebo:
+`tools/test.sh` runs the first; `pixi run test` runs everything. In Ravensim:
 `pixi run sim-check --lane`.

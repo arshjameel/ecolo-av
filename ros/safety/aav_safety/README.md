@@ -2,7 +2,7 @@
 
 ## Overview
 
-The sensor watchdog. When a sensor Nav2, the point driver or the AI slot needs dies, lies or freezes,
+The sensor watchdog. When a sensor navigation, the point driver or the AI slot needs dies, lies or freezes,
 it stops them, and says why loudly: in the log, on `/diagnostics` and on the HUD. People and
 test scripts can still drive.
 
@@ -21,8 +21,8 @@ last state while its receiver is in, so a pad turned off could keep driving. It 
 between joy_node and teleop_twist_joy (aav_teleop starts it) and stops the joystick when
 it goes silent (0.5 s) or freezes while driving (2 s), until the deadman is released.
 
-And the geofence (`geofence`): an area no program may leave, without Nav2. It holds
-every program (scripted, replay, point, Nav2, AI) before the car's stopping distance
+And the geofence (`geofence`): an area no program may leave, without navigation. It holds
+every program (scripted, replay, point, navigation, AI) before the car's stopping distance
 reaches the fence's edge, and while the global pose can't be trusted. People still drive
 (`docs/geofence.md`).
 
@@ -188,7 +188,7 @@ answers tick by tick. `watchdog_impl:=python` runs this one.
   site), so a restarted node finds an outside car outside again.
 - The geofence copies no car number: its stopping numbers come from the configs.
 - Only people call `/safety/geofence/clear`; it refuses while the car is outside.
-- The stop hold's lock holds Nav2 (20) and the AI slot (10) only. Timeout 0: its silence
+- The stop hold's lock holds navigation (20) and the AI slot (10) only. Timeout 0: its silence
   locks nothing, and a `stop_hold` that dies while true keeps the stop.
 - The stop hold times on the steady clock, so a jump in sim time can't end it early.
 - OVER and OVERSPEED count fresh numbers only: a wheel speed older than the `speed`
@@ -196,7 +196,7 @@ answers tick by tick. `watchdog_impl:=python` runs this one.
   are the `odom` input's own fault (STALE), so they never latch OVERSPEED (16 Nov).
 - Speeds compare as sizes, so reversing counts too. A car that slows at 0.3 m/s² or
   more is never over: a healthy stop lags its command (the car model, `test_watchdog.py`).
-- The lock holds the point driver (25), Nav2 (20) and the AI slot (10), never a person or a test.
+- The lock holds the point driver (25), navigation (20) and the AI slot (10), never a person or a test.
 - Fail-safe: twist_mux treats 1 s without a lock message as locked, so a dead or hung
   watchdog stops them too.
 - Ages are about 5 messages at the sensor's rate, never under ego's 0.5 s command timeout.

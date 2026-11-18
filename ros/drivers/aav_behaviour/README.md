@@ -1,8 +1,8 @@
 # aav_behaviour
 
-A trial, off by default: the behaviour states, and a speed cap on Nav2 from the stopping
+A trial, off by default: the behaviour states, and a speed cap on navigation from the stopping
 law. It knows **why** the car should slow, and slows it. It **can't stop** it: a lock or
-Nav2's goal check makes every final stop. The page: `docs/stopping.md`; the design:
+the navigator's goal check makes every final stop. The page: `docs/stopping.md`; the design:
 `docs/designs/2026-11-05_behaviour-and-speed.md`.
 
 ```
@@ -19,10 +19,10 @@ Nav2's goal check makes every final stop. The page: `docs/stopping.md`; the desi
 | a stop sign | camera range to the sign − the watcher's 4.7 m | the `stop_sign` lock |
 | an obstacle in the lane | lidar scan: nearest point ahead − bumper − stop zone | the stop zone, then the `stop_zone` lock |
 | the fence | along `/plan` to where depth < `near_depth` | the geofence lock |
-| the goal | along `/plan` to its end | Nav2's goal check |
+| the goal | along `/plan` to its end | the navigator's goal check |
 
 The cap is `v_cap(left)` (`aav_description` `stop_law.py`), the lowest that binds;
-0.0 (no limit) or between the floor (0.3 m/s) and Nav2's top speed, never in between.
+0.0 (no limit) or between the floor (0.3 m/s) and the top speed, never in between.
 
 ```sh
 pixi run sim world:=road perception:=true behaviour:=true
@@ -35,7 +35,7 @@ ros2 topic echo /drivers/nav/behaviour/state
 `navigation.launch.py behaviour:=true` (`sim.launch.py behaviour:=true` passes it on).
 The states' cap goes into the road ahead's limits (no limit above it; TODO 233): ego holds
 every follower to them. Until 17 Nov it went to `/drivers/nav/speed_limit`, which only
-Nav2's controller read.
+the follower read.
 
 | In / out | Topic | Type |
 |---|---|---|
@@ -75,8 +75,8 @@ Parameters (from `vehicle.behaviour_params`: nav2.yaml, vehicle.yaml, ego.yaml):
 
 ## Invariants
 
-- Only ever slows Nav2. Never clears a lock, a latch or the e-stop; no `cmd_vel`.
-- A cap is 0.0 or in [floor, base]: Nav2 reads 0.0 as **no limit**.
+- Only ever slows navigation. Never clears a lock, a latch or the e-stop; no `cmd_vel`.
+- A cap is 0.0 or in [floor, base]: 0.0 reads as **no limit**.
 - The sign's cap never rises in APPROACH; any cap falls no faster than `fall`.
 - Not built yet (the design's later steps): the `patient` progress checker; ASK's reply
   (`/hud/ask/answer`); the trial trackers reading the cap; the car (refused in `open`).
@@ -89,5 +89,5 @@ Parameters (from `vehicle.behaviour_params`: nav2.yaml, vehicle.yaml, ego.yaml):
 
 ```sh
 cd ros/drivers/aav_behaviour && python3 -m pytest -q   # every transition (tools/test.sh)
-pixi run sim-check --behaviour                         # Gazebo: sign, goal, obstacle
+pixi run sim-check --behaviour                         # Ravensim: sign, goal, obstacle
 ```

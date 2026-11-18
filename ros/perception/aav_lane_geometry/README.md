@@ -70,7 +70,7 @@ Fake modes (`mode`): `straight`, `drift_right`, `drift_left`, `sine`, `sharp_cur
 - It never starts a slow-down from speed once its own commands have been quiet for
   twist_mux's 0.5 s: by then ego is already stopping the car, and the slow-down would
   pull away again. It sends 0 instead.
-- The watchdog's times are on the node's clock: Gazebo's in `pixi run sim`, as
+- The watchdog's times are on the node's clock: the simulator's in `pixi run sim`, as
   twist_mux's and ego's are.
 - Lane width, offsets and radii are metres; turn rate is rad/s, + = left.
 - The scripts should run through `python3`, not their `#!` line: on a Mac, `/usr/bin/env`
@@ -96,7 +96,7 @@ pixi run build && colcon test --packages-select aav_lane_geometry && colcon test
 ros2 launch aav_lane_geometry lane_follower.launch.py fake:=true   # watch /drivers/ai/cmd_vel
 ```
 
-`pixi run test` runs everything; `pixi run sim-check --lane` drives it in Gazebo.
+`pixi run test` runs everything; `pixi run sim-check --lane` drives it in Ravensim.
 
 ## Notes
 

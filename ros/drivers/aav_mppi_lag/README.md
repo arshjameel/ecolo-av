@@ -1,13 +1,12 @@
 # aav_mppi_lag
 
 Nav2's MPPI path follower, ported to Rust, with the **actuators' lag in its model**.
-The simulator's default follower since 14 Nov (`stack:=ours`), beside Nav2's own MPPI (`docs/trials.md`, `docs/mppi-lag.md`). A planner still plans
+The default follower since 14 Nov (`stack:=ours`); the only MPPI since Nav2 went on 17 Nov (`docs/trials.md`, `docs/mppi-lag.md`). A planner still plans
 the path; this node follows it.
 
 ```
-bt_navigator --FollowPath--> mppi_lag --cmd_vel_nav--> velocity_smoother
-   -> collision_monitor -> /drivers/nav/cmd_vel (twist_mux 20) -> ego
-controller_server keeps running; its own action is renamed follow_path_unused
+navigator --FollowPath--> mppi_lag --cmd_vel_nav--> velocity_smoother
+   -> stop zone -> /drivers/nav/cmd_vel (twist_mux 20) -> ego
 ```
 
 ## Overview
@@ -52,7 +51,7 @@ Results: succeeded; aborted with `FAILED_TO_MAKE_PROGRESS`, `NO_VALID_CONTROL`,
 ### `lag_aware`
 
 Ego's contract (0.3): `std_msgs/Bool` on `/drivers/<slot>/lag_aware`, reliable, transient
-local, depth 1. This node drives through Nav2's slot, so `/drivers/nav/lag_aware`:
+local, depth 1. This node drives through navigation's slot, so `/drivers/nav/lag_aware`:
 
 | When | Says |
 |---|---|
@@ -74,7 +73,7 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 | `road_ahead_topic`, `LaneCritic` in `critics`, `LaneCritic.*` | the launch's `behaviour:=true` with `lane_map:=`: `/world/road_ahead` and our critic; else empty and Nav2's critics only |
 | `vx_min`, `enforce_path_inversion`, `PathAngleCritic.mode`, no `PreferForwardCritic` | the launch's `reversing`, as `nav2_tuned` sets Nav2's MPPI: 0, false, 0 and kept forward only; -`max_reverse_speed`, true, 2 and dropped with `reversing:=true` |
 | `prune_distance` | MPPI's, stretched to fit 2.8 s at `vx_max` (as `nav2_tuned`) |
-| `rate_hz`, `odom_topic`, goal and progress checks | controller_server's |
+| `rate_hz`, `odom_topic`, goal and progress checks | `nav2.yaml`'s `controller_server` block |
 | `footprint`, `footprint_padding`, `inflation_radius`, `cost_scaling_factor` | vehicle.yaml's body; the local costmap's |
 | `wheelbase`, `max_steering_angle`, `actuators.*` | vehicle.yaml (dead times 0 while unset) |
 | `ego.*` | ego.yaml's ramps |
@@ -115,8 +114,8 @@ All read once at start.
 - Reverses only with `reversing:=true` (Ben, 14 Nov: "The car can reverse"), as Nav2's
   MPPI: down to `-max_reverse_speed`, stopping at each cusp before it backs up. The gear
   changes only at a stop, in the model as on the spine.
-- Never both followers: with it, controller_server's action is `follow_path_unused`.
-- Nothing in the safety path changes: the smoother, collision_monitor, twist_mux's slot,
+- Never both followers: with another `tracker:=`, this node doesn't start.
+- Nothing in the safety path changes: the smoother, the stop zone, twist_mux's slot,
   the locks and e-stops all sit after `cmd_vel_nav`.
 - The maths has no ROS; the node has no maths.
 - `model_dt` must equal `1 / rate_hz` (the plan shifts one step a tick, as Nav2's).

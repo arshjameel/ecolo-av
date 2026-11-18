@@ -100,7 +100,7 @@ So ours: about 300 lines of numpy, with tests.
 ## Side Effects
 
 - Publishes the two topics above. With `things:=true`, `navigation.launch.py` also starts
-  `voxels` (as `screen_cubes:=true` does): Nav2 stays on the flat scan unless `voxels:=true`.
+  `voxels` (as `screen_cubes:=true` does): the costmap stays on the flat scan unless `voxels:=true`.
 
 ## Verification
 

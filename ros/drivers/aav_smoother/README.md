@@ -2,8 +2,8 @@
 
 ## Overview
 
-Our own velocity smoother, for a car, in Rust: a trial beside Nav2's `velocity_smoother`
-(`smoother:=own`; the default stays Nav2's). The page: [docs/own-smoother.md](../../../docs/own-smoother.md).
+Our own velocity smoother, for a car, in Rust: in Nav2's `velocity_smoother`'s place
+(`smoother:=own`, the only one since Nav2 went on 17 Nov). The page: [docs/own-smoother.md](../../../docs/own-smoother.md).
 
 ```
 follower -> cmd_vel_nav -> car_smoother -> /drivers/nav/cmd_vel (or -> collision_monitor)
@@ -41,7 +41,7 @@ Ours keeps Nav2's speed limits, timeout, deadband and feedback, and steers like 
 - A command older than `velocity_timeout`: slow to a stop, then publish nothing (Nav2's).
 - Closed loop: odometry older than `velocity_timeout` is not used; the last speed sent stands in (Nav2's keeps the last reading for ever).
 - Below `min_speed_for_steering` the wheels hold, as ego holds them.
-- Never on the car: `car.launch.py` always passes `smoother:=nav2`.
+- On the car too since 17 Nov (`car.launch.py`); untested there.
 
 ## Side Effects
 
@@ -51,5 +51,5 @@ Publishes the smoothed command; reads `vehicle.yaml`.
 
 ```sh
 cd ros/drivers/aav_smoother && cargo test -p car-smoother     # also in tools/test.sh
-pixi run measure controllers --stacks own --smoothers nav2 own --tours lot
+pixi run measure controllers --stacks own --smoothers own --tours lot
 ```

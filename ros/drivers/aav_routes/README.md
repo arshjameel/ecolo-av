@@ -6,7 +6,7 @@ car's GPS fix to a destination. It cuts the route into GPS waypoints spaced for 
 and publishes them. For real streets later; the test lot first.
 
 **On the campus** (`router: campus`): no server. `campus_graph.py` builds a road graph from
-the campus's OpenStreetMap file (the one `pixi run campus` builds Gazebo's world from) and
+the campus's OpenStreetMap file (the one `pixi run campus` builds the campus world from) and
 routes on it here, to a lat/lon, a map point or a **place's name** (`config/campus_site.yaml`
 and OpenStreetMap's named buildings and lots). `pixi run campus-route` does the same
 without ROS.
@@ -96,7 +96,7 @@ piece of TODO 100's site file: the fence and zones join it later.
 ## Side Effects
 
 - HTTP requests to `router_url` (this computer); `campus` reads the site file and its `.osm`.
-- Publishes the latched route topics; sends a Nav2 goal on follow.
+- Publishes the latched route topics; sends a goal to the navigator on follow.
 - No files written. The router's map data lives in `maps/routes/` (`pixi run get routes`).
 
 ## Verification

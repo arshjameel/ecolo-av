@@ -13,7 +13,7 @@ actuator_test -> /drivers/tests/cmd_vel -> twist_mux (60) -> ego -> output mux -
 
 ```sh
 pixi run actuator-test --list                       # the tests
-pixi run actuator-test steer-sweep --sim            # Gazebo, this computer only
+pixi run actuator-test steer-sweep --sim            # Ravensim, this computer only
 pixi run actuator-test steer-sweep --stands         # the real car, wheels off the ground
 pixi run actuator-test speed-up                     # the real car, in an empty lot
 pixi run actuator-test --analyse ~/aav-tests/<run>  # a run's report again, from its CSV

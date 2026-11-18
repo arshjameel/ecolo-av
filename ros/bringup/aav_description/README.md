@@ -46,9 +46,9 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 | `footprint(v)`, `stop_zone_points(v)`, `rear_stop_zone_points(v)` | the costmaps' footprint and the stop zone's boxes |
 | `self_box(cfg, margin=SELF_MARGIN)` | the car and every sensor on it from above, 15 cm wider: lidar points inside are the car itself (NDT's map and scan, the debug HUD's cubes) |
 | `footprint_points(v)`, `polygon(points)` | the body outline as corners; corners as Nav2's polygon string |
-| `blind_behind(reversing, **sensors)`, `reverse_limit(v, reversing)` | may Nav2 back up, and how fast |
-| `nav2_rewrites(v, reversing)`, `nav2_tuned(...)` | Nav2's settings from the car |
-| `plan_turning_radius(v)`, `s_bend_length(radius, offset)`, `final_approach(v)` | the planner's radius; the room ahead an S-bend needs; how near the goal Nav2 keeps its path (TODO 17) |
+| `blind_behind(reversing, **sensors)`, `reverse_limit(v, reversing)` | may navigation back up, and how fast |
+| `nav2_rewrites(v, reversing)`, `nav2_tuned(...)` | navigation's settings (`nav2.yaml`, in Nav2's layout) from the car |
+| `plan_turning_radius(v)`, `s_bend_length(radius, offset)`, `final_approach(v)` | the planner's radius; the room ahead an S-bend needs; how near the goal the navigator keeps its path (TODO 17) |
 | `ego_params(cfg)`, `spine_params(v)` | ego's and `spine_bridge`'s parameters |
 | `check_planner(name, real, trial)`, `lattice_problems(meta, v, resolution)` | a planner's name, checked (only `CAR_PLANNERS` with `real`; with `trial`, car.launch.py's `diffusion_trial:=true`, `TRIAL_CAR_PLANNERS` only); what's wrong with a lattice primitives file for this car and map |
 | `diffusion_trial_speed(max_speed)` | the diffusion car trial's top speed: empty gives `DIFFUSION_TRIAL_SPEED` (0.5 m/s); above it is refused |
@@ -98,7 +98,7 @@ One stopping law for every planned stop (`docs/stopping.md`), from this car mode
 |---|---|
 | `StopCurve(a, j, rho)` | `distance(v)` = S(v), `cap(d)` = the speed that stops in d m, `demand(v)`, `h(room, v, margin)`, `tau` |
 | `from_car_model(cfg, ego_max_deceleration, max_jerk, input_delay, loop)`, `from_numbers(max_brake, ...)` | the curve for this car: a from the brake and ego, ρ from the brake's lag and dead time and the speed loop's lag (`loop_lag`) |
-| `nav2_cap(left, curve, base, floor)` | a speed limit for Nav2: 0.0 (none) or between the floor (0.3 m/s) and `base` |
+| `nav2_cap(left, curve, base, floor)` | a speed limit for navigation: 0.0 (none) or between the floor (0.3 m/s) and `base` |
 | `stop_point(cfg, speed, ramp, loop)` | where the car model stops when its set speed falls at `ramp`: (metres, seconds) |
 | `stop_following(cfg, speed, commands, loop)` | the same for recorded set speeds `(t, v)` (`sim-check --loaded-stop`) |
 
@@ -181,7 +181,7 @@ and one link per sensor in `vehicle.yaml`. Gazebo's `aav.gazebo.xacro` and
 - One file holds every measurement. Never copy a number into another package.
 - REP-103 and REP-105: metres, radians; x forward, y left, z up; positive steering = left.
 - `base_link` is on the ground under the centre of the rear axle. Measure from there.
-- `max_steering_angle` is the virtual centre wheel (bicycle model), as ego and Nav2 use.
+- `max_steering_angle` is the virtual centre wheel (bicycle model), as ego and the planner use.
 - `firmware/spine`'s `spine-core` keeps copies of the steering limit and reverse speed.
   `test_vehicle.py` checks they match: change both together.
 - `vehicle.py` has no ROS imports, except `config_path()` (ament_index); `car_model.py` has none.

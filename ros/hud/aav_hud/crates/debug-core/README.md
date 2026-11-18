@@ -52,7 +52,7 @@ It builds on (path dependencies): [`hud-core`](../hud-core/README.md) (`health`,
   is 2D, so a pitched car tilts the cubes.
 - A cloud is placed with the local EKF's pose **at its stamp**, interpolated; outside
   the poses kept, it is dropped (`TooOld`) or retried (`TooNew`).
-- Stamps are compared only with stamps, never with a clock (Gazebo's are sim time).
+- Stamps are compared only with stamps, never with a clock (the simulator's are sim time).
 - Map-frame layers need `map -> odom`; without it they are not drawn.
 - Over `max_cubes`, the nearest cubes stay and the scan counts the rest (`cut`).
 - Rays that hit nothing (inf, NaN) are skipped and counted.

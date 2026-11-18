@@ -138,10 +138,10 @@ the same 35-40 s of the run, sampled with `ps`.
 |---|---|---|
 | every check (start-up, the graph against the contract, sensors, the scripted drive, the EKF) | pass | pass |
 | scripted drive | 5.83 m (plan 6.5), +0.00 m to the side | 5.83 m, +0.00 m |
-| `--behaviour-only` (`road_ahead` on: an obstacle, then a Nav2 goal) | pass: stopped 0.93 m short, goal 1.40 m off | pass, twice: 0.97 and 0.90 m short, goal 0.14 and 0.27 m off |
-| ego trims Nav2 to the road ahead; the lead turns off for the lag-aware `nav` | logged | logged, the same lines |
+| `--behaviour-only` (`road_ahead` on: an obstacle, then a goal) | pass: stopped 0.93 m short, goal 1.40 m off | pass, twice: 0.97 and 0.90 m short, goal 0.14 and 0.27 m off |
+| ego trims navigation to the road ahead; the lead turns off for the lag-aware `nav` | logged | logged, the same lines |
 
-Nav2's runs differ a little from run to run, whichever ego drives.
+Navigation's runs differ a little from run to run, whichever ego drives.
 
 Most of the Python's cost at 1000 Hz is `/clock` itself: rclpy wakes for each message.
 

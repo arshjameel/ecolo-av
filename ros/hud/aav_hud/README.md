@@ -9,11 +9,11 @@ node (rclrs):
   throttle and brake, the GPS fix, topic health, the stop-sign alert, the camera and
   AHEAD, the squiggly line (ego's trace, the plan, the stop bar; docs/hud.md), and the
   things near the car with their names (person, car, stop sign; TODO 192);
-- `map`, the big screen's map window: Nav2's map over an offline street map, the car,
+- `map`, the big screen's map window: the navigation map over an offline street map, the car,
   the plan, the goal, the distance left, and a place search;
 - `debug_hud`, the debug screen, which opens as the **seeing screen**: the lidar's cubes
   in 3D (kept and fading), where each localizer puts the car (NDT too), AMCL's particles,
-  NDT's map, Nav2's plan, Nav2's own cubes (the voxels trial's, red wireframes, key V);
+  NDT's map, the plan, the costmap's cubes (the voxels trial's, red wireframes, key V; the screen still calls them "Nav2's cubes");
   on the right, NDT's map from above with every car, NDT's match (its cells, the scan,
   the score), Nav2's cubes' status and the localization health checks. Key L swaps
   the right side for every sensor from its own topic. It only listens;
@@ -97,7 +97,7 @@ Parameters `stale_after` (1.0 s): a quieter topic shows STALE; `theme` (`initial
 | sub | `watchdog_topic`: `/safety/sensor_watchdog/state` | std_msgs/String |
 
 Other parameters: `stale_after` (1.0 s), `plan_stale_after` (3.0 s; `plan_kept_for`, 25 s, within
-`final_approach`, 8 m, of the plan's end: Nav2 keeps its path there), `arrive_within`
+`final_approach`, 8 m, of the plan's end: the navigator keeps its path there), `arrive_within`
 (1.0 m), `street_map` (`maps/streets/ottawa.pmtiles`), `places` (`maps/places/ottawa.db`),
 `theme` (`initial_d`), `blur` (true: the map blurred behind the glass), `car_marker`
 (`outline`; `robot`: the car as the little robot, the easter egg).
@@ -188,9 +188,9 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
 - The e-stop button only ever publishes `true`: five, 0.1 s apart, reliable, from the
   ROS thread's 10 ms timer, so a slow frame can't delay it.
 - A heartbeat goes out only while the drawn-frame count rises: it proves the screen
-  and the e-stop timer both run. The sensor watchdog stops Nav2 without it.
+  and the e-stop timer both run. The sensor watchdog stops navigation without it.
 - `/system/source` and `/map` are read transient local, so a late window still gets them.
-- `map` publishes a goal only after DRIVE HERE then CONFIRM, and refuses one off Nav2's
+- `map` publishes a goal only after DRIVE HERE then CONFIRM, and refuses one off the navigation
   map or with no car position.
 - The logic lives in `hud-core`, `map-core`, `debug-core` and `panel-core`, tested without ROS or a screen.
 - `debug_hud` publishes nothing and never touches an actuator. Its one call swaps a

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The roof lidar for Nav2. `lidar_scan` flattens the lidar's cloud (about 0.9 MB) into a 2D
+The roof lidar for navigation (the costmap and the stop zone). `lidar_scan` flattens the lidar's cloud (about 0.9 MB) into a 2D
 scan around `base_link` (a few kB): for each direction, the nearest point between the
 road and just over the roof. That is what the car would hit.
 
@@ -54,7 +54,7 @@ There is no launch or config folder: `aav_navigation` starts and configures it.
 - Points inside the car's own outline never count.
 - The cloud is read reliable, depth 1: a late cloud is dropped for the newest.
 - The body is taken as level. In a hard turn the road on the outside can rise above
-  `min_height` (see `ground.py`). Gazebo has no suspension, so it can't show this.
+  `min_height` (see `ground.py`). The simulator has no suspension, so it can't show this.
 
 ## Side Effects
 
@@ -67,5 +67,5 @@ cd ros/perception/aav_lidar && python3 -m pytest -q        # the logic, no ROS
 pixi run build && colcon test --packages-select aav_lidar && colcon test-result --verbose
 ```
 
-`tools/test.sh` runs the first; `pixi run test` runs everything. In Gazebo:
+`tools/test.sh` runs the first; `pixi run test` runs everything. In Ravensim:
 `pixi run sim-check --lidar-obstacle`.

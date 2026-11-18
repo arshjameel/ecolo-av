@@ -1,12 +1,12 @@
 # Maps
 
-A Nav2 map is two files: a greyscale image and a YAML file that says how to read it.
+A map (Nav2's format, read by our map server) is two files: a greyscale image and a YAML file that says how to read it.
 `map_server` loads them and publishes `/map` (`nav_msgs/OccupancyGrid`); the global
 costmap's static layer reads `/map`.
 
 | File | What it is |
 |---|---|
-| `empty.yaml` + `empty.pgm` | Phase 2: 200 m x 200 m, all free, 0.25 m cells, centred on the datum. Nav2 plans straight to a goal within the car's turning limits. |
+| `empty.yaml` + `empty.pgm` | Phase 2: 200 m x 200 m, all free, 0.25 m cells, centred on the datum. The planner plans straight to a goal within the car's turning limits. |
 | `example_lot.yaml` + `.pgm` | Phase 3 example, made up: an 80 m x 60 m lot with a wall, a building, a row of parked cars and an entrance gap. Shows how a pre-rendered costmap is drawn. |
 | `example_lot_amcl.yaml` + `.pgm` | The same lot for AMCL only (`amcl:=true`): 0.05 m cells, each obstacle only its outline. Made from the spec's `amcl:` section. |
 | `*.spec.yaml` | The short specs `tools/make_map.py` builds the maps from. Edit these, not the PGMs. |
@@ -15,13 +15,13 @@ costmap's static layer reads `/map`.
 
 AMCL scores each lidar beam by how far its end is from the nearest blocked cell's centre.
 
-| On Nav2's map (0.25 m, solid) | On AMCL's map (0.05 m, outlines) |
+| On the navigation map (0.25 m, solid) | On AMCL's map (0.05 m, outlines) |
 |---|---|
 | a beam on a wall's face lands in the free cell before it: "0.25 m off" | lands within 0.05 m |
 | pushing beams into the solid building scores *better* than the truth | the inside is unknown: no reward for going in |
 | best score 0.3 m from the truth (mean), 0.7 m worst | ~0.07 m mean |
 
-Nav2's planner and costmaps keep the solid map: the inside of a building is not a road.
+The planner and costmaps keep the solid map: the inside of a building is not a road.
 A SLAM map of the real lot is already outlines.
 
 Rebuild after editing a spec:
@@ -54,7 +54,7 @@ image editor can paint one.
 
 The map frame's (0, 0) is the datum in `aav_localization/config/navsat.yaml`, with x
 east and y north. So "20 m east and 5 m north of the datum" is map (20, 5), on the
-map and in a Nav2 goal. To draw the real test site: pick the datum (a corner or the
+map and in a goal. To draw the real test site: pick the datum (a corner or the
 start spot), measure the drivable area in metres east/north of it (tape, or satellite
 imagery), list the blocked rectangles in a spec, and build it.
 

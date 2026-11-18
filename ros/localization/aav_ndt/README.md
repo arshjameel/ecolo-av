@@ -6,7 +6,7 @@ NDT in Rust (rclrs), a **trial**: where the car is on a saved lidar map, in x, y
 Ben's idea (28 Oct), after Autoware's `ndt_scan_matcher`; our own code. The design:
 `docs/designs/2026-10-29_ndt.md`. Never TF. Off by default, nothing reads its pose;
 with `ndt_ekf:=true` (a trial) `ekf_global` takes it beside the GPS.
-`measure controllers --ndt` and `--ndt-ekf` score it against Gazebo's truth.
+`measure controllers --ndt` and `--ndt-ekf` score it against the simulator's truth.
 
 ```
 /sensors/lidar/points ─┐                       ┌─▶ /localization/ndt/pose
@@ -67,14 +67,14 @@ covariance), plus from the launch file the lidar's mount and the car's own box
 ### Launch
 
 `ndt.launch.py [ndt_map:=maps/ndt/test_lot.pcd] [ndt_x:=] [ndt_y:=] [ndt_yaw:=]
-[ndt_from_global:=false] [use_sim_time:=false]`. In Gazebo: `pixi run sim
+[ndt_from_global:=false] [use_sim_time:=false]`. In Ravensim: `pixi run sim
 world:=test_lot ndt:=true`, after `pixi run ndt-map drive` made the map.
 
 ## Invariants
 
 - Never publishes TF. Only `ekf_global` may read its pose, and only with `ndt_ekf:=true`
   (a trial, docs/trials.md).
-- Gazebo's truth is never read by the node: only `tools/ndt_map.py` uses it, offline.
+- The simulator's truth is never read by the node: only `tools/ndt_map.py` uses it, offline.
 - A pose is published only for a good fit (score, converged, no jump); LOST after 5
   poor fits in a row, then it starts again from `ekf_global`, counted in `restarts`.
 - Rust API Guidelines; `cargo fmt` and `cargo clippy` clean; no ROS in `ndt-core`.

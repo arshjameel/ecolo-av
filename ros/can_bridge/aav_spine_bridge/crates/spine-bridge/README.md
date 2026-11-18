@@ -31,7 +31,7 @@ calls here, and `Update`s back into messages. A port of `aav_spine`'s
 | `Role`, `Role::NAMES`, `UnknownRole` | `Spine` (drives) or `Sensors` (listens to the wheels, never sends); the `role` parameter's names; a name that is neither |
 | `Command`, `Drive`, `Arming`, `ArmError` | commands in, frames and answers out |
 | `Motion`, `Status`, `Update`, `BadFrame` | what the frames say, in ROS's units |
-| `OutputGate`, `Target`, `UnknownTarget`, `GateShut`, `GATE_SHUT` | the safety gate (`gate.rs`); `UnknownTarget`: not car, bench or gazebo |
+| `OutputGate`, `Target`, `UnknownTarget`, `GateShut`, `GATE_SHUT` | the safety gate (`gate.rs`); `UnknownTarget`: not car, bench or sim |
 | `wheels::FrontWheels`, `Reading`, `Side`, `Direction`, `rear_axle_speed` | the front wheel nodes (`wheels.rs`); `Side`: one wheel in a `Reading` |
 
 `UnknownRole`, `UnknownTarget`, `Side`, `Reading` and `Direction` are also at the crate

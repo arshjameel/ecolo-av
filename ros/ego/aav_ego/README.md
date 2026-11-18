@@ -6,7 +6,7 @@ velocity command, `/control/cmd_vel` (v, w), into one Ackermann command,
 
 ```
 twist_mux -> /control/cmd_vel -> ego -> /ego/actuator_cmd (50 Hz, always)
-          -> output mux (aav_io_mux) -> one backend: spine, legacy serial, Gazebo, turtlesim, CARLA
+          -> output mux (aav_io_mux) -> one backend: spine, legacy serial, Ravensim, turtlesim, CARLA
 ```
 
 ## Overview
@@ -38,7 +38,7 @@ Launch arguments:
 | `max_speed` | m/s, a lower forward cap than `ego.yaml`'s (a first drive on stands). Must be above 0 and at most `ego.yaml`'s |
 | `sim_max_speed` | m/s, a higher cap, up to 5.0, only with `use_sim_time:=true` |
 | `look_ahead` | `true`: also start `look_ahead` (the screens' squiggly line); `false`: ego alone |
-| `road_ahead` | `false`; `true`: hold Nav2 to `/world/road_ahead` (`sim.launch.py` sets it with `behaviour:=true`, its writer) |
+| `road_ahead` | `false`; `true`: hold navigation to `/world/road_ahead` (`sim.launch.py` sets it with `behaviour:=true`, its writer) |
 | `speed_loop` | `default`: the spine's speed loop profile the car runs (`default`, `smooth`, `lqi`, `firm`), set as `trace_speed_loop` over `ego.yaml`'s, so the trace's twin assumes it; `sim.launch.py` and `bench.launch.py` pass theirs (TODO 163). An unknown name is refused |
 | `ego_impl` | `rust`: [`aav_ego_rs`](../aav_ego_rs/README.md), ego and look_ahead in one Rust process with the same names, topics and answers (the default since Ben, 16 Nov; `sim.launch.py` and `car.launch.py` pass it on); `python`: this package's two nodes |
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ghost obstacles: a pretend person or post that only Nav2 sees. It tests stopping on the
+Ghost obstacles: a pretend person or post that only navigation sees. It tests stopping on the
 real car with nothing real to hit. The full guide is `docs/ghost-obstacles.md`.
 
 - `ghost_obstacle` (node) publishes what a perfect 2D lidar at `base_link` would see of

@@ -7,8 +7,8 @@ our own: a launch file and its config files.
 
 | Node | Gives | Used by |
 |---|---|---|
-| `ekf_local` | TF `odom → base_link`: smooth, never jumps, slowly drifts | Nav2's controller and local costmap |
-| `ekf_global` | TF `map → odom`: GPS-anchored, can jump | Nav2's planner, global costmap, goals |
+| `ekf_local` | TF `odom → base_link`: smooth, never jumps, slowly drifts | the path follower and local costmap |
+| `ekf_global` | TF `map → odom`: GPS-anchored, can jump | the planner, global costmap, goals |
 | `navsat_transform` | each GPS fix as a map-frame position | `ekf_global` |
 | `gps_heading` ([aav_gps_heading](../aav_gps_heading/README.md)) | the heading from the GPS velocity | `ekf_global` |
 
@@ -71,7 +71,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 - No magnetometer: the start heading comes from `start_yaw`; then the gyro carries it,
   and GPS corrects it while moving.
 - A GPS fix more than 10 sigma off (a 20 m jump) is refused, except the first; the sensor
-  watchdog holds Nav2 for a jump meanwhile.
+  watchdog holds navigation for a jump meanwhile.
 - Antenna offset comes from TF (`vehicle.yaml`), so its place there matters.
 - Parameter names checked against robot_localization 3.8.3's source.
 
@@ -88,7 +88,7 @@ This package has no tests of its own (config only); `aav_bringup`'s
 
 ```sh
 pixi run build && colcon test --packages-select aav_localization && colcon test-result --verbose
-pixi run sim-check        # Gazebo: compares /localization/odom/global with the truth
+pixi run sim-check        # Ravensim: compares /localization/odom/global with the truth
 pixi run tools/ros.sh --local python3 tools/heading_check.py    # the global EKF's heading, forward and reversing
 ```
 

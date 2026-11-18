@@ -118,7 +118,7 @@ locked): the same `chunks.rs` and the campus files drawn into a picture.
 
 **A goal sent elsewhere** (sim-check, the tools, RViz, the map window): while plans keep
 coming on `/plan` (within 5 s), the map marks the plan's end in gold and says "driving
-to a goal sent elsewhere". Nav2's navigator and ours both replan while they drive.
+to a goal sent elsewhere". Our navigator replans while it drives (as Nav2's did).
 
 Mouse on the cubes: drag turns the head and the wheel zooms. From behind, right-drag also moves.
 
@@ -169,7 +169,7 @@ from behind the car. The live window [before](../../../docs/img/dev-window-rings
   `watch_screens:=` reads it.
 - Opens a window. `--live` publishes `/goal_pose` and `/safety/estop` (only ever true), after
   every gate: developer mode, ROS kept on this computer, every sensor SIM. Behind the same
-  gates it calls `/navigate_to_pose/_action/cancel_goal` (CANCEL THE GOAL: every goal, Nav2's or
+  gates it calls `/navigate_to_pose/_action/cancel_goal` (CANCEL THE GOAL: every goal, the navigator's or
   our navigator's) and `/track/set_parameters` (SWAP: `tracker`, which the track node takes only
   with `live_swap:=true`); the answers go to the console. `--watch` and pretend data have no
   publishers and call nothing.

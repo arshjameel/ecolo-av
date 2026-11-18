@@ -20,7 +20,7 @@ topics (pictures, point clouds) cost nothing extra.
 | Target | Its source | Command topic |
 |---|---|---|
 | `car` | REAL | `/control/car/actuator_cmd` |
-| `sim` (Gazebo today), `turtle`, `carla` | SIM | `/control/<target>/actuator_cmd` |
+| `sim` (Ravensim), `turtle`, `carla` | SIM | `/control/<target>/actuator_cmd` |
 | `bench` | BENCH | `/control/bench/actuator_cmd` |
 
 ## Interface
@@ -76,7 +76,7 @@ Modules:
   which announces it. After the grace it latches as before. An announcement of another
   source (a simulator on the car) and two publishers on one sensor get no grace.
 - Closed, nothing goes out; each backend's own timeout brakes (spine_bridge 0.1 s then
-  the spine's 100 ms; legacy_uart_bridge 0.3 s; Gazebo 0.2 s).
+  the spine's 100 ms; legacy_uart_bridge 0.3 s; Ravensim's `sim_adapter` 0.2 s).
 - Each backend reads only its own target's topic, so a simulator's ego can't reach the car.
 - The heartbeat moves only while OPEN. The ESP32 brakes, latched, when it stops for 100 ms.
 - A quiet screen (`screens`) is doubt: WAIT, never STOP. It only exists in tests.

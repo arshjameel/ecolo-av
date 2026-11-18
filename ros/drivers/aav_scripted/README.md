@@ -73,7 +73,7 @@ Modules:
   whose odometry stops arriving slows down and ends. twist_mux's e-stop lock holds it
   anyway; this makes the goal end instead of waiting.
 - Each goal ends with 5 zero commands, so twist_mux sees the stop.
-- Each step uses the time that really passed on the node's clock (Gazebo's in a
+- Each step uses the time that really passed on the node's clock (the simulator's in a
   simulator), capped at 0.5 s, not a fixed `1 / rate_hz`. A fixed step stretched the
   profile on a busy computer (bench, 10 Oct: 22 m instead of 6.5 m).
 - Runs on a single-threaded executor: a `MultiThreadedExecutor` spun a whole core.

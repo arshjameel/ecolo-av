@@ -1,20 +1,19 @@
 # aav_track
 
-Trial path followers, beside Nav2's own (`docs/trials.md`). The `track` node stands in
-for controller_server's FollowPath: same planner, same goals, same safety chain after it.
+Trial path followers, beside `mppi_lag` (`docs/trials.md`). The `track` node serves
+FollowPath in `mppi_lag`'s place: same planner, same goals, same safety chain after it.
 Only one follower runs: chosen at launch with `tracker:=`.
 
 ```
-bt_navigator --FollowPath ("follow_path")--> track --cmd_vel_nav--> velocity_smoother
-   -> collision_monitor -> /drivers/nav/cmd_vel (twist_mux 20) -> ego
-controller_server keeps running; its own action is renamed follow_path_unused
+navigator --FollowPath--> track --cmd_vel_nav--> velocity_smoother
+   -> stop zone -> /drivers/nav/cmd_vel (twist_mux 20) -> ego
 ```
 
 ## Overview
 
 | `tracker:=` | Steers by | Module |
 |---|---|---|
-| `none` (default) | controller_server: MPPI or RPP (`controller:=`); this node doesn't run | - |
+| `mppi_lag` (default) | `aav_mppi_lag` (Rust); this node doesn't run | - |
 | `pure_pursuit` | an arc to a carrot on the path: the trial's control | `trackers/pure_pursuit.py` |
 | `stanley` | heading error + atan(k e / v), at the front axle | `trackers/stanley.py` |
 | `lqr` | -K x about the path's bend, K by speed and bend (Riccati), + a 2 s preview of the bends ahead | `trackers/lqr.py` |
@@ -50,7 +49,7 @@ ego.yaml; nothing copied):
 | Name | From |
 |---|---|
 | `road_ahead_topic`, `lane_margin` | the launch's: `/world/road_ahead` with a lane map, else empty (off); 0.1 m kept inside each soft edge |
-| `rate_hz`, `odom_topic`, `stamped` | controller_server's `controller_frequency`, `odom_topic`, `enable_stamped_cmd_vel` |
+| `rate_hz`, `odom_topic`, `stamped` | `nav2.yaml`'s `controller_server` block: `controller_frequency`, `odom_topic`, `enable_stamped_cmd_vel` |
 | `cruise_speed` | RPP's `desired_linear_vel`, or `max_speed:=` (sim_speed) |
 | `acceleration`, `deceleration` | the velocity smoother's `max_accel`, `max_decel` |
 | `max_brake` | vehicle.yaml `actuators.max_brake` (half is planned: `approach.planned_deceleration`) |
@@ -100,10 +99,10 @@ MPC); `aav_description`'s `vehicle.yaml`.
 ## Invariants
 
 - Forward only: `navigation.launch.py` refuses a tracker with `reversing:=true`.
-- Never both followers: with a tracker, controller_server's action is `follow_path_unused`.
+- Never both followers: with a tracker, `mppi_lag` doesn't start.
 - Every steering command within full lock and the steering rate; at v = 0, w = 0 (no
   steering at a standstill: ego holds the wheels).
-- Nothing in the safety path changes: the smoother, collision_monitor, twist_mux's slot,
+- Nothing in the safety path changes: the smoother, the stop zone, twist_mux's slot,
   the locks and e-stops all sit after `cmd_vel_nav`. The trackers don't read the costmap.
 - REP-103/105: odom frame, metres, radians; + left.
 
@@ -118,7 +117,7 @@ pixi run build && colcon test --packages-select aav_track && colcon test-result 
 ```
 
 Quick, without ROS: `cd ros/drivers/aav_track && python3 -m pytest -q` (`tools/test.sh`
-runs it). In Gazebo: `pixi run measure controllers --trackers ...`.
+runs it). In Ravensim: `pixi run measure controllers --trackers ...`.
 
 | Test | Covers |
 |---|---|
@@ -127,7 +126,7 @@ runs it). In Gazebo: `pixi run measure controllers --trackers ...`.
 | `test_slow_frame.py` | the slew at its speed and turn rate, about the car; a snap; noise held to the rate; off is the old way; the car in map gives the same foot as the path in odom |
 | `test_checks.py` | the goal and progress checks |
 | `test_speed.py` | cruise, slow before a bend, stop at the end |
-| `test_trackers.py` | each tracker on a pretend car (`sim_car.py`: ego's model, Gazebo's actuators): straight, a curve, a 1 m offset, at 1 and 3 m/s; the forward U-turn in a 14 m lane, at the planner's radius and at full lock; limits; LQR's schedule and preview; mpc_full's speed (slows to swing, stops at the end, throttle and brake); MPC's step times |
+| `test_trackers.py` | each tracker on a pretend car (`sim_car.py`: ego's model, the simulator's actuators): straight, a curve, a 1 m offset, at 1 and 3 m/s; the forward U-turn in a 14 m lane, at the planner's radius and at full lock; limits; LQR's schedule and preview; mpc_full's speed (slows to swing, stops at the end, throttle and brake); MPC's step times |
 | `test_qp.py` | the QP solver against hand answers and scipy's SLSQP |
 | `test_lag_model.py` | the model's spec (lags, rate, deadband, brake, bicycle); the same states as `car_model.step`, step for step (both speed loops, every branch) |
 | `test_trackers.py` (mpc_lag) | no speed overshoot; the 2 m/s U-turn with vehicle.yaml's lags and with them doubled (`follow(lag_scale=2)`); the stop; the dead-time buffer; step time |

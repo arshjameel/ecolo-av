@@ -62,7 +62,7 @@ Parameters (`config/drive_to_point.yaml`; `max_brake`, `wheelbase`, `max_steerin
 | `rate_hz` | 50 Hz | command rate |
 
 **`drive_to_point`** (`point_cli.py`; `tools/drive_to_point.sh`): `--lat/--lon`, `--x/--y`, or `--ahead [--left]`;
-`--speed`; `--sim` (this computer only, Gazebo's clock). Reads `/system/source` and
+`--speed`; `--sim` (this computer only, the simulator's clock). Reads `/system/source` and
 `/localization/odom/global`; calls `/drive_to_point`. Ctrl-C cancels the goal.
 
 Modules (all but the two nodes have no ROS):
@@ -112,7 +112,7 @@ pixi run build && colcon test --packages-select aav_drive_to_point && colcon tes
 ```
 
 Quick, without ROS: `cd ros/drivers/aav_drive_to_point && python3 -m pytest -q` (`tools/test.sh`
-runs it). `pixi run test` runs everything. In Gazebo: `pixi run sim-check --drive-to-point`.
+runs it). `pixi run test` runs everything. In Ravensim: `pixi run sim-check --drive-to-point`.
 
 | Test | Covers |
 |---|---|

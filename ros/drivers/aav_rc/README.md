@@ -16,7 +16,7 @@ The mode switch (CH6; the three positions are a proposal, `docs/decisions.md`):
 
 | Switch | Who drives | rc_driver sends |
 |---|---|---|
-| computer | Nav2 and the other programs | nothing |
+| computer | navigation and the other programs | nothing |
 | RC via ROS | a person, with the sticks, through ego | a command every tick, zeros too |
 | RC direct | a person, straight from the ESP32 (fallback) | nothing |
 | no signal | nobody: the ESP32 brakes | nothing |

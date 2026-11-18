@@ -8,7 +8,7 @@ Finds objects in the camera pictures, and uses what it finds. Three nodes:
 |---|---|---|
 | `detector` (runs as `object_detector`) | a model finds boxes in each picture: RF-DETR Nano by default, YOLO as an option | yes (the `ml` environment) |
 | `stop_sign_watcher` | holds the autonomous drivers at a stop sign, through a twist_mux lock | no |
-| `camera_obstacles` | puts each box on the road as points, for Nav2's local costmap | no |
+| `camera_obstacles` | puts each box on the road as points, for the local costmap | no |
 
 It began as the 2024-25 team's `yolo_ros2` (see `PROVENANCE.md`). The model comparison
 is in `docs/model-comparison.md`. Its Rust twin, a challenger, is `aav_detector_rs`
@@ -71,7 +71,7 @@ is in `docs/model-comparison.md`. Its Rust twin, a challenger, is `aav_detector_
 ## Invariants
 
 - The logic modules have no ROS imports, and their own tests.
-- The stop sign lock is twist_mux priority 30. It holds the point driver (25), Nav2 (20) and the AI slot
+- The stop sign lock is twist_mux priority 30. It holds the point driver (25), navigation (20) and the AI slot
   (10), never a person or a test script. It can only stop the car.
 - The lock never expires on silence: if `stop_sign_watcher` dies while on, the car stays stopped.
 - Stop rule: distance = `focal_px` x `sign_height_m` / box height. Lock on for `hold_s`,

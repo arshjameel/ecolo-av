@@ -9,7 +9,7 @@ Plain-English driving (`docs/plain-english.md`). Two parts:
 
 ```
 you -> talk (local model plans) -> drive server (MCP stdio) -> language_drive node
-   -> /scripted_drive (aav_scripted) or /follow_gps_waypoints (Nav2) -> twist_mux -> ego
+   -> /scripted_drive (aav_scripted) or /follow_gps_waypoints (the navigator) -> twist_mux -> ego
 ```
 
 ## Overview
@@ -45,7 +45,7 @@ MCP tools (`drive_server.py`):
 | `drive(distance_m, speed_mps, direction, curvature, wait)` | the whole distance, ramps included |
 | `turn(angle_deg, radius_m, direction, speed_mps, wait)` | an arc |
 | `stop()`, `estop()` | cancel this server's drive (it slows to a stop; never refused); set the e-stop (never clears it) |
-| `go_to_gps(lat, lon, wait)` | one Nav2 GPS waypoint, at most 200 m away |
+| `go_to_gps(lat, lon, wait)` | one GPS waypoint for the navigator, at most 200 m away |
 | `wait(seconds)`, `check(tool, arguments)` | pause; would that call be refused? |
 
 ROS node `language_drive` (`ros_backend.py`):
@@ -89,7 +89,7 @@ Modules:
   (`legacy_uart_bridge`, `encoder_udp`, `socket_can_*`, or `spine_bridge` without `spine_sim`).
 - Nothing moves while the e-stop is on, or while twist_mux's report is silent. A move is
   refused while a lock holds the driver that would carry it (`holding_locks`): the
-  stop-sign and sensor locks (30) hold Nav2 (20), so `go_to_gps`, but not the scripted
+  stop-sign and sensor locks (30) hold navigation (20), so `go_to_gps`, but not the scripted
   driver (50), so not `drive` or `turn`. It publishes only `true` on `/safety/estop`; a
   person clears it.
 - A drive, turn or GPS goal that would end outside `/safety/geofence/fence` is refused

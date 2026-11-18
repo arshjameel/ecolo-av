@@ -36,7 +36,7 @@ The message: `name` algorithms, `level` OK, `message` one short line
 | `profile` | `sim` | the run, in words |
 | `nav` | true | Nav2 runs |
 | `planner`, `controller`, `tracker` | lattice, mppi, none | as `vehicle.py` names them |
-| `lidar`, `radar`, `voxels` | false | what Nav2 sees obstacles with |
+| `lidar`, `radar`, `voxels` | false | what navigation sees obstacles with |
 | `amcl`, `ndt`, `ndt_ekf`, `kiss_icp`, `kiss_ekf` | false | the trial localizers |
 | `period` | 2.0 s | how often it says it again |
 

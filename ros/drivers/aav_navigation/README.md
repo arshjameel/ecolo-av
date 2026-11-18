@@ -105,7 +105,7 @@ Files:
 
 ## Invariants
 
-- Forward only unless `reversing:=true`: nothing senses behind the car. Gazebo and the
+- Forward only unless `reversing:=true`: nothing senses behind the car. Ravensim and the
   bench turn it on, and the car where the lidar watches behind.
 - No spin: a car can't turn on the spot.
 - Our nodes aren't lifecycle nodes, so each respawns 1 s after it dies (`test_respawn.py`),

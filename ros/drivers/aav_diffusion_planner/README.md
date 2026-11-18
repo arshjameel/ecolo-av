@@ -9,24 +9,24 @@ the car refuses it). Off by default. The design: `docs/designs/2026-11-02_diffus
 `docs/trials.md`.
 
 ```text
- bt_navigator ─ compute_path_to_pose ─► diffusion_planner ─┬─► the costmap crop ─► model worker (ONNX)
+ navigator ──── compute_path_to_pose ─► diffusion_planner ─┬─► the costmap crop ─► model worker (ONNX)
                                               │            │      16 sample paths ─► the guard (G1-G8)
-                                              │            └─► compute_path_to_pose_lattice ─► planner_server
+                                              │            └─► compute_path_to_pose_lattice ─► our planner
                                               ▼                                                 (the lattice)
                      the cheapest sample that passed, in 150 ms; else the lattice's path ─► /plan ─► MPPI
 ```
 
-The model only **proposes** a path. MPPI, collision_monitor, twist_mux, ego and the
+The model only **proposes** a path. MPPI, the stop zone, twist_mux, ego and the
 spine are unchanged below it.
 
 ## Interface
 
 | | Name | Type |
 |---|---|---|
-| Serves | `compute_path_to_pose` | `nav2_msgs/action/ComputePathToPose` (planner_server's own, renamed `compute_path_to_pose_lattice`) |
-| Calls | `compute_path_to_pose_lattice` | the same, planner_server's lattice |
-| Subscribes | `/global_costmap/costmap` | `nav_msgs/OccupancyGrid` |
-| Publishes | `/plan` | `nav_msgs/Path`: what it returned (planner_server's goes to `/drivers/nav/diffusion/lattice_plan`) |
+| Serves | `compute_path_to_pose` | `nav2_msgs/action/ComputePathToPose`, the name the navigator calls |
+| Calls | `compute_path_to_pose_lattice` | the same, remapped to our planner's (`aav_planner`) |
+| Subscribes | `/drivers/nav/costmap/global` | `nav_msgs/OccupancyGrid` |
+| Publishes | `/plan` | `nav_msgs/Path`: what it returned (our planner's goes to `/drivers/nav/diffusion/lattice_plan`) |
 | Publishes | `/drivers/nav/diffusion/status` | `diagnostic_msgs/DiagnosticStatus`: each plan's source (model, lattice, none), why, ms, refusals by check, the share from the model |
 
 Launch arguments: `planner:=diffusion` (`navigation.launch.py`, `sim.launch.py`), and:
@@ -86,5 +86,5 @@ No learn environment or no model: the node logs it, and every plan is the lattic
 
 ## Verification
 
-`tools/test.sh` (the unit tests); `pixi run measure controllers --planners lattice
-diffusion --reversing --tours lot` in Gazebo.
+`tools/test.sh` (the unit tests); `pixi run measure controllers --planners own
+diffusion --reversing --tours lot` in Ravensim.

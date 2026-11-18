@@ -64,7 +64,7 @@ names and defaults. One addition:
   `gen_vectors.py` writes from them. Change one, change both, and write the vectors again.
 - The same node name and topics as the Python, so nothing downstream can tell which runs.
   Only one of the two runs at a time (`behaviour_impl:=`).
-- The rules are the Python's, unchanged: it only ever slows Nav2; a cap is 0.0 or in
+- The rules are the Python's, unchanged: it only ever slows navigation; a cap is 0.0 or in
   [floor, base]; it never clears a lock; a clean exit sends nothing.
 - `behaviour-core` has no ROS. Rust API Guidelines: enums (`State`, `StopReason`, `Lock`,
   `Reason`, `Whose`, `StopKind`), `Result` (`SettingsError`, `RoadError`, `LanesError`,
@@ -105,7 +105,7 @@ with `ps` every 2 s.
 |---|---|---|
 | the road world (start-up, the graph against the contract, sensors, lidar, the scripted drive, the EKF, wheels) | pass | pass |
 | scripted drive | 5.83 m (plan 6.5), +0.00 m to the side | the same |
-| `--behaviour-only`: an obstacle (the stop zone), then a Nav2 goal | pass: 0.93 m short, states DRIVE > APPROACH(obstacle) > WAIT(obstacle) > GO(obstacle) > DRIVE > APPROACH(goal), lowest cap 0.3; goal 0.92 m off | pass: the same distance and states; goal 0.90 m off |
+| `--behaviour-only`: an obstacle (the stop zone), then a goal | pass: 0.93 m short, states DRIVE > APPROACH(obstacle) > WAIT(obstacle) > GO(obstacle) > DRIVE > APPROACH(goal), lowest cap 0.3; goal 0.92 m off | pass: the same distance and states; goal 0.90 m off |
 | `--behaviour-things-only`: a parked box with the things | fail once (the load was 9.4: the box flickered into APPROACH(obstacle)) | pass: no wait for the parked box, 0.46 m clear |
 
 The Python's one fail was on a busy computer (load 9 on 16 cores); it isn't the port's.

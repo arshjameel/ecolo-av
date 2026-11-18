@@ -61,5 +61,5 @@ wheelbase and track come from `vehicle.yaml`.
 cd ros/localization/aav_localization_health && python3 -m pytest -q   # the checks, no ROS
 ```
 
-`tools/test.sh` runs it; `pixi run test` runs everything. Thresholds were tuned in Gazebo
+`tools/test.sh` runs it; `pixi run test` runs everything. Thresholds were tuned in Gazebo (the simulator then)
 only: on the car, read `/diagnostics` after a parked spell and a drive.

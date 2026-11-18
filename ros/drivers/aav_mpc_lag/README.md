@@ -6,9 +6,8 @@ through the car's own lags. The Python one stays the default `mpc_lag`; no stack
 this one yet (`docs/trials.md`, "Lag-aware MPC").
 
 ```
-bt_navigator --FollowPath--> mpc_lag_rs --cmd_vel_nav--> velocity_smoother
-   -> collision_monitor -> /drivers/nav/cmd_vel (twist_mux 20) -> ego
-controller_server keeps running; its own action is renamed follow_path_unused
+navigator --FollowPath--> mpc_lag_rs --cmd_vel_nav--> velocity_smoother
+   -> stop zone -> /drivers/nav/cmd_vel (twist_mux 20) -> ego
 ```
 
 ## Overview
@@ -67,7 +66,7 @@ lookahead, and vehicle.yaml's actuators; nothing copied):
 
 | Name | From |
 |---|---|
-| `rate_hz`, `odom_topic`, `stamped`, goal and progress checks | controller_server's |
+| `rate_hz`, `odom_topic`, `stamped`, goal and progress checks | `nav2.yaml`'s `controller_server` block |
 | `cruise_speed` | RPP's `desired_linear_vel`, or `max_speed:=` |
 | `acceleration`, `deceleration` | the velocity smoother's |
 | `max_brake`, `wheelbase`, `max_steering_angle`, `actuators.*` | vehicle.yaml (dead times 0 while unset) |
@@ -91,12 +90,12 @@ Python's defaults). `aav_navigation`'s `test_launch_params.py` checks they match
 
 ## Invariants
 
-- Forward only. Never both followers: with it, controller_server's action is `follow_path_unused`.
+- Forward only. Never both followers: with it, `mppi_lag` doesn't start.
 - The same maths as the Python: after changing `lag_model.py`, `mpc_lag.py` or `qp.py`,
   run `gen_vectors.py` and both test suites.
 - Every steering command within full lock and the steering rate; every set speed within
   0..cruise and the smoother's ramps.
-- Nothing in the safety path changes: the smoother, collision_monitor, twist_mux's slot,
+- Nothing in the safety path changes: the smoother, the stop zone, twist_mux's slot,
   the locks and e-stops all sit after `cmd_vel_nav`. It doesn't read the costmap.
 - The maths has no ROS; the node has no maths. Rust API Guidelines; `cargo fmt` and
   `cargo clippy` clean.

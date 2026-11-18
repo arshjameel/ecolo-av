@@ -14,7 +14,7 @@ proves it.
 each input's topic (odom, IMU, GPS, cameras, lidar, detections, actuators, nodes...)
         │
         ▼
- sensor_watchdog ──► /safety/sensor_watchdog/lock  (10 Hz): true = twist_mux holds Nav2, AI
+ sensor_watchdog ──► /safety/sensor_watchdog/lock  (10 Hz): true = twist_mux holds nav, AI
                  ──► /safety/sensor_watchdog/state (10 Hz): OK, or STOP/WARN and what
                  ──► /diagnostics (1 Hz)
                  ◄── /safety/sensor_watchdog/clear (Trigger): a person forgets the latches

@@ -1,14 +1,14 @@
 # aav_costmap
 
-Our own costmaps, in Rust: Nav2's `costmap_2d` layers ported, run **beside** Nav2's
-costmaps (`costmap:=own`). The simulator's default since 14 Nov (`stack:=ours`); Nav2's stays on the car.
+Our own costmaps, in Rust: Nav2's `costmap_2d` layers ported (`costmap:=own`).
+The simulator's default since 14 Nov (`stack:=ours`); the only costmaps, sim and car, since Nav2 went on 17 Nov.
 The page: [docs/own-costmap.md](../../../docs/own-costmap.md).
 
 ```
 /map, the scan (and radar, cubes, cameras where they run), odometry, /tf_static
   -> costmap -> /drivers/nav/costmap/local (+ _raw)   odom, 20 m window, 5 Hz
              -> /drivers/nav/costmap/global (+ _raw)  map, the map's size, 1 Hz
-  local_raw -> mppi_lag (tracker:=mppi_lag), instead of Nav2's /local_costmap/costmap_raw
+  local_raw -> mppi_lag (tracker:=mppi_lag)
 lane_costs:= a lanes.yaml, and /plan -> the lanes layer on the global one (a challenger)
 costmap_chunks:= a chunks folder, and /drivers/nav/planner/route -> the global one holds
   only the 64 m chunks round the car and along the route ahead, not /map (TODO 175)
@@ -66,7 +66,7 @@ are never lowered.
 
 ## Invariants
 
-- The same input as Nav2's: the launch file builds both from the same tuned nav2.yaml.
+- The same input as Nav2's was: the launch file builds them from the tuned nav2.yaml.
 - Nav2's cost codes and its 0-100 table; Nav2's message types on `*_raw`.
 - The lanes layer only raises free and inflated cells, and never to inscribed.
 - No ROS in `crates/costmap`; no maths in the node.
