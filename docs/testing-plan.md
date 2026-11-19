@@ -189,7 +189,7 @@ on a screen (no screen was free when it was built), and on the car.
 | Several drives merged | keep what both saw (`map-drive --merge`) | Built 19 Nov, two drives; more than two: to build |
 | **NDT** | finds the car on the map, precisely | Built; 5 cm in the sim |
 | **AMCL** (Rust, 18 Nov) | finds a **lost** car, then hands over to NDT | Being built |
-| NDT as the main position (GPS only checks) | TODO 210 | To build |
+| NDT as the main position (GPS only checks) | TODO 210: `pose_source:=ndt` (`aav_pose_check`): NDT leads, the GPS checks; a lost NDT starts again from AMCL, else the GPS; neither: the car holds | Built 19 Nov, a challenger; Ravensim's lot: every leg with the GPS clean, stopped, jumped or drifting 5 m, the EKF 1 cm off ([Maps and position](maps-and-position.md#8-ndt-leads-the-gps-checks)); **untested on the car** |
 
 **Several drives on different days:** what is there every time is permanent; what comes and
 goes (parked cars) drops out.
