@@ -205,7 +205,8 @@ bad = [t for t in ('turtle', 'sim', 'bench', 'bench-check', 'view', 'sim-check',
        if not tasks.get(t, '').startswith('tools/ros.sh --local ')]
 # The families that start Ravensim or drive it: each choice's line in its script.
 for script, choices in (('tools/screen.sh', ('hw-panel',)), ('tools/sim_cameras.sh', ('--ros',)),
-                        ('tools/measure.sh', ('controllers', 'timing', 'stream', 'atob'))):
+                        ('tools/measure.sh', ('controllers', 'timing', 'stream', 'atob')),
+                        ('tools/car_test.sh', ('sim',))):
     text = open(script).read()
     for choice in choices:
         line = re.search(rf'^ *{re.escape(choice)}\) .*$', text, re.M)

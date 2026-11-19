@@ -18,6 +18,8 @@ pixi run actuator-test steer-sweep --stands         # the real car, wheels off t
 pixi run actuator-test speed-up                     # the real car, in an empty lot
 pixi run actuator-test --analyse ~/aav-tests/<run>  # a run's report again, from its CSV
 pixi run actuator-test preflight --stands --sim                            # the preflight (actuator-test preflight --stands)
+pixi run car-test --stands                          # phase A: every stands test and fault, one report
+pixi run car-test --stands --sim --no-manual        # the same against its own Ravensim
 ```
 
 | Test | Stage | Measures |
@@ -32,6 +34,13 @@ pixi run actuator-test preflight --stands --sim                            # the
 | `circles` | 4.5 | the real wheel angle, both ways |
 | `straight` | 4.7 | sideways drift over 10 m |
 | `actuator-test preflight --stands` | 3.P | on stands: speed up, hold, slow, brake, steer, every sensor at once: PASS / FAIL per line |
+| `wheel-steps` | 3.14 | on stands: throttle on free wheels, 0.1, 0.2, 0.3, 0.15 m/s: does the wheel speed follow |
+
+`car_test` (`pixi run car-test --stands`, TODO 246) runs phase A of `docs/testing-plan.md` in
+one go: the preflight, the sensors alone, the three steering tests and `wheel-steps` (each an
+`actuator_test` child), then the faults on purpose (the Orin's heartbeat, the GPS, IMU,
+camera, lidar, a Pi's link, a pulled cable, the e-stop), into one folder with `report.md`
+(`docs/actuator-tests.md`, "car-test").
 
 ## Interface
 
@@ -39,6 +48,13 @@ Executable `actuator_test` (`ros2 run aav_actuator_tests actuator_test`, wrapped
 `tools/actuator_test.sh`). Options: `<test>`, `--list`, `--sim`, `--bench`, `--stands`,
 `--max-speed`, `--speeds`, `--angles`, `--max-distance`, `--max-time`, `--out`, `--bag`,
 `--analyse RUN_FOLDER`; for `actuator-test preflight --stands` only, `--skip SENSOR...` and `--no-drive`.
+
+Executable `car_test` (wrapped by `tools/car_test.sh`):
+`--stands` (required), `--ground` (refused), `--sim`, `--only STEP...`, `--no-manual`, `--out`;
+what it reads, publishes, calls and signals is in `car_test_node.py`'s docstring: the same as
+the preflight, plus `/safety/sensor_watchdog/state` and `lock`, `/vehicle/status`,
+`/safety/output_mux/state`, `/control/<car|sim>/heartbeat`; with `--sim` it sets
+Ravensim's `fault.<sensor>` and pauses its own Ravensim's `output_mux` (SIGSTOP, SIGCONT).
 
 | Item | What |
 |---|---|
@@ -57,14 +73,20 @@ Modules (all but the node have no ROS):
 | `reports.py` | one run's rows to a `Report`: `analyse()`, `table()`, `yaml_lines()`; `PATHS` (each fit's from -> to), `signal()` (true arrival times), `shaping()` (what shaped the commands) |
 | `preflight.py` | the preflight's judging: `SENSORS` (documented rates), `sensor_line`, `motion_lines`, `stands_lines`, `ImuWatch` (live, on stands), `table` |
 | `actuator_test.py` | the ROS node and the command line |
-| `preflight_node.py` | the preflight's ROS part: a counter per sensor, its refusals, the e-stop when it won't stop, its report |
+| `preflight_node.py` | the preflight's ROS part: a counter per sensor, its refusals, the e-stop when it won't stop (`press_estop`), its report |
+| `car_test.py` | phase A's steps and judging, no ROS: `STEPS`, `plan()`, `parse()`, `tool_args()`, `tool_result()`, `named()`, `judge_fault()`, `judge_heartbeat_car()`, `table()`, `markdown()` |
+| `car_test_node.py` | phase A's ROS part: the runner, its slow roll and stops, each fault, its own Ravensim (`--sim`), the report folder |
 
 `aav_drive_to_point` reuses `safety.py` (`source_kind`, `taken_over`, `LOT_CHECKLIST`), so both
 agree on what REAL means.
 
 ## Invariants
 
-- `procedures.py`, `safety.py`, `analysis.py`, `reports.py`, `preflight.py` have no ROS imports.
+- `procedures.py`, `safety.py`, `analysis.py`, `reports.py`, `preflight.py`, `car_test.py` have no ROS imports.
+- `car_test` stops at the first FAIL (the steps after: NOT RUN), and after each step sends
+  zeros until still, else `/safety/estop` true (never false). It signals only its own
+  Ravensim's processes (`--sim`: its launch log, its process group). Each `actuator_test`
+  child still asks the person on the real car.
 - Every rule errs towards "this is the real car": nobody announcing counts as REAL.
 - `--sim` only when `/system/source` says SIM, and SIM only with `--sim`. REPLAY refused.
 - Real car: stage 3 needs `--stands`, stage 4 refuses it. Speed cap 1.0 m/s (0.3 on
@@ -112,3 +134,5 @@ Quick, without ROS: `cd ros/drivers/aav_actuator_tests && python3 -m pytest -q`
 | `test_robustness.py` | the fits on pretend data with play, Hall pulses, noise, no brake level, a dead time (`synthetic.py`): the numbers back within a stated tolerance, or refused |
 | `test_preflight.py` | the preflight's lines on the pretend car, on the ground and as if on stands; rates, values, the IMU watch |
 | `test_reports.py` | true times, paths, `shaping`, old logs, the fallbacks (IMU-only brake, the ESP32's open-loop throttle) |
+| `test_car_test.py` | car-test's steps, `--only`, `--no-manual`, `--sim`, the command line; the tools' results; `wheel-steps` on the pretend car and judged; the watchdog's words; each fault's judgement; the report |
+| `test_node_names.py` | no attribute of the nodes hides a method (the preflight's e-stop, 19 Nov) |

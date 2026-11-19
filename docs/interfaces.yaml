@@ -60,9 +60,9 @@ topics:
     note: Priority 95 (proposed, TODO 48) - a person with the RC transmitter, below the joystick's deadman (100), above the keyboard (90). rc_driver (aav_rc) turns /vehicle/rc into a command only while the transmitter's mode switch is on RC via ROS - throttle stick x max_speed (1.0 m/s; reverse 0.5), steering stick x the steering limit, as a turn rate by the bicycle model - at the uplink's 50 Hz, zeros included, so nothing below it drives. It publishes one zero when the switch leaves RC via ROS; if /vehicle/rc goes quiet while on RC via ROS it keeps publishing zeros (a stop) until the uplink comes back. RC direct never comes here - the ESP32 drives from the sticks itself.
   /drivers/tests/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
-    pub: [actuator_test]
+    pub: [actuator_test, car_test]
     sub: [twist_mux, language_drive]
-    note: Priority 60, below both people (joystick 100, keyboard 90) and above every other program. Only while an actuator test runs (aav_actuator_tests, pixi run actuator-test; docs/tests.md stages 3-4), or the preflight on stands (pixi run actuator-test preflight --stands, that is actuator-test preflight, which also counts every sensor topic it subscribes to). It also reads /control/cmd_vel, to stop when someone else takes over.
+    note: Priority 60, below both people (joystick 100, keyboard 90) and above every other program. Only while an actuator test runs (aav_actuator_tests, pixi run actuator-test; docs/tests.md stages 3-4), or the preflight on stands (pixi run actuator-test preflight --stands, that is actuator-test preflight, which also counts every sensor topic it subscribes to). It also reads /control/cmd_vel, to stop when someone else takes over. car_test (pixi run car-test --stands, phase A in one command) runs those as child processes, and between them publishes here itself - a slow roll (0.2 m/s, within the stands' 0.3 cap) that each fault on purpose starts from.
   /drivers/buttons/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [hw_panel]
@@ -101,7 +101,7 @@ topics:
   /safety/sensor_watchdog/lock:
     type: std_msgs/msg/Bool
     pub: [sensor_watchdog]
-    sub: [twist_mux, point_driver, behaviour]
+    sub: [twist_mux, point_driver, behaviour, car_test]
     live: [sim]
     note: true while a sensor navigation or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds navigation and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Ravensim with watchdog:=true, the bench, and the car next to the mux; false on the turtle). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).
   /safety/legacy_uart_bridge/lock:
@@ -113,9 +113,9 @@ topics:
   /safety/sensor_watchdog/state:
     type: std_msgs/msg/String
     pub: [sensor_watchdog]
-    sub: [hud, map, dev_window]
+    sub: [hud, map, dev_window, car_test]
     live: [sim]
-    note: One line for people, 10 Hz - OK, or STOP (the lock is on) or WARN, then each input that isn't OK and why, those that stop first, such as "STOP - gps STALE (nothing for 2.3 s (more than 2 s))". The HUD and the map window show it as a banner, and the HUD the first input in its GO / STOP panel, red for STOP or when it goes silent (then twist_mux holds navigation too). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python). Since 18 Nov (TODO 171) our navigation nodes speak here too, warn only - "WARN - status_costmap_local FAULT (says WARN - local costmap - waiting for odometry)", or STALE when a status topic goes silent.
+    note: One line for people, 10 Hz - OK, or STOP (the lock is on) or WARN, then each input that isn't OK and why, those that stop first, such as STOP, a colon, then "gps STALE (nothing for 2.3 s (more than 2 s))" (watchdog-core summary() - each input as name STATE (why), joined by semicolons; car_test reads the names). The HUD and the map window show it as a banner, and the HUD the first input in its GO / STOP panel, red for STOP or when it goes silent (then twist_mux holds navigation too). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python). Since 18 Nov (TODO 171) our navigation nodes speak here too, warn only - "WARN - status_costmap_local FAULT (says WARN - local costmap - waiting for odometry)", or STALE when a status topic goes silent.
   /hud/heartbeat:
     type: std_msgs/msg/UInt64
     pub: [hud]
@@ -213,9 +213,9 @@ topics:
     note: Priority 10, the slot for a learned driver. Today the 2025-26 lane keeping (aav_lane_geometry) uses it.
   /safety/estop:
     type: std_msgs/msg/Bool
-    pub: [joy_teleop, hud, language_drive, actuator_test, hw_panel, dev_window]
-    sub: [twist_mux, spine_bridge, legacy_uart_bridge, language_drive, actuator_test, carla_adapter, point_driver, hw_panel, behaviour, ego]
-    note: true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.
+    pub: [joy_teleop, hud, language_drive, actuator_test, hw_panel, dev_window, car_test]
+    sub: [twist_mux, spine_bridge, legacy_uart_bridge, language_drive, actuator_test, carla_adapter, point_driver, hw_panel, behaviour, ego, car_test]
+    note: true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop, and car_test the same after any of its steps; car_test --sim also presses it as its last step (the e-stop), standing in for the person. None of them ever publishes false.
   /control/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [twist_mux]
@@ -268,7 +268,7 @@ topics:
   /control/car/heartbeat:
     type: aav_interfaces/msg/Heartbeat
     pub: [output_mux]
-    sub: [legacy_uart_bridge]
+    sub: [legacy_uart_bridge, car_test]
     live: [car]
     note: The Orin's heartbeat (TODO 50) - one message for each command output_mux target:=car passes on to /control/car/actuator_cmd, so only while its gate is OPEN; counter +1 each time (u8, 255 then 0), header copied from the command. legacy_uart_bridge (the Motor Pi) copies the last counter into every version 2 serial frame and never makes one up, so a stuck or cut-off Pi can't fake it. The Rust ESP32 firmware brakes, latched, when the counter hasn't changed for 100 ms (docs/rust-firmware.md, "The heartbeat"). spine_bridge doesn't read it - DRIVE_CMD has its own counter.
   /control/sim/actuator_cmd:
@@ -280,7 +280,7 @@ topics:
   /control/sim/heartbeat:
     type: aav_interfaces/msg/Heartbeat
     pub: [output_mux]
-    sub: []
+    sub: [car_test]
     live: [sim]
     note: The output mux's heartbeat for Ravensim, as /control/car/heartbeat - one for each command passed on. Nothing reads it here; only the real car's Motor Pi relays it.
   /control/bench/actuator_cmd:
@@ -320,7 +320,7 @@ topics:
   /safety/output_mux/state:
     type: std_msgs/msg/String
     pub: [output_mux]
-    sub: [hud, spine_bridge, dev_window]
+    sub: [hud, spine_bridge, dev_window, car_test]
     live: [turtle, sim, car, bench]
     note: One line for people, 2 Hz and on each change - OPEN (passing ego's commands on), WAIT (closed, not latched - the sensor mux not heard yet or quiet for 3 s, its doubts, a node on /system/source whose announcement hasn't arrived yet, or settling for 2 s after all clear) or STOP (latched, and why, such as "STOP - target car needs REAL - camera_front_left is SIM (sim_adapter)"). The target first, such as "OPEN - car". spine_bridge (role spine) reads it as the safety gate - /spine/arm is refused unless it said OPEN for the bridge's own target within gate_timeout (1.5 s); Ben, 24 Oct. The HUD's GO / STOP panel shows it, with the first reason.
 
@@ -356,7 +356,7 @@ topics:
     type: aav_interfaces/msg/VehicleStatus
     drop_in: {min_hz: 10}
     pub: [spine_bridge, sim_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge]
-    sub: [hud, language_drive, debug_hud, hw_panel, dev_window]
+    sub: [hud, language_drive, debug_hud, hw_panel, dev_window, car_test]
     live: [turtle, sim, bench]
     note: Mode, armed, e-stop, measured speed and steering, actuator levels, fault bits. For the HUD and Foxglove. legacy_uart_bridge publishes it, 10 Hz, only with uplink true (the ESP32's uplink frame on TX1, TODO 50 - off until its wire is confirmed) - speed NaN (that ESP32 has no wheel speed), steering_angle the steering Jrk's position or NaN; mode COMPUTER also while the transmitter's switch is on RC via ROS (/vehicle/rc has the switch).
   /vehicle/steering:
