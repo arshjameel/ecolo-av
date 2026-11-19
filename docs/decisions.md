@@ -247,6 +247,7 @@ The whole story, to explain to someone else: [What we decided, 18-19 Nov](decisi
 | **Maps from our own drives** (KISS-SLAM, offline), cleaned in a map editor | 2.3 cm against the EKF's 33 cm; a person has the last word | Ben |
 | **No Nav2 yardstick; scores tracked, not gates** (TODO 167) | "We can get worse if we think there is room to improve"; safety checks stay pass/fail | Ben |
 | **One ONNX file per model**: Core ML on the Mac, TensorRT on the Orin (JetPack 7.2+); moved up (TODO 243) | one export for every computer; proven on the Mac before the car | Ben |
+| **Lanes are perception; the costmap prices them; navigation drives.** The separate lane-follower drivers (the 2025-26 PID and ours) are removed once the camera's lanes are in the lanes layer (TODO 264): an exception to "every algorithm stays" | Ben, 19 Nov: "drop there code all together". One driver (MPPI) with its lag and the obstacles, not a second steering loop beside it | Ben |
 
 ## Proposed in November: Ben's to decide
 
