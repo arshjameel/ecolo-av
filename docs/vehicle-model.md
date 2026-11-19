@@ -596,7 +596,7 @@ Both copies of the loop, the Rust and Gazebo's Python, check the same examples
 `spine-core` also has an LQI (`speed_loop:=lqi`): one signed acceleration for throttle
 and brake, its gains from this model by the discrete Riccati equation
 (`VehicleModel.speed_lqi`). It sits in the study above as `'lqi'`, and in the figure.
-The design and the results: [Controllers, 2a](controllers.md#2a-lqi-against-the-pi-results-29-oct).
+The design and the results: [Controllers, 2a](history/controllers-log.md#2a-lqi-against-the-pi-results-29-oct).
 
 #### Pole placement, after the car day
 
