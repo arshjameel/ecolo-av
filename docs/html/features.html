@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">121 min read · 15 sections</div></header>
+<div class="meta">122 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -40,6 +40,7 @@
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -51,8 +52,8 @@
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
-<a href="learn-lidar.html">Learn: lidar</a>
 <span class="sep">Reference:</span>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -338,6 +339,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>A third "how far did I move" beside the wheels and the IMU, from the lidar alone and with no map; with <code>kiss_ekf:=true</code> its twist (never its pose) feeds <code>ekf_local</code>, so wheels that slip are caught. Its covariance measured against Gazebo's truth, twists 5 sigma off refused, and ekf_local carries on when it stops. Later it builds the real lot's map for NDT</td>
 <td>Ben's idea; built by Ben</td>
 <td>2026-10-30</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="maps-from-drives.html">Maps from recorded drives</a> (<code>pixi run map-drive</code>, KISS-SLAM)</td>
+<td>Testing plan phase D (TODO 250): NDT's map made from the EKF's poses was blurred (walls drawn several times, 33 cm off the truth's map with the GPS). KISS-SLAM (KISS-ICP with loop closures and a pose graph, MIT) places the clouds instead, offline and with no ROS; the same points give NDT's map, a 2D map for the planner (0.3-2 m occupied, the rays free) and their 64 m chunks; the path is fitted to the good GPS fixes (or the start pose) so the map sits in the car's map frame. <code>--merge</code> keeps what two drives both saw. NDT and the planner can then run on our own map where the GPS is poor</td>
+<td>Ben Woodhead</td>
+<td>2026-11-19</td>
 <td>sim</td>
 </tr>
 </tbody>

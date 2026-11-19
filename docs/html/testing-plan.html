@@ -7,7 +7,7 @@
 <!-- Generated from docs/testing-plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The testing plan</h1>
-<div class="meta">17 min read · 12 sections</div></header>
+<div class="meta">18 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -40,6 +40,7 @@
 <a class="here" href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -51,8 +52,8 @@
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
-<a href="learn-lidar.html">Learn: lidar</a>
 <span class="sep">Reference:</span>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -627,19 +628,24 @@ on a screen (no screen was free when it was built), and on the car.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>KISS-SLAM</strong> (offline)</td>
-<td><strong>makes</strong> the map from a hand drive, closing loops</td>
-<td>To build (KISS-ICP, its first half, is built)</td>
+<td><strong>KISS-SLAM</strong> (offline: <code>pixi run map-drive</code>)</td>
+<td><strong>makes</strong> the map from a hand drive, closing loops, placed by the GPS</td>
+<td>Built 19 Nov (<a href="maps-from-drives.html">Maps from drives</a>); in Ravensim 2.3 cm off the truth's map (the EKF's: 27-33 cm); no loop closure found on the plain test lot; <strong>untested on the car</strong></td>
 </tr>
 <tr>
-<td><code>ndt-map build --poses</code></td>
-<td>turns the drive into NDT's map, in 64 m chunks</td>
-<td>Built</td>
+<td>NDT's map from those poses</td>
+<td>the drive into NDT's map, in 64 m chunks</td>
+<td>Built (<code>map-drive</code>; <code>ndt-map build --poses-file</code>)</td>
 </tr>
 <tr>
 <td>A 2D map from the same points</td>
-<td>the planner's walls and kerbs</td>
-<td>To build</td>
+<td>the planner's walls and kerbs: 0.3-2 m occupied, the rays free</td>
+<td>Built 19 Nov (<code>map-drive</code>): every occupied cell within one of the truth's</td>
+</tr>
+<tr>
+<td>Several drives merged</td>
+<td>keep what both saw (<code>map-drive --merge</code>)</td>
+<td>Built 19 Nov, two drives; more than two: to build</td>
 </tr>
 <tr>
 <td><strong>NDT</strong></td>

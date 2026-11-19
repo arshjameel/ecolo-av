@@ -80,6 +80,8 @@ PAGES = [
     ('know-the-car.md', 'Know the car', 'The car tests: the order, and when to stop'),
     ('recording.md', 'Recording a mapping drive',
      'Every sensor at full rate: checks before, a summary after'),
+    ('maps-from-drives.md', 'Maps from drives',
+     "KISS-SLAM on a recorded drive: NDT's map and a 2D map, placed by the GPS"),
     ('measure-the-car.md', 'Measure the car', 'The sheet for whoever measures the car'),
     ('decisions.md', 'Decisions', 'Decided, Tentative, Proposed, and Q1–Q34'),
     ('infrastructure.md', 'Infrastructure', 'The repo, Pixi, the contracts, profiles, computers'),

@@ -80,6 +80,7 @@ After [Your first day](#your-first-day), add only the parts you need:
 | The map window's street map and place search | `pixi run get street-map`, `pixi run get places` | [HUD](docs/hud.md) |
 | Street routes (Valhalla) | `pixi run get routes` | [Street routes](docs/routes.md) |
 | KISS-ICP lidar odometry (a trial, `kiss_icp:=true`) | `pixi install --locked -e kiss` (Linux, Apple-silicon Macs) | [Trials](docs/trials.md) |
+| Maps from recorded drives (KISS-SLAM, `map-drive`) | `pixi install --locked -e slam` (x86_64 Linux, Apple-silicon Macs: not the car) | [Maps from drives](docs/maps-from-drives.md) |
 | The camera stream check | `pixi run get mediamtx` | [Camera pipeline](docs/camera-pipeline.md) |
 | CARLA on Carleton's streets | `pixi run get carla-osm` | [CARLA](docs/carla.md) |
 | Flashing a Pico 2 with a debug probe | `pixi run pico spine tools` | [Rust firmware](docs/rust-firmware.md) |
@@ -152,6 +153,7 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `campus-route` | directions on the campus, without ROS: `campus-route "Mackenzie Building"` (from P4), `--from`, `--waypoints`, `--list`; the same graph as `street_router router:=campus` ([docs](docs/routes.md#on-the-campus)) |
 | `ndt-map` | NDT's map of the simulator's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
 | `record-drive` | record a mapping drive: every raw sensor at full rate, checked before (disk, rates, clocks, frames), summarised after (good for the map, SLAM, labelling, the transfer functions); `--sim` tests it in Ravensim ([docs](docs/recording.md)) |
+| `map-drive` | a map from a recorded drive, no ROS: KISS-SLAM's path with its loop closures, NDT's map and a 2D map for the planner, in 64 m chunks, placed by the GPS where it is good; `--merge` keeps what two drives both saw ([docs](docs/maps-from-drives.md)) |
 
 ### At the car
 

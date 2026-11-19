@@ -55,6 +55,14 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **Complementary filter**: W. T. Higgins, "A Comparison of Complementary and Kalman Filtering", IEEE Trans. Aerospace and Electronic Systems, 1975 | paper | idea | follow in odom, correct slowly (TODO 186): the followers take the fast part of the pose from odometry and the slow part from the map, the map -> odom correction rate-limited (`aav_mppi_lag` `map_correction.rs`, `aav_track` `slow_frame.py`) |
 | **NDT**: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009 | paper | idea | `aav_ndt` (its `PROVENANCE.md` lists the rest) |
 | **KISS-ICP**: I. Vizzo et al., RA-L, 2023 | MIT | runs | `kiss_icp:=true`, scored beside the EKF |
+| **KISS-SLAM**: T. Guadagnino, B. Mersch, S. Gupta, I. Vizzo, G. Grisetti, C. Stachniss, "KISS-SLAM: A Simple, Robust, and Accurate 3D LiDAR SLAM System With Enhanced Generalization Capabilities", IROS 2025 (PRBonn, `kiss-slam` 0.0.2 on PyPI) | MIT (its wheel builds in g2o, BSD, and SuiteSparse's CHOLMOD, LGPL-2.1+: an offline tool, never on the car) | runs | `pixi run map-drive`: a map from a recorded drive, with loop closures (TODO 250, [Maps from drives](maps-from-drives.md)) |
+| **MapClosures**: S. Gupta, T. Guadagnino, B. Mersch, I. Vizzo, C. Stachniss, "Effectively Detecting Loop Closures using Point Cloud Density Maps", ICRA 2024 | MIT | runs | KISS-SLAM's loop closures, in `map-drive` |
+| **g2o**: R. Kümmerle, G. Grisetti, H. Strasdat, K. Konolige, W. Burgard, ICRA 2011 | BSD (core) | runs | KISS-SLAM's pose graph, in `map-drive` |
+| **Open3D**: Q.-Y. Zhou, J. Park, V. Koltun, 2018 | MIT | runs | KISS-SLAM's closure check; `map-drive --merge`'s ICP between two drives' maps |
+| **Least-squares fit of two point sets**: S. Umeyama, IEEE TPAMI, 1991 (after W. Kabsch, 1976) | paper | idea | `map-drive`: the SLAM path turned and moved onto the good GPS fixes (`slam_map.fit_2d`) |
+| **UTM by series**: J. P. Snyder, *Map Projections: A Working Manual*, USGS, 1987 | public domain | idea | `slam_map.utm`, checked against GeoConvert's numbers in `aav_hud`'s `earth.rs` |
+| **Occupancy grids**: A. Elfes, "Using Occupancy Grids for Mobile Robot Perception and Navigation", Computer, 1989 | paper | idea | `map-drive`'s 2D map: hits and free rays per cell |
+| **TUM trajectory format**: J. Sturm et al., "A Benchmark for the Evaluation of RGB-D SLAM Systems", IROS 2012 | format | idea | `map-drive`'s `poses.tum`; `ndt-map build --poses-file` |
 | AMCL (Nav2's `nav2_amcl`, from Player's amcl: A. Howard, B. Gerkey, K. Stoy) | LGPL-2.1-or-later | runs, ported | `amcl:=true`, a trial: stock with `amcl_impl:=stock`; ported to Rust as `aav_amcl_rs` (the default, TODO 231; same licence; its `PROVENANCE.md` lists the files) |
 | **Monte Carlo localization and KLD sampling**: D. Fox, W. Burgard, F. Dellaert, S. Thrun, AAAI 1999; D. Fox, IJRR 2003; S. Thrun, W. Burgard, D. Fox, *Probabilistic Robotics*, 2005 | paper | idea | `aav_amcl_rs`: the filter, the odometry motion model, low-variance resampling, recovery's averages |
 | **Distance transform**: P. Felzenszwalb, D. Huttenlocher, "Distance Transforms of Sampled Functions", Theory of Computing, 2012 | paper | idea | `aav_amcl_rs`: the likelihood field's distances to the walls |
@@ -144,6 +152,7 @@ Each has a TODO row to port its idea.
 | **rstar** (the georust project) | MIT / Apache-2.0 | runs | an R-tree of the Lanelet2 map's centre lines, for the nearest lane (`lanelet-map`, TODO 201) |
 | **Rerun** (rerun.io) | MIT / Apache-2.0 | a trial viewer, laptops only | our MCAP recordings opened as they are (`pixi run -e rerun view-bag`, TODO 197) |
 | **mcap** (Foxglove) | MIT | examples and tests only | MPPI's `follow_plan` reads a recording's plans (`examples/bag`, TODO 202) |
+| **mcap**, **mcap-ros2-support** (Foxglove, Python) | MIT | runs, laptops only | `map-drive` reads a recording without ROS (TODO 250) |
 | **rosbag2** (its MCAP storage, `zstd_fast` preset); image_transport's `republish` | Apache-2.0; BSD | runs | the mapping drive's recorder and its JPEG copies of the cameras (`pixi run record-drive`, TODO 249) |
 | **chrony** (`chronyc tracking`) | GPL-2.0 | runs, a separate program | the recording kit's clock check on each car computer (TODO 249) |
 | **criterion** (Brook Heisler, Jorge Aparicio) | MIT / Apache-2.0 | benchmarks only | MPPI's tick, the planner's legs, the costmap's updates and an NDT match timed with statistics (`benches/`, TODO 203) |
