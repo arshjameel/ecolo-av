@@ -8,6 +8,8 @@ Subscribes  control/<target>/actuator_cmd  ackermann_msgs/AckermannDriveStamped:
                               output mux that found every source REAL reaches this node
             safety/estop      std_msgs/Bool
             safety/output_mux/state  std_msgs/String: the safety gate, for spine/arm
+            safety/self_test/status  diagnostic_msgs/DiagnosticStatus: the boot
+                              self-test, for spine/arm (only with require_ready, TODO 255)
             can/rx            can_msgs/Frame  (ros2_socketcan receiver)
 Publishes   can/tx            can_msgs/Frame  (ros2_socketcan sender)
             vehicle/odom      nav_msgs/Odometry  (twist only, in base_link)
@@ -26,7 +28,8 @@ Publishes   can/tx            can_msgs/Frame  (ros2_socketcan sender)
 Service     spine/arm         std_srvs/SetBool: refused during an e-stop, and while the
                               safety gate is shut: the output mux not OPEN for this
                               bridge's target, or quiet for gate_timeout s (Ben, 24 Oct;
-                              output_gate). Disarming always works
+                              output_gate); with require_ready, also until the
+                              boot self-test says READY. Disarming always works
 
 Frames are defined in firmware/can/aav.dbc and packed by can_codec.
 /vehicle/odom's speed is the front wheel nodes' mean (WHEEL_SPEED_L/R, turned into
@@ -62,6 +65,7 @@ from aav_spine import output_gate
 from aav_spine import wheel_speed as ws
 from ackermann_msgs.msg import AckermannDriveStamped
 from can_msgs.msg import Frame
+from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import Odometry
 import rclpy
 from rclpy.executors import ExternalShutdownException
@@ -98,6 +102,9 @@ class SpineBridge(Node):
         self.cmd_timeout = self.declare_parameter('cmd_timeout', 0.1).value
         wheel_timeout = self.declare_parameter('wheel_timeout', 0.1).value
         gate_timeout = self.declare_parameter('gate_timeout', output_gate.TIMEOUT).value
+        # The boot self-test (TODO 255): on the car, no arming until it says READY.
+        require_ready = self.declare_parameter('require_ready', False).value
+        ready_timeout = self.declare_parameter('ready_timeout', output_gate.READY_TIMEOUT).value
         drive_hz = self.declare_parameter('drive_rate_hz', 50.0).value
         estop_hz = self.declare_parameter('estop_rate_hz', 10.0).value
         self.speed_var = self.declare_parameter('speed_variance', 0.01).value
@@ -117,6 +124,7 @@ class SpineBridge(Node):
         self.disarm_frames = 0   # armed=0 frames still to send before arming
         self.estop = False
         self.gate = output_gate.OutputGate(output_gate.TARGETS[source], gate_timeout)
+        self.ready = output_gate.ReadyGate(ready_timeout) if require_ready else None
         self.counters = {}
         self.feedback = None
         self.bad_frames = 0
@@ -139,6 +147,8 @@ class SpineBridge(Node):
             self.brake_pub = self.create_publisher(ActuatorState, 'vehicle/brake', 10)
             self.create_subscription(Bool, 'safety/estop', self.on_estop, 10)
             self.create_subscription(String, 'safety/output_mux/state', self.on_gate, 10)
+            self.create_subscription(DiagnosticStatus, 'safety/self_test/status',
+                                     self.on_self_test, 10)
             self.create_service(SetBool, 'spine/arm', self.on_arm)
             self.create_timer(1.0 / drive_hz, self.send_drive)
             self.create_timer(1.0 / estop_hz, self.send_estop)
@@ -180,12 +190,19 @@ class SpineBridge(Node):
         # A steady clock: in the simulator the node's is simulated, and may pause.
         self.gate.heard(msg.data, time.monotonic())
 
+    def on_self_test(self, msg):
+        # The same steady clock as the gate's. Counts only with require_ready.
+        if self.ready is not None:
+            self.ready.heard(msg.level == DiagnosticStatus.OK, msg.message, time.monotonic())
+
     def on_arm(self, request, response):
         refusal = None
         if request.data and self.estop:
             refusal = 'e-stop is active; clear /safety/estop first'
         elif request.data:
             refusal = self.gate.refusal(time.monotonic())
+            if refusal is None and self.ready is not None:
+                refusal = self.ready.refusal(time.monotonic())
         if refusal:
             response.success = False
             response.message = refusal

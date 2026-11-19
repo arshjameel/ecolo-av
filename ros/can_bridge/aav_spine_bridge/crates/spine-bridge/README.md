@@ -16,7 +16,8 @@ calls here, and `Update`s back into messages. A port of `aav_spine`'s
 | `Bridge::new(Settings)` | a bridge: role, geometry, timeouts, target |
 | `command(Command, now)` | note ego's command (m/s, rad + left, m/s², rad/s) |
 | `drive(now) -> Drive` | at each 50 Hz tick: `DRIVE_CMD` to send, or nothing (never commanded, or stale) |
-| `arm(bool, now) -> Result<Arming, ArmError>` | `/spine/arm`: refused during an e-stop or while the gate is shut |
+| `arm(bool, now) -> Result<Arming, ArmError>` | `/spine/arm`: refused during an e-stop, while the gate is shut, or (with the ready gate) until the boot self-test says READY |
+| `with_ready_gate(timeout)`, `self_test(ready, message, at)` | the car's ready gate (TODO 255): one `/safety/self_test/status` |
 | `set_estop(bool) -> Option<EstopCmd>` | `ESTOP_CMD` at once, on a change |
 | `estop_frame() -> EstopCmd` | the 10 Hz `ESTOP_CMD` heartbeat |
 | `output_mux_state(line, at)` | one line from `/safety/output_mux/state` |
@@ -32,6 +33,7 @@ calls here, and `Update`s back into messages. A port of `aav_spine`'s
 | `Command`, `Drive`, `Arming`, `ArmError` | commands in, frames and answers out |
 | `Motion`, `Status`, `Update`, `BadFrame` | what the frames say, in ROS's units |
 | `OutputGate`, `Target`, `UnknownTarget`, `GateShut`, `GATE_SHUT` | the safety gate (`gate.rs`); `UnknownTarget`: not car, bench or sim |
+| `ReadyGate`, `NotReady`, `NOT_READY` | the boot self-test's word (`ready.rs`); the same words as `output_gate.py`'s |
 | `wheels::FrontWheels`, `Reading`, `Side`, `Direction`, `rear_axle_speed` | the front wheel nodes (`wheels.rs`); `Side`: one wheel in a `Reading` |
 
 `UnknownRole`, `UnknownTarget`, `Side`, `Reading` and `Direction` are also at the crate
@@ -62,5 +64,5 @@ None: pure logic. The tests read `firmware/can/test_vectors.json`.
 cd ros/can_bridge/aav_spine_bridge && cargo test --locked -p spine-bridge
 ```
 
-The tests: `tests/bridge.rs` (the Python node's cases), `tests/gate.rs`, and
+The tests: `tests/bridge.rs` (the Python node's cases), `tests/gate.rs`, `tests/ready.rs`, and
 `tests/vectors.rs` (the shared CAN vectors through the whole bridge).

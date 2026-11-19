@@ -24,6 +24,7 @@ owns the shared launch file and config both twins use.
 | sub | `/control/<target>/actuator_cmd` (`car`, `bench` or `sim`, by `source`) | ackermann_msgs/AckermannDriveStamped |
 | sub | `/safety/estop` | std_msgs/Bool |
 | sub | `/safety/output_mux/state` | std_msgs/String |
+| sub | `/safety/self_test/status` (counts only with `require_ready`) | diagnostic_msgs/DiagnosticStatus |
 | sub | `/can/rx` | can_msgs/Frame |
 | pub | `/can/tx` | can_msgs/Frame |
 | pub | `/vehicle/odom` (twist only, `base_link`) | nav_msgs/Odometry |
@@ -45,6 +46,8 @@ Role `sensors` (today's wiring) reads only the wheel frames: it publishes
 | `cmd_timeout` | 0.1 | s | `config/spine.yaml` |
 | `wheel_timeout` | 0.1 | s | the node's default only |
 | `gate_timeout` | 1.5 | s | `config/spine.yaml` |
+| `require_ready` | false (the car: true) | | `spine.launch.py`'s `require_ready` |
+| `ready_timeout` | 2.0 | s | the node's default only |
 | `drive_rate_hz`, `estop_rate_hz` | 50.0, 10.0 | Hz | `config/spine.yaml` |
 | `speed_variance`, `yaw_rate_variance` | 0.01, 0.02 | (m/s)², (rad/s)² | `config/spine.yaml` |
 | `wheelbase`, `track` | from `vehicle.yaml` | m | the launch file |
@@ -54,7 +57,7 @@ Role `sensors` (today's wiring) reads only the wheel frames: it publishes
 
 ### Launch
 
-`spine.launch.py [interface:=can0] [bridge:=rust|python] [role:=spine|sensors] [use_sim_time:=false]`:
+`spine.launch.py [interface:=can0] [bridge:=rust|python] [role:=spine|sensors] [require_ready:=false] [use_sim_time:=false]`:
 ros2_socketcan's receiver (to `/can/rx`), its sender (from `/can/tx`, role `spine`
 only), and `spine_bridge`.
 
@@ -66,7 +69,7 @@ only), and `spine_bridge`.
 | `arm_when_open.py` | yes | the arming helper |
 | `can_codec.py` | no | `pack`, `unpack`, `FRAMES`, the CAN ids, `crc8_sae_j1850`, `counter_step`; VEHICLE_STATUS's modes `MODE_MANUAL` 0, `MODE_RC` 1, `MODE_COMPUTER` 2, `MODE_TEST` 3 |
 | `wheel_speed.py` | no | `FrontWheels`, `Reading`, `drive_sign`, `rear_axle_speed` |
-| `output_gate.py` | no | `OutputGate`, `try_again`, `GATE_SHUT` |
+| `output_gate.py` | no | `OutputGate`, `try_again`, `GATE_SHUT`; `ReadyGate`, `NOT_READY` (the boot self-test) |
 | `bridges.py` | no | `package()`, `role_for()`, `check_role()`: which bridge, which role |
 
 ## Invariants
@@ -79,7 +82,9 @@ only), and `spine_bridge`.
 - `DRIVE_CMD` goes out at 50 Hz only while ego's command is younger than `cmd_timeout`.
   When it stops, the spine's 100 ms watchdog brakes: at most 0.2 s in all.
 - `/spine/arm` is refused during an e-stop, and unless the output mux said OPEN for
-  this bridge's target within `gate_timeout`. Disarming always works.
+  this bridge's target within `gate_timeout`; with `require_ready` (the car), also
+  unless the boot self-test said READY within `ready_timeout` (TODO 255). Disarming
+  always works, and the self-test never touches the e-stop.
 - Arming sends a few `armed=0` frames before `armed=1`: the spine arms on the edge.
 - Gate times use a steady clock, never the node's (simulated time may pause).
 - `/vehicle/odom`'s speed: the front wheels' mean while both are fresh, else the spine's.

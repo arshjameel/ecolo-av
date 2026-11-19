@@ -23,7 +23,7 @@ Topics, service and parameters are `aav_spine`'s, word for word: see
 
 | Direction | Topic |
 |---|---|
-| sub | `/control/<target>/actuator_cmd`, `/safety/estop`, `/safety/output_mux/state`, `/can/rx` |
+| sub | `/control/<target>/actuator_cmd`, `/safety/estop`, `/safety/output_mux/state`, `/safety/self_test/status` (with `require_ready`), `/can/rx` |
 | pub | `/can/tx`, `/vehicle/odom`, `/vehicle/wheels`, `/vehicle/status`, `/vehicle/joint_states`, `/vehicle/steering`, `/vehicle/throttle`, `/vehicle/brake`, `/system/source` |
 | service | `/spine/arm` (std_srvs/SetBool) |
 
@@ -43,8 +43,8 @@ Where it differs from the Python, on purpose:
 
 ## Invariants
 
-- The same behaviour as `aav_spine`'s `spine_bridge`: the same topics, timeouts, gate
-  and arming edge. A change to one goes into both.
+- The same behaviour as `aav_spine`'s `spine_bridge`: the same topics, timeouts, gate,
+  ready gate (the boot self-test, `require_ready`) and arming edge. A change to one goes into both.
 - CAN frames are `firmware/can/aav.dbc`, packed by `spine-core`'s `protocol`.
 - Role `sensors` never publishes on `/can/tx`.
 - rclrs has no signal handling yet: `ctrlc` catches SIGINT, SIGTERM and SIGHUP.

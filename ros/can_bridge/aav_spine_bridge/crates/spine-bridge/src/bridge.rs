@@ -11,6 +11,7 @@ use spine_core::protocol::{
 };
 
 use crate::gate::{GateShut, OutputGate, Target};
+use crate::ready::{NotReady, ReadyGate};
 use crate::wheels::{rear_axle_speed, Direction, FrontWheels, Reading};
 
 /// Armed=0 frames sent before armed=1: the spine arms only on that edge.
@@ -172,6 +173,9 @@ pub enum ArmError {
     /// The output mux isn't OPEN for this bridge's target, or has gone quiet (Ben, 24 Oct):
     /// armed now, the spine would only latch again, with no commands coming.
     GateShut(GateShut),
+    /// The boot self-test hasn't said READY (TODO 255; only with
+    /// [`Bridge::with_ready_gate`], the car).
+    NotReady(NotReady),
 }
 
 impl fmt::Display for ArmError {
@@ -179,6 +183,7 @@ impl fmt::Display for ArmError {
         match self {
             ArmError::EstopActive => f.write_str("e-stop is active; clear /safety/estop first"),
             ArmError::GateShut(shut) => shut.fmt(f),
+            ArmError::NotReady(why) => why.fmt(f),
         }
     }
 }
@@ -188,7 +193,14 @@ impl std::error::Error for ArmError {
         match self {
             ArmError::EstopActive => None,
             ArmError::GateShut(shut) => Some(shut),
+            ArmError::NotReady(why) => Some(why),
         }
+    }
+}
+
+impl From<NotReady> for ArmError {
+    fn from(why: NotReady) -> Self {
+        ArmError::NotReady(why)
     }
 }
 
@@ -290,6 +302,7 @@ pub struct Bridge {
     disarm_frames: u8,
     estop: bool,
     gate: OutputGate,
+    ready: Option<ReadyGate>,
     drive_counter: Counter,
     estop_counter: Counter,
     feedback: Option<VehicleFeedback>,
@@ -308,6 +321,7 @@ impl Bridge {
             disarm_frames: 0,
             estop: false,
             gate: OutputGate::new(settings.target, settings.gate_timeout),
+            ready: None,
             drive_counter: Counter::default(),
             estop_counter: Counter::default(),
             feedback: None,
@@ -333,6 +347,22 @@ impl Bridge {
         changed.then(|| self.estop_frame())
     }
 
+    /// The same bridge, refusing to arm until the boot self-test says READY within
+    /// `timeout` (TODO 255; `require_ready`, the car). Disarming and the e-stop never wait.
+    #[must_use]
+    pub fn with_ready_gate(mut self, timeout: Duration) -> Self {
+        self.ready = Some(ReadyGate::new(timeout));
+        self
+    }
+
+    /// /safety/self_test/status: `ready` if its level is OK, its message, heard at `at`
+    /// (a steady clock). Ignored without [`Bridge::with_ready_gate`].
+    pub fn self_test(&mut self, ready: bool, message: &str, at: Instant) {
+        if let Some(gate) = self.ready.as_mut() {
+            gate.heard(ready, message, at);
+        }
+    }
+
     /// /safety/output_mux/state: the output mux's line, heard at `at` (a steady clock).
     pub fn output_mux_state(&mut self, line: &str, at: Instant) {
         self.gate.heard(line, at);
@@ -349,13 +379,17 @@ impl Bridge {
     /// # Errors
     ///
     /// [`ArmError::EstopActive`] while the e-stop is on; [`ArmError::GateShut`] while
-    /// the output mux isn't open for this bridge.
+    /// the output mux isn't open for this bridge; [`ArmError::NotReady`] while the boot
+    /// self-test hasn't said READY (with [`Bridge::with_ready_gate`]).
     pub fn arm(&mut self, arm: bool, now: Instant) -> Result<Arming, ArmError> {
         if arm && self.estop {
             return Err(ArmError::EstopActive);
         }
         if arm {
             self.gate.check(now)?;
+            if let Some(ready) = &self.ready {
+                ready.check(now)?;
+            }
         }
         self.armed = arm;
         if arm {
