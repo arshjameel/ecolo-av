@@ -13,22 +13,40 @@ Status: ⬜ not started · 🔧 started · 🟡 built, a challenger or still bei
 
 ## What is next
 
-Ben, 18 Nov: "lets do all of them ... we will test in teh car sometime soon". One helper at
-a time, each merged into `main` with a real merge (Ben's history stays), the full test
-before each push. Scores are tracked, not gates (Ben, 19 Nov: "We can get worse if we
-think there is room to improve").
+Ben, 19 Nov: "porting all the code and writing all the features left and then running the
+tests too. liek th epixi test that is. Then we can start doing like algo testing like
+diffused and stuff. start getting an idea of how the platform will work with everything
+done". So: **build first** (each batch with `tools/test.sh` and `pixi run test`, no sim
+scoring), **then score** the algorithms together. One building helper at a time; tests in
+the background; each merged with a real merge (Ben's history stays).
 
-| Order | Next step | Rows |
+### Stage 1: build everything left
+
+| Batch | What | Rows |
 |---|---|---|
-| 1 | **Our models as ONNX, tested with Core ML** (Ben, 19 Nov: bumped up; resume the helper): `measure onnx` (CPU vs Core ML: same answers, every layer on the GPU, time), the diffusion planner from Rust, FP16; TensorRT once the Orin is on JetPack 7.2 | 243 |
-| 2 | **Lanes into the costmap**, then the lane followers removed | 264 |
-| 3 | The chunks' unknown grey (205) reads back as free (small: done inline) | 263 | **Unknown map cells read back as free** (found by the map editor, 19 Nov): grey 205 is p = 0.196, under every map YAML's `free_thresh: 0.25`. `make_map.py` and `map-chunks` now write unknown as 128 (p = 0.498), as `map-drive` and the map editor do; `example_lot_amcl.pgm` remade (244,730 cells inside its obstacles had read as free; `example_lot.pgm` byte for byte the same); a test pins it | ✅ 19 Nov; AMCL scored again on the lot |
-| 4 | **Before the car**: NDT on the car (`car.launch.py`), the adaptive brake on the car, the boot self-test | 261, 258, 255 |
-| 5 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
-| 6 | Occupancy across passes, the offline pipeline as one command, the labelling loop, then the campus twin | 259, 260, 252, 253 |
-| 7 | The planner faster; reversing in a narrow street; speed hunting; the backing legs' drift | 152, 174, 189, 163 |
-| 8 | The challengers (score diffusion, 177 and 178 again with ours), then the Rust crates and a more Rust-like pass | below |
-| waits | **The car** (being upgraded, 18 Nov): the stands, the hallway, a mapping drive | 246-250, 173 |
+| 1 | **ONNX with Core ML**: `measure onnx`, the diffusion planner from Rust, FP16, TensorRT ready (in progress) | 243 |
+| 2 | **Lanes into the costmap** (yellow vs white, kerb, right lane), then the lane followers removed | 264 |
+| 3 | **Before the car**: NDT in `car.launch.py`, the adaptive brake on the car, the boot self-test that refuses to arm | 261, 258, 255 |
+| 4 | **Maps offline**: occupancy across passes, the offline pipeline as one command, 3+ drives and the 2D maps merged | 259, 260, 250 |
+| 5 | **Labels and the twin**: the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
+| 6 | **Driving**: reversing in a narrow street and in `aav_track`; the planner's checks on every core and a 1000-sample `mppi_lag` option; behaviour slows for kerbs | 174, 152, 219 |
+| 7 | **The last Python nodes to Rust**: the geofence, stop hold and goal leash (safety: shared vectors, both twins), the lane pose, the GPS heading, the street router; then the drivers (battery, radar) where worth it | Rust first |
+| 8 | **The challengers built**: smooth MPPI, jerk-limited passing, ground ring by ring, Kinematic-ICP, a tracker per kind | 212, 214-217 |
+| 9 | **Clean-up**: the last of Nav2, Ravensim's old names, the leftovers; a more Rust-like pass | 232, 241, 242, 176 |
+| test | **One full `pixi run test`** on everything | |
+
+### Stage 2: score the algorithms together
+
+The league (`measure controllers`, `measure lane`, `measure onnx`) on the lot, the campus and
+the road world, 3 runs each: diffusion, Hybrid-A* and the smooth lattice again (with ours),
+the lanes in the costmap against the old followers' numbers, NDT leading on the campus,
+AMCL, the challengers of batch 8. Scores are tracked, not gates; what clearly won't work is
+stripped (tagged `save/` first, its scores kept).
+
+### Waits for the car
+
+The car is being upgraded (18 Nov): phases 0, A-D of [the testing plan](docs/testing-plan.md)
+(246-250, 173).
 
 ## 1. The testing plan
 
