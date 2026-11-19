@@ -140,4 +140,4 @@ own ROS domain (160-177, this computer only), the load under 8 at each start.
 | `aav_detector_rs` (ONNX in Rust) builds on macOS only | on Linux (the Orin) `-DDETECTOR_RS=ON` builds it; the Python detector is the default | [ONNX](onnx.md) |
 | The kit needs the models | build the kit from a checkout with `models/` filled (`pixi run get models`), or the Orin has no detector | [Car install](car-install.md) |
 | The QEMU check is host-speed sensitive | at load 11-32 its uplink rate and stop times slipped; it now retries once, only for timings | `tools/esp32_qemu.py` |
-| Sway | ours swayed about 2 times Nav2 at their last side-by-side (15 Nov) | [0.4-rc1](release-0.4.md) |
+| Sway | in the sim, ours sways as Nav2 on the lot (0.021 against 0.018 m/s²) and less on the campus (0.099 against 0.131), 15 Nov afternoon; untested on the car (an earlier note here said 2 times: that was the morning's run) | [0.4-rc1](release-0.4.md) |

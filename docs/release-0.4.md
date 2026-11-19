@@ -12,7 +12,7 @@ first checks, what is untested there, the seven blockers.
 |---|---|
 | **Our own stack** drives by default (`stack:=ours`) | ✅ since 14 Nov: our costmap, planner, navigator, follower, behaviour, all in Rust where it is heavy |
 | **Reverse** everywhere the plan says | ✅ on the lot and the campus; a three-point turn in a 6.5 m street works, with 4-6 changes of direction where 3 are planned (TODO 174) |
-| **No oscillation** (no swaying) | 🔧 ours swayed about 2 times more than Nav2 at their last side-by-side (15 Nov; was 3-5 times); on mapped road, `path:=lane` sways least of all (TODO 167, 168) |
+| **No oscillation** (no swaying) | ✅ in the sim: at the last side-by-side (15 Nov afternoon, 2 runs each) ours swayed as Nav2 on the lot (0.021 against 0.018 m/s²) and less on the campus (0.099 against 0.131); that morning it was about 2 times Nav2's. On mapped road, `path:=lane` sways least of all. Untested on the car (TODO 167, 168) |
 | Nav2 and Gazebo only as yardsticks | ✅ both deleted early: Nav2 17 Nov ([as it was](history/nav2-as-it-was.md)), Gazebo 16 Nov ([as it was](history/gazebo-as-it-was.md)); TODO 184. Ravensim, ours, is the only simulator |
 
 ## One command per job
