@@ -279,6 +279,11 @@ bench's argument names:
                       (docs/ghost-obstacles.md)
   actuator_model:=false  the old instant car instead of the actuator model (sim_adapter;
                       vehicle.yaml's actuators:), to compare the two
+  actuators:="throttle_lag=0.3,drag=0.2"  the simulated car's own actuator numbers, over
+                      vehicle.yaml's, while every driver still reads vehicle.yaml: a known
+                      car for the hallway fits to find (car-test --hallway --sim, TODO 248)
+  wheel_noise:=0.05 wheel_slip:=0.02 noise_seed:=1  noisy, slipping wheels (Ravensim's;
+                      0: off)
   lag_scale:=2        the actuator model's throttle, brake and steering lags twice
                       vehicle.yaml's, while every driver still reads vehicle.yaml: how a
                       follower copes with a car slower than it was told (1.0: as written)
@@ -540,7 +545,9 @@ def launch_setup(context):
                 cameras=str(cameras).lower(),
                 actuator_model=arg('actuator_model'), speed_loop=speed_loop,
                 payload=arg('payload'), adaptive_brake=arg('adaptive_brake'),
-                lag_scale=arg('lag_scale'),
+                lag_scale=arg('lag_scale'), actuators=arg('actuators'),
+                wheel_noise=arg('wheel_noise'), wheel_slip=arg('wheel_slip'),
+                noise_seed=arg('noise_seed'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
                 arm_when_open_impl=vehicle.check_arm_when_open_impl(
@@ -875,6 +882,16 @@ def generate_launch_description():
         DeclareLaunchArgument('actuator_model', default_value='true',
                               description="the actuators as vehicle.yaml's actuators: say; "
                                           'false: the old instant car'),
+        DeclareLaunchArgument('actuators', default_value='',
+                              description="the simulated car's own actuator numbers over "
+                                          'vehicle.yaml\'s ("throttle_lag=0.3,drag=0.2"); the '
+                                          'drivers keep vehicle.yaml (TODO 248)'),
+        DeclareLaunchArgument('wheel_noise', default_value='0',
+                              description='m/s of noise on each wheel speed (0: off)'),
+        DeclareLaunchArgument('wheel_slip', default_value='0',
+                              description='the wheels read this share too far (0: off)'),
+        DeclareLaunchArgument('noise_seed', default_value='1',
+                              description="the sensors' noise seed"),
         DeclareLaunchArgument('lag_scale', default_value='1.0',
                               description="the actuator model's lags times this (a "
                                           'robustness test; the drivers keep vehicle.yaml)'),
