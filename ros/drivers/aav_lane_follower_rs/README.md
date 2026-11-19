@@ -87,7 +87,52 @@ fake publisher writes pixels, so use the PID with it.
 
 ## Scores
 
-Not yet scored: see TODO 262.
+`pixi run measure lane`, Ravensim on Ben's Mac (GPU), 19 Nov, **3 runs each**, round robin,
+each on its own ROS domain. Mean over the runs (range in brackets). RMS is the distance
+from the lane's centre by the simulator's truth; "settled" is the same from 15 s on, once
+the start offset is gone; flips are the turn changing side (past 0.02 rad/s). The lane was
+never lost for more than 0.3 s, and no car left the road.
+
+**Road world, straight, from 0.3 m off, 60 s at 1 m/s**
+
+| Follower | RMS cm | Settled RMS cm | Flips a minute |
+|---|---|---|---|
+| PID, Python | 6.7 (6.7-6.8) | 1.3 (1.1-1.6) | 165 |
+| PID, Rust | 6.7 (6.6-7.0) | 1.3 (0.5-2.6) | 137 |
+| pure pursuit | 8.4 (8.4-8.5) | 0.9 (0.6-1.2) | **0** |
+| Stanley | 7.7 (7.7-7.7) | **0.3** (0.3-0.3) | **0** |
+
+**Road world, from 0.3 m off, 45 s at 1.9 m/s** (`--speed 2`)
+
+| Follower | RMS cm | Settled RMS cm | Flips a minute |
+|---|---|---|---|
+| PID, Python | 7.1 (6.9-7.2) | 2.1 (1.6-2.4) | 215 |
+| PID, Rust | 7.0 (7.0-7.0) | 1.6 (1.5-1.7) | 208 |
+| pure pursuit | 8.2 (8.2-8.2) | **0.4** (0.4-0.5) | **0** |
+| Stanley | 7.7 (7.7-7.7) | **0.4** (0.3-0.5) | **0** |
+
+**The campus, Library Road (bends, a dashed centre line), 90 s at 1.5 m/s**
+
+| Follower | RMS cm | Max cm | Lost s | Flips a minute |
+|---|---|---|---|---|
+| PID, Python | 4.1 (4.0-4.2) | 16 (16-17) | 0 | 187 |
+| PID, Rust | 3.9 (3.9-4.0) | 14 (12-15) | 0 | 188 |
+| pure pursuit | **2.4** (2.1-2.7) | **8** (8-9) | 0.1 (0-0.3) | **1** |
+| Stanley | 3.0 (2.9-3.1) | 10 (9-11) | 0 | 6 |
+
+What it says:
+
+- **The Rust PID is the Python PID**: the same scores, within the runs' spread.
+- **The PID weaves**: its turn changes side about 3 times a second. It is the quickest
+  back from 0.3 m off (the road's RMS), but never settles.
+- **Pure pursuit** is the best on the campus's bends (40 % less error, half the worst
+  case) and barely moves the wheel; **Stanley** holds a straight best. Both come back
+  from 0.3 m off more slowly than the PID (a 4 m look-ahead at 1 m/s), so their road RMS
+  is worse.
+
+**The default stays `pid`**: the challengers don't win everywhere (the start offset), so
+by the league's rule they stay challengers. Pure pursuit is the one to promote once it
+comes back from an offset as fast (a shorter look-ahead near the car, TODO 262).
 
 ## How it matches the Python
 

@@ -250,7 +250,7 @@ far more pictures may do better:
 |---|---|
 | Everyday objects, stop signs included | RF-DETR (ours now), YOLO11 and YOLO26 (`detector:=yolo`), RT-DETR |
 | Anything named in words, like "traffic cone" | YOLO-World, Grounding DINO, OWLv2 |
-| Lane lines and the drivable area | YOLOPv2, TwinLiteNet |
+| Lane lines and the drivable area | Ultra-Fast-Lane-Detection v2 (the pick, trained by us: [the survey](#a-learned-lane-finder-the-survey-19-nov)), CLRNet, YOLOPv2, TwinLiteNet |
 | Distance from one camera | Depth Anything V2 |
 
 - **The fair test:** record the car's cameras once, then run each model on the same
@@ -375,6 +375,18 @@ Classic OpenCV, no model. A model can replace it later, on the same topic.
 - It publishes on `/drivers/ai/cmd_vel`, the mux's slot for a learned driver. Every other driver
   outranks it.
 - It asks for 2 m/s; ego caps it at the car's 1 m/s.
+- **In Rust by default** since 19 Nov ([aav_lane_follower_rs](../ros/drivers/aav_lane_follower_rs/README.md)):
+  the 2025-26 PID ported, the Python's commands on 2,797 shared events.
+  `lane_follower_impl:=python` runs the 2025-26 node.
+- **Two challengers** steer on the lane's centre line (the two fits' mean), from where
+  the car will be after its lag: `lane_follower:=pure_pursuit` and `lane_follower:=stanley`.
+  Their scores, 3 runs each: the package's README.
+
+| Steering | Looks at | Knows the lag? |
+|---|---|---|
+| `pid` (2025-26, the default) | the offset 3 m ahead | no |
+| `pure_pursuit` | the centre line 4-10 m ahead (more with speed) | yes |
+| `stanley` | the centre line's heading and offset at the front axle | yes |
 
 ### On the bench
 
@@ -412,6 +424,39 @@ the speed. On a campus road the lane runs from the yellow centre line to the whi
 - **Gazebo on the campus:** not diagnosed. Its lane finder ran (91 pictures in 10 s) but found
   no line in 68 % of them. A guess: Gazebo draws the paint 5 mm above the tarmac, close
   enough for its depth buffer to hide it far off. [[untested]]
+
+### A learned lane finder? The survey (19 Nov)
+
+Ben, 19 Nov: "or find a better version". Open lane detectors, their code's licence (from
+each repository), and the catch. **Not built**: it would run through ONNX (TODO 243),
+behind the same `/perception/lane/geometry`.
+
+| Model | Code licence | How it finds lanes | Speed | The catch |
+|---|---|---|---|---|
+| **Ultra-Fast-Lane-Detection v2** (Qin et al., TPAMI 2022) | MIT | a plain CNN picks, per row and column anchor, where each lane crosses | the fastest: ~300 pictures/s (ResNet-18, GPU) | a fixed number of lanes; weaker on odd shapes |
+| CLRNet (Zheng et al., CVPR 2022); CLRerNet | Apache-2.0 | lane anchors refined across feature levels | ~200/s | its NMS is a custom CUDA op: harder to export to ONNX and TensorRT |
+| LaneATT (Tabelini et al., CVPR 2021) | MIT | anchors with attention | ~250/s | the same custom NMS |
+| PolyLaneNet (Tabelini et al., 2020) | MIT | a polynomial per lane, straight out | fast | the least accurate; but its answer is our message's shape |
+| CondLaneNet (Liu et al., ICCV 2021) | Apache-2.0 | conditional instance shapes | ~200/s | more parts to export |
+| YOLOP, YOLOPv2; TwinLiteNet | MIT | segmentation: lane pixels and the drivable area | fast; TwinLiteNet tiny | pixels, not lines: our fit still needed; the drivable area is a bonus |
+
+**The datasets are the problem, not the code.** Every published set of weights was
+trained on one of these, and none has a licence we may use (`CLAUDE.md`: no non-commercial
+or unclear licences):
+
+| Dataset | Terms |
+|---|---|
+| CULane | non-commercial only; no redistribution (its page) |
+| BDD100K | its own licence, accepted at download; not plainly open |
+| TuSimple, CurveLanes | no clear licence |
+
+**The pick: Ultra-Fast-Lane-Detection v2** (MIT): a plain CNN, so it exports to ONNX and
+TensorRT with no custom ops (its repository has the export), the fastest of the lot on
+the Orin's budget, and its points per row fit into our polynomial and `LaneGeometry`
+unchanged. **Trained by us**, not from the published weights: on Ravensim's pictures,
+labelled for free from the world's lane map, then on the car's recordings through the
+labelling loop (TODO 252). CLRNet stays the accuracy challenger once its NMS is outside
+the ONNX graph. TODO 262b.
 
 ### Next
 

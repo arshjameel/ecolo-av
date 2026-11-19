@@ -7,7 +7,7 @@
 <!-- Generated from docs/packages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>What each package does</h1>
-<div class="meta">27 min read · 10 sections</div></header>
+<div class="meta">28 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -656,9 +656,16 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_lane_geometry</code></td>
 <td>perception</td>
-<td>lane keeping: a driver on <code>/drivers/ai/cmd_vel</code></td>
+<td>lane keeping: the <code>LaneGeometry</code> message, and the 2025-26 driver on <code>/drivers/ai/cmd_vel</code> (Python: the fall-back, <code>lane_follower_impl:=python</code>)</td>
 <td><span class="badge b-works">works</span> on the bench, with <code>aav_lane_finder</code></td>
 <td>2025-26 <code>Lane_Detection_ROS2</code></td>
+</tr>
+<tr>
+<td><code>aav_lane_follower_rs</code></td>
+<td>drivers</td>
+<td><code>control_interface</code> in Rust, the default (19 Nov; <code>lane_follower_impl:=python</code> falls back); the challengers <code>lane_follower:=pure_pursuit</code>, <code>stanley</code></td>
+<td><span class="badge b-works">works</span> the Python's commands on 2,797 shared events; in Ravensim's road world and on the campus (<code>measure lane</code>)</td>
+<td>new: a port of <code>aav_lane_geometry</code>'s</td>
 </tr>
 <tr>
 <td><code>aav_hud</code></td>
@@ -906,10 +913,10 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td>a bird's-eye view, sliding windows, a curve per line; the camera's place from <code>vehicle.yaml</code></td>
 </tr>
 <tr>
-<td><code>aav_lane_geometry</code>: <code>control_interface</code></td>
+<td><code>aav_lane_follower_rs</code> (or <code>aav_lane_geometry</code>): <code>control_interface</code></td>
 <td><code>/perception/lane/geometry</code></td>
 <td><code>/drivers/ai/cmd_vel</code></td>
-<td>steers back to the lane's centre, measured 3 m ahead</td>
+<td>steers back to the lane's centre, measured 3 m ahead (the PID), or on the lane's centre line (<code>lane_follower:=</code>)</td>
 </tr>
 </tbody>
 </table></div>

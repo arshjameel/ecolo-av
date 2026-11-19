@@ -94,6 +94,8 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `detector-core` |
 | ONNX; onnxscript | Apache-2.0; MIT | runs | exporting RF-DETR to ONNX (`tools/export_model.py --format onnx`) |
 | rfdetr's PostProcess and COCO class list | Apache-2.0 | ported | `detector-core`'s decode and labels, through our `detr.py` |
+| **Ultra-Fast-Lane-Detection v2**: Z. Qin, P. Zhang, X. Li, TPAMI 2022 (`cfzd/Ultra-Fast-Lane-Detection-v2`) | MIT | idea (looked at) | the pick for a learned lane finder, trained by us (TODO 262b, `docs/perception.md`) |
+| CLRNet (T. Zheng et al., CVPR 2022), CLRerNet; LaneATT (L. Tabelini et al., CVPR 2021); PolyLaneNet (L. Tabelini et al., 2020); CondLaneNet (L. Liu et al., ICCV 2021); YOLOP, YOLOPv2, TwinLiteNet | Apache-2.0; Apache-2.0; MIT; MIT; Apache-2.0; MIT | idea (looked at) | the lane detector survey (`docs/perception.md`); their published weights are trained on CULane (non-commercial), BDD100K, TuSimple or CurveLanes (not clearly open), so not used |
 
 ## Maps and routes
 
