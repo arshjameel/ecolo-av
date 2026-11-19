@@ -62,6 +62,25 @@ The real car. One launch file for every machine; a machine file picks the parts.
                            a session with no HUD screen, said in the test card)
       [bridge:=rust]      (spine_bridge's language, where the machine runs the spine: rust,
                            aav_spine_bridge; or python, aav_spine's)
+      [ndt:=false] [ndt_map:=] [ndt_chunks:=] [pose_source:=gps]
+                          (ndt:=true: NDT on the lot's saved lidar map (aav_ndt, Rust), where
+                           the machine file has the ndt part (the Orin, beside the lidar), as
+                           sim.launch.py runs it: from the start pose, the same parameters,
+                           ndt_chunks:= for the map in chunks. Needs ndt_map:= (pixi run
+                           map-drive makes it) and the lidar. Scored only, never TF.
+                           pose_source:=ndt (TODO 210): NDT leads ekf_global, the GPS checks
+                           (aav_pose_check); only with ndt:=true and ndt_map:=. The watchdog
+                           then watches gps_check and pose_check in gps's place, and the
+                           geofence's fix is /localization/pose_check/fix, as in the sim.
+                           docs/designs/2026-11-19_ndt-leads.md)
+      [adaptive_brake:=false]
+                          (true: the adaptive brake (TODO 258, docs/stopping.md section 4)
+                           in legacy_uart_bridge, after its pi speed loop and before the brake
+                           actuator: harder when the car slows less than the car model says,
+                           never above vehicle.yaml's brake: safe_max; e-stops and stale
+                           commands never pass through it. Needs actuators:=uart and
+                           legacy.yaml's speed_loop.mode pi. With actuators:=can the spine's
+                           firmware runs the speed loop: refused there, for now)
       [actuators:=uart]   (who drives the car: docs/can-plan.md. uart, the car as wired
                            today (Ben, 23 Oct; the hardware lead confirms): the ESP32,
                            through legacy_uart_bridge on the Motor Pi, and the Orin's CAN
@@ -82,7 +101,10 @@ Parts and what they start:
                   mux, the sensor watchdog (aav_safety): it stops navigation and the AI slot when
                   a sensor they need fails, or the HUD's screen (watch_hud), and they stop
                   too if it goes quiet; and the geofence (aav_safety): every program stops
-                  before the fence's edge, or with no trusted global pose. With ego,
+                  before the fence's edge, or with no trusted global pose; and the boot
+                  self-test (aav_self_test_rs, TODO 255): READY or NOT READY and why, on
+                  /safety/self_test/status, and spine_bridge refuses /spine/arm until
+                  READY (require_ready). With ego,
                   the sensor mux and the output mux
                   (aav_io_mux, target car): ego's commands reach /control/car/actuator_cmd,
                   and so the backends, only while every source is REAL
@@ -133,6 +155,8 @@ Parts and what they start:
   legacy_uart     backend with actuators:=uart: today's ESP32 over UART (the Pi wired to it)
   legacy_encoder  the 2025-26 wheel encoder over UDP (a Pico 2). Not where the spine part
                   runs: both would publish /vehicle/odom, and the output mux stops for two
+  ndt             NDT (aav_ndt) on ndt_map, only with ndt:=true: on the Orin, where the
+                  lidar's packets go
   foxglove        foxglove_bridge on port 8765 (foxglove.launch.py), for Foxglove or
                   Lichtblick on a laptop: watch only, and no raw cameras or full lidar
                   over the WiFi (docs/foxglove.md)
@@ -164,7 +188,7 @@ PARTS = ('description', 'mux', 'ego', 'teleop', 'scripted', 'drive_to_point', 'i
          'radar', 'lidar', 'battery', 'camera', 'camera_stream', 'detector', 'stop_signs',
          'radar_clusters',
          'camera_obstacles', 'lane', 'localization', 'navigation', 'spine', 'legacy_uart',
-         'legacy_encoder', 'foxglove')
+         'legacy_encoder', 'foxglove', 'ndt')
 # What a machine file holds: the parts, the detector's settings and the camera streams'.
 SECTIONS = ('parts', 'detector', 'camera_stream', 'geofence')
 # Each model format: what runs it, besides PyTorch and Ultralytics, and how to make it.
@@ -418,6 +442,35 @@ def watches_behind(settings):
     return REAR_IMAGE in extra and (not labels or 'person' in labels)
 
 
+POSE_SOURCES = ('gps', 'ndt')
+
+
+def check_pose_source(word):
+    """Return pose_source:= checked: gps (today's) or ndt (NDT leads, TODO 210)."""
+    word = word.strip().lower()
+    if word not in POSE_SOURCES:
+        raise ValueError(f'pose_source:={word}: use gps or ndt')
+    return word
+
+
+def check_ndt(ndt, ndt_map, pose_source, lidar):
+    """
+    Refuse NDT settings the car can't run, saying why (TODO 261).
+
+    ndt:=true needs its map and the lidar; pose_source:=ndt needs both and ndt:=true: with
+    no map NDT never fits, and pose_check would lead on the GPS alone while saying NDT.
+    """
+    if pose_source == 'ndt' and not (ndt and ndt_map):
+        raise ValueError('pose_source:=ndt: the car lets NDT lead only with ndt:=true and '
+                         "ndt_map:=<the lot's lidar map> (pixi run map-drive). Otherwise "
+                         'pose_source:=gps, the default (TODO 210, 261)')
+    if ndt and not ndt_map:
+        raise ValueError("ndt:=true: give NDT the lot's lidar map, ndt_map:=<its .pcd> "
+                         '(pixi run map-drive makes it)')
+    if ndt and not lidar:
+        raise ValueError('ndt:=true reads the lidar: lidar:=false leaves it nothing')
+
+
 def launch_setup(context):
     def arg(name):
         return LaunchConfiguration(name).perform(context)
@@ -441,6 +494,11 @@ def launch_setup(context):
     # Who drives the car (docs/can-plan.md): uart, today's wiring, leaves the CAN bus to
     # the sensors (spine_bridge role sensors); can, the KEFC spine (role spine).
     role = bridges.role_for(arg('actuators'))
+    if flag('adaptive_brake') and role == 'spine':
+        raise ValueError('adaptive_brake:=true: with actuators:=can the spine runs the speed '
+                         'loop in its firmware, which has no adaptive brake yet. Use '
+                         'actuators:=uart (legacy_uart_bridge, speed_loop.mode pi), or '
+                         'adaptive_brake:=false (TODO 258)')
     # Which language each switchable node runs, in one line, so car day can see it
     # (docs/car-day.md, 4f). Checked here, so a typo stops the launch before anything runs.
     impls = {'ego_impl': vehicle.check_ego_impl(arg('ego_impl')),
@@ -465,10 +523,18 @@ def launch_setup(context):
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
 
+    # NDT (TODO 261), and NDT leading (pose_source:=ndt, TODO 210): checked on every
+    # machine, as each part it touches (the watchdog, the geofence, localization, NDT
+    # itself) may run on another.
+    pose_source = check_pose_source(arg('pose_source'))
+    pose_ndt = pose_source == 'ndt'
+    ndt = flag('ndt')
+    check_ndt(ndt, arg('ndt_map').strip(), pose_source, flag('lidar'))
+
     def on(name):
         # A launch argument can switch a part off, wherever the machine file has it.
         return (bool(parts.get(name, False)) and (name != 'gps' or flag('gps'))
-                and (name != 'lidar' or flag('lidar')))
+                and (name != 'lidar' or flag('lidar')) and (name != 'ndt' or ndt))
 
     # The camera streams first: what they stream decides the detector part and what the
     # sensor watchdog watches. The detector part reads image_raw, which the streams keep
@@ -499,6 +565,7 @@ def launch_setup(context):
                                'extra_images to the other cameras only')
 
     actions = []
+    stop_zone = False   # where navigation runs its stop zone: the self-test watches it
     if on('description'):
         actions.append(include('aav_description', 'description.launch.py'))
     if on('mux'):
@@ -512,7 +579,11 @@ def launch_setup(context):
         # where this machine runs its driver (the VLP-16 sends to the Jetson only, which
         # runs the mux too; lidar:=false: none), as the stop zone and costmap need it.
         actions.append(include('aav_safety', 'watchdog.launch.py',
-                               inputs='odom,imu,local,global' + (',gps' if flag('gps') else '')
+                               inputs='odom,imu,local,global'
+                               # NDT leading: the GPS's checks warn only, pose_check's
+                               # HOLD stops (TODO 210), as sim.launch.py.
+                               + ((',gps_check' if flag('gps') else '') + ',pose_check'
+                                  if pose_ndt else (',gps' if flag('gps') else ''))
                                + (',hud' if flag('watch_hud') else '')
                                + (',lidar' if on('lidar') else '')
                                + ''.join(f',{c}_stream' for c in streaming),
@@ -532,7 +603,9 @@ def launch_setup(context):
                                radius=arg('geofence_radius'), centre_x=arg('start_x'),
                                centre_y=arg('start_y'), site=site,
                                max_speed=arg('max_speed'), gps=str(flag('gps')).lower(),
-                               stands=str(flag('stands')).lower()))
+                               stands=str(flag('stands')).lower(),
+                               fix_topic=('/localization/pose_check/fix' if pose_ndt
+                                          else '/localization/gps/odom')))
     if on('ego'):
         actions.append(include('aav_ego', 'ego.launch.py',
                                ego_impl=impls['ego_impl']))
@@ -602,14 +675,11 @@ def launch_setup(context):
                     include('aav_lane_geometry', 'lane_follower.launch.py', fake=False,
                             lane_follower_impl=impls['lane_follower_impl'])]
     if on('localization'):
-        # NDT leading (pose_source:=ndt, TODO 210) is the sim's challenger until the real
-        # lot has a lidar map (pixi run map-drive) and the car its NDT: refuse it here.
-        source = LaunchConfiguration('pose_source', default='gps').perform(context)
-        if source.strip().lower() != 'gps':
-            raise ValueError(f'pose_source:={source}: the car runs pose_source:=gps only, '
-                             'until the real lot has a lidar map and NDT (TODO 210)')
+        # NDT leading (pose_source:=ndt, TODO 210): only with NDT and its map (checked
+        # above); pose_check (aav_pose_check) then feeds ekf_global, as in the sim.
         actions.append(include('aav_localization', 'localization.launch.py',
-                               gps=flag('gps'), pose_source='gps', start_x=arg('start_x'),
+                               gps=flag('gps'), pose_source=pose_source,
+                               start_x=arg('start_x'),
                                start_y=arg('start_y'), start_yaw=arg('start_yaw'),
                                localization_health_impl=impls['localization_health_impl']))
     if on('navigation'):
@@ -626,6 +696,7 @@ def launch_setup(context):
                        and watches_behind(config.get('detector')))
         blind = vehicle.blind_behind(reversing, radar=on('radar'), lidar=on('lidar'),
                                      rear_camera=rear_camera)
+        stop_zone = on('radar') or on('lidar') or flag('ghost') or rear_camera
         if blind:
             get_logger('car.launch.py').warning(f'reversing: {blind}')
             reversing = False
@@ -645,8 +716,7 @@ def launch_setup(context):
                                lidar_impl=impls['lidar_impl'],
                                things_impl=impls['things_impl'],
                                behaviour_impl=impls['behaviour_impl'],
-                               stop_zone=(on('radar') or on('lidar') or flag('ghost')
-                                          or rear_camera),
+                               stop_zone=stop_zone,
                                camera_obstacles=on('camera_obstacles'),
                                camera_guard=rear_camera,
                                # Ours, since Nav2 went (17 Nov, TODO 184): the champions,
@@ -662,14 +732,26 @@ def launch_setup(context):
                                          'controller': vehicle.DEFAULT_CONTROLLER,
                                          'tracker': vehicle.DEFAULT_TRACKER,
                                          'lidar': on('lidar'), 'radar': on('radar'),
-                                         'voxels': bool(flag('voxels') and on('lidar'))}]))
+                                         'voxels': bool(flag('voxels') and on('lidar')),
+                                         'ndt': ndt, 'ndt_ekf': pose_ndt}]))
+    if on('ndt'):
+        # NDT on the lot's lidar map (TODO 261), as sim.launch.py runs it: from the start
+        # pose, ndt.yaml's parameters, the whole map or its chunks. On the Orin, where
+        # the lidar's packets go. Scored only unless pose_source:=ndt.
+        actions.append(include('aav_ndt', 'ndt.launch.py', use_sim_time='false',
+                               ndt_map=arg('ndt_map').strip(),
+                               ndt_chunks=arg('ndt_chunks').strip(),
+                               ndt_x=arg('start_x'), ndt_y=arg('start_y'),
+                               ndt_yaw=arg('start_yaw'), ndt_from_global='false',
+                               ndt_min_score='', ndt_min_height=''))
     # Exactly one backend: legacy_uart_bridge with actuators:=uart, the CAN spine with can.
     uart, encoder = on('legacy_uart'), on('legacy_encoder')
     if on('spine'):
         bridges.package(arg('bridge'))   # rust or python: refuse anything else now
         if installed('ros2_socketcan'):
+            # On the car, /spine/arm waits for the boot self-test's READY (TODO 255).
             actions.append(include('aav_spine', 'spine.launch.py', bridge=arg('bridge'),
-                                   role=role))
+                                   role=role, require_ready=True))
         else:
             actions += skipped('spine', 'ros2_socketcan is not installed here (SocketCAN is '
                                         'Linux only)')
@@ -683,7 +765,20 @@ def launch_setup(context):
         uart = False
     if uart or encoder:
         actions.append(include('aav_legacy', 'legacy.launch.py', uart=uart, encoder=encoder,
-                               legacy_impl=impls['legacy_impl'], rc_impl=impls['rc_impl']))
+                               legacy_impl=impls['legacy_impl'], rc_impl=impls['rc_impl'],
+                               adaptive_brake=flag('adaptive_brake')))
+    if on('mux'):
+        # The boot self-test (TODO 255), next to the mux, as the watchdog: every sensor
+        # at its rate (the watchdog's word), every actuator answering, every lock alive,
+        # the clocks in step. READY or NOT READY and why; it moves nothing. The actuators:
+        # the CAN spine's /vehicle/status (actuators:=can), or with today's UART the
+        # bridge's frames going out (it can't hear the ESP32 without the uplink).
+        actions.append(include(
+            'aav_self_test_rs', 'self_test.launch.py', use_sim_time=False,
+            self_test_actuators='status' if role == 'spine' else 'link',
+            self_test_locks='watchdog,geofence,output_gate' + (',stop_zone' if stop_zone
+                                                               else ''),
+            self_test_clocks='imu,odom' + (',gps' if flag('gps') else '')))
     if on('foxglove'):
         # On the car's network (every interface: its addresses aren't fixed yet), for
         # watching only: anyone on its WiFi reaches the bridge, so no client may publish,
@@ -813,6 +908,19 @@ def generate_launch_description():
                               description='true: the sensor watchdog stops navigation and the AI '
                                           "slot while the HUD's /hud/heartbeat is missing; "
                                           'false: a session with no HUD screen'),
+        # NDT on the car (TODO 261): off unless asked for, and only with the lot's map.
+        DeclareLaunchArgument('ndt', default_value='false',
+                              description="true: NDT on ndt_map, the lot's lidar map, where "
+                                          'the machine file has the ndt part (the Orin)'),
+        DeclareLaunchArgument('ndt_map', default_value='',
+                              description="NDT's map, a .pcd (pixi run map-drive); needed "
+                                          'with ndt:=true'),
+        DeclareLaunchArgument('ndt_chunks', default_value='',
+                              description='with ndt:=true: a folder of the map in 64 m '
+                                          'chunks (empty: the whole ndt_map)'),
+        DeclareLaunchArgument('pose_source', default_value='gps',
+                              description="gps (today's) or ndt: NDT leads ekf_global, the "
+                                          'GPS checks it; only with ndt:=true and ndt_map'),
         DeclareLaunchArgument('start_x', default_value='0.0'),
         DeclareLaunchArgument('start_y', default_value='0.0'),
         DeclareLaunchArgument('start_yaw', default_value='0.0',
@@ -834,6 +942,11 @@ def generate_launch_description():
         DeclareLaunchArgument('bridge', default_value=bridges.DEFAULT,
                               description='spine_bridge in rust (aav_spine_bridge) or python '
                                           '(aav_spine), where the machine runs the spine'),
+        # The adaptive brake on the car (TODO 258): off unless asked for.
+        DeclareLaunchArgument('adaptive_brake', default_value='false',
+                              description='true: the adaptive brake in legacy_uart_bridge, '
+                                          'after its pi speed loop (actuators:=uart, '
+                                          'speed_loop.mode pi); never above the brake safe max'),
         # The car's wiring, as Ben described it on 23 Oct (the hardware lead confirms):
         # the ESP32 through the Motor Pi's UART, the Orin's CAN bus for sensors.
         DeclareLaunchArgument('actuators', default_value=bridges.DEFAULT_ACTUATORS,

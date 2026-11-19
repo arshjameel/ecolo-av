@@ -26,6 +26,7 @@ parts:
   legacy_uart: true      # actuators:=uart: the backend
   legacy_encoder: false  # the 2025-26 Pico: the wheels are on CAN now (motor_pi.yaml)
   foxglove: true
+  ndt: true              # only with car ndt:=true ndt_map:= (TODO 261)
 
 # The detector's settings: aav_detector detector.launch.py's arguments.
 detector:

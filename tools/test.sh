@@ -60,6 +60,8 @@ if command -v cargo >/dev/null; then
   (cd ros/drivers/aav_behaviour_rs && cargo test -q --locked -p behaviour-core)
   echo "== ros/safety/aav_watchdog_rs: the sensor watchdog in Rust, the Python node's answers"
   (cd ros/safety/aav_watchdog_rs && cargo test -q --locked -p watchdog-core)
+  echo "== ros/safety/aav_self_test_rs: the boot self-test's checks and verdict (TODO 255)"
+  (cd ros/safety/aav_self_test_rs && cargo test -q --locked -p self-test-core)
   echo "== ros/io_mux/aav_io_mux_rs: the sensor mux and the output mux in Rust, the Python's answers"
   (cd ros/io_mux/aav_io_mux_rs && cargo test -q --locked -p io-mux-core)
   echo "== ros/localization/aav_localization_health_rs: localization_health in Rust, the Python's answers"
@@ -147,6 +149,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/sources/aav_camera_stream_rs -p stream-core
   rust_style ros/drivers/aav_behaviour_rs -p behaviour-core
   rust_style ros/safety/aav_watchdog_rs -p watchdog-core
+  rust_style ros/safety/aav_self_test_rs -p self-test-core
   rust_style ros/io_mux/aav_io_mux_rs -p io-mux-core
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
   rust_style ros/can_bridge/aav_legacy_rs -p legacy-bridge
@@ -181,7 +184,7 @@ if command -v cargo >/dev/null; then
     echo "== firmware/spine, no_std, for the Pico 2 (thumbv8m.main-none-eabihf)"
     (cd firmware/spine && cargo build -q --target thumbv8m.main-none-eabihf -p spine-core \
        -p aav-inputs -p wheel-encoder -p sentinel -p wheel-core -p legacy-link -p jrk-g2 \
-       -p ad5311 -p pca9555 -p mcp2515 -p ibus -p hd44780 -p spine-board \
+       -p ad5311 -p pca9555 -p mcp2515 -p ibus -p hd44780 -p spine-board -p adaptive-brake \
        && echo "builds")
     # The board programs: each a workspace of its own, built only for the Pico 2's chip.
     # Their UF2 files too, the ones to drag on: tools/elf2uf2.py checks the boot ROM's
