@@ -294,7 +294,8 @@ def topic_stats(topic: str, times: Sequence[float], sizes: Sequence[int], durati
     Return one topic's count, rate, size and gaps from its arrival times (s).
 
     The period is the expected rate's, else the median of its own; a gap is over 3 of
-    them and over 0.1 s (a 50 Hz topic 60 ms late is the computer's jitter, not a hole). Fewer messages than 80 % of expected x the recording's length: dropped.
+    them and over 0.1 s (a 50 Hz topic 60 ms late is the computer's jitter, not a hole).
+    Fewer messages than 80 % of expected x the recording's length: dropped.
     """
     count = len(times)
     rate = count / duration if duration > 0 else 0.0
