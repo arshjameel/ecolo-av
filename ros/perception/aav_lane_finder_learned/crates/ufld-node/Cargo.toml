@@ -1,0 +1,30 @@
+[package]
+name = "ufld-node"
+description = "lane_finder, learned: the model's lane lines in the front camera's pictures, as the classic lane_finder's ROS 2 topics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "lane_finder"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+lane-core = { path = "../../../aav_lane_finder_rs/crates/lane-core" }
+ufld-core = { path = "../ufld-core", features = ["ort"] }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"
+
+# A Mac: Core ML too (its GPU and Neural Engine).
+[target.'cfg(target_os = "macos")'.dependencies]
+ufld-core = { path = "../ufld-core", features = ["ort", "coreml"] }
+
+[features]
+# The Orin: cargo build --features tensorrt (CMake: -DLANE_LEARNED_FEATURES=tensorrt). Untested.
+cuda = ["ufld-core/cuda"]
+tensorrt = ["ufld-core/tensorrt"]

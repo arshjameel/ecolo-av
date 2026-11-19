@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import lane_data as L  # noqa: E402
+import lane_data as L  # noqa: E402, I100
 
 CAM = L.Camera(343.0, 343.0, 320.0, 180.0, (1.75, 0.29, 1.55), (0.0, 0.0, 0.0))
 ROAD = [L.Paint(L.densify([(-20.0, y), (100.0, y)]), L.WHITE) for y in (1.75, -1.75)]
@@ -108,3 +108,20 @@ def test_offset_line_matches_the_campus_worlds():
     cw = pytest.importorskip('campus_world', reason='campus_world needs cv2 and aav_carla')
     pts = [(0.0, 0.0), (10.0, 0.0), (20.0, 5.0), (25.0, 15.0)]
     assert np.allclose(L.offset_line(pts, 1.75), cw.offset_line(pts, 1.75))
+
+
+def test_a_line_carried_on_by_the_next_roads_paint_is_one_line():
+    # The left line cut in two at x = 6 m (the lane map's roads change there).
+    paint = [L.Paint(L.densify([(-20.0, 1.75), (6.0, 1.75)]), L.WHITE),
+             L.Paint(L.densify([(6.0, 1.75), (100.0, 1.75)]), L.WHITE), ROAD[1]]
+    cols, _, gt = L.label(paint, (0.0, 0.0, 0.0), CAM)
+    whole, _, _ = L.label(ROAD, (0.0, 0.0, 0.0), CAM)
+    assert np.allclose(np.nan_to_num(cols, nan=-1), np.nan_to_num(whole, nan=-1))
+    assert np.isnan(cols[0]).all()
+
+
+def test_grass_ahead_is_not_tarmac():
+    tarmac = np.full((144, 480, 3), 90, np.uint8)
+    grass = tarmac.copy()
+    grass[..., 1] = 140
+    assert L.on_tarmac(tarmac) and not L.on_tarmac(grass)

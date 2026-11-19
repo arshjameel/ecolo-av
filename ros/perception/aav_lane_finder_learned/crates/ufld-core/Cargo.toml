@@ -1,0 +1,30 @@
+[package]
+name = "ufld-core"
+description = "The learned lane finder (UFLD v2's row anchors, our own model) in plain Rust, no ROS: the picture in, LaneGeometry's lane out, through lane-core's geometry and fits"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The lens, the mount, Picture, the fit and the lane: the classic finder's, so both give the
+# same polynomials the same way.
+lane-core = { path = "../../../aav_lane_finder_rs/crates/lane-core" }
+# The model's JSON beside the .onnx (MIT OR Apache-2.0).
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# ONNX Runtime (MIT) through pyke's ort (MIT OR Apache-2.0), pinned as the detector's, and
+# the detector's session builder (the provider by name, its cache, its coverage).
+ort = { version = "=2.0.0-rc.15", optional = true }
+onnx-session = { path = "../../../aav_detector_rs/crates/onnx-session", optional = true }
+
+[dev-dependencies]
+png = "0.18"
+
+[features]
+default = []
+ort = ["dep:ort", "dep:onnx-session"]
+# Execution providers: coreml (a Mac), cuda and tensorrt (the Orin: untested).
+coreml = ["ort", "onnx-session/coreml"]
+cuda = ["ort", "onnx-session/cuda"]
+tensorrt = ["ort", "onnx-session/tensorrt"]

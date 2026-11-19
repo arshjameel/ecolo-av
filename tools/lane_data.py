@@ -9,7 +9,8 @@ For each world (the road world, and the campus if `maps/campus/` is made: `pixi 
 campus`) it picks car poses on the painted roads (anywhere across the tarmac, turned up to
 0.25 rad from the road, both ways), draws the front left camera at each one with
 `sim_cameras --poses` (no ROS: Bevy, offscreen), and labels each picture from the lane
-map, with no hand work:
+map, with no hand work. A picture with grass, not tarmac, just ahead is left out (a road
+in the lane map the world draws no tarmac for).
 
   rows      ROWS: the picture rows the model reads (row anchors, UFLD v2's idea)
   cols      for each of the 4 lines (left of the car's lane's left, its left, its right,
@@ -80,6 +81,7 @@ CROSSING = math.radians(25.0)     # a line more turned than this from the car's 
 CROSS_VIEW = (2.0, 45.0, 15.0)    # ...in x from, x to, |y| (m) leaves the pose out
 END_MARGIN = 6.0                  # m: no pose this near a road's end
 VIEW_X, VIEW_Y = 150.0, 40.0      # m: the paint looked at, ahead and either side
+JOIN_GAP = 1.0                    # m: one line's end this near another's start carries it on
 
 
 @dataclass(frozen=True)
@@ -104,7 +106,7 @@ class Paint:
 
 def load_camera(name: str = 'front_left', cameras: Path = CAMERAS,
                 vehicle: Path = VEHICLE) -> Camera:
-    """The camera's lens (cameras.yaml) and mount (vehicle.yaml)."""
+    """Return the camera's lens (cameras.yaml) and mount (vehicle.yaml)."""
     spec = next(c for c in yaml.safe_load(cameras.read_text())['cameras'] if c['name'] == name)
     mount = yaml.safe_load(vehicle.read_text())['sensors'][spec['mount']]
     f = float(spec['focal_px'])
@@ -113,7 +115,7 @@ def load_camera(name: str = 'front_left', cameras: Path = CAMERAS,
 
 
 def rotation(rpy: Sequence[float]) -> np.ndarray:
-    """The camera's axes into base_link's (lane-core's `rotation`)."""
+    """Return the matrix from the camera's axes to base_link's (lane-core's `rotation`)."""
     roll, pitch, yaw = rpy
     sr, cr = math.sin(roll), math.cos(roll)
     sp, cp = math.sin(pitch), math.cos(pitch)
@@ -124,7 +126,7 @@ def rotation(rpy: Sequence[float]) -> np.ndarray:
 
 
 def project(points: np.ndarray, cam: Camera) -> np.ndarray:
-    """(n, 3) base_link points to (n, 2) pixels; NaN behind the lens (lane-core's `project`)."""
+    """Project (n, 3) base_link points to (n, 2) pixels; NaN behind the lens (lane-core's)."""
     c = (points - np.asarray(cam.xyz)) @ rotation(cam.rpy)
     ox, oy, oz = -c[:, 1], -c[:, 2], c[:, 0]
     out = np.full((len(points), 2), np.nan)
@@ -135,7 +137,7 @@ def project(points: np.ndarray, cam: Camera) -> np.ndarray:
 
 
 def ground(uv: np.ndarray, cam: Camera) -> np.ndarray:
-    """(n, 2) pixels to (n, 2) base_link points on the ground (z = 0); NaN above the horizon."""
+    """Put (n, 2) pixels on the flat road, z = 0, in base_link (m); NaN above the horizon."""
     uv = np.atleast_2d(uv)
     ox = (uv[:, 0] - cam.cx) / cam.fx
     oy = (uv[:, 1] - cam.cy) / cam.fy
@@ -145,7 +147,7 @@ def ground(uv: np.ndarray, cam: Camera) -> np.ndarray:
 
 
 def offset_line(points, d):
-    """A line moved d m to its left: tools/campus_world.py's `offset_line` (mitred corners)."""
+    """Return a line moved d m to its left: campus_world.py's `offset_line` (mitred)."""
     pts = [p for i, p in enumerate(points) if i == 0 or math.dist(p, points[i - 1]) > 1e-6]
     if len(pts) < 2:
         return list(pts)
@@ -169,7 +171,7 @@ def offset_line(points, d):
 
 
 def densify(points, step: float = 0.25) -> np.ndarray:
-    """A polyline with a point every `step` m or less."""
+    """Return a polyline with a point every `step` m or less."""
     pts = np.asarray(points, dtype=float)
     out = [pts[:1]]
     for a, b in zip(pts, pts[1:]):
@@ -179,7 +181,7 @@ def densify(points, step: float = 0.25) -> np.ndarray:
 
 
 def painted(lanes_yaml: Path, centre: bool) -> Tuple[List[dict], List[Paint]]:
-    """The roads in a lane map, and their paint: white edge lines; a yellow centre if `centre`."""
+    """Return a lane map's roads and their paint: white edges; a yellow centre if `centre`."""
     roads = yaml.safe_load(Path(lanes_yaml).read_text())['roads']
     paint = []
     for road in roads:
@@ -202,7 +204,7 @@ def to_base(points: np.ndarray, pose: Sequence[float]) -> np.ndarray:
 
 
 def runs(base: np.ndarray, x_min: float) -> List[np.ndarray]:
-    """The line's pieces in view (x_min to VIEW_X ahead, VIEW_Y either side), each rising in x."""
+    """Return the line's pieces in view (x_min to VIEW_X, VIEW_Y each side), rising in x."""
     if len(base) < 2:
         return []
     ok = (base[:, 0] >= x_min) & (base[:, 0] < VIEW_X) & (np.abs(base[:, 1]) < VIEW_Y)
@@ -220,19 +222,46 @@ def runs(base: np.ndarray, x_min: float) -> List[np.ndarray]:
 
 
 def ahead_pieces(base: np.ndarray, x_min: float) -> List[np.ndarray]:
-    """The line's pieces ahead of x_min, rising in x, whichever way the line was drawn."""
+    """Return the line's pieces ahead of x_min, rising in x, whichever way it was drawn."""
     return runs(base, x_min) + runs(base[::-1], x_min)
 
 
 def y_at(piece: np.ndarray, x: float) -> float:
-    """The piece's y at x (m), NaN outside it."""
+    """Return the piece's y at x (m), NaN outside it."""
     if x < piece[0, 0] or x > piece[-1, 0]:
         return math.nan
     return float(np.interp(x, piece[:, 0], piece[:, 1]))
 
 
+def joined(piece: np.ndarray, colour: int, pieces, gap: float = JOIN_GAP) -> np.ndarray:
+    """
+    Return the piece with the pieces of the same paint that carry it on (another road's).
+
+    Lane maps cut a road where its name or width changes; the paint runs on.
+    """
+    for _ in range(8):
+        grown = False
+        for other, c in pieces:
+            if c != colour or other is piece:
+                continue
+            if np.hypot(*(other[-1] - piece[0])) < gap and other[-1, 0] <= piece[0, 0]:
+                piece, grown = np.concatenate([other, piece]), True
+            elif np.hypot(*(other[0] - piece[-1])) < gap and other[0, 0] >= piece[-1, 0]:
+                piece, grown = np.concatenate([piece, other]), True
+        if not grown:
+            break
+    return piece
+
+
+def on_tarmac(picture: np.ndarray) -> bool:
+    """Return True if the road just ahead is tarmac (grey), not grass. A crop, as `crop` gives."""
+    h, w = picture.shape[:2]
+    patch = picture[h - h // 6:, int(w * 0.4):int(w * 0.6)].reshape(-1, 3).astype(float).mean(0)
+    return patch[1] - (patch[0] + patch[2]) / 2.0 < 8.0
+
+
 def crossing(paint: Sequence[Paint], pose) -> bool:
-    """Does a line run across the car's way, in view?"""
+    """Return True if a line runs across the car's way, in view."""
     x0, x1, ymax = CROSS_VIEW
     for line in paint:
         b = to_base(line.points, pose)
@@ -256,12 +285,14 @@ def label(paint: Sequence[Paint], pose, cam: Camera):
     towards a line still has that line on its own side.
     """
     near_x = cam.xyz[0] + 0.5
+    pieces = [(piece, line.colour) for line in paint
+              for piece in ahead_pieces(to_base(line.points, pose), near_x)]
     lines = []          # (y where it comes into view, piece, colour)
-    for line in paint:
-        b = to_base(line.points, pose)
-        for piece in ahead_pieces(b, near_x):
-            if piece[0, 0] <= SLOT_X and piece[-1, 0] > SLOT_X + 2.0:
-                lines.append((float(piece[0, 1]), piece, line.colour))
+    for piece, colour in pieces:
+        piece = joined(piece, colour, pieces)
+        if piece[0, 0] <= SLOT_X and piece[-1, 0] > SLOT_X + 2.0 and \
+                not any(np.array_equal(piece, ln[1]) for ln in lines):
+            lines.append((float(piece[0, 1]), piece, colour))
     left = sorted((ln for ln in lines if ln[0] > 0), key=lambda ln: ln[0])
     right = sorted((ln for ln in lines if ln[0] <= 0), key=lambda ln: -ln[0])
     slots = [left[1] if len(left) > 1 else None, left[0] if left else None,
@@ -290,7 +321,7 @@ def label(paint: Sequence[Paint], pose, cam: Camera):
 
 def sample_poses(roads: Sequence[dict], n: int, rng: random.Random, paint: Sequence[Paint],
                  tries: int = 20) -> List[Tuple[float, float, float, int]]:
-    """n poses (x, y, yaw, road index) across the painted roads' tarmac, none at a crossing."""
+    """Return n poses (x, y, yaw, road) across the painted roads' tarmac, none at a crossing."""
     lengths = [sum(math.dist(a, b) for a, b in zip(r['points'], r['points'][1:])) for r in roads]
     usable = [i for i, length in enumerate(lengths) if length > 2 * END_MARGIN + 1.0]
     weights = [lengths[i] for i in usable]
@@ -323,7 +354,7 @@ def sample_poses(roads: Sequence[dict], n: int, rng: random.Random, paint: Seque
 def decode(loc: np.ndarray, exist: np.ndarray, threshold: float = 0.5,
            window: int = 1) -> np.ndarray:
     """
-    The model's answers to each line's column (px) at each row; NaN where it sees none.
+    Return each line's column (px) at each row from the model's answers; NaN for none.
 
     loc: (CELLS, R, 4) logits; exist: (2, R, 4) logits. The column is the softmax's mean over
     the best cell and `window` cells each side (UFLD v2's local expectation).
@@ -346,7 +377,7 @@ def decode(loc: np.ndarray, exist: np.ndarray, threshold: float = 0.5,
 
 def fit(points: np.ndarray, x_min: float, x_max: float, min_points: int = 4) -> Optional[
         np.ndarray]:
-    """y = a x² + b x + c through the ground points between x_min and x_max; None if too few."""
+    """Fit y = a x² + b x + c through the ground points from x_min to x_max; None if too few."""
     keep = points[(points[:, 0] >= x_min) & (points[:, 0] <= x_max)]
     keep = keep[~np.isnan(keep).any(axis=1)]
     if len(keep) < min_points or np.ptp(keep[:, 0]) < 2.0:
@@ -370,7 +401,7 @@ def render(binary: Path, world: Path, poses: Sequence, out: Path, log: Path):
 
 
 def crop(png: Path) -> np.ndarray:
-    """A saved picture as the model takes it: rows CROP_TOP.., INPUT_W x INPUT_H, RGB."""
+    """Return a saved picture as the model takes it: rows CROP_TOP.., INPUT_W x INPUT_H, RGB."""
     from PIL import Image
     with Image.open(png) as im:
         im = im.convert('RGB').crop((0, CROP_TOP, WIDTH, HEIGHT))
@@ -378,7 +409,7 @@ def crop(png: Path) -> np.ndarray:
 
 
 def held_out(world: str, road: int, rng: random.Random) -> int:
-    """1 for the scores: the campus's every seventh road (never trained on), and 15 % of the rest."""
+    """Return 1 for the scores: the campus's every 7th road (never trained on); 15 % else."""
     if world == 'campus':
         return int(road % 7 == 3)
     return int(rng.random() < 0.15)
@@ -419,9 +450,14 @@ def main(argv=None) -> int:
         poses = sample_poses(roads, n, rng, paint)
         pictures = out / f'png-{name}'
         render(args.sim_cameras, world, poses, pictures, log)
+        grass = 0
         for k, pose in enumerate(poses):
+            picture = crop(pictures / f'front_left_{k:05d}.png')
+            if not on_tarmac(picture):
+                grass += 1      # a road in the lane map the world draws no tarmac for
+                continue
             c, colour, gt = label(paint, pose[:3], cam)
-            images.append(crop(pictures / f'front_left_{k:05d}.png'))
+            images.append(picture)
             cols.append(c)
             colours.append(colour)
             gts.append(gt)
@@ -429,7 +465,8 @@ def main(argv=None) -> int:
             world_ids.append(wi)
             poses_all.append(pose[:3])
         shutil.rmtree(pictures)
-        print(f'{name}: {len(poses)} pictures in {time.time() - t0:.0f} s')
+        print(f'{name}: {len(poses) - grass} pictures ({grass} on grass left out) in '
+              f'{time.time() - t0:.0f} s')
     np.save(out / 'images.npy', np.stack(images))
     np.savez_compressed(out / 'labels.npz', cols=np.stack(cols), colour=np.stack(colours),
                         gt_y=np.stack(gts), held=np.array(held), world=np.array(world_ids),
@@ -443,7 +480,7 @@ def main(argv=None) -> int:
 
 
 def meta(cam: Camera, worlds: Sequence[str]) -> dict:
-    """What the model was made for: the node reads this beside the .onnx."""
+    """Return what the model was made for: the node reads this beside the .onnx."""
     return {'width': WIDTH, 'height': HEIGHT, 'crop_top': CROP_TOP, 'input_w': INPUT_W,
             'input_h': INPUT_H, 'rows': list(ROWS), 'cells': CELLS, 'lanes': list(LANES),
             'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],

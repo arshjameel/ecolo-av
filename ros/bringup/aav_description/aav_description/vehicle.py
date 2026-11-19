@@ -621,8 +621,11 @@ def check_arm_when_open_impl(impl):
 # it: lane:=true, lane_pose:=true, the car's lane part; lane_finder_impl:=): rust
 # (aav_lane_finder_rs, the default since Ben, 18 Nov: "it helps the car stay on the correct
 # side"; the same node name, topics, parameters and lanes, no OpenCV) or python
-# (aav_lane_finder, the fallback). Each one's package.
-LANE_FINDER_IMPLS = {'python': 'aav_lane_finder', 'rust': 'aav_lane_finder_rs'}
+# (aav_lane_finder, the fallback); or learned (aav_lane_finder_learned, a challenger, TODO
+# 262b: our UFLD-v2-style model through ONNX Runtime, the same message; needs
+# models/lane-ufld.onnx). Each one's package.
+LANE_FINDER_IMPLS = {'python': 'aav_lane_finder', 'rust': 'aav_lane_finder_rs',
+                     'learned': 'aav_lane_finder_learned'}
 DEFAULT_LANE_FINDER_IMPL = 'rust'
 
 

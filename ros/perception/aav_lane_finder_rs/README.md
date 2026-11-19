@@ -23,10 +23,10 @@ SVD. So it builds anywhere `cargo` does, the car kit included, with nothing in C
 
 What it does, step by step, and every parameter: `aav_lane_finder`'s README.
 
-**A learned finder, later** (19 Nov survey, `docs/perception.md`, "A learned lane
-finder?"): Ultra-Fast-Lane-Detection v2 (MIT), trained by us on Ravensim's and the car's
-pictures (published weights come from datasets we may not use), through ONNX (TODO 243),
-behind the same topic. TODO 262b.
+**A learned finder, the challenger** (TODO 262b): [aav_lane_finder_learned](../aav_lane_finder_learned/README.md),
+`lane_finder_impl:=learned`, our UFLD-v2-style model through ONNX, behind the same topic.
+It uses this package's `lane-core` for the lens, the mount and the fits (`Picture::rgb`
+and `Distortion::apply` are public for it).
 
 ## Interface
 

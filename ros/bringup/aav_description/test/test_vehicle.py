@@ -1027,7 +1027,9 @@ def test_lane_finder_impl_is_rust_or_python():
     # Ben, 18 Nov: the lane finder in Rust, the default; lane_finder_impl:=python falls back.
     assert vehicle.DEFAULT_LANE_FINDER_IMPL == 'rust'
     assert vehicle.LANE_FINDER_IMPLS == {'python': 'aav_lane_finder',
-                                         'rust': 'aav_lane_finder_rs'}
+                                         'rust': 'aav_lane_finder_rs',
+                                         'learned': 'aav_lane_finder_learned'}
+    assert vehicle.check_lane_finder_impl('learned') == 'learned'
     assert vehicle.check_lane_finder_impl(' Python ') == 'python'
     with pytest.raises(ValueError, match='lane_finder_impl:=c'):
         vehicle.check_lane_finder_impl('c')

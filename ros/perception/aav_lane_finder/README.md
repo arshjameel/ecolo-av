@@ -14,7 +14,9 @@ For each picture:
 4. fit y = a x² + b x + c per line, in `base_link` metres;
 5. work out the car's offset from the lane's centre, the lane width and each radius.
 
-A model can replace it later, behind the same topic.
+A model can replace it, behind the same topic: the learned finder,
+[aav_lane_finder_learned](../aav_lane_finder_learned/README.md) (`lane_finder_impl:=learned`,
+a challenger).
 
 **Its Rust twin runs by default** since 18 Nov: [aav_lane_finder_rs](../aav_lane_finder_rs/README.md),
 the same node, topics, parameters and lanes, without OpenCV, at a fifth of the CPU.
