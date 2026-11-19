@@ -99,9 +99,9 @@ def yaw_of(q):
 
 class ActuatorTest(Node):
 
-    def __init__(self, sim):
-        super().__init__('actuator_test',
-                         parameter_overrides=[Parameter('use_sim_time', value=sim)])
+    def __init__(self, sim, name='actuator_test'):
+        # name: car_test runs its own node beside an actuator_test it starts.
+        super().__init__(name, parameter_overrides=[Parameter('use_sim_time', value=sim)])
         self.v = dict.fromkeys(reports.COLUMNS, NAN)   # the latest of everything
         self.arrived = {}                              # t_* column -> arrival (s, clock)
         self.odom_time = None
