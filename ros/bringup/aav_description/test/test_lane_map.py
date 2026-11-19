@@ -4,8 +4,9 @@ from collections import namedtuple
 import math
 
 from aav_description.lane_map import check_lane_graph, lanelet2_beside, planner_block
+from aav_description.lane_map import check_lane_source, LaneMap, lanes_block, Road
 from aav_description.lane_map import costmap_block, from_dict, lane_line, lane_offset
-from aav_description.lane_map import LaneMap, Road, with_edges
+from aav_description.lane_map import with_edges
 from aav_description.road_ahead import build
 from aav_description.stop_law import from_car_model
 import pytest
@@ -145,6 +146,23 @@ def test_the_costmap_block_carries_every_road_as_the_file_has_it():
     assert block['roads'][1] == {'name': 'b', 'points': [[0.0, 5.0], [10.0, 5.0], [20.0, 8.0]],
                                  'width': 4.5, 'lanes': 1, 'oneway': True, 'edge_inset': 0.4}
     assert block['roads'][0]['lanes'] == 0
+
+
+def test_the_lanes_block_by_its_source():
+    # TODO 264: costmap-node's lane_sources and camera_from read these keys.
+    lanes = from_dict(ROAD_WORLD)
+    assert lanes_block(lanes) == dict(costmap_block(lanes), source='map')
+    camera = lanes_block(None, 'camera')
+    assert camera == {'roads': [], 'source': 'camera',
+                      'camera': {'topic': '/perception/lane/geometry'}}
+    both = lanes_block(lanes, 'both')
+    assert both['roads'] == costmap_block(lanes)['roads'] and both['source'] == 'both'
+    assert lanes_block(None, 'both')['roads'] == []
+    with pytest.raises(ValueError):
+        lanes_block(None, 'map')
+    assert check_lane_source('') == 'map'
+    with pytest.raises(ValueError):
+        check_lane_source('radar')
 
 
 def test_a_pass_keeps_the_routes_line_and_opens_the_left_soft_edge():

@@ -2,7 +2,8 @@ import math
 
 from aav_lane_finder.birds_eye import BirdsEye, Grid, Lens, Mount
 from aav_lane_finder.lane_lines import (draw, lane_from, LaneFinder, Line, MAX_RADIUS,
-                                        paint_mask, Settings, STRAIGHT)
+                                        paint_mask, paint_of, PAINT_UNKNOWN, PAINT_WHITE,
+                                        PAINT_YELLOW, Settings, STRAIGHT)
 import numpy as np
 from scenes import BENCH_CAMERA, picture
 
@@ -30,6 +31,16 @@ def test_a_straight_lane_with_the_car_in_the_middle():
     assert abs(lane.left.c - 1.75) < 0.05 and abs(lane.right.c + 1.75) < 0.05
     assert lane.mean_radius > STRAIGHT and lane.curve_direction == 0.0
     assert abs(lane.steering_hint) < 0.01
+
+
+def test_each_line_says_its_paint():
+    lane = find(yellow=('left',))
+    assert (lane.left_paint, lane.right_paint) == (PAINT_YELLOW, PAINT_WHITE)
+    lane = find(lines=('right',))
+    assert (lane.left_paint, lane.right_paint) == (PAINT_UNKNOWN, PAINT_WHITE)
+    # Warm light on white paint is still white; a grey picture's lines are white.
+    assert paint_of(np.array([[200, 230, 240]] * 4), SETTINGS) == PAINT_WHITE
+    assert paint_of(np.empty((0, 3)), SETTINGS) == PAINT_UNKNOWN
 
 
 def test_an_offset_car_left_of_the_centre_is_plus():

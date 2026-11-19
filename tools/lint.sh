@@ -8,9 +8,7 @@ OURS=(ros/bringup/aav_bringup ros/bringup/aav_description ros/bringup/aav_run_in
       ros/command_mux ros/io_mux ros/safety ros/sources/aav_sensors ros/sources/aav_camera_stream tools firmware/can firmware/spine/crates/legacy-link/gen_vectors.py
       ros/perception/aav_detector/aav_detector ros/perception/aav_detector/launch
       ros/perception/aav_detector/test ros/perception/aav_detector/setup.py ros/sim/aav_bench
-      ros/perception/aav_lane_finder ros/perception/aav_lane_geometry/scripts/lane_speed.py
-      ros/perception/aav_lane_geometry/scripts/lane_follow.py
-      ros/perception/aav_lane_geometry/test
+      ros/perception/aav_lane_finder
       ros/hud/aav_hud/launch ros/perception/aav_radar_clusters/launch
       ros/perception/aav_radar_clusters/test ros/perception/aav_voxels
       ros/perception/aav_voxels_rs/test ros/perception/aav_lidar_rs ros/perception/aav_things_rs

@@ -42,7 +42,7 @@ behind the same topic. TODO 262b.
 | Module | Holds | From |
 |---|---|---|
 | `birds_eye` | `Lens`, `Distortion`, `Mount`, `Grid`, `BirdsEye` (`warp`, `nearest_seen`), `project`, `rotation` | `birds_eye.py`; OpenCV's `projectPoints` and fixed-point `remap` |
-| `lines` | `Settings`, `Line`, `Lane`, `Window`, `Mask`, `View`, `LaneFinder`, `paint_mask`, `starts`, `follow`, `fit_line`, `lane_from`, `centre_y` | `lane_lines.py`; numpy's `polyfit`, `convolve`, `linspace` |
+| `lines` | `Settings`, `Line`, `Paint`, `paint_of`, `Lane`, `Window`, `Mask`, `View`, `LaneFinder`, `paint_mask`, `starts`, `follow`, `fit_line`, `lane_from`, `centre_y` | `lane_lines.py`; numpy's `polyfit`, `convolve`, `linspace` |
 | `draw` | `draw`, `Drawing`: the debug picture | `lane_lines.py`'s `draw` |
 | `picture` | `Picture` (borrowed, any stride), `Encoding` (an enum), `Bev` | new |
 | `font` | a 5 x 7 font: the characters the debug picture writes | new |
@@ -64,14 +64,14 @@ both languages share, so the PNGs stay small.
 
 | Pictures | What |
 |---|---|
-| made up (`aav_lane_finder`'s `test/scenes.py`) | straight, offset, turned, curved left, right and tight, dashed, dashed on a curve, one side missing (each side), no lines, night (found) and too dark (not found), a wide lane, noise on three of them; a run of 20 that teaches a 3 m lane, then one line; a camera higher and tilted, one turned and rolled; a `plumb_bob` lens and a `rational_polynomial` one; other settings and grid |
+| made up (`aav_lane_finder`'s `test/scenes.py`) | straight, offset, turned, curved left, right and tight, dashed, dashed on a curve, one side missing (each side), a yellow line (each side), no lines, night (found) and too dark (not found), a wide lane, noise on three of them; a run of 20 that teaches a 3 m lane, then one line; a camera higher and tilted, one turned and rolled; a `plumb_bob` lens and a `rational_polynomial` one; other settings and grid |
 | Ravensim | front left camera frames, University Drive (`test/capture_frames.py`) |
 
 What must agree, and how closely: what matters for driving.
 
 | What | Allowed | Largest difference seen |
 |---|---|---|
-| each line found or not, the curve's direction | the same | the same |
+| each line found or not, its paint, the curve's direction | the same | the same |
 | offset, lane width, the width it remembers | 2 cm | 7e-15 m |
 | each line's heading at the look-ahead, steering hint | 0.5° | 2e-15 rad |
 | each line's curvature | 0.001 1/m | 3e-16 1/m |

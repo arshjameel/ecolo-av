@@ -118,6 +118,7 @@ law, unless `speed_loop_model:=` names another (sim and bench). `tracker:=mpc_la
 | `smoother:=own` (the only one since 17 Nov) | our own velocity smoother (Rust) in Nav2's `velocity_smoother`'s place: Nav2's speed limits, and the turn rate from where the wheels can be (the steering's rate and full lock). 8 Nov, test lot: the same legs as Nav2's, ego clipped 0-0.1 % of the steering against 9-15 % ([page](own-smoother.md)) |
 
 | `behaviour:=false` | no behaviour planner. On by default in the sim (`stack:=ours`; off with `stack:=best`): a speed cap before a stop sign, an obstacle, the fence and the goal ([page](stopping.md#2-the-behaviour-planner)) |
+| `lanes:=ramp` / `camera` / `both` | the lanes layer in our global costmap (`lane_costs:=true`), a challenger, off by default. `ramp`: the lane map's roads; `camera`: the same costs from the lane finder's lines, yellow or white (`lane_source:=camera`, TODO 264; it starts the lane finder): the kerb high, the centre line and oncoming lane medium, the right lane's centre low, never a wall; `both`: the lane map wins where it has a road ([page](own-costmap.md#the-lanes-from-the-camera-19-nov-todo-264)) |
 | `lane_map:=world` | with `behaviour:=true`: the road ahead's line on the right lane's centre, with its edges, from the world's lane map (the road world's, or the campus's `maps/campus/lanes.yaml`); or a `lanes.yaml`'s path. Off by default: the line is `/plan`'s |
 | `payload:=150`, `adaptive_brake:=true` | kg aboard the modelled car; the brake that learns it stops too slowly (off by default; not with `spine` or `esp32`: [page](stopping.md#4-a-heavier-car-the-adaptive-brake)) |
 | `plan_around:=false` | the planner sees only the map, so the car stops for an obstacle (default `true`: it plans round) |
@@ -132,9 +133,8 @@ swap an algorithm. The rest:
 |---|---|---|
 | `nav`, `rviz`, `gui`, `chase_camera`, `arm`, `watchdog`, `actuator_model` | navigation, RViz, the simulator's window, the chase camera, arming the spine, the sensor watchdog, the actuator model | `true` |
 | `teleop`, `hud`, `map`, `foxglove` | a joystick here, the HUD, the map window, the Foxglove bridge | `false` |
-| `perception`, `lane`, `camera_obstacles`, `faults` | the detector, lane keeping (`true` or `fake`), boxes into the costmap, the camera fault path (worlds with cameras) | `false` |
-| `lane_follower` | with `lane`: how lane keeping steers: `pid` (the 2025-26 PID), or the Rust challengers `pure_pursuit`, `stanley` ([scores](../ros/drivers/aav_lane_follower_rs/README.md#scores)) | `pid` |
-| `lane_follower_impl`, `lane_finder_impl` | with `lane`: the lane follower and the lane finder in `rust` or `python` | `rust` |
+| `perception`, `lane`, `camera_obstacles`, `faults` | the detector, the lane finder alone (`true`), boxes into the costmap, the camera fault path (worlds with cameras) | `false` |
+| `lane_finder_impl` | with `lane` or `lanes:=camera`: the lane finder in `rust` or `python`. `lane_follower`, `lane_follower_impl` and `lane:=fake` went with the lane followers on 19 Nov ([their scores](history/lane-followers.md)) | `rust` |
 | `spine`, `esp32`, `esp32_loop`, `bridge` | the spine or today's ESP32 in the loop; `pi` or `open`; `rust` or `python` | `false`, `false`, `pi`, `rust` |
 | `start_x`, `start_y`, `start_yaw` | where the car starts (m, rad) | `0.0` |
 | `geofence_radius` | the fence's circle (m) | `200.0` |

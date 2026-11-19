@@ -6,8 +6,10 @@ Subscribes  /sensors/camera/front_left/image_raw    sensor_msgs/Image (reliable,
             /sensors/camera/front_left/camera_info  sensor_msgs/CameraInfo: the lens's focal
                                                     length, centre and distortion
 Publishes   /perception/lane/geometry               aav_lane_geometry/LaneGeometry, one per
-                                                    picture, in base_link: control_interface
-                                                    steers by it
+                                                    picture, in base_link, each line's
+                                                    paint (white or yellow) too: the
+                                                    costmap's camera lanes and lane_pose
+                                                    read it
             /perception/lane/image                  sensor_msgs/Image: the bird's-eye view
                                                     with the paint, the windows and the lines
                                                     found (only with debug_image)
@@ -161,6 +163,8 @@ def message(lane: Lane, image: Image) -> LaneGeometry:
     msg.right_lane_detected = lane.right is not None
     msg.both_lanes_detected = lane.left is not None and lane.right is not None
     msg.steering_hint = lane.steering_hint
+    msg.left_paint = lane.left_paint
+    msg.right_paint = lane.right_paint
     return msg
 
 

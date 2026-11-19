@@ -15,7 +15,7 @@ waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).
 ```
 camera ─► object_detector ─► /perception/detections ─► stop_sign_watcher ─► /perception/stop_sign
                                                                     (a lock on twist_mux)
-lane_finder ─────────► /perception/lane/geometry ─► control_interface ─► /drivers/ai/cmd_vel ─► twist_mux
+lane_finder ─────────► /perception/lane/geometry ─► costmap (lanes:=camera) ─► planner
 radar ─► /sensors/radar/points ─► radar_clusters ─► /perception/radar/clusters, /perception/radar/cluster_boxes
 ```
 
@@ -36,7 +36,7 @@ a person can still look at it in RViz or Lichtblick.
 | | `stop_sign_watcher` | `/perception/stop_sign` | twist_mux's lock (priority 30); the HUD; `behaviour` |
 | | `stop_sign_watcher` | `/perception/stop_sign/distance` | `behaviour` only (`behaviour:=true`, a trial): else **nobody** |
 | | `camera_obstacles` (off until Q22) | `/perception/camera_obstacles`, `/perception/camera_view` | the local costmap's `camera_layer`; `collision_monitor` with `camera_guard` |
-| Front left camera | `lane_finder` (`lane:=true`) | `/perception/lane/geometry` | `control_interface` only, the AI slot's driver. Navigation, the planner and the costmaps **don't** read lanes |
+| Front left camera | `lane_finder` (`lane:=true`, `lanes:=camera`) | `/perception/lane/geometry` | the global costmap's lanes (`lanes:=camera`, `both`; TODO 264); `lane_pose` (`lane_pose:=true`). The lane follower that steered by it went on 19 Nov |
 | | `lane_finder` | `/perception/lane/image` | **nobody**: for RViz |
 | Front left camera | the camera itself | `/sensors/camera/front_left/image_raw` | the detector, `lane_finder`, the HUD's picture, the sensor watchdog |
 | Front right, rear cameras | the simulators | their `image_raw` | **nobody** (on the car the front right one's detector runs inside its `camera_stream` node) |
@@ -312,14 +312,41 @@ A separate Pixi environment, so nobody downloads PyTorch unless they want it: Py
   `PYTORCH_ENABLE_MPS_FALLBACK=1` runs that step on the CPU.
 - `YOLO_AUTOINSTALL=false`: Ultralytics must never pip-install into the environment.
 
-## Lane keeping
+## Lanes: perception finds them, the costmap prices them
 
-Two nodes, from the camera to the wheels. `lane_finder` (ours) finds the lane;
-`control_interface` (the 2025-26 team's) steers by it.
+Ben, 19 Nov: "put lanes in the cost map and then behaviour keep to the right side. then
+the motion planner can just cross the line when its go no other choice". `lane_finder`
+(ours) finds the lines and their paint; the costmap draws them as soft costs; the planner
+and `mppi_lag` drive. The lane followers that steered by the camera alone went on 19 Nov:
+[Lane followers, as they were](history/lane-followers.md) (their scores, and git tag
+`save/lane-followers`).
 
 ```
-/sensors/camera/front_left/image_raw ─► lane_finder ─► /perception/lane/geometry ─► control_interface ─► /drivers/ai/cmd_vel
+/sensors/camera/front_left/image_raw ─► lane_finder ─► /perception/lane/geometry
+     ─► costmap's lanes layer (lanes:=camera) ─► planner ─► mppi_lag ─► /drivers/nav/cmd_vel
 ```
+
+```text
+ cost  (across the road, the car driving right to left in this picture's frame)
+ 200 ┤█                               █   kerb, and 1 m past it: high
+ 150 ┤ ███████████                        the oncoming lane, past the yellow line: medium
+  80 ┤            █         █             the lane's own lines
+   0 ┤                 ●                  the right lane's centre: low
+     └─ kerb ── yellow line ── white edge line ── kerb
+```
+
+| Thing | Cost | From |
+|---|---|---|
+| the right lane's centre | low (0) | the camera's lines, or the lane map |
+| the yellow centre line, the oncoming lane | medium (150) | the line's paint (`left_paint`, `right_paint`) |
+| a white edge line, then the kerb | a step (80), then high (200) | the lines; the lidar's kerbs too (`kerbs:=true`, the local costmap) |
+| a car or a person in the way | a wall | the obstacle layers, as before |
+
+**Which side is right.** With the lane map, the route's direction says (`lanes.rs`). With
+the camera alone, the car's lane is the one it is in: its left line is the centre line, so
+it keeps right of it. A **yellow line on its right** says it has drifted into the oncoming
+lane: its lane is then right of that line. The behaviour planner's speed and stop logic
+didn't change.
 
 ![The bench camera, and what lane_finder found in it](img/lane-finder.png)
 
@@ -343,6 +370,7 @@ Classic OpenCV, no model. A model can replace it later, on the same topic.
 | 3. Sliding windows | 12 windows climb each line, from where it starts near the car |
 | 4. Fit | a curve per line, `y = a x² + b x + c`, in metres, in `base_link` |
 | 5. The answer | the car's offset, the lane's width, each line's radius, and how sure it is |
+| 6. The paint | each line white or yellow: little blue against its red and green (`yellow_ratio`, TODO 264) |
 
 - **Speed:** 0.8 ms a picture on Ben's MacBook Pro (M4 Max), 1.2 ms in the node.
   [[untested]] on the Orin, whose cores are slower: expect a few ms.
@@ -360,70 +388,26 @@ Classic OpenCV, no model. A model can replace it later, on the same topic.
 | `curve_direction` | +1 bends left, -1 right, 0 straight |
 | `lane_width_m` | between the lines (m). With one line, the last width seen |
 | `left_confidence`, `left_lane_detected`, and the same for `right_` | 0 to 1; a line counts from 0.3 |
-| `steering_hint` | a pure-pursuit wheel angle to the centre (rad, + = left). control_interface doesn't use it |
+| `steering_hint` | a pure-pursuit wheel angle to the centre (rad, + = left) |
+| `left_paint`, `right_paint` | `PAINT_UNKNOWN` (0), `PAINT_WHITE` (1), `PAINT_YELLOW` (2) |
 
 - **One line:** the centre is half a lane beside it.
-- **No lines:** nothing detected, so control_interface slows down and stops.
+- **No lines:** nothing detected; the costmap forgets the camera's lanes after 0.5 s.
 - **Why 3 m ahead:** an offset at the rear axle says nothing about which way the car
   points. On the bench, measured there, the car weaved 0.3 m either side and ran off the
   lane within 20 s. 3 m ahead, it comes back in about 6 s, 2 cm past the centre at most.
 
-### The steering: control_interface
-
-- It steers with a PID on the offset, through five states (keep, change, committed,
-  stopping, resuming).
-- It publishes on `/drivers/ai/cmd_vel`, the mux's slot for a learned driver. Every other driver
-  outranks it.
-- It asks for 2 m/s; ego caps it at the car's 1 m/s.
-- **In Rust by default** since 19 Nov ([aav_lane_follower_rs](../ros/drivers/aav_lane_follower_rs/README.md)):
-  the 2025-26 PID ported, the Python's commands on 2,797 shared events.
-  `lane_follower_impl:=python` runs the 2025-26 node.
-- **Two challengers** steer on the lane's centre line (the two fits' mean), from where
-  the car will be after its lag: `lane_follower:=pure_pursuit` and `lane_follower:=stanley`.
-  Their scores, 3 runs each: the package's README.
-
-| Steering | Looks at | Knows the lag? |
-|---|---|---|
-| `pid` (2025-26, the default) | the offset 3 m ahead | no |
-| `pure_pursuit` | the centre line 4-10 m ahead (more with speed) | yes |
-| `stanley` | the centre line's heading and offset at the front axle | yes |
-
-### On the bench
+### Try it
 
 | Command | Does |
 |---|---|
-| `pixi run bench lane:=true nav:=false start_y:=0.3` | lane keeping on the pretend camera, from 0.3 m left of the centre |
-| `pixi run bench lane:=fake` | control_interface on a pretend lane, without the camera |
-| `pixi run bench-check --lane` | the same, measured: [[works]] back within 5 cm of the centre in about 6 s, 2 cm past it at most |
-| `pixi run bench lane:=true nav:=false bend_radius:=60` | a 60 m bend to the left, from 30 m on: [[works]] within 8 cm of the centre, 4-5 cm inside it round the bend |
+| `pixi run sim world:=road lanes:=camera` | the lane finder's lines in the global costmap |
+| `pixi run sim world:=campus lanes:=both` | the lane map where it has a road, the camera elsewhere |
+| `pixi run bench lane:=true` | the lane finder on the bench's pretend camera |
 
-More in [Bench mode](bench.md).
-
-### In the simulators (8 Nov)
-
-| Command | Does |
-|---|---|
-| `pixi run sim-check --lane-only` | the 30 s check: from 0.3 m left, back within 5 cm |
-| `pixi run measure lane` | a longer drive on the road world, scored by the truth |
-| `pixi run measure lane --world campus --road "Library Road"` | the same on a campus road (`pixi run campus` first) |
-
-The score (`tools/lane_score.py`): the car's distance from its lane's centre by the
-simulator's truth, the time off the road, the share of pictures with no line found, and
-the speed. On a campus road the lane runs from the yellow centre line to the white edge line.
-
-| Run (Ben's Mac, quiet) | Ravensim | Gazebo |
-|---|---|---|
-| `sim-check --lane-only` (road) | [[works]] back within 5 cm in 5.4 s, overshoot 3 cm; finder 1.0 cm from the truth; both lines in 299 of 299 | [[works]] 5.1 s, overshoot 5 cm; finder 1.1 cm; 301 of 301 |
-| `measure lane`, road, 60 s from 0.3 m off | 60 m at 0.99 m/s; error mean 3.0 cm, 95 % 19.5 cm (the start); lane never lost | 60 m at 0.99 m/s; mean 3.0 cm, 95 % 19.7 cm; never lost |
-| `measure lane`, Library Road, 120 s | 171 m at 1.4 m/s; error mean 3.9-4.1 cm, 95 % 13-15 cm, max 25-29 cm; lost in 0-1 % of pictures, both lines in 50 % (the centre line is dashed) | 60 m at 0.5 m/s; mean 197 cm: the car ended in the other lane; lost in 68 % of pictures |
-| The finder alone on still pictures, road, 36 poses | 0.3 cm from the truth, 0.7 cm at worst | not run |
-
-- **Campus paint (8 Nov):** the campus had only a dashed yellow centre line. `campus_world.py`
-  now adds a white edge line 0.5 m in from each edge of a painted road (trunk to tertiary),
-  and writes `maps/campus/lanes.yaml` for the score. Service roads have no paint, so no lane.
-- **Gazebo on the campus:** not diagnosed. Its lane finder ran (91 pictures in 10 s) but found
-  no line in 68 % of them. A guess: Gazebo draws the paint 5 mm above the tarmac, close
-  enough for its depth buffer to hide it far off. [[untested]]
+The lane drives the followers scored (`measure lane`, `sim-check --lane`, `bench-check
+--lane`) went with them; their numbers are in [the history](history/lane-followers.md).
+Scoring the camera lanes on the same roads is stage 2.
 
 ### A learned lane finder? The survey (19 Nov)
 
@@ -562,7 +546,7 @@ turns them on where they run ([Platforms](platforms.md#on-the-car-what-runs-wher
 | `stop_signs` | `stop_sign_watcher` → `/perception/stop_sign` | one per car, next to the mux: the Orin |
 | `radar_clusters` | DBSCAN on `/sensors/radar/points` | off until the radar is on the car |
 | `camera_obstacles` | the boxes as points on the road → `/perception/camera_obstacles`, for the costmap | off until the cameras are calibrated (Q22); then next to `navigation`: the Orin |
-| `lane` | `lane_finder` → `/perception/lane/geometry`, and `control_interface` → `/drivers/ai/cmd_vel` | off on every machine: it drives whenever it sees a lane |
+| `lane` | `lane_finder` → `/perception/lane/geometry`, for the costmap's lanes and the lane pose | off on every machine |
 
 - Every detector publishes on `/perception/detections`, so the watcher hears them all.
 - A detector needs PyTorch: JetPack's on the Orin, the `ml` environment on a laptop

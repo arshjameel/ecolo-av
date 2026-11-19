@@ -26,7 +26,7 @@ pub use birds_eye::{project, rotation, BirdsEye, Distortion, Grid, Lens, Mount, 
 pub use draw::{draw, Drawing};
 pub use error::{Error, Result};
 pub use lines::{
-    centre_y, fit_line, follow, lane_from, paint_mask, radius, starts, Lane, LaneFinder, Line,
-    Mask, Settings, View, Window, MAX_RADIUS, STRAIGHT,
+    centre_y, fit_line, follow, lane_from, paint_mask, paint_of, radius, starts, Lane, LaneFinder,
+    Line, Mask, Paint, Settings, View, Window, MAX_RADIUS, STRAIGHT,
 };
 pub use picture::{Bev, Encoding, Picture};

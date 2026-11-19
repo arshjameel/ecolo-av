@@ -17,12 +17,13 @@ use std::collections::BTreeMap;
 use map_chunks::{Changes, ChunkKey, Detail, Store};
 use rayon::prelude::*;
 
+use crate::camera_lanes::{self, CameraLanes, Seen};
 use crate::chunked::{copy_shared, stitch, ChunkError, ChunkSource, Window};
 use crate::cost::{FREE, NO_INFORMATION};
 use crate::footprint;
 use crate::grid::{self, Bounds, Grid};
 use crate::inflation::Inflation;
-use crate::lanes::{self, Lanes};
+use crate::lanes::{self, Lanes, NO_ROAD};
 use crate::obstacle::{Observation, ObstacleLayer};
 use crate::static_layer::StaticMap;
 use crate::transform::Pose2;
@@ -60,13 +61,25 @@ pub struct Costmap {
     whole: bool,
     /// The lanes layer (a fixed costmap only; TODO 148), and its costs on the master's
     /// cells, drawn when the map comes and again where a new route changes them.
+    /// Its cells are [`NO_ROAD`] where no road reaches, so the camera's may fill them.
     lanes: Option<(Lanes, Grid)>,
+    /// The lanes from the camera's lines (TODO 264), where the lane map has no road.
+    camera: Option<CameraLayer>,
     /// The cells a new route redrew, for the next update.
     lanes_touched: Option<Bounds>,
     /// Made of map chunks (a fixed costmap only): the chunks held and where.
     chunks: Option<Chunked>,
     /// The cells a moved window must work out again, in the next update.
     redo: Option<Vec<Bounds>>,
+}
+
+/// The camera's lanes, their grid (the master's cells, [`NO_ROAD`] where nothing is
+/// drawn) and the area the last picture drew.
+#[derive(Debug, Clone)]
+struct CameraLayer {
+    lanes: CameraLanes,
+    grid: Grid,
+    drawn: Option<Bounds>,
 }
 
 /// A fixed costmap's chunks: where they come from, which are held, the route ahead.
@@ -137,6 +150,7 @@ impl Costmap {
             inflation,
             whole: true,
             lanes: None,
+            camera: None,
             lanes_touched: None,
             chunks: None,
             redo: None,
@@ -234,7 +248,7 @@ impl Costmap {
             }));
         }
         // A lanes layer's costs follow the newest route: redo every chunk then.
-        let fresh = self.whole || self.lanes.is_some();
+        let fresh = self.whole || self.lanes.is_some() || self.camera.is_some();
         let redo = window.to_redo(if fresh { None } else { c.window.as_ref() });
         let mut master = map.like(default(&self.settings));
         let all = everything(&master);
@@ -245,13 +259,10 @@ impl Costmap {
             layer.grid = g;
         }
         self.master = master;
-        if let Some((lanes, grid)) = self.lanes.as_mut() {
-            *grid = self.master.like(0);
-            lanes.draw(grid, all);
-            self.lanes_touched = None;
-        }
-        self.map = Some(StaticMap { grid: map });
         c.window = Some(window);
+        self.redraw_lanes();
+        self.lanes_touched = None;
+        self.map = Some(StaticMap { grid: map });
         self.redo = Some(redo.iter().map(|&k| window.cells_of(k, side)).collect());
         Ok(Some(Moved {
             changes,
@@ -266,11 +277,96 @@ impl Costmap {
         if self.settings.rolling {
             return;
         }
-        let mut grid = self.master.like(0);
+        let mut grid = self.master.like(NO_ROAD);
         let all = everything(&grid);
-        lanes.draw(&mut grid, all);
+        lanes.draw_marked(&mut grid, all, NO_ROAD);
         self.lanes = Some((lanes, grid));
         self.whole = true;
+    }
+
+    /// The lanes from the camera on (TODO 264): what [`Costmap::see_lanes`] is given is
+    /// drawn with the lane map's costs where the map has no road. A rolling costmap
+    /// ignores it, as it does the lane map.
+    pub fn set_camera_lanes(&mut self, lanes: CameraLanes) {
+        if self.settings.rolling {
+            return;
+        }
+        let grid = self.master.like(NO_ROAD);
+        self.camera = Some(CameraLayer {
+            lanes,
+            grid,
+            drawn: None,
+        });
+        self.whole = true;
+    }
+
+    /// The camera's lanes, if on.
+    #[must_use]
+    pub fn camera_lanes(&self) -> Option<&CameraLanes> {
+        self.camera.as_ref().map(|c| &c.lanes)
+    }
+
+    /// One camera picture's lanes (`car`: base_link in this costmap's frame at its stamp),
+    /// in place of the last; None forgets them (too old). Drawn in the next update.
+    /// Returns true if any cell changed.
+    pub fn see_lanes(&mut self, seen: Option<&Seen>, car: &Pose2) -> bool {
+        let Some(c) = self.camera.as_mut() else {
+            return false;
+        };
+        let old = c.drawn.take();
+        if let Some(area) = old {
+            camera_lanes::clear(&mut c.grid, area);
+        }
+        let new = seen.and_then(|s| c.lanes.draw(s, car, &mut c.grid));
+        c.drawn = new;
+        let changed = grid::union(old, new);
+        self.lanes_touched = grid::union(self.lanes_touched, changed);
+        changed.is_some()
+    }
+
+    /// Both lanes grids again at the master's size: the map's roads drawn whole, the
+    /// camera's picture forgotten (the next one draws again).
+    fn redraw_lanes(&mut self) {
+        if let Some((lanes, grid)) = self.lanes.as_mut() {
+            *grid = self.master.like(NO_ROAD);
+            let all = everything(grid);
+            lanes.draw_marked(grid, all, NO_ROAD);
+        }
+        if let Some(c) = self.camera.as_mut() {
+            c.grid = self.master.like(NO_ROAD);
+            c.drawn = None;
+        }
+    }
+
+    /// The lanes' costs on the cells `read` (all of them: None), map first, then the
+    /// camera's; None without a lanes layer.
+    fn lane_costs(&self, read: Option<Bounds>) -> Option<Vec<u8>> {
+        let cells = |g: &Grid| match read {
+            Some(b) => g.crop(b).data,
+            None => g.data.clone(),
+        };
+        match (&self.lanes, &self.camera) {
+            (None, None) => None,
+            (Some((_, map)), None) => Some(
+                cells(map)
+                    .into_iter()
+                    .map(|m| lanes::merged(m, NO_ROAD))
+                    .collect(),
+            ),
+            (None, Some(c)) => Some(
+                cells(&c.grid)
+                    .into_iter()
+                    .map(|v| lanes::merged(NO_ROAD, v))
+                    .collect(),
+            ),
+            (Some((_, map)), Some(c)) => Some(
+                cells(map)
+                    .into_iter()
+                    .zip(cells(&c.grid))
+                    .map(|(m, v)| lanes::merged(m, v))
+                    .collect(),
+            ),
+        }
     }
 
     /// The lanes layer, if on.
@@ -304,7 +400,7 @@ impl Costmap {
         if area.width() == 0 || area.height() == 0 {
             return false;
         }
-        lanes.draw(grid, area);
+        lanes.draw_marked(grid, area, NO_ROAD);
         self.lanes_touched = grid::union(self.lanes_touched, Some(area));
         true
     }
@@ -349,11 +445,7 @@ impl Costmap {
                 default(&self.settings),
             );
             self.resize_layers();
-            if let Some((lanes, grid)) = self.lanes.as_mut() {
-                *grid = self.master.like(0);
-                let all = everything(grid);
-                lanes.draw(grid, all);
-            }
+            self.redraw_lanes();
         }
         self.map = Some(map);
         self.whole = true;
@@ -478,8 +570,8 @@ impl Costmap {
         if let Some(inflation) = &self.inflation {
             inflation.apply(&mut self.master);
         }
-        if let Some((_, grid)) = &self.lanes {
-            lanes::combine(&mut self.master.data, &grid.data);
+        if let Some(costs) = self.lane_costs(None) {
+            lanes::combine(&mut self.master.data, &costs);
         }
     }
 
@@ -538,8 +630,8 @@ impl Costmap {
         if let Some(inflation) = &self.inflation {
             inflation.apply(&mut part);
         }
-        if let Some((_, grid)) = &self.lanes {
-            lanes::combine(&mut part.data, &grid.crop(read).data);
+        if let Some(costs) = self.lane_costs(Some(read)) {
+            lanes::combine(&mut part.data, &costs);
         }
         (part, read)
     }
@@ -863,5 +955,64 @@ mod tests {
             !c.set_route(&[(-20.0, -11.5), (20.0, -11.5)]),
             "the same route again"
         );
+    }
+    #[test]
+    fn the_camera_draws_lanes_where_the_map_has_none() {
+        use crate::camera_lanes::{CameraSettings, Paint, SeenLine};
+        use crate::lanes::{Ramp, Road};
+        let mut c = global(false);
+        let road = Road {
+            name: "east".to_owned(),
+            points: vec![(-25.0, -10.0), (25.0, -10.0)],
+            width: 7.0,
+            lanes: 0,
+            oneway: false,
+            edge_inset: 0.5,
+        };
+        c.set_lanes(Lanes::new(vec![road], Ramp::default()).expect("a good road"));
+        c.set_camera_lanes(
+            CameraLanes::new(Ramp::default(), CameraSettings::default()).expect("good"),
+        );
+        c.set_route(&[(-20.0, -11.5), (20.0, -11.5)]);
+        c.update(&Pose2::IDENTITY, None, &[]);
+        let line = |y: f64| SeenLine {
+            a: 0.0,
+            b: 0.0,
+            c: y,
+            paint: Paint::Unknown,
+        };
+        let lane = Seen {
+            left: Some(line(1.75)),
+            right: Some(line(-1.75)),
+            width: 3.5,
+        };
+        let cost = |c: &Costmap, x: f64, y: f64| c.grid().cost_at(x, y, 0);
+        let r = Ramp::default();
+        // Off the map's roads: the camera's lanes, the car keeping right.
+        let car = Pose2::new(10.0, 10.0, 0.0);
+        assert!(c.see_lanes(Some(&lane), &car));
+        assert!(matches!(
+            c.update(&Pose2::IDENTITY, None, &[]),
+            Changed::Area(_)
+        ));
+        assert!(cost(&c, 15.0, 10.0) <= 7);
+        assert_eq!(cost(&c, 15.0, 13.5), r.wrong_lane);
+        let mut whole = c.clone();
+        whole.compose_whole(None);
+        assert_eq!(c.grid(), whole.grid());
+        // On a map road the map wins: the car in the oncoming lane sees its own lines,
+        // but the map knows which way the route drives.
+        let wrong = Pose2::new(0.0, -8.5, 0.0);
+        c.see_lanes(Some(&lane), &wrong);
+        c.update(&Pose2::IDENTITY, None, &[]);
+        assert_eq!(cost(&c, 5.0, -8.5), r.wrong_lane);
+        assert!(cost(&c, 5.0, -11.5) <= 7);
+        // The first picture's lanes are gone with the second; none forgets them all.
+        assert_eq!(cost(&c, 15.0, 13.5), 0);
+        assert!(c.see_lanes(None, &wrong));
+        c.update(&Pose2::IDENTITY, None, &[]);
+        let mut whole = c.clone();
+        whole.compose_whole(None);
+        assert_eq!(c.grid(), whole.grid());
     }
 }

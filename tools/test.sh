@@ -24,7 +24,7 @@ for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/ca
            ros/bringup/aav_description ros/bringup/aav_run_info ros/localization/aav_gps_heading ros/localization/aav_kiss_icp ros/localization/aav_lane_pose \
            ros/localization/aav_localization_health \
            ros/perception/aav_detector ros/sources/aav_camera_stream \
-           ros/perception/aav_lane_finder ros/perception/aav_lane_geometry ros/perception/aav_lidar \
+           ros/perception/aav_lane_finder ros/perception/aav_lidar \
            ros/perception/aav_voxels \
            ros/safety/aav_safety ros/safety/aav_ghost \
            ros/sim/aav_bench; do
@@ -70,8 +70,6 @@ if command -v cargo >/dev/null; then
   (cd ros/can_bridge/aav_legacy_rs && cargo test -q --locked -p legacy-bridge)
   echo "== ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
-  echo "== ros/drivers/aav_lane_follower_rs: control_interface in Rust, lane_follow.py's answers"
-  (cd ros/drivers/aav_lane_follower_rs && cargo test -q --locked -p lane-follow-core)
   echo "== ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
   (cd ros/safety/aav_joy_alive_rs && cargo test -q --locked -p joy-alive-core)
   echo "== ros/command_mux/aav_mux_state: who is driving, by twist_mux's rule and files"

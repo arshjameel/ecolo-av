@@ -86,7 +86,8 @@ def lane_json(lane):
             'left_confidence': lane.left_confidence, 'right_confidence': lane.right_confidence,
             'offset': lane.offset, 'width': lane.width, 'left_radius': lane.left_radius,
             'right_radius': lane.right_radius, 'mean_radius': lane.mean_radius,
-            'curve_direction': lane.curve_direction, 'steering_hint': lane.steering_hint}
+            'curve_direction': lane.curve_direction, 'steering_hint': lane.steering_hint,
+            'left_paint': lane.left_paint, 'right_paint': lane.right_paint}
 
 
 def save(name, image):
@@ -135,6 +136,8 @@ def made_up():
         'narrow.png': picture(lane_width=3.0),
         'narrow_right_only.png': picture(offset=0.2, lane_width=3.0, lines=('right',)),
         'wide_offset.png': picture(lane_width=4.2, offset=-0.6, heading=-0.04),
+        'yellow_left.png': picture(offset=0.2, yellow=('left',)),
+        'yellow_right_dashed.png': picture(offset=-0.3, dash=(6.0, 3.0), yellow=('right',)),
     }
     tilted = (1.5, 0.0, 1.6)
     pics['tilted.png'] = picture(offset=0.3, camera=tilted, pitch=0.12)
@@ -147,10 +150,11 @@ def made_up():
         'straight.png', 'offset_left.png', 'turned.png', 'curve_left.png', 'curve_right.png',
         'curve_tight.png', 'dashed.png', 'dashed_curve.png', 'right_only.png',
         'left_only.png', 'no_lines.png', 'night.png', 'night_too_dark.png',
-        'wide_offset.png')]
+        'wide_offset.png', 'yellow_left.png', 'yellow_right_dashed.png')]
     cases.append(case('noise on a straight lane', frames('offset_left.png', seed=7)))
     cases.append(case('noise on a curve', frames('curve_right.png', seed=12345)))
     cases.append(case('noise on a dashed lane', frames('dashed.png', seed=99)))
+    cases.append(case('noise on a yellow line', frames('yellow_left.png', seed=31)))
     cases.append(case('a narrower lane, learnt, then one line',
                       frames(*['narrow.png'] * 20, 'narrow_right_only.png')))
     cases.append(case('a camera higher up, tilted down', frames('tilted.png'),
@@ -186,6 +190,19 @@ def recorded(folder):
                  mount=mount)], lens, mount
 
 
+def rerun(old):
+    """Return a recorded case worked out again from its saved pictures."""
+    lens = old['lens']
+    lens = Lens(lens['width'], lens['height'], lens['fx'], lens['fy'], lens['cx'], lens['cy'],
+                tuple(lens['distortion']))
+    mount = Mount(tuple(old['mount']['xyz']), tuple(old['mount']['rpy']))
+    frames = [(f['picture'], cv2.imread(str(PICTURES / f['picture']), cv2.IMREAD_COLOR),
+               f['noise']) for f in old['frames']]
+    return case(old['name'], frames, lens=lens, mount=mount, grid=Grid(**old['grid']),
+                settings=Settings(**{k: v for k, v in old['settings'].items()
+                                     if k in Settings.__dataclass_fields__}))
+
+
 def projections(lenses, mounts):
     """Return random ground and air points through each lens: where they land."""
     rng = np.random.default_rng(2026)
@@ -219,9 +236,11 @@ def main():
         lenses.append(lens)
         mounts.append(mount)
     elif OUT.exists():
-        # Keep the recorded case from the last run: its pictures are still there.
-        cases += [c for c in json.loads(OUT.read_text())['cases']
-                  if c['name'].startswith('Ravensim')]
+        # The recorded case from the last run, worked out again: its pictures are still
+        # there, with its lens and mount.
+        for c in json.loads(OUT.read_text())['cases']:
+            if c['name'].startswith('Ravensim'):
+                cases.append(rerun(c))
     OUT.write_text(json.dumps({'cases': cases, 'project': projections(lenses, mounts)},
                               indent=None, separators=(',', ':')) + '\n')
     frames = sum(len(c['frames']) for c in cases)

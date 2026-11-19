@@ -22,11 +22,11 @@ import rclpy
 # Which layer each node belongs to: (column title, fill colour). The order is left to right.
 LAYERS = [
     ('Hardware stand-ins (bench)', '#F2F2F2',
-     r'^(spine_sim|mock_.*|test_camera|fake_lane_geometry_pub)$'),
+     r'^(spine_sim|mock_.*|test_camera)$'),
     ('Sensors', '#FDECEE',
      r'^(imu_node|imu_filter_madgwick|gps_nmea|ublox.*|radar|battery_monitor|camera_.*)$'),
     ('Perception', '#FFF4D6',
-     r'^(object_detector(_\w+)?|stop_sign_watcher|radar_clusters|control_interface)$'),
+     r'^(object_detector(_\w+)?|stop_sign_watcher|radar_clusters|lane_finder)$'),
     ('Localization', '#E8F1FB', r'^(ekf_local|ekf_global|navsat_transform)$'),
     ('Drivers', '#EAF6EA',
      r'^(scripted_driver|joy_node|teleop_twist_joy_node|joy_teleop|teleop_twist_keyboard'

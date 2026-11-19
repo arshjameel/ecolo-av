@@ -24,8 +24,8 @@ the background; each merged with a real merge (Ben's history stays).
 
 | Batch | What | Rows |
 |---|---|---|
-| 1 | **ONNX with Core ML**: `measure onnx`, the diffusion planner from Rust, FP16, TensorRT ready (in progress) | 243 |
-| 2 | **Lanes into the costmap** (yellow vs white, kerb, right lane), then the lane followers removed | 264 |
+| 1 | ✅ **ONNX with Core ML**: `measure onnx`, the diffusion planner from Rust, FP16, TensorRT ready (merged 19 Nov) | 243 |
+| 2 | ✅ **Lanes into the costmap** (yellow vs white, the lane map's costs, `lanes:=camera`); the lane followers removed (merged 19 Nov) | 264 |
 | 3 | **Before the car**: NDT in `car.launch.py`, the adaptive brake on the car, the boot self-test that refuses to arm | 261, 258, 255 |
 | 4 | **Maps offline**: occupancy across passes, the offline pipeline as one command, 3+ drives and the 2D maps merged | 259, 260, 250 |
 | 5 | **Labels and the twin**: the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
@@ -37,9 +37,9 @@ the background; each merged with a real merge (Ben's history stays).
 
 ### Stage 2: score the algorithms together
 
-The league (`measure controllers`, `measure lane`, `measure onnx`) on the lot, the campus and
+The league (`measure controllers`, `measure onnx`, `tools/lane_score.py`) on the lot, the campus and
 the road world, 3 runs each: diffusion, Hybrid-A* and the smooth lattice again (with ours),
-the lanes in the costmap against the old followers' numbers, NDT leading on the campus,
+the lanes in the costmap (`lanes:=camera`) against the old followers' numbers (`measure controllers` on a lane road, then `tools/lane_score.py` on its results: `measure lane` went with the followers), NDT leading on the campus,
 AMCL, the challengers of batch 8. Scores are tracked, not gates; what clearly won't work is
 stripped (tagged `save/` first, its scores kept).
 
@@ -100,8 +100,8 @@ and will do".
 | 171 | **No switch leaves a gap**: respawn, age checks, the nodes' own tests | 🔧 |
 | 159 | **The safety case**: one page per hazard | 🔧 left: a throttle stuck wide open; the spine in the loop |
 | 207 | **Stuck steering and speed noticed** (the watchdog) | ✅ in the sim; ⬜ the car (needs a measured angle, Q2) |
-| 262 | **The lane follower in Rust, and a better one** (Ben, 19 Nov: "We also need to port the lane following code.or find a better version."): `aav_lane_follower_rs`, the default (`lane_follower_impl:=python` falls back); challengers `lane_follower:=pure_pursuit`, `stanley` on the fitted lane centre, with the car's lag | ✅ ported: the Python's commands on 2,797 shared events; `measure lane`, 3 runs each: the Rust PID scores as the Python one; on Library Road pure pursuit 2.4 cm RMS against the PID's 3.9-4.1, 1 flip a minute against 187; on the straight it settles to 0.4-0.9 cm but comes back from 0.3 m off slower (8.4 cm RMS against 6.7). The PID stays the default. Left: pure pursuit's near look-ahead for a quicker return, then promote it; the car |
-| 264 | **Lanes are perception, the costmap prices them, navigation drives** (Ben, 19 Nov: "put lanes in the cost map and then behaviour keep to the right side. then the motion planner can just cross the line when its go no other choice", then "drop there code all together ... curb, high cost, yllow line med cost, lright side low cost, car in the way high cost, person in the way high cost"): the lane finder tells yellow from white and the road's edge; the lanes layer (148, `lanes.rs`) is drawn from the camera's lines where there is no lane map: kerb and off-road high, the yellow line and the oncoming lane medium, the right lane's centre low, every lane cost below a wall's; cars and people stay walls (the obstacle layer). Scored on the same roads against the followers' numbers (262: PID 3.9 cm, pure pursuit 2.4 cm on Library Road). Then **the lane-follower drivers are removed** (the 2025-26 PID, its Rust port, pure pursuit, Stanley, the `lane_follower*` switches), tagged `save/` first; the lane finder and `LaneGeometry` stay | ⬜ after 243 |
+| 262 | **The lane follower in Rust, and a better one** (Ben, 19 Nov: "We also need to port the lane following code.or find a better version."): `aav_lane_follower_rs`, the default (`lane_follower_impl:=python` falls back); challengers `lane_follower:=pure_pursuit`, `stanley` on the fitted lane centre, with the car's lag | ✅ ported: the Python's commands on 2,797 shared events; `measure lane`, 3 runs each: the Rust PID scores as the Python one; on Library Road pure pursuit 2.4 cm RMS against the PID's 3.9-4.1, 1 flip a minute against 187; on the straight it settles to 0.4-0.9 cm but comes back from 0.3 m off slower (8.4 cm RMS against 6.7). The PID stays the default. Left: pure pursuit's near look-ahead for a quicker return, then promote it; the car. **Removed 19 Nov** with the other followers (264): [their scores](docs/history/lane-followers.md) |
+| 264 | **Lanes are perception, the costmap prices them, navigation drives** (Ben, 19 Nov: "put lanes in the cost map and then behaviour keep to the right side. then the motion planner can just cross the line when its go no other choice", then "drop there code all together ... curb, high cost, yllow line med cost, lright side low cost, car in the way high cost, person in the way high cost"): the lane finder tells yellow from white and the road's edge; the lanes layer (148, `lanes.rs`) is drawn from the camera's lines where there is no lane map: kerb and off-road high, the yellow line and the oncoming lane medium, the right lane's centre low, every lane cost below a wall's; cars and people stay walls (the obstacle layer). Scored on the same roads against the followers' numbers (262: PID 3.9 cm, pure pursuit 2.4 cm on Library Road). Then **the lane-follower drivers are removed** (the 2025-26 PID, its Rust port, pure pursuit, Stanley, the `lane_follower*` switches), tagged `save/` first; the lane finder and `LaneGeometry` stay | ✅ built 19 Nov: both lane finders say each line's paint (`left_paint`, `right_paint`); `aav_costmap` `camera_lanes.rs` draws the lines with the lane map's own costs (`lanes::across`), `lanes:=camera` or `both` (the map wins where it has a road); the car's lane is the one it is in, a yellow right line puts it in the oncoming lane ([docs](docs/own-costmap.md#the-lanes-from-the-camera-19-nov-todo-264)). The followers removed (tag `save/lane-followers`, [scores](docs/history/lane-followers.md)). ⬜ stage 2: score `lanes:=camera` on the same roads |
 
 ## 4. Challengers
 

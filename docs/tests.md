@@ -26,7 +26,7 @@ Since 8 Nov `pixi run sim` and `pixi run sim-check` run **Ravensim** by default
 and on a computer with no GPU. The results dated before 8 Nov below were in Gazebo. The
 0.3 checks (`sim-check --stop-point`, `--behaviour`, `--loaded-stop`, `measure lane`) have
 no rows here yet: their results are on [How the car stops](stopping.md) and
-[Perception](perception.md#in-the-simulators-8-nov).
+[Lane followers, as they were](history/lane-followers.md#earlier-lane-drives-8-nov-the-2025-26-pid).
 
 | # | Test | Run | Passes when | Status |
 |---|---|---|---|---|
@@ -34,7 +34,7 @@ no rows here yet: their results are on [How the car stops](stopping.md) and
 | 1.2 | All three cameras send pictures | part of 1.1 | front left 10 Hz; front right and rear 5 Hz or more, each in its own frame | ✅ 15 Oct |
 | 1.3 | The roof lidar | `pixi run sim-check` (on by default) | 1800 × 16 rays at 10 Hz in `lidar_link` | ✅ |
 | 1.4 | Stop for an obstacle | `pixi run sim-check --obstacle` | stops 0-2 m before the box; drives on when it's gone | ✅ at 272 kg; ⚠️ at 181 kg, unconfirmed (the Mac was overloaded); ✅ 3 Nov: 0.23 m before it |
-| 1.5 | Lane keeping | `pixi run sim-check --lane` | back to the lane's centre within 5 cm | ✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs navigation) |
+| 1.5 | Lane keeping (retired 19 Nov with the lane follower, TODO 264) | `pixi run sim-check --lane` | back to the lane's centre within 5 cm | ✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs navigation) |
 | 1.6 | The HUD, with pretend data | `pixi run hud --demo` | the window opens with speed, camera, GPS, e-stop | ✅ Ben, 15 Oct |
 | 1.7 | The HUD with the turtle | `pixi run turtle`, `pixi run hud`, `pixi run keyboard --local` | speed and steering move as you drive | ✅ Ben, 15 Oct |
 | 1.8 | Plain-English driving | `pixi run -e llm talk`: "drive 10 m forward" | drives 10 m (±0.2 m) after you type yes | ✅ Gazebo |

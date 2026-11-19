@@ -18,8 +18,8 @@
 use std::path::{Path, PathBuf};
 
 use lane_core::{
-    project, BirdsEye, Distortion, Encoding, Grid, Lane, LaneFinder, Lens, Line, Mount, Picture,
-    Settings,
+    project, BirdsEye, Distortion, Encoding, Grid, Lane, LaneFinder, Lens, Line, Mount, Paint,
+    Picture, Settings,
 };
 use serde_json::Value;
 
@@ -95,6 +95,7 @@ fn settings(v: &Value) -> Settings {
         max_lane_width: num(&v["max_lane_width"]),
         lookahead: num(&v["lookahead"]),
         wheelbase: num(&v["wheelbase"]),
+        yellow_ratio: v["yellow_ratio"].as_f64().unwrap_or(0.75),
     }
 }
 
@@ -228,6 +229,15 @@ fn compare(got: &Lane, want: &Value, s: &Settings, worst: &mut Worst, at: &str) 
             CURVATURE,
             &at(key),
         );
+    }
+    for (mine, key) in [
+        (got.left_paint, "left_paint"),
+        (got.right_paint, "right_paint"),
+    ] {
+        let want = want[key]
+            .as_u64()
+            .map_or(Paint::Unknown, |c| Paint::from_code(c as u8));
+        assert_eq!(mine, want, "{}", at(key));
     }
     assert_eq!(
         got.curve_direction,
