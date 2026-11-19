@@ -80,7 +80,7 @@ and will do".
 |---|---|---|
 | 210 | **NDT leads, the GPS checks** (`pose_source:=ndt`): a failing GPS no longer moves or stops the car | 🟡 merged 19 Nov, a challenger: the lot scored (every leg with the GPS stopped, jumped or drifting); ⬜ the campus runs (stopped by the usage limit); the car refuses it until 261 and a real map |
 | 231 | **AMCL in Rust** (`aav_amcl_rs`, the default): NDT's recovery | 🟡 ties stock on the lot; left: the campus, more runs |
-| 263 | **The chunks' unknown cells read back as free**: `map-chunks` writes unknown as grey 205, and `read_map` with thresholds 0.65 / 0.25 reads 205 (p = 0.196) as free; `map-drive` and the map editor write 128. Make every writer and reader agree (found by the map editor, 19 Nov) | ⬜ |
+| 263 | **Unknown map cells read back as free** (found by the map editor, 19 Nov): grey 205 is p = 0.196, under every map YAML's `free_thresh: 0.25`. `make_map.py` and `map-chunks` now write unknown as 128 (p = 0.498), as `map-drive` and the map editor do; `example_lot_amcl.pgm` remade (244,730 cells inside its obstacles had read as free; `example_lot.pgm` byte for byte the same); a test pins it | ✅ 19 Nov. AMCL on the remade map, the lot, 2 runs: 0.06-0.07 m mean a leg, worst 0.09-0.14 m (18 Nov: 0.05-0.09, worst 0.15-0.20); one run's follower aborted a leg (error 107: the follower, not AMCL) |
 | 121 | **NDT's score floor on the campus** (1.5 there, 2.3 in the lot): how high does a wrong pose score? | ⬜ |
 | 175 | **Three levels, fixed chunks**: routes, paths and moves on 64 m chunks | 🔧 left: `global_window:=192` scored on the campus; seen live |
 | 191 | **Stops reset the drift**: wheels that read nothing mean the car stands | 🔧 left: the parked yaw creep, before and after (the car) |
