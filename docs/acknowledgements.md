@@ -137,7 +137,7 @@ Each has a TODO row to port its idea.
 | Source | Licence | Kind | Where we used it |
 |---|---|---|---|
 | **ROS 2 Jazzy** | Apache-2.0 | runs | everything |
-| twist_mux; teleop_twist_joy and teleop_twist_keyboard | Apache-2.0; BSD | runs | the command mux and the locks; the joystick and keyboard |
+| twist_mux; teleop_twist_joy and teleop_twist_keyboard | Apache-2.0; BSD | runs; ported (its rule) | the command mux and the locks; the joystick and keyboard. twist_mux's selection rule is rewritten in Rust in `aav_mux_state` (who is driving, TODO 247) |
 | **rclrs** (ros2-rust) | Apache-2.0 | runs | our Rust ROS nodes |
 | **rayon** | MIT / Apache-2.0 | runs | each map chunk loaded and built on its own core (`map-chunks` `Store::update`, TODO 195); our global costmap's 64 m tiles and chunks inflated each on its own core (`aav_costmap` `layered.rs`, TODO 175) |
 | **proptest** | MIT / Apache-2.0 | tests only | the stop zone's, the map chunks' and the car model's rules checked on thousands of random inputs (`tests/props.rs`, TODO 204) |

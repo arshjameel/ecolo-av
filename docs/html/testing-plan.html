@@ -7,7 +7,7 @@
 <!-- Generated from docs/testing-plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The testing plan</h1>
-<div class="meta">16 min read · 12 sections</div></header>
+<div class="meta">17 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -195,7 +195,7 @@ test, in what order, and how we know each step passed</strong>. The detail of ea
 </tr>
 </tbody>
 </table></div>
-<p>Alongside A and B: <strong>the debug screen</strong>: who is sending commands, and what (below).</p>
+<p>Alongside A and B: <strong>the debug screen</strong>: who is sending commands, and what (below; built 19 Nov, the map window's D page).</p>
 </section>
 <section class="card"><h2 id="what-runs-automatically-today">What runs automatically today</h2>
 <div class="table-wrap"><table>
@@ -538,38 +538,44 @@ planners all use the measured car.</p>
 <tbody>
 <tr>
 <td><strong>Who is driving</strong>: joystick, keyboard, the navigator (the AI), a test, the buttons</td>
-<td>the command mux</td>
-<td><strong>To build</strong>: the mux's choice isn't published yet</td>
+<td><code>/control/command_mux/state</code> (<code>aav_mux_state</code>: twist_mux's rule, beside it)</td>
+<td><strong>Built 19 Nov</strong>; in the sim it named the keyboard, the navigator, a takeover and the hand-back, agreeing with twist_mux's output 226 times of 227</td>
 </tr>
 <tr>
 <td>What that driver asks (speed, turn)</td>
-<td><code>/drivers/&lt;driver&gt;/cmd_vel</code></td>
-<td>Built (topics exist)</td>
+<td><code>/control/cmd_vel</code> (the chosen driver's, as twist_mux passed it)</td>
+<td><strong>Built 19 Nov</strong></td>
 </tr>
 <tr>
-<td>What ego sends to the car (steering, throttle, brake)</td>
+<td>What ego sends to the car (steering, braking or speeding up)</td>
 <td><code>/ego/actuator_cmd</code></td>
-<td>Built (topic exists)</td>
+<td><strong>Built 19 Nov</strong></td>
 </tr>
 <tr>
 <td>Whether the output gate is open, and why not</td>
 <td><code>/safety/output_mux/state</code></td>
-<td>Built (topic exists)</td>
+<td><strong>Built 19 Nov</strong></td>
 </tr>
 <tr>
-<td>What the car did (the actuators, the wheels)</td>
-<td><code>/vehicle/*</code></td>
-<td>Built (topics exist)</td>
+<td>What the car did (speed, steering, throttle, brake, mode, faults)</td>
+<td><code>/vehicle/status</code></td>
+<td><strong>Built 19 Nov</strong></td>
+</tr>
+<tr>
+<td>The locks, and whom they hold; the sensor watchdog</td>
+<td><code>/control/command_mux/state</code>, <code>/safety/sensor_watchdog/state</code></td>
+<td><strong>Built 19 Nov</strong></td>
 </tr>
 <tr>
 <td>Real or simulated data</td>
 <td><code>/system/source</code></td>
-<td>Built: the orange band</td>
+<td><strong>Built 19 Nov</strong> (and the orange band)</td>
 </tr>
 </tbody>
 </table></div>
-<p>So the work is a page on the map window that lays these side by side, plus one new topic: the
-mux's current driver.</p>
+<p>It is the map window's <strong>debug page</strong>: press D (<a href="hud.html#the-debug-page-who-is-driving">how it looks</a>).
+<code>pixi run map --demo --debug-page</code> shows it with pretend data. <strong>Untested:</strong> the page drawn
+on a screen (no screen was free when it was built), and on the car.</p>
 </section>
 <section class="card"><h2 id="phase-c-the-recording-kit">Phase C: the recording kit</h2>
 <p><strong>Goal:</strong> one drive records everything the later phases need.</p>

@@ -72,6 +72,8 @@ if command -v cargo >/dev/null; then
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
   echo "== ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
   (cd ros/safety/aav_joy_alive_rs && cargo test -q --locked -p joy-alive-core)
+  echo "== ros/command_mux/aav_mux_state: who is driving, by twist_mux's rule and files"
+  (cd ros/command_mux/aav_mux_state && cargo test -q --locked -p mux-state-core)
   echo "== ros/perception/aav_stop_sign_rs: stop_sign_watcher's rules in Rust, stop_sign.py's answers"
   (cd ros/perception/aav_stop_sign_rs && cargo test -q --locked -p stop-sign-core)
   echo "== ros/drivers/aav_drive_to_point_rs: the point driver in Rust, the Python modules' answers"
@@ -144,6 +146,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/can_bridge/aav_legacy_rs -p legacy-bridge
   rust_style ros/drivers/aav_rc_rs -p rc-core
   rust_style ros/safety/aav_joy_alive_rs -p joy-alive-core
+  rust_style ros/command_mux/aav_mux_state -p mux-state-core
   rust_style ros/perception/aav_stop_sign_rs -p stop-sign-core
   rust_style ros/drivers/aav_drive_to_point_rs -p point-core
   rust_style ros/bringup/aav_description/car-model

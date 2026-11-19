@@ -11,6 +11,16 @@
 //!             watchdog_topic  std_msgs/String            the sensor watchdog's verdict
 //!                                                        (/safety/sensor_watchdog/state):
 //!                                                        a banner unless OK
+//!             the debug page's (key D):
+//!             mux_state_topic  diagnostic_msgs/DiagnosticStatus  who is driving
+//!                                                        (/control/command_mux/state)
+//!             command_topic  geometry_msgs/TwistStamped  what it asks (/control/cmd_vel)
+//!             actuator_topic  ackermann_msgs/AckermannDriveStamped  what ego sends
+//!                                                        (/ego/actuator_cmd)
+//!             output_mux_topic  std_msgs/String          the gate (/safety/output_mux/state)
+//!             vehicle_status_topic  aav_interfaces/VehicleStatus  what the car did
+//!             algorithms_topic  diagnostic_msgs/DiagnosticStatus  latched: the
+//!                                                        navigator's path follower
 //! Publishes   goal_topic    geometry_msgs/PoseStamped    the place search's goal, map frame,
 //!                                                        only after DRIVE HERE then CONFIRM
 //! Parameters  the topics above, stale_after, plan_stale_after (s), final_approach (m),
@@ -27,6 +37,12 @@
 //! with no car position. A tap (or a click) on the box opens an on-screen keyboard, for
 //! the car's touchscreen; a real keyboard works as well.
 //!
+//! The debug page (key D, `--debug-page`): who is driving and what it asks, what ego
+//! sends, the gate, what the car did, the locks, the sensors and real or simulated, over
+//! the map (map-core's `debug`, TODO 247). Its topics (ros.rs): the command mux's state,
+//! /control/cmd_vel, /ego/actuator_cmd, the output mux's state, /vehicle/status and
+//! /system/algorithms.
+//!
 //! raylib owns the main thread (macOS needs that); rclrs spins on its own thread and
 //! sends news over a channel (ros.rs). `--demo` swaps the ROS node for pretend data.
 //! The maths (map to screen, the distance left) is in map-core.
@@ -35,7 +51,7 @@
 //!            [--whole-map] [--config FILE] [--vehicle FILE]
 //!            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
 //!            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
-//!            [--bench SECONDS] [--robot-now]
+//!            [--bench SECONDS] [--robot-now] [--debug-page]
 //!            [--ros-args ...]
 
 mod demo;
@@ -80,7 +96,7 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
            [--whole-map] [--config FILE] [--vehicle FILE]
            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
-           [--bench SECONDS] [--robot-now]
+           [--bench SECONDS] [--robot-now] [--debug-page]
            [--ros-args ...]
 
   --demo             pretend data: no ROS, no car
@@ -105,11 +121,13 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
   --screenshot FILE  save the window as a PNG after 4 s, then quit (for the docs)
   --bench SECONDS    draw as fast as it can for SECONDS, print the frame rate, then quit
                      (the frosted glass's test: 60 fps or more)
+  --debug-page       start on the debug page: who drives, what it asks, what ego sends,
+                     the gate, the car, the locks (D switches; for screenshots)
   --ros-args ...     passed to ROS, e.g. --ros-args -p plan_topic:=/plan
 
 keys: / search for a place (Esc closes; Up Down and Enter pick; Enter: DRIVE HERE, then
       CONFIRM), F follow the car / whole map, S streets on / off, + - or the wheel zoom,
-      drag to move, F11 full screen
+      drag to move, D the debug page, F11 full screen
 touch: tap the search box for the on-screen keyboard; tap a result, DRIVE HERE, CONFIRM";
 
 /// When --screenshot saves its picture: once the data has had time to arrive.
@@ -141,6 +159,7 @@ struct Options {
     screenshot: Option<PathBuf>,
     bench: Option<Duration>,
     robot_now: bool,
+    debug_page: bool,
 }
 
 impl Options {
@@ -172,6 +191,7 @@ impl Options {
                 "--send-goal" => opts.send_goal = Some(value("--send-goal")?),
                 "--keyboard" => opts.keyboard = true,
                 "--robot-now" => opts.robot_now = true,
+                "--debug-page" => opts.debug_page = true,
                 "--pick" => {
                     let n: usize = it
                         .next()
@@ -350,6 +370,8 @@ fn run(
     // the box is typing. `/` on a real keyboard leaves it shut.
     let mut keyboard_on = false;
     let mut open_keyboard = opts.keyboard;
+    // The debug page over the map (D); the search hides while it shows.
+    let mut debug_page = opts.debug_page;
 
     while !rl.window_should_close() && !source.has_stopped() {
         let now = Instant::now();
@@ -414,7 +436,7 @@ fn run(
         let on_keyboard = keyboard.as_ref().filter(|kb| kb.contains(mouse));
         let boxes = SearchLayout::new(&layout, &search.finder, keyboard.as_ref());
         let over_search = boxes.contains(mouse) || on_keyboard.is_some();
-        if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
+        if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) && !debug_page {
             if let Some(kb) = on_keyboard {
                 // A tap on a key (between keys: nothing, and not the map either).
                 match kb.key_at(mouse).map(|cap| cap.press()) {
@@ -453,6 +475,9 @@ fn run(
         }
         if map_keys && rl.is_key_pressed(KeyboardKey::KEY_S) {
             streets.shown = !streets.shown;
+        }
+        if map_keys && rl.is_key_pressed(KeyboardKey::KEY_D) {
+            debug_page = !debug_page;
         }
         let wheel = rl.get_mouse_wheel_move();
         if wheel != 0.0 && over_map && !over_search {
@@ -507,6 +532,7 @@ fn run(
             &tiles,
             &search,
             keyboard.as_ref().map(|kb| (kb, held)),
+            debug_page,
         );
         drop(d);
 
@@ -671,6 +697,11 @@ mod tests {
             Options::parse(&args(&["--robot-now"]))
                 .expect("valid")
                 .robot_now
+        );
+        assert!(
+            Options::parse(&args(&["--debug-page"]))
+                .expect("valid")
+                .debug_page
         );
         assert!(Options::parse(&args(&["--monitor", " "])).is_err());
     }

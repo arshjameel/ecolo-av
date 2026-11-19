@@ -24,6 +24,7 @@ map of Ottawa, and the place search.
 | `places` | `Places::open(path)`, `search(query, near)`: names and addresses from `ottawa.db` |
 | `destination` | the search box, picking a place, whether it can be the navigator's goal |
 | `keyboard` | the on-screen keyboard: its keys, which one a tap hit |
+| `debug` | the debug page (key D): `MuxReport` (who is driving, from `aav_mux_state`), `Ask`, `Sent`, `cards()`: WHO DRIVES, IT ASKS, EGO SENDS, GATE, THE CAR DID, LOCKS, SENSORS, DATA, each a big word and a `Tone` |
 | `state` | everything above, as one value the screen draws |
 
 Example: `cargo run --release -p map-core --example search -- carleton university`.

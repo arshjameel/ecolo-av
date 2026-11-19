@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_mux_state</name>
+  <version>0.1.0</version>
+  <description>command_mux_state (Rust, rclrs): who is driving. twist_mux never says which driver it passes on; this node reads twist_mux's own parameter files, hears the same /drivers/*/cmd_vel inputs and lock topics, applies twist_mux's rule, and publishes the driver, its priority, its age, the locks that are on and the inputs they hold on /control/command_mux/state (TODO 247, the debug screen). The rule is the mux-state-core crate, with no ROS.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

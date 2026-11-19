@@ -395,6 +395,13 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td>new</td>
 </tr>
 <tr>
+<td><code>aav_mux_state</code></td>
+<td>command_mux</td>
+<td><code>command_mux_state</code> (Rust): who twist_mux passes on, its age, the locks on and whom they hold (TODO 247)</td>
+<td><span class="badge b-works">works</span> beside a real twist_mux (its colcon test) and in the sim; <span class="badge b-untested">untested</span> on the car</td>
+<td>new: twist_mux's rule, rewritten in Rust</td>
+</tr>
+<tr>
 <td><code>aav_io_mux</code></td>
 <td>io_mux</td>
 <td>the sensor mux and the output mux: simulated data never drives the real car</td>

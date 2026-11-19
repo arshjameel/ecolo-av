@@ -49,6 +49,7 @@ each one's README has its topics.
 | `aav_behaviour` | drivers | the behaviour planner, a trial (`behaviour:=true`): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on navigation | built 7 Nov; off by default ([How the car stops](stopping.md)) | new |
 | `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov) beside `aav_behaviour`'s (`behaviour_impl:=python`): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
+| `aav_mux_state` | command_mux | `command_mux_state` (Rust): who twist_mux passes on, its age, the locks on and whom they hold (TODO 247) | [[works]] beside a real twist_mux (its colcon test) and in the sim; [[untested]] on the car | new: twist_mux's rule, rewritten in Rust |
 | `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
 | `aav_io_mux_rs` | io_mux | `sensor_mux` and `output_mux` in Rust, the default (Ben, 17 Nov) beside `aav_io_mux`'s (`io_mux_impl:=python`): the same topics and answers | [[works]] against the Python's answers, step by step; sim-check; [[untested]] on the car | new: a port of `aav_io_mux` |
 | `aav_ego` | ego | one command → speed and steering the car can do | [[works]] | new |

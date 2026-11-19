@@ -7,7 +7,7 @@
 <!-- Generated from docs/modules.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every module, explained</h1>
-<div class="meta">45 min read · 16 sections</div></header>
+<div class="meta">46 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -890,7 +890,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
-<td>every <code>/drivers/&lt;driver&gt;/cmd_vel</code>, <code>/safety/estop</code>, <code>/perception/stop_sign</code> → <code>/control/cmd_vel</code></td>
+<td>every <code>/drivers/&lt;driver&gt;/cmd_vel</code>, <code>/safety/estop</code>, <code>/perception/stop_sign</code> → <code>/control/cmd_vel</code>; beside it <code>command_mux_state</code> (<code>aav_mux_state</code>) → <code>/control/command_mux/state</code> (who is driving)</td>
 </tr>
 <tr>
 <td><strong>Origin</strong></td>
@@ -1876,6 +1876,11 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <td><code>aav_joy_alive_rs</code></td>
 <td><code>joy_alive</code> in Rust, the default (<code>joy_alive_impl:=python</code> falls back)</td>
 <td><code>ros/safety/aav_joy_alive_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_mux_state</code></td>
+<td><code>command_mux_state</code> (Rust): who twist_mux passes on, on <code>/control/command_mux/state</code>, for the debug screen</td>
+<td><code>ros/command_mux/aav_mux_state/README.md</code></td>
 </tr>
 <tr>
 <td><code>aav_stop_sign_rs</code></td>
