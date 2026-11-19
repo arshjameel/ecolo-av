@@ -278,7 +278,7 @@ W_DATA=0.02 cargo run --release -p lattice-planner --example staircase   # no RO
 The plan's own swing on a 6.5 m road at 2.2 m/s: 0.08-0.16 m with Nav2's weights,
 0.02-0.07 m strong. The lot's corners keep to the car (tightest 3.08 m; the car turns at
 2.86 m). In the sim it took a share of the campus's sway off; the rest, and the
-numbers: [mppi-lag.md, The sway that was left](mppi-lag.md#the-sway-that-was-left).
+numbers: [mppi-lag.md, The sway that was left](history/mppi-lag-log.md#the-sway-that-was-left).
 `tests/scenes.rs` checks the steps go (8°: under half the swing).
 
 ## Re-timed in the sim (16 Nov, TODO 152)
