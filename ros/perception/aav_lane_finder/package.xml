@@ -14,6 +14,9 @@
   <exec_depend>aav_description</exec_depend>
   <!-- lane_finder_impl:=rust, the default: the Rust node. -->
   <exec_depend>aav_lane_finder_rs</exec_depend>
+  <!-- lane_finder_impl:=learned, a challenger (TODO 262b): the node is built on a Mac, and
+       on Linux only with -DLANE_LEARNED=ON. -->
+  <exec_depend>aav_lane_finder_learned</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
   <exec_depend>launch</exec_depend>

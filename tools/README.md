@@ -168,7 +168,9 @@ Each lands outside git, checksum pinned where the script says.
 | `can_load.py` | the CAN bus load from `firmware/can/aav.dbc` | - |
 | `compare_detectors.py` | YOLO11, YOLO26 and RF-DETR on the same pictures | - |
 | `export_model.py` | a detector to Core ML (Mac) or ONNX (Orin, and the Rust detector) | - (`pixi run -e ml python3 tools/export_model.py --format coreml`) |
-| `onnx_measure.py` | every ONNX model in `models/` (the detector, the diffusion planner; their FP16 twins): Core ML against the CPU and PyTorch, its share of the graph, what fell back, ms; PASS/WARN/FAIL, `--json` ([ONNX](../docs/onnx.md)) | `measure onnx` |
+| `onnx_measure.py` | every ONNX model in `models/` (the detector, the diffusion planner, the learned lane finder; their FP16 twins): Core ML against the CPU and PyTorch, its share of the graph, what fell back, ms; PASS/WARN/FAIL, `--json` ([ONNX](../docs/onnx.md)) | `measure onnx` |
+| `lane_data.py` | the learned lane finder's pictures (Ravensim, `sim_cameras --poses`) and labels from the lane map, into `models/lane-data/` (its maths without ROS, tested) | - (`pixi run -e ml python3 tools/lane_data.py`) |
+| `lane_train.py` | trains the learned lane finder on those (PyTorch, `mps`), scores it on held-out pictures, exports `models/lane-ufld.onnx` and its FP16 twin | - (`pixi run -e ml python3 tools/lane_train.py`) |
 | `onnx_check.py` | the ONNX detector's boxes against PyTorch's, and each runtime's ms a picture (`--time`); `--write-fixtures` for `detector-core`'s tests ([ONNX](../docs/onnx.md)) | - (`pixi run -e ml python3 tools/onnx_check.py`) |
 | `vehicle_model.py` | the car's linear model: poles, steps, margins | - |
 | `state_space_demo.py` | the state-space teaching example | - |

@@ -31,6 +31,9 @@ The tolerances (the same for FP16 as for float32):
   diffusion  16 paths on 10 made-up plans (a lot with boxes, training/measure.py's), in
              the map: each point within 0.10 m, each heading within 0.05 rad, and
              99 % of the points in the same gear
+  lanes      the learned lane finder (TODO 262b) on lane-core's Ravensim frames and 30
+             held-out pictures (models/lane-data): 98 % of the row decisions (a line or
+             not) the same, and each line's column within 3 px (half a cell)
 """
 
 import argparse
@@ -58,6 +61,7 @@ PROVIDERS = {'cpu': 'CPUExecutionProvider', 'coreml': 'CoreMLExecutionProvider',
 COREML_OPTIONS = {'ModelFormat': 'MLProgram', 'MLComputeUnits': 'ALL',
                   'RequireStaticInputShapes': '1'}
 DIFFUSION_POINT_M, DIFFUSION_HEADING, DIFFUSION_GEARS = 0.10, 0.05, 0.99
+LANE_ROWS, LANE_PX = 0.98, 3.0
 CAPABILITY = re.compile(r'number of partitions supported by \w+: (\d+) number of nodes in '
                         r'the graph: (\d+) number of nodes supported by \w+: (\d+)')
 
@@ -279,7 +283,75 @@ class Diffusion:
         return raw, median_ms(lambda: one(self.feeds[0]), 10)
 
 
-MODELS = {'detector': Detector, 'diffusion': Diffusion}
+class Lanes:
+    """The learned lane finder (TODO 262b): a picture in, each line's column at each row out."""
+
+    name = 'lanes'
+    files = ('models/lane-ufld.onnx', 'models/lane-ufld_fp16.onnx')
+    rule = (f'{LANE_ROWS:.0%} of the rows the same (line or not), columns within {LANE_PX} px')
+    pictures = ROOT / 'ros' / 'perception' / 'aav_lane_finder_rs' / 'crates' / 'lane-core' / \
+        'tests' / 'pictures'
+
+    def __init__(self, held=30):
+        import lane_data
+        self.data = lane_data
+        files = sorted(self.pictures.glob('ravensim_frame_*.png'))
+        self.inputs = [lane_data.crop(f) for f in files]
+        held_dir = ROOT / 'models' / 'lane-data'
+        if (held_dir / 'labels.npz').exists():
+            images = np.load(held_dir / 'images.npy', mmap_mode='r')
+            which = np.flatnonzero(np.load(held_dir / 'labels.npz')['held'])[:held]
+            self.inputs += [np.asarray(images[i]) for i in which]
+        self.feeds = [{'image': (x.transpose(2, 0, 1)[None] / 255.0).astype(np.float32)}
+                      for x in self.inputs]
+
+    def runner(self, sess):
+        def answers():
+            return [sess.run(['loc', 'exist'], f) for f in self.feeds]
+
+        return answers, lambda: sess.run(['loc', 'exist'], self.feeds[0])
+
+    def reference(self, raw):
+        return raw
+
+    def columns(self, raw):
+        return [self.data.decode(loc[0], exist[0]) for loc, exist in raw]
+
+    def compare(self, raw, reference):
+        a, b = self.columns(raw), self.columns(reference)
+        same = sum(int(np.sum(np.isnan(x) == np.isnan(y))) for x, y in zip(a, b))
+        total = sum(x.size for x in a)
+        gaps = [np.abs(x - y)[~np.isnan(x) & ~np.isnan(y)] for x, y in zip(a, b)]
+        worst = max((float(g.max()) for g in gaps if g.size), default=0.0)
+        share = same / total
+        return share >= LANE_ROWS and worst <= LANE_PX, \
+            f'{share:.1%} rows the same, columns within {worst:.2f} px'
+
+    def compare_twin(self, raw, reference):
+        return self.compare(raw, reference)
+
+    def torch(self, device):
+        pt = ROOT / 'models' / 'lane-ufld.pt'
+        if not pt.exists():
+            return None
+        import json as js
+        import lane_train
+        import torch
+        meta = js.loads((ROOT / 'models' / 'lane-ufld.json').read_text())
+        m = lane_train.LaneNet(len(meta['rows']), meta['cells'],
+                               input_hw=(meta['input_h'], meta['input_w']))
+        m.load_state_dict(torch.load(str(pt), map_location='cpu'))
+        m = m.eval().to(device)
+
+        def one(f):
+            with torch.no_grad():
+                loc, exist, _ = m(torch.from_numpy(f['image']).to(device))
+            return [loc.cpu().numpy(), exist.cpu().numpy()]
+        raw = [one(f) for f in self.feeds]
+        return raw, median_ms(lambda: one(self.feeds[0]), 10)
+
+
+MODELS = {'detector': Detector, 'diffusion': Diffusion, 'lanes': Lanes}
 
 
 # ---- the measuring ----------------------------------------------------------------------

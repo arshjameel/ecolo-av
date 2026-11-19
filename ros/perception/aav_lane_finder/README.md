@@ -16,7 +16,9 @@ For each picture:
 6. say each line's paint: yellow (little blue against its red and green) or white
    (`paint_of`, `yellow_ratio`). A grey camera sees every line white.
 
-A model can replace it later, behind the same topic.
+A model can replace it, behind the same topic: the learned finder,
+[aav_lane_finder_learned](../aav_lane_finder_learned/README.md) (`lane_finder_impl:=learned`,
+a challenger).
 
 **Its Rust twin runs by default** since 18 Nov: [aav_lane_finder_rs](../aav_lane_finder_rs/README.md),
 the same node, topics, parameters and lanes, without OpenCV, at a fifth of the CPU.

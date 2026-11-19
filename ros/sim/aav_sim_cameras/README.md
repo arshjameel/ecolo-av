@@ -47,6 +47,9 @@ pixi run sim-cameras --ros                   # publish, a scripted drive, wall-c
 pixi run sim-cameras --ros --pose truth      # draw where /vehicle/sim/truth says, its stamps
 pixi run sim-cameras --world maps/campus/campus.sdf --at 49,-71,0 --save /tmp/pics
                                              # an SDF world, parked there (x, y, yaw)
+pixi run sim-cameras --world W --cameras front_left --poses p.csv --save DIR
+                                             # one picture per camera at each x,y,yaw
+                                             # line, then stop (tools/lane_data.py)
 pixi run sim-cameras --graphics simple       # the plain look; pretty: grain, sky, haze
                                              # (auto, the default: pretty on a GPU)
 ```
