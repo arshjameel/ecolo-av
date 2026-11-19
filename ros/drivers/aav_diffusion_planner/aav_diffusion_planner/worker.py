@@ -9,6 +9,7 @@ reply for each to stdout (wire.py). Exits when stdin closes. Messages go to stde
 ROS here: the learn environment has Python, NumPy, PyTorch and ONNX Runtime (pixi.toml).
 """
 
+import functools
 import os
 import signal
 import sys
@@ -35,6 +36,11 @@ def session(model, provider, cache_dir=None):
                                 provider_options=[options for _, options in chain])
 
 
+def run(sess, crop, cond, noise):
+    """Return the model's paths for one crop, one cond and a batch of noise."""
+    return sess.run(['paths'], {'crop': crop, 'cond': cond, 'noise': noise})[0]
+
+
 def main():
     # Ctrl-C reaches the whole process group: the node closes the pipe, and that ends us.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -56,9 +62,11 @@ def main():
         except EOFError:
             return
         t0 = time.perf_counter()
-        feed = {'crop': crop, 'cond': cond, 'noise': noise}
         try:
-            paths = sess.run(['paths'], feed)[0]
+            # A fixed-size export (19 Nov on) runs a node's other sample counts in batches.
+            k = next(i.shape[0] for i in sess.get_inputs() if i.name == 'noise')
+            paths = engines.batches(functools.partial(run, sess, crop, cond), noise,
+                                    k if isinstance(k, int) else None)
         except Exception as e:  # noqa: B902 - any model failure means: no paths this time
             print(f'diffusion worker: the model failed: {e}', file=sys.stderr, flush=True)
             paths = None

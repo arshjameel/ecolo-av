@@ -65,3 +65,26 @@ def usable(chain, available):
 def verdict(ms, budget):
     """Return 'OK' if a time (ms) is within its budget, else 'OVER'."""
     return 'OK' if ms <= budget else 'OVER'
+
+
+def batches(run, noise, k):
+    """
+    Return run's paths for every sample in `noise` (n, POINTS, CHANNELS), k at a time.
+
+    Since 19 Nov the exports have a fixed number of samples, k (Core ML can't build an
+    open one; TensorRT builds one engine a shape). A node asking for another number gets
+    them in batches of k, the last padded with zeros and the padding dropped. k None or
+    equal to n: one run.
+    """
+    import numpy as np
+    n = noise.shape[0]
+    if not k or k == n:
+        return run(noise)
+    out = []
+    for at in range(0, n, k):
+        part = noise[at:at + k]
+        short = k - part.shape[0]
+        if short:
+            part = np.concatenate([part, np.zeros((short,) + part.shape[1:], part.dtype)])
+        out.append(run(part)[:k - short])
+    return np.concatenate(out)
