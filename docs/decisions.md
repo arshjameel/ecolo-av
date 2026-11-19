@@ -235,6 +235,19 @@ Short; the words are in `docs/history/messages-*.md`, the work in `TODO.md`.
 | **Our stop zone is the stop zone** (`aav_stop_zone`, TODO 182) | Ben, 16 Nov: "shadow run, then swap". In shadow on every obstacle check, 3 rounds, it stopped on the same command all 24 times Nav2's did, never later | Ben |
 | **The EKFs take the car's command, to slow only** (robot_localization's control term, TODO 207) | With the wheels quiet the EKFs ran on at their last speed, and `map -> odom` jumped 9-10 m when the wheels came back; `sim-check --faults` 14 of 14, three runs in a row | Ben |
 
+## Decided on 18-19 November
+
+The whole story, to explain to someone else: [What we decided, 18-19 Nov](decisions-2026-11-19.md).
+
+| Decision | Why | By |
+|---|---|---|
+| **Keep every commit**: the fork is never reset, rebased or force-pushed; protection rules and save tags; real merges only | the team's queue squashed 1,062 of Ben's commits; the fork holds the full history | Ben |
+| **The testing plan**, phases 0 and A to G, each automated ([plan](testing-plan.md)) | Ben's prof: "a full automated testing system" | Ben |
+| **NDT leads, the GPS checks** (`pose_source:=ndt`, a challenger, TODO 210) | the GPS was failing; with NDT leading the car held its route with the GPS stopped, jumped or drifting | Ben |
+| **Maps from our own drives** (KISS-SLAM, offline), cleaned in a map editor | 2.3 cm against the EKF's 33 cm; a person has the last word | Ben |
+| **No Nav2 yardstick; scores tracked, not gates** (TODO 167) | "We can get worse if we think there is room to improve"; safety checks stay pass/fail | Ben |
+| **One ONNX file per model**: Core ML on the Mac, TensorRT on the Orin (JetPack 7.2+); moved up (TODO 243) | one export for every computer; proven on the Mac before the car | Ben |
+
 ## Proposed in November: Ben's to decide
 
 Designs, **nothing of them built**.

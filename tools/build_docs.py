@@ -86,6 +86,8 @@ PAGES = [
      "KISS-SLAM on a recorded drive: NDT's map and a 2D map, placed by the GPS"),
     ('measure-the-car.md', 'Measure the car', 'The sheet for whoever measures the car'),
     ('decisions.md', 'Decisions', 'Decided, Tentative, Proposed, and Q1–Q34'),
+    ('decisions-2026-11-19.md', 'Decided 18-19 Nov',
+     'Git history, testing, NDT leads, maps, scores, ONNX: what and why'),
     ('infrastructure.md', 'Infrastructure', 'The repo, Pixi, the contracts, profiles, computers'),
     ('learn-car.md', 'The car, box by box', 'Every computer, board and wire on the car'),
     ('learn-journey.md', "A command's journey", 'One push and one goal, from hand to wheels'),
@@ -213,7 +215,8 @@ SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
           'what-we-built.md': ('aav-what-we-built.pdf', 'what we built'),
           'release-0.4-guide.md': ('aav-0.4-guide.pdf', 'the 0.4 guide'),
           'testing-plan.md': ('aav-testing-plan.pdf', 'the testing plan'),
-          'after-install.md': ('aav-after-install.pdf', 'after the install')}
+          'after-install.md': ('aav-after-install.pdf', 'after the install'),
+          'decisions-2026-11-19.md': ('aav-decisions-2026-11-19.pdf', 'what we decided, 18-19 Nov')}
 # A shared page's own PDF: a running footer, and the cover on a page of its own.
 RELEASE_STYLE = """
 @page {
