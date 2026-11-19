@@ -115,6 +115,16 @@ sensor_watchdog:
       over_warn: 1.0            # s
       over_persist: 2.0         # s
       over_slowing: 0.3         # m/s^2
+    lidar:                      # the roof VLP-16, 10 Hz: the stop zone's and costmap's eyes
+      topic: /sensors/lidar/points
+      kind: cloud
+      max_age: 1.0              # as the camera's (also 10 Hz): 10 clouds, well over 0.5 s
+      stop: true                # as the camera: a dead lidar holds Nav2 and the AI slot
+      # The same cloud again for 1 s while the wheels turn: a driver stuck, resending its
+      # last cloud with fresh stamps (the CRC of a sample of its bytes, as a picture's).
+      # Only while moving: the bench's pretend lidar has no noise, so a still car there
+      # sees the same cloud. Watched only where a lidar runs (launches: lidar:=true).
+      frozen_after: 1.0
     radar:                      # the stop zone stops navigation itself when it goes quiet
       topic: /sensors/radar/points
       kind: cloud

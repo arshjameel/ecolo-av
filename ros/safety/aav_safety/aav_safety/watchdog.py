@@ -14,9 +14,10 @@ What counts as wrong, per input (each check only where its rule asks for it):
   NO FIX  a GPS fix that says it has none, or NaN: the GPS counts as lost (STALE after
           max_age), as navsat_transform ignores those fixes too
   FROZEN  the same values again and again for frozen_after seconds (a driver stuck,
-          sending its last message with fresh stamps). For a camera only while the car
-          moves: a still car in a still world sees the same picture. For a heartbeat: its
-          count stopped rising
+          sending its last message with fresh stamps). For a camera or a cloud (the lidar)
+          only while the car moves: a still car in a still world sees the same picture,
+          and a noiseless lidar (the bench's) the same cloud. For a heartbeat: its count
+          stopped rising
   JUMP    two GPS fixes further apart than max_jump_speed allows in the time between
           their stamps, plus jump_margin for the fixes' own noise. Latched: the position
           after a jump can't be trusted until a person says so (clear())
@@ -108,7 +109,8 @@ KINDS = ('odom', 'imu', 'gps', 'image', 'cloud', 'heartbeat', 'detections', 'nod
          'actuator', 'speed', 'status')
 LEVELS = {1: 'WARN', 2: 'ERROR', 3: 'STALE'}    # diagnostic_msgs/DiagnosticStatus's
 EARTH_RADIUS = 6371000.0    # m
-MOVING = 0.2                # m/s: faster than this, the camera's picture must change
+MOVING = 0.2                # m/s: faster than this, a camera's picture or a cloud must change
+MOVING_KINDS = ('image', 'cloud')    # frozen only while the car moves
 SLOWING_WINDOW = 0.5        # s: the overspeed check's look back, for "is it slowing?"
 
 
@@ -235,7 +237,7 @@ class Watch:
         """
         Note a message: its numbers (NaN check), a digest of it (frozen check), a GPS fix.
 
-        speed is the car's newest wheel speed (m/s), for the camera's frozen check. stamp
+        speed is the car's newest wheel speed (m/s), for a camera's or cloud's frozen check. stamp
         is the fix's own time (s): fixes can arrive two at once, so their arrival times
         say nothing about how far apart they were taken. A status: values (its level,)
         and words, its message.
@@ -273,7 +275,7 @@ class Watch:
         if self.cross is not None and len(values) >= 3:
             self.cross.wheels(now, values[0], values[2])    # forward speed, turn rate
         if rule.frozen_after > 0.0 and digest is not None:
-            moving = rule.kind != 'image' or (speed is not None and abs(speed) > MOVING)
+            moving = rule.kind not in MOVING_KINDS or (speed is not None and abs(speed) > MOVING)
             if digest != self.digest or not moving:
                 self.same_since = now
             self.digest = digest

@@ -4,12 +4,15 @@ sensor_watchdog: stops the automatic drivers when a sensor they need dies, lies 
 Subscribes  each input's topic, as config/sensor_watchdog.yaml says (the launch file picks
             which: inputs), such as
             vehicle/odom              nav_msgs/Odometry     (also: the wheel speed, for
-                                                             the camera's frozen check)
+                                                             the camera's and the lidar's
+                                                             frozen check)
             sensors/imu/data          sensor_msgs/Imu
             sensors/gps/fix           sensor_msgs/NavSatFix
             localization/odom/local   nav_msgs/Odometry
             localization/odom/global  nav_msgs/Odometry
             sensors/camera/front_left/image_raw  sensor_msgs/Image (reliable, newest only)
+            sensors/lidar/points      sensor_msgs/PointCloud2 (best effort): the
+                                      VLP-16; STALE, and FROZEN while the car moves
             sensors/radar/points      sensor_msgs/PointCloud2 (best effort)
             perception/detections     vision_msgs/Detection2DArray: a streamed camera
                                       (camera_stream, on the car), one message a
@@ -156,7 +159,7 @@ class SensorWatchdog(Node):
         # Five ticks' time without one, on a steady clock: the watchdog itself was stopped,
         # so nothing latches for SETTLE s after.
         self.dog = Watchdog(rules, stall=max(0.5, 5.0 / rate), settle=SETTLE)
-        self.speed = None      # the wheels' newest speed, for the camera's frozen check
+        self.speed = None      # the wheels' newest speed, for the camera's, lidar's frozen check
         self.speed_at = None   # when it arrived, for the speed input (a stale one: no check)
         self.node_rules = [r for r in rules if r.kind == 'node']
         for rule in rules:
@@ -218,6 +221,11 @@ class SensorWatchdog(Node):
                 self.dog.gps(stamp, (msg.latitude, msg.longitude))
         elif rule.kind == 'image':
             # A frozen camera repeats its whole picture: a sample of it is enough.
+            watch.arrived(now, digest=zlib.crc32(bytes(memoryview(msg.data)[::997])),
+                          speed=self.speed)
+        elif rule.kind == 'cloud':
+            # A frozen lidar repeats its whole cloud: a sample of it is enough, as for a
+            # picture (FROZEN only where the rule has frozen_after, and while moving).
             watch.arrived(now, digest=zlib.crc32(bytes(memoryview(msg.data)[::997])),
                           speed=self.speed)
         elif rule.kind == 'detections':
