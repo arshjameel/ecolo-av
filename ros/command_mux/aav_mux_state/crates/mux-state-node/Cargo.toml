@@ -1,0 +1,20 @@
+[package]
+name = "mux-state-node"
+description = "command_mux_state: publishes which driver twist_mux passes on, its priority, its age and the locks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "command_mux_state"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+mux-state-core = { path = "../mux-state-core" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"

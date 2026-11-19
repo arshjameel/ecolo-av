@@ -6,6 +6,7 @@ Picks **one** command for ego from all the drivers: the stock twist_mux, set up 
 
 ```
 /drivers/*/cmd_vel ──▶ twist_mux (+ locks) ──▶ /control/cmd_vel ──▶ ego
+                   └─▶ command_mux_state ──▶ /control/command_mux/state  (who is driving)
 ```
 
 ## Subdirectories & Boundaries
@@ -13,6 +14,7 @@ Picks **one** command for ego from all the drivers: the stock twist_mux, set up 
 | Package | What it is |
 |---|---|
 | [aav_command_mux](./aav_command_mux/README.md) | twist_mux config: nine inputs (joy 100 … ai 10), locks `estop` (255), `no_timeout` (60), `geofence` (51), `stop_sign` and `sensors` (30), `stop_zone` (21) |
+| [aav_mux_state](./aav_mux_state/README.md) | `command_mux_state` (Rust): who twist_mux passes on, its priority and age, the locks on and whom they hold, on `/control/command_mux/state` (the debug screen, TODO 247) |
 
 ## Invariants
 
@@ -25,7 +27,7 @@ Picks **one** command for ego from all the drivers: the stock twist_mux, set up 
 
 ## Side Effects
 
-- Publishes `/control/cmd_vel` and lock diagnostics.
+- Publishes `/control/cmd_vel` and lock diagnostics; `/control/command_mux/state`.
 
 ## Verification
 

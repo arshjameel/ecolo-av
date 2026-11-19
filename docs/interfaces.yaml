@@ -222,6 +222,12 @@ topics:
     sub: [ego, actuator_test, point_driver, hw_panel, ekf_local, ekf_global]
     live: [turtle, sim, car, bench]
     note: The one command ego obeys. v (m/s) and w (rad/s) in base_link.
+  /control/command_mux/state:
+    type: diagnostic_msgs/msg/DiagnosticStatus
+    pub: [command_mux_state]
+    sub: [map]
+    live: [turtle, sim, car, bench]
+    note: "Who is driving (TODO 247, the debug screen) - twist_mux never says which input it passes on, so command_mux_state (aav_mux_state, Rust) runs beside it wherever mux.launch.py starts it, reads the same parameter files in the same order, hears the same inputs and locks and applies twist_mux 4.5.0's rule (the highest-priority input heard within its timeout and not below the highest lock that is on; a lock is on while its last value was true or it has been silent past its timeout). 10 Hz, and at once when the driver, the locks or the held inputs change. name command_mux; level OK (0), or WARN (1) when nobody drives while a lock holds someone; message one line, such as \"keyboard (90)\" or \"nobody; held: nav by sensors 30 silent\"; values driver (joy, keyboard, nav... or none), priority, topic, age_s (since its last command, by the node's clock), locks (the locks on, highest first, as name priority and silent when silence locked it, or none), lock_priority, held (fresh inputs a lock holds, or none). The map window's debug page (D) shows it. aav_command_mux's test_mux_runtime.py checks it names the driver a real twist_mux passes."
   /ego/trace:
     type: nav_msgs/msg/Path
     pub: [ego]

@@ -242,7 +242,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | **Does** | twist_mux's settings: picks the highest-priority driver, with an e-stop lock and a stop-sign lock |
 | **Why** | many drivers, one car: exactly one command must win |
 | **Runs on** | the Orin |
-| **In → out** | every `/drivers/<driver>/cmd_vel`, `/safety/estop`, `/perception/stop_sign` → `/control/cmd_vel` |
+| **In → out** | every `/drivers/<driver>/cmd_vel`, `/safety/estop`, `/perception/stop_sign` → `/control/cmd_vel`; beside it `command_mux_state` (`aav_mux_state`) → `/control/command_mux/state` (who is driving) |
 | **Origin** | stock twist_mux; our settings. Replaces 2025-26 `Real-Time-OS`'s command picking |
 | **Status** | [[works]] |
 | **Run alone** | `ros2 launch aav_command_mux mux.launch.py` |
@@ -535,6 +535,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
 | `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |
 | `aav_joy_alive_rs` | `joy_alive` in Rust, the default (`joy_alive_impl:=python` falls back) | `ros/safety/aav_joy_alive_rs/README.md` |
+| `aav_mux_state` | `command_mux_state` (Rust): who twist_mux passes on, on `/control/command_mux/state`, for the debug screen | `ros/command_mux/aav_mux_state/README.md` |
 | `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (`stop_sign_impl:=python` falls back) | `ros/perception/aav_stop_sign_rs/README.md` |
 | `aav_lane_finder_rs` | `lane_finder` in Rust, the default (`lane_finder_impl:=python` falls back) | `ros/perception/aav_lane_finder_rs/README.md` |
 | `aav_camera_stream_rs` | `camera_stream` in Rust, the default with no detector (`camera_stream_impl:=python` falls back) | `ros/sources/aav_camera_stream_rs/README.md`, then [Camera pipeline](camera-pipeline.md) |

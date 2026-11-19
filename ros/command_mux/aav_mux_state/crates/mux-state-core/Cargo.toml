@@ -1,0 +1,12 @@
+[package]
+name = "mux-state-core"
+description = "Who is driving: twist_mux's choice worked out from its own config, the inputs and the locks (no ROS)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# twist_mux's parameter files (aav_command_mux config/*.yaml), as the HUD reads its own.
+serde_yaml_ng = "0.10"
+thiserror = "2"
