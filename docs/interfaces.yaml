@@ -648,7 +648,7 @@ topics:
     type: aav_lane_geometry/msg/LaneGeometry
     pub: [lane_finder, fake_lane_geometry_pub]
     sub: [control_interface, lane_pose]
-    note: "One per camera picture, from lane_finder (aav_lane_finder, classic OpenCV), in base_link. vehicle_offset_m - the car from the lane's centre, 3 m ahead (lookahead), + = the car is left of it. Each line as y = a x^2 + b x + c (m), its radius (m; 9999 = straight or not seen) and confidence (0-1); the lane width (m). Bench - lane:=true runs lane_finder, lane:=fake runs fake_lane_geometry_pub (its polynomials are pixels)."
+    note: "One per camera picture, from lane_finder (aav_lane_finder, classic OpenCV), in base_link. vehicle_offset_m - the car from the lane's centre, 3 m ahead (lookahead), + = the car is left of it. Each line as y = a x^2 + b x + c (m), its radius (m; 9999 = straight or not seen) and confidence (0-1); the lane width (m); each line's paint, left_paint and right_paint - PAINT_UNKNOWN (0, not detected), PAINT_WHITE (1) or PAINT_YELLOW (2), from its pixels' colour (TODO 264). Bench - lane:=true runs lane_finder, lane:=fake runs fake_lane_geometry_pub (its polynomials are pixels)."
   /perception/lane/image:
     type: sensor_msgs/msg/Image
     pub: [lane_finder]

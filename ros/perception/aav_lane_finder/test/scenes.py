@@ -14,6 +14,7 @@ SKY = (205, 175, 125)   # BGR, as the bench camera draws them
 GRASS = (70, 130, 80)
 ROAD = (95, 95, 95)
 PAINT = (235, 235, 235)
+YELLOW = (40, 200, 230)   # a yellow centre line, BGR
 
 # The bench camera: 640 x 360, 343 px focal length, vehicle.yaml's camera_left_link.
 BENCH_CAMERA = (1.80, 0.29, 1.20)
@@ -21,7 +22,7 @@ BENCH_CAMERA = (1.80, 0.29, 1.20)
 
 def picture(offset=0.0, heading=0.0, radius=math.inf, lines=('left', 'right'),
             lane_width=3.5, line_width=0.15, width=640, height=360, focal=343.0,
-            camera=BENCH_CAMERA, pitch=0.0, dash=None):
+            camera=BENCH_CAMERA, pitch=0.0, dash=None, yellow=()):
     """
     Draw what the camera sees of a lane, in BGR.
 
@@ -32,6 +33,7 @@ def picture(offset=0.0, heading=0.0, radius=math.inf, lines=('left', 'right'),
     camera   m: where the camera is in base_link; pitch, rad: + looks down
     dash     (period, painted) m: dashed lines, painted the first `painted` m of each
              `period` along the lane; None: solid
+    yellow   which of the lines are painted yellow (the rest white)
     """
     v, u = np.mgrid[0:height, 0:width].astype(float)
     # A ray through each pixel's centre, in the camera's axes: x forward, y left, z up.
@@ -61,5 +63,6 @@ def picture(offset=0.0, heading=0.0, radius=math.inf, lines=('left', 'right'),
         painted = ground & (np.mod(lx, period) < length)
     for side in lines:
         middle = lane_width / 2.0 if side == 'left' else -lane_width / 2.0
-        image[painted & (np.abs(across - middle) < line_width / 2.0)] = PAINT
+        image[painted & (np.abs(across - middle) < line_width / 2.0)] = (
+            YELLOW if side in yellow else PAINT)
     return image

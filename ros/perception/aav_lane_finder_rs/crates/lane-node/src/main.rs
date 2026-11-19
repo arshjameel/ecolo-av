@@ -7,14 +7,16 @@
 //!             /sensors/camera/front_left/camera_info  sensor_msgs/CameraInfo: the lens's focal
 //!                                                     length, centre and distortion
 //! Publishes   /perception/lane/geometry               aav_lane_geometry/LaneGeometry, one per
-//!                                                     picture, in base_link: control_interface
-//!                                                     steers by it
+//!                                                     picture, in base_link, each line's
+//!                                                     paint (white or yellow) too: the
+//!                                                     costmap's camera lanes and lane_pose
+//!                                                     read it
 //!             /perception/lane/image                  sensor_msgs/Image, bgr8: the bird's-eye
 //!                                                     view with the paint, the windows and the
 //!                                                     lines found (only with debug_image)
 //! Parameters  aav_lane_finder's (config/lane_finder.yaml): camera_xyz, camera_rpy, focal_px,
 //!             use_camera_info, x_min, x_max, y_max, resolution, every field of Settings
-//!             (paint_contrast ... wheelbase), debug_image.
+//!             (paint_contrast ... wheelbase, yellow_ratio), debug_image.
 //!
 //! No serving, no calls. The camera's place on the car comes from vehicle.yaml, through
 //! the launch file; until camera_info arrives, the node uses focal_px and the middle of
@@ -97,6 +99,7 @@ fn config(d: &mut Declarer<'_>) -> Result<Config> {
         max_lane_width: d.number("max_lane_width", s.max_lane_width)?,
         lookahead: d.number("lookahead", s.lookahead)?,
         wheelbase: d.number("wheelbase", s.wheelbase)?,
+        yellow_ratio: d.number("yellow_ratio", s.yellow_ratio)?,
     };
     anyhow::ensure!(settings.windows > 0, "windows:=0: needs at least one");
     let debug = d.flag("debug_image", false)?;
@@ -351,6 +354,8 @@ fn message(lane: &Lane, picture: &Header) -> LaneGeometry {
         right_lane_detected: lane.right.is_some(),
         both_lanes_detected: lane.left.is_some() && lane.right.is_some(),
         steering_hint: lane.steering_hint as f32,
+        left_paint: lane.left_paint.code(),
+        right_paint: lane.right_paint.code(),
         ..LaneGeometry::default()
     };
     if let Some(l) = &lane.left {
