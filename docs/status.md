@@ -1,7 +1,9 @@
 # Status: what works and what doesn't yet
 
-Where things stand on 13 November 2026. Each row carries the date of its last run: a
-row dated October hasn't been run again unless it says so.
+Where things stand on 18 November 2026. Each row carries the date of its last run: a
+row dated October hasn't been run again unless it says so. The newest work is in
+[Since 16 November](#since-16-november); the older "Next" lists are in
+[the status log](history/status-log.md).
 
 | Word | Means |
 |---|---|
@@ -20,6 +22,7 @@ The work left is in `TODO.md` and [The plan](plan.md).
 | 16, 21 Oct | two read-only audits: every computer, port and connection | `docs/history/audit-2026-10-16-car.md`, `audit-2026-10-21-car.md` |
 | 6 Nov | "drive as is", nothing of ours flashed or installed: the car didn't move (a fuse and a circuit board, Ben), then moved forward | `docs/history/audit-2026-11-06-car.md` |
 | 13 Nov | the car drove "and stopped well" (Ben), with **only the localization update installed**. The full suite isn't on the car yet | `docs/history/messages-2026-11-13.md`: no recording, numbers or audit page in the repo yet |
+| 18 Nov | the team upgraded the car (Ben: "People are upgrading the car now"). 0.4-rc1 was ready to install ([on the car](release-0.4-rc1.md)); the ESP32 flash and Motor Pi upgrade rehearsed the night before, the ESP32 in QEMU ([rehearsal](rehearsal-2026-11-18.md)). The Orin moves to JetPack 7.2 or newer: the hardware lead's call | no result of that day in the repo yet: until one is, our stack is [[untested]] on the car |
 
 So every row below is [[untested]] on the car unless it says otherwise. What goes on the
 car, in what order: [Rolling out](rollout.md).
@@ -112,7 +115,7 @@ page. All of these are trials or sim-only unless the row says "default".
 | Our own navigator (8 Nov) | `aav_navigator` (Rust), `navigator:=own` | [[works]] in Ravensim, forward only: test lot 7 of 12 legs (Nav2 8); campus 4 of 6 (Nav2 2); `sim-check` all ours 13 of 13 ([page](own-navigator.md)) |
 | Our own velocity smoother (8 Nov) | `aav_smoother` (Rust), `smoother:=own` | [[works]] in Ravensim, 3 runs: 10 of 12 legs both; ego clipped 0-0.1 % of the steering (Nav2's: 9-15 %) ([page](own-smoother.md)) |
 | Diffusion planner (2 Nov; 0.3: 7-8 Nov) | `aav_diffusion_planner`, `planner:=diffusion`; on the car only with `diffusion_trial:=true`, 0.5 m/s | [[works]] in Ravensim, 8 Nov, 3 runs: every leg, 88 % of plans from the model. [[untested]] on the Orin (TensorRT) and the car |
-| The behaviour planner (7 Nov) | `aav_behaviour`, `behaviour:=true` | [[works]] in its tests (every transition). Gazebo, 8 Nov: the obstacle stop 2 of 4 (the other 2 went round); the goal reached. **Open:** it never entered APPROACH for the stop sign ([Stopping](stopping.md#2-the-behaviour-planner)) |
+| The behaviour planner (7 Nov; Rust the default 16 Nov) | `aav_behaviour_rs` (`aav_behaviour` with `behaviour_impl:=python`), `behaviour:=true`, on in `stack:=ours` | [[works]] in its tests (every transition); in Ravensim since (below). Gazebo, 8 Nov: the obstacle stop 2 of 4 (the other 2 went round); the goal reached. **Open:** it never entered APPROACH for the stop sign ([Stopping](stopping.md#2-the-behaviour-planner)) |
 | Directions on the campus (7 Nov) | `aav_routes` `router:=campus`, `pixi run campus-route` | [[works]] without ROS. P4 to the Fieldhouse (453 m), 8 Nov: Nav2's waypoint follower 0 of 2, our navigator 1 of 2 ([Routes](routes.md#on-the-campus)) |
 | Map chunks, NDT by chunk, Lanelet2 in Rust (15 Nov) | `aav_description` `map-chunks`, `lanelet-map`; `ndt_chunks:=`; `global_window:=` | [[works]] in their tests; the campus cut in 1.5 s; `global_window:=192` passes `sim-check`. Scored 15 Nov: NDT by chunk as good as the whole map on the campus, so the default there with `ndt:=true`; `global_window:=192` reached 2 of 6 campus legs (the long roads leave the window), a challenger. 16 Nov: our global costmap from chunks (`costmap_chunks:=auto`, on in `stack:=ours`): 20 of 20 legs on 3 tours, as the whole map, a third of the memory ([own costmap](own-costmap.md#from-map-chunks-on-every-core-16-nov-todo-175-195)) |
 | **Control and safety** | | |
@@ -137,11 +140,30 @@ page. All of these are trials or sim-only unless the row says "default".
 | Car setup, the rollout, "Know the car" (1-8 Nov) | `tools/car_setup.sh <role>`, [Rolling out](rollout.md), [Know the car](know-the-car.md) | [[untested]] on a car computer |
 | Radar and battery drivers (ported 9 Oct) | `aav_radar_ti`, `aav_battery_victron` | [[untested]] need the devices |
 
+## Since 16 November
+
+Ravensim on a Mac unless the row says so; none of it on the car yet.
+
+| Box | Implemented by | Status |
+|---|---|---|
+| **Our own stack, the only one** (Nav2 deleted 17 Nov, Gazebo 16 Nov) | `stack:=ours`: our costmap, planner, navigator, `mppi_lag`, smoother, stop zone, map server | [[works]] in Ravensim: the league's final, 16 Nov, 30 of 30 legs on three tours ([League scores](league-results-2026-11-16.md)) |
+| Rust by default (16-18 Nov) | ego, behaviour, the watchdog, localization_health, the muxes, the Motor Pi's bridge and RC, `lidar_scan`, things, `joy_alive`, the stop-sign watcher, the lane finder, the point driver, `arm_when_open`, `camera_stream`, AMCL; `*_impl:=python` falls back | [[works]] against the Python's answers (shared vectors) and in Ravensim; [[untested]] on the car ([Languages](languages.md)) |
+| AMCL in Rust (18 Nov) | `aav_amcl_rs`, `amcl_impl:=rust` (stock: `amcl_impl:=stock`) | [[works]] the lot, 3 runs each: a tie with stock (5-9 cm a leg). `nav2_amcl` still in `pixi.toml` (TODO 232) |
+| The lane's centre as the path (16 Nov) | `path:=lane`, ours' default | [[works]] University Drive, 3 runs: 0 % over the centre line ([Our planner](own-planner.md)) |
+| Stop for anything moving (17 Nov) | the behaviour planner, `moving_*` parameters | [[works]] `sim-check --movers --moving`: every mover held the car, the parked box never ([Stopping](stopping.md)) |
+| Kerbs (16 Nov) | `kerbs:=true`: the Rust voxels' step finder, the costmap's `kerb_layer` | [[works]] a 0.15 m kerb, at 1 m/s; a 0.10 m one never seen ([Kerbs](kerbs.md)). [[untested]] on a real kerb |
+| The pedal waits to change direction (17-18 Nov) | ego's `pedal_shift_hold` | [[works]] in tests and the rehearsal; [[untested]] on the car |
+| The speed loop and its model apart (18 Nov) | `speed_loop_model:=` | [[works]]: `firm` car, `smooth` model stops best, sways a little more; not the default (TODO 163) |
+| The navigator's follow call (18 Nov) | `aav_navigator` `call.rs` | [[works]] here, with software GL and load; CI's nightly to be counted (TODO 240) |
+| The watchdog reads our nodes' status (18 Nov) | `kind: status`, warn only | [[works]] in tests, Python and Rust tick by tick (TODO 171) |
+| The detector in Rust, through ONNX (17 Nov) | `aav_detector_rs`, `detector_impl:=rust`, a challenger | [[works]] `sim-check --perception` on Core ML; TensorRT on the Orin [[untested]] ([ONNX](onnx.md)) |
+| A prettier Ravensim (17 Nov) | `graphics:=pretty` | [[works]]: the scored checks pass as before |
+
 ## Builds and tests
 
 | Check | Result |
 |---|---|
-| `colcon build`, Jazzy | [[works]] on Linux and the Mac: 37 packages on 25 Oct. Today 51 packages (30 Python, 21 CMake, 12 of those Rust), plus two Bevy crates outside colcon |
+| `colcon build`, Jazzy | [[works]] on Linux and the Mac: 37 packages on 25 Oct; 51 on 13 Nov; 72 on 18 Nov (counted by `package.xml`), plus two Bevy crates outside colcon |
 | `pixi run test`: build, tests, lint, `colcon test` | [[works]] 25 Oct: 1110 tests, 0 failures, 4 skipped, 37 packages. 3 Nov (0.2): 1575 tests, 0 failures. 15 Nov: 1934 tests, 0 failures, 6 skipped, 54 packages. CI runs it on Linux (x86_64 and 64-bit ARM) for every pull request and every push to `main` |
 | Live graph vs `docs/interfaces.yaml`: turtle, sim, road, replay and bench | [[works]] 0 failures each (sim and road again on 15 Oct, after the topic renaming) |
 | `pixi run bench-check` (`--perception`, `--lane`, `--obstacle`) | [[works]] on `main`, 11 Oct: the default checks, the stop sign, lane keeping and the obstacle |
@@ -158,20 +180,19 @@ page. All of these are trials or sim-only unless the row says "default".
 
 Yes. Everything builds against Jazzy, and the turtle, sim and replay profiles run. Every
 configuration key was checked against what the running Jazzy nodes accept. The fixes were
-small: clean shutdowns, Nav2 on simulated time, and the simulated GPS noise. The details
+small: clean shutdowns, Nav2 on simulated time (Nav2 went on 17 Nov), and the simulated GPS noise. The details
 are in `docs/history/audit-2026-10-10-*.md`.
 
 ## Next
 
-From the top of `TODO.md` (15 Nov). The night of 14-15 Nov fixed two stalls in the
-simulator (TODO 193: the car stood still after an obstacle was taken away; 194: the
-behaviour missed a walker 1 time in 3) and built the trials above.
+From the top of `TODO.md` (18 Nov) and [the testing plan](testing-plan.md).
 
 | # | Next | TODO |
 |---|---|---|
-| 1 | Look at the screens' new layers (HUD `--demo`, `pixi run dev-window`); a sim with the detector and `things_names:=true` | 192 |
-| 2 | Ravensim's software cameras on Linux (oirp-spss, CI's nightly job) | 183 |
-| 3 | The slow map correction against the default in the league | 186 |
-| 4 | The planner's sideways swing on a replan, near things it can't see | 177, 193 |
-| 5 | The car's blockers, with the hardware lead | 157, 158, 173 |
-| 6 | Measure the car: the "Know the car" tests replace the guesses in `vehicle.yaml` | 60, 61 |
+| 1 | `nav2_amcl` out of `pixi.toml` once ours has more runs and the campus; the one-option switches | 231, 232 |
+| 2 | The sim car's 14 % overshoot: which speed loop is the default | 163 |
+| 3 | Count CI's nightly `sim` job after the navigator's fix; then drop `continue-on-error` | 240, 23 |
+| 4 | Ours against stock, 3 runs each, the lot and the campus | 167 |
+| 5 | Our planner faster; reverse in a narrow street | 152, 174 |
+| 6 | The testing plan's phase A: `pixi run car-test --stands`; the debug screen | 246, 247 |
+| waits | The car (the hardware lead; being upgraded 18 Nov): the seven blockers, one drive recorded and scored | 157, 158, 173 |

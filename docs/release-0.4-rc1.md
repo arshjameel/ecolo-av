@@ -19,7 +19,7 @@ The whole stack on one page: [What we built](what-we-built.md). In short:
 |---|---|
 | Driving | our own stack (`stack:=ours`): costmap, planner, navigator, MPPI, smoother, stop zone. Nav2 deleted 17 Nov |
 | Simulator | Ravensim, ours. Gazebo deleted 16 Nov |
-| Languages | six nodes run in Rust by default; their Python twins stay, one switch away |
+| Languages | six nodes ran in Rust by default on 17 Nov; by 18 Nov 16 `*_impl:=` switches default to Rust ([Languages](languages.md)); their Python twins stay, one switch away |
 | The league | no champion changed on 16 Nov ([its final configuration](league-results-2026-11-16.md#final-configuration)) |
 
 The release in one page, one command per job: [0.4-rc1: start here](release-0.4.md).
