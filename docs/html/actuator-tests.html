@@ -927,8 +927,8 @@ pixi run car-test --stands --only faults         # some steps (or a group: steer
 <tr>
 <td>5e</td>
 <td>lidar lost</td>
-<td>car: a person unplugs it</td>
-<td><strong>FAIL today</strong>: the watchdog has no lidar input</td>
+<td>car: a person unplugs it. Sim: <code>fault.lidar stop</code></td>
+<td>the sensor watchdog names it (its <code>lidar</code> input, since 19 Nov) within 1.0 s + 1 s; still 3 s later</td>
 </tr>
 <tr>
 <td>5f-g</td>
@@ -1075,7 +1075,11 @@ domain 110), about 7 minutes:</p>
 <td>PASS: the watchdog named each 2.11, 0.57, 1.09 s after its last message; still 0.41-0.45 s after its word</td>
 </tr>
 <tr>
-<td>5e-g lidar, Pi, cable</td>
+<td>5e lidar (since 19 Nov, TODO 246)</td>
+<td>PASS: the watchdog named it 1.12 s after its last cloud (limit 2 s); still 0.45 s after its word</td>
+</tr>
+<tr>
+<td>5f-g Pi, cable</td>
 <td>SKIPPED: not in Ravensim</td>
 </tr>
 <tr>

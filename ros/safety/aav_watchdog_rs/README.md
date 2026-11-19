@@ -67,7 +67,7 @@ and the clear service. Nothing added.
 
 `gen_vectors.py` plays 4 runs of 400 ticks (10 Hz) through the Python's logic, with faults
 on purpose: frozen wheels while speeding up, NaN, silences, a lost GPS fix and a jump, a
-frozen camera, the HUD dropping out, stuck steering, overspeed, a node gone, a stalled
+frozen camera, a silent and a frozen lidar (TODO 246), the HUD dropping out, stuck steering, overspeed, a node gone, a stalled
 node, a costmap that waits then hangs, a planner that finds no path (status inputs, TODO 171; one run with `stop: true`), and a clear.
 
 | Compared | Ticks | Different |

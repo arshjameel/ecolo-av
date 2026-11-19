@@ -334,9 +334,9 @@ sensor at once. <strong>PASS / FAIL per line.</strong> It presses the e-stop its
 </tr>
 <tr>
 <td>The lidar is lost</td>
-<td>car: asks a person to unplug it</td>
-<td>the same</td>
-<td><strong>FAILS today</strong>: the watchdog has no lidar input. Not in Ravensim</td>
+<td>car: asks a person to unplug it; sim: Ravensim's <code>fault.lidar stop</code> (<code>sim_lidar_relay</code>)</td>
+<td>the same: the watchdog's <code>lidar</code> input (1.0 s, stops, as the camera; TODO 246)</td>
+<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>A Pi is lost</td>

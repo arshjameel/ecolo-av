@@ -47,7 +47,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | 2 | An obstacle behind, reversing | the rear stop zone | stopped 0.75-0.85 m before a post | sim | ❌ |
 | 3 | Runaway speed | ego's cap; the spine's overspeed rule; the watchdog's OVERSPEED | **14 % over** the command; throttle stuck: OVERSPEED 4.6 s after | sim | 🟡 |
 | 4 | The e-stop | `/safety/estop`; Kar-Tech; red button | brake within 2-12 ms (spine) | sim | ❌ |
-| 5 | A dead or frozen node | sensor watchdog; mux timeouts; respawn | 13 faults stop within 6 s | sim | ❌ |
+| 5 | A dead or frozen node | sensor watchdog; mux timeouts; respawn | 15 faults stop within 6 s (the lidar's since 19 Nov) | sim | ❌ |
 | 6 | Commands to the spine lost | the firmware's 100 ms timeout | brakes 111-120 ms after | QEMU | ❌ |
 | 7 | Steering stuck or off centre | driver-fault brake; calibration | stuck in a bend: the watchdog's STUCK after 3.6 s, stood after 5 s (was: nothing noticed, 3.1 m off) | sim | 🟡 |
 | 8 | A weak brake | the adaptive brake (a trial) | 0.87 → 0.21 m past, 150 kg; a dead brake: 9.7 m | sim | ❌ |
@@ -163,7 +163,7 @@ brake does with no power ([ESP32 safety](esp32-safety.md), row 7; tests 3.5, 3.8
 
 | Layer | What | Where |
 |---|---|---|
-| Sensor watchdog | a sensor stale, NaN, frozen or jumped: holds the point driver, navigation and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too | `aav_safety` `sensor_watchdog.py` |
+| Sensor watchdog | a sensor stale, NaN, frozen or jumped: holds the point driver, navigation and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too. The roof lidar too since 19 Nov (TODO 246): STALE after 1 s, FROZEN while moving | `aav_safety` `sensor_watchdog.py` |
 | Wheels cross-check | frozen wheels caught against the IMU and GPS | `aav_safety` `wheel_check.py` |
 | twist_mux | every driver counts only for 0.5 s after its last message | `twist_mux.yaml` |
 | ego | stops on 0.3 s of quiet | `aav_ego` |
@@ -177,6 +177,7 @@ brake does with no power ([ESP32 safety](esp32-safety.md), row 7; tests 3.5, 3.8
 | frozen wheels: 25 of 25 caught | sim (Gazebo), since 24 Oct | Ben |
 | `--faults` 3 of 3 | sim (ours), 8 Nov | Ben |
 | **Fixed 17 Nov (TODO 207):** 1-6 fault cases a run failed after `odom stop`: with the wheels quiet, both EKFs kept their last speed and acceleration, `ekf_local` ran 15 m on while the car stood, and `map -> odom` jumped 9-10 m back when the wheels returned. Now the car's command may slow each EKF's speed (robot_localization's control term, never speeding it up). And the watchdog waits 10 s, not 3, after its own stall before anything latches (DDS took 7 s to bring the HUD's beats back, and the HUD latched LOST). `sim-check --faults` **14 of 14, 3 runs in a row** (the Rust watchdog, a computer at load 10-34) | sim (ours), 17 Nov | Ben |
+| **The lidar (TODO 246):** car-test's step 5e found no lidar input, so a dead lidar stopped only navigation (the stop zone's silent source), and said nothing. Now the watchdog's `lidar` input stops, as the camera. `sim-check --faults` with the lidar: **15 of 15**; `lidar stop`: "lidar STALE" 1.2 s after its last cloud, stood still 2.3 s after the fault, 1.3 m on | sim (ours), 19 Nov | Ben |
 | a 2.5 s stall of the whole Mac flagged, then let go | bench, Oct | Ben |
 | joystick alive: `bench-check` 11 of 11 | bench, 2 Nov | Ben |
 | respawn and age checks | tests only | Ben |

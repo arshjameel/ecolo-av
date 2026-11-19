@@ -65,7 +65,7 @@ sensor at once. **PASS / FAIL per line.** It presses the e-stop itself if the ca
 |---|---|---|---|
 | **The Orin is lost** | car: asks a person to pull the Orin's cable to the Motor Pi; sim: pauses its own Ravensim's output mux | the ESP32 brakes and holds, on its own | Built; untested on the car. No new hook in the output mux |
 | The GPS, the front camera or the IMU is lost | car: asks a person to unplug it; sim: Ravensim's `fault.<sensor> stop` | the sensor watchdog **names it** within its `max_age` + 1 s | Built; untested on the car |
-| The lidar is lost | car: asks a person to unplug it | the same | **FAILS today**: the watchdog has no lidar input. Not in Ravensim |
+| The lidar is lost | car: asks a person to unplug it; sim: Ravensim's `fault.lidar stop` (`sim_lidar_relay`) | the same: the watchdog's `lidar` input (1.0 s, stops, as the camera; TODO 246) | Built; untested on the car |
 | A Pi is lost | asks a person to pull the camera Pi's cable | the car stops, something says why | Built; car only |
 | The e-stop | car: asks a person to press it; sim: the runner presses `/safety/estop` | everything stops | Built; untested on the car |
 | A cable is pulled | asks a person to pull it | the same as the software version | Built; car only |
