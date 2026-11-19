@@ -16,7 +16,7 @@ goal (RViz, the map window, street_router, language_drive, the tools)
 
 | Part | What it is |
 |---|---|
-| `crates/navigator` | the maths, no ROS: the goal state machine (plan, follow, replan, the final approach, the recoveries in turn, give up), through-poses, waypoints; `path.rs`: the nearest point, the distance left, a pose passed |
+| `crates/navigator` | the maths, no ROS: the goal state machine (plan, follow, replan, the final approach, the recoveries in turn, give up), through-poses, waypoints; `path.rs`: the nearest point, the distance left, a pose passed; `call.rs`: one FollowPath call, its feedback counted from the moment it is asked for (TODO 240) |
 | `crates/navigator-node` | the ROS node, binary `navigator` (rclrs): messages in and out only |
 
 ```sh

@@ -46,8 +46,9 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context as _, Result};
 use futures::channel::oneshot;
-use futures::future::{self, Either};
+use futures::stream;
 use map_core::earth::{Datum, LatLon, BUILT_IN_NAVSAT_YAML};
+use navigator::call::{follow_call, Called};
 use navigator::path::straight_back;
 use navigator::{
     Abort, BackUp as BackUpSettings, Command, FollowError, Mission, Navigator, Outcome, PlanError,
@@ -957,41 +958,52 @@ impl Core {
             progress_checker_id: String::new(),
         };
         let me = self.me.clone();
+        let logger = self.logger.clone();
         self.spawn(
             async move {
                 if !client.server_is_available().unwrap_or(false) {
                     return Err((FollowError::Unknown, "no follower serves FollowPath".into()));
                 }
-                let Some(g) = client.request_goal(goal).await else {
-                    return Err((FollowError::Unknown, "the follower refused the path".into()));
-                };
-                // Each feedback tells the navigator the follower is alive (follow_timeout),
-                // until the result.
-                let mut feedback = g.feedback;
-                let mut result = g.result;
-                let (status, result) = loop {
-                    match future::select(result, Box::pin(feedback.recv())).await {
-                        Either::Left((done, _)) => break done,
-                        Either::Right((heard, waiting)) => {
-                            result = waiting;
-                            if heard.is_none() {
-                                break result.await; // no more feedback: just the result
-                            }
-                            if let Some(me) = &me {
-                                drop(me.run(|c: &mut Core| {
-                                    let now = c.now();
-                                    c.nav.follower_heard(now);
-                                }));
-                            }
-                        }
+                // The goal's feedback counts from the moment it is asked for, not only once
+                // the follower's answer has come (TODO 240: call.rs).
+                let requested = client.request_goal(goal);
+                let id = *requested.goal_id();
+                let feedback = stream::unfold(client.receive_feedback(id), |mut f| async move {
+                    f.recv().await.map(|_| ((), f))
+                });
+                let answer = async move { requested.await.map(|g| g.result) };
+                let by_id = || client.receive_result(id);
+                let heard = || {
+                    if let Some(me) = &me {
+                        drop(me.run(|c: &mut Core| {
+                            let now = c.now();
+                            c.nav.follower_heard(now);
+                        }));
                     }
                 };
-                match status {
-                    GoalStatusCode::Succeeded => Ok(()),
-                    _ => Err((
-                        FollowError::from_code(result.error_code),
-                        format!("{status:?}"),
-                    )),
+                match follow_call(answer, feedback, by_id, heard).await {
+                    Called::Refused => {
+                        Err((FollowError::Unknown, "the follower refused the path".into()))
+                    }
+                    Called::Done {
+                        result: (status, result),
+                        answered,
+                    } => {
+                        if !answered {
+                            log_warn!(
+                                &logger,
+                                "the follower's answer to a path never came; its feedback \
+                                 showed it was driving it (TODO 240)"
+                            );
+                        }
+                        match status {
+                            GoalStatusCode::Succeeded => Ok(()),
+                            _ => Err((
+                                FollowError::from_code(result.error_code),
+                                format!("{status:?}"),
+                            )),
+                        }
+                    }
                 }
             },
             move |c: &mut Core, answer: Result<(), (FollowError, String)>, now| {
