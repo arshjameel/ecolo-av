@@ -68,13 +68,13 @@ and the clear service. Nothing added.
 `gen_vectors.py` plays 4 runs of 400 ticks (10 Hz) through the Python's logic, with faults
 on purpose: frozen wheels while speeding up, NaN, silences, a lost GPS fix and a jump, a
 frozen camera, the HUD dropping out, stuck steering, overspeed, a node gone, a stalled
-node, and a clear.
+node, a costmap that waits then hangs, a planner that finds no path (status inputs, TODO 171; one run with `stop: true`), and a clear.
 
 | Compared | Ticks | Different |
 |---|---|---|
 | every input's state, words and stop; the lock; the state line; what is logged | 1,600 | 0 |
 | `/diagnostics`: level, message, hardware id, every value | once a second | 0 |
-| states reached | all 11 | |
+| states reached | all 12 (FAULT since 18 Nov) | |
 | a picture's digest against `zlib.crc32` | random pictures | 0 |
 
 ## Measured

@@ -257,7 +257,7 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
     # The empty world renders no camera, radar or lidar: the watchdog watches the rest.
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     # The sensors, then our own nodes the stack starts (warn only: TODO 180).
-    sensors = [i for i in inputs if not i.startswith('node_')]
+    sensors = [i for i in inputs if not i.startswith(('node_', 'status_'))]
     assert sensors == 'odom,imu,gps,local,global,steering,speed'.split(',')
     assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
@@ -299,7 +299,7 @@ def test_the_road_world_adds_the_radar_to_navigation_and_its_clusters():
     # Ours' lane pose reads the camera (17 Nov), so the watchdog watches it.
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     # The sensors, then our own nodes the stack starts (warn only: TODO 180).
-    sensors = [i for i in inputs if not i.startswith('node_')]
+    sensors = [i for i in inputs if not i.startswith(('node_', 'status_'))]
     assert sensors == 'odom,imu,gps,local,global,camera,radar,steering,speed'.split(',')
     # Nothing reads it on the champions' stack (best), so the watchdog leaves it alone.
     stock = included(started(SIM, world='road', stack='best'))['watchdog.launch.py']
@@ -737,6 +737,11 @@ def test_the_watchdog_watches_only_our_nodes_that_run():
                           navigator='own', smoother='own', behaviour=False, cubes=False,
                           things=False)
     assert 'node_planner' not in trial and 'node_mppi_lag' not in trial
+    # TODO 171 (Ben, 18 Nov: warn only): their status topics too, status_* inputs.
+    assert {'status_costmap_local', 'status_costmap_global', 'status_planner',
+            'status_navigator', 'status_mppi_lag'} <= set(ours)
+    assert 'status_planner' not in trial and 'status_mppi_lag' not in trial
+    assert 'status_navigator' in trial
     assert SIM.our_nodes(nav=False, costmap='own', planner='own', tracker='mppi_lag',
                          navigator='own', smoother='own', behaviour=True, cubes=False,
                          things=False) == ['node_ego', 'node_look_ahead']
@@ -745,7 +750,8 @@ def test_the_watchdog_watches_only_our_nodes_that_run():
     with open(config) as f:
         rules = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
     for name in ours:
-        assert rules[name]['kind'] == 'node' and rules[name]['stop'] is False
+        kind = 'status' if name.startswith('status_') else 'node'
+        assert rules[name]['kind'] == kind and rules[name]['stop'] is False, name
 
 
 def test_lane_pose_runs_the_lane_finder_and_feeds_the_global_ekf():

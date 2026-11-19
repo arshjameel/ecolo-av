@@ -15,10 +15,10 @@ tests, no simulator run for this check.
 |---|---|---|
 | `/tf` age checks | done | costmap (odometry, map -> odom), planner (TF_ERROR), navigator (1 s), mppi_lag (map -> odom) |
 | Respawn | done | `navigation.launch.py` (1 s), `test_respawn.py` |
-| A watchdog on our nodes' status | **for Ben** | see below |
+| A watchdog on our nodes' status | **done 18 Nov**, warn only | `sensor_watchdog` `kind: status`: FAULT when a node says WARN/ERROR, STALE when silent; `status_*` inputs; `stop: true` is the switch |
 | Costmap age checks | done | mppi_lag `costmap_timeout`, planner; `costmap/src/age.rs` |
 | clippy and fmt | done | `tools/test.sh` (clippy on the logic crates; the rclrs nodes need ROS's messages) |
-| Tests of the node binaries | left (M) | only `test_respawn.py`; needs a ROS test harness |
+| Tests of the node binaries | left (M) | only `test_respawn.py`. A harness would: start the binary on its own `ROS_DOMAIN_ID` with `LOCALHOST`, feed its topics, call its services, read its answers, stop it by process group (as `aav_watchdog_rs`'s `test_watchdog_rs_node.py`). Meanwhile the logic moves out of the binaries (Ravensim's `node.rs`, 18 Nov) |
 | Run on the car | left | gate 173 |
 | Costmap: says its age, stops on stale odometry | done | status topic; `age.rs` |
 | Costmap: threads and bounds | done | each costmap on its own thread; only the changed area |
@@ -51,12 +51,15 @@ tests, no simulator run for this check.
 | M5 placing the car | done | `vehicle/sim/set_entity_state` |
 | S1 repeatable runs | **part done tonight** | lidar noise the same on any `threads`; Python noise seeded. Left: wall-clock pace |
 | S2 the shared car model | left (M) | sim to check |
-| S3 the IMU | left (S) | sim to check |
-| S4 perfect wheel odometry | **for Ben** | see below |
-| S5 tests of `sim-node`, `scene.rs` | left (M) | |
+| S3 the IMU | **done 18 Nov** | three turn rates, the mean acceleration between readings (it read 10 or 0 m/s²); `sim_imu` passes it on, as `imu_node` gives it (`docs/own-simulator.md`, The IMU). Left: 50 Hz against the car's 200 |
+| S4 perfect wheel odometry | **done** (15 Nov, TODO 179; values and why 18 Nov) | `wheel_noise:=0.05`, `wheel_slip:=0.02`, seeded, off by default (`docs/own-simulator.md`, Noisy wheels). Left: the car's own numbers from a bag |
+| S5 tests of `sim-node`, `scene.rs` | **done 18 Nov**, but the binary | `scene.rs`: 9 tests; the node's decisions in `sim-core` `node.rs`: 8. Found: a ray exactly through a shared edge can slip between two triangles |
 | S6, S7, N1-N4 | sim | |
 
 ### For Ben
+
+Ben, 18 Nov: take the recommendations. Done: the watchdog (warn only) and S4; Hybrid-A*
+waits for after the release (TODO 178).
 
 | Question | Recommendation |
 |---|---|

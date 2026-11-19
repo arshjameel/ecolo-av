@@ -76,7 +76,7 @@ under `tools/software_gl.sh`), `graphics` (auto, simple, pretty; auto = pretty o
 | Node | Parameters |
 |---|---|
 | `sim_adapter` | `actuator_model` (true), `speed_loop` (default, smooth, lqi or firm), `payload` (0 kg aboard, live), `adaptive_brake` (false, live; not with spine or esp32: `docs/stopping.md`), `spine` (false), `esp32` (false), `rate_hz` (50), `cmd_timeout` (0.2 s), `wheelbase`, `wheel_radius` (m, from `vehicle.yaml` via the launch file), `rendered`, `radar`, `lidar`, `speed_variance`, `fault.odom`; the actuators' `fault.steer` (ok, stuck), `fault.throttle` (ok, stuck), `fault.brake` (ok, weak, dead) |
-| `sim_imu` | `gyro_stddev` (0.02 rad/s), `accel_stddev` (0.2 m/s²), `imu_x` (m), `gyro_bias` (rad/s), `fault.imu`, `seed` (3) |
+| `sim_imu` | `gyro_stddev` (0.02 rad/s), `accel_stddev` (0.2 m/s²), `imu_x` (m), `gyro_bias` (rad/s), `fault.imu`, `accel_from` (simulator: Ravensim's own reading, the default since 18 Nov; odometry: the way before, `imu.py`), `seed` (3) |
 | `sim_gps` | `gps_stddev` (0.5 m), `gps_speed_stddev` (0.05 m/s), `antenna_x`, `antenna_y` (m), `every` (1), `fault.gps`, `seed` (5: the velocity noise) |
 | `sim_radar` | `radar_range` (8.4 m), `fault.radar` |
 | `sim_camera_relay` | `fault.camera` |
@@ -97,7 +97,7 @@ and `brake` still carry what was asked as `command`, and what the car did as `me
 | `actuator_model.py` | re-exports `aav_description.car_model` (moved there 7 Nov: one car model for ego and the sims): `SpeedLoop` (spine-core's gains), `Actuators`, `Ideal`, `ActuatorConfig`, `speed_loop_profile` | no |
 | `esp32_firmware.py` | `Esp32Firmware`: the 2025-26 C++ ESP32's frame handling, throttle ramp and brake | no |
 | `faults.py` | the sensors' fault modes, `Fault`; the actuators', `ActuatorFaults` | no |
-| `imu.py` | the car's own acceleration, which the simulator's IMU leaves out | no |
+| `imu.py` | the car's own acceleration from the odometry (`accel_from odometry`: Gazebo's IMU left it out; Ravensim's reads it since 18 Nov) | no |
 | `gps.py` | the receiver's velocity from the truth | no |
 | `radar.py` | the simulator's radar cloud as the TI radar's; with its `speed` field, a moving thing's own Doppler speed (TODO 194) | no |
 | `wheels.py` | each wheel's speed from joint states | no |

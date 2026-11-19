@@ -40,6 +40,7 @@ The watchdog works through a twist_mux lock (priority 30, in `aav_command_mux`).
 | `OVER` | the car more than `over_margin` over ego's speed for `over_warn` s while not slowing (TODO 207). A warning only |
 | `OVERSPEED` | the same for `over_persist` s: a stuck throttle. Latched. A stale wheel speed or command is no check |
 | `LOST` | a `latch` input (the HUD) dropped out after its start-up. Latched |
+| `FAULT` | a `status` input: one of our nodes says `min_level` or worse in its own status (the costmap waiting for odometry, the planner finding no path). Not latched |
 
 A person clears latched faults: `pixi run clear watchdog`. More in
 `docs/simulation.md` ("Sensor failures on purpose").
@@ -152,13 +153,27 @@ it starts the mux; the bench always; Ravensim with `geofence:=true` (the default
 | `speed` | `/ego/actuator_cmd`, against `/vehicle/odom`'s speed | speed (0.2 m/s over while not slowing: OVER after 1 s, OVERSPEED after 2 s) | 1.0 s | yes; the sim only so far |
 | `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (the stop zone stops navigation itself) |
 | `node_costmap`, `node_planner`, `node_navigator`, `node_mppi_lag`, `node_smoother`, `node_behaviour`, `node_voxels`, `node_things`, `node_ego`, `node_look_ahead` | the node's full name (`/planner`...), looked for in the ROS graph | node | 3.0 s | no: warn only (Ben, 14 Nov). The sim watches the ones it starts |
+| `status_costmap_local`, `status_costmap_global` | `/drivers/nav/costmap/status` (by `status_name`) | status, FAULT at WARN | 3.0 s, 5.0 s | no: warn only (Ben, 18 Nov, TODO 171) |
+| `status_planner` | `/drivers/nav/planner/status` | status, FAULT at ERROR, `quiet_ok` | 3.0 s | no |
+| `status_navigator` | `/drivers/nav/navigator/status` | status, FAULT at ERROR | 2.0 s | no |
+| `status_mppi_lag` | `/drivers/nav/track/status` (`track`) | status, FAULT at WARN (a late tick), `quiet_ok` | 1.0 s | no |
+
+**Why the status inputs only warn.** The car already stops when a navigation node it
+needs dies or hangs: each respawns after 1 s, `mppi_lag` stops on a costmap older than
+`costmap_timeout`, and twist_mux holds a driver silent for its timeout. A lock here would
+also hold the point driver and the AI slot for a navigation fault. So they say it on the
+HUD, the dev window, `/diagnostics` and the log. **The switch:** `stop: true` on an
+input makes it hold Nav2 and the AI slot while it isn't OK. The smoother has no status
+topic: `node_smoother` watches it in the graph only.
 
 Per input parameters: `topic`, `kind`, `max_age` (s), `stop`, `frozen_after` (s),
 `max_jump_speed` (m/s), `jump_margin` (m), `frame_id`, `latch`, `latch_grace` (s);
 for odom, `cross_check`, `cross_window` (s), `cross_speed_tolerance` (m/s),
 `cross_yaw_tolerance` (rad/s), `cross_persist` (s), `cross_gps_window` (s),
 `cross_gps_tolerance` (m/s); for actuator, `follow_tolerance` and `follow_persist` (s); for speed, `over_margin`
-(m/s), `over_warn` (s), `over_persist` (s), `over_slowing` (m/s²). Global: `inputs`, `rate_hz` (10).
+(m/s), `over_warn` (s), `over_persist` (s), `over_slowing` (m/s²); for status, `status_name`
+(only its messages count; empty: all), `min_level` (1 WARN, 2 ERROR, 3 STALE: FAULT),
+`quiet_ok` (silence is OK: a node that speaks only while it works). Global: `inputs`, `rate_hz` (10).
 
 ### Launch and modules
 
