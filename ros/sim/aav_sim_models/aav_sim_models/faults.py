@@ -50,9 +50,10 @@ NODES = {
     'lidar': 'sim_lidar_relay',
 }
 JUMP_NORTH = 20.0               # m
-DRIFT_MAX = 5.0                 # m: a slow bias of a few metres ...
-DRIFT_RATE = DRIFT_MAX / 60.0   # m/s: ... over a minute (0.083 m/s: under the watchdog's
-                                # 0.15 m/s wheels-against-GPS speed check)
+# The drift: a slow bias of a few metres over a minute, 0.083 m/s: under the watchdog's
+# 0.15 m/s wheels-against-GPS speed check.
+DRIFT_MAX = 5.0                 # m
+DRIFT_RATE = DRIFT_MAX / 60.0   # m/s
 METRES_PER_DEGREE = 111195.0    # of latitude, on a 6371 km Earth
 
 

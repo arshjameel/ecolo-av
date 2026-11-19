@@ -10,10 +10,10 @@ them (test_lot renders them since 15 Oct). The lidar is on by default (15 Oct).
 import importlib.util
 import os
 
+from aav_sim_models import worlds
 from ament_index_python.packages import get_package_prefix
 from ament_index_python.packages import get_package_share_directory
 from ament_index_python.packages import PackageNotFoundError
-from aav_sim_models import worlds
 from launch import LaunchContext
 from launch.actions import ExecuteProcess, IncludeLaunchDescription
 from launch.utilities import perform_substitutions

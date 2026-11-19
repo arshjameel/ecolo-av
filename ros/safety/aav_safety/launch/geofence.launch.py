@@ -13,9 +13,9 @@ radius, centre_x, centre_y: a circle round the car's marked start spot (the map 
 car.launch.py's start_x, start_y). site: a polygon in config/geofence.yaml's sites
 instead, checked against navsat.yaml's datum. max_speed: a lower cap than ego.yaml's (m/s,
 empty: ego.yaml's), as the launch gives ego. gps:=false: no GPS to wait for (only with
-stands:=true). stands:=true: the wheels are off the ground, no fence, said loudly. fix_topic: where an
-absolute fix into the EKF arrives (silent gps_max_age s: LOST); with NDT leading
-(pose_source:=ndt, TODO 210) /localization/pose_check/fix, NDT's or the GPS's.
+stands:=true). stands:=true: the wheels are off the ground, no fence, said loudly.
+fix_topic: where an absolute fix into the EKF arrives (silent gps_max_age s: LOST); with NDT
+leading (pose_source:=ndt, TODO 210) /localization/pose_check/fix, NDT's or the GPS's.
 twist_mux's geofence lock (aav_command_mux config/twist_mux.yaml) reads its
 /safety/geofence/lock. docs/geofence.md.
 """
