@@ -25,7 +25,8 @@ since 8 Nov, the only simulator since 16 Nov** (`simulator:=own` still works for
 |---|---|---|
 | `crates/sim-core` | the worlds (SDF, `model://`, OBJ), the car (`CarModel`), the ground under each wheel (`ground.rs`: slopes, kerbs), the lidars, the IMU and GPS, the loop, the camera plug-in point (`SensorPlugin`), camera lockstep (`lockstep.rs`: `CameraGate`) | no, no Bevy |
 | `crates/sim-core`, feature `shared` | `SharedCar`: the shared `car-model` crate (`aav_description`) behind `CarModel`, the same states as `ActuatorCar` to 1e-9 (`shared_car.rs`). The node doesn't use it yet: it runs `TwistFollower` behind `sim_adapter`'s model | no |
-| `crates/sim-node` | the node, binary `simulator` (rclrs) | yes |
+| `crates/sim-core`, `node.rs` | what the node decides, without ROS (S5, 18 Nov): parameter checks, which service requests it accepts and why not (`Refusal`), stamps, its pace against the wall (`Pace`). Tested on any laptop | no |
+| `crates/sim-node` | the node, binary `simulator` (rclrs): ROS's messages to and from `sim-core`. Not tested by itself: that needs a ROS harness (start the binary, call its services, read its topics), like `aav_navigation`'s `test_respawn.py` | yes |
 
 ### Node `simulator`
 
