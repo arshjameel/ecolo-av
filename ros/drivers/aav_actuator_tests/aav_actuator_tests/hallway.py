@@ -226,8 +226,10 @@ def lag_values(prefix: str, fit: an.LagFit, signal_name: str) -> Dict[str, Value
     lag_why = fit.lag_problem(prefix, signal_name) or ''
     dead_why = '' if fit.dead_time < EDGE or fit.dead_resolved else (
         f'{prefix} dead time not resolved')
-    return {f'{prefix}_delay': Value(fit.tau + fit.dead_time, fit.resolution,
-                                     'at the edge of the search' if fit.at_edge else ''),
+    delay = fit.tau + fit.dead_time
+    delay_why = ('at the edge of the search' if fit.at_edge else
+                 an.unresolved(f'{prefix} delay', delay, fit.resolution, signal_name) or '')
+    return {f'{prefix}_delay': Value(delay, fit.resolution, delay_why),
             f'{prefix}_lag': Value(fit.tau, fit.resolution, lag_why),
             f'{prefix}_dead_time': Value(fit.dead_time, fit.resolution,
                                          dead_why if not lag_why else lag_why),
@@ -269,12 +271,19 @@ def fit_coast(p: Pass) -> Dict[str, Value]:
         area += 0.5 * (v[i] + v[j]) * (t[j] - t[i])
         rows.append((-area, -(t[j] - t[idx[0]])))
         ys.append(v[j] - v[idx[0]])
-    c = an.least_squares(rows, ys)
-    if c is None:
+    # The car model's drag alone (it has no rolling resistance): one number, well pinned
+    # even by a short coast. The two-term fit beside it says whether rolling resistance
+    # matters (its own row; a short coast can't split the two).
+    one = an.least_squares([(r[0],) for r in rows], ys)
+    two = an.least_squares(rows, ys)
+    if one is None:
         return {}
     spread = max(v[i] for i in idx) - min(v[i] for i in idx)
     why = '' if spread > 0.2 else f'the coast covered only {spread:.2f} m/s'
-    return {'drag': Value(c[0], 0.0, why), 'rolling': Value(c[1], 0.0, why)}
+    out = {'drag': Value(one[0], 0.0, why)}
+    if two is not None:
+        out['rolling'] = Value(two[1], 0.0, why)
+    return out
 
 
 def fit_speed_up(p: Pass, drag: float, deadband: float) -> Dict[str, Value]:
@@ -282,6 +291,9 @@ def fit_speed_up(p: Pass, drag: float, deadband: float) -> Dict[str, Value]:
     span = p.phase_span('speed up to ')
     if span is None or p.fused is None:
         return {}
+    hold = p.phase_span(pr.HALL_HOLD + ' ')
+    if hold is not None:
+        span = (span[0], hold[1])     # the plateau too: it pins the gain against the drag
     ct, cs = pedal(p, 'throttle')
     if not ct:
         p.notes.append('no throttle demand (/vehicle/throttle command) and no open-loop '

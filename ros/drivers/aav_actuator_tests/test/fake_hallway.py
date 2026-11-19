@@ -64,6 +64,8 @@ def drive_pass(test, cfg, hall, direction, seed, imu_noise=0.2, imu_bias=0.05, s
         cmd = runner.tick(pr.Obs(t, speed_read, distance, heading))
         if cmd is None:
             break
+        # Capped as actuator_test caps it (a coast follows a noisy speed: it may ask more).
+        cmd = replace(cmd, speed=min(cmd.speed, s.cap))
         w = cmd.speed * math.tan(cmd.steering) / lim.wheelbase
         ego_v, ego_d, _ = ego.step((cmd.speed, w), DT)
         before = car.speed
@@ -100,7 +102,7 @@ def drive_pass(test, cfg, hall, direction, seed, imu_noise=0.2, imu_bias=0.05, s
     return rows, meta
 
 
-def write_session(folder, truth=TRUE, length=12.0, repeats=3, both_ways=True, seed=1,
+def write_session(folder, truth=TRUE, length=15.0, repeats=3, both_ways=True, seed=1,
                   kinds=('coast', 'speed-up', 'brake', 'steer'), **noise):
     """Drive a whole session into `folder`; return the folder."""
     cfg = replace(ActuatorConfig(), **truth)

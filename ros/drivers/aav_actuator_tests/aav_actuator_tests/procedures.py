@@ -397,9 +397,18 @@ def hall_start() -> List[Step]:
                  fenced=True)]
 
 
-def hall_up(v: float, hold: float) -> Step:
+# The top speed held, a plateau before the command falls. 2.5 s: over
+# safety.RUNAWAY_WINDOW, so the speed a second before the fall is the plateau's, not the
+# climb's (the lags carry the climb on a little after the command falls: no false runaway).
+HALL_HOLD = 'hold at'
+HALL_HOLD_TIME = 2.5        # s
+
+
+def hall_up(v: float, hold: float) -> List[Step]:
+    """Speed up to v, then hold it HALL_HOLD_TIME s; both fenced."""
     s = speed_up_to(v, hold, f'speed up to {v:g}')
-    return replace(s, fenced=True)
+    return [replace(s, fenced=True),
+            Step(f'{HALL_HOLD} {v:g}', v, until=Until.TIME, value=HALL_HOLD_TIME, fenced=True)]
 
 
 def hall_brake(v: float) -> Step:
@@ -408,7 +417,7 @@ def hall_brake(v: float) -> Step:
 
 def hall_speed_up(s: Settings) -> List[Step]:
     v = s.cap
-    return hall_start() + [hall_up(v, 1.0), hall_brake(v)]
+    return hall_start() + [*hall_up(v, 1.0), hall_brake(v)]
 
 
 def hall_coast(s: Settings) -> List[Step]:
@@ -416,7 +425,7 @@ def hall_coast(s: Settings) -> List[Step]:
     # 0.3 m/s below for 0.2 s: past the speed loop's coast band (0.2) even through ego's
     # deceleration ramp, so the loop drops its integral and the coast has no throttle in it.
     return hall_start() + [
-        hall_up(v, 0.5),
+        *hall_up(v, 0.5),
         Step(HALL_RELEASE, COAST, until=Until.TIME, value=0.2, coast_offset=0.3,
              fenced=True),
         Step(f'coast from {v:g}', COAST, until=Until.BELOW, value=max(0.15, 0.25 * v),
@@ -426,13 +435,13 @@ def hall_coast(s: Settings) -> List[Step]:
 
 def hall_brake_test(s: Settings) -> List[Step]:
     v = s.cap
-    return hall_start() + [hall_up(v, 1.0), hall_brake(v)]
+    return hall_start() + [*hall_up(v, 1.0), hall_brake(v)]
 
 
 def hall_steer(s: Settings) -> List[Step]:
     v = min(s.hall_creep, s.cap)
     a = round(min(s.hall_steer, s.max_steering), 4)
-    steps = hall_start() + [hall_up(v, 0.5)]
+    steps = hall_start() + hall_up(v, 0.5)
     # Left, right twice as long, left: the heading comes back near where it started.
     for k, (angle, time) in enumerate(((a, 1.0), (-a, 2.0), (a, 1.0), (0.0, 1.0))):
         steps.append(Step(f'steer {k} {angle:+.3f}', v, angle, until=Until.TIME,
@@ -498,6 +507,8 @@ def estimate(steps: List[Step], s: Settings) -> Tuple[float, float]:
             t = circle_length(st.steering, s.wheelbase) / max(v, 0.1)
         elif st.until is Until.REACHED:
             t = v / 0.3 + st.hold        # 0.3 m/s^2: a sluggish car still gets there
+        elif st.fenced and st.until is Until.BELOW:
+            t = st.timeout               # a coast with little drag: the room ends it
         else:
             t = st.hold + 3.0
         if st.until in (Until.REACHED, Until.BELOW):

@@ -161,6 +161,19 @@ def test_every_pass_stops_inside_the_room(test, length):
     assert all(r['cmd_speed'] <= hall.top + 1e-9 for r in rows)
 
 
+@pytest.mark.parametrize('test', pr.HALL_TESTS)
+def test_no_pass_trips_the_runaway_rule_on_a_lagging_car(test):
+    """The plateau (HALL_HOLD) before each fall: the lags carry the speed on a little."""
+    hall, _ = safety.hallway_limits(15.0)
+    rows, _ = fh.drive_pass(test, replace(ActuatorConfig(), **fh.TRUE), hall, 'there', 7,
+                            wheel_noise=0.02, wheel_slip=0.02)
+    history = []
+    for r in rows:
+        history.append((r['t'], r['cmd_speed'], r['speed']))
+        history = [h for h in history if r['t'] - h[0] <= 5.0]
+        assert safety.runaway(history) is None, (test, r['t'], r['phase'])
+
+
 def test_the_brake_point_cuts_a_speed_up_short():
     r = pr.Runner([pr.Step('go', 1.0, until=pr.Until.TIME, value=100.0, fenced=True),
                    pr.Step('stop', 0.0, until=pr.Until.TIME, value=1.0)],
@@ -275,3 +288,13 @@ def test_a_single_pass_reports_itself():
                                'there', 4)
     rep = reports.analyse('hall-steer', rows, reports.context_from_meta(meta))
     assert any(r.what == 'steer lag' for r in rep.rows)
+
+
+def test_the_steering_from_the_yaw_rate_alone(tmp_path):
+    """No measured angle (the car's uplink has none yet): the IMU's yaw rate gives it."""
+    folder = str(tmp_path)
+    fh.write_session(folder, repeats=3, kinds=('steer',), steer_sensor=False)
+    s = hallway.analyse(folder)
+    rec = {n: (t, e, ok) for n, t, e, ok in hallway.recovery_rows(s)}
+    true, e, ok = rec['steer_delay']
+    assert ok, (true, e.text())
