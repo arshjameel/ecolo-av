@@ -82,6 +82,8 @@ if command -v cargo >/dev/null; then
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
   echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
   (cd ros/bringup/aav_description/map-chunks && cargo test -q --locked)
+  echo "== ros/bringup/aav_description/map-edit: the map editor's edits, saves and layers (TODO 251)"
+  (cd ros/bringup/aav_description/map-edit && cargo test -q --locked)
   echo "== ros/bringup/aav_description/lanelet-map: Lanelet2 maps in Rust (TODO 175)"
   (cd ros/bringup/aav_description/lanelet-map && cargo test -q --locked)
   echo "== ros/safety/aav_stop_zone: the stop zone's decision in Rust (TODO 182)"
@@ -151,6 +153,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/drivers/aav_drive_to_point_rs -p point-core
   rust_style ros/bringup/aav_description/car-model
   rust_style ros/bringup/aav_description/map-chunks
+  rust_style ros/bringup/aav_description/map-edit
   rust_style ros/bringup/aav_description/lanelet-map
   rust_style ros/safety/aav_stop_zone -p stop-zone
   rust_style ros/localization/aav_ndt -p ndt-core

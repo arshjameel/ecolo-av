@@ -44,6 +44,7 @@
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -348,6 +349,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tr>
 <td><a href="maps-from-drives.html">Maps from recorded drives</a> (<code>pixi run map-drive</code>, KISS-SLAM)</td>
 <td>Testing plan phase D (TODO 250): NDT's map made from the EKF's poses was blurred (walls drawn several times, 33 cm off the truth's map with the GPS). KISS-SLAM (KISS-ICP with loop closures and a pose graph, MIT) places the clouds instead, offline and with no ROS; the same points give NDT's map, a 2D map for the planner (0.3-2 m occupied, the rays free) and their 64 m chunks; the path is fitted to the good GPS fixes (or the start pose) so the map sits in the car's map frame. <code>--merge</code> keeps what two drives both saw. NDT and the planner can then run on our own map where the GPS is poor</td>
+<td>Ben Woodhead</td>
+<td>2026-11-19</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="map-editor.html">The map editor</a> (<code>pixi run map-edit</code>, Bevy; logic in <code>map-edit</code>)</td>
+<td>Testing plan phase E (TODO 251; Ben, 19 Nov: "a map editor ... merged with the street view and the grid square ... that will show us the actual overlay (SLAM)"): a person checks our map from a drive over OpenStreetMap, lines it up by hand, deletes what will not be there next time (parked cars) and labels what is, then approves. It saves a new folder with an edit log and the chunks cut again, never over the map it opened, so a map NDT drives by always has a person's yes behind it</td>
 <td>Ben Woodhead</td>
 <td>2026-11-19</td>
 <td>sim</td>
