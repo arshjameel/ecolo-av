@@ -61,7 +61,9 @@ These are the conventions decided so far. They apply to people and to Claude ses
   source to learn from, and check its licence (Ben, 15 Oct).
 - **Our own algorithms** (Ben, 5 Nov): for each area we build a new best hybrid from papers,
   known algorithms and current implementations. A new one runs beside the current default
-  as the challenger until it wins on the same routes and bags. Every algorithm stays.
+  as the challenger until it wins on the same routes and bags. Don't delete one too early;
+  once we know it isn't the path for us, strip it out (Ben, 19 Nov: "We can strip down when
+  we know stuff isn't going ot work for us"): its scores stay in the docs, a `save/` tag in git.
 - **Everything is a drop-in replacement** (Ben, 5 Nov: "just swap out and test"). Ravensim,
   CARLA and the real sensors all produce the same topics; so does every algorithm for its
   job. `docs/interfaces.yaml` is what they must match. Nothing downstream may care which one
