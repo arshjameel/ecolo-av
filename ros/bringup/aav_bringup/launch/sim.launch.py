@@ -16,6 +16,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [amcl:=false] [amcl_impl:=rust] [voxels:=false] [voxels_impl:=python] [kerbs:=]
       [ego_impl:=rust]
       [lidar_impl:=rust] [things_impl:=rust] [lane_finder_impl:=rust]
+      [lane_follower_impl:=rust] [lane_follower:=pid]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [io_mux_impl:=rust] [stop_sign_impl:=rust]
       [ndt:=false] [ndt_ekf:=false] [pose_source:=gps] [ndt_map:=maps/ndt/test_lot.pcd]
@@ -182,6 +183,11 @@ bench's argument names:
   lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
                       one's place (the default since 18 Nov), with lane:=true or
                       lane_pose:=true: the same topics and lanes
+  lane_follower_impl:=python  the Python control_interface (aav_lane_geometry, the
+                      2025-26 team's) in the Rust one's place (the default since 19 Nov),
+                      with lane:=true|fake: the same topics and commands
+  lane_follower:=pure_pursuit|stanley  with lane:=true, a Rust challenger steers on the
+                      fitted lane centre instead of the 2025-26 PID (pid, the default)
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
@@ -779,8 +785,11 @@ def launch_setup(context):
                                                      'camera_obstacles.yaml'),
                                         {'use_sim_time': True}]))
     if lane in ('true', 'fake'):
+        impl = vehicle.check_lane_follower_impl(arg('lane_follower_impl'))
         actions.append(include(context, 'aav_lane_geometry', 'lane_follower.launch.py',
-                               fake=lane == 'fake'))
+                               fake=lane == 'fake', lane_follower_impl=impl,
+                               lane_follower=vehicle.check_lane_follower(
+                                   arg('lane_follower'), impl)))
     if lane == 'true' or lane_pose:
         actions.append(include(
             context, 'aav_lane_finder', 'lane_finder.launch.py',
@@ -1004,6 +1013,14 @@ def generate_launch_description():
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+        DeclareLaunchArgument('lane_follower_impl',
+                              default_value=vehicle.DEFAULT_LANE_FOLLOWER_IMPL,
+                              description='rust or python: which control_interface steers by '
+                                          'the lane (aav_lane_follower_rs, or '
+                                          'aav_lane_geometry)'),
+        DeclareLaunchArgument('lane_follower', default_value=vehicle.DEFAULT_LANE_FOLLOWER,
+                              description='how lane keeping steers: pid (the 2025-26 PID), '
+                                          'or the Rust challengers pure_pursuit, stanley'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='python or rust: which things node tracks the '
                                           'cubes (aav_things, or aav_things_rs)'),

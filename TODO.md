@@ -82,6 +82,7 @@ and will do".
 | 171 | **No switch leaves a gap**: respawn, age checks, the nodes' own tests | 🔧 |
 | 159 | **The safety case**: one page per hazard | 🔧 left: a throttle stuck wide open; the spine in the loop |
 | 207 | **Stuck steering and speed noticed** (the watchdog) | ✅ in the sim; ⬜ the car (needs a measured angle, Q2) |
+| 262 | **The lane follower in Rust, and a better one** (Ben, 19 Nov: "We also need to port the lane following code.or find a better version."): `aav_lane_follower_rs`, the default (`lane_follower_impl:=python` falls back); challengers `lane_follower:=pure_pursuit`, `stanley` on the fitted lane centre, with the car's lag | ✅ ported: the Python's commands on 2,797 shared events; `measure lane`, 3 runs each: the Rust PID scores as the Python one; on Library Road pure pursuit 2.4 cm RMS against the PID's 3.9-4.1, 1 flip a minute against 187; on the straight it settles to 0.4-0.9 cm but comes back from 0.3 m off slower (8.4 cm RMS against 6.7). The PID stays the default. Left: pure pursuit's near look-ahead for a quicker return, then promote it; the car |
 
 ## 4. Challengers
 
@@ -99,6 +100,7 @@ scored with Nav2's follower (177, 178) are scored again with ours.
 | 216 | **Kinematic-ICP**: lidar odometry that knows the car can't slide sideways | ⬜ |
 | 217 | **A tracker with a motion model per kind** (car, person) | ⬜ |
 | 243 | **Our models from Rust** (`ort`): the detector done on a Mac (8 ms); left: TensorRT on the Orin (JetPack 7.2), the diffusion planner | 🟡 |
+| 262b | **A learned lane finder**: Ultra-Fast-Lane-Detection v2 (MIT), trained by us on Ravensim's pictures (labelled from the lane map) and the car's (252), through ONNX (243), behind `/perception/lane/geometry`. Published weights are out: CULane is non-commercial, BDD100K, TuSimple and CurveLanes unclear ([survey](docs/perception.md#a-learned-lane-finder-the-survey-19-nov)) | ⬜ |
 
 ## 5. Rust
 

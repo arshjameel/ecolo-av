@@ -8,13 +8,19 @@ fast it goes.
     pixi run measure lane                                   # the road world, on Ravensim
     pixi run measure lane --simulator own                   # the same on our simulator
     pixi run measure lane --world campus --road "Library Road" [--from 20] [--seconds 120]
+    pixi run measure lane --follower pure_pursuit           # a challenger steers (TODO 262)
+    pixi run measure lane --impl python                     # the 2025-26 Python follower
 
 It starts sim.launch.py headless with lane keeping (lane:=true: lane_finder on the front
-left camera, control_interface on the AI slot) and nothing else driving (no Nav2), the car
+left camera, control_interface on the AI slot: `--impl` its language, `--follower` how it
+steers) and nothing else driving (no navigation), the car
 in its lane at the start of the road (`--from` metres along it; on the campus, a painted
 road from maps/campus/lanes.yaml, `pixi run campus`). It records /vehicle/sim/truth and
 /perception/lane/geometry for `--seconds` of simulated time from when the car moves, or
-until it leaves the road for 3 s, then prints the numbers (tools/lane_score.py) and stops.
+until it leaves the road for 3 s, then prints the numbers (tools/lane_score.py) and stops:
+the error from the lane's centre, the time with the lane lost, the speed, and how the
+follower steered (/drivers/ai/cmd_vel: flips from side to side). `--json FILE` also writes
+them as JSON.
 
 It also scores the global EKF against the truth, sideways and along the car, and the
 sideways error's jitter (lane_score.pose_error). The EKF doesn't steer here (the lane
@@ -25,11 +31,14 @@ lane_pose:=true (TODO 155): the lane finder into ekf_global as a sideways correc
 
 On its own ROS domain (AAV_SIM_DOMAIN, else a free one), this computer only. The launch
 log goes to /tmp/aav-lane-drive.log (AAV_SIM_LOG moves it).
-Subscribes: /vehicle/sim/truth, /perception/lane/geometry, /localization/odom/global.
+Subscribes: /vehicle/sim/truth, /perception/lane/geometry, /localization/odom/global,
+/drivers/ai/cmd_vel.
 Publishes nothing.
 """
 
 import argparse
+import dataclasses
+import json
 import math
 import os
 import signal
@@ -49,6 +58,7 @@ os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
 
 from aav_lane_geometry.msg import LaneGeometry  # noqa: E402
 from aav_sim_models.worlds import DEFAULT_SIMULATOR  # noqa: E402
+from geometry_msgs.msg import TwistStamped  # noqa: E402
 import lane_score  # noqa: E402
 from nav_msgs.msg import Odometry  # noqa: E402
 import rclpy  # noqa: E402
@@ -56,6 +66,7 @@ from rclpy.node import Node  # noqa: E402
 
 LANES = os.path.join(ROOT, 'maps', 'campus', 'lanes.yaml')
 OFF_ROAD = 3.0      # s off every road: the drive is over
+SETTLE = 15.0       # s: the start offset taken out, for the settled error
 
 
 def start_on(road, along, lane):
@@ -79,9 +90,11 @@ class Recorder(Node):
     def __init__(self):
         super().__init__('lane_drive')
         self.track, self.lanes, self.speeds, self.poses = [], [], [], []
+        self.commands = []
         self.create_subscription(Odometry, '/vehicle/sim/truth', self.on_truth, 50)
         self.create_subscription(Odometry, '/localization/odom/global', self.on_pose, 50)
         self.create_subscription(LaneGeometry, '/perception/lane/geometry', self.on_lane, 10)
+        self.create_subscription(TwistStamped, '/drivers/ai/cmd_vel', self.on_command, 10)
 
     def on_truth(self, m):
         p, q = m.pose.pose.position, m.pose.pose.orientation
@@ -93,6 +106,10 @@ class Recorder(Node):
     def on_pose(self, m):
         t = m.header.stamp.sec + 1e-9 * m.header.stamp.nanosec
         self.poses.append((t, m.pose.pose.position.x, m.pose.pose.position.y))
+
+    def on_command(self, m):
+        t = m.header.stamp.sec + 1e-9 * m.header.stamp.nanosec
+        self.commands.append((t, m.twist.angular.z))
 
     def on_lane(self, m):
         t = m.header.stamp.sec + 1e-9 * m.header.stamp.nanosec
@@ -112,6 +129,11 @@ def main():
     parser.add_argument('--speed', default='', help='sim_speed:= (m/s), the top speed')
     parser.add_argument('--offset', type=float, default=0.3,
                         help='m left of the lane centre to start (the road world)')
+    parser.add_argument('--impl', default='',
+                        help='lane_follower_impl:= rust (the default) or python')
+    parser.add_argument('--follower', default='',
+                        help='lane_follower:= pid (the default), pure_pursuit or stanley')
+    parser.add_argument('--json', default='', help='also write the numbers here')
     parser.add_argument('--lane-pose', action='store_true',
                         help='lane_pose:=true: the lane finder into the global EKF (a trial)')
     args = parser.parse_args()
@@ -137,7 +159,13 @@ def main():
         launch_args.append(f'sim_speed:={args.speed}')
     if args.lane_pose:
         launch_args.append('lane_pose:=true')
-    print(f'Lane drive: {args.world} ({args.simulator}), from ({x:.1f}, {y:.1f}) facing '
+    if args.impl:
+        launch_args.append(f'lane_follower_impl:={args.impl}')
+    if args.follower:
+        launch_args.append(f'lane_follower:={args.follower}')
+    which = f'{args.impl or "rust"} {args.follower or "pid"}'
+    print(f'Lane drive: {args.world} ({args.simulator}), follower {which}, from '
+          f'({x:.1f}, {y:.1f}) facing '
           f'{math.degrees(yaw):.0f} deg, on ROS domain {DOMAIN}; log {log_path}', flush=True)
     log = open(log_path, 'w')
     launch = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py', *launch_args],
@@ -188,6 +216,24 @@ def drive(rec, roads, args):
     lanes = [m for m in rec.lanes if m[0] >= t0]
     got = lane_score.score(roads, track, lanes)
     print(f'lane drive ({args.world}, {args.simulator}): {got.line()}')
+    # The same from SETTLE s on: the follower's own wander, after it has taken the car
+    # from its start --offset back to the centre.
+    late = [s for s in track if s[0] >= t0 + SETTLE]
+    settled = lane_score.score(roads, late) if len(late) > 1 else None
+    if settled:
+        print(f'from {SETTLE:.0f} s on: lateral error RMS {100 * settled.rms_error:.1f} cm, '
+              f'max {100 * settled.max_error:.1f} cm')
+    lost = lane_score.lost_seconds(lanes)
+    print(f'lane lost for {lost:.1f} s')
+    steer = lane_score.steer_score([c for c in rec.commands if c[0] >= t0])
+    print(steer.line() if steer else 'steering: no commands on /drivers/ai/cmd_vel')
+    if args.json:
+        with open(args.json, 'w') as f:
+            json.dump({'impl': args.impl or 'default', 'follower': args.follower or 'default',
+                       'world': args.world, 'road': args.road if args.world == 'campus'
+                       else 'road', 'lane': dataclasses.asdict(got), 'lost_seconds': lost,
+                       'settled': dataclasses.asdict(settled) if settled else None,
+                       'steer': dataclasses.asdict(steer) if steer else None}, f, indent=1)
     pose = lane_score.pose_error(track, [p for p in rec.poses if p[0] >= t0])
     which = 'lane_pose on' if args.lane_pose else 'lane_pose off'
     print(f'global EKF ({which}): {pose.line() if pose else "no pose matched the truth"}')

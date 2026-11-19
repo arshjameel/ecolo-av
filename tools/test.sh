@@ -70,6 +70,8 @@ if command -v cargo >/dev/null; then
   (cd ros/can_bridge/aav_legacy_rs && cargo test -q --locked -p legacy-bridge)
   echo "== ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
+  echo "== ros/drivers/aav_lane_follower_rs: control_interface in Rust, lane_follow.py's answers"
+  (cd ros/drivers/aav_lane_follower_rs && cargo test -q --locked -p lane-follow-core)
   echo "== ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
   (cd ros/safety/aav_joy_alive_rs && cargo test -q --locked -p joy-alive-core)
   echo "== ros/command_mux/aav_mux_state: who is driving, by twist_mux's rule and files"

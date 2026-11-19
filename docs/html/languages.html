@@ -194,6 +194,11 @@ programs only meet through messages.</p></div>
 <td>A port of <code>aav_lane_finder</code> (18 Nov): the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 %. The default; <code>lane_finder_impl:=python</code> falls back</td>
 </tr>
 <tr>
+<td>The lane follower, <code>aav_lane_follower_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>A port of the 2025-26 <code>control_interface</code> (19 Nov): the Python's commands on 2,797 shared events; the challengers pure pursuit and Stanley beside it (<code>lane_follower:=</code>). The default; <code>lane_follower_impl:=python</code> falls back</td>
+</tr>
+<tr>
 <td>The camera stream, <code>aav_camera_stream_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
 <td>A port of <code>aav_camera_stream</code> (18 Nov), the default with no detector; with RF-DETR or YOLO the Python runs (the models stay Python). <code>camera_stream_impl:=python</code> falls back</td>
