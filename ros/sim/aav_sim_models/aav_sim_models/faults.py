@@ -19,8 +19,9 @@ The modes, and what they stand for on the car:
           multipath fix, an RTK fix on the wrong integer)
 
 The sensors: gps (/sensors/gps/fix), imu (/sensors/imu/data_raw), odom (the wheels:
-/vehicle/odom and /vehicle/wheels), radar (/sensors/radar/points) and camera (the front
-left camera's picture, only with faults:=true, which routes it through sim_camera_relay).
+/vehicle/odom and /vehicle/wheels), radar (/sensors/radar/points), camera (the front
+left camera's picture) and lidar (/sensors/lidar/points). The camera and the lidar only
+with faults:=true, which routes them through sim_camera_relay and sim_lidar_relay.
 """
 
 import copy
@@ -33,6 +34,7 @@ SENSORS = {
     'odom': ('ok', 'stop', 'freeze', 'nan'),
     'radar': ('ok', 'stop', 'freeze'),
     'camera': ('ok', 'stop', 'freeze'),
+    'lidar': ('ok', 'stop', 'freeze'),
 }
 # Which node passes each sensor on, and so takes its fault.<sensor> parameter: one node
 # per sensor (relay.py); the wheels go with the car, in sim_adapter.
@@ -42,6 +44,7 @@ NODES = {
     'odom': 'sim_adapter',
     'radar': 'sim_radar',
     'camera': 'sim_camera_relay',
+    'lidar': 'sim_lidar_relay',
 }
 JUMP_NORTH = 20.0               # m
 METRES_PER_DEGREE = 111195.0    # of latitude, on a 6371 km Earth
@@ -158,3 +161,7 @@ CAMERA = '/sensors/camera/front_left/image_raw'
 # faults:=true: the cameras put the front left picture here, and sim_camera_relay passes it
 # on to CAMERA through its fault.
 CAMERA_RELAYED = '/vehicle/sim/camera/front_left/image_raw'
+LIDAR = '/sensors/lidar/points'
+# faults:=true: the simulator's lidar is remapped here, and sim_lidar_relay passes it on to
+# LIDAR through its fault (TODO 246).
+LIDAR_RELAYED = '/vehicle/sim/lidar/points'

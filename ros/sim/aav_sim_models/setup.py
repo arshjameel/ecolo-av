@@ -37,6 +37,7 @@ setup(
             'sim_gps = aav_sim_models.sim_gps:main',
             'sim_radar = aav_sim_models.sim_radar:main',
             'sim_camera_relay = aav_sim_models.sim_camera_relay:main',
+            'sim_lidar_relay = aav_sim_models.sim_lidar_relay:main',
             'sim_esp32 = aav_sim_models.sim_esp32:main',
             'truth_localizer = aav_sim_models.truth_localizer:main',
         ],

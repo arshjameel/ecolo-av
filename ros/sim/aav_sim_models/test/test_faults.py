@@ -55,7 +55,7 @@ def test_nan_and_jump_change_a_copy():
 def test_each_sensor_has_only_its_own_faults():
     assert faults.check('gps', 'jump') is None
     assert 'no' in faults.check('imu', 'jump')
-    assert 'no sensor' in faults.check('lidar', 'stop')
+    assert 'no sensor' in faults.check('sonar', 'stop')
     with pytest.raises(ValueError):
         Fault('radar').switch('nan')
 
@@ -112,3 +112,14 @@ def test_a_dead_brake_lets_the_car_model_roll_on():
     dead = roll(f.apply)
     assert healthy.speed < 0.05 < dead.speed
     assert dead.brake_command > 0.0 and dead.brake == 0.0   # asked, never given
+
+
+def test_the_lidar_can_stop_and_freeze_through_its_own_relay():
+    assert faults.check('lidar', 'stop') is None
+    assert faults.check('lidar', 'freeze') is None
+    assert faults.check('lidar', 'nan') is not None     # a cloud's NaN is a ray that missed
+    assert faults.NODES['lidar'] == 'sim_lidar_relay'
+    assert faults.LIDAR_RELAYED.startswith('/vehicle/sim/')
+    f = Fault('lidar')
+    f.switch('stop')
+    assert f.apply(reading(1.0)) is None

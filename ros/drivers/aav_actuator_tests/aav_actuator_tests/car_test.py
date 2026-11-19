@@ -111,10 +111,8 @@ STEPS: Tuple[Step, ...] = (
          'the sensor watchdog says why within its limit', Manner.MANUAL, Manner.AUTO,
          sensor='camera', ask="unplug the front left camera's cable (or stop its stream)"),
     Step('lidar', '5e', 'the lidar is lost', How.FAULT,
-         'the sensor watchdog says why within its limit', Manner.MANUAL, Manner.NONE,
-         sensor='lidar', ask="unplug the lidar's network cable",
-         why_not='Ravensim has no lidar fault (aav_sim_models faults.SENSORS), and '
-                 'sensor_watchdog.yaml has no lidar input yet'),
+         'the sensor watchdog says why within its limit', Manner.MANUAL, Manner.AUTO,
+         sensor='lidar', ask="unplug the lidar's network cable"),
     Step('pi-link', '5f', "a Pi is lost: the camera Pi's link", How.FAULT,
          'the car stops and something says why', Manner.MANUAL, Manner.NONE,
          ask="pull the camera Pi's network cable",
