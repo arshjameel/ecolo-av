@@ -34,7 +34,7 @@ OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
 READ_FIRST = 26    # PAGES[:26] are the reading list
-LEARN_END = 43    # PAGES[26:42] are the learn pages; the rest are reference
+LEARN_END = 44    # PAGES[26:44] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
@@ -82,6 +82,8 @@ PAGES = [
      'Every sensor at full rate: checks before, a summary after'),
     ('maps-from-drives.md', 'Maps from drives',
      "KISS-SLAM on a recorded drive: NDT's map and a 2D map, placed by the GPS"),
+    ('map-editor.md', 'The map editor',
+     'Our map over the street map: line it up, delete parked cars, label, approve, save'),
     ('measure-the-car.md', 'Measure the car', 'The sheet for whoever measures the car'),
     ('decisions.md', 'Decisions', 'Decided, Tentative, Proposed, and Q1–Q34'),
     ('infrastructure.md', 'Infrastructure', 'The repo, Pixi, the contracts, profiles, computers'),

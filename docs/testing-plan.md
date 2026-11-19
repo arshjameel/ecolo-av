@@ -209,8 +209,10 @@ keeps the car on its lane where the GPS fails.
 | Relabel ("tree, not wall") | fix the labels |
 | Approve, then save the chunks | a person always has the last word |
 
-To build, in the developer window (Bevy). The campus from OpenStreetMap is already built
-(`pixi run campus`: 574 buildings, 7918 trees, 396 roads, 18 Nov).
+**Built, 19 Nov:** [the map editor](map-editor.md), `pixi run map-edit bags/<drive>/map`
+(Bevy, like the developer window; no ROS). Each row above is in it; it saves a new folder,
+never over the old one. Proved in Ravensim: the parked cars deleted, NDT still finds the car.
+Not yet looked at on a screen, nor run on a real drive.
 
 ## Phase F: the labelling loop
 

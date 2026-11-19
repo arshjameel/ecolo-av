@@ -154,6 +154,7 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `ndt-map` | NDT's map of the simulator's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
 | `record-drive` | record a mapping drive: every raw sensor at full rate, checked before (disk, rates, clocks, frames), summarised after (good for the map, SLAM, labelling, the transfer functions); `--sim` tests it in Ravensim ([docs](docs/recording.md)) |
 | `map-drive` | a map from a recorded drive, no ROS: KISS-SLAM's path with its loop closures, NDT's map and a 2D map for the planner, in 64 m chunks, placed by the GPS where it is good; `--merge` keeps what two drives both saw ([docs](docs/maps-from-drives.md)) |
+| `map-edit` | the map editor (Bevy, no ROS): a `map-drive` map over the street map, to line up, delete parked cars in a box, label, then approve and save as a new folder with its edit log and chunks ([docs](docs/map-editor.md)) |
 
 ### At the car
 
