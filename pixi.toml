@@ -307,6 +307,7 @@ mcap-ros2-support = ">=0.5,<1"
 
 [feature.slam.tasks]
 map-drive = { cmd = "python3 tools/map_drive.py", description = "A map from a recorded drive, no ROS (TODO 250): KISS-SLAM's poses with loop closures, then NDT's map, its 64 m chunks and a 2D map for the planner, fitted to the GPS where it is good: pixi run map-drive bags/<drive> (pixi install -e slam once; docs/maps-from-drives.md)" }
+map-area = { cmd = "python3 tools/map_area.py", description = "One area's map from several drives, offline (TODO 259, 260): map-drive each, fitted together by ICP, each drive's rays again on one grid: what one drive hit and another saw through (a parked car) is removed; what only one saw is kept and labelled seen_in; NDT's map, the 2D map, chunks, labels.yaml and one report.md in maps/<area>/: pixi run map-area <area> <drive> <drive> <drive> (docs/maps-from-drives.md)" }
 map-edit = { cmd = "cargo run --release -q --manifest-path ros/hud/aav_dev_window/Cargo.toml --bin map_edit --", description = "The map editor (Bevy, no ROS; TODO 251): a map-drive folder over the street map, to line up, box-delete (parked cars), label and approve; saves a new folder, never over the old: pixi run map-edit bags/<drive>/map (docs/map-editor.md)" }
 
 # The diffusion planner's training and its model (aav_diffusion_planner, a trial:

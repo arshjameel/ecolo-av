@@ -25,8 +25,10 @@ car, half hidden from the other passes) go with it: growing at most GROW cells, 
 through seen-once cells, so a wall seen by every pass is never eaten.
 
 Ideas, not code, from (docs/acknowledgements.md):
-- Removert (Kim and Kim, IROS 2020; GPL-3.0): a map point another scan sees through is gone;
-- ERASOR (Lim et al., RA-L 2021; MIT): judge the column above each cell, not single points;
+- Removert (Kim and Kim, IROS 2020; CC BY-NC-SA 4.0): a map point another scan sees
+  through is gone;
+- ERASOR (Lim et al., RA-L 2021; GPL-3.0): judge the column above each cell, not single
+  points;
 - DUFOMap (Duberg et al., RA-L 2024; BSD-3-Clause): space seen empty once is empty,
   with a margin for the sensor's and the pose's error.
 
@@ -165,7 +167,7 @@ def box_of(group, origin, cell):
     r1, c1 = group.max(axis=0) + 1
     x0, y0 = origin[0] + c0 * cell, origin[1] + r0 * cell
     x1, y1 = origin[0] + c1 * cell, origin[1] + r1 * cell
-    return (x0 + x1) / 2.0, (y0 + y1) / 2.0, x1 - x0, y1 - y0
+    return float((x0 + x1) / 2.0), float((y0 + y1) / 2.0), float(x1 - x0), float(y1 - y0)
 
 
 def seen_once_labels(classes, occupied_by, names, origin, cell, min_cells=MIN_LABEL_CELLS,

@@ -4,8 +4,11 @@ A map from a recorded drive (TODO 250, phase D): KISS-SLAM, then NDT's map and a
 
     pixi run map-drive bags/<drive>             the drive's maps into bags/<drive>/map/
     pixi run map-drive bags/<drive> --out maps/drives/lot
-    pixi run map-drive --merge maps/a maps/b --out maps/lot   two drives' maps: only what
-                                                both saw (parked cars drop out)
+    pixi run map-drive --merge maps/a maps/b [maps/c...] --out maps/lot   drives' maps
+                                                fitted onto the first: NDT keeps what two
+                                                saw; the 2D maps merged (parked cars drop out)
+    pixi run map-area <area> <drive> <drive> <drive>   the whole job, from the drives' own
+                                                rays (tools/map_area.py, TODO 259/260)
 
 Runs in the slam environment (pixi install -e slam, once): no ROS. The bag's MCAP files are
 read with mcap-ros2-support. The page: docs/maps-from-drives.md.
@@ -381,35 +384,95 @@ def page(drive, out, clouds, local_maps, closures, how, place, points, grid, cut
     return '\n'.join(lines) + '\n'
 
 
-def merge(args):
-    """Two drives' maps into one: B fitted onto A by ICP, then only the points both saw."""
+def icp_onto(reference, points, reach=1.0):
+    """
+    Return ((x, y, yaw), info): the move that puts points' map on reference's (ICP).
+
+    Open3D's point-to-plane ICP, from no move. Both maps are flat (x, y, yaw poses, the
+    ground at z 0): only the fit's x, y and yaw are kept, or a small tilt or lift from the
+    walls would move every point. info: the fit's numbers, for the YAML.
+    """
     import open3d as o3d
-    a_dir, b_dir = (Path(p) for p in args.merge)
-    a, b = ndt_map.read_pcd(a_dir / 'ndt.pcd'), ndt_map.read_pcd(b_dir / 'ndt.pcd')
     clouds = []
-    for points in (a, b):
-        cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
+    for cloud_points in (points, reference):
+        cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(cloud_points))
         cloud.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=30))
         clouds.append(cloud)
     fit = o3d.pipelines.registration.registration_icp(
-        clouds[1], clouds[0], args.icp_reach, np.eye(4),
+        clouds[0], clouds[1], reach, np.eye(4),
         o3d.pipelines.registration.TransformationEstimationPointToPlane(),
         o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=100))
     m = fit.transformation
-    # Both maps are flat (x, y, yaw poses, the ground at z 0): keep only the fit's x, y and
-    # yaw, or a small tilt or lift from the walls would move every point.
     x, y, yaw = sm.flatten(m)
-    moved = np.column_stack([sm.apply_2d((x, y, yaw), b[:, :2]), b[:, 2]])
-    both = ndt_map.thin(sm.agreed(a, moved, args.radius), args.voxel)
+    return (x, y, yaw), {'x_m': round(x, 3), 'y_m': round(y, 3),
+                         'icp_z_m_dropped': round(float(m[2, 3]), 3),
+                         'yaw_deg': round(float(np.degrees(yaw)), 3),
+                         'icp_fitness': round(fit.fitness, 3),
+                         'icp_rmse_m': round(fit.inlier_rmse, 3)}
+
+
+def moved(points, transform):
+    """Return N x 3 points turned and moved by (x, y, yaw); z kept."""
+    return np.column_stack([sm.apply_2d(transform, points[:, :2]), points[:, 2]])
+
+
+def merge(args):
+    """
+    Two or more drives' maps into one, fitted onto the first by ICP.
+
+    NDT's map: the points at least --min-maps of the maps have nearby (default 2: for two
+    drives, only what both saw). The 2D maps: each moved onto one grid, then the rule of
+    occupancy across passes (passes.classify) on their cells: occupied in one map and free
+    in another is gone (free); seen by one only, kept. map-area does it properly, from the
+    drives' own rays (TODO 259); this works on map folders alone.
+    """
+    import passes as ps
+    dirs = [Path(p) for p in args.merge]
+    if len(dirs) < 2:
+        raise SystemExit('--merge needs two map folders or more')
+    maps = [ndt_map.read_pcd(d / 'ndt.pcd') for d in dirs]
+    fits = [((0.0, 0.0, 0.0), {'reference': True})]
+    for d, points in zip(dirs[1:], maps[1:]):
+        fits.append(icp_onto(maps[0], points, args.icp_reach))
+        print(f'   {d}: onto {dirs[0]}: {fits[-1][1]}', flush=True)
+    placed = [moved(points, t) for points, (t, _) in zip(maps, fits)]
+    both = ndt_map.thin(ps.agreed_by(placed, args.radius, args.min_maps), args.voxel)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     ndt_map.write_pcd(out / 'ndt.pcd', both)
-    info = {'merged': [str(a_dir), str(b_dir)], 'b_onto_a': {
-        'x_m': round(x, 3), 'y_m': round(y, 3), 'icp_z_m_dropped': round(float(m[2, 3]), 3),
-        'yaw_deg': round(float(np.degrees(yaw)), 3), 'icp_fitness': round(fit.fitness, 3),
-        'icp_rmse_m': round(fit.inlier_rmse, 3)},
-        'kept_within_m': args.radius, 'points': {'a': len(a), 'b': len(b), 'both': len(both)},
-        'frame': "A's", 'made': datetime.datetime.now().isoformat(timespec='seconds')}
+
+    grid_note = ''
+    grids = [d / 'map2d.yaml' for d in dirs]
+    if all(g.exists() for g in grids):
+        read = [sm.read_map2d(g) for g in grids]
+        cell = read[0][2]
+        corners = []
+        for (grid, origin, c), (t, _) in zip(read, fits):
+            h, w = grid.shape
+            x0, y0, x1, y1 = origin[0], origin[1], origin[0] + w * c, origin[1] + h * c
+            box = np.array([[x0, y0], [x1, y0], [x0, y1], [x1, y1]])
+            corners.append(sm.apply_2d(t, box))
+        corners = np.concatenate(corners)
+        lo = np.floor(corners.min(axis=0))
+        shape = tuple((np.ceil((corners.max(axis=0) - lo) / cell)).astype(int)[::-1])
+        on = [ps.resample(grid, origin, c, t, lo, shape, cell)
+              for (grid, origin, c), (t, _) in zip(read, fits)]
+        occupied = np.stack([g == sm.PGM_OCCUPIED for g in on])
+        # Free kept a cell off each map's own walls, as map-area does (passes.seen_free).
+        free = np.stack([(g == sm.PGM_FREE) & ~ps.near(o, ps.TOLERANCE)
+                         for g, o in zip(on, occupied)])
+        classes = ps.classify(occupied, free)
+        grid, origin = sm.trim(ps.to_pgm(classes), tuple(lo), cell)
+        sm.write_map2d(out / 'map2d', grid, origin, cell, note=(
+            f"map_drive.py --merge of {len(dirs)} maps, onto {dirs[0].name}'s"))
+        grid_note = ps.summary(classes, cell)
+    info = {'merged': [str(d) for d in dirs],
+            'onto_first': {str(d): f for d, (_, f) in zip(dirs[1:], fits[1:])},
+            'kept_within_m': args.radius, 'min_maps': args.min_maps,
+            'points': {**{d.name: len(m) for d, m in zip(dirs, maps)}, 'merged': len(both)},
+            'map2d': grid_note or 'not made: a folder without map2d.yaml',
+            'frame': f"{dirs[0].name}'s",
+            'made': datetime.datetime.now().isoformat(timespec='seconds')}
     (out / 'ndt.yaml').write_text(yaml.safe_dump(info, sort_keys=False))
     print(yaml.safe_dump(info, sort_keys=False))
     return 0
@@ -432,8 +495,11 @@ def main():
                         help=f"a good fix's largest standard deviation, m ({sm.GOOD_FIX_SD})")
     parser.add_argument('--no-gps', action='store_true', help='place by the start pose only')
     parser.add_argument('--no-chunks', action='store_true', help="don't cut chunks")
-    parser.add_argument('--merge', nargs=2, metavar=('A', 'B'),
-                        help='two map folders (each with ndt.pcd) into --out')
+    parser.add_argument('--merge', nargs='+', metavar='MAP',
+                        help='two map folders or more (each with ndt.pcd, map2d.yaml) into '
+                             '--out, fitted onto the first')
+    parser.add_argument('--min-maps', type=int, default=2,
+                        help='merge: keep an NDT point at least this many maps saw (2)')
     parser.add_argument('--radius', type=float, default=0.25,
                         help='merge: a point is in both within this, m (0.25)')
     parser.add_argument('--icp-reach', type=float, default=1.0,

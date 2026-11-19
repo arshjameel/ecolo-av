@@ -76,7 +76,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `drive_to_point.sh` | drive to one point and stop (`--sim`) | `drive-to-point` |
 | `keyboard.sh` | teleop_twist_keyboard into `/drivers/keyboard/cmd_vel` (`--sim`, `--local`) | `keyboard` |
 | `record.sh` | records a drive into `bags/` (MCAP): inputs, commands, and what the stack saw and decided (the front camera as JPEG, the locks, the road ahead); what the Motor Pi wrote for `link_check.py`. Run it through pixi (`pixi run tools/record.sh`): pixi sets Cyclone's participant limit | - |
-| `record_drive.py` | a mapping drive (`record.sh --mapping`): every raw sensor at full rate, MCAP + zstd in split files; checks first (disk, rates, stamps, clocks, frames), a summary after; `--sim` in Ravensim, then its NDT map (`docs/recording.md`). The maths: `recording.py` (no ROS) | `record-drive` |
+| `record_drive.py` | a mapping drive (`record.sh --mapping`): every raw sensor at full rate, MCAP + zstd in split files; checks first (disk, rates, stamps, clocks, frames), a summary after; `--sim` in Ravensim, then its NDT map (`--sim-box X Y`: a parked car for that drive only) (`docs/recording.md`). The maths: `recording.py` (no ROS) | `record-drive` |
 | `score_drive.py` | one scorecard for any recorded drive, sim or car: time, distance, top speed, time over the road ahead's limit, passes beyond its end, metres off the plan, holds, locks, a person driving (`--json`) | - (ros.sh) |
 | `replay_commands.sh` | plays a bag's commands into `/drivers/replay/cmd_vel` (no flags, never local) | - |
 | `build_engine.py` | the Orin's TensorRT model, on the Orin (JetPack's Python) | - |
@@ -105,7 +105,8 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `heading_check.py` | the global EKF's heading against Ravensim's truth | - (ros.sh --local) |
 | `campus_world.py` | Carleton from OpenStreetMap: a Ravensim world (SDF), its RavenTiles, one map of the whole campus (Nav2's PGM format), and NDT's guessed map (tested without ROS) | `campus` |
 | `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag, placed by a topic or a TUM file (`--poses-file`) (its maths without ROS) | `ndt-map` |
-| `map_drive.py` | a map from a recorded drive, no ROS (the slam env): KISS-SLAM, the GPS fit, NDT's map, a 2D map, chunks, scores in Ravensim; `--merge` two drives (`docs/maps-from-drives.md`). The maths: `slam_map.py` | `map-drive` |
+| `map_drive.py` | a map from a recorded drive, no ROS (the slam env): KISS-SLAM, the GPS fit, NDT's map, a 2D map, chunks, scores in Ravensim; `--merge` two drives or more, their 2D maps too (`docs/maps-from-drives.md`). The maths: `slam_map.py` | `map-drive` |
+| `map_area.py` | one area's map from several drives, no ROS (the slam env): `map-drive` each, ICP onto the first, occupancy across passes (parked cars out, what one drive saw labelled `seen_in`), chunks, one report (TODO 259, 260). The maths: `passes.py` | `map-area` |
 | `timing_test.py` | every topic's gaps and late messages, parked and driving | `measure timing` |
 | `stream_check.py` | the camera stream end to end, without the car (`--impl rust\|python`: which node; CPU and memory of each program) | `measure stream` |
 | `sim_frames.py` | camera pictures of the sim's stop sign, for the detectors | - |
@@ -161,6 +162,7 @@ Each lands outside git, checksum pinned where the script says.
 | `lane_score.py` | the numbers behind `measure lane` (no ROS); run alone on `measure controllers`' `results.json`: did each run keep right, by the lane map (off centre, in the lane, over the left line and how often, past the kerb) | - |
 | `scorecard.py` | the numbers behind `score_drive.py` (no ROS) | - |
 | `slam_map.py` | the numbers behind `map-drive`: poses flattened, UTM and the GPS fit, the 2D map, map errors, merging (no ROS) | - |
+| `passes.py` | the numbers behind `map-area`: occupancy across passes, what is dynamic, what only one drive saw, the merged 2D map (numpy, no ROS) | - |
 | `recording.py` | the numbers behind `record-drive`: what it records, GB an hour, the checks, the summary and its verdicts (no ROS) | - |
 | `measure.sh` | picks one of the five measurements below and runs it (the simulator ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
 | `link_check.py` | did the Motor Pi's frames reach the ESP32? A bag (or the live topics) against the ESP32's status lines: PASS, FAIL, NOT TESTED (its maths without ROS) | `link-check` |
@@ -224,6 +226,7 @@ Each lands outside git, checksum pinned where the script says.
 | `build_docs.py`, `graph_picture.py`, `teach_figures.py`, `vehicle_model.py`, `state_space_demo.py`, `measure_map.py` | write `docs/html/`, `docs/img/` (`measure_map.py` also its table in `docs/measure-the-car.md`) |
 | `make_stop_sign.py`, `make_map.py` | write the stop sign's files in `ros/sim/aav_sim_models/models/`; a map's PGM and YAML |
 | `map_drive.py` | writes `<drive>/map/` (or `--out`); runs `cargo` for the chunks |
+| `map_area.py` | writes `maps/<area>/` (or `--out`), each drive's map in its `drives/`; runs `cargo` for the chunks |
 | `record.sh`, `record_drive.py` | write `bags/`; `record_drive.py` also runs `chronyc` over ssh (keys only) and, with `--sim`, Ravensim on this computer |
 | `esp32.sh flash`, `esp32.sh walk` (once `flash` is typed), `pico.sh <board> flash`, `legacy_firmware.sh -t upload` | write a board's flash (bench only) |
 | `esp32_walk.py` | writes `bench-logs/`: the record, the first check's log, the copy of the C++ (a secret inside) |

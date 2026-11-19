@@ -17,6 +17,10 @@ functions.
     pixi run record-drive --sim --loop         ... the whole mapping route round the lot and
                                                back to the start: a loop for SLAM to close
                                                (TODO 250; about 8 min)
+    pixi run record-drive --sim --loop --sim-box 22 -6.5
+                                               ... with a parked car (a 4.5 x 1.8 x 1.5 m
+                                               box) at x 22, y -6.5 for this drive only:
+                                               test data for map-area's passes (TODO 259)
     tools/record.sh --mapping ...              the same as pixi run record-drive
 
 One folder a drive, bags/<date>_<name>/:
@@ -468,6 +472,40 @@ def car_drive(args):
     return 0
 
 
+BOX_SDF = """<?xml version="1.0"?>
+<!-- record_drive.py, sim box: a parked car for one drive only (TODO 259's test data). -->
+<sdf version="1.9">
+  <model name="parked_box">
+    <static>true</static>
+    <link name="link">
+      <pose>0 0 {h2} 0 0 0</pose>
+      <visual name="visual"><geometry><box><size>{l} {w} {h}</size></box></geometry></visual>
+      <collision name="collision"><geometry><box><size>{l} {w} {h}</size></box></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>
+"""
+BOX_SIZE = (4.5, 1.8, 1.5)      # m: a car's size, as a box
+
+
+def spawn_box(session, x, y, yaw_deg=0.0):
+    """Put a car-sized box in Ravensim at (x, y) for this drive (simulation_interfaces)."""
+    l, w, h = BOX_SIZE
+    sdf = session / 'parked_box.sdf'
+    sdf.write_text(BOX_SDF.format(l=l, w=w, h=h, h2=h / 2.0))
+    yaw = math.radians(yaw_deg)
+    request = ('{name: parked_box, uri: "file://%s", initial_pose: {pose: {position: '
+               '{x: %f, y: %f, z: 0.0}, orientation: {z: %f, w: %f}}}}'
+               % (sdf, x, y, math.sin(yaw / 2), math.cos(yaw / 2)))
+    done = subprocess.run(['ros2', 'service', 'call', '/vehicle/sim/spawn_entity',
+                           'simulation_interfaces/srv/SpawnEntity', request],
+                          capture_output=True, text=True, timeout=60)
+    if done.returncode != 0 or 'result=1,' not in done.stdout.replace(' ', ''):
+        raise SystemExit(f'the box was not placed: {done.stdout[-400:]} {done.stderr[-400:]}')
+    print(f'   a parked car (box {l} x {w} x {h} m) at x {x}, y {y}', flush=True)
+
+
 def sim_drive(args):
     """Ravensim's test lot on a private domain: check, record a short drive, summarise, map."""
     import controller_compare as cc
@@ -492,12 +530,16 @@ def sim_drive(args):
             up = car.spin_for(cc.UP_TIME, lambda: car.last_truth is not None and car.glob)
             if not (up and car.spin_for(cc.UP_TIME, car.nav.server_is_ready)):
                 raise SystemExit(f'Ravensim never came up: see {sim_log}')
+            if args.sim_box:
+                spawn_box(session, *args.sim_box)
             car.spin_for(cc.SETTLE)
             checks, clocks, frames, helpers, refuse, measured = before(
                 items, True, args, session)
             if refuse:
                 raise SystemExit('REFUSED: ' + '; '.join(c.detail for c in refuse))
             args.note = args.note or "Ravensim test lot: the recording kit's own test"
+            if args.sim_box:
+                args.note += f' (a parked box at {args.sim_box[0]}, {args.sim_box[1]})'
             write_meta(session, args, checks, clocks, frames, measured, items)
             proc, rlog = start_recording(session, items, True, args)
             car.spin_for(3.0)
@@ -540,6 +582,9 @@ def main():
                         help="Ravensim on this computer: the kit's own test")
     parser.add_argument('--loop', action='store_true',
                         help='with --sim: the whole route round the lot, back to the start')
+    parser.add_argument('--sim-box', type=float, nargs='+', metavar='X Y [YAW]',
+                        help='with --sim: a car-sized box at x, y (m; yaw deg) for this '
+                             'drive only (test data for map-area, TODO 259)')
     parser.add_argument('--check', action='store_true', help='only the checks')
     parser.add_argument('--summary', type=Path, metavar='SESSION',
                         help="a recorded drive's summary again")
