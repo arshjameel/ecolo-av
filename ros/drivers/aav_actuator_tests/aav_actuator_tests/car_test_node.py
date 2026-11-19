@@ -23,8 +23,7 @@ Subscribes  everything the preflight does (PreflightNode: every sensor, counted)
             safety/sensor_watchdog/lock   std_msgs/Bool
             vehicle/status                aav_interfaces/VehicleStatus: armed, e-stop, faults
             safety/output_mux/state       std_msgs/String: the gate (OPEN before a step)
-            control/<car|sim>/heartbeat   aav_interfaces/Heartbeat: it stops (the heartbeat
-                                          step)
+            (never a simulator's own topic, such as /control/sim/heartbeat: tools/drop_in.py)
 Publishes   drivers/tests/cmd_vel  geometry_msgs/TwistStamped: the faults' slow roll, 50 Hz
             safety/estop           std_msgs/Bool, true only: when the car won't stop; and
                                    in --sim the e-stop step's press, standing in for a person
@@ -58,7 +57,7 @@ from aav_actuator_tests.actuator_test import Aborted
 from aav_actuator_tests.analysis import STOPPED
 from aav_actuator_tests.preflight_node import PreflightNode
 from aav_description import vehicle
-from aav_interfaces.msg import Heartbeat, VehicleStatus
+from aav_interfaces.msg import VehicleStatus
 import rclpy
 from rclpy.parameter import Parameter
 from rclpy.parameter_client import AsyncParameterClient
@@ -138,7 +137,7 @@ class SimLaunch:
 
 
 class CarTestNode(PreflightNode):
-    """The preflight's node (every sensor counted), and who says why, and the heartbeat."""
+    """The preflight's node (every sensor counted), and who says why."""
 
     def __init__(self, sim):
         super().__init__(sim, name='car_test')
@@ -146,13 +145,10 @@ class CarTestNode(PreflightNode):
         self.wd_lock = None        # not `lock`: PreflightNode's is the legacy bridge's
         self.status = None         # (s, VehicleStatus)
         self.gate = None           # (s, line)
-        self.beats = []            # arrival s of each heartbeat
         self.create_subscription(String, 'safety/sensor_watchdog/state', self.on_watchdog, 10)
         self.create_subscription(Bool, 'safety/sensor_watchdog/lock', self.on_wd_lock, 10)
         self.create_subscription(VehicleStatus, 'vehicle/status', self.on_status, 10)
         self.create_subscription(String, 'safety/output_mux/state', self.on_gate, 10)
-        target = 'sim' if sim else 'car'
-        self.create_subscription(Heartbeat, f'control/{target}/heartbeat', self.on_beat, 10)
 
     def on_watchdog(self, msg):
         self.watchdog = (self.seconds(), msg.data)
@@ -165,9 +161,6 @@ class CarTestNode(PreflightNode):
 
     def on_gate(self, msg):
         self.gate = (self.seconds(), msg.data)
-
-    def on_beat(self, _msg):
-        self.beats.append(self.seconds())
 
     def state(self):
         return self.watchdog[1] if self.watchdog else None
@@ -271,6 +264,8 @@ class CarTest:
             except Aborted as e:
                 result = ct.Result(step, ct.Status.FAIL, f'ABORTED: {e}')
             except KeyboardInterrupt:
+                # A second Ctrl-C must not cut the stop short: the run ends here anyway.
+                signal.signal(signal.SIGINT, signal.SIG_IGN)
                 self.interrupted = True
                 result = ct.Result(step, ct.Status.FAIL, 'Ctrl-C')
             finally:
@@ -562,24 +557,20 @@ class CarTest:
             self.roll_until(roll, ct.HEARTBEAT_LIMIT + 3.0,
                             lambda: 'still' if self.still() else None)
             still = self.still_since - t0 if self.still() else None
-            t_end = node.seconds()
             status = node.fresh_status()
         finally:
             os.kill(pid, signal.SIGCONT)
-        beats = [t for t in node.beats if t0 + 0.05 < t <= t_end]
         reopened = node.spin_for(15.0, lambda: node.gate is not None
                                  and node.gate[1].startswith('OPEN'))
         timeout = bool(status and status.faults & VehicleStatus.FAULT_CMD_TIMEOUT)
         cmd_timeout = '; CMD_TIMEOUT' if timeout else ''
-        note = (f"{len(beats)} heartbeats while paused; stopped by the backend's own "
+        note = ("stopped by the backend's own "
                 f'command timeout (sim_adapter, 0.2 s{cmd_timeout}): '
                 "on the car that is the ESP32's 100 ms heartbeat check, which Ravensim "
                 "doesn't run (ESP32 in QEMU: pixi run esp qemu-check)")
         seen = ct.Seen('the output mux paused (no commands, no heartbeat)', None, '', still,
                        note)
         status_, detail = ct.judge_fault(seen, None, ct.HEARTBEAT_LIMIT, need_word=False)
-        if beats:
-            status_, detail = ct.Status.FAIL, detail + '; the heartbeat did NOT stop'
         if not reopened:
             status_, detail = ct.Status.FAIL, detail + '; the output gate did not reopen'
         return ct.Result(step, status_, detail)
@@ -602,7 +593,10 @@ class CarTest:
         self.say('Plug the cable back in now. Keep away from the wheels: the runner still '
                  'asks them to roll, to show the ESP32 holds its brake.')
         answer = Waiting('Press Enter once it is back in: ')
+        end = time.monotonic() + ct.MANUAL_WAIT
         while not answer.done:
+            if time.monotonic() > end:
+                raise Aborted(f'no Enter in {ct.MANUAL_WAIT:g} s: is the cable back in?')
             self.tick(roll, stale_ok=True)
         back = time.monotonic() + 10.0
         while time.monotonic() < back and not self.fresh_odom():

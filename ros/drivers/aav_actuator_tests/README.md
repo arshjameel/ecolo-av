@@ -53,7 +53,7 @@ Executable `car_test` (wrapped by `tools/car_test.sh`):
 `--stands` (required), `--ground` (refused), `--sim`, `--only STEP...`, `--no-manual`, `--out`;
 what it reads, publishes, calls and signals is in `car_test_node.py`'s docstring: the same as
 the preflight, plus `/safety/sensor_watchdog/state` and `lock`, `/vehicle/status`,
-`/safety/output_mux/state`, `/control/<car|sim>/heartbeat`; with `--sim` it sets
+`/safety/output_mux/state`; with `--sim` it sets
 Ravensim's `fault.<sensor>` and pauses its own Ravensim's `output_mux` (SIGSTOP, SIGCONT).
 
 | Item | What |
