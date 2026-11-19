@@ -96,14 +96,15 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
 | `software_gl.sh` | Mesa's software renderer with no GPU: Vulkan (lavapipe) for Ravensim's cameras, which then run in lockstep (it exports `AAV_SOFTWARE_GL=1`); `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
-| `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt`, `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
+| `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt` (`--ndt-map`: another map), `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
 | `diffusion.sh` | the diffusion planner trial's family: `data`, `train`, `score` (`models/diffusion/`) | `diffusion <data, train, score>` |
 | `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: our global costmap and planner, as the stack runs them, through `aav_planner`'s `teach` example (no ROS, no simulator; Nav2's servers until 17 Nov, TODO 242) | `diffusion data` |
 | `lattice_primitives.py` | the State Lattice planner's primitives for our car, by Nav2's generator (`--check`: still right for `vehicle.yaml`?) | - (needs `pixi run get vendor`) |
 | `lattice_smooth.py` | the lattice's smooth moves (`lattice_moves:=smooth`, `smooth_fast`): curvature no faster than the steering turns; our own generator, no ROS (`--check`) | - |
 | `heading_check.py` | the global EKF's heading against Ravensim's truth | - (ros.sh --local) |
 | `campus_world.py` | Carleton from OpenStreetMap: a Ravensim world (SDF), its RavenTiles, one map of the whole campus (Nav2's PGM format), and NDT's guessed map (tested without ROS) | `campus` |
-| `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag (its maths without ROS) | `ndt-map` |
+| `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag, placed by a topic or a TUM file (`--poses-file`) (its maths without ROS) | `ndt-map` |
+| `map_drive.py` | a map from a recorded drive, no ROS (the slam env): KISS-SLAM, the GPS fit, NDT's map, a 2D map, chunks, scores in Ravensim; `--merge` two drives (`docs/maps-from-drives.md`). The maths: `slam_map.py` | `map-drive` |
 | `timing_test.py` | every topic's gaps and late messages, parked and driving | `measure timing` |
 | `stream_check.py` | the camera stream end to end, without the car (`--impl rust\|python`: which node; CPU and memory of each program) | `measure stream` |
 | `sim_frames.py` | camera pictures of the sim's stop sign, for the detectors | - |
@@ -158,6 +159,7 @@ Each lands outside git, checksum pinned where the script says.
 | `drive_metrics.py` | the numbers behind `measure controllers` (no ROS) | - |
 | `lane_score.py` | the numbers behind `measure lane` (no ROS); run alone on `measure controllers`' `results.json`: did each run keep right, by the lane map (off centre, in the lane, over the left line and how often, past the kerb) | - |
 | `scorecard.py` | the numbers behind `score_drive.py` (no ROS) | - |
+| `slam_map.py` | the numbers behind `map-drive`: poses flattened, UTM and the GPS fit, the 2D map, map errors, merging (no ROS) | - |
 | `recording.py` | the numbers behind `record-drive`: what it records, GB an hour, the checks, the summary and its verdicts (no ROS) | - |
 | `measure.sh` | picks one of the five measurements below and runs it (the simulator ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
 | `link_check.py` | did the Motor Pi's frames reach the ESP32? A bag (or the live topics) against the ESP32's status lines: PASS, FAIL, NOT TESTED (its maths without ROS) | `link-check` |
@@ -220,6 +222,7 @@ Each lands outside git, checksum pinned where the script says.
 | `car_day_build.sh` | writes `car-day/esp32/` and `docs/html/` |
 | `build_docs.py`, `graph_picture.py`, `vehicle_model.py`, `state_space_demo.py`, `measure_map.py` | write `docs/html/`, `docs/img/` (`measure_map.py` also its table in `docs/measure-the-car.md`) |
 | `make_stop_sign.py`, `make_map.py` | write the stop sign's files in `ros/sim/aav_sim_models/models/`; a map's PGM and YAML |
+| `map_drive.py` | writes `<drive>/map/` (or `--out`); runs `cargo` for the chunks |
 | `record.sh`, `record_drive.py` | write `bags/`; `record_drive.py` also runs `chronyc` over ssh (keys only) and, with `--sim`, Ravensim on this computer |
 | `esp32.sh flash`, `esp32.sh walk` (once `flash` is typed), `pico.sh <board> flash`, `legacy_firmware.sh -t upload` | write a board's flash (bench only) |
 | `esp32_walk.py` | writes `bench-logs/`: the record, the first check's log, the copy of the C++ (a secret inside) |
