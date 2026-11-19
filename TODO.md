@@ -32,8 +32,10 @@ think there is room to improve").
 
 ## 1. The testing plan
 
-[The testing plan](docs/testing-plan.md) (`docs/html/aav-testing-plan.pdf`, for the team).
-Ben, 18 Nov: "My prof wanted a full automated testing system".
+[The testing plan](docs/testing-plan.md) (`docs/html/aav-testing-plan.pdf`, for the team):
+the testers' strategy, session by session (rewritten 19 Nov). Ben, 18 Nov: "My prof wanted a
+full automated testing system"; 19 Nov: "Add offline processing to the list of stuff we can
+and will do".
 
 | # | Task | Status |
 |---|---|---|
@@ -46,6 +48,13 @@ Ben, 18 Nov: "My prof wanted a full automated testing system".
 | 251 | **Phase E, the map editor**: layers (OpenStreetMap, our points, the 2D map, chunks, labels), align, box-delete, relabel, approve, save | ⬜ next |
 | 252 | **Phase F, labelling**: open-vocabulary models offline, camera boxes onto lidar points, fixed in the editor, our small model retrained after each drive | ⬜ |
 | 253 | **Phase G, the campus twin** in Ravensim from our maps; passes when a replayed drive scores within NDT's error of the real one | ⬜ |
+| 255 | **The boot self-test that refuses to arm** (Ben, 19 Nov: "make sure we have control over everything"): at start-up every sensor at rate, every actuator answering (the spine's self-test, 0b), every lock alive, the clocks; READY / NOT READY and why on the HUD; `spine_bridge` refuses `/spine/arm` until READY. Moves nothing | ⬜ |
+| 256 | **NDT in the hallway, a third measure of distance**: fixed boxes and cones along the walls, the hallway mapped first (`record-drive` + `map-drive`), NDT's pose recorded by `car-test --hallway` beside the wheels and IMU; trusted across more than along (a plain corridor lets it slide) | ⬜ needs 261 |
+| 257 | **The transfer functions with and without a person aboard**: `car-test --hallway --aboard <kg>` notes the load; a fit per load into `vehicle.yaml`; the adaptive brake seeded from both | ⬜ |
+| 258 | **The adaptive brake on the car**: today it runs only in the sim's `sim_adapter` (`adaptive_brake:=true`); on the car nothing adapts. Put it on the car's brake path (`spine_bridge` or `spine-core`), never above `safe_max`, the locks never through it | ⬜ |
+| 259 | **Occupancy across passes**: 3+ drives of an area, each ray traced; a cell hit in some passes and free in others (a parked car, a person) removed; never-seen-free kept; then camera labels (252) for cars parked every time. Learn from Removert, ERASOR, DUFOMap (licences to check) | ⬜ after the campus NDT maps |
+| 260 | **The offline pipeline as one command**: a campus area from its drives: `map-drive` each, merge, occupancy, chunks, one report | ⬜ after 259 |
+| 261 | **NDT on the car**: `car.launch.py` has no `ndt:=` / `ndt_map:=` (only the sim launch has); needed for the hallway (256) and `pose_source:=ndt` (210) | ⬜ |
 
 ## 2. Maps and position
 
