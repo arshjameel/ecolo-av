@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import recording as r  # noqa: E402
-import pytest  # noqa: E402
+import pytest  # noqa: E402, I100
 
 TRACKING = """Reference ID    : C0A8018C (192.168.1.140)
 Stratum         : 3
@@ -114,7 +114,7 @@ def _seen(rate, duration=10.0):
 def test_verdicts():
     every = {t: _seen(10.0) for items in r.NEEDS.values() for options in items
              for t in options[:1]}
-    stats = r.summarise(every, {t: 10.0 for t in every}, 10.0)
+    stats = r.summarise(every, dict.fromkeys(every, 10.0), 10.0)
     frames = list(r.SENSOR_FRAMES)
     assert set(r.verdicts(stats, frames).values()) == {'good'}
     # no frames: the map and the labels can't be placed
@@ -124,12 +124,12 @@ def test_verdicts():
     # no global pose, but the sim's truth: the map is still good
     del every['/localization/odom/global']
     every['/vehicle/sim/truth'] = _seen(10.0)
-    stats = r.summarise(every, {t: 10.0 for t in every}, 10.0)
+    stats = r.summarise(every, dict.fromkeys(every, 10.0), 10.0)
     assert r.verdicts(stats, frames)['NDT map'] == 'good'
     # the lidar with a gap: weak
     every['/sensors/lidar/points'] = ([t for t in _seen(10.0)[0] if not 4 < t < 6],
                                       [1] * 80)
-    stats = r.summarise(every, {t: 10.0 for t in every}, 10.0)
+    stats = r.summarise(every, dict.fromkeys(every, 10.0), 10.0)
     assert r.verdicts(stats, frames)['NDT map'].startswith('weak:')
     # no wheels at all
     del every['/vehicle/wheels']
@@ -142,5 +142,15 @@ def test_markdown_and_lost():
     page = r.markdown(stats, {'NDT map': 'good'}, 10.0, 5_000, 0)
     assert '| `/a` | 100 | 10.0 | 10 |' in page and 'none recorded' in page
     assert '| NDT map | good |' in page
-    assert r.lost_messages('nothing here') == -1
-    assert r.lost_messages('Total lost messages: 3\nlost 2') == 5
+    assert r.lost_messages('Recording stopped') == 0
+    log = ('[WARN] [rosbag2_recorder]: Number of messages lost on the transport layer: 3\n'
+           'Cache buffers lost messages per topic: \n\t/a: 2\nTotal lost: 2')
+    assert r.lost_messages(log) == 5
+    assert 'lost 5 messages' in r.markdown(stats, {}, 10.0, 1, 5)
+
+
+def test_jitter_is_not_a_gap():
+    times = [i * 0.02 for i in range(500)]          # 50 Hz
+    times[100] += 0.05                              # 70 ms late: jitter
+    s = r.topic_stats('/imu', times, [1] * 500, 10.0, 50.0)
+    assert s.gaps == 0 and s.good

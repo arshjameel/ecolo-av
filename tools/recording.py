@@ -8,7 +8,7 @@ The recording kit's maths, no ROS (testing plan, phase C; TODO 249).
 | `bytes_per_second`, `gb_per_hour`, `disk_check` | how big a drive gets, and whether it fits |
 | `parse_chronyc`, `clock_line` | one computer's clock offset from `chronyc tracking` |
 | `stamp_lag_line` | a clock check through ROS: how old a message's stamp is when it arrives |
-| `rate_line`, `missing_frames` | the before-checks: is each topic there, at its rate; the sensor frames |
+| `rate_line`, `missing_frames` | before: each topic at its rate; the sensor frames |
 | `topic_stats`, `summarise`, `verdicts`, `markdown` | the after-summary |
 
 tools/record_drive.py is the ROS part. The numbers are docs/bandwidth.md's and the preflight's
@@ -22,6 +22,7 @@ from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 GB = 1e9
 GAP_PERIODS = 3.0       # a gap is over 3 periods
+MIN_GAP = 0.1           # s, and over this: shorter is the computer's own jitter
 LOW_RATE = 0.8          # under 80 % of the expected rate: messages dropped
 CLOCK_WARN = 0.010      # s: car-day.md's "System time under 0.01 s"
 STAMP_LAG_MAX = 0.5     # s: a stamp older than this on arrival
@@ -293,7 +294,7 @@ def topic_stats(topic: str, times: Sequence[float], sizes: Sequence[int], durati
     Return one topic's count, rate, size and gaps from its arrival times (s).
 
     The period is the expected rate's, else the median of its own; a gap is over 3 of
-    them. Fewer messages than 80 % of expected x the recording's length: dropped.
+    them and over 0.1 s (a 50 Hz topic 60 ms late is the computer's jitter, not a hole). Fewer messages than 80 % of expected x the recording's length: dropped.
     """
     count = len(times)
     rate = count / duration if duration > 0 else 0.0
@@ -305,7 +306,7 @@ def topic_stats(topic: str, times: Sequence[float], sizes: Sequence[int], durati
         period = statistics.median(steps)
     else:
         period = 0.0
-    long_gaps = [s for s in steps if period > 0 and s > GAP_PERIODS * period]
+    long_gaps = [s for s in steps if period > 0 and s > max(GAP_PERIODS * period, MIN_GAP)]
     stats = TopicStats(topic, count, rate, sum(sizes), len(long_gaps),
                        max(steps, default=0.0), expected)
     if count == 0:
@@ -382,13 +383,18 @@ def markdown(stats: Sequence[TopicStats], verdict: Mapping[str, str], duration: 
         lines.append(f'| `{s.topic}` | {s.count} | {s.rate:.1f} | {expected} | '
                      f'{s.gaps} (worst {s.worst_gap:.2f} s) | {human(s.size)} | '
                      f'{"; ".join(s.flags) or "-"} |')
-    lines += ['', f'The recorder lost {lost} messages (its own count).' if lost >= 0
-              else "The recorder's own lost count: not in its log."]
+    lines += ['', f'The recorder lost {lost} messages (its own count: the network and its '
+              'cache).' if lost else 'The recorder lost no messages (its own count).']
     lines += [f'- {n}' for n in notes]
     return '\n'.join(lines) + '\n'
 
 
 def lost_messages(log: str) -> int:
-    """Return the messages rosbag2 says it lost (its log), or -1 when it doesn't say."""
-    counts = [int(m) for m in re.findall(r'[Ll]ost (?:messages[^0-9]*)?(\d+)', log)]
-    return sum(counts) if counts else -1
+    """
+    Return the messages rosbag2 says it lost: on the network, and from its full cache.
+
+    It says so only when there were some (rosbag2_transport recorder.cpp, rosbag2_cpp
+    message_cache.cpp).
+    """
+    found = re.findall(r'lost on the transport layer: (\d+)|Total lost: (\d+)', log)
+    return sum(int(a or b) for a, b in found)

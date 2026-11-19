@@ -60,7 +60,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 sys.path.insert(0, str(ROOT / 'ros' / 'drivers' / 'aav_actuator_tests'))
-import recording as rec  # noqa: E402
+import recording as rec  # noqa: E402, I100
 
 VEHICLE = ROOT / 'ros' / 'bringup' / 'aav_description' / 'config' / 'vehicle.yaml'
 MACHINES = ROOT / 'ros' / 'bringup' / 'aav_bringup' / 'config' / 'machines'
@@ -261,7 +261,7 @@ def live_checks(items, sim, seconds, raw_cameras, out_parent):
         took = time.monotonic() - start     # rates per real second
         checks = []
         if not sampler.subs:
-            checks.append(rec.Check('STOP', 'topics', 'none of the drive\'s topics is there: '
+            checks.append(rec.Check('STOP', 'topics', "none of the drive's topics is there: "
                                     'is the stack running, on this ROS_DOMAIN_ID?'))
         for s in items:
             checks.append(rec.rate_line(s, sampler.count.get(s.topic, 0), took, sim))
@@ -272,7 +272,7 @@ def live_checks(items, sim, seconds, raw_cameras, out_parent):
         lost = rec.missing_frames(sorted(sampler.frames))
         checks.append(rec.Check('WARN' if lost else 'OK', '/tf_static frames',
                                 'missing ' + ', '.join(lost) if lost else
-                                f'{len(sampler.frames)} frames, every sensor\'s'))
+                                f"{len(sampler.frames)} frames, every sensor's"))
         measured = sum(sampler.bytes.values()) / took if took > 0 else 0.0
         return checks, measured, sorted(sampler.frames), helpers
     finally:
@@ -386,10 +386,11 @@ def print_checks(checks):
 
 def before(items, sim, args, out_parent):
     """Run every check; return (checks, clocks, frames, helpers, refuse)."""
-    car = rec.bytes_per_second([(s.rate, s.size) for s in items if not s.sim_only])
+    on_car = with_preflight_rates(rec.streams(False, args.raw_cameras))
+    car = rec.bytes_per_second([(s.rate, s.size) for s in on_car])
     print(f'== Expected size on the car: {car * 3600 / rec.GB:.0f} GB an hour '
           '(before zstd), by group:')
-    for group, gb in sorted(rec.by_group(items).items(), key=lambda kv: -kv[1]):
+    for group, gb in sorted(rec.by_group(on_car).items(), key=lambda kv: -kv[1]):
         print(f'   {group:<14} {gb:6.1f} GB/h')
     print(f'== Listening for {args.check_seconds:.0f} s ...', flush=True)
     checks, measured, frames, helpers = live_checks(items, sim, args.check_seconds,
@@ -490,7 +491,7 @@ def sim_drive(args):
                 items, True, args, session)
             if refuse:
                 raise SystemExit('REFUSED: ' + '; '.join(c.detail for c in refuse))
-            args.note = args.note or 'Ravensim test lot: the recording kit\'s own test'
+            args.note = args.note or "Ravensim test lot: the recording kit's own test"
             write_meta(session, args, checks, clocks, frames, measured, items)
             proc, rlog = start_recording(session, items, True, args)
             car.spin_for(3.0)
