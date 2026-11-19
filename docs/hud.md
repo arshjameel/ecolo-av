@@ -325,7 +325,7 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor
 
 ### Tested (15 October, a Mac)
 
-Moved to [the hud log](history/hud-log.md#tested-15-october-a-mac_1) on 18 Nov (a dated record).
+Moved to [the hud log](history/hud-log.md#tested-15-october-a-mac-1) on 18 Nov (a dated record).
 
 ### The street map under it
 
@@ -406,7 +406,7 @@ campus streets that aren't really there: the streets only match the world on the
 
 #### Tested (15 October, a Mac)
 
-Moved to [the hud log](history/hud-log.md#tested-15-october-a-mac_2) on 18 Nov (a dated record).
+Moved to [the hud log](history/hud-log.md#tested-15-october-a-mac-2) on 18 Nov (a dated record).
 
 ### Search for a place, and drive there
 
@@ -492,7 +492,7 @@ Try a search from a terminal: `cargo run --release -p map-core --example search 
 
 #### Tested (15 October, a Mac)
 
-Moved to [the hud log](history/hud-log.md#tested-15-october-a-mac_3) on 18 Nov (a dated record).
+Moved to [the hud log](history/hud-log.md#tested-15-october-a-mac-3) on 18 Nov (a dated record).
 
 ## Themes: the screens' colours
 
