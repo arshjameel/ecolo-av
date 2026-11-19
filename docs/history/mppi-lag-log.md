@@ -281,3 +281,106 @@ Every switch stays: `plan_smoothing:=nav2`, `map_correction:=newest` and
 | The car | none of this has been on the car: the GPS, the lags and the Orin's tick are the sim's |
 | Nav2 with the strong smoother | not scored: it may help Nav2's MPPI too (`--stacks nav2` with `--launch plan_smoothing:=strong`) |
 | A smoother that knows the costmap | Dolgov et al. 2010's (Nav2's Constrained Smoother) pulls away from obstacles too; ours only stops at them |
+
+## 19 Nov: today's default against the yardstick
+
+TODO 167. Nav2 went on 17 Nov, so the yardstick is two sets of recorded numbers:
+Nav2's of 15 Nov (afternoon), and ours of the same afternoon ([the result](#the-result)).
+
+> **The short version**
+> - **The campus:** at or better than both, except 0.03 m more off the path than ours
+>   was, and 2 % slower.
+> - **The lot:** every leg, closer to the path than Nav2; sway 0.024 against ours' 0.021
+>   and Nav2's 0.018. Ours was above Nav2's on 15 Nov too.
+> - **No clear regression.** Each gap is inside the spread of one run to the next. The new
+>   simulated IMU (TODO 171) is not the lot's sway.
+
+### How it was run
+
+Ravensim on Ben's Mac (GPU, headless), reversing on, 3 runs a tour, a ROS domain each
+(161-173), this computer only. The build: this branch, from `main` at `15a4adeb`.
+
+```sh
+AAV_SIM_DOMAIN=161 pixi run measure controllers --stacks own_calm --tours lot \
+    --runs 3 --reversing --launch stack:=ours --out /tmp/w167/lot
+AAV_SIM_DOMAIN=171 pixi run measure controllers --stacks own_calm --tours campus \
+    --runs 3 --reversing --launch stack:=ours --out /tmp/w167/campus
+```
+
+`--launch stack:=ours` comes after the tool's own `stack:=best`, so it wins: each launch
+log says `stack:=ours - pose ekf_lane, costmap ours_all_chunks, navigator ours, path lane,
+steer mppi_lag_calm, smoother ours, lanes off, behaviour on, kerbs on`. On the lot there
+is no lane map, so `path lane` is the lattice alone and `ekf_lane` is the plain EKF.
+
+| Batch | Load at the start | At the end |
+|---|---|---|
+| Lot | 0.7 | 6.1 |
+| Campus | 4.9 | 7.2 |
+
+### The results
+
+Means of 3 runs, weighted by distance. "Top speed" is the truth's, over 0.5 s; the
+command never asked above 1.0 m/s on the lot and 2.5 m/s on the campus (the 14 %
+overshoot is the speed loop's: TODO 163).
+
+| | Today | Nav2, 15 Nov | vs Nav2 | Ours, 15 Nov | vs ours |
+|---|---|---|---|---|---|
+| **Lot** legs | 12/12 | 8/8 | ✅ | 8/8 | ✅ |
+| Lot sway (m/s²) | 0.024 | 0.018 | ❌ | 0.021 | ❌ (inside the spread) |
+| Lot left-right changes per 100 m | 6.6 | 10.3 | ✅ | 5.7 | ❌ (inside the spread) |
+| Lot off the path, mean (m) | 0.15 | 0.25 | ✅ | 0.15 | ✅ |
+| Lot off the path, worst (m) | 0.70 | 4.5 (morning) | ✅ | not kept | - |
+| Lot time a tour (s) | 158 | not kept | - | 159 (16 Nov) | ✅ |
+| Lot top speed (m/s) | 1.12 | - | - | - | - |
+| **Campus** legs | 9/9 | 4/6 | ✅ | 6/6 | ✅ |
+| Campus sway (m/s²) | 0.098 | 0.131 | ✅ | 0.099 | ✅ |
+| Campus left-right changes per 100 m | 8.2 | 11.3 | ✅ | 8.3 | ✅ |
+| Campus off the path, mean (m) | 0.21 | 0.50 | ✅ | 0.18 | ❌ |
+| Campus off the path, worst (m) | 1.70 | 6.2 (morning) | ✅ | 2.1 | ✅ |
+| Campus mean speed (m/s) | 1.94 | 1.60 | ✅ | 1.98 | ❌ (2 %) |
+| Campus time a tour (s) | 278 | not kept | - | 282 (16 Nov) | ✅ |
+| Campus top speed (m/s) | 2.69 | - | - | - | - |
+
+"Not kept": 15 Nov's raw results are gone; "(morning)" is drive-j's, before the sway
+fixes; "16 Nov" is the league's final (`stack:=ours` then).
+
+### Each run
+
+| Tour | Run | Sway | Changes /100 m | Off, mean (m) | Off, worst (m) | Speed (m/s) | Time (s) |
+|---|---|---|---|---|---|---|---|
+| lot | 1 | 0.028 | 6.8 | 0.16 | 0.70 | 0.83 | 159 |
+| lot | 2 | 0.019 | 4.6 | 0.13 | 0.52 | 0.84 | 157 |
+| lot | 3 | 0.024 | 8.3 | 0.15 | 0.55 | 0.84 | 157 |
+| campus | 1 | 0.097 | 7.4 | 0.20 | 1.69 | 1.95 | 277 |
+| campus | 2 | 0.092 | 8.3 | 0.20 | 1.64 | 1.90 | 284 |
+| campus | 3 | 0.105 | 9.0 | 0.21 | 1.70 | 1.96 | 271 |
+
+The worst moment on the campus is "along the road" (1.64-1.70 m each run), as on 15 Nov:
+its three-point start.
+
+### What changed it? Two checks
+
+Same commands, one thing different, 3 runs each:
+
+| Run | Lot sway | Lot changes /100 m | Lot off, mean / worst (m) | Campus sway | Campus off, mean (m) | Campus speed (m/s) |
+|---|---|---|---|---|---|---|
+| **Today's default** | 0.024 | 6.6 | 0.15 / 0.70 | 0.098 | 0.21 | 1.94 |
+| The IMU as before 18 Nov (`accel_from odometry`) | 0.024 | 6.3 | 0.14 / 0.51 | 0.095 | 0.18 | 1.97 |
+| 15 Nov's shape (`stack:=best` + own_calm: no behaviour, kerbs, chunks, `ekf_lane`) | 0.022 | 6.0 | 0.13 / 0.54 | not run | | |
+
+- **The IMU** (`sim_imu`'s `accel_from` has no launch switch: its default was changed in
+  the source for this run only, then put back). The lot: the same. The campus: 0.03 m
+  closer to the path with the old IMU, but its runs (0.16-0.21 m) overlap today's
+  (0.20-0.21 m). Likely noise, unproven. The EKFs fuse only the IMU's yaw rate.
+- **The parts added since 15 Nov** (behaviour, the kerbs, the chunks): the lot without
+  them sways 0.022 (runs 0.020-0.026) against 0.024 (0.019-0.028). A hint, not a result.
+
+Loads: the IMU batch started at 3.7 and ended at 9.1; the `best` batch 5.4 to 6.3.
+Results: `/tmp/w167/` (not kept).
+
+### Still open
+
+| Open | Next |
+|---|---|
+| The lot's sway against Nav2's 0.018 | as on 15 Nov: the lot's three-point turn back sways most |
+| The campus 0.03 m further off the path | 5 or more runs each way, to tell it from noise |
