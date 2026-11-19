@@ -90,8 +90,8 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | Python's `shlex.split` and `str.format` | PSF-2.0 | ported (the rules) | the Rust camera stream fills and splits a GStreamer pipeline as the Python does (`stream-core`'s `decoders`) |
 | **libc** crate; **serde_yaml_ng** | MIT OR Apache-2.0 | runs | the Rust camera stream: stopping the decoder's process group (`killpg`); reading camera_info YAML calibrations |
 | NVIDIA TensorRT; Apple Core ML Tools | NVIDIA licence; BSD-3 | runs | the detector on the Orin and on Macs |
-| **ONNX Runtime** (Microsoft) | MIT | runs | the Rust detector (`aav_detector_rs`), and `tools/onnx_check.py` ([ONNX](onnx.md)) |
-| **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `detector-core` |
+| **ONNX Runtime** (Microsoft) | MIT | runs | the Rust detector (`aav_detector_rs`), the Rust diffusion worker (`aav_diffusion_rs`), `tools/onnx_check.py` and `onnx_measure.py`; its float16 converter makes the FP16 detector (`export_model.py --fp16`) ([ONNX](onnx.md)) |
+| **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `onnx-session`, `detector-core`, `diffusion-core` |
 | ONNX; onnxscript | Apache-2.0; MIT | runs | exporting RF-DETR to ONNX (`tools/export_model.py --format onnx`) |
 | rfdetr's PostProcess and COCO class list | Apache-2.0 | ported | `detector-core`'s decode and labels, through our `detr.py` |
 | **Ultra-Fast-Lane-Detection v2**: Z. Qin, P. Zhang, X. Li, TPAMI 2022 (`cfzd/Ultra-Fast-Lane-Detection-v2`) | MIT | idea (looked at) | the pick for a learned lane finder, trained by us (TODO 262b, `docs/perception.md`) |

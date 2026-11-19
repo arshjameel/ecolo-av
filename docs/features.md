@@ -53,7 +53,7 @@ Add a row in the same commit as the feature (`CLAUDE.md`).
 | Feature | Why | Who | Date | Status |
 |---|---|---|---|---|
 | [Object detector](perception.md) (`aav_detector`): RF-DETR Nano, YOLO as an option | RF-DETR saw a stop sign from 20 m (YOLO11n: 10 m), with no false finds and an Apache-2.0 licence | Ben | 2026-10-20 | sim |
-| [ONNX models from Rust](onnx.md) (`aav_detector_rs` `detector`, `detector_impl:=rust`; `detector-core`) | Ben, 16 Nov: train in PyTorch, run ONNX from Rust with ONNX Runtime, Core ML on the Mac, TensorRT on the Orin. The same boxes as PyTorch on 7 saved pictures (IoU 0.9999); 8.0 ms a picture on Core ML against PyTorch's 14.7; Ravensim's stop sign passes. A challenger: TensorRT untested | Ben | 2026-11-17 | sim |
+| [ONNX models from Rust](onnx.md) (`aav_detector_rs` `detector`, `detector_impl:=rust`; `detector-core`; `onnx-session`, the session builder both models share) | Ben, 16 Nov: train in PyTorch, run ONNX from Rust with ONNX Runtime, Core ML on the Mac, TensorRT on the Orin. The same boxes as PyTorch on 7 saved pictures (IoU 0.9999); 8.0 ms a picture on Core ML against PyTorch's 14.7; Ravensim's stop sign passes. Ben, 19 Nov: "start testing atleast in coreml ... if it works on a mac it shoudl work there": the diffusion planner too (its row). A challenger: TensorRT ready, untested | Ben | 2026-11-19 | sim |
 | One detector per computer: Core ML on a Mac | A laptop adds a second opinion over WiFi, at 21 ms a picture on a MacBook | Ben | 2026-10-11 | sim |
 | Stop-sign watcher | Holds the drive commands so the car stops about 4.7 m before a stop sign | the 2024-25 team, rewritten by Ben | 2026-10-10 | sim |
 | Lane finder (`aav_lane_finder`) | Classic OpenCV finds the lane in 0.78 ms a picture, with no model to train | Ben | 2026-10-10 | sim |
@@ -260,6 +260,7 @@ What the car decides to do on the road: when to slow, stop, wait and go, and wha
 
 | Feature | Why | Who | Date | Status |
 |---|---|---|---|---|
+| [`pixi run measure onnx`](onnx.md#every-model-pixi-run-measure-onnx) (`tools/onnx_measure.py`; `export_model.py --fp16`) | Ben, 19 Nov: "we have tensorrt on the orin but we have coreml on the mac for testing". Every ONNX model in `models/` on each provider here: the same answers as the CPU and PyTorch, the nodes Core ML took (the best guess of what TensorRT will), what fell back, ms; FP16 against FP32 by the same rule; PASS/WARN/FAIL, `--json` | Ben | 2026-11-19 | built |
 | [Switch picker](switches.md) (`pixi run pick`) | Every swappable part (who steers, where-am-I, speed loop) as a plain-words menu that prints, saves and runs the command, so nobody has to remember the switches; `demo` and `demo --debug` take them too | Ben | 2026-10-29 | sim |
 | [Every command](../README.md#every-command): about 50 `pixi run` tasks, families as one word and a choice (`get models`, `clear estop`, `pico spine flash`, `hud --demo`) | Ben, 1 Nov: "Less is more. Everything should be easy and obvious": 89 tasks were too many to find the right one | Ben | 2026-11-01 | built |
 | Live graph check (`pixi run check`) | Compares the running graph with `docs/interfaces.yaml`, so a wrong topic shows at once | Ben | 2026-10-09 | sim |

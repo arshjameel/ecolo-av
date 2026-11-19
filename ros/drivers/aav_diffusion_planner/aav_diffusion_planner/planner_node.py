@@ -184,8 +184,14 @@ class DiffusionPlanner(Node):
         TransformListener(self.tf, self)
         latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                              durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        # Volatile: it takes a latched costmap (Nav2's) and a volatile one (ours,
+        # aav_costmap, since 16 Nov; it sends the grid again every half second). Transient
+        # local here met ours with "incompatible QoS": no costmap, every plan the
+        # lattice's (found 19 Nov).
+        costmap_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                                 durability=DurabilityPolicy.VOLATILE)
         self.create_subscription(OccupancyGrid, '/drivers/nav/costmap/global', self.on_costmap,
-                                 latched, callback_group=MutuallyExclusiveCallbackGroup())
+                                 costmap_qos, callback_group=MutuallyExclusiveCallbackGroup())
         self.plan_pub = self.create_publisher(Path, '/plan', latched)
         self.status_pub = self.create_publisher(DiagnosticStatus, '/drivers/nav/diffusion/status',
                                                 10)

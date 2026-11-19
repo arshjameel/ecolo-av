@@ -66,6 +66,7 @@ vault, typed, never pasted into a file or chat.
 | **Orin** | ☐ | `nvidia-smi` or `tegrastats`: the GPU is seen |
 | | ☐ | The lidar (VLP-16, over Ethernet) answers: `ros2 topic hz /sensors/lidar/points` about 10 Hz |
 | | ☐ | The TensorRT engine rebuilt for JetPack 7.2's TensorRT ([session 4d](car-day.md#4d-rf-detrs-tensorrt-engine)) |
+| | ☐ | Untested: the ONNX models from Rust on TensorRT, the detector and the diffusion worker; delete the old engines in `models/*.cache/tensorrt/` first ([ONNX, the Orin](onnx.md#untested-the-orin)) |
 | **Motor Pi** | ☐ | The ESP32's serial port is back (`check`'s `UART` line is OK) |
 | | ☐ | The 2025-26 `aav_serial_bridge` is **not** running beside ours (never two drive paths) |
 | **Localization Pi** | ☐ | The IMU and the GPS: `/dev/aav/imu`, `/dev/aav/gps` |
