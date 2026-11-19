@@ -42,6 +42,8 @@ const MAX_TURN: f64 = std::f64::consts::FRAC_PI_4;
 const MARGIN: f64 = 0.5;
 /// Marks a cell no road reaches while drawing (never a cost: every cost is < INSCRIBED).
 const NONE: u8 = NO_INFORMATION;
+/// A lanes grid's cell no road (and no camera line) reaches: [`merged`] reads it as 0.
+pub const NO_ROAD: u8 = NONE;
 
 /// One road: its centre line (map frame, m), its width kerb to kerb, how its lanes run.
 #[derive(Debug, Clone, PartialEq)]
@@ -322,39 +324,18 @@ impl Lanes {
 
     /// The cost `s` m right of the centre line, the way the car drives.
     fn profile(&self, road: &Road, s: f64) -> Option<u8> {
-        let r = &self.ramp;
-        let half = road.width / 2.0;
-        if s.abs() > half {
-            return (s.abs() - half <= r.off_road_band).then_some(r.off_road);
-        }
-        let painted = (half - road.edge_inset).max(0.0);
-        let (centre, width) = road.lane();
-        let lane_half = width / 2.0;
-        let cost = if (s - centre).abs() <= lane_half {
-            lerp(0, r.line, (s - centre).abs() / lane_half.max(1e-9))
-        } else if s > centre {
-            // Toward the right kerb, from the car's lane's edge line.
-            lerp(r.line, r.kerb, ramp_t(s, centre + lane_half, half))
-        } else {
-            // Left of the car's lane: its own way's other lanes, then (two-way) the
-            // oncoming ones, then up to the left kerb.
-            let lanes = if road.oneway || s >= 0.0 || road.lane_count() <= 1 {
-                r.line
-            } else {
-                r.wrong_lane
-            };
-            if s >= -painted {
-                lanes
-            } else {
-                lerp(lanes, r.kerb, ramp_t(-s, painted, half))
-            }
-        };
-        Some(cost)
+        across(&self.ramp, road, s)
     }
 
     /// Draw the cells in `area` of `grid` (a grid on the map, in map frame): each the
     /// lowest any road gives it, 0 where none reaches.
     pub fn draw(&self, grid: &mut Grid, area: Bounds) {
+        self.draw_marked(grid, area, 0);
+    }
+
+    /// [`Lanes::draw`], with `none` where no road reaches ([`NO_ROAD`]: the camera's
+    /// lanes may fill those cells; see [`merged`]).
+    pub fn draw_marked(&self, grid: &mut Grid, area: Bounds, none: u8) {
         if area.width() == 0 || area.height() == 0 {
             return;
         }
@@ -402,10 +383,44 @@ impl Lanes {
         for (y, row) in (area.y0..area.y1).zip(part.chunks_exact(w)) {
             let start = y * grid.width + area.x0;
             for (out, &c) in grid.data[start..start + w].iter_mut().zip(row) {
-                *out = if c == NONE { 0 } else { c };
+                *out = if c == NONE { none } else { c };
             }
         }
     }
+}
+
+/// The cost `s` m right of a road's centre line, the way the car drives; None past the
+/// off-road band. **The one cost shape**: the lane map ([`Lanes`]) and the camera's lines
+/// (`camera_lanes`) both price a road through it, so the two agree.
+#[must_use]
+pub fn across(r: &Ramp, road: &Road, s: f64) -> Option<u8> {
+    let half = road.width / 2.0;
+    if s.abs() > half {
+        return (s.abs() - half <= r.off_road_band).then_some(r.off_road);
+    }
+    let painted = (half - road.edge_inset).max(0.0);
+    let (centre, width) = road.lane();
+    let lane_half = width / 2.0;
+    let cost = if (s - centre).abs() <= lane_half {
+        lerp(0, r.line, (s - centre).abs() / lane_half.max(1e-9))
+    } else if s > centre {
+        // Toward the right kerb, from the car's lane's edge line.
+        lerp(r.line, r.kerb, ramp_t(s, centre + lane_half, half))
+    } else {
+        // Left of the car's lane: its own way's other lanes, then (two-way) the
+        // oncoming ones, then up to the left kerb.
+        let lanes = if road.oneway || s >= 0.0 || road.lane_count() <= 1 {
+            r.line
+        } else {
+            r.wrong_lane
+        };
+        if s >= -painted {
+            lanes
+        } else {
+            lerp(lanes, r.kerb, ramp_t(-s, painted, half))
+        }
+    };
+    Some(cost)
 }
 
 /// The most the lanes and the inflation make together: one below inscribed, so a lane
@@ -425,6 +440,17 @@ pub fn combine(master: &mut [u8], lanes: &[u8]) {
         if *m < INSCRIBED {
             *m = m.saturating_add(l).min(MAX_SUM.max(*m));
         }
+    }
+}
+
+/// One cell's lane cost from the lane map's grid and the camera's (each [`NO_ROAD`] where
+/// it has nothing): **the map wins** where it has a road; else the camera's; else 0.
+#[must_use]
+pub fn merged(map: u8, camera: u8) -> u8 {
+    match (map, camera) {
+        (NO_ROAD, NO_ROAD) => 0,
+        (NO_ROAD, c) => c,
+        (m, _) => m,
     }
 }
 

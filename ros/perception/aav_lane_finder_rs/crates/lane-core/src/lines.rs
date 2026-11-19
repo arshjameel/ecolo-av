@@ -554,8 +554,16 @@ impl LaneFinder {
             }
         }
         let lane = Lane {
-            left_paint: if left.is_some() { paints[0] } else { Paint::Unknown },
-            right_paint: if right.is_some() { paints[1] } else { Paint::Unknown },
+            left_paint: if left.is_some() {
+                paints[0]
+            } else {
+                Paint::Unknown
+            },
+            right_paint: if right.is_some() {
+                paints[1]
+            } else {
+                Paint::Unknown
+            },
             ..lane_from(left, right, self.width, &s, confidence[0], confidence[1])
         };
         if left.is_some() && right.is_some() {

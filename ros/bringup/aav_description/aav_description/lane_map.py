@@ -226,6 +226,40 @@ def costmap_block(lanes: LaneMap) -> dict:
                        'edge_inset': r.edge_inset} for r in lanes.roads]}
 
 
+# Where the lanes layer's lanes come from (lane_source:=, TODO 264): the lane map's roads,
+# the lane finder's lines from the camera, or both (the map wins where it has a road).
+LANE_SOURCES = ('map', 'camera', 'both')
+DEFAULT_LANE_SOURCE = 'map'
+# The camera's lines (aav_lane_finder's topic).
+LANE_GEOMETRY_TOPIC = '/perception/lane/geometry'
+
+
+def check_lane_source(name: str) -> str:
+    """Return lane_source:= checked: one of LANE_SOURCES (empty: the default)."""
+    name = (name or '').strip() or DEFAULT_LANE_SOURCE
+    if name not in LANE_SOURCES:
+        raise ValueError(f'lane_source:={name}: one of {", ".join(LANE_SOURCES)}')
+    return name
+
+
+def lanes_block(lanes, source: str = DEFAULT_LANE_SOURCE) -> dict:
+    """
+    Return the global costmap's lanes block for a lane source (TODO 264).
+
+    map: the lane map's roads (`lanes`, a LaneMap, needed); camera: no roads, the lane
+    finder's lines (`camera`: its topic; the costmap's defaults for the rest: lines at 0.3
+    confidence and up, forgotten after 0.5 s, drawn from 2 m behind to 16 m ahead); both:
+    the two, the map winning where it has a road (no lane map: the camera alone).
+    """
+    source = check_lane_source(source)
+    if source == 'map':
+        if lanes is None:
+            raise ValueError('lane_source:=map needs a lane map')
+        return dict(costmap_block(lanes), source='map')
+    block = costmap_block(lanes) if lanes is not None else {'roads': []}
+    return dict(block, source=source, camera={'topic': LANE_GEOMETRY_TOPIC})
+
+
 # The route level's map for the lane-centre planner (lane_graph:=, TODO 175): lanes.yaml's
 # roads, or the Lanelet2 map beside it (lanelet-map in Rust: lanes, neighbours, stop lines).
 LANE_GRAPHS = ('lanes_yaml', 'lanelet2')

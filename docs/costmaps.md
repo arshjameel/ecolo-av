@@ -280,6 +280,14 @@ To draw the real test site:
 4. Build the map and drive phase 3 in Ravensim first (`world:=test_lot` pairs with
    `example_lot`).
 
+## Lanes in the costmap (TODO 148, 264)
+
+The lane lines are **perception**; the costmap **prices** them; navigation **drives**.
+The lanes layer draws the road as soft costs in the global costmap: the right lane's
+centre low, the centre line and oncoming lane medium, the kerb high, never a wall. From
+the lane map (`lanes:=ramp`) or the camera's lines (`lanes:=camera`, `both`); details in
+[our costmap](own-costmap.md#the-lanes-from-the-camera-19-nov-todo-264).
+
 ## A costmap is not a road map
 
 The global costmap only says which cells may be driven on. Roads, junctions and routing

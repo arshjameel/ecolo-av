@@ -77,8 +77,8 @@ Switches:
   behaviour:=true         the behaviour planner (aav_behaviour_rs; behaviour_impl:=python):
                           the states and a speed cap, in /world/road_ahead's limits; lane_map:=
                           a lanes.yaml for the road ahead's line
-  lane_costs:=, costmap_chunks:=, local_chunks:=true, lane_route:=, lane_pass:=,
-  lane_corners:=,
+  lane_costs:=, lane_source:=, costmap_chunks:=, local_chunks:=true, lane_route:=,
+  lane_pass:=, lane_corners:=,
   lane_graph:=            our costmap's lanes and chunks, our planner's lane-centre route
                           (TODO 148, 175; docs/own-costmap.md, docs/own-planner.md)
   things:=true            (with lidar:=true) aav_things_rs: the cubes as tracked things on
@@ -324,6 +324,9 @@ def nodes(context):
     diffusion = planner == 'diffusion'
     # lane_costs:=<lanes.yaml>: the lanes layer in our global costmap (TODO 148).
     lane_costs = LaunchConfiguration('lane_costs').perform(context).strip()
+    # lane_source:=camera|both: its lanes from the lane finder's lines too (TODO 264).
+    lane_source = lane_map.check_lane_source(
+        LaunchConfiguration('lane_source').perform(context))
     # costmap_chunks:=<folder>: our global costmap from the map's chunks (TODO 175).
     costmap_chunks = LaunchConfiguration('costmap_chunks').perform(context).strip()
     # lane_route:=<lanes.yaml>: the lane-centre planner, inside ours (TODO 148, path:=lane).
@@ -430,8 +433,9 @@ def nodes(context):
     # aav_costmap (Rust): our local and global costmaps, Nav2's layers ported, from the
     # tuned file's blocks (the same layers and sources). Not a lifecycle node.
     blocks = vehicle.costmap_params(tuned, v, radar, camera)
-    if lane_costs:
-        blocks['global']['lanes'] = lane_map.costmap_block(lane_map.load(lane_costs))
+    if lane_costs or lane_source != 'map':
+        blocks['global']['lanes'] = lane_map.lanes_block(
+            lane_map.load(lane_costs) if lane_costs else None, lane_source)
     if costmap_chunks:
         blocks['global']['chunks'] = vehicle.costmap_chunks_block(costmap_chunks)
         if LaunchConfiguration('local_chunks').perform(context).strip().lower() == 'true':
@@ -760,6 +764,11 @@ def generate_launch_description():
                                           'global costmap as soft costs, lowest at the right '
 
                                           "lane's centre (TODO 148); empty: off"),
+        DeclareLaunchArgument('lane_source', default_value=lane_map.DEFAULT_LANE_SOURCE,
+                              description="the lanes layer's lanes: map (lane_costs:='s "
+                                          'roads), camera (the lane finder\'s lines, on '
+                                          '/perception/lane/geometry; needs it running) or '
+                                          'both (the map wins where it has a road; TODO 264)'),
         DeclareLaunchArgument('costmap_chunks', default_value='',
                               description="with costmap:=own: a folder of the map's chunks "
                                           '(chunks.yaml, fine/); the global costmap holds '

@@ -230,8 +230,13 @@ fn compare(got: &Lane, want: &Value, s: &Settings, worst: &mut Worst, at: &str) 
             &at(key),
         );
     }
-    for (mine, key) in [(got.left_paint, "left_paint"), (got.right_paint, "right_paint")] {
-        let want = want[key].as_u64().map_or(Paint::Unknown, |c| Paint::from_code(c as u8));
+    for (mine, key) in [
+        (got.left_paint, "left_paint"),
+        (got.right_paint, "right_paint"),
+    ] {
+        let want = want[key]
+            .as_u64()
+            .map_or(Paint::Unknown, |c| Paint::from_code(c as u8));
         assert_eq!(mine, want, "{}", at(key));
     }
     assert_eq!(
