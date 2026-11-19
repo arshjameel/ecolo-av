@@ -7,7 +7,7 @@
 <!-- Generated from docs/bench.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Bench mode: the whole car on one computer</h1>
-<div class="meta">16 min read · 11 sections</div></header>
+<div class="meta">17 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -227,6 +227,11 @@ don't.</p>
 <td><code>speed_loop</code></td>
 <td><code>default</code></td>
 <td><code>spine_sim</code>'s speed loop: <code>default</code>, <code>smooth</code>, <code>lqi</code> or <code>firm</code> (<a href="vehicle-model.html">The car as a linear model</a>); ego's trace and a lag-aware follower assume the same (TODO 163)</td>
+</tr>
+<tr>
+<td><code>speed_loop_model</code></td>
+<td>(empty)</td>
+<td>the loop ego's trace and the follower assume, when not <code>spine_sim</code>'s own; empty: <code>speed_loop</code>'s (TODO 163)</td>
 </tr>
 </tbody>
 </table></div>

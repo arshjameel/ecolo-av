@@ -139,6 +139,35 @@ challenger: the lane's corners as clothoids (TODO 211).
 | lqi | 173 | 0.019 | 0.066 | 0.16 | slower |
 | firm | 153 | 0.034 | 0.088 | 0.43 | sways |
 
+#### The car on one loop, the models on another (18 Nov, TODO 163)
+
+`speed_loop:=` is the car's loop; `speed_loop_model:=` is what every model of the car
+assumes (ego's trace, `mppi_lag`, the behaviour planner). Ravensim on Ben's Mac, GPU,
+headless, `own_calm`, reversing.
+
+**The lot tour** (`measure controllers --stacks own_calm --tours lot --runs 3 --reversing`):
+
+| Car / models | Runs | Legs | Left-right changes /100 m | Sway (m/s²) | Off the path, worst (m) | Time a tour (s) |
+|---|---|---|---|---|---|---|
+| **default / default** | 6 | 24/24 | 7.3, 7.5 | 0.021, 0.023 | 0.44-0.53 | 155-167 |
+| firm / firm | 3 | 12/12 | **20.8** | **0.034** | 0.49-0.75 | 153-154 |
+| firm / smooth | 6 | 24/24 | 9.6, 8.6 | 0.024, 0.023 | 0.46-**1.05** | 159-169 |
+
+Two numbers in a cell: two batches of 3 runs. Load average 4-11 (other sessions).
+
+**The 25 m stop** (`drive-to-point --sim --ahead 25`, recorded, `tools/score_drive.py`):
+
+| Car / models | Runs | Top speed (m/s) | Over the road ahead's limit (s) | Stopped from B (m) |
+|---|---|---|---|---|
+| default / default | 2 | 1.14 | 6.7, 6.7 | 0.13, 0.13 |
+| firm / firm | 2 | 1.00 | 0.2, 0.2 | 0.06, 0.08 |
+| **firm / smooth** | 2 | 1.00 | **0.0, 0.0** | 0.07, 0.08 |
+
+**Verdict: firm / smooth stays a challenger.** It stops as well as firm, and sways far
+less than firm / firm. But on the tour it is still a little worse than default: 23 % more
+left-right changes, and 3 of 6 runs went 0.8-1.05 m off the path (default: never past
+0.53). The worst moments are on the legs that back up ("turn back", "home").
+
 ## Hybrids
 
 | Hybrid | Lot sway | Uni sway | Uni off path (m) | Uni over the line | Verdict |
