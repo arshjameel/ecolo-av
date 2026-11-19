@@ -6,7 +6,10 @@ resolver = "2"
 #   cargo test -p detector-core --features ort        and the model on saved pictures
 #   cargo run --release -p detector-core --features ort,coreml --example timing
 # detector-node: the ROS node (rclrs), binary detector. colcon builds it through CMakeLists.txt.
-members = ["crates/detector-core", "crates/detector-node"]
+# onnx-session: the session builder every model shares (the diffusion planner's too):
+# the provider by name, its cache, its share of the graph.
+#   cargo run --release -p onnx-session --features coreml --example measure -- <model.onnx>
+members = ["crates/onnx-session", "crates/detector-core", "crates/detector-node"]
 
 [workspace.package]
 version = "0.1.0"

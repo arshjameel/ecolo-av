@@ -1,0 +1,25 @@
+[package]
+name = "onnx-session"
+description = "Our ONNX models on ONNX Runtime (the ort crate), in plain Rust (no ROS): the provider picked by name, its compiled model cached, and how much of the graph it took"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# ONNX Runtime (MIT) through pyke's ort (MIT OR Apache-2.0). Pinned: 2.0 is still a release
+# candidate, and its API moves between them. download-binaries fetches pyke's prebuilt
+# ONNX Runtime at build time (CPU and, on macOS, Core ML).
+ort = "=2.0.0-rc.15"
+# ONNX Runtime's profile (a JSON trace): which provider ran each node.
+serde_json = "1"
+
+[features]
+default = []
+# Execution providers. coreml: a Mac's GPU and Neural Engine. cuda, tensorrt: the Orin;
+# they need an ONNX Runtime built with them (ORT_DYLIB_PATH or ORT_LIB_LOCATION): untested.
+coreml = ["ort/coreml"]
+cuda = ["ort/cuda"]
+tensorrt = ["ort/tensorrt"]
+
+[[example]]
+name = "measure"

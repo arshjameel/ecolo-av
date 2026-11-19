@@ -20,7 +20,9 @@ The real car. One launch file for every machine; a machine file picks the parts.
                            must then be empty (0.5 m/s) or at most 0.5 m/s
                            (vehicle.DIFFUSION_TRIAL_SPEED); every lock as always.
                            diffusion_provider:=, diffusion_python:= pick the model's engine
-                           and Python on the Orin. docs/car-day.md, the diffusion trial)
+                           and Python on the Orin; diffusion_impl:=rust the Rust worker
+                           (untested on the Orin: docs/onnx.md). docs/car-day.md, the
+                           diffusion trial)
       [lidar:=true]       (false: no lidar anywhere, whatever the machine file says)
       [voxels:=false]     (true: the costmap reads the lidar as 0.25 m cubes, aav_voxels, a trial
                            not yet tried on the car: docs/designs/2026-10-30_voxels.md)
@@ -636,7 +638,9 @@ def launch_setup(context):
                                         real=True, trial=trial)
         trial_args = ({'max_speed': arg('max_speed'),
                        'diffusion_provider': arg('diffusion_provider'),
-                       'diffusion_python': arg('diffusion_python')} if trial else {})
+                       'diffusion_python': arg('diffusion_python'),
+                       'diffusion_impl': vehicle.check_diffusion_impl(
+                           arg('diffusion_impl'))} if trial else {})
         actions.append(include('aav_navigation', 'navigation.launch.py', **trial_args,
                                map=arg('map') or empty_map, radar=on('radar'), planner=planner,
                                lidar=on('lidar'), ghost=flag('ghost'),
@@ -711,6 +715,10 @@ def generate_launch_description():
                               description="with diffusion_trial: ONNX Runtime's engine "
                                           '(TensorrtExecutionProvider, CUDAExecutionProvider '
                                           'on the Orin; the CPU if they fail)'),
+        DeclareLaunchArgument('diffusion_impl', default_value=vehicle.DEFAULT_DIFFUSION_IMPL,
+                              description="with diffusion_trial: the model's worker: python "
+                                          '(worker.py) or rust (aav_diffusion_rs; untested '
+                                          'on the Orin: docs/onnx.md)'),
         DeclareLaunchArgument('diffusion_python', default_value='',
                               description="with diffusion_trial: the model worker's Python "
                                           "(empty: Pixi's learn environment; on the Orin, "

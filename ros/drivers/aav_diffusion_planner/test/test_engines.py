@@ -38,3 +38,18 @@ def test_the_budget_fits_inside_the_hard_stop():
     assert b['crop'] + b['model'] + b['guard'] <= b['total'] < engines.STOP_MS
     assert engines.verdict(49.0, b['model']) == 'OK'
     assert engines.verdict(51.0, b['model']) == 'OVER'
+
+
+def test_batches_runs_a_fixed_size_model_on_any_number_of_samples():
+    import numpy as np
+    seen = []
+
+    def run(noise):
+        seen.append(noise.shape[0])
+        return noise * 2.0
+    noise = np.arange(5 * 2 * 1, dtype=np.float32).reshape(5, 2, 1)
+    out = engines.batches(run, noise, 2)
+    assert seen == [2, 2, 2]
+    assert np.array_equal(out, noise * 2.0)
+    assert engines.batches(run, noise, None).shape == noise.shape
+    assert seen[-1] == 5

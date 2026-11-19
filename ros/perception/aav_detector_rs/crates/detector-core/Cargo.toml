@@ -10,15 +10,18 @@ publish.workspace = true
 # candidate, and its API moves between them. download-binaries fetches pyke's prebuilt
 # ONNX Runtime at build time (CPU and, on macOS, Core ML).
 ort = { version = "=2.0.0-rc.15", optional = true }
+# Our session builder on ort, shared with the diffusion planner: the provider by name,
+# its cache, its share of the graph.
+onnx-session = { path = "../onnx-session", optional = true }
 
 [features]
 default = []
-ort = ["dep:ort"]
+ort = ["dep:ort", "dep:onnx-session"]
 # Execution providers. coreml: a Mac's GPU and Neural Engine. cuda, tensorrt: the Orin;
 # they need an ONNX Runtime built with them (ORT_DYLIB_PATH or ORT_LIB_LOCATION): untested.
-coreml = ["ort", "ort/coreml"]
-cuda = ["ort", "ort/cuda"]
-tensorrt = ["ort", "ort/tensorrt"]
+coreml = ["ort", "onnx-session/coreml"]
+cuda = ["ort", "onnx-session/cuda"]
+tensorrt = ["ort", "onnx-session/tensorrt"]
 
 [dev-dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }

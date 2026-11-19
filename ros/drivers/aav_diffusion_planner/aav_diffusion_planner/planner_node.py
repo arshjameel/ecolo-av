@@ -22,7 +22,9 @@ Publishes   /plan (nav_msgs/Path: the path it returned, as planner_server publis
             from the model)
 Parameters  model ('' = <repo>/models/diffusion/planner.onnx), learn_python ('' =
             <repo>/.pixi/envs/learn/bin/python), provider (ONNX Runtime's:
-            CPUExecutionProvider, CoreMLExecutionProvider...), samples (16), budget_ms
+            CPUExecutionProvider, CoreMLExecutionProvider...; the Rust worker takes
+            auto too), worker (python: worker.py; rust: aav_diffusion_rs's
+            diffusion_worker, the same pipe), samples (16), budget_ms
             (150), reversing, footprint (Nav2's string), min_radius (m), goal_xy,
             goal_yaw, max_cusps, max_reverse, length_ratio, lattice_wait (s), smoothing
             (gear: each gear's run smoothed on its own, the cusps kept, and a sample
@@ -76,9 +78,9 @@ def repo_path(given, default):
 class Worker:
     """The model worker: a child program, one request at a time, with a deadline."""
 
-    def __init__(self, python, model, provider):
+    def __init__(self, command, model, provider):
         self.proc = subprocess.Popen(
-            [python, '-I', WORKER], stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0,
+            command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0,
             env={k: os.environ[k] for k in KEEP_ENV if k in os.environ})
         self.proc.stdin.write(wire.encode_settings({'model': model, 'provider': provider}))
         self.seq = 0
@@ -117,6 +119,29 @@ class Worker:
             self.proc.kill()
 
 
+def worker_command(impl, python):
+    """
+    Return (the worker's command line, why it can't start or '').
+
+    impl python: worker.py in the learn environment's Python; rust: aav_diffusion_rs's
+    diffusion_worker (the same pipe; TODO 243), if this workspace built it.
+    """
+    if impl == 'rust':
+        try:
+            from ament_index_python.packages import get_package_prefix
+            exe = os.path.join(get_package_prefix('aav_diffusion_rs'), 'lib',
+                               'aav_diffusion_rs', 'diffusion_worker')
+        except (ImportError, LookupError, ValueError):
+            exe = ''
+        if not os.path.isfile(exe):
+            return [], ('no Rust worker (aav_diffusion_rs: built on a Mac, on Linux with '
+                        '-DDIFFUSION_RS=ON)')
+        return [exe], ''
+    if not os.path.isfile(python):
+        return [], f'no learn environment at {python} (pixi install --locked -e learn)'
+    return [python, '-I', WORKER], ''
+
+
 def yaw_of(pose):
     q = pose.orientation
     return 2.0 * math.atan2(q.z, q.w)
@@ -130,6 +155,7 @@ class DiffusionPlanner(Node):
         self.model = repo_path(p('model', '').value, MODEL)
         self.python = repo_path(p('learn_python', '').value, LEARN_PYTHON)
         self.provider = p('provider', 'CPUExecutionProvider').value
+        self.worker_impl = str(p('worker', 'python').value).strip().lower()
         self.samples = int(p('samples', 16).value)
         self.budget_ms = float(p('budget_ms', 150.0).value)
         self.lattice_wait = float(p('lattice_wait', 8.0).value)
@@ -158,8 +184,14 @@ class DiffusionPlanner(Node):
         TransformListener(self.tf, self)
         latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                              durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        # Volatile: it takes a latched costmap (Nav2's) and a volatile one (ours,
+        # aav_costmap, since 16 Nov; it sends the grid again every half second). Transient
+        # local here met ours with "incompatible QoS": no costmap, every plan the
+        # lattice's (found 19 Nov).
+        costmap_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                                 durability=DurabilityPolicy.VOLATILE)
         self.create_subscription(OccupancyGrid, '/drivers/nav/costmap/global', self.on_costmap,
-                                 latched, callback_group=MutuallyExclusiveCallbackGroup())
+                                 costmap_qos, callback_group=MutuallyExclusiveCallbackGroup())
         self.plan_pub = self.create_publisher(Path, '/plan', latched)
         self.status_pub = self.create_publisher(DiagnosticStatus, '/drivers/nav/diffusion/status',
                                                 10)
@@ -176,13 +208,13 @@ class DiffusionPlanner(Node):
         threading.Thread(target=self.start_worker, daemon=True).start()
 
     def start_worker(self):
-        why = ('no learn environment at ' + self.python if not os.path.isfile(self.python)
-               else 'no model at ' + self.model if not os.path.isfile(self.model) else '')
+        command, why = worker_command(self.worker_impl, self.python)
+        if not why and not os.path.isfile(self.model):
+            why = f'no model at {self.model} (pixi run diffusion train)'
         if why:
-            self.get_logger().error(f'{why}: the lattice plans alone (pixi install --locked '
-                                    '-e learn; pixi run diffusion train)')
+            self.get_logger().error(f'{why}: the lattice plans alone')
             return
-        worker = Worker(self.python, self.model, self.provider)
+        worker = Worker(command, self.model, self.provider)
         # The first call loads the model: not in a real plan's budget. TensorRT builds its
         # engine then, minutes on the Orin the first time (measure diffusion builds it first).
         noise = np.zeros((self.samples, window.POINTS, window.CHANNELS), np.float32)
@@ -196,7 +228,8 @@ class DiffusionPlanner(Node):
         self.worker = worker
         self.get_logger().info(
             f'diffusion_planner: {self.samples} samples, budget {self.budget_ms:.0f} ms, '
-            f'reversing {self.limits.reversing}, model {self.model}, worker up')
+            f'reversing {self.limits.reversing}, model {self.model}, '
+            f'{self.worker_impl} worker up on {self.provider}')
 
     def on_costmap(self, msg):
         if abs(yaw_of(msg.info.origin)) > 1e-6:

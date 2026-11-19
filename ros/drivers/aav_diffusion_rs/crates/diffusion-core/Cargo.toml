@@ -1,0 +1,28 @@
+[package]
+name = "diffusion-core"
+description = "The diffusion planner's model (flow matching, 16 paths a plan) from its ONNX file through ONNX Runtime, in plain Rust (no ROS); and diffusion_worker, the Python node's model worker in Rust"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# ONNX Runtime (MIT) through pyke's ort (MIT OR Apache-2.0), pinned as the detector's,
+# and the detector's session builder (the provider by name, its cache, its coverage).
+ort = "=2.0.0-rc.15"
+onnx-session = { path = "../../../../perception/aav_detector_rs/crates/onnx-session" }
+# The worker's settings line (JSON).
+serde_json = "1"
+
+[features]
+default = []
+# Execution providers: coreml (a Mac), cuda and tensorrt (the Orin: untested).
+coreml = ["onnx-session/coreml"]
+cuda = ["onnx-session/cuda"]
+tensorrt = ["onnx-session/tensorrt"]
+
+[[bin]]
+name = "diffusion_worker"
+path = "src/bin/diffusion_worker.rs"
+
+[[example]]
+name = "bench"

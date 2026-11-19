@@ -226,18 +226,23 @@ def score(sampler_fn, ds, data_dirs, limit, seed=0, gear_smooth=True):
             'sampler_ms_worst': round(ms[-1], 1)}
 
 
-def export(m, path, steps=STEPS, fp16=False):
-    """Write the sampler as ONNX: float32, or FP16 inside (float32 in and out) with fp16."""
+def export(m, path, steps=STEPS, fp16=False, samples=SAMPLES):
+    """
+    Write the sampler as ONNX: float32, or FP16 inside (float32 in and out) with fp16.
+
+    Its shapes are fixed, `samples` paths a plan: Core ML's provider can't build a model
+    whose number of samples is left open (19 Nov), and TensorRT builds one engine for one
+    shape. A node asking for another number runs the model in batches (worker.batches).
+    """
     sampler = net.Sampler(m.cpu().eval(), steps)
     if fp16:
         import copy
         sampler = net.HalfSampler(copy.deepcopy(sampler))
     crop = torch.zeros(1, 1, window.SIZE, window.SIZE)
     cond = torch.zeros(1, window.COND)
-    noise = torch.zeros(SAMPLES, window.POINTS, window.CHANNELS)
+    noise = torch.zeros(samples, window.POINTS, window.CHANNELS)
     torch.onnx.export(sampler, (crop, cond, noise), path, input_names=['crop', 'cond', 'noise'],
-                      output_names=['paths'], opset_version=17, dynamo=False,
-                      dynamic_axes={'noise': {0: 'k'}, 'paths': {0: 'k'}})
+                      output_names=['paths'], opset_version=17, dynamo=False)
 
 
 def onnx_fn(path, provider='CPUExecutionProvider'):

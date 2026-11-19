@@ -118,7 +118,7 @@ scored with Nav2's follower (177, 178) are scored again with ours.
 | 215 | **The ground ring by ring** (Patchwork++), for kerbs | ⬜ |
 | 216 | **Kinematic-ICP**: lidar odometry that knows the car can't slide sideways | ⬜ |
 | 217 | **A tracker with a motion model per kind** (car, person) | ⬜ |
-| 243 | **Our models from Rust** (`ort`): the detector done on a Mac (8 ms); left: TensorRT on the Orin (JetPack 7.2), the diffusion planner | 🟡 |
+| 243 | **Our models from Rust** (`ort`): the detector (8 ms) and the diffusion planner's model (`diffusion_impl:=rust`, Core ML takes all 2,178 nodes, 9.7 ms a plan against the CPU's 87) from Rust on a Mac, both checked against PyTorch; `pixi run measure onnx` (answers, coverage, ms, FP16); `onnx-session` shared; TensorRT ready, untested ([ONNX](docs/onnx.md)). Left: the Orin (JetPack 7.2); diffusion's Ravensim scoring deferred (Ben, 19 Nov: algorithm testing after the ports) | 🟡 |
 | 262b | **A learned lane finder**: Ultra-Fast-Lane-Detection v2 (MIT), trained by us on Ravensim's pictures (labelled from the lane map) and the car's (252), through ONNX (243), behind `/perception/lane/geometry`. Published weights are out: CULane is non-commercial, BDD100K, TuSimple and CurveLanes unclear ([survey](docs/perception.md#a-learned-lane-finder-the-survey-19-nov)) | ⬜ |
 
 ## 5. Rust
