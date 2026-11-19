@@ -171,6 +171,57 @@ def score(roads: Sequence[Road], track: Sequence[Tuple[float, float, float, floa
         both=sum(both for _, _, both in lanes) / n)
 
 
+def lost_seconds(lanes: Sequence[Tuple[float, bool, bool]]) -> float:
+    """Return s with no line found: each lost message counts until the next message."""
+    return sum(t1 - t0 for (t0, seen, _), (t1, _, _) in zip(lanes, lanes[1:]) if not seen)
+
+
+# rad/s: a turn smaller than this, either way, is driving straight: not a flip.
+FLIP_DEADBAND = 0.02
+
+
+@dataclass(frozen=True)
+class SteerScore:
+    """How the lane follower steered: /drivers/ai/cmd_vel's turn rate (TODO 262)."""
+
+    commands: int
+    flips: int               # left to right or back, past FLIP_DEADBAND
+    flips_per_minute: float
+    rms_turn: float          # rad/s
+    rms_change: float        # rad/s per command: how jerky
+
+    def line(self) -> str:
+        return (f'steering: {self.flips} flips ({self.flips_per_minute:.1f} a minute), '
+                f'turn RMS {self.rms_turn:.3f} rad/s, change RMS {self.rms_change:.4f} '
+                f'rad/s a command ({self.commands} commands)')
+
+
+def steer_score(commands: Sequence[Tuple[float, float]],
+                deadband: float = FLIP_DEADBAND) -> Optional[SteerScore]:
+    """
+    Score the lane follower's steering. commands: (t, angular_z) per command, in order.
+
+    A flip is the turn changing side: right of -deadband after left of +deadband, or back.
+    None without two commands.
+    """
+    if len(commands) < 2:
+        return None
+    flips, side = 0, 0
+    for _, w in commands:
+        now = 1 if w > deadband else -1 if w < -deadband else 0
+        if now and side and now != side:
+            flips += 1
+        side = now or side
+    minutes = (commands[-1][0] - commands[0][0]) / 60.0
+    turns = [w for _, w in commands]
+    changes = [b - a for a, b in zip(turns, turns[1:])]
+    return SteerScore(
+        commands=len(commands), flips=flips,
+        flips_per_minute=flips / minutes if minutes > 0 else 0.0,
+        rms_turn=math.sqrt(sum(w * w for w in turns) / len(turns)),
+        rms_change=math.sqrt(sum(c * c for c in changes) / len(changes)))
+
+
 @dataclass(frozen=True)
 class PoseScore:
     """The global EKF's pose against the truth, split across and along the car (TODO 155)."""
