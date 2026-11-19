@@ -14,8 +14,18 @@
 # usage: tools/record.sh [--lidar] [name]   -> bags/<date>_<name>/ (MCAP, Jazzy's default)
 #   --lidar  also the lidar's cloud, to build the NDT map at home (pixi run ndt-map build):
 #            about 9 MB/s, so 10 min is about 5 GB (docs/tests.md, 4.19)
+#   --mapping [options]  a mapping drive instead: every raw sensor at full rate, checked
+#            before and summarised after (tools/record_drive.py; pixi run record-drive)
 set -euo pipefail
 cd "$(dirname "$0")/.."
+if [[ "${1:-}" == --mapping ]]; then
+  shift
+  # --sim starts its own Ravensim: this computer only.
+  for arg in "$@"; do
+    if [[ "$arg" == --sim ]]; then exec tools/ros.sh --local python3 tools/record_drive.py "$@"; fi
+  done
+  exec tools/ros.sh python3 tools/record_drive.py "$@"
+fi
 lidar=()
 if [[ "${1:-}" == --lidar ]]; then
   lidar=(/sensors/lidar/points)
