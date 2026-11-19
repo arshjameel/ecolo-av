@@ -789,7 +789,9 @@ def our_nodes(nav, costmap, planner, tracker, navigator, smoother, behaviour, cu
     Return the watchdog's node inputs for our own nodes this launch starts (TODO 180).
 
     Ben, 14 Nov: the watchdog warns about our nodes, warn only. The names are
-    config/sensor_watchdog.yaml's node_* inputs; ego and look_ahead always run.
+    config/sensor_watchdog.yaml's node_* inputs; ego and look_ahead always run. And
+    (Ben, 18 Nov, TODO 171) the status_* inputs: the same nodes in their own words, on
+    their status topics, warn only too.
     """
     names = ['node_ego', 'node_look_ahead']
     if nav:
@@ -797,7 +799,12 @@ def our_nodes(nav, costmap, planner, tracker, navigator, smoother, behaviour, cu
             ('node_costmap', costmap == 'own'), ('node_planner', planner == 'own'),
             ('node_navigator', navigator == 'own'), ('node_mppi_lag', tracker == 'mppi_lag'),
             ('node_smoother', smoother == 'own'), ('node_behaviour', behaviour),
-            ('node_voxels', cubes), ('node_things', things)) if on]
+            ('node_voxels', cubes), ('node_things', things),
+            ('status_costmap_local', costmap == 'own'),
+            ('status_costmap_global', costmap == 'own'),
+            ('status_planner', planner == 'own'),
+            ('status_navigator', navigator == 'own'),
+            ('status_mppi_lag', tracker == 'mppi_lag')) if on]
     return names
 
 

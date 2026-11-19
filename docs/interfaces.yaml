@@ -115,7 +115,7 @@ topics:
     pub: [sensor_watchdog]
     sub: [hud, map, dev_window]
     live: [sim]
-    note: One line for people, 10 Hz - OK, or STOP (the lock is on) or WARN, then each input that isn't OK and why, those that stop first, such as "STOP - gps STALE (nothing for 2.3 s (more than 2 s))". The HUD and the map window show it as a banner, and the HUD the first input in its GO / STOP panel, red for STOP or when it goes silent (then twist_mux holds Nav2 too). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).
+    note: One line for people, 10 Hz - OK, or STOP (the lock is on) or WARN, then each input that isn't OK and why, those that stop first, such as "STOP - gps STALE (nothing for 2.3 s (more than 2 s))". The HUD and the map window show it as a banner, and the HUD the first input in its GO / STOP panel, red for STOP or when it goes silent (then twist_mux holds Nav2 too). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python). Since 18 Nov (TODO 171) our navigation nodes speak here too, warn only - "WARN - status_costmap_local FAULT (says WARN - local costmap - waiting for odometry)", or STALE when a status topic goes silent.
   /hud/heartbeat:
     type: std_msgs/msg/UInt64
     pub: [hud]
@@ -891,12 +891,12 @@ topics:
   /drivers/nav/navigator/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [navigator]
-    sub: []
+    sub: [sensor_watchdog]
     note: The navigator (aav_navigator; docs/own-navigator.md) - 2 Hz and at each goal's end. name navigator; level OK, or WARN while recovering; message the step (idle, planning, following, recovering - clearing costmaps or backing up). values step, succeeded, failed (goals since start), last_end (the last goal's number and how it ended), and with a goal running goal, distance_remaining_m (along the path), recoveries, waypoint (passed, or driven to), poses_remaining.
   /drivers/nav/planner/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [planner]
-    sub: [behaviour]
+    sub: [behaviour, sensor_watchdog]
     note: One a plan (aav_planner). name planner; level OK (a path) or ERROR (none - message why, values error_code and failures). values search_ms, total_ms (with smoothing), iterations, length_m, cusps, poses, plans and failures since the node started; with lane_route (path:=lane) also how (lane; pass - the lane's centre but for a stretch moved left round something parked on it, with pass_m, the most it moved, Ben 16 Nov; or lattice and why - off_map, short, blocked, join_failed, detour) and lane_m; stops (the stop lines the route meets, /drivers/nav/planner/route_stops); the behaviour planner reads how, so with a lane map the road ahead follows a pass and opens its left soft edge there (LaneCritic doesn't fight it); cut (true - the goal was off the costmap, so the path ends where the way there leaves it, TODO 175).
   /drivers/nav/planner/route:
     type: nav_msgs/msg/Path
@@ -929,7 +929,7 @@ topics:
   /drivers/nav/track/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [track, mppi_lag, mpc_lag_rs]
-    sub: [controller_compare, debug_hud]
+    sub: [controller_compare, debug_hud, sensor_watchdog]
     note: aav_track's debug, every tick while it follows a path (20 Hz) - name track, message the tracker's name; values tracker, loop_ms (this tick's work), loop_ms_max, missed_ticks (since the path came, by the node's clock), cross_track_m (+ left of the path), heading_error_rad, steer_rad, speed_mps, left_m (along the path to its end). Only with tracker:= on. aav_mppi_lag's mppi_lag (tracker:=mppi_lag) publishes the same keys, message mppi_lag, and adds model (lag or ideal), est_steering_rad (its model's wheel angle), best_cost and collided_share (MPPI's cheapest sample, the share of samples that hit the costmap). aav_mpc_lag's mpc_lag_rs (tracker:=mpc_lag_rs) publishes the same keys, message mpc_lag_rs, and the Python mpc_lag's debug ones - solve_ms, iterations, solved, wheels_est_rad, speed_limit_mps, feed_forward_rad - and map_gap_m.
   /drivers/point/plan:
     type: nav_msgs/msg/Path
@@ -981,7 +981,7 @@ topics:
   /drivers/nav/costmap/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [costmap]
-    sub: []
+    sub: [sensor_watchdog]
     note: One message per costmap each time it is sent. name 'costmap local' or 'costmap global'; level OK (0), or WARN (1) while it waits for something; values costmap (local, global), update_ms (the last update's time, wall clock), worst_ms, updates, lethal_cells, cells (width x height), waiting_for (odometry, map -> odom, the map, a silent sensor topic, a sensor frame with no mount in /tf_static; empty when nothing is missing), lane_routes (the routes that changed the lanes layer's costs; 0 without lane_costs), chunk_moves and chunks (with costmap_chunks, TODO 175 - how often the global window moved, and the last move - its chunks, the corner chunk, read, dropped, redone, ms).
 
   # --- street routes (aav_routes, docs/routes.md): for real streets later, the lot first ---

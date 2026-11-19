@@ -324,6 +324,78 @@ def test_a_node_input_may_not_stop_the_car():
         Rule('planner', 'planner', 'node', max_age=3.0, stop=False)
 
 
+# TODO 171: our nodes in their own words, warn only by default.
+COSTMAP = Rule('costmap', '/drivers/nav/costmap/status', 'status', max_age=3.0, stop=False,
+               status_name='costmap local', min_level=1)
+PLANS = Rule('plans', '/drivers/nav/planner/status', 'status', max_age=3.0, stop=False,
+             quiet_ok=True)
+
+
+def test_a_node_that_says_it_waits_warns_in_its_own_words():
+    dog = Watchdog([COSTMAP])
+    w = dog.watches['costmap']
+    assert state(dog, 'costmap', 0.0) == NEVER
+    w.arrived(1.0, (0,), words='local costmap: 0.4 ms an update')
+    assert state(dog, 'costmap', 1.0) == OK
+    w.arrived(2.0, (1,), words='local costmap: waiting for odometry')
+    s, detail = w.state(2.0)
+    assert s == watchdog.FAULT and detail == 'says WARN: local costmap: waiting for odometry'
+    assert not dog.locked(2.0), 'warn only'
+    assert 'WARN: costmap FAULT' in dog.summary(2.0)
+    w.arrived(2.5, (0,), words='fine')
+    assert state(dog, 'costmap', 2.5) == OK
+    assert state(dog, 'costmap', 5.6) == STALE, 'a hung node says nothing'
+
+
+def test_only_its_own_name_counts_on_a_shared_topic():
+    assert COSTMAP.hears('costmap local') and not COSTMAP.hears('costmap global')
+    assert PLANS.hears('anything') and Rule('a', '/a', 'odom', 1.0).hears('x')
+
+
+def test_a_quiet_node_is_ok_and_its_old_complaint_fades():
+    dog = Watchdog([PLANS])
+    w = dog.watches['plans']
+    assert w.state(0.0) == (OK, 'quiet: nothing yet')
+    w.arrived(1.0, (2,), words='no path: the goal is in a wall')
+    assert state(dog, 'plans', 1.0) == watchdog.FAULT
+    assert state(dog, 'plans', 2.0) == watchdog.FAULT
+    assert w.state(4.5) == (OK, 'quiet for 3.5 s')
+    w.arrived(5.0, (1,), words='slow')
+    assert state(dog, 'plans', 5.0) == OK, 'WARN is under its min_level, ERROR'
+
+
+def test_a_status_input_can_be_switched_to_stop():
+    rule = Rule('nav', '/drivers/nav/navigator/status', 'status', max_age=2.0)
+    dog = Watchdog([rule])
+    dog.watches['nav'].arrived(0.0, (2,), words='broken')
+    assert dog.locked(0.0)
+
+
+def test_the_configs_status_inputs_are_good_rules_that_only_warn():
+    import os
+    import yaml
+    path = os.path.join(os.path.dirname(__file__), '..', 'config', 'sensor_watchdog.yaml')
+    with open(path) as f:
+        params = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
+    status = {k: v for k, v in params.items() if isinstance(v, dict) and v['kind'] == 'status'}
+    assert set(status) == {'status_costmap_local', 'status_costmap_global', 'status_planner',
+                           'status_navigator', 'status_mppi_lag'}
+    for name, p in status.items():
+        rule = Rule(name, p['topic'], 'status', p['max_age'], stop=p['stop'],
+                    status_name=p.get('status_name', ''), min_level=p.get('min_level', 2),
+                    quiet_ok=p.get('quiet_ok', False))
+        assert rule.stop is False, f'{name}: warn only (Ben, 18 Nov)'
+
+
+def test_status_settings_belong_to_status_inputs():
+    with pytest.raises(ValueError, match='status input'):
+        Rule('odom', '/vehicle/odom', 'odom', 0.5, quiet_ok=True)
+    with pytest.raises(ValueError, match='status input'):
+        Rule('odom', '/vehicle/odom', 'odom', 0.5, status_name='x')
+    with pytest.raises(ValueError, match='min_level'):
+        Rule('s', '/s', 'status', 1.0, min_level=0)
+
+
 # TODO 207: an actuator that doesn't follow its command (steering stuck in a bend).
 STEERING = Rule('steering', '/vehicle/steering', 'actuator', max_age=1.0,
                 follow_tolerance=0.15, follow_persist=1.0)

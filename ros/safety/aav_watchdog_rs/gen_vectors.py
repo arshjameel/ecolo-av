@@ -98,6 +98,10 @@ class Harness:
     def cloud(self, now, name):
         self.dog.watches[name].arrived(now)
 
+    def status(self, now, name, status_name, level, words):
+        if self.dog.watches[name].rule.hears(status_name):
+            self.dog.watches[name].arrived(now, (level,), words=words)
+
     def tick(self, now, steady, running):
         for rule in (w.rule for w in self.dog.watches.values()):
             if rule.kind == 'node' and rule.topic in running:
@@ -164,6 +168,10 @@ def rules(variant):
              over_persist=2.0, over_slowing=0.3),
         Rule('radar', '/sensors/radar/points', 'cloud', 1.0, stop=False),
         Rule('node_planner', '/planner', 'node', 3.0, stop=False),
+        Rule('status_costmap', '/drivers/nav/costmap/status', 'status', 3.0, stop=False,
+             status_name='costmap local', min_level=1),
+        Rule('status_planner', '/drivers/nav/planner/status', 'status', 3.0,
+             stop=variant == 1, quiet_ok=True),
     ]
 
 
@@ -201,6 +209,8 @@ def run(seed, variant):
         'det_silent': window(24, 27, 1.5), 'stuck': window(6, 10, 2.5),
         'overspeed': window(26, 30, 3.0), 'radar_silent': window(3, 8, 2.0),
         'node_gone': window(10, 20, 4.0), 'stall': window(16, 20, 0.0),
+        'costmap_waits': window(5, 15, 2.0), 'costmap_hangs': window(22, 30, 4.0),
+        'planning': window(3, 12, 8.0), 'no_path': window(14, 20, 1.5),
         'clear': (rng.uniform(34, 37), 0.0),
     }
 
@@ -290,6 +300,20 @@ def run(seed, variant):
         # Radar, 10 Hz.
         if k % 5 == 0 and not on('radar_silent', t):
             events.append(['cloud', t, 'radar'])
+        # Our nodes' status (TODO 171): both costmaps on one topic, 2 Hz; the local one
+        # waits for odometry a while, then hangs. The planner speaks only while it plans
+        # (1 Hz), and one plan in a while finds no path.
+        if k % 25 == 0 and not on('costmap_hangs', t):
+            waits = on('costmap_waits', t)
+            events.append(['status', t, 'status_costmap', 'costmap local', 1 if waits else 0,
+                           'local costmap: waiting for odometry' if waits
+                           else 'local costmap: 0.40 ms an update'])
+            events.append(['status', t, 'status_costmap', 'costmap global', 1,
+                           'global costmap: waiting for the map'])
+        if k % 50 == 7 and (on('planning', t) or on('no_path', t)):
+            failed = on('no_path', t)
+            events.append(['status', t, 'status_planner', 'planner', 2 if failed else 0,
+                           'no path: the goal is blocked' if failed else 'a path, 12 poses'])
         # A tick, 10 Hz.
         if k % 5 == 4:
             steady = r4(steady + 0.1)
@@ -322,6 +346,8 @@ def run(seed, variant):
             h.speed_cmd(t, e[2], e[3])
         elif what == 'cloud':
             h.cloud(t, e[2])
+        elif what == 'status':
+            h.status(t, e[2], e[3], e[4], e[5])
         elif what == 'clear':
             h.dog.clear()
         elif what == 'tick':

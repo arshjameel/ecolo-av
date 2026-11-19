@@ -22,6 +22,10 @@ Subscribes  each input's topic, as config/sensor_watchdog.yaml says (the launch 
             hud/heartbeat             std_msgs/UInt64: the HUD's screen is alive (the
                                       frames it has drawn, 10 Hz), where the launch
                                       expects a HUD
+            drivers/nav/*/status      diagnostic_msgs/DiagnosticStatus: kind status, our
+                                      navigation nodes in their own words (costmap,
+                                      planner, navigator, track: mppi_lag); FAULT at
+                                      min_level, STALE when silent (TODO 171, warn only)
             (graph)                   kind node: our own nodes, looked for in the ROS
                                       graph each tick; gone, a warning only
             sensors/imu/data          also for the odom input's cross check, if no imu
@@ -57,7 +61,8 @@ Parameters  inputs (the names to watch), rate_hz (10), and for each name: topic,
             where a gps input is watched; for an actuator input, follow_tolerance (its
             units, 0 off) and follow_persist (s): STUCK; for a speed input, over_margin
             (m/s, 0 off), over_warn (s), over_persist (s), over_slowing (m/s^2): OVER,
-            OVERSPEED
+            OVERSPEED; for a status input, status_name (only its messages count; '' all),
+            min_level (1 WARN, 2 ERROR, 3 STALE: FAULT), quiet_ok (silence is OK)
 """
 
 import math
@@ -88,7 +93,7 @@ IMU_TOPIC = '/sensors/imu/data'     # what the odom input's cross check reads
 SETTLE = 10.0
 TYPES = {'odom': Odometry, 'imu': Imu, 'gps': NavSatFix, 'image': Image, 'cloud': PointCloud2,
          'heartbeat': UInt64, 'detections': Detection2DArray, 'actuator': ActuatorState,
-         'speed': AckermannDriveStamped}
+         'speed': AckermannDriveStamped, 'status': DiagnosticStatus}
 
 
 def odom_values(msg):
@@ -144,7 +149,10 @@ class SensorWatchdog(Node):
                               float(param('over_margin', 0.0)),
                               float(param('over_warn', 1.0)),
                               float(param('over_persist', 2.0)),
-                              float(param('over_slowing', 0.3))))
+                              float(param('over_slowing', 0.3)),
+                              str(param('status_name', '')),
+                              int(param('min_level', 2)),
+                              bool(param('quiet_ok', False))))
         # Five ticks' time without one, on a steady clock: the watchdog itself was stopped,
         # so nothing latches for SETTLE s after.
         self.dog = Watchdog(rules, stall=max(0.5, 5.0 / rate), settle=SETTLE)
@@ -225,6 +233,12 @@ class SensorWatchdog(Node):
             measured = float('nan') if self.speed is None else self.speed
             age = math.inf if self.speed_at is None else now - self.speed_at
             watch.arrived(now, (msg.drive.speed, measured, age))
+        elif rule.kind == 'status':
+            # One of our nodes in its own words: its level, its message (FAULT, TODO 171).
+            if rule.hears(msg.name):
+                watch.arrived(now, (int.from_bytes(msg.level, 'little')
+                                    if isinstance(msg.level, bytes) else int(msg.level),),
+                              words=msg.message)
         elif rule.kind == 'heartbeat':
             # The count must keep rising: the same count again is a screen that stopped.
             watch.arrived(now, digest=msg.data)

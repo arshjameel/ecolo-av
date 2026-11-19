@@ -245,6 +245,26 @@ impl Feed {
         );
     }
 
+    /// A status message from one of our nodes: its name, its level byte, its words. Only
+    /// the input's own name counts (`Rule::hears`).
+    pub fn status(&mut self, now: f64, name: &str, status_name: &str, level: u8, words: &str) {
+        let hears = self
+            .dog
+            .watches()
+            .iter()
+            .any(|w| w.rule().name == name && w.rule().hears(status_name));
+        if hears {
+            self.arrive(
+                now,
+                name,
+                Arrival {
+                    status: Some((level, words.to_string())),
+                    ..Arrival::default()
+                },
+            );
+        }
+    }
+
     /// A cloud (only its arrival counts).
     pub fn cloud(&mut self, now: f64, name: &str) {
         self.arrive(now, name, Arrival::default());
