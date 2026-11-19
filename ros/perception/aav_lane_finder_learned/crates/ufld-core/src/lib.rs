@@ -8,7 +8,8 @@
 //! 1. [`input`]: the rows below the horizon, scaled as Pillow scales them in training;
 //! 2. the model ([`Model`], feature `ort`): for 4 lines (the car's lane's left and right
 //!    and their neighbours) and each row anchor, a column, and whether the line is there;
-//! 3. [`decode`]: each line's points in the picture (UFLD v2's local expectation);
+//! 3. [`decode`]: each line's points in the picture (UFLD v2's local expectation), and
+//!    [`paints`]: each line's paint, white or yellow, from the model's colour head;
 //! 4. [`ground`]: each point onto the flat road, in base_link, through the lens and mount
 //!    (the same as the classic finder's bird's-eye view, run backwards);
 //! 5. [`Learned::lane`]: lane-core's `fit_line` and `lane_from`: the same polynomials, offset,
@@ -25,10 +26,10 @@ mod meta;
 mod model;
 mod preprocess;
 
-pub use decode::{decode, Anchor};
+pub use decode::{decode, paints, Anchor};
 pub use error::{Error, Result};
 pub use lane::{ground, Learned};
 pub use meta::Meta;
 #[cfg(feature = "ort")]
-pub use model::{Model, Provider};
+pub use model::{Answers, Model, Provider};
 pub use preprocess::{input, resample, Taps};

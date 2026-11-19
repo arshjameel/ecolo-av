@@ -5,8 +5,9 @@
 
 use std::path::PathBuf;
 
+use lane_core::Paint;
 use lane_core::{Encoding, Lens, Mount, Picture, Settings};
-use ufld_core::{decode, input, Learned, Model, Provider};
+use ufld_core::{decode, input, paints, Learned, Model, Provider};
 
 /// The front left camera on the car (vehicle.yaml camera_left_link), as Ravensim draws it.
 const MOUNT: Mount = Mount {
@@ -45,11 +46,15 @@ fn rgb(path: &str) -> (Vec<u8>, usize, usize) {
 
 fn lane_of(model: &mut Model, data: &[u8], w: usize, h: usize) -> lane_core::Lane {
     let picture = Picture::packed(data, w, h, Encoding::Rgb8).unwrap();
-    let (loc, exist) = model.run(&input(&picture, model.meta()).unwrap()).unwrap();
-    let lines = decode(&loc, &exist, model.meta(), 0.5).unwrap();
+    let a = model.run(&input(&picture, model.meta()).unwrap()).unwrap();
+    let lines = decode(&a.loc, &a.exist, model.meta(), 0.5).unwrap();
+    let paints = a
+        .colour
+        .map(|c| paints(&c, model.meta()).unwrap())
+        .unwrap_or_default();
     let mut learned = Learned::new(model.meta().clone(), Settings::default());
     learned
-        .lane(&lines, &Lens::pinhole(w, h, 343.0), &MOUNT)
+        .lane(&lines, &paints, &Lens::pinhole(w, h, 343.0), &MOUNT)
         .unwrap()
 }
 
@@ -70,12 +75,24 @@ fn finds_ravensims_lane_and_nothing_on_a_blank_road() {
         let (data, w, h) = rgb(&format!("{dir}{name}.png"));
         let lane = lane_of(&mut model, &data, w, h);
         eprintln!(
-            "{name}: left {:?} right {:?} offset {:.2} m width {:.2} m",
+            "{name}: left {:?} ({:?}) right {:?} ({:?}) offset {:.2} m width {:.2} m",
             lane.left.map(|l| l.c),
+            lane.left_paint,
             lane.right.map(|r| r.c),
+            lane.right_paint,
             lane.offset,
             lane.width
         );
+        // The campus, University Drive: the yellow dashed centre on the left, the white
+        // edge line on the right.
+        if model.has_colour() {
+            if lane.left.is_some() {
+                assert_eq!(lane.left_paint, Paint::Yellow, "{name}: the centre line");
+            }
+            if lane.right.is_some() {
+                assert_eq!(lane.right_paint, Paint::White, "{name}: the edge line");
+            }
+        }
         assert!(
             lane.left.is_some() || lane.right.is_some(),
             "{name}: no line"

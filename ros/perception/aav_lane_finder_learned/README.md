@@ -84,7 +84,11 @@ between 4 and 25 m, against the lane map's line at 5, 10 and 15 m ahead.
 | the next one left | 92.9 % of 606 | 0.12 / 0.05 / 0.09 | about 3 (often the wrong line) |
 | the next one right | 97.6 % of 613 | 0.12 / 0.05 / 0.08 | about 3 (often the wrong line) |
 
-- Paint colour (white or yellow) right for 95 % of the car's two lines.
+- Paint colour (white or yellow) right for 95 % of the car's two lines. Since 19 Nov the
+  node publishes it as `left_paint` and `right_paint` (the `colour` output, `paints`), so
+  the costmap's camera lanes (`lanes:=camera`) can tell the yellow centre line; a model
+  exported without the colour head leaves them UNKNOWN. On lane-core's University Drive
+  frames: the left line yellow, the right white, in all three (`tests/model.rs`).
 - A line found where the map has none: 2.1 % (left neighbour), 12 % (right neighbour); for
   the car's own lines only 9 pictures lack one, and the model found a line in 5 and 5.
 - On lane-core's Ravensim frames (University Drive) both lines, a lane 2.9-3.0 m wide; on a

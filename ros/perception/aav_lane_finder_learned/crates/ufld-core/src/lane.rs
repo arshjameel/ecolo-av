@@ -1,7 +1,7 @@
 //! The lines' points onto the road, and the lane: lane-core's fit and `lane_from`, so
 //! `LaneGeometry` means the same from either finder.
 
-use lane_core::{fit_line, lane_from, rotation, Lane, Lens, Line, Mount, Settings};
+use lane_core::{fit_line, lane_from, rotation, Lane, Lens, Line, Mount, Paint, Settings};
 
 use crate::{Anchor, Meta, Result};
 
@@ -91,8 +91,21 @@ impl Learned {
 
     /// The lane from the model's decoded lines (`decode`'s answer), as the classic finder
     /// reports it: two lines too far apart or too near keep only the surer one.
-    pub fn lane(&mut self, lines: &[Vec<Anchor>], lens: &Lens, mount: &Mount) -> Result<Lane> {
+    ///
+    /// `paints`: each line's paint (`paints`' answer, the model's order); empty for a model
+    /// without the colour head. A line not kept stays Unknown, as in the classic finder.
+    pub fn lane(
+        &mut self,
+        lines: &[Vec<Anchor>],
+        paints: &[Paint],
+        lens: &Lens,
+        mount: &Mount,
+    ) -> Result<Lane> {
         let s = self.settings;
+        let paint = |name: &str, line: Option<Line>| -> Result<Paint> {
+            let k = self.meta.slot(name)?;
+            Ok(line.and(paints.get(k).copied()).unwrap_or(Paint::Unknown))
+        };
         let pick = |name: &str| -> Result<(Option<Line>, f64)> {
             let k = self.meta.slot(name)?;
             Ok(lines
@@ -113,7 +126,11 @@ impl Learned {
                 }
             }
         }
-        let lane = lane_from(left, right, self.width, &s, lc, rc);
+        let lane = Lane {
+            left_paint: paint("left", left)?,
+            right_paint: paint("right", right)?,
+            ..lane_from(left, right, self.width, &s, lc, rc)
+        };
         if left.is_some() && right.is_some() {
             self.width += 0.2 * (lane.width - self.width);
         }
@@ -193,7 +210,7 @@ mod tests {
             anchors(&meta, -1.95, 0.9),
             Vec::new(),
         ];
-        let lane = finder.lane(&lines, &lens(), &MOUNT).unwrap();
+        let lane = finder.lane(&lines, &[], &lens(), &MOUNT).unwrap();
         let (l, r) = (lane.left.unwrap(), lane.right.unwrap());
         assert!((l.c - 1.55).abs() < 1e-3 && l.b.abs() < 1e-4 && l.a.abs() < 1e-5);
         assert!((r.c + 1.95).abs() < 1e-3);
@@ -203,6 +220,41 @@ mod tests {
             "the car 0.2 m left of the centre"
         );
         assert!((lane.left_confidence - 0.9).abs() < 1e-3);
+        assert_eq!(
+            (lane.left_paint, lane.right_paint),
+            (Paint::Unknown, Paint::Unknown),
+            "no colour head, no paint"
+        );
+    }
+
+    #[test]
+    fn each_kept_line_carries_its_paint() {
+        let meta = example();
+        let mut finder = Learned::new(meta.clone(), Settings::default());
+        let lines = vec![
+            Vec::new(),
+            anchors(&meta, 1.55, 0.9),
+            anchors(&meta, -1.95, 0.9),
+            Vec::new(),
+        ];
+        let paints = [Paint::White, Paint::Yellow, Paint::White, Paint::Yellow];
+        let lane = finder.lane(&lines, &paints, &lens(), &MOUNT).unwrap();
+        assert_eq!(
+            (lane.left_paint, lane.right_paint),
+            (Paint::Yellow, Paint::White)
+        );
+        // The left line gone: its paint is Unknown, whatever the head said.
+        let lines = vec![
+            Vec::new(),
+            Vec::new(),
+            anchors(&meta, -1.95, 0.9),
+            Vec::new(),
+        ];
+        let lane = finder.lane(&lines, &paints, &lens(), &MOUNT).unwrap();
+        assert_eq!(
+            (lane.left_paint, lane.right_paint),
+            (Paint::Unknown, Paint::White)
+        );
     }
 
     #[test]
@@ -225,7 +277,7 @@ mod tests {
             anchors(&meta, -0.5, 0.9),
             Vec::new(),
         ];
-        let lane = finder.lane(&lines, &lens(), &MOUNT).unwrap();
+        let lane = finder.lane(&lines, &[], &lens(), &MOUNT).unwrap();
         assert!(lane.left.is_none() && lane.right.is_some());
         assert_eq!(
             finder.width, 3.5,

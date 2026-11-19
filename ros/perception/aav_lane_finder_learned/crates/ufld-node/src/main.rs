@@ -7,7 +7,9 @@
 //!                                                     only): rgb8, bgr8, rgba8, bgra8 or mono8
 //!             /sensors/camera/front_left/camera_info  sensor_msgs/CameraInfo: the lens
 //! Publishes   /perception/lane/geometry               aav_lane_geometry/LaneGeometry, one per
-//!                                                     picture, in base_link
+//!                                                     picture, in base_link; each line's
+//!                                                     paint (white or yellow) from the
+//!                                                     model's colour head
 //! Parameters  aav_lane_finder's (config/lane_finder.yaml): camera_xyz, camera_rpy, focal_px,
 //!             use_camera_info, the Settings it shares (min_confidence, fit_scale, min_span,
 //!             lane_width, min_lane_width, max_lane_width, lookahead, wheelbase); the others
@@ -33,7 +35,7 @@ use rclrs::*;
 use ros_env::aav_lane_geometry::msg::LaneGeometry;
 use ros_env::sensor_msgs::msg::{CameraInfo, Image};
 use ros_env::std_msgs::msg::Header;
-use ufld_core::{decode, input, Learned, Model, Provider};
+use ufld_core::{decode, input, paints, Learned, Model, Provider};
 
 const EVERY: Duration = Duration::from_secs(10);
 const WARN_EVERY: Duration = Duration::from_secs(30);
@@ -237,10 +239,19 @@ impl FinderNode {
             Encoding::from_ros(&msg.encoding)?,
         )?;
         let x = input(&picture, self.model.meta())?;
-        let (loc, exist) = self.model.run(&x)?;
-        let lines = decode(&loc, &exist, self.model.meta(), self.threshold)?;
+        let answers = self.model.run(&x)?;
+        let lines = decode(
+            &answers.loc,
+            &answers.exist,
+            self.model.meta(),
+            self.threshold,
+        )?;
+        let paints = match &answers.colour {
+            Some(c) => paints(c, self.model.meta())?,
+            None => Vec::new(),
+        };
         let lens = self.lens_for(w, h);
-        Ok(self.learned.lane(&lines, &lens, &self.mount)?)
+        Ok(self.learned.lane(&lines, &paints, &lens, &self.mount)?)
     }
 
     fn on_image(&mut self, msg: Image) {
@@ -312,6 +323,8 @@ fn message(lane: &Lane, picture: &Header) -> LaneGeometry {
         right_lane_detected: lane.right.is_some(),
         both_lanes_detected: lane.left.is_some() && lane.right.is_some(),
         steering_hint: lane.steering_hint as f32,
+        left_paint: lane.left_paint.code(),
+        right_paint: lane.right_paint.code(),
         ..LaneGeometry::default()
     };
     if let Some(l) = &lane.left {

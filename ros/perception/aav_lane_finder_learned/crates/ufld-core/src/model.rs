@@ -10,6 +10,17 @@ use ort::value::TensorRef;
 
 use crate::{Error, Meta, Result};
 
+/// The model's answers for one picture, as [`crate::decode`] and [`crate::paints`] take them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Answers {
+    /// cells x rows x lanes logits: which column.
+    pub loc: Vec<f32>,
+    /// 2 x rows x lanes logits: is the line in that row.
+    pub exist: Vec<f32>,
+    /// 2 x lanes logits: white or yellow; None for a model exported without the colour head.
+    pub colour: Option<Vec<f32>>,
+}
+
 /// `models/lane-ufld.onnx` (or another), on one provider, with its JSON.
 pub struct Model {
     session: Session,
@@ -73,9 +84,14 @@ impl Model {
         self.coverage
     }
 
-    /// The answers for one picture ([`crate::input`]'s numbers): (loc, exist), as
-    /// [`crate::decode`] takes them.
-    pub fn run(&mut self, input: &[f32]) -> Result<(Vec<f32>, Vec<f32>)> {
+    /// Whether the model has the colour head (`tools/lane_train.py` exports it as `colour`).
+    pub fn has_colour(&self) -> bool {
+        self.session.outputs().iter().any(|o| o.name() == "colour")
+    }
+
+    /// The answers for one picture ([`crate::input`]'s numbers).
+    pub fn run(&mut self, input: &[f32]) -> Result<Answers> {
+        let colour = self.has_colour();
         let (h, w) = (self.meta.input_h, self.meta.input_w);
         if input.len() != 3 * h * w {
             return Err(Error::Shape(format!(
@@ -88,6 +104,15 @@ impl Model {
         ])?;
         let (_, loc) = outputs["loc"].try_extract_tensor::<f32>()?;
         let (_, exist) = outputs["exist"].try_extract_tensor::<f32>()?;
-        Ok((loc.to_vec(), exist.to_vec()))
+        let colour = if colour {
+            Some(outputs["colour"].try_extract_tensor::<f32>()?.1.to_vec())
+        } else {
+            None
+        };
+        Ok(Answers {
+            loc: loc.to_vec(),
+            exist: exist.to_vec(),
+            colour,
+        })
     }
 }

@@ -1,6 +1,8 @@
 //! The model's answers into each line's points in the picture (`tools/lane_data.py`'s
 //! `decode`).
 
+use lane_core::Paint;
+
 use crate::{Error, Meta, Result};
 
 /// One point of a line: where it crosses a row anchor (px, the picture the model was made
@@ -57,6 +59,25 @@ pub fn decode(loc: &[f32], exist: &[f32], meta: &Meta, threshold: f64) -> Result
         .collect())
 }
 
+/// Each line's paint, in the model's order, from its colour head: 2 x lanes logits, white
+/// (`tools/lane_data.py`'s 0) then yellow (1). The head answers for every line; a line not
+/// found is left Unknown by [`crate::Learned::lane`].
+pub fn paints(colour: &[f32], meta: &Meta) -> Result<Vec<Paint>> {
+    let lanes = meta.lanes.len();
+    if colour.len() != 2 * lanes {
+        return Err(Error::Shape(format!(
+            "a colour answer of {} numbers, not 2 x {lanes}",
+            colour.len()
+        )));
+    }
+    let (white, yellow) = colour.split_at(lanes);
+    Ok(white
+        .iter()
+        .zip(yellow)
+        .map(|(w, y)| if y > w { Paint::Yellow } else { Paint::White })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -84,5 +105,17 @@ mod tests {
         assert_eq!(lines[1][2].v, 240.0);
         assert!(lines[1][0].p > 0.99);
         assert!(decode(&loc[1..], &exist, &meta, 0.5).is_err());
+    }
+
+    #[test]
+    fn the_colour_head_says_white_or_yellow() {
+        let meta = example();
+        // white logits for the 4 lines, then yellow's: line 1 yellow, the rest white.
+        let colour = [2.0, -1.0, 3.0, 0.5, -2.0, 4.0, 1.0, 0.0];
+        assert_eq!(
+            paints(&colour, &meta).unwrap(),
+            [Paint::White, Paint::Yellow, Paint::White, Paint::White]
+        );
+        assert!(paints(&colour[1..], &meta).is_err());
     }
 }
