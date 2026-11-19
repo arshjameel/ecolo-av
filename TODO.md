@@ -20,12 +20,12 @@ think there is room to improve").
 
 | Order | Next step | Rows |
 |---|---|---|
-| 1 | ONNX with Core ML (resume); then the camera's lanes into our stack | 243, 264 |
-| 2 | **Before the car**: NDT on the car (`car.launch.py`), the adaptive brake on the car, the boot self-test | 261, 258, 255 |
-| 3 | **Our models as ONNX, tested with Core ML** (Ben, 19 Nov: bumped up): `measure onnx` (CPU vs Core ML: same answers, every layer on the GPU, time), the diffusion planner and the lane finder from Rust, FP16; TensorRT once the Orin is on JetPack 7.2 | 243 |
-| 4 | The chunks' unknown grey (205) reads back as free | 263 |
+| 1 | **Our models as ONNX, tested with Core ML** (Ben, 19 Nov: bumped up; resume the helper): `measure onnx` (CPU vs Core ML: same answers, every layer on the GPU, time), the diffusion planner from Rust, FP16; TensorRT once the Orin is on JetPack 7.2 | 243 |
+| 2 | **Lanes into the costmap**, then the lane followers removed | 264 |
+| 3 | The chunks' unknown grey (205) reads back as free (small: done inline) | 263 |
+| 4 | **Before the car**: NDT on the car (`car.launch.py`), the adaptive brake on the car, the boot self-test | 261, 258, 255 |
 | 5 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
-| 6 | Occupancy across passes, the labelling loop, then the campus twin | 259, 252, 253 |
+| 6 | Occupancy across passes, the offline pipeline as one command, the labelling loop, then the campus twin | 259, 260, 252, 253 |
 | 7 | The planner faster; reversing in a narrow street; speed hunting; the backing legs' drift | 152, 174, 189, 163 |
 | 8 | The challengers (score diffusion, 177 and 178 again with ours), then the Rust crates and a more Rust-like pass | below |
 | waits | **The car** (being upgraded, 18 Nov): the stands, the hallway, a mapping drive | 246-250, 173 |
