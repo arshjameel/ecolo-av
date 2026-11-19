@@ -396,22 +396,22 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 | **Origin** | ours (11 Oct): the 2025-26 lane finder was never in their repo |
 | **Status** | [[works]] on the bench's pretend road; never on a real picture |
 | **Run alone** | `ros2 launch aav_lane_finder lane_finder.launch.py` |
-| **Test** | `test/` (in `tools/test.sh`); `pixi run bench-check --lane` |
+| **Test** | `test/` (in `tools/test.sh`); `aav_lane_finder_rs`'s shared vectors |
 | **Read first** | `aav_lane_finder/lane_lines.py` |
 
 ### aav_lane_geometry
 
 | | |
 |---|---|
-| **Does** | `control_interface`: steers back to the lane's centre, as the AI driver; also the `LaneGeometry` message |
-| **Why** | the steering half of lane keeping |
-| **Runs on** | with the lane finder |
-| **In → out** | `/perception/lane/geometry` → `/drivers/ai/cmd_vel` (priority 10), `/drivers/ai/lane_status`, `/drivers/ai/lane_state` |
-| **Origin** | inherited: 2025-26 `Lane_Detection_ROS2` @ 345285860e; renamed, publishes TwistStamped |
-| **Status** | [[works]] on the bench, with `aav_lane_finder` |
-| **Run alone** | `ros2 launch aav_lane_geometry lane_follower.launch.py fake:=true` (a pretend straight lane) |
-| **Test** | `pixi run bench-check --lane` |
-| **Read first** | `scripts/control_interface.py` |
+| **Does** | the `LaneGeometry` message (the lane finder's lines, each one's paint) |
+| **Why** | the lane finder's answer, for the costmap's lanes and the lane pose |
+| **Runs on** | (a message package) |
+| **In → out** | none |
+| **Origin** | inherited: 2025-26 `Lane_Detection_ROS2` @ 345285860e; its `control_interface` (lane keeping) removed 19 Nov (TODO 264, `save/lane-followers`) |
+| **Status** | [[works]] |
+| **Run alone** | `ros2 interface show aav_lane_geometry/msg/LaneGeometry` |
+| **Test** | the lane finder's tests |
+| **Read first** | `msg/LaneGeometry.msg` |
 
 ## HUD
 
@@ -538,7 +538,6 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_mux_state` | `command_mux_state` (Rust): who twist_mux passes on, on `/control/command_mux/state`, for the debug screen | `ros/command_mux/aav_mux_state/README.md` |
 | `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (`stop_sign_impl:=python` falls back) | `ros/perception/aav_stop_sign_rs/README.md` |
 | `aav_lane_finder_rs` | `lane_finder` in Rust, the default (`lane_finder_impl:=python` falls back) | `ros/perception/aav_lane_finder_rs/README.md` |
-| `aav_lane_follower_rs` | `control_interface` (lane keeping) in Rust, the default (`lane_follower_impl:=python` falls back); the challengers (`lane_follower:=`) | `ros/drivers/aav_lane_follower_rs/README.md` |
 | `aav_camera_stream_rs` | `camera_stream` in Rust, the default with no detector (`camera_stream_impl:=python` falls back) | `ros/sources/aav_camera_stream_rs/README.md`, then [Camera pipeline](camera-pipeline.md) |
 | `aav_drive_to_point_rs` | `point_driver` and `drive_to_point` in Rust, the default (`drive_to_point_impl:=python` falls back) | `ros/drivers/aav_drive_to_point_rs/README.md`, then [A to B](a-to-b.md) |
 | `aav_detector_rs` | the detector in Rust through ONNX Runtime, a challenger (`detector_impl:=rust`) | `ros/perception/aav_detector_rs/README.md`, then [ONNX](onnx.md) |

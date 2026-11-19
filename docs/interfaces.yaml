@@ -208,9 +208,9 @@ topics:
     note: Latched (reliable, transient local, depth 1). true - this driver leads for the car's lag and dead times itself (a lag-aware tracker, such as aav_track's MPC or the Rust MPPI), so ego's own lead (lag_lead) turns off while its commands drive; false or never sent - ego may lead (docs/vehicle-model.md). Publish true when the lag-aware mode starts and false when it ends, once each (latched), and stamp every cmd_vel with now - ego knows whose command it obeys by matching /control/cmd_vel (twist_mux passes the winner's message on unchanged) against each lag-aware driver's last commands (stamp and twist), so a message re-stamped on the way can't match. ego watches the drivers in its lag_aware_drivers parameter (ego.yaml - scripted, point, nav, ai). No publisher yet.
   /drivers/ai/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
-    pub: [control_interface]
+    pub: []
     sub: [twist_mux, language_drive, ego]
-    note: Priority 10, the slot for a learned driver. Today the 2025-26 lane keeping (aav_lane_geometry) uses it.
+    note: Priority 10, the slot for a learned driver. No publisher since 19 Nov - the 2025-26 lane keeping (control_interface) that used it was removed (TODO 264; git tag save/lane-followers); the costmap draws the lanes now.
   /safety/estop:
     type: std_msgs/msg/Bool
     pub: [joy_teleop, hud, language_drive, actuator_test, hw_panel, dev_window, car_test]
@@ -646,24 +646,14 @@ topics:
 
   /perception/lane/geometry:
     type: aav_lane_geometry/msg/LaneGeometry
-    pub: [lane_finder, fake_lane_geometry_pub]
-    sub: [control_interface, lane_pose, costmap]
-    note: "One per camera picture, from lane_finder (aav_lane_finder, classic OpenCV), in base_link. vehicle_offset_m - the car from the lane's centre, 3 m ahead (lookahead), + = the car is left of it. Each line as y = a x^2 + b x + c (m), its radius (m; 9999 = straight or not seen) and confidence (0-1); the lane width (m); each line's paint, left_paint and right_paint - PAINT_UNKNOWN (0, not detected), PAINT_WHITE (1) or PAINT_YELLOW (2), from its pixels' colour (TODO 264). The costmap draws the lines as lane costs with lane_source:=camera or both (TODO 264). Bench - lane:=true runs lane_finder, lane:=fake runs fake_lane_geometry_pub (its polynomials are pixels)."
+    pub: [lane_finder]
+    sub: [lane_pose, costmap]
+    note: "One per camera picture, from lane_finder (aav_lane_finder, classic OpenCV), in base_link. vehicle_offset_m - the car from the lane's centre, 3 m ahead (lookahead), + = the car is left of it. Each line as y = a x^2 + b x + c (m), its radius (m; 9999 = straight or not seen) and confidence (0-1); the lane width (m); each line's paint, left_paint and right_paint - PAINT_UNKNOWN (0, not detected), PAINT_WHITE (1) or PAINT_YELLOW (2), from its pixels' colour (TODO 264). The costmap draws the lines as lane costs with lane_source:=camera or both (TODO 264). Bench - lane:=true runs lane_finder."
   /perception/lane/image:
     type: sensor_msgs/msg/Image
     pub: [lane_finder]
     sub: []
     note: The bird's-eye view, with the paint, the windows and the lines lane_finder found, for RViz or Foxglove. Only with debug_image true.
-  /drivers/ai/lane_status:
-    type: std_msgs/msg/String
-    pub: [control_interface]
-    sub: []
-    note: Lane keeping's state and numbers, as text. Under /drivers/ai, as control_interface (the AI slot's driver) publishes it.
-  /drivers/ai/lane_state:
-    type: std_msgs/msg/String
-    pub: [control_interface]
-    sub: []
-    note: Lane keeping's state machine (LANE_KEEP, LANE_CHANGING, ...). Not the car's state - that's /vehicle/status.
 
   # --- bench mode: the stand-ins' own topics ---
   /vehicle/bench/truth:

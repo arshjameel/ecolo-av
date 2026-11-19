@@ -338,10 +338,10 @@ def test_the_output_mux_runs_next_to_ego_for_the_real_car():
 
 
 def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
-    # control_interface drives whenever it sees a lane, so no machine file has it on yet.
+    # The lane part is the lane finder alone (the follower went on 19 Nov, TODO 264).
     for machine in MACHINES:
         assert not CAR.load_machine(machine)['parts'].get('lane'), machine
-        assert 'lane_follower.launch.py' not in included(started(CAR, machine=machine))
+        assert 'lane_finder.launch.py' not in included(started(CAR, machine=machine))
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {'lane': True}})
     sent = included(started(CAR, machine='orin'))
     # The Rust lane_finder by default (Ben, 18 Nov); lane_finder_impl:=python falls back.
@@ -351,12 +351,7 @@ def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
     assert back['lane_finder.launch.py']['lane_finder_impl'] == 'python'
     with pytest.raises(ValueError, match='lane_finder_impl'):
         started(CAR, machine='orin', lane_finder_impl='c')
-    # The Rust control_interface by default (19 Nov); lane_follower_impl:=python falls back.
-    assert sent['lane_follower.launch.py'] == {'fake': 'false', 'lane_follower_impl': 'rust'}
-    back = included(started(CAR, machine='orin', lane_follower_impl='Python'))
-    assert back['lane_follower.launch.py']['lane_follower_impl'] == 'python'
-    with pytest.raises(ValueError, match='lane_follower_impl'):
-        started(CAR, machine='orin', lane_follower_impl='c')
+    assert 'lane_follower.launch.py' not in sent
 
 
 def test_the_detector_is_named_after_its_machine(monkeypatch, tmp_path):

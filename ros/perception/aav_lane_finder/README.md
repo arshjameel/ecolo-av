@@ -93,4 +93,4 @@ pixi run build && colcon test --packages-select aav_lane_finder && colcon test-r
 ```
 
 `tools/test.sh` runs the first; `pixi run test` runs everything. In Ravensim:
-`pixi run sim-check --lane`.
+`pixi run sim lanes:=camera`.

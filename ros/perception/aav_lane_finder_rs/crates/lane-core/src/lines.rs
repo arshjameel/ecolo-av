@@ -1,7 +1,7 @@
 //! Lane lines in the bird's-eye view: find the paint, follow each line, say where the car is.
 //!
-//! The offset is + when the car is left of the lane's centre: control_interface then
-//! steers right, back to the centre. It is measured `lookahead` metres ahead of
+//! The offset is + when the car is left of the lane's centre (the 2025-26 lane follower
+//! steered right by it, back to the centre). It is measured `lookahead` metres ahead of
 //! base_link, because a PID on the offset at the rear axle weaves; a few metres ahead,
 //! the offset also says which way the car is pointing.
 

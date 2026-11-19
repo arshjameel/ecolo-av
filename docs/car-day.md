@@ -468,7 +468,6 @@ stay installed, one switch away. Check this each time you start `car.launch.py`.
 | legacy_uart_bridge (the ESP32's UART, on the Motor Pi) | `aav_legacy_rs` | `legacy_impl:=python` |
 | rc_driver (beside the bridge) | `aav_rc_rs` | `rc_impl:=python` |
 | lane_finder (with the `lane` part; since 18 Nov) | `aav_lane_finder_rs` | `lane_finder_impl:=python` |
-| control_interface, lane keeping (with the `lane` part; since 19 Nov) | `aav_lane_follower_rs` | `lane_follower_impl:=python` |
 | joy_alive (the joystick's check, wherever teleop runs) | `aav_joy_alive_rs` | `joy_alive_impl:=python` |
 | stop_sign_watcher (the stop_signs part, next to the mux) | `aav_stop_sign_rs` | `stop_sign_impl:=python` |
 | camera_stream (the camera_stream part, only with `detector: none` in `orin.yaml`: RF-DETR runs in the Python one; since 18 Nov) | `aav_camera_stream_rs` | `camera_stream_impl:=python` |

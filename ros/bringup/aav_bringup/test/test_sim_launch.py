@@ -407,8 +407,7 @@ def test_the_road_worlds_full_graph(hud_package):
     assert sent['detector.launch.py'] == {'labels': 'stop sign', 'use_sim_time': 'true',
                                           'detector_impl': 'python'}
     assert sent['lane_finder.launch.py'] == {'lane_finder_impl': 'rust'}
-    assert sent['lane_follower.launch.py'] == {'fake': 'false', 'lane_follower_impl': 'rust',
-                                               'lane_follower': 'pid'}
+    assert 'lane_follower.launch.py' not in sent   # removed 19 Nov (TODO 264)
     assert sent['hud.launch.py'] == {}   # aav_hud's window (15 Oct)
     assert sent['navigation.launch.py']['camera_obstacles'] == 'true'
     assert (sent['ravensim.launch.py']['obstacle'], sent['ravensim.launch.py']['start_y']) == (
@@ -438,23 +437,26 @@ def test_the_screens_and_lichtblick(hud_package):
     assert fox['foxglove_address'] == '127.0.0.1'  # this computer only: test_foxglove_launch
 
 
-def test_a_pretend_lane_needs_no_camera():
-    assert included(started(SIM, lane='fake'))['lane_follower.launch.py']['fake'] == 'true'
+def test_the_lane_followers_are_gone():
+    # TODO 264 (19 Nov): the costmap draws the lanes; lane:=fake and the follower went.
+    with pytest.raises(ValueError, match='lane:=fake'):
+        started(SIM, world='road', lane='fake')
+    assert 'lane_follower.launch.py' not in included(started(SIM, world='road', lane='true'))
 
 
-def test_lane_follower_picks_the_language_and_the_steering():
-    # The Rust control_interface by default (19 Nov); a challenger steers with
-    # lane_follower:=, Rust only (aav_lane_follower_rs).
-    sent = included(started(SIM, world='road', lane='true', lane_follower='Pure_Pursuit'))
-    assert sent['lane_follower.launch.py'] == {'fake': 'false', 'lane_follower_impl': 'rust',
-                                               'lane_follower': 'pure_pursuit'}
-    back = included(started(SIM, world='road', lane='true', lane_follower_impl='python'))
-    assert back['lane_follower.launch.py']['lane_follower_impl'] == 'python'
-    with pytest.raises(ValueError, match='lane_follower:=stanley is Rust only'):
-        started(SIM, world='road', lane='true', lane_follower_impl='python',
-                lane_follower='stanley')
-    with pytest.raises(ValueError, match='lane_follower:=mpc: pick one of'):
-        started(SIM, world='road', lane='true', lane_follower='mpc')
+def test_camera_lanes_start_the_lane_finder_and_reach_the_costmap():
+    # lanes:=camera (TODO 264): the lane finder's lines into the global costmap.
+    sent = included(started(SIM, world='road', lanes='camera'))
+    assert sent['lane_finder.launch.py'] == {'lane_finder_impl': 'rust'}
+    nav = sent['navigation.launch.py']
+    assert (nav['lane_source'], nav['lane_costs']) == ('camera', '')
+    both = included(started(SIM, world='road', lanes='both'))['navigation.launch.py']
+    assert both['lane_source'] == 'both' and both['lane_costs'].endswith('road.lanes.yaml')
+    off = included(started(SIM, world='road'))
+    assert 'lane_finder.launch.py' not in off
+    assert off['navigation.launch.py']['lane_source'] == 'map'
+    with pytest.raises(ValueError, match='lane_source:=camera'):
+        started(SIM, world='empty', lanes='camera')
 
 
 def test_bad_values_stop_the_launch():

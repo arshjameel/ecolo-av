@@ -619,50 +619,6 @@ def check_lane_finder_impl(impl):
     return name
 
 
-# Which control_interface steers by the lane (lane_follower.launch.py, and every profile that
-# starts it: lane:=true|fake, the car's lane part; lane_follower_impl:=): rust
-# (aav_lane_follower_rs, the default since 19 Nov, Ben: "We also need to port the lane
-# following code"; the same node name, topics, parameters and commands) or python
-# (aav_lane_geometry, the 2025-26 team's, the fallback). Each one's package and program.
-LANE_FOLLOWER_IMPLS = {'python': ('aav_lane_geometry', 'control_interface.py'),
-                       'rust': ('aav_lane_follower_rs', 'control_interface')}
-DEFAULT_LANE_FOLLOWER_IMPL = 'rust'
-# How it steers (lane_follower:=): the 2025-26 PID on the offset (the default, both
-# languages), or a challenger on the fitted lane centre, Rust only (aav_lane_follower_rs's
-# README): pure pursuit, or Stanley.
-LANE_FOLLOWERS = ('pid', 'pure_pursuit', 'stanley')
-DEFAULT_LANE_FOLLOWER = 'pid'
-# s from the camera's picture to lane_finder's message: a guess, added to the steering's
-# lag and dead time for the challengers' lag_s (lane_follower_lag).
-LANE_CAMERA_DELAY = 0.1
-
-
-def check_lane_follower_impl(impl):
-    """Return control_interface's language (lower case), or raise ValueError: what to pick."""
-    name = str(impl).strip().lower()
-    if name not in LANE_FOLLOWER_IMPLS:
-        raise ValueError(f'lane_follower_impl:={impl}: pick one of '
-                         f'{", ".join(LANE_FOLLOWER_IMPLS)}')
-    return name
-
-
-def check_lane_follower(law, impl=DEFAULT_LANE_FOLLOWER_IMPL):
-    """Return the steering law (lower case), or raise ValueError: the Python has the PID only."""
-    name = str(law).strip().lower()
-    if name not in LANE_FOLLOWERS:
-        raise ValueError(f'lane_follower:={law}: pick one of {", ".join(LANE_FOLLOWERS)}')
-    if name != 'pid' and check_lane_follower_impl(impl) == 'python':
-        raise ValueError(f'lane_follower:={name} is Rust only: drop lane_follower_impl:=python')
-    return name
-
-
-def lane_follower_lag(cfg):
-    """Return s from the picture to the wheels turning: the camera, steering dead time, lag."""
-    actuators = cfg.get('actuators', {})
-    return (LANE_CAMERA_DELAY + float(actuators.get('steer_dead_time', 0.0))
-            + float(actuators.get('steer_lag', 0.0)))
-
-
 # Which camera_stream pulls each camera Pi stream (camera_stream.launch.py, the car's
 # camera_stream part; camera_stream_impl:=): rust (aav_camera_stream_rs, the default since
 # Ben, 18 Nov: "lets port them to rust"; the same node name, topics, parameters and

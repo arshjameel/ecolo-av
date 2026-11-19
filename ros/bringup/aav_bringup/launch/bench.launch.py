@@ -2,7 +2,7 @@
 Bench mode: the real car's software on one computer, with stand-ins for the hardware.
 
   ros2 launch aav_bringup bench.launch.py [nav:=true] [teleop:=false|true|stand_in] [rviz:=false]
-      [perception:=false] [lane:=false|true|fake] [hud:=false] [arm:=true] [foxglove:=false]
+      [perception:=false] [lane:=false|true] [hud:=false] [arm:=true] [foxglove:=false]
       [start_y:=0.0] [start_yaw:=0.0] [bend_radius:=] [obstacle:=false]
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
       [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
@@ -11,7 +11,7 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
   pixi run -e ml bench perception:=true     (adds YOLO and the stop-sign watcher)
-  pixi run bench lane:=true start_y:=0.3    (lane keeping, from 0.3 m left of the centre)
+  pixi run bench lane:=true                 (the lane finder on the pretend camera)
   pixi run bench lidar:=true obstacle:=true (the roof lidar, through its real driver)
 
 Above the hardware, everything is the car's own: spine_bridge and its CAN frames, the
@@ -39,10 +39,9 @@ draws only stop signs, which never count: publish a detection by hand to see it 
 The model car starts at the map origin (the GPS datum), facing east, on the centre line
 of a straight road; start_y and start_yaw move it. A stop sign stands 25 m ahead on the
 right; obstacle:=true puts a 1 m box in the lane 15 m ahead (aav_bench/config/bench.yaml).
-lane:=true runs lane keeping: lane_finder reads the pretend camera, control_interface
-steers on /drivers/ai/cmd_vel. lane:=fake feeds control_interface a pretend straight lane instead.
-lane_finder_impl:=python runs the Python lane_finder in the Rust one's place (the default);
-lane_follower_impl:=python the Python control_interface (the 2025-26 team's).
+lane:=true runs the lane finder on the pretend camera: /perception/lane/geometry (the
+lane follower that steered by it went on 19 Nov, TODO 264: the costmap draws the lanes).
+lane_finder_impl:=python runs the Python lane_finder in the Rust one's place (the default).
 
 arm:=true arms the spine after 12 s, once navigation is up, the way `ros2 service call
 /spine/arm std_srvs/srv/SetBool "{data: true}"` does: aav_spine's arm_when_open asks
@@ -84,8 +83,8 @@ def launch_setup(context):
             for n in ('nav', 'rviz', 'perception', 'hud', 'arm', 'foxglove',
                       'obstacle', 'camera_obstacles', 'reversing', 'lidar', 'plan_around')}
     lane = LaunchConfiguration('lane').perform(context).lower()
-    if lane not in ('false', 'true', 'fake'):
-        raise ValueError(f'lane:={lane}: use true (the lane finder), fake or false')
+    if lane not in ('false', 'true'):
+        raise ValueError(f'lane:={lane}: use true (the lane finder) or false')
     start = {n: float(LaunchConfiguration(n).perform(context)) for n in ('start_y', 'start_yaw')}
     bend = LaunchConfiguration('bend_radius').perform(context)
     road = [{'bend_radius': float(bend)}] if bend else []
@@ -160,7 +159,7 @@ def launch_setup(context):
                                reversing=str(flag['reversing']).lower(),
                                plan_around=str(flag['plan_around']).lower(),
                                speed_loop=model_loop))
-    # The sensor watchdog guards navigation and the AI slot (lane keeping) as on the car, always:
+    # The sensor watchdog guards navigation and the AI slot as on the car, always:
     # the mux's sensors lock needs its heartbeat (aav_command_mux mux.launch.py sensor_lock).
     actions.append(include('aav_safety', 'watchdog.launch.py',
                            inputs='odom,imu,gps,local,global,radar'
@@ -192,12 +191,6 @@ def launch_setup(context):
                             name='camera_obstacles',
                             parameters=[os.path.join(share('aav_detector'), 'config',
                                                      'camera_obstacles.yaml')]))
-    if lane in ('true', 'fake'):
-        actions.append(include('aav_lane_geometry', 'lane_follower.launch.py',
-                               fake=str(lane == 'fake').lower(),
-                               lane_follower_impl=vehicle.check_lane_follower_impl(
-                                   LaunchConfiguration('lane_follower_impl').perform(
-                                       context))))
     if lane == 'true':
         actions.append(include('aav_lane_finder', 'lane_finder.launch.py',
                                lane_finder_impl=vehicle.check_lane_finder_impl(
@@ -253,15 +246,9 @@ def generate_launch_description():
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
-        DeclareLaunchArgument('lane_follower_impl',
-                              default_value=vehicle.DEFAULT_LANE_FOLLOWER_IMPL,
-                              description='rust or python: which control_interface steers by '
-                                          'the lane (aav_lane_follower_rs, or '
-                                          'aav_lane_geometry)'),
         DeclareLaunchArgument('lane', default_value='false',
-                              description='true: lane keeping (lane_finder and control_interface, '
-                                          'on /drivers/ai/cmd_vel); fake: the same on a '
-                                          'pretend lane'),
+                              description='true: the lane finder, on '
+                                          '/perception/lane/geometry'),
         DeclareLaunchArgument('hud', default_value='false',
                               description='the HUD window (aav_hud, as pixi run hud); '
                                           'needs a screen'),

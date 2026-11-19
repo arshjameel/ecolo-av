@@ -391,7 +391,7 @@ The full story: [Perception](perception.md), [Model comparison](model-comparison
 |---|---|
 | **What it is** | classic computer vision: a bird's-eye warp, a paint mask, sliding windows, a polynomial fit per line |
 | **Main goal** | where the lane's lines are |
-| **What it adds** | the lane pose; the AI driver slot's lane keeping |
+| **What it adds** | the lane pose; the costmap's camera lanes (`lanes:=camera`); each line's paint, white or yellow (19 Nov) |
 | **From** | OpenCV (Apache-2.0) in the Python; ported with no OpenCV in the Rust |
 | **What we found** | 0.78 ms a picture (Python). The Rust: the same lanes on 50 pictures and 1,535 Ravensim frames, 3.7 % of a core against 17.4 % |
 | **Strengths** | no model to train; fast |
@@ -443,6 +443,7 @@ and finally close up is obstical avoidance". The full story: [Costmaps](costmaps
 | **Strengths** | any planner keeps right |
 | **Weaknesses** | a nudge, not a rule |
 | **Status** | **Challenger** |
+| **From the camera** (`lanes:=camera`, `both`; 19 Nov, TODO 264) | the same costs from the lane finder's lines where there is no lane map: the yellow line and the oncoming lane medium, the kerb high. Built, not yet scored |
 
 ### Routes: Valhalla, OSRM and the campus road graph (`aav_routes`)
 
@@ -582,6 +583,14 @@ line back, as if the car could spin. The car refused them; **retired** with Nav2
 | **From** | Nav2 (Apache-2.0) | S. Macenski et al., Autonomous Robots 2023 |
 | **What we found** (league, 16 Nov) | University Drive 3 of 6 legs: stuck, "the car doesn't fit at the start" | 42 sway changes per 100 m on the lot |
 | **Why retired** | ported as `mppi_lag`; Nav2 deleted 17 Nov | swings; Nav2 deleted |
+
+### Retired: the lane followers (19 Nov)
+
+| | the 2025-26 PID (`control_interface`, Python and Rust) | pure pursuit | Stanley |
+|---|---|---|---|
+| **From** | the 2025-26 team's `Lane_Detection_ROS2` | R. C. Coulter, 1992 | S. Thrun et al., 2006 |
+| **What we found** (19 Nov, 3 runs; Library Road RMS) | 3.9-4.1 cm, 187 flips a minute | **2.4 cm**, 1 flip a minute | 3.0 cm, 6 flips |
+| **Why retired** | Ben, 19 Nov: "drop there code all together": lanes are perception, the costmap prices them, navigation drives (TODO 264). Git tag `save/lane-followers`; [their scores](history/lane-followers.md) | the same | the same |
 
 ### The navigator and the smoother (`aav_navigator`, `aav_smoother`)
 

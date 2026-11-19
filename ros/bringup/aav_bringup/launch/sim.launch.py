@@ -5,7 +5,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
       [teleop:=false] [rviz:=true]
-      [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
+      [perception:=false] [lane:=false|true] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
       [actuator_model:=true] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
@@ -16,7 +16,6 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [amcl:=false] [amcl_impl:=rust] [voxels:=false] [voxels_impl:=python] [kerbs:=]
       [ego_impl:=rust]
       [lidar_impl:=rust] [things_impl:=rust] [lane_finder_impl:=rust]
-      [lane_follower_impl:=rust] [lane_follower:=pid]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [io_mux_impl:=rust] [stop_sign_impl:=rust]
       [ndt:=false] [ndt_ekf:=false] [pose_source:=gps] [ndt_map:=maps/ndt/test_lot.pcd]
@@ -62,8 +61,9 @@ bench's argument names:
                       the stop zone (navigation.launch.py radar:=true)
   perception:=true    the detector (RF-DETR; the ml environment) and stop_sign_watcher: twist_mux's
                       stop-sign lock
-  lane:=true          lane keeping: lane_finder and control_interface, on /drivers/ai/cmd_vel.
-                      lane:=fake: control_interface on a pretend lane, in any world
+  lane:=true          the lane finder alone, on /perception/lane/geometry (the lane
+                      follower went on 19 Nov, TODO 264: lanes:=camera draws its lines into
+                      the costmap, and starts it too)
   camera_obstacles    the detectors' boxes into our local costmap
   hud:=true           the HUD window (aav_hud, as pixi run hud): needs a screen
   map:=true           the map window (aav_hud, as pixi run map): the map, the
@@ -187,11 +187,6 @@ bench's argument names:
   lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
                       one's place (the default since 18 Nov), with lane:=true or
                       lane_pose:=true: the same topics and lanes
-  lane_follower_impl:=python  the Python control_interface (aav_lane_geometry, the
-                      2025-26 team's) in the Rust one's place (the default since 19 Nov),
-                      with lane:=true|fake: the same topics and commands
-  lane_follower:=pure_pursuit|stanley  with lane:=true, a Rust challenger steers on the
-                      fitted lane centre instead of the 2025-26 PID (pid, the default)
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
@@ -465,8 +460,8 @@ def launch_setup(context):
                       'ghost', 'plan_around', 'watch_hud', 'geofence', 'voxels',
                       'screen_cubes', 'behaviour', 'things', 'kerbs')}
     lane = arg('lane').lower()
-    if lane not in ('false', 'true', 'fake'):
-        raise ValueError(f'lane:={lane}: use true (the lane finder), fake or false')
+    if lane not in ('false', 'true'):
+        raise ValueError(f'lane:={lane}: use true (the lane finder) or false')
     controller = arg('controller').lower()
     if controller not in vehicle.CONTROLLERS:
         raise ValueError(f'controller:={controller}: pick one of {", ".join(vehicle.CONTROLLERS)}')
@@ -796,12 +791,6 @@ def launch_setup(context):
                                                      .perform(context), 'config',
                                                      'camera_obstacles.yaml'),
                                         {'use_sim_time': True}]))
-    if lane in ('true', 'fake'):
-        impl = vehicle.check_lane_follower_impl(arg('lane_follower_impl'))
-        actions.append(include(context, 'aav_lane_geometry', 'lane_follower.launch.py',
-                               fake=lane == 'fake', lane_follower_impl=impl,
-                               lane_follower=vehicle.check_lane_follower(
-                                   arg('lane_follower'), impl)))
     if lane == 'true' or lane_pose or lane_camera:
         actions.append(include(
             context, 'aav_lane_finder', 'lane_finder.launch.py',
@@ -893,9 +882,8 @@ def generate_launch_description():
                               description='the object detector and the stop-sign watcher (the ml '
                                           'environment; world:=road)'),
         DeclareLaunchArgument('lane', default_value='false',
-                              description='true: lane keeping (lane_finder and '
-                                          'control_interface, on /drivers/ai/cmd_vel; '
-                                          'world:=road); fake: the same on a pretend lane'),
+                              description='true: the lane finder, on '
+                                          '/perception/lane/geometry (world:=road, campus)'),
         DeclareLaunchArgument('camera_obstacles', default_value='false',
                               description="the detectors' boxes into the local costmap "
                                           '(world:=road)'),
@@ -1025,14 +1013,6 @@ def generate_launch_description():
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
-        DeclareLaunchArgument('lane_follower_impl',
-                              default_value=vehicle.DEFAULT_LANE_FOLLOWER_IMPL,
-                              description='rust or python: which control_interface steers by '
-                                          'the lane (aav_lane_follower_rs, or '
-                                          'aav_lane_geometry)'),
-        DeclareLaunchArgument('lane_follower', default_value=vehicle.DEFAULT_LANE_FOLLOWER,
-                              description='how lane keeping steers: pid (the 2025-26 PID), '
-                                          'or the Rust challengers pure_pursuit, stanley'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='python or rust: which things node tracks the '
                                           'cubes (aav_things, or aav_things_rs)'),

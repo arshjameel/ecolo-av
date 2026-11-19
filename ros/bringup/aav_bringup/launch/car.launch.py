@@ -29,7 +29,7 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [localization_health_impl:=rust] [lidar_impl:=rust] [things_impl:=rust]
       [io_mux_impl:=rust] [legacy_impl:=rust] [rc_impl:=rust] [lane_finder_impl:=rust]
       [joy_alive_impl:=rust] [stop_sign_impl:=rust] [drive_to_point_impl:=rust]
-      [camera_stream_impl:=rust] [lane_follower_impl:=rust]
+      [camera_stream_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
                            aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
                            aav_lidar_rs, aav_things_rs, aav_io_mux_rs (both muxes),
@@ -38,8 +38,7 @@ The real car. One launch file for every machine; a machine file picks the parts.
                            (stop_sign_watcher); since 18 Nov aav_lane_finder_rs
                            (lane_finder, the lane part), aav_drive_to_point_rs
                            (point_driver) and aav_camera_stream_rs (camera_stream, with
-                           detector: none); since 19 Nov aav_lane_follower_rs
-                           (control_interface, the lane part).
+                           detector: none).
                            python: the Python node instead, the same names and topics;
                            one switch each, the fall-back if one misbehaves.
                            docs/car-day.md)
@@ -114,10 +113,10 @@ Parts and what they start:
   camera_obstacles
                   the detectors' boxes as points on the road -> /perception/camera_obstacles,
                   for our costmap. Off until the cameras are calibrated (Q22)
-  lane            lane keeping: lane_finder on /sensors/camera/front_left/image_raw ->
-                  /perception/lane/geometry, and
-                  control_interface -> /drivers/ai/cmd_vel (twist_mux's AI slot). Off on every
-                  machine: it drives whenever it sees a lane, unless a driver above it does
+  lane            the lane finder: lane_finder on /sensors/camera/front_left/image_raw ->
+                  /perception/lane/geometry, for the costmap's lanes (lane_source:=camera)
+                  and the lane pose. It drives nothing (the lane follower went on 19 Nov,
+                  TODO 264). Off on every machine
   localization    ekf_local, ekf_global, navsat_transform
   navigation      our navigation (Nav2's ports, Nav2 deleted 17 Nov: the map server,
                   costmaps, planner, navigator, mppi_lag, smoother, stop zone) ->
@@ -454,8 +453,6 @@ def launch_setup(context):
              'legacy_impl': vehicle.check_legacy_impl(arg('legacy_impl')),
              'rc_impl': vehicle.check_rc_impl(arg('rc_impl')),
              'lane_finder_impl': vehicle.check_lane_finder_impl(arg('lane_finder_impl')),
-             'lane_follower_impl': vehicle.check_lane_follower_impl(
-                 arg('lane_follower_impl')),
              'joy_alive_impl': vehicle.check_joy_alive_impl(arg('joy_alive_impl')),
              'stop_sign_impl': vehicle.check_stop_sign_impl(arg('stop_sign_impl')),
              'drive_to_point_impl': vehicle.check_drive_to_point_impl(
@@ -598,9 +595,7 @@ def launch_setup(context):
                             name='camera_obstacles', parameters=parameters))
     if on('lane'):
         actions += [include('aav_lane_finder', 'lane_finder.launch.py', debug_image=False,
-                            lane_finder_impl=impls['lane_finder_impl']),
-                    include('aav_lane_geometry', 'lane_follower.launch.py', fake=False,
-                            lane_follower_impl=impls['lane_follower_impl'])]
+                            lane_finder_impl=impls['lane_finder_impl'])]
     if on('localization'):
         # NDT leading (pose_source:=ndt, TODO 210) is the sim's challenger until the real
         # lot has a lidar map (pixi run map-drive) and the car its NDT: refuse it here.
@@ -746,11 +741,6 @@ def generate_launch_description():
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
-        DeclareLaunchArgument('lane_follower_impl',
-                              default_value=vehicle.DEFAULT_LANE_FOLLOWER_IMPL,
-                              description='rust or python: which control_interface steers by '
-                                          'the lane, with the lane part (aav_lane_follower_rs, '
-                                          'or aav_lane_geometry)'),
         DeclareLaunchArgument('camera_stream_impl',
                               default_value=vehicle.DEFAULT_CAMERA_STREAM_IMPL,
                               description='rust or python: which camera_stream pulls each '

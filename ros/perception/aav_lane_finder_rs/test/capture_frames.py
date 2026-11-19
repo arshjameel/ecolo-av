@@ -7,7 +7,7 @@ Save front left camera pictures from a running simulator, for gen_vectors.py --r
         [--every 5] [--where "University Drive"]
 
 Start Ravensim first, with its cameras, on the same ROS domain (a lane drive:
-`pixi run measure lane --world campus --road "University Drive"`). Every `--every`
+a lane drive on University Drive, `measure lane` until 19 Nov). Every `--every`
 seconds of the picture's own clock it writes OUT_DIR/frame_NN.png (the picture as it came,
 in BGR), up to `--count`; then OUT_DIR/lens.json: the CameraInfo's size, K and D, and the
 camera's place on the car from vehicle.yaml (camera_left_link), as the launch file gives it.

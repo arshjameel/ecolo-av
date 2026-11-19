@@ -74,3 +74,16 @@ change, never the logic:
   - `test/test_lane_speed.py` reads `stop_wait_s`'s default from `lane_follow.Settings`;
     new `test/test_lane_follow.py`; `CMakeLists.txt` installs `lane_follow.py` and runs the
     new test.
+- 19 Nov 2026: `msg/LaneGeometry.msg` gains `left_paint`, `right_paint` and the
+  `PAINT_UNKNOWN`, `PAINT_WHITE`, `PAINT_YELLOW` constants (TODO 264): each line's paint,
+  so the costmap prices a yellow centre line apart from a white edge line. The old fields
+  are unchanged.
+- 19 Nov 2026: **the 2025-26 `control_interface` removed, by decision** (TODO 264; Ben, 19
+  Nov: "drop there code all together. We use the perception system to identify the lines
+  and then we bake it into the cost map"). Deleted: `scripts/control_interface.py`,
+  `scripts/lane_follow.py`, `scripts/lane_speed.py`, `scripts/fake_lane_geometry_pub.py`
+  (the 2025-26 fake lane, which only fed it), `launch/lane_follower.launch.py`, `test/`;
+  and the Rust twin `ros/drivers/aav_lane_follower_rs`. They are in git tag
+  `save/lane-followers`; their scores in `docs/history/lane-followers.md`.
+  `CMakeLists.txt` and `package.xml` now build the message only (the 2025-26 maintainer
+  line replaced by the team's).

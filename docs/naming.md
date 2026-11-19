@@ -48,7 +48,7 @@ actions and `/cmd_vel_nav`. Our costmaps are in the area: `/drivers/nav/costmap/
 | scripted | `scripted_driver` publishes `drivers/scripted/cmd_vel` | `/drivers/scripted/cmd_vel` |
 | drive to point | `point_driver` (`aav_drive_to_point`) | `/drivers/point/cmd_vel` |
 | navigation | `velocity_smoother` (`aav_smoother`) or the stop zone (`aav_stop_zone`) | `/drivers/nav/cmd_vel` |
-| AI | `control_interface` (lane keeping) | `/drivers/ai/cmd_vel` |
+| AI | none since 19 Nov (lane keeping's `control_interface` removed, TODO 264) | `/drivers/ai/cmd_vel` |
 | replay | `tools/replay_commands.sh` | `/drivers/replay/cmd_vel` |
 
 A namespace makes the relative names fall into place, with no remaps. The joystick's
