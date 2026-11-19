@@ -76,6 +76,8 @@ PAGES = [
     ('rollout.md', 'Rolling out on the car',
      "The names, the order (ESP32 and Motor Pi first), each computer's upgrade"),
     ('tests.md', 'Every test', 'Every test, in order: sim, bench, stands, lot, the drive'),
+    ('after-install.md', 'After the install',
+     'Every laptop and car computer checked, before the stands'),
     ('testing-plan.md', 'The testing plan', 'Seven phases, stands to campus twin, each automated'),
     ('know-the-car.md', 'Know the car', 'The car tests: the order, and when to stop'),
     ('recording.md', 'Recording a mapping drive',
@@ -210,7 +212,8 @@ SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
           'whats-new.md': ('aav-whats-new.pdf', "what's new"),
           'what-we-built.md': ('aav-what-we-built.pdf', 'what we built'),
           'release-0.4-guide.md': ('aav-0.4-guide.pdf', 'the 0.4 guide'),
-          'testing-plan.md': ('aav-testing-plan.pdf', 'the testing plan')}
+          'testing-plan.md': ('aav-testing-plan.pdf', 'the testing plan'),
+          'after-install.md': ('aav-after-install.pdf', 'after the install')}
 # A shared page's own PDF: a running footer, and the cover on a page of its own.
 RELEASE_STYLE = """
 @page {

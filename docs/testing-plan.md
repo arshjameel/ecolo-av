@@ -15,7 +15,8 @@ test, in what order, and how we know each step passed**. The detail of each test
 
 | Phase | What | Where | Needs |
 |---|---|---|---|
-| **A** | The car on stands: preflight, every sensor, steering, throttle, **faults on purpose** (losing the Orin too) | the shop, wheels off the ground | the hardware lead; the upgraded car |
+| **0** | **After the install**: every laptop and car computer checked, then the car together ([its page](after-install.md)) | laptops, then the car | the upgrade done |
+| **A** | The car on stands: preflight, every sensor, steering, throttle, **faults on purpose** (losing the Orin too) | the shop, wheels off the ground | the hardware lead; phase 0 passed |
 | **B** | **The transfer functions**: accelerate, brake, steer, measured and compared with the model | **the long hallway** (winter), then a lot | phase A passed |
 | **C** | **The recording kit**: every sensor, clocks in step | the car | phase A |
 | **D** | **Maps from hand drives**: SLAM makes the map, NDT and AMCL find the car on it | campus, driven by hand | phase C |
