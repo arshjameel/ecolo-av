@@ -52,6 +52,27 @@ def test_nan_and_jump_change_a_copy():
     assert msg.value == 45.0
 
 
+def test_drift_slides_north_slowly_then_stays_and_restarts_when_set_again():
+    def drift(m, seconds):
+        m.value = faults.jumped(m.value, faults.drifted(seconds))
+
+    def north_m(out):
+        return (out.value - 45.0) * faults.METRES_PER_DEGREE
+
+    f = Fault('gps')
+    f.switch('drift')
+    assert north_m(f.apply(reading(45.0), drift=drift, now=100.0)) == pytest.approx(0.0)
+    assert north_m(f.apply(reading(45.0), drift=drift, now=130.0)) == pytest.approx(2.5)
+    assert north_m(f.apply(reading(45.0), drift=drift, now=400.0)) == pytest.approx(
+        faults.DRIFT_MAX)
+    # Never a jump for the watchdog (15 m/s + 5 m) or its speed check (0.15 m/s).
+    assert faults.DRIFT_RATE < 0.15
+    f.switch('drift')
+    assert north_m(f.apply(reading(45.0), drift=drift, now=500.0)) == pytest.approx(0.0)
+    assert faults.check('gps', 'drift') is None
+    assert 'no' in faults.check('imu', 'drift')
+
+
 def test_each_sensor_has_only_its_own_faults():
     assert faults.check('gps', 'jump') is None
     assert 'no' in faults.check('imu', 'jump')
