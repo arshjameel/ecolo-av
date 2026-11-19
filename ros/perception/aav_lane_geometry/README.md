@@ -7,10 +7,16 @@ Lane keeping, from the 2025-26 team (`Lane_Detection_ROS2`; see `PROVENANCE.md`)
 - the `LaneGeometry` message, which [aav_lane_finder](../aav_lane_finder/README.md)
   publishes on `/perception/lane/geometry`;
 - `control_interface`: the steering half. A PID on the lane offset, as a driver on
-  twist_mux's AI slot (`/drivers/ai/cmd_vel`, priority 10);
+  twist_mux's AI slot (`/drivers/ai/cmd_vel`, priority 10). Its logic is
+  `scripts/lane_follow.py` (no ROS); the node is the ROS around it;
 - a fake lane publisher and a CSV logger, for tests without a camera.
 
-Every other driver outranks the AI slot, so a person, a test script or Nav2 always wins.
+Every other driver outranks the AI slot, so a person, a test script or navigation always wins.
+
+**Its Rust twin runs by default** since 19 Nov:
+[aav_lane_follower_rs](../../drivers/aav_lane_follower_rs/README.md), the same node, topics,
+parameters and commands, with two challengers beside the PID (`lane_follower:=pure_pursuit`,
+`stanley`). `lane_follower_impl:=python` runs this package's node instead.
 
 ## Interface
 
@@ -59,7 +65,7 @@ Fake modes (`mode`): `straight`, `drift_right`, `drift_left`, `sine`, `sharp_cur
 
 | File | Starts |
 |---|---|
-| `launch/lane_follower.launch.py` | control_interface; `fake:=true` adds the fake lane |
+| `launch/lane_follower.launch.py` | control_interface, Rust or Python (`lane_follower_impl:=rust`), steering by `lane_follower:=pid` (or the Rust `pure_pursuit`, `stanley`); `fake:=true` adds the fake lane |
 
 ## Invariants
 
@@ -67,6 +73,8 @@ Fake modes (`mode`): `straight`, `drift_right`, `drift_left`, `sine`, `sharp_cur
 - No lines seen, or no message for `stop_wait_s`: the car slows at `decel_rate` and
   stops (`NO_LANE_STOPPING`). The slow-down runs on a 0.1 s timer, so it goes on when
   the messages stop. The rule is `scripts/lane_speed.py` (no ROS).
+- `scripts/lane_follow.py` (no ROS) holds the logic; `aav_lane_follower_rs` must give the
+  same answers: after changing it, run that package's `gen_vectors.py`.
 - It never starts a slow-down from speed once its own commands have been quiet for
   twist_mux's 0.5 s: by then ego is already stopping the car, and the slow-down would
   pull away again. It sends 0 instead.
@@ -87,6 +95,7 @@ Fake modes (`mode`): `straight`, `drift_right`, `drift_left`, `sine`, `sharp_cur
 | Test | Covers |
 |---|---|
 | `test/test_lane_speed.py` | the slow-down, its stop, and that `stop_wait_s` and the timeout match twist_mux's |
+| `test/test_lane_follow.py` | the states (steering, one line, a lane change, lost lines, the watchdog's clock), and that `aav_lane_follower_rs`'s vectors are still these answers |
 
 Quick, without ROS: `cd ros/perception/aav_lane_geometry && python3 -m pytest -q`
 (`tools/test.sh` runs it).
@@ -101,4 +110,7 @@ ros2 launch aav_lane_geometry lane_follower.launch.py fake:=true   # watch /driv
 ## Notes
 
 - `package.xml` is still the 2025-26 one: maintainer `OpenAI`, `user@example.com`, MIT.
-- The scripts lack the module docstring listing topics that `CLAUDE.md` asks for.
+- `fake_lane_geometry_pub.py` lacks the module docstring listing topics that `CLAUDE.md`
+  asks for.
+- After lost lines, RESUMING doesn't ramp the speed: the lane-keeping command overwrites the
+  ramp (2025-26). Kept, in both languages, for now.

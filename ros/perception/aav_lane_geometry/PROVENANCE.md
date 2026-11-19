@@ -59,3 +59,18 @@ change, never the logic:
   node's clock, not `time.time()`. New: `scripts/lane_speed.py` (the rule, no ROS),
   `test/test_lane_speed.py`; `CMakeLists.txt` installs the module and runs the test;
   `package.xml` adds the test dependencies.
+- 19 Nov 2026: the Rust twin, `ros/drivers/aav_lane_follower_rs` (Ben: "We also need to port
+  the lane following code"), the default from now on.
+  - `scripts/control_interface.py`'s logic moved, unchanged, into a new
+    `scripts/lane_follow.py` (no ROS): the `PID` and the five states, with the two clocks
+    passed in (the wall clock for the PID and the states' times, the node's for the
+    watchdog) and what to publish handed back. `control_interface.py` is now the ROS around
+    it: the same node name, topics, QoS, parameters, log lines and publishing order. Its
+    module docstring lists the topics. numpy is no longer imported (`np.clip` became
+    `lane_follow.clip`, NaN kept).
+  - `launch/lane_follower.launch.py`: `lane_follower_impl:=rust|python` and
+    `lane_follower:=pid|pure_pursuit|stanley` (the Rust challengers' wheelbase, full lock
+    and lag from `vehicle.yaml`).
+  - `test/test_lane_speed.py` reads `stop_wait_s`'s default from `lane_follow.Settings`;
+    new `test/test_lane_follow.py`; `CMakeLists.txt` installs `lane_follow.py` and runs the
+    new test.

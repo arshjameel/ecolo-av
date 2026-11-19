@@ -538,6 +538,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_mux_state` | `command_mux_state` (Rust): who twist_mux passes on, on `/control/command_mux/state`, for the debug screen | `ros/command_mux/aav_mux_state/README.md` |
 | `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (`stop_sign_impl:=python` falls back) | `ros/perception/aav_stop_sign_rs/README.md` |
 | `aav_lane_finder_rs` | `lane_finder` in Rust, the default (`lane_finder_impl:=python` falls back) | `ros/perception/aav_lane_finder_rs/README.md` |
+| `aav_lane_follower_rs` | `control_interface` (lane keeping) in Rust, the default (`lane_follower_impl:=python` falls back); the challengers (`lane_follower:=`) | `ros/drivers/aav_lane_follower_rs/README.md` |
 | `aav_camera_stream_rs` | `camera_stream` in Rust, the default with no detector (`camera_stream_impl:=python` falls back) | `ros/sources/aav_camera_stream_rs/README.md`, then [Camera pipeline](camera-pipeline.md) |
 | `aav_drive_to_point_rs` | `point_driver` and `drive_to_point` in Rust, the default (`drive_to_point_impl:=python` falls back) | `ros/drivers/aav_drive_to_point_rs/README.md`, then [A to B](a-to-b.md) |
 | `aav_detector_rs` | the detector in Rust through ONNX Runtime, a challenger (`detector_impl:=rust`) | `ros/perception/aav_detector_rs/README.md`, then [ONNX](onnx.md) |

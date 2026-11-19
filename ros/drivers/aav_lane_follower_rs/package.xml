@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_lane_follower_rs</name>
+  <version>0.1.0</version>
+  <description>control_interface in Rust (rclrs): the lane follower on twist_mux's AI slot, a drop-in for aav_lane_geometry's Python node (the 2025-26 team's), the default since 19 Nov (lane_follower_impl:=python falls back). The same node name, topics, QoS, parameters, states and commands; steering:= adds the challengers, pure pursuit and Stanley on the fitted lane centre, with the car's lag. The logic is the lane-follow-core crate, with no ROS, checked against lane_follow.py's answers.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>aav_lane_geometry</depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
