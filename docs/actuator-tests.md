@@ -374,7 +374,7 @@ pixi run car-test --stands --only faults         # some steps (or a group: steer
 | 2 | every sensor | `actuator-test preflight --stands --no-drive` (15 s still) | each at its documented rate |
 | 3a-c | steering | `steer-sweep`, `steer-rate`, `steer-centre` | its `vehicle.yaml` lines printed |
 | 4 | throttle on free wheels | `wheel-steps` (new, 3.14): 0.1, 0.2, 0.3, 0.15 m/s, 4 s each | the wheel speed follows: each step up within 25 % (or 0.05 m/s), the step down slower |
-| 5a | the Orin is lost | car: a person pulls the Orin's cable to the Motor Pi. Sim: the runner pauses its own output mux | car: the ESP32 brakes, and **holds** while still asked to roll once the cable is back. Sim: still within 2 s, no heartbeat while paused |
+| 5a | the Orin is lost | car: a person pulls the Orin's cable to the Motor Pi. Sim: the runner pauses its own output mux | car: the ESP32 brakes, and **holds** while still asked to roll once the cable is back. Sim: still within 2 s |
 | 5b-d | GPS, IMU, camera lost | car: a person unplugs it. Sim: `fault.<sensor> stop` | the sensor watchdog names it within its `max_age` + 1 s; still 3 s later |
 | 5e | lidar lost | car: a person unplugs it | **FAIL today**: the watchdog has no lidar input |
 | 5f-g | a Pi's link; a cable | a person pulls it (car only) | the car stops, and something says why |
@@ -429,6 +429,25 @@ safety lock, the runner:
   100 ms on its own. Once the cable is back, the runner still asks to roll for 2 s: the
   wheels must stay braked (the ESP32's latch), and `/vehicle/status` say disarmed or
   `CMD_TIMEOUT`.
+
+### Tested, 19 Nov (Ravensim only)
+
+`pixi run car-test --stands --sim --no-manual`, Ben's MacBook, its own Ravensim (road world,
+domain 110), about 7 minutes:
+
+| Step | Result |
+|---|---|
+| 1-2 preflight, sensors | PASS (Ravensim has no battery: skipped, and said) |
+| 3a-c steering | PASS: lines for `max_steering_angle`, `steer_offset`, `steer_lag`, `steer_rate`, `steer_deadband` |
+| 4 wheel-steps | PASS: 0.10 → 0.09, 0.20 → 0.21, 0.30 → 0.31, 0.15 → 0.23 m/s |
+| 5a heartbeat | PASS: still 0.50 s after the output mux paused |
+| 5b-d GPS, IMU, camera | PASS: the watchdog named each 2.11, 0.57, 1.09 s after its last message; still 0.41-0.45 s after its word |
+| 5e-g lidar, Pi, cable | SKIPPED: not in Ravensim |
+| 5h e-stop | PASS: still 0.67 s after it |
+
+The first runs found: Ravensim's cameras build on first use (the runner now waits for the
+camera), and the watchdog writes `STOP: gps STALE (...)`, not `STOP - ...` as the contract
+said (fixed there). **On the car: untested.**
 
 ## Trusting the fits
 

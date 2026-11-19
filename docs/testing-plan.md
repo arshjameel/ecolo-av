@@ -34,6 +34,7 @@ Alongside A and B: **the debug screen**: who is sending commands, and what (belo
 | The ESP32 | in QEMU: it brakes when the Orin's heartbeat stops | in `pixi run test` | Built; untested on the real board |
 | The bench | `pixi run bench`, `pixi run bench-check` | by hand | Built |
 | On stands | `pixi run actuator-test preflight --stands` | by hand | Built; **untested on the car** |
+| On stands, all of phase A | `pixi run car-test --stands` (`--sim --no-manual`: against its own Ravensim) | by hand | Built 19 Nov; against Ravensim 11 PASS, 3 SKIPPED (car only); **untested on the car** |
 | On the ground | `pixi run actuator-test speed-up / coast / brake` | by hand | Built; **untested on the car** |
 
 ## Phase A: the car on stands
@@ -45,25 +46,32 @@ Alongside A and B: **the debug screen**: who is sending commands, and what (belo
 `pixi run actuator-test preflight --stands`: speed up, hold, slow, brake, steer, and every
 sensor at once. **PASS / FAIL per line.** It presses the e-stop itself if the car won't stop.
 
-### A2. One command for the whole stands test (to build)
+### A2. One command for the whole stands test (built 19 Nov; untested on the car)
 
-`pixi run car-test --stands` runs, in order, and writes one report:
+`pixi run car-test --stands` runs, in order, and writes one report folder
+(`~/aav-tests/<time>-stands/report.md`). Any FAIL ends the run. How it works:
+[car-test](actuator-tests.md#car-test-the-whole-stands-test).
 
-| Step | Test | Passes when |
-|---|---|---|
-| 1 | The preflight (A1) | every line PASS |
-| 2 | Every sensor read: lidar, cameras, radar, IMU, GPS, wheels | each at its documented rate |
-| 3 | Steering: sweep, rate, centre (`steer-sweep`, `steer-rate`, `steer-centre`) | its numbers printed for `vehicle.yaml` |
-| 4 | Throttle on free wheels | the wheels' speed follows the command |
-| 5 | **Faults on purpose** (table below) | each one stops the car, and the screens say why |
+| Step | Test | Passes when | Status |
+|---|---|---|---|
+| 1 | The preflight (A1) | every line PASS | Built; untested on the car |
+| 2 | Every sensor read: lidar, the front camera, radar, IMU, GPS, wheels (the preflight's `--no-drive`) | each at its documented rate | Built; untested on the car |
+| 3 | Steering: sweep, rate, centre (`steer-sweep`, `steer-rate`, `steer-centre`) | its numbers printed for `vehicle.yaml` | Built; untested on the car |
+| 4 | Throttle on free wheels (`wheel-steps`, 3.14: 0.1, 0.2, 0.3, 0.15 m/s) | the wheels' speed follows the command | Built; untested on the car |
+| 5 | **Faults on purpose** (table below) | each one stops the car, and something says why | Built; untested on the car |
 
-| Fault | How the runner causes it | Expected |
-|---|---|---|
-| **The Orin is lost** | its heartbeat to the ESP32 stops | the ESP32 brakes and holds, on its own |
-| The lidar, a camera, the GPS or the IMU is lost | that driver stops | the sensor watchdog stops the car within 1 s |
-| A Pi is lost | its link stops | the car stops |
-| The e-stop | the runner asks a person to press it | everything stops |
-| A cable is pulled | the runner asks a person to pull it | the same as the software version |
+| Fault | How the runner causes it | Expected | Status |
+|---|---|---|---|
+| **The Orin is lost** | car: asks a person to pull the Orin's cable to the Motor Pi; sim: pauses its own Ravensim's output mux | the ESP32 brakes and holds, on its own | Built; untested on the car. No new hook in the output mux |
+| The GPS, the front camera or the IMU is lost | car: asks a person to unplug it; sim: Ravensim's `fault.<sensor> stop` | the sensor watchdog **names it** within its `max_age` + 1 s | Built; untested on the car |
+| The lidar is lost | car: asks a person to unplug it | the same | **FAILS today**: the watchdog has no lidar input. Not in Ravensim |
+| A Pi is lost | asks a person to pull the camera Pi's cable | the car stops, something says why | Built; car only |
+| The e-stop | car: asks a person to press it; sim: the runner presses `/safety/estop` | everything stops | Built; untested on the car |
+| A cable is pulled | asks a person to pull it | the same as the software version | Built; car only |
+
+> ℹ️ The sensor watchdog's lock holds navigation and the AI slot, never a test: so on a
+> sensor fault the runner stops itself once the watchdog **names** the sensor. The step
+> measures how fast the watchdog notices.
 
 > ⚠️ **On stands, never test braking distance.** Free wheels carry no weight, so the brake
 > numbers mean nothing there. Braking is phase B, on the ground.

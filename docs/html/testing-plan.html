@@ -7,7 +7,7 @@
 <!-- Generated from docs/testing-plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The testing plan</h1>
-<div class="meta">13 min read · 12 sections</div></header>
+<div class="meta">14 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -239,6 +239,12 @@ test, in what order, and how we know each step passed</strong>. The detail of ea
 <td>Built; <strong>untested on the car</strong></td>
 </tr>
 <tr>
+<td>On stands, all of phase A</td>
+<td><code>pixi run car-test --stands</code> (<code>--sim --no-manual</code>: against its own Ravensim)</td>
+<td>by hand</td>
+<td>Built 19 Nov; against Ravensim 11 PASS, 3 SKIPPED (car only); <strong>untested on the car</strong></td>
+</tr>
+<tr>
 <td>On the ground</td>
 <td><code>pixi run actuator-test speed-up / coast / brake</code></td>
 <td>by hand</td>
@@ -252,14 +258,17 @@ test, in what order, and how we know each step passed</strong>. The detail of ea
 <h3 id="a1-the-preflight-built">A1. The preflight (built)</h3>
 <p><code>pixi run actuator-test preflight --stands</code>: speed up, hold, slow, brake, steer, and every
 sensor at once. <strong>PASS / FAIL per line.</strong> It presses the e-stop itself if the car won't stop.</p>
-<h3 id="a2-one-command-for-the-whole-stands-test-to-build">A2. One command for the whole stands test (to build)</h3>
-<p><code>pixi run car-test --stands</code> runs, in order, and writes one report:</p>
+<h3 id="a2-one-command-for-the-whole-stands-test-built-19-nov-untested-on-the-car">A2. One command for the whole stands test (built 19 Nov; untested on the car)</h3>
+<p><code>pixi run car-test --stands</code> runs, in order, and writes one report folder
+(<code>~/aav-tests/&lt;time&gt;-stands/report.md</code>). Any FAIL ends the run. How it works:
+<a href="actuator-tests.html#car-test-the-whole-stands-test">car-test</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Step</th>
 <th>Test</th>
 <th>Passes when</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
@@ -267,26 +276,31 @@ sensor at once. <strong>PASS / FAIL per line.</strong> It presses the e-stop its
 <td>1</td>
 <td>The preflight (A1)</td>
 <td>every line PASS</td>
+<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>2</td>
-<td>Every sensor read: lidar, cameras, radar, IMU, GPS, wheels</td>
+<td>Every sensor read: lidar, the front camera, radar, IMU, GPS, wheels (the preflight's <code>--no-drive</code>)</td>
 <td>each at its documented rate</td>
+<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>3</td>
 <td>Steering: sweep, rate, centre (<code>steer-sweep</code>, <code>steer-rate</code>, <code>steer-centre</code>)</td>
 <td>its numbers printed for <code>vehicle.yaml</code></td>
+<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>4</td>
-<td>Throttle on free wheels</td>
+<td>Throttle on free wheels (<code>wheel-steps</code>, 3.14: 0.1, 0.2, 0.3, 0.15 m/s)</td>
 <td>the wheels' speed follows the command</td>
+<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>5</td>
 <td><strong>Faults on purpose</strong> (table below)</td>
-<td>each one stops the car, and the screens say why</td>
+<td>each one stops the car, and something says why</td>
+<td>Built; untested on the car</td>
 </tr>
 </tbody>
 </table></div>
@@ -296,37 +310,52 @@ sensor at once. <strong>PASS / FAIL per line.</strong> It presses the e-stop its
 <th>Fault</th>
 <th>How the runner causes it</th>
 <th>Expected</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>The Orin is lost</strong></td>
-<td>its heartbeat to the ESP32 stops</td>
+<td>car: asks a person to pull the Orin's cable to the Motor Pi; sim: pauses its own Ravensim's output mux</td>
 <td>the ESP32 brakes and holds, on its own</td>
+<td>Built; untested on the car. No new hook in the output mux</td>
 </tr>
 <tr>
-<td>The lidar, a camera, the GPS or the IMU is lost</td>
-<td>that driver stops</td>
-<td>the sensor watchdog stops the car within 1 s</td>
+<td>The GPS, the front camera or the IMU is lost</td>
+<td>car: asks a person to unplug it; sim: Ravensim's <code>fault.&lt;sensor&gt; stop</code></td>
+<td>the sensor watchdog <strong>names it</strong> within its <code>max_age</code> + 1 s</td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td>The lidar is lost</td>
+<td>car: asks a person to unplug it</td>
+<td>the same</td>
+<td><strong>FAILS today</strong>: the watchdog has no lidar input. Not in Ravensim</td>
 </tr>
 <tr>
 <td>A Pi is lost</td>
-<td>its link stops</td>
-<td>the car stops</td>
+<td>asks a person to pull the camera Pi's cable</td>
+<td>the car stops, something says why</td>
+<td>Built; car only</td>
 </tr>
 <tr>
 <td>The e-stop</td>
-<td>the runner asks a person to press it</td>
+<td>car: asks a person to press it; sim: the runner presses <code>/safety/estop</code></td>
 <td>everything stops</td>
+<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>A cable is pulled</td>
-<td>the runner asks a person to pull it</td>
+<td>asks a person to pull it</td>
 <td>the same as the software version</td>
+<td>Built; car only</td>
 </tr>
 </tbody>
 </table></div>
 <blockquote>
+<p>ℹ️ The sensor watchdog's lock holds navigation and the AI slot, never a test: so on a
+sensor fault the runner stops itself once the watchdog <strong>names</strong> the sensor. The step
+measures how fast the watchdog notices.</p>
 <p>⚠️ <strong>On stands, never test braking distance.</strong> Free wheels carry no weight, so the brake
 numbers mean nothing there. Braking is phase B, on the ground.</p>
 </blockquote>
