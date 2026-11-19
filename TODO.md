@@ -22,12 +22,11 @@ think there is room to improve").
 |---|---|---|
 | 1 | Merge NDT leading, the GPS checking | 210 |
 | 2 | **The map editor**: our SLAM map over the street map | 251 |
-| 3 | The testing page for after everyone installs | 254 |
-| 4 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
-| 5 | The labelling loop, then the campus twin | 252, 253 |
-| 6 | The planner faster; reversing in a narrow street | 152, 174 |
-| 7 | Speed hunting; the backing legs' drift | 189, 163 |
-| 8 | The challengers, then the Rust crates and a more Rust-like pass | below |
+| 3 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
+| 4 | The labelling loop, then the campus twin | 252, 253 |
+| 5 | The planner faster; reversing in a narrow street | 152, 174 |
+| 6 | Speed hunting; the backing legs' drift | 189, 163 |
+| 7 | The challengers, then the Rust crates and a more Rust-like pass | below |
 | waits | **The car** (being upgraded, 18 Nov): the stands, the hallway, a mapping drive | 246-250, 173 |
 
 ## 1. The testing plan
@@ -37,7 +36,7 @@ Ben, 18 Nov: "My prof wanted a full automated testing system".
 
 | # | Task | Status |
 |---|---|---|
-| 254 | **After the install**: one page of checks for each laptop, the Orin and the Pis once they are upgraded, before phase A | ⬜ |
+| 254 | **Phase 0, after the install**: [one page of checks](docs/after-install.md) for each laptop, each car computer, then the car together, before phase A | ✅ written 19 Nov (`aav-after-install.pdf`); ⬜ used on the car |
 | 246 | **Phase A, on stands**: `pixi run car-test --stands`: every sensor, steering, throttle on free wheels, faults on purpose (the Orin lost, a sensor stopped, the e-stop) | ✅ built, passes in Ravensim; ⬜ the car |
 | 247 | **The debug screen**: who is driving, what each asks, what ego sends, the gate and why (key D on the map) | ✅ built; ⬜ seen on a screen; ⬜ the car |
 | 248 | **Phase B, the hallway**: speed-up, coast, brake, steering; IMU blended with the wheels; each run over the model, with error bars | ✅ built; ⬜ the car. Open: 0.05 m/s wheel noise trips the runaway rule (a person decides) |
