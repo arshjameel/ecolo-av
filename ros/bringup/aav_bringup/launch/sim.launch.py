@@ -16,9 +16,11 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [amcl:=false] [amcl_impl:=rust] [voxels:=false] [voxels_impl:=python] [kerbs:=]
       [ego_impl:=rust]
       [lidar_impl:=rust] [things_impl:=rust] [lane_finder_impl:=rust]
+      [lane_follower_impl:=rust] [lane_follower:=pid]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [io_mux_impl:=rust] [stop_sign_impl:=rust]
-      [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
+      [ndt:=false] [ndt_ekf:=false] [pose_source:=gps] [ndt_map:=maps/ndt/test_lot.pcd]
+      [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
       [plan_around:=true] [things:=false]
       [watchdog:=true] [geofence:=true] [geofence_radius:=]
@@ -181,6 +183,11 @@ bench's argument names:
   lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
                       one's place (the default since 18 Nov), with lane:=true or
                       lane_pose:=true: the same topics and lanes
+  lane_follower_impl:=python  the Python control_interface (aav_lane_geometry, the
+                      2025-26 team's) in the Rust one's place (the default since 19 Nov),
+                      with lane:=true|fake: the same topics and commands
+  lane_follower:=pure_pursuit|stanley  with lane:=true, a Rust challenger steers on the
+                      fitted lane centre instead of the 2025-26 PID (pid, the default)
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
@@ -217,6 +224,12 @@ bench's argument names:
                       its pose (x, y, yaw) beside the GPS (aav_localization
                       config/ekf_global_ndt.yaml; docs/trials.md). Default false: the
                       global EKF on GPS alone
+  pose_source:=ndt    a challenger (TODO 210): NDT leads, the GPS checks. NDT runs (as
+                      ndt:=true); pose_check (aav_pose_check) passes NDT's pose to
+                      ekf_global while NDT is trusted, the GPS's only while it isn't, and
+                      says HOLD when neither is. The watchdog watches gps_check (the GPS's
+                      checks, warn only) and pose_check (stops on HOLD) in gps's place; the
+                      geofence's fix is /localization/pose_check/fix. Default gps: today's
   kiss_icp:=true      KISS-ICP lidar odometry (aav_kiss_icp), scored only, never TF or an
                       EKF (docs/designs/2026-10-30_kiss-icp.md): any world with the lidar;
                       needs the kiss environment once (pixi install --locked -e kiss)
@@ -372,6 +385,14 @@ LAYOUTS = {'road': 'road.rviz', 'test_lot': 'road.rviz', worlds.CAMPUS: 'road.rv
 CAMERA_PARTS = ('perception', 'camera_obstacles')
 
 
+def check_pose_source(word):
+    """Return pose_source:= checked: gps (today's) or ndt (NDT leads, TODO 210)."""
+    word = word.strip().lower()
+    if word not in ('gps', 'ndt'):
+        raise ValueError(f'pose_source:={word}: use gps or ndt')
+    return word
+
+
 def include(context, package, launch_file, **args):
     share = FindPackageShare(package).perform(context)
     return IncludeLaunchDescription(
@@ -453,10 +474,13 @@ def launch_setup(context):
     amcl = arg('amcl').lower() == 'true'
     # ndt_ekf: ekf_global takes NDT's pose, so NDT runs too.
     ndt_ekf = arg('ndt_ekf').lower() == 'true'
-    ndt = arg('ndt').lower() == 'true' or ndt_ekf
+    # pose_source:=ndt: NDT leads ekf_global's pose, the GPS checks (TODO 210).
+    pose_ndt = check_pose_source(arg('pose_source')) == 'ndt'
+    ndt = arg('ndt').lower() == 'true' or ndt_ekf or pose_ndt
     truth_pose = arg('truth_pose').lower() == 'true'
-    if truth_pose and ndt_ekf:
-        raise ValueError('truth_pose:=true has no ekf_global for ndt_ekf:=true to feed')
+    if truth_pose and (ndt_ekf or pose_ndt):
+        raise ValueError('truth_pose:=true has no ekf_global for ndt_ekf:=true or '
+                         'pose_source:=ndt to feed')
     lane_pose = arg('lane_pose').lower() == 'true'
     # Picked by the stack (ours' pose level since 17 Nov), not by hand: only where it can run
     # (an ekf_global, a camera, a lane map; below).
@@ -586,6 +610,9 @@ def launch_setup(context):
                          ('imu/data', '/sensors/imu/data')]),
         include(context, 'aav_localization', 'localization.launch.py', use_sim_time='true',
                 ndt_ekf=str(ndt_ekf).lower(), kiss_ekf=str(kiss_ekf).lower(),
+                pose_source='ndt' if pose_ndt else 'gps',
+                pose_trust_score=(worlds.CAMPUS_POSE_TRUST
+                                  if pose_ndt and world == worlds.CAMPUS else ''),
                 global_ekf=str(not truth_pose).lower(),
                 lane_pose=str(lane_pose).lower(), lane_map=pose_map,
                 localization_health_impl=vehicle.check_localization_health_impl(
@@ -695,7 +722,9 @@ def launch_setup(context):
         # costs one more stream of pictures.
         camera = cameras and (flag['perception'] or flag['camera_obstacles'] or lane != 'false'
                               or lane_pose or flag['faults'])
-        inputs = (['odom', 'imu', 'gps', 'local', 'global'] + (['camera'] if camera else [])
+        # NDT leading: the GPS's checks warn only, pose_check's HOLD stops (TODO 210).
+        gps = ['gps_check', 'pose_check'] if pose_ndt else ['gps']
+        inputs = (['odom', 'imu'] + gps + ['local', 'global'] + (['camera'] if camera else [])
                   + (['radar'] if radar else [])
                   # The roof lidar, where this world has one (TODO 246's step 5e): the stop
                   # zone and the costmap see through it, so a dead one stops, as the camera.
@@ -730,6 +759,8 @@ def launch_setup(context):
                                radius=fence_radius(arg('geofence_radius'), world),
                                centre_x=start_x,
                                centre_y=start_y, max_speed=sim_speed,
+                               fix_topic=('/localization/pose_check/fix' if pose_ndt
+                                          else '/localization/gps/odom'),
                                use_sim_time='true'))
     if flag['teleop']:
         actions.append(include(context, 'aav_teleop', 'teleop.launch.py', use_sim_time='true'))
@@ -754,8 +785,11 @@ def launch_setup(context):
                                                      'camera_obstacles.yaml'),
                                         {'use_sim_time': True}]))
     if lane in ('true', 'fake'):
+        impl = vehicle.check_lane_follower_impl(arg('lane_follower_impl'))
         actions.append(include(context, 'aav_lane_geometry', 'lane_follower.launch.py',
-                               fake=lane == 'fake'))
+                               fake=lane == 'fake', lane_follower_impl=impl,
+                               lane_follower=vehicle.check_lane_follower(
+                                   arg('lane_follower'), impl)))
     if lane == 'true' or lane_pose:
         actions.append(include(
             context, 'aav_lane_finder', 'lane_finder.launch.py',
@@ -979,6 +1013,14 @@ def generate_launch_description():
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+        DeclareLaunchArgument('lane_follower_impl',
+                              default_value=vehicle.DEFAULT_LANE_FOLLOWER_IMPL,
+                              description='rust or python: which control_interface steers by '
+                                          'the lane (aav_lane_follower_rs, or '
+                                          'aav_lane_geometry)'),
+        DeclareLaunchArgument('lane_follower', default_value=vehicle.DEFAULT_LANE_FOLLOWER,
+                              description='how lane keeping steers: pid (the 2025-26 PID), '
+                                          'or the Rust challengers pure_pursuit, stanley'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='python or rust: which things node tracks the '
                                           'cubes (aav_things, or aav_things_rs)'),
@@ -1160,6 +1202,9 @@ def generate_launch_description():
                               description='a trial: NDT (ndt:=true implied) and its pose '
                                           "into ekf_global, beside the GPS. Empty: the stack's "
                                           'choice (false)'),
+        DeclareLaunchArgument('pose_source', default_value='gps',
+                              description="gps (today's) or ndt: NDT leads ekf_global's "
+                                          'pose, the GPS checks it (a challenger, TODO 210)'),
         DeclareLaunchArgument('ndt_chunks', default_value='',
                               description='with ndt:=true: the map in 64 m chunks from this '
                                           "folder (TODO 175). Empty: the campus's chunks "

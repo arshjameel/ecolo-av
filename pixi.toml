@@ -53,7 +53,7 @@ actuator-test = { cmd = "tools/actuator_test.sh", description = "The actuator te
 car-test = { cmd = "tools/car_test.sh", description = "Phase A on stands, one command, one report: pixi run car-test --stands (the real car: the preflight, every sensor, the steering, throttle on free wheels, faults on purpose); --sim starts its own Ravensim (this computer only); --only STEP..., --no-manual. pixi run car-test --hallway: phase B, the transfer functions in a measured hallway (--sim: a pretend one) (docs/actuator-tests.md)" }
 drive-to-point = { cmd = "tools/drive_to_point.sh", description = "Drive to one point and stop there smoothly: pixi run drive-to-point --sim --ahead 20 (Ravensim, this computer only); --lat L --lon L or --x X --y Y; on the car without --sim, it asks first (docs/a-to-b.md)" }
 ghost = { cmd = "tools/ros.sh ros2 run aav_ghost ghost", description = "A pretend person in navigation's view, with sim or car ghost:=true: pixi run ghost ahead 10 (m past the bumper), ghost at 20 0 (map x y), ghost size 0.3 1.2, ghost off; ghost --local ... for Ravensim on this computer (docs/ghost-obstacles.md)" }
-sim-fault = { cmd = "tools/ros.sh --local tools/sim_fault.sh", description = "Make a simulated sensor fail on purpose next to pixi run sim: sim-fault gps stop, sim-fault gps ok (gps, imu, odom, radar, camera; stop, freeze, nan, jump)" }
+sim-fault = { cmd = "tools/ros.sh --local tools/sim_fault.sh", description = "Make a simulated sensor fail on purpose next to pixi run sim: sim-fault gps stop, sim-fault gps ok (gps, imu, odom, radar, camera; stop, freeze, nan, jump; gps drift)" }
 
 # Check and measure.
 check = { cmd = "tools/ros.sh python3 tools/check_graph.py --profile {{ profile }}", args = [{ arg = "profile", default = "turtle" }], description = "Running graph vs the contract: pixi run check [turtle|sim|road|spine|car|replay|bench]" }
@@ -307,6 +307,7 @@ mcap-ros2-support = ">=0.5,<1"
 
 [feature.slam.tasks]
 map-drive = { cmd = "python3 tools/map_drive.py", description = "A map from a recorded drive, no ROS (TODO 250): KISS-SLAM's poses with loop closures, then NDT's map, its 64 m chunks and a 2D map for the planner, fitted to the GPS where it is good: pixi run map-drive bags/<drive> (pixi install -e slam once; docs/maps-from-drives.md)" }
+map-edit = { cmd = "cargo run --release -q --manifest-path ros/hud/aav_dev_window/Cargo.toml --bin map_edit --", description = "The map editor (Bevy, no ROS; TODO 251): a map-drive folder over the street map, to line up, box-delete (parked cars), label and approve; saves a new folder, never over the old: pixi run map-edit bags/<drive>/map (docs/map-editor.md)" }
 
 # The diffusion planner's training and its model (aav_diffusion_planner, a trial:
 # docs/designs/2026-11-02_diffusion-planner.md): PyTorch (BSD-3) to train, ONNX (Apache-2.0)

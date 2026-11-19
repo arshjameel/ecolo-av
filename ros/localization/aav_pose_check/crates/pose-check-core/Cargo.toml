@@ -1,0 +1,10 @@
+[package]
+name = "pose-check-core"
+description = "NDT leads, the GPS checks: which absolute pose ekf_global may take, when NDT and the GPS disagree who is wrong, and where NDT starts again (no ROS)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+thiserror = "2"

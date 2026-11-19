@@ -78,6 +78,7 @@ others offer the EKFs only first.
 | `ndt:=true ndt_map:=maps/ndt/test_lot.pcd` | the lidar slid onto a saved map | **1-3 cm** |
 | `amcl:=true` | many guesses; keep the ones that match the walls (ours in Rust; `amcl_impl:=stock` for Nav2's) | 6-11 cm (5-9 cm, 18 Nov) |
 | `ndt_ekf:=true ndt_map:=maps/ndt/test_lot.pcd` | NDT, and the global EKF **uses** it beside the GPS (a trial) | the EKF **1.6 cm** ([trials](history/trials-log.md#ndt-into-the-global-ekf-30-oct)) |
+| `pose_source:=ndt` | NDT **leads** the global EKF; the GPS only checks it, and stands in when NDT is lost (a challenger, TODO 210; `aav_pose_check`) | the EKF **1 cm**, and the same with the GPS stopped, jumping or drifting 5 m ([Maps and position](maps-and-position.md#8-ndt-leads-the-gps-checks)) |
 | `kiss_icp:=true` | how far the car moved, from the lidar alone (no map) | 0.02-0.04 m per 100 m driven |
 | `kiss_ekf:=true` | KISS-ICP, and the local EKF **uses** its speed beside the wheels (a trial) | no clear win yet ([trials](history/trials-log.md#kiss-icp-into-the-local-ekf-1-nov)) |
 
@@ -132,6 +133,8 @@ swap an algorithm. The rest:
 | `nav`, `rviz`, `gui`, `chase_camera`, `arm`, `watchdog`, `actuator_model` | navigation, RViz, the simulator's window, the chase camera, arming the spine, the sensor watchdog, the actuator model | `true` |
 | `teleop`, `hud`, `map`, `foxglove` | a joystick here, the HUD, the map window, the Foxglove bridge | `false` |
 | `perception`, `lane`, `camera_obstacles`, `faults` | the detector, lane keeping (`true` or `fake`), boxes into the costmap, the camera fault path (worlds with cameras) | `false` |
+| `lane_follower` | with `lane`: how lane keeping steers: `pid` (the 2025-26 PID), or the Rust challengers `pure_pursuit`, `stanley` ([scores](../ros/drivers/aav_lane_follower_rs/README.md#scores)) | `pid` |
+| `lane_follower_impl`, `lane_finder_impl` | with `lane`: the lane follower and the lane finder in `rust` or `python` | `rust` |
 | `spine`, `esp32`, `esp32_loop`, `bridge` | the spine or today's ESP32 in the loop; `pi` or `open`; `rust` or `python` | `false`, `false`, `pi`, `rust` |
 | `start_x`, `start_y`, `start_yaw` | where the car starts (m, rad) | `0.0` |
 | `geofence_radius` | the fence's circle (m) | `200.0` |

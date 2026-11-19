@@ -1,7 +1,6 @@
 """The lane follower's slow-down rule (scripts/lane_speed.py): no ROS needed."""
 
 from pathlib import Path
-import re
 import sys
 
 import pytest
@@ -57,6 +56,5 @@ def test_timeout_matches_twist_mux():
 
 def test_stop_wait_default_starts_the_slow_down_in_time():
     """The watchdog ticks every 0.1 s, so it must notice before twist_mux's timeout."""
-    source = (PACKAGE / 'scripts/control_interface.py').read_text()
-    wait = float(re.search(r"declare_parameter\('stop_wait_s', ([\d.]+)\)", source)[1])
-    assert wait + 0.1 < AI_SLOT_TIMEOUT_S
+    from lane_follow import Settings
+    assert Settings().stop_wait_s + 0.1 < AI_SLOT_TIMEOUT_S

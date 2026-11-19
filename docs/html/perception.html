@@ -7,7 +7,7 @@
 <!-- Generated from docs/perception.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Perception: cameras, RF-DETR and YOLO, stop signs, lanes and radar</h1>
-<div class="meta">36 min read · 11 sections</div></header>
+<div class="meta">39 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,6 +19,8 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
@@ -37,12 +39,15 @@
 <span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -682,7 +687,7 @@ far more pictures may do better:</p>
 </tr>
 <tr>
 <td>Lane lines and the drivable area</td>
-<td>YOLOPv2, TwinLiteNet</td>
+<td>Ultra-Fast-Lane-Detection v2 (the pick, trained by us: <a href="#a-learned-lane-finder-the-survey-19-nov">the survey</a>), CLRNet, YOLOPv2, TwinLiteNet</td>
 </tr>
 <tr>
 <td>Distance from one camera</td>
@@ -938,7 +943,39 @@ names, passed on as they are.</p>
 <li>It publishes on <code>/drivers/ai/cmd_vel</code>, the mux's slot for a learned driver. Every other driver
   outranks it.</li>
 <li>It asks for 2 m/s; ego caps it at the car's 1 m/s.</li>
+<li><strong>In Rust by default</strong> since 19 Nov (<a href="../../ros/drivers/aav_lane_follower_rs/README.md">aav_lane_follower_rs</a>):
+  the 2025-26 PID ported, the Python's commands on 2,797 shared events.
+  <code>lane_follower_impl:=python</code> runs the 2025-26 node.</li>
+<li><strong>Two challengers</strong> steer on the lane's centre line (the two fits' mean), from where
+  the car will be after its lag: <code>lane_follower:=pure_pursuit</code> and <code>lane_follower:=stanley</code>.
+  Their scores, 3 runs each: the package's README.</li>
 </ul>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Steering</th>
+<th>Looks at</th>
+<th>Knows the lag?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pid</code> (2025-26, the default)</td>
+<td>the offset 3 m ahead</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>pure_pursuit</code></td>
+<td>the centre line 4-10 m ahead (more with speed)</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>stanley</code></td>
+<td>the centre line's heading and offset at the front axle</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table></div>
 <h3 id="on-the-bench">On the bench</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -1032,6 +1069,97 @@ the speed. On a campus road the lane runs from the yellow centre line to the whi
   no line in 68 % of them. A guess: Gazebo draws the paint 5 mm above the tarmac, close
   enough for its depth buffer to hide it far off. <span class="badge b-untested">untested</span></li>
 </ul>
+<h3 id="a-learned-lane-finder-the-survey-19-nov">A learned lane finder? The survey (19 Nov)</h3>
+<p>Ben, 19 Nov: "or find a better version". Open lane detectors, their code's licence (from
+each repository), and the catch. <strong>Not built</strong>: it would run through ONNX (TODO 243),
+behind the same <code>/perception/lane/geometry</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Code licence</th>
+<th>How it finds lanes</th>
+<th>Speed</th>
+<th>The catch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ultra-Fast-Lane-Detection v2</strong> (Qin et al., TPAMI 2022)</td>
+<td>MIT</td>
+<td>a plain CNN picks, per row and column anchor, where each lane crosses</td>
+<td>the fastest: ~300 pictures/s (ResNet-18, GPU)</td>
+<td>a fixed number of lanes; weaker on odd shapes</td>
+</tr>
+<tr>
+<td>CLRNet (Zheng et al., CVPR 2022); CLRerNet</td>
+<td>Apache-2.0</td>
+<td>lane anchors refined across feature levels</td>
+<td>~200/s</td>
+<td>its NMS is a custom CUDA op: harder to export to ONNX and TensorRT</td>
+</tr>
+<tr>
+<td>LaneATT (Tabelini et al., CVPR 2021)</td>
+<td>MIT</td>
+<td>anchors with attention</td>
+<td>~250/s</td>
+<td>the same custom NMS</td>
+</tr>
+<tr>
+<td>PolyLaneNet (Tabelini et al., 2020)</td>
+<td>MIT</td>
+<td>a polynomial per lane, straight out</td>
+<td>fast</td>
+<td>the least accurate; but its answer is our message's shape</td>
+</tr>
+<tr>
+<td>CondLaneNet (Liu et al., ICCV 2021)</td>
+<td>Apache-2.0</td>
+<td>conditional instance shapes</td>
+<td>~200/s</td>
+<td>more parts to export</td>
+</tr>
+<tr>
+<td>YOLOP, YOLOPv2; TwinLiteNet</td>
+<td>MIT</td>
+<td>segmentation: lane pixels and the drivable area</td>
+<td>fast; TwinLiteNet tiny</td>
+<td>pixels, not lines: our fit still needed; the drivable area is a bonus</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The datasets are the problem, not the code.</strong> Every published set of weights was
+trained on one of these, and none has a licence we may use (<code>CLAUDE.md</code>: no non-commercial
+or unclear licences):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Terms</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CULane</td>
+<td>non-commercial only; no redistribution (its page)</td>
+</tr>
+<tr>
+<td>BDD100K</td>
+<td>its own licence, accepted at download; not plainly open</td>
+</tr>
+<tr>
+<td>TuSimple, CurveLanes</td>
+<td>no clear licence</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The pick: Ultra-Fast-Lane-Detection v2</strong> (MIT): a plain CNN, so it exports to ONNX and
+TensorRT with no custom ops (its repository has the export), the fastest of the lot on
+the Orin's budget, and its points per row fit into our polynomial and <code>LaneGeometry</code>
+unchanged. <strong>Trained by us</strong>, not from the published weights: on Ravensim's pictures,
+labelled for free from the world's lane map, then on the car's recordings through the
+labelling loop (TODO 252). CLRNet stays the accuracy challenger once its NMS is outside
+the ONNX graph. TODO 262b.</p>
 <h3 id="next">Next</h3>
 <div class="table-wrap"><table>
 <thead>

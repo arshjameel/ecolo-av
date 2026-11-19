@@ -19,6 +19,8 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
@@ -37,12 +39,15 @@
 <span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -187,6 +192,11 @@ programs only meet through messages.</p></div>
 <td>The lane finder, <code>aav_lane_finder_rs</code></td>
 <td>Rust (<code>rclrs</code>), no OpenCV</td>
 <td>A port of <code>aav_lane_finder</code> (18 Nov): the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 %. The default; <code>lane_finder_impl:=python</code> falls back</td>
+</tr>
+<tr>
+<td>The lane follower, <code>aav_lane_follower_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>A port of the 2025-26 <code>control_interface</code> (19 Nov): the Python's commands on 2,797 shared events; the challengers pure pursuit and Stanley beside it (<code>lane_follower:=</code>). The default; <code>lane_follower_impl:=python</code> falls back</td>
 </tr>
 <tr>
 <td>The camera stream, <code>aav_camera_stream_rs</code></td>

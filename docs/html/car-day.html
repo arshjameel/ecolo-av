@@ -19,6 +19,8 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
@@ -37,12 +39,15 @@
 <span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -1449,6 +1454,11 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <td><code>lane_finder_impl:=python</code></td>
 </tr>
 <tr>
+<td>control_interface, lane keeping (with the <code>lane</code> part; since 19 Nov)</td>
+<td><code>aav_lane_follower_rs</code></td>
+<td><code>lane_follower_impl:=python</code></td>
+</tr>
+<tr>
 <td>joy_alive (the joystick's check, wherever teleop runs)</td>
 <td><code>aav_joy_alive_rs</code></td>
 <td><code>joy_alive_impl:=python</code></td>
@@ -1478,7 +1488,7 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>1</td>
 <td>read the first lines of <code>car.launch.py</code> (<code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...</code>)</td>
-<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust joy_alive_impl:=rust stop_sign_impl:=rust camera_stream_impl:=rust</code></td>
+<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust lane_follower_impl:=rust joy_alive_impl:=rust stop_sign_impl:=rust camera_stream_impl:=rust</code></td>
 <td>a word other than <code>rust</code>: someone passed <code>:=python</code></td>
 </tr>
 <tr>

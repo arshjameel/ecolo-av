@@ -70,6 +70,8 @@ if command -v cargo >/dev/null; then
   (cd ros/can_bridge/aav_legacy_rs && cargo test -q --locked -p legacy-bridge)
   echo "== ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
+  echo "== ros/drivers/aav_lane_follower_rs: control_interface in Rust, lane_follow.py's answers"
+  (cd ros/drivers/aav_lane_follower_rs && cargo test -q --locked -p lane-follow-core)
   echo "== ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
   (cd ros/safety/aav_joy_alive_rs && cargo test -q --locked -p joy-alive-core)
   echo "== ros/command_mux/aav_mux_state: who is driving, by twist_mux's rule and files"
@@ -82,12 +84,16 @@ if command -v cargo >/dev/null; then
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
   echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
   (cd ros/bringup/aav_description/map-chunks && cargo test -q --locked)
+  echo "== ros/bringup/aav_description/map-edit: the map editor's edits, saves and layers (TODO 251)"
+  (cd ros/bringup/aav_description/map-edit && cargo test -q --locked)
   echo "== ros/bringup/aav_description/lanelet-map: Lanelet2 maps in Rust (TODO 175)"
   (cd ros/bringup/aav_description/lanelet-map && cargo test -q --locked)
   echo "== ros/safety/aav_stop_zone: the stop zone's decision in Rust (TODO 182)"
   (cd ros/safety/aav_stop_zone && cargo test -q --locked -p stop-zone)
   echo "== ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
   (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
+  echo "== ros/localization/aav_pose_check: NDT leads, the GPS checks; who is wrong; the seed"
+  (cd ros/localization/aav_pose_check && cargo test -q --locked -p pose-check-core)
   echo "== ros/localization/aav_amcl_rs: AMCL's filter: a near guess, a kidnap, KLD's bounds"
   (cd ros/localization/aav_amcl_rs && cargo test -q --locked -p amcl-core)
   echo "== ros/sim/aav_simulator: Ravensim's core: the car, the rays, the worlds, the camera lockstep"
@@ -151,9 +157,11 @@ if command -v cargo >/dev/null; then
   rust_style ros/drivers/aav_drive_to_point_rs -p point-core
   rust_style ros/bringup/aav_description/car-model
   rust_style ros/bringup/aav_description/map-chunks
+  rust_style ros/bringup/aav_description/map-edit
   rust_style ros/bringup/aav_description/lanelet-map
   rust_style ros/safety/aav_stop_zone -p stop-zone
   rust_style ros/localization/aav_ndt -p ndt-core
+  rust_style ros/localization/aav_pose_check -p pose-check-core
   rust_style ros/sim/aav_simulator -p sim-core --features shared
   rust_style ros/sim/aav_spine_sim -p bench-car
   rust_style ros/drivers/aav_mppi_lag -p mppi-lag --features shared

@@ -85,7 +85,8 @@ each one's README has its topics.
 | `aav_detector_rs` | perception | the detector in Rust, a challenger (`detector_impl:=rust`): RF-DETR's ONNX through ONNX Runtime ([ONNX](onnx.md)) | [[works]] in Ravensim (Core ML); TensorRT [[untested]] | new: a port of `aav_detector`'s `detector` |
 | `aav_lane_finder` | perception | the lane lines in the camera's pictures, as `/perception/lane/geometry` (OpenCV) | [[works]] on the bench | new |
 | `aav_lane_finder_rs` | perception | `lane_finder` in Rust, the default (18 Nov; `lane_finder_impl:=python` falls back): no OpenCV | [[works]] the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 % in Ravensim | new: a port of `aav_lane_finder` |
-| `aav_lane_geometry` | perception | lane keeping: a driver on `/drivers/ai/cmd_vel` | [[works]] on the bench, with `aav_lane_finder` | 2025-26 `Lane_Detection_ROS2` |
+| `aav_lane_geometry` | perception | lane keeping: the `LaneGeometry` message, and the 2025-26 driver on `/drivers/ai/cmd_vel` (Python: the fall-back, `lane_follower_impl:=python`) | [[works]] on the bench, with `aav_lane_finder` | 2025-26 `Lane_Detection_ROS2` |
+| `aav_lane_follower_rs` | drivers | `control_interface` in Rust, the default (19 Nov; `lane_follower_impl:=python` falls back); the challengers `lane_follower:=pure_pursuit`, `stanley` | [[works]] the Python's commands on 2,797 shared events; in Ravensim's road world and on the campus (`measure lane`) | new: a port of `aav_lane_geometry`'s |
 | `aav_hud` | hud | the in-car screens in Rust (raylib): the HUD (node `hud`) and the map window (node `map`) | [[works]] on a Mac: `--demo`, fed topics, bench mode. [[untested]] on a Pi and on the car | new |
 | `aav_dev_window` | hud | the developer window (Bevy), for a laptop: `pixi run dev-window`. A cargo program, not a colcon package | built 5 Nov | new |
 
@@ -139,7 +140,7 @@ each one's README has its topics.
 | `aav_detector`: `stop_sign_watcher` | `/perception/detections` | `/perception/stop_sign` | twist_mux's stop-sign lock, priority 30 |
 | `aav_radar_clusters`: `radar_clusters` | `/sensors/radar/points` | `/perception/radar/clusters`, `/perception/radar/cluster_boxes` | DBSCAN, in Rust; eps 0.8 m, 15 points (5 on the bench and in Gazebo) |
 | `aav_lane_finder`: `lane_finder` | `/sensors/camera/front_left/image_raw`, `/sensors/camera/front_left/camera_info` | `/perception/lane/geometry`, `/perception/lane/image` | a bird's-eye view, sliding windows, a curve per line; the camera's place from `vehicle.yaml` |
-| `aav_lane_geometry`: `control_interface` | `/perception/lane/geometry` | `/drivers/ai/cmd_vel` | steers back to the lane's centre, measured 3 m ahead |
+| `aav_lane_follower_rs` (or `aav_lane_geometry`): `control_interface` | `/perception/lane/geometry` | `/drivers/ai/cmd_vel` | steers back to the lane's centre, measured 3 m ahead (the PID), or on the lane's centre line (`lane_follower:=`) |
 
 ## Backends
 

@@ -38,8 +38,8 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **Reeds-Shepp** curves: J. A. Reeds, L. A. Shepp, Pacific J. Mathematics, 1990 | paper | idea | reversing paths; through OMPL in Nav2's planner |
 | **Continuous-curvature paths**: T. Fraichard, A. Scheuer, "From Reeds and Shepp's to Continuous-Curvature Paths", IEEE T-RO, 2004 | paper | idea | the steering-rate lattice moves (TODO 177) |
 | OMPL (the Open Motion Planning Library) | BSD-3 | ported (through Nav2) | the curves inside the planner |
-| **Pure Pursuit**: R. C. Coulter, CMU-RI-TR-92-01, 1992; **Regulated Pure Pursuit**: S. Macenski et al., Autonomous Robots, 2023 | paper | idea | `aav_track`, Nav2's RPP |
-| **Stanley**: S. Thrun et al., "Stanley: The Robot that Won the DARPA Grand Challenge", J. Field Robotics, 2006 | paper | idea | `aav_track`'s Stanley follower |
+| **Pure Pursuit**: R. C. Coulter, CMU-RI-TR-92-01, 1992; **Regulated Pure Pursuit**: S. Macenski et al., Autonomous Robots, 2023 | paper | idea | `aav_track`, Nav2's RPP; `aav_lane_follower_rs`'s `lane_follower:=pure_pursuit` (on the camera's lane centre, with the car's lag) |
+| **Stanley**: S. Thrun et al., "Stanley: The Robot that Won the DARPA Grand Challenge", J. Field Robotics, 2006 | paper | idea | `aav_track`'s Stanley follower; `aav_lane_follower_rs`'s `lane_follower:=stanley` (heading and cross-track at the front axle, from the camera's lane centre) |
 | LQR and MPC (textbook control) | - | idea | `aav_track`'s LQR, MPC and MPC with lag; `aav_mpc_lag`, the MPC with lag in Rust |
 | **OSQP**'s ADMM: B. Stellato, G. Banjac, P. Goulart, A. Bemporad, S. Boyd, "OSQP: an operator splitting solver for quadratic programs", Math. Programming Computation, 2020 | Apache-2.0 (the solver; we took the algorithm, not its code) | idea | `aav_track`'s `qp.py` and its Rust port in `aav_mpc_lag` (`qp.rs`, 15 Nov) |
 | **Clarabel** (P. Goulart, Y. Chen; Oxford) | Apache-2.0 | idea | read and weighed for `aav_mpc_lag`'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (`aav_mpc_lag` README) |
@@ -54,6 +54,8 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **The bootstrap**: B. Efron, "Bootstrap Methods: Another Look at the Jackknife", Annals of Statistics, 1979 | paper | idea | the hallway fits' 90 % intervals, resampling the passes (`aav_actuator_tests` `errorbars.py`) |
 | **Complementary filter**: W. T. Higgins, "A Comparison of Complementary and Kalman Filtering", IEEE Trans. Aerospace and Electronic Systems, 1975 | paper | idea | follow in odom, correct slowly (TODO 186): the followers take the fast part of the pose from odometry and the slow part from the map, the map -> odom correction rate-limited (`aav_mppi_lag` `map_correction.rs`, `aav_track` `slow_frame.py`) |
 | **NDT**: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009 | paper | idea | `aav_ndt` (its `PROVENANCE.md` lists the rest) |
+| **Autoware's localization** (the Autoware Foundation): NDT the main pose, the GNSS only for the first pose (`pose_initializer`); `localization_error_monitor` and `pose_instability_detector` | Apache-2.0 | idea | `aav_pose_check` (`pose_source:=ndt`, TODO 210): NDT leads `ekf_global`, the GPS only checks it, and a lost NDT starts again from AMCL or the GPS. Our own checks: the gap against both covariances, NDT's score, the GPS's fix, spread and jumps |
+| **Normalised innovation squared, chi-square gating**: Y. Bar-Shalom, X. R. Li, T. Kirubarajan, *Estimation with Applications to Tracking and Navigation*, 2001 | book | idea | `aav_pose_check`: NDT against the GPS, d'(Σ_ndt + Σ_gps)⁻¹d over a window, 99.9 % for 2 numbers |
 | **KISS-ICP**: I. Vizzo et al., RA-L, 2023 | MIT | runs | `kiss_icp:=true`, scored beside the EKF |
 | **KISS-SLAM**: T. Guadagnino, B. Mersch, S. Gupta, I. Vizzo, G. Grisetti, C. Stachniss, "KISS-SLAM: A Simple, Robust, and Accurate 3D LiDAR SLAM System With Enhanced Generalization Capabilities", IROS 2025 (PRBonn, `kiss-slam` 0.0.2 on PyPI) | MIT (its wheel builds in g2o, BSD, and SuiteSparse's CHOLMOD, LGPL-2.1+: an offline tool, never on the car) | runs | `pixi run map-drive`: a map from a recorded drive, with loop closures (TODO 250, [Maps from drives](maps-from-drives.md)) |
 | **MapClosures**: S. Gupta, T. Guadagnino, B. Mersch, I. Vizzo, C. Stachniss, "Effectively Detecting Loop Closures using Point Cloud Density Maps", ICRA 2024 | MIT | runs | KISS-SLAM's loop closures, in `map-drive` |
@@ -92,6 +94,8 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `detector-core` |
 | ONNX; onnxscript | Apache-2.0; MIT | runs | exporting RF-DETR to ONNX (`tools/export_model.py --format onnx`) |
 | rfdetr's PostProcess and COCO class list | Apache-2.0 | ported | `detector-core`'s decode and labels, through our `detr.py` |
+| **Ultra-Fast-Lane-Detection v2**: Z. Qin, P. Zhang, X. Li, TPAMI 2022 (`cfzd/Ultra-Fast-Lane-Detection-v2`) | MIT | idea (looked at) | the pick for a learned lane finder, trained by us (TODO 262b, `docs/perception.md`) |
+| CLRNet (T. Zheng et al., CVPR 2022), CLRerNet; LaneATT (L. Tabelini et al., CVPR 2021); PolyLaneNet (L. Tabelini et al., 2020); CondLaneNet (L. Liu et al., ICCV 2021); YOLOP, YOLOPv2, TwinLiteNet | Apache-2.0; Apache-2.0; MIT; MIT; Apache-2.0; MIT | idea (looked at) | the lane detector survey (`docs/perception.md`); their published weights are trained on CULane (non-commercial), BDD100K, TuSimple or CurveLanes (not clearly open), so not used |
 
 ## Maps and routes
 
@@ -123,6 +127,28 @@ Each has a TODO row to port its idea.
 | **CommonRoad route planner** (TU Munich) | BSD-3-Clause | idea | looked at for where `lane.rs` changes lane |
 | **Fast-Poly / Poly-MOT** (X. Li et al., 2023-24); **OC-SORT** (J. Cao et al., CVPR 2023); **MapMOS** (PRBonn) | MIT | idea | motion models per kind and re-found tracks for `aav_things` (TODO 217) |
 | **Kinematic-ICP** (T. Guadagnino et al., PRBonn, 2025); **small_gicp** (K. Koide); **GenZ-ICP** (D. Lee et al., 2024) | MIT | idea | the next lidar-odometry challenger (TODO 216); yardsticks for NDT |
+
+## Taught in the guide (19 Nov)
+
+Explained in [How a self-driving car works](how-self-driving-works.md), not built (or
+not yet). The papers the guide names; the ones we built on are in the tables above.
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **ICP**: P. J. Besl, N. D. McKay, "A Method for Registration of 3-D Shapes", IEEE T-PAMI, 1992 | paper | idea | the guide's ICP; inside KISS-ICP and `map-drive --merge` |
+| **Scan Context**: G. Kim, A. Kim, IROS 2018; **OverlapNet**: X. Chen et al., RSS 2020; **IR-MCL** (PRBonn, 2023) | paper | idea | place recognition and learned MCL: studied |
+| **YOLO**: J. Redmon et al., CVPR 2016; **DETR**: N. Carion et al., ECCV 2020 | paper | idea | the guide's detectors (we run Ultralytics YOLO and RF-DETR, above) |
+| **SORT**: A. Bewley et al., ICIP 2016 | paper | idea | the guide's tracking |
+| **RRT**: S. M. LaValle, 1998; **RRT\***: S. Karaman, E. Frazzoli, IJRR 2011 | paper | idea | the guide's sampling planners: not built |
+| **Dubins** curves: L. E. Dubins, American J. Mathematics, 1957 | paper | idea | the guide's curves (Reeds-Shepp, above, is the one we use) |
+| **UniAD**: Y. Hu et al., "Planning-oriented Autonomous Driving", CVPR 2023; Wayve's GAIA-1 | paper | idea | the guide's end-to-end section: studied |
+| **Statecharts**: D. Harel, "Statecharts: A Visual Formalism for Complex Systems", Science of Computer Programming, 1987 | paper | idea | the guide's hierarchical state machines: studied |
+| **BehaviorTree.CPP** (Nav2's tree engine); Nav2's `navigate_to_pose_w_replanning_and_recovery.xml` | MIT; Apache-2.0 | idea | the guide's behaviour trees: the tree we ran for a car until Nav2 went (17 Nov) |
+| **Apollo's scenarios and stages**; **Autoware's behaviour path and behaviour velocity planners** | Apache-2.0 | idea | the guide's traffic-rule modules, in general terms; our road ahead's stops are the same shape in small |
+| **IDM**, the Intelligent Driver Model: M. Treiber, A. Hennecke, D. Helbing, Physical Review E, 2000 | paper | idea | the guide's car following: not built |
+| **POMDPs**: L. P. Kaelbling, M. L. Littman, A. R. Cassandra, Artificial Intelligence, 1998; D. Sadigh et al., "Planning for Autonomous Cars that Leverage Effects on Human Actions", RSS 2016 | paper | idea | the guide's decisions under uncertainty and games: studied |
+| **ALVINN**: D. Pomerleau, NIPS 1989; **ChauffeurNet**: M. Bansal et al., RSS 2019; **DAgger**: S. Ross, G. Gordon, D. Bagnell, AISTATS 2011 | paper | idea | the guide's learned behaviour: studied |
+| matplotlib; NumPy | PSF-based; BSD-3 | runs | drawing the guide's pictures (`tools/teach_figures.py`) |
 
 ## Simulators and screens
 

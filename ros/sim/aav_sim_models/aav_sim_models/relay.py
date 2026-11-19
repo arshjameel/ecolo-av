@@ -47,9 +47,9 @@ class SensorRelay(Node):
                 self.get_logger().warning(f'FAULT ON PURPOSE: {self.sensor} {mode}')
         return SetParametersResult(successful=True)
 
-    def faulty(self, msg, nan=None, jump=None):
+    def faulty(self, msg, nan=None, jump=None, drift=None, now=None):
         """Return msg through the fault (None: send nothing), stamped as msg."""
-        out = self.fault.apply(msg, nan=nan, jump=jump)
+        out = self.fault.apply(msg, nan=nan, jump=jump, drift=drift, now=now)
         if out is not None and out is not msg:
             out.header.stamp = msg.header.stamp     # a frozen sensor still looks alive
         return out

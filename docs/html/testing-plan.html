@@ -7,7 +7,7 @@
 <!-- Generated from docs/testing-plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The testing plan</h1>
-<div class="meta">18 min read · 12 sections</div></header>
+<div class="meta">36 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,6 +19,8 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
@@ -37,12 +39,15 @@
 <span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
 <a class="here" href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -128,76 +133,126 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-order">The order</a><a href="#what-runs-automatically-today">What runs automatically today</a><a href="#phase-a-the-car-on-stands">Phase A: the car on stands</a><a href="#phase-b-the-transfer-functions-in-the-hallway">Phase B: the transfer functions, in the hallway</a><a href="#the-debug-screen">The debug screen</a><a href="#phase-c-the-recording-kit">Phase C: the recording kit</a><a href="#phase-d-maps-from-hand-drives">Phase D: maps from hand drives</a><a href="#phase-e-the-map-editor">Phase E: the map editor</a><a href="#phase-f-the-labelling-loop">Phase F: the labelling loop</a><a href="#phase-g-the-campus-twin">Phase G: the campus twin</a><a href="#safety-rules-for-every-phase">Safety rules for every phase</a><a href="#see-also">See also</a></nav>
-<div class="lead"><p>Written 18 November 2026 by Ben Woodhead, for the team and our professor. It says <strong>what we
-test, in what order, and how we know each step passed</strong>. The detail of each test is in
-<a href="tests.html">Every test</a> and <a href="actuator-tests.html">Actuator tests</a>; the day itself in
-<a href="car-day.html">Car day</a>.</p>
+<nav class="toc"><span>On this page:</span><a href="#the-strategy-on-one-page">The strategy on one page</a><a href="#what-runs-automatically-today">What runs automatically today</a><a href="#the-boot-self-test">The boot self-test</a><a href="#phase-a-the-car-on-stands">Phase A: the car on stands</a><a href="#phase-b-the-transfer-functions-in-the-hallway">Phase B: the transfer functions, in the hallway</a><a href="#the-debug-screen">The debug screen</a><a href="#mapping-drives-and-offline-processing">Mapping drives and offline processing</a><a href="#the-car-driving-itself">The car driving itself</a><a href="#the-sessions-as-cards">The sessions, as cards</a><a href="#safety-rules-for-every-phase">Safety rules for every phase</a><a href="#see-also">See also</a></nav>
+<div class="lead"><p><strong>The testers' strategy</strong>: what the people on the team do with the car, in order, and what
+each session gives the next. First written 18 November 2026 by Ben Woodhead; rewritten
+19 November around the testers' sessions (Ben: "Now that we know what we have and what is
+possible then lets start figuring out testing").</p>
+<p>The detail of each test is in <a href="tests.html">Every test</a> and <a href="actuator-tests.html">Actuator tests</a>;
+the day itself in <a href="car-day.html">Car day</a>; the checks after an install in
+<a href="after-install.html">After the install</a>.</p>
 <blockquote>
 <p><strong>The short version</strong></p>
-<ul>
-<li><strong>Seven phases</strong>, from the car on stands to a twin of the campus in Ravensim.</li>
-<li><strong>One command per phase</strong> runs its tests and writes one report. Today most tests run one by one; the plan makes them one automated system (our professor's ask).</li>
-<li><strong>Stands first</strong> (the car is being upgraded now), then <strong>the hallway</strong> this winter, then mapping drives outside.</li>
-<li>Every row says <strong>Built</strong>, <strong>To build</strong> or <strong>Untested on the car</strong>. Nothing is "works" until it has run on the car.</li>
-</ul>
+<ol>
+<li>
+<p><strong>Bench → stands → hallway → lot → campus mapping drives → offline processing → the car
+   drives itself.</strong> Each step has a pass rule; nothing moves on until it passes.</p>
+</li>
+<li>
+<p><strong>A boot self-test</strong> at every start: every sensor, actuator and lock answers, or the car
+   <strong>refuses to arm</strong>. Parts exist; the one check that gates arming is to build (TODO 255).</p>
+</li>
+<li>
+<p><strong>Stands</strong>: speed up, slow down, steering lock to lock. Numbers into <code>vehicle.yaml</code>.</p>
+</li>
+<li>
+<p><strong>Hallway</strong>: start and stop runs, measured three ways (wheels, IMU, NDT), <strong>empty and
+   with a person aboard</strong>. The transfer functions tune the car model and the adaptive brake.</p>
+</li>
+<li>
+<p><strong>Mapping drives, then offline processing on a laptop</strong>: several passes of each campus
+   area → NDT maps first → occupancy later, to remove parked cars and people.</p>
+</li>
+<li>
+<p>Every row says <strong>Built</strong>, <strong>To build</strong> or <strong>Untested on the car</strong>. Nothing is "works"
+   until it has run on the car. Today <strong>nothing here has run on the car</strong> (it is being upgraded).</p>
+</li>
+</ol>
 </blockquote></div>
-<section class="card"><h2 id="the-order">The order</h2>
+<section class="card"><h2 id="the-strategy-on-one-page">The strategy on one page</h2>
+<h3 id="the-ladder">The ladder</h3>
+<pre class="highlight"><code class="language-text"> 0 bench / laptops ─▶ 1 boot self-test ─▶ 2 stands ─▶ 3 hallway ─▶ 4 lot
+   (after-install)      (every start)       (A)         (B)          (B, faster)
+                                                                        │
+       7 the car drives itself ◀── 6 offline processing ◀── 5 campus mapping drives
+         (NDT leads, routes)        (laptop: D, E, F, G)       (C: record by hand)</code></pre>
+<h3 id="each-step-why-its-pass-rule-and-what-it-feeds">Each step: why, its pass rule, and what it feeds</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Phase</th>
-<th>What</th>
-<th>Where</th>
-<th>Needs</th>
+<th>#</th>
+<th>Step</th>
+<th>Why</th>
+<th>Passes when</th>
+<th>Feeds</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>A</strong></td>
-<td>The car on stands: preflight, every sensor, steering, throttle, <strong>faults on purpose</strong> (losing the Orin too)</td>
-<td>the shop, wheels off the ground</td>
-<td>the hardware lead; the upgraded car</td>
+<td>0</td>
+<td><strong>Bench and laptops</strong> (<a href="after-install.html">after the install</a>)</td>
+<td>the code and every computer work before the car</td>
+<td>every box ✅</td>
+<td>step 1</td>
 </tr>
 <tr>
-<td><strong>B</strong></td>
-<td><strong>The transfer functions</strong>: accelerate, brake, steer, measured and compared with the model</td>
-<td><strong>the long hallway</strong> (winter), then a lot</td>
-<td>phase A passed</td>
+<td>1</td>
+<td><strong>Boot self-test</strong></td>
+<td>"make sure we have control over everything"</td>
+<td>every sensor, actuator and lock answers; the car arms</td>
+<td>every session after</td>
 </tr>
 <tr>
-<td><strong>C</strong></td>
-<td><strong>The recording kit</strong>: every sensor, clocks in step</td>
-<td>the car</td>
-<td>phase A</td>
+<td>2</td>
+<td><strong>Stands</strong> (phase A)</td>
+<td>steering and throttle measured with nothing able to run away</td>
+<td><code>car-test --stands</code> all PASS; every fault stops the car</td>
+<td>steering numbers → <code>vehicle.yaml</code>; step 3</td>
 </tr>
 <tr>
-<td><strong>D</strong></td>
-<td><strong>Maps from hand drives</strong>: SLAM makes the map, NDT and AMCL find the car on it</td>
-<td>campus, driven by hand</td>
-<td>phase C</td>
+<td>3</td>
+<td><strong>Hallway</strong> (phase B)</td>
+<td>the transfer functions, indoors, in winter</td>
+<td>the model's speed within 10 % of the car's, its stop within 0.2 m</td>
+<td>delays and lags → <code>vehicle.yaml</code> → the sim's car model → ego and the planners; the adaptive brake</td>
 </tr>
 <tr>
-<td><strong>E</strong></td>
-<td><strong>The map editor</strong>: an overhead map, street maps and ours, editable</td>
-<td>a laptop</td>
-<td>phase D's maps</td>
+<td>4</td>
+<td><strong>Lot</strong> (phase B, faster)</td>
+<td>the same at 2-3 m/s; circles; drift</td>
+<td>the same rule, at the higher speeds</td>
+<td>the same, at speed</td>
 </tr>
 <tr>
-<td><strong>F</strong></td>
-<td><strong>The labelling loop</strong>: trees, buildings, parked cars; a better model after each drive</td>
-<td>a laptop with a GPU, then the Orin</td>
-<td>phases C and E</td>
+<td>5</td>
+<td><strong>Mapping drives</strong> (phase C)</td>
+<td>the raw points and pictures every map is built from</td>
+<td><code>record-drive</code>'s summary says "good for" the map and SLAM</td>
+<td>step 6</td>
 </tr>
 <tr>
-<td><strong>G</strong></td>
-<td><strong>The campus twin</strong> in Ravensim, built from the labelled maps</td>
-<td>a laptop</td>
-<td>phases D to F</td>
+<td>6</td>
+<td><strong>Offline processing</strong> (phases D-G)</td>
+<td>maps, labels and the twin, made on a laptop, never on the car</td>
+<td>NDT on our map within 0.2 m of a good GPS</td>
+<td>NDT's map → step 7; the campus twin in Ravensim</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>The car drives itself</strong></td>
+<td>the goal</td>
+<td>the route done at low speed, no takeover needed for safety</td>
+<td>the scores we track</td>
 </tr>
 </tbody>
 </table></div>
-<p>Alongside A and B: <strong>the debug screen</strong>: who is sending commands, and what (below; built 19 Nov, the map window's D page).</p>
+<h3 id="how-the-numbers-flow">How the numbers flow</h3>
+<pre class="highlight"><code class="language-text"> stands ─────── steering: offset, deadband, rate, max angle ──┐
+ hallway, lot ─ throttle, brake, steering: dead time + lag ───┼─▶ vehicle.yaml ─▶ the sim's car model
+ scales ─────── mass, empty and with a person ────────────────┘        │            │
+                                                                        ▼            ▼
+                                                     the adaptive brake      ego's limits, MPPI, MPC
+ mapping drives ─▶ map-drive (offline) ─▶ NDT's map + 2D map ─▶ NDT leads ─▶ the car drives itself</code></pre>
 </section>
 <section class="card"><h2 id="what-runs-automatically-today">What runs automatically today</h2>
 <div class="table-wrap"><table>
@@ -218,7 +273,7 @@ test, in what order, and how we know each step passed</strong>. The detail of ea
 </tr>
 <tr>
 <td>The simulator</td>
-<td><code>pixi run sim-check</code> and its modes (<code>--obstacle</code>, <code>--kerb</code>, <code>--movers</code>, <code>--faults</code>, <code>--actuator-faults</code>, <code>--three-point</code>...)</td>
+<td><code>pixi run sim-check</code> and its modes (<code>--obstacle</code>, <code>--kerb</code>, <code>--movers</code>, <code>--faults</code>, <code>--actuator-faults</code>, <code>--three-point</code>, <code>--loaded-stop</code>...)</td>
 <td>each night on CI; by hand before a release</td>
 <td>Built</td>
 </tr>
@@ -235,6 +290,12 @@ test, in what order, and how we know each step passed</strong>. The detail of ea
 <td>Built</td>
 </tr>
 <tr>
+<td>After the install</td>
+<td><a href="after-install.html">one page of checks</a> (phase 0)</td>
+<td>after each upgrade</td>
+<td>Written; untested on the car</td>
+</tr>
+<tr>
 <td>On stands</td>
 <td><code>pixi run actuator-test preflight --stands</code></td>
 <td>by hand</td>
@@ -247,68 +308,249 @@ test, in what order, and how we know each step passed</strong>. The detail of ea
 <td>Built 19 Nov; against Ravensim 11 PASS, 3 SKIPPED (car only); <strong>untested on the car</strong></td>
 </tr>
 <tr>
-<td>On the ground</td>
-<td><code>pixi run actuator-test speed-up / coast / brake</code></td>
+<td>In the hallway, all of phase B</td>
+<td><code>pixi run car-test --hallway</code> (<code>--sim --no-manual</code>: a pretend hallway)</td>
 <td>by hand</td>
+<td>Built 19 Nov (TODO 248); <strong>untested on the car</strong></td>
+</tr>
+<tr>
+<td>On the ground</td>
+<td><code>pixi run actuator-test speed-up / coast / brake / circles / straight</code></td>
+<td>by hand, in a lot</td>
 <td>Built; <strong>untested on the car</strong></td>
 </tr>
 <tr>
-<td>In the hallway, all of phase B</td>
-<td><code>pixi run car-test --hallway</code> (<code>--sim --no-manual</code>: a pretend hallway in its own Ravensim)</td>
+<td>A mapping drive</td>
+<td><code>pixi run record-drive</code> (<code>--sim</code>: its own test)</td>
 <td>by hand</td>
-<td>Built 19 Nov (TODO 248); against Ravensim and the pretend car; <strong>untested on the car</strong></td>
+<td>Built 19 Nov; <strong>untested on the car</strong></td>
+</tr>
+<tr>
+<td>Maps from a drive</td>
+<td><code>pixi run map-drive</code> (offline)</td>
+<td>by hand, on a laptop</td>
+<td>Built 19 Nov; Ravensim only</td>
 </tr>
 </tbody>
 </table></div>
 </section>
+<section class="card"><h2 id="the-boot-self-test">The boot self-test</h2>
+<p>Ben, 19 Nov: "Make sure we have control over everything with a basic boot self test."</p>
+<h3 id="what-exists-today">What exists today</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>What it covers</th>
+<th>When it runs</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>car_setup.sh &lt;role&gt; check</code></td>
+<td>one computer: its release, its devices (<code>/dev/aav/*</code>), its service</td>
+<td>by hand, after an install</td>
+<td>Built; untested on the upgraded car</td>
+</tr>
+<tr>
+<td><code>pixi run check car</code></td>
+<td>every topic in the contract, at its rate</td>
+<td>by hand, from a laptop</td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td><code>actuator-test preflight --stands</code></td>
+<td>every sensor's rate and values; speed up, hold, slow, brake; steer</td>
+<td>by hand, on stands</td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td><code>car-test --stands</code></td>
+<td>the preflight, steering, throttle, faults on purpose</td>
+<td>by hand, on stands</td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td><code>record-drive --check</code></td>
+<td>disk, rates, stamps, clocks, sensor frames</td>
+<td>by hand, before a drive</td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td><strong>The spine's self-test</strong> (<code>spine-core</code>, <code>Lifecycle::SelfTest</code>)</td>
+<td>the steering and brake drivers, the throttle DAC, the wheel encoder: <strong>nothing arms until they answer</strong></td>
+<td>at every power-up, on the board</td>
+<td>Built in the Rust spine; <strong>not on the car</strong> (it runs the 2025-26 C++ ESP32). TODO 0b (Arsh): today it passes after one tick with no fault</td>
+</tr>
+<tr>
+<td><code>spine_bridge</code>'s arm rule</td>
+<td>refuses <code>/spine/arm</code> during an e-stop or while the output gate isn't OPEN</td>
+<td>every arm</td>
+<td>Built</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="what-is-missing">What is missing</h3>
+<p><strong>One check, at start-up, that covers the whole car and refuses to arm until it passes.</strong>
+Today each part is checked by a different command, by hand, and nothing stops a person
+arming a car whose lidar is silent.</p>
+<pre class="highlight"><code class="language-text"> power on ─▶ every computer up ─▶ BOOT SELF-TEST ─┬─ all ✅ ─▶ READY ─▶ a person arms
+                                                   └─ any ❌ ─▶ NOT READY: says which; arming refused</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>It checks</th>
+<th>Pass</th>
+<th>Source today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Every sensor: lidar, IMU, GPS, wheels, each camera, radar</td>
+<td>at its rate, values in range, the IMU still reads gravity</td>
+<td>the preflight's sensor lines</td>
+</tr>
+<tr>
+<td>Every actuator answers</td>
+<td>the spine's self-test passed; steering, brake and throttle report a state</td>
+<td><code>/vehicle/status</code>, <code>/vehicle/steering</code>, <code>/vehicle/brake</code></td>
+</tr>
+<tr>
+<td>Every lock is alive</td>
+<td>the e-stop path, the sensor watchdog, the geofence, the output gate, joy_alive each publishing</td>
+<td>their <code>/safety/*/state</code> topics</td>
+</tr>
+<tr>
+<td>The clocks</td>
+<td>every computer within the limit of the Orin</td>
+<td><code>record-drive --check</code>'s <code>chronyc</code></td>
+</tr>
+<tr>
+<td>The person's stop</td>
+<td>the e-stop pressed once and seen, then released</td>
+<td>the after-install's e-stop row</td>
+</tr>
+</tbody>
+</table></div>
+<p>Proposed: a node beside <code>spine_bridge</code> publishes READY or NOT READY (and why, for the HUD and
+the debug page); <code>spine_bridge</code> refuses <code>/spine/arm</code> until READY, as it already does for the
+gate. It moves nothing: no actuator steps (that stays on stands). <strong>To build: TODO 255.</strong></p>
+</section>
 <section class="card"><h2 id="phase-a-the-car-on-stands">Phase A: the car on stands</h2>
-<p><strong>Goal:</strong> before the wheels touch the ground, every part answers, and every fault stops the car.</p>
-<h3 id="a1-the-preflight-built">A1. The preflight (built)</h3>
-<p><code>pixi run actuator-test preflight --stands</code>: speed up, hold, slow, brake, steer, and every
-sensor at once. <strong>PASS / FAIL per line.</strong> It presses the e-stop itself if the car won't stop.</p>
-<h3 id="a2-one-command-for-the-whole-stands-test-built-19-nov-untested-on-the-car">A2. One command for the whole stands test (built 19 Nov; untested on the car)</h3>
-<p><code>pixi run car-test --stands</code> runs, in order, and writes one report folder
-(<code>~/aav-tests/&lt;time&gt;-stands/report.md</code>). Any FAIL ends the run. How it works:
-<a href="actuator-tests.html#car-test-the-whole-stands-test">car-test</a>.</p>
+<p><strong>Goal:</strong> before the wheels touch the ground, every part answers, every number the stands can
+give is measured, and every fault stops the car.</p>
+<p><strong>Who:</strong> the hardware lead (the car, the stands, the cables), the e-stop person, the laptop
+person, someone watching the rear wheels.</p>
+<h3 id="speed-up-and-slow-down">Speed up and slow down</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Test</th>
+<th>What</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>actuator-test preflight --stands</code></td>
+<td>speed up to 0.3 m/s, hold 5 s, slow to 0.15, brake, steer</td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td><code>wheel-steps</code> (3.14, in <code>car-test --stands</code>)</td>
+<td>0.1, 0.2, 0.3, 0.15 m/s, 4 s each: does the wheel speed follow</td>
+<td>Built; untested on the car</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>⚠️ <strong>The known gap (TODO 49b): nothing measures the driven rear wheels on stands.</strong> The
+wheel sensors are on the <strong>front</strong> wheels; the motor drives the <strong>rear</strong>. On stands
+<code>/vehicle/odom</code> reads 0 while the rear wheels spin, so no speed cap can work. Until
+<code>vehicle.yaml</code>'s <code>speed_wheels</code> says <code>rear</code>, the preflight runs <code>--no-drive</code> (sensors only).
+Until then: a tachometer app on a rear wheel, read by a person, and the throttle by hand.</p>
+</blockquote>
+<h3 id="steering-lock-to-lock">Steering lock to lock</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Test</th>
+<th>What</th>
+<th>Gives (<code>vehicle.yaml</code>)</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LOCK-TO-LOCK CHECK</strong> (hardware panel, key K)</td>
+<td>the steering actuator's ends and centre marked, then centre → left limit → right limit → centre at 100 counts a second; <strong>PASSED</strong> or <strong>STOPPED</strong> and why</td>
+<td>the ends and centre (<code>calibration.rs</code>); <code>max_steering_angle</code></td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td><code>steer-sweep</code> (3.10)</td>
+<td>full left → centre → full right and back</td>
+<td><code>max_steering_angle</code>, <code>steer_offset</code></td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td><code>steer-rate</code> (3.11)</td>
+<td>centre → full lock → centre, each way</td>
+<td><code>steer_rate</code>, <code>steer_lag</code></td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td><code>steer-centre</code> (3.12)</td>
+<td>tiny steps (0.002 rad) each way</td>
+<td><code>steer_offset</code>, <code>steer_deadband</code></td>
+<td>Built; untested on the car</td>
+</tr>
+</tbody>
+</table></div>
+<p>No steering sensor yet? Each test stops and asks for the angle: read it with a protractor or
+a phone on the wheel. How: <a href="actuator-tests.html#find-the-steering-actuators-ends-and-centre">Actuator tests</a>.</p>
+<blockquote>
+<p>⚠️ <strong>Never test braking distance on stands.</strong> Free wheels carry no weight, so the brake
+numbers mean nothing there. Braking is phase B, on the ground.</p>
+</blockquote>
+<h3 id="one-command-for-the-whole-stands-test">One command for the whole stands test</h3>
+<p><code>pixi run car-test --stands</code> runs, in order, and writes one report
+(<code>~/aav-tests/&lt;time&gt;-stands/report.md</code>). Any FAIL ends the run.
+<a href="actuator-tests.html#car-test-the-whole-stands-test">How it works</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Step</th>
 <th>Test</th>
 <th>Passes when</th>
-<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>1</td>
-<td>The preflight (A1)</td>
+<td>The preflight</td>
 <td>every line PASS</td>
-<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>2</td>
-<td>Every sensor read: lidar, the front camera, radar, IMU, GPS, wheels (the preflight's <code>--no-drive</code>)</td>
+<td>Every sensor read (<code>--no-drive</code>)</td>
 <td>each at its documented rate</td>
-<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>3</td>
-<td>Steering: sweep, rate, centre (<code>steer-sweep</code>, <code>steer-rate</code>, <code>steer-centre</code>)</td>
+<td>Steering: sweep, rate, centre</td>
 <td>its numbers printed for <code>vehicle.yaml</code></td>
-<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>4</td>
-<td>Throttle on free wheels (<code>wheel-steps</code>, 3.14: 0.1, 0.2, 0.3, 0.15 m/s)</td>
+<td>Throttle on free wheels (<code>wheel-steps</code>)</td>
 <td>the wheels' speed follows the command</td>
-<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>5</td>
-<td><strong>Faults on purpose</strong> (table below)</td>
+<td><strong>Faults on purpose</strong> (below)</td>
 <td>each one stops the car, and something says why</td>
-<td>Built; untested on the car</td>
 </tr>
 </tbody>
 </table></div>
@@ -324,137 +566,132 @@ sensor at once. <strong>PASS / FAIL per line.</strong> It presses the e-stop its
 <tbody>
 <tr>
 <td><strong>The Orin is lost</strong></td>
-<td>car: asks a person to pull the Orin's cable to the Motor Pi; sim: pauses its own Ravensim's output mux</td>
+<td>car: a person pulls the Orin's cable to the Motor Pi; sim: pauses the output mux</td>
 <td>the ESP32 brakes and holds, on its own</td>
-<td>Built; untested on the car. No new hook in the output mux</td>
+<td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>The GPS, the front camera or the IMU is lost</td>
-<td>car: asks a person to unplug it; sim: Ravensim's <code>fault.&lt;sensor&gt; stop</code></td>
+<td>car: unplug it; sim: Ravensim's <code>fault.&lt;sensor&gt; stop</code></td>
 <td>the sensor watchdog <strong>names it</strong> within its <code>max_age</code> + 1 s</td>
 <td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>The lidar is lost</td>
-<td>car: asks a person to unplug it; sim: Ravensim's <code>fault.lidar stop</code> (<code>sim_lidar_relay</code>)</td>
-<td>the same: the watchdog's <code>lidar</code> input (1.0 s, stops, as the camera; TODO 246)</td>
+<td>car: unplug it; sim: <code>fault.lidar stop</code></td>
+<td>the watchdog's <code>lidar</code> input (1.0 s)</td>
 <td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>A Pi is lost</td>
-<td>asks a person to pull the camera Pi's cable</td>
+<td>a person pulls the camera Pi's cable</td>
 <td>the car stops, something says why</td>
 <td>Built; car only</td>
 </tr>
 <tr>
 <td>The e-stop</td>
-<td>car: asks a person to press it; sim: the runner presses <code>/safety/estop</code></td>
+<td>car: a person presses it; sim: the runner presses <code>/safety/estop</code></td>
 <td>everything stops</td>
 <td>Built; untested on the car</td>
 </tr>
 <tr>
 <td>A cable is pulled</td>
-<td>asks a person to pull it</td>
+<td>a person pulls it</td>
 <td>the same as the software version</td>
 <td>Built; car only</td>
 </tr>
 </tbody>
 </table></div>
-<blockquote>
-<p>ℹ️ The sensor watchdog's lock holds navigation and the AI slot, never a test: so on a
-sensor fault the runner stops itself once the watchdog <strong>names</strong> the sensor. The step
-measures how fast the watchdog notices.</p>
-<p>⚠️ <strong>On stands, never test braking distance.</strong> Free wheels carry no weight, so the brake
-numbers mean nothing there. Braking is phase B, on the ground.</p>
-</blockquote>
+<p>The numbers it prints are <strong>pasted into <code>vehicle.yaml</code> by a person</strong>: no test writes the file.</p>
 </section>
 <section class="card"><h2 id="phase-b-the-transfer-functions-in-the-hallway">Phase B: the transfer functions, in the hallway</h2>
-<p><strong>Goal:</strong> the numbers in <code>vehicle.yaml</code> are measured, not guessed, and the model matches the car.</p>
+<p><strong>Goal:</strong> the numbers in <code>vehicle.yaml</code> are measured, not guessed, for the car <strong>empty and
+with a person aboard</strong>, and the model matches the car. Ben, 19 Nov: "going down the hallway
+start and stop using the imu and ndt data to measure the transfer function ... We need to
+tune the tf".</p>
 <h3 id="what-the-transfer-function-is-here">What "the transfer function" is here</h3>
 <p>Each actuator is modelled as <strong>a dead time, then a first-order lag</strong>: the command goes in,
 nothing happens for the dead time, then the car moves towards the command with time constant
-"lag". Today these are <strong>guesses</strong> in <code>vehicle.yaml</code>:</p>
+"lag". Today these are <strong>guesses</strong> in <code>vehicle.yaml</code>.</p>
+<pre class="highlight"><code class="language-text"> command ──┐                ┌──────────────── car's speed
+           │  dead time     │  lag (63 % of the way after one lag)
+           └────────────────┘</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Actuator</th>
-<th>Numbers to measure</th>
-<th>Test</th>
+<th>Numbers</th>
+<th>Pass</th>
 <th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Throttle</td>
-<td><code>throttle_dead_time</code>, <code>throttle_lag</code>, top acceleration</td>
-<td><code>hall-speed-up</code> (B1; 4.1 in a lot)</td>
+<td><code>throttle_dead_time</code>, <code>throttle_lag</code>, <code>max_accel</code></td>
+<td><code>hall-speed-up</code> (B1)</td>
 <td>Built; <strong>untested on the car</strong></td>
 </tr>
 <tr>
 <td>Drag</td>
 <td>how fast the car slows on its own</td>
-<td><code>hall-coast</code> (B2; 4.2)</td>
+<td><code>hall-coast</code> (B2)</td>
 <td>Built; <strong>untested on the car</strong></td>
 </tr>
 <tr>
 <td>Brake</td>
-<td><code>brake_dead_time</code>, <code>brake_lag</code>, deceleration, stopping distance</td>
-<td><code>hall-brake</code> (B3; 4.3)</td>
+<td><code>brake_dead_time</code>, <code>brake_lag</code>, <code>max_brake</code>, stopping distance</td>
+<td><code>hall-brake</code> (B3)</td>
 <td>Built; <strong>untested on the car</strong></td>
 </tr>
 <tr>
 <td>Steering</td>
-<td><code>steer_dead_time</code>, <code>steer_lag</code> on the ground; rate, centre on stands</td>
-<td><code>hall-steer</code> (B4); <code>steer-rate</code> (3.11), <code>steer-centre</code> (3.12)</td>
+<td><code>steer_dead_time</code>, <code>steer_lag</code> on the ground</td>
+<td><code>hall-steer</code> (B4)</td>
 <td>Built; <strong>untested on the car</strong></td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>One command runs them all:</strong> <code>pixi run car-test --hallway</code> (TODO 248;
-<a href="actuator-tests.html#car-test-hallway-the-transfer-functions">how</a>).</p>
+<p><strong>One command runs them all:</strong> <code>pixi run car-test --hallway</code>
+(<a href="actuator-tests.html#car-test-hallway-the-transfer-functions">how</a>). Each pass: still 10 s,
+speed up, then coast, brake or steer, then stop. Three times each, the car turned round
+between passes so the floor's slope cancels.</p>
 <h3 id="why-the-hallway-works">Why the hallway works</h3>
 <p>We can't go fast indoors, but <strong>the model's numbers don't depend on speed</strong> at our speeds.
-Distance needed to reach a speed and stop again:</p>
+<code>car-test --hallway</code> works the top speed out from the length you type (never above 1.0 m/s):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
+<th>Hallway (taped)</th>
+<th>Margin</th>
 <th>Top speed</th>
-<th>Speed up (0.5 m/s²)</th>
-<th>Stop (1 m/s²)</th>
-<th>Plus a safety margin</th>
-<th>Total</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>0.5 m/s</td>
-<td>0.25 m</td>
-<td>0.13 m</td>
-<td>3 m</td>
-<td>about 3.5 m</td>
-</tr>
-<tr>
-<td>1.0 m/s</td>
-<td>1.0 m</td>
-<td>0.5 m</td>
 <td>4 m</td>
-<td>about 5.5 m</td>
+<td>3 m</td>
+<td>0.64 m/s</td>
 </tr>
 <tr>
-<td>1.5 m/s</td>
-<td>2.3 m</td>
-<td>1.1 m</td>
-<td>5 m</td>
-<td>about 8.5 m</td>
+<td>5.3 m</td>
+<td>3 m</td>
+<td>1.0 m/s</td>
+</tr>
+<tr>
+<td>12 m</td>
+<td>3 m</td>
+<td>1.0 m/s</td>
+</tr>
+<tr>
+<td>under 3.2 m</td>
+<td>3 m</td>
+<td>refused</td>
 </tr>
 </tbody>
 </table></div>
-<p>Measure the hallway first, and keep the shared 1.0 m/s limit unless it is clearly long enough.</p>
-<p><code>car-test --hallway</code> works the top speed out from the length you type
-(<code>safety.hallway_limits</code>: speed up at 0.5 m/s², 0.3 s to react, stop at 0.5 m/s², plus the
-margin), never above 1.0 m/s. Each pass brakes in time to stand still before
-<strong>length − margin</strong>, by the wheels' distance; past it, it stops at once.</p>
-<h3 id="using-the-imu-as-well-as-the-wheels">Using the IMU as well as the wheels</h3>
+<p>A 15 m+ hallway is needed for a <strong>trusted drag</strong> (TODO 248's finding).</p>
+<h3 id="three-measures-of-distance-and-speed">Three measures of distance and speed</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -462,73 +699,195 @@ margin), never above 1.0 m/s. Each pass brakes in time to stand still before
 <th>Gives</th>
 <th>Good</th>
 <th>Weak</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Wheel speed</td>
-<td>speed</td>
-<td>no drift</td>
-<td>its acceleration (the change in speed) is noisy</td>
-</tr>
-<tr>
-<td><strong>IMU</strong></td>
-<td><strong>acceleration directly</strong>, 100 times a second</td>
-<td>quick and smooth</td>
-<td>a small offset; the floor's slope shows up as acceleration</td>
-</tr>
-<tr>
-<td>Both together</td>
-<td>acceleration and braking force you can trust</td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
-</table></div>
-<p>How: stand still for 10 s first to measure the IMU's offset; check the hallway is level;
-then blend the IMU's acceleration with the wheels' speed (the tests already record both:
-<code>ax</code> and the wheel speed in each run's CSV). The fit gives each number <strong>with error bars</strong>
-(TODO 104).</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Step</th>
 <th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>10 s still before each pass: the IMU's offset and noise</td>
-<td>Built (<code>fusion.still_imu</code>)</td>
+<td><strong>Wheels</strong></td>
+<td>speed, distance</td>
+<td>no drift</td>
+<td>the change in speed is noisy</td>
+<td>Built</td>
 </tr>
 <tr>
-<td>The slope: the offsets facing each way (the car turned round between passes)</td>
-<td>Built (<code>fusion.slope_from</code>)</td>
+<td><strong>IMU</strong></td>
+<td>acceleration, 100 times a second</td>
+<td>quick and smooth</td>
+<td>a small offset; the floor's slope looks like acceleration</td>
+<td>Built (<code>fusion.py</code>)</td>
 </tr>
 <tr>
-<td>The blend: a small Kalman filter, speed and IMU bias</td>
-<td>Built (<code>fusion.fuse</code>)</td>
-</tr>
-<tr>
-<td>Forces: F = m a, with <code>vehicle.yaml</code>'s mass</td>
-<td>Built (<code>fusion.forces</code>)</td>
-</tr>
-<tr>
-<td>Error bars: mean ± sd over the passes, trusted or not</td>
-<td>Built (<code>errorbars.py</code>)</td>
+<td><strong>NDT</strong> on a hallway map</td>
+<td>position, so distance and speed</td>
+<td>independent of wheel slip and the wheel's size</td>
+<td><strong>can slide along a plain corridor</strong> (below)</td>
+<td><strong>To build</strong> in the hallway (TODO 256)</td>
 </tr>
 </tbody>
 </table></div>
-<h3 id="compare-with-the-model">Compare with the model</h3>
-<p>For each run: feed the same commands into the model (the simulator's car) and lay the two
-speed curves over each other. <strong>Passes when</strong> the model's speed stays within 10 % of the
-car's, and its stopping distance within 0.2 m. Then the simulator, ego's predictions and the
-planners all use the measured car.</p>
-<p>Built (<code>hallway.replay</code>, <code>compare</code>): every pass, with the fitted numbers and with
-<code>vehicle.yaml</code>'s, into <code>compare.csv</code> and <code>overlays/</code>. <strong>Untested on the car.</strong></p>
+<p>How the first two are blended, all built, in <code>fusion.py</code> and <code>errorbars.py</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Offset</td>
+<td>stand still 10 s before each pass: the IMU's offset and noise (<code>fusion.still_imu</code>)</td>
+</tr>
+<tr>
+<td>Slope</td>
+<td>the offsets facing each way (<code>fusion.slope_from</code>); level enough under 1 %</td>
+</tr>
+<tr>
+<td>Blend</td>
+<td>a small Kalman filter: speed and the IMU's bias (<code>fusion.fuse</code>)</td>
+</tr>
+<tr>
+<td>Forces</td>
+<td>F = m a, with <code>vehicle.yaml</code>'s mass (<code>fusion.forces</code>)</td>
+</tr>
+<tr>
+<td>Error bars</td>
+<td>mean ± sd over the passes; a number is <strong>trusted</strong> or not (<code>errorbars.py</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="ndt-in-the-hallway-the-third-measure">NDT in the hallway: the third measure</h3>
+<p>NDT matches the lidar to a map, so it measures distance without the wheels. <strong>Its weakness
+here:</strong> a long, plain corridor looks the same all along. Along the hallway NDT can slide: it
+"finds the wrong place". Across the hallway (the walls) it is sharp.</p>
+<pre class="highlight"><code class="language-text">   wall  ║▓▓   ▓▓         ▓▓   ▓▓║   ▓▓ = a box or cone, fixed for the session
+         ║    ─────car────▶      ║   across: the walls pin it (trust)
+   wall  ║  ▓▓        ▓▓        ▓║   along:  only the boxes pin it (trust less)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Put <strong>a few fixed objects</strong> (boxes, cones) along both walls, at uneven gaps; leave them all session</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Map the hallway first</strong>: <code>pixi run record-drive --name hallway</code>, pushed slowly by hand, then <code>pixi run map-drive bags/&lt;drive&gt;</code> on a laptop</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Run NDT on that map during the passes; record its pose beside the wheels and the IMU</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Trust NDT across more than along</strong>: use it to check the wheels' distance, never alone</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Where NDT and the wheels disagree by more than the error bars: look at the slip, the wheel's size, or NDT sliding</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>⚠️ <strong>To build (TODO 256 and 261):</strong> <code>car.launch.py</code> doesn't start NDT today (only the sim
+launch has <code>ndt:=true</code>), and <code>car-test --hallway</code> doesn't record NDT's pose. With no GPS
+indoors, <code>map-drive</code> places the map from the drive's start (it says so in its YAML).</p>
+</blockquote>
+<h3 id="with-and-without-a-person-aboard">With and without a person aboard</h3>
+<p>The same brake stops a heavier car more slowly (a = F / m). In the car model, 150 kg aboard a
+181 kg car brakes at 55 % of its empty strength (<a href="stopping.html#4-a-heavier-car-the-adaptive-brake">How the car stops</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>How</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Weigh the car</strong>, empty and with the person (TODO 14)</td>
+<td>To do on the car</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>car-test --hallway</code> <strong>empty</strong> (driven from the laptop, a walker on the joystick beside it)</td>
+<td>Built; untested on the car</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>car-test --hallway</code> <strong>with a person aboard</strong>, the same passes</td>
+<td>Built; it has no way to note the load yet (TODO 257)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Fit a transfer function for each load</td>
+<td>Built (one fit per session)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Feed both to the <strong>adaptive brake</strong> (<code>adaptive_brake:=true</code>): it brakes harder when the car stops slower than the model, never above <code>safe_max</code></td>
+<td>Built <strong>in the sim only</strong> (<code>sim_adapter</code>); not on the car's brake path (TODO 258)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="tune-the-tf">Tune the TF</h3>
+<pre class="highlight"><code class="language-text"> hallway passes ─▶ fits ± error bars ─▶ vehicle-yaml.txt ─▶ a person pastes ─▶ vehicle.yaml
+                                                                                     │
+       re-run the passes through the model ◀────────── the sim's car model ◀─────────┘
+              │
+              └─▶ within 10 % speed and 0.2 m stop?  yes: done   no: more passes, or a better model</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>How</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fit</td>
+<td>each pass's dead time and lag; their mean ± sd</td>
+<td>Built</td>
+</tr>
+<tr>
+<td>Only trusted numbers</td>
+<td>printed to paste; the rest commented out, with why</td>
+<td>Built</td>
+</tr>
+<tr>
+<td>Paste</td>
+<td>a person pastes the lines into <code>vehicle.yaml</code> (no test writes the file)</td>
+<td>by hand</td>
+</tr>
+<tr>
+<td>Check</td>
+<td>every pass replayed through the model with the fitted numbers and the old ones (<code>hallway.replay</code>, <code>compare.csv</code>, <code>overlays/</code>). <strong>Passes when</strong> the speed is within 10 % and the stop within 0.2 m, inside the error bars</td>
+<td>Built; <strong>untested on the car</strong></td>
+</tr>
+<tr>
+<td>Then</td>
+<td>the simulator, ego's predictions and the planners all use the measured car</td>
+<td>automatic, from <code>vehicle.yaml</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="then-the-lot">Then the lot</h3>
+<p>The same tests faster, outdoors: <code>actuator-test speed-up</code>, <code>coast</code>, <code>brake --speeds 0.5 1.0</code>,
+<code>circles</code>, <code>straight</code> (<a href="actuator-tests.html#stage-4-in-an-empty-lot">stage 4</a>). Same pass rule.
+Built; untested on the car.</p>
 </section>
 <section class="card"><h2 id="the-debug-screen">The debug screen</h2>
-<p>Our professor's idea: the map screen doubles as a <strong>debug screen</strong>, like the hardware panel.</p>
+<p>Our professor's idea: the map screen doubles as a <strong>debug screen</strong>, like the hardware panel.
+Press <strong>D</strong> on the map window (<a href="hud.html#the-debug-page-who-is-driving">how it looks</a>).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -539,48 +898,62 @@ planners all use the measured car.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Who is driving</strong>: joystick, keyboard, the navigator (the AI), a test, the buttons</td>
-<td><code>/control/command_mux/state</code> (<code>aav_mux_state</code>: twist_mux's rule, beside it)</td>
-<td><strong>Built 19 Nov</strong>; in the sim it named the keyboard, the navigator, a takeover and the hand-back, agreeing with twist_mux's output 226 times of 227</td>
+<td><strong>Who is driving</strong>: joystick, keyboard, the navigator, a test, the buttons</td>
+<td><code>/control/command_mux/state</code></td>
+<td>Built 19 Nov; agreed with twist_mux 226 times of 227 in the sim</td>
 </tr>
 <tr>
 <td>What that driver asks (speed, turn)</td>
-<td><code>/control/cmd_vel</code> (the chosen driver's, as twist_mux passed it)</td>
-<td><strong>Built 19 Nov</strong></td>
+<td><code>/control/cmd_vel</code></td>
+<td>Built 19 Nov</td>
 </tr>
 <tr>
-<td>What ego sends to the car (steering, braking or speeding up)</td>
+<td>What ego sends to the car</td>
 <td><code>/ego/actuator_cmd</code></td>
-<td><strong>Built 19 Nov</strong></td>
+<td>Built 19 Nov</td>
 </tr>
 <tr>
 <td>Whether the output gate is open, and why not</td>
 <td><code>/safety/output_mux/state</code></td>
-<td><strong>Built 19 Nov</strong></td>
+<td>Built 19 Nov</td>
 </tr>
 <tr>
 <td>What the car did (speed, steering, throttle, brake, mode, faults)</td>
 <td><code>/vehicle/status</code></td>
-<td><strong>Built 19 Nov</strong></td>
+<td>Built 19 Nov</td>
 </tr>
 <tr>
 <td>The locks, and whom they hold; the sensor watchdog</td>
 <td><code>/control/command_mux/state</code>, <code>/safety/sensor_watchdog/state</code></td>
-<td><strong>Built 19 Nov</strong></td>
+<td>Built 19 Nov</td>
 </tr>
 <tr>
 <td>Real or simulated data</td>
 <td><code>/system/source</code></td>
-<td><strong>Built 19 Nov</strong> (and the orange band)</td>
+<td>Built 19 Nov (and the orange band)</td>
 </tr>
 </tbody>
 </table></div>
-<p>It is the map window's <strong>debug page</strong>: press D (<a href="hud.html#the-debug-page-who-is-driving">how it looks</a>).
-<code>pixi run map --demo --debug-page</code> shows it with pretend data. <strong>Untested:</strong> the page drawn
-on a screen (no screen was free when it was built), and on the car.</p>
+<p><code>pixi run map --demo --debug-page</code> shows it with pretend data. <strong>Untested:</strong> drawn on a screen,
+and on the car. Keep it open at every session.</p>
 </section>
-<section class="card"><h2 id="phase-c-the-recording-kit">Phase C: the recording kit</h2>
-<p><strong>Goal:</strong> one drive records everything the later phases need.</p>
+<section class="card"><h2 id="mapping-drives-and-offline-processing">Mapping drives and offline processing</h2>
+<p>Ben, 19 Nov: "Add offline processing to the list of stuff we can and will do. So we want to
+build ndt maps of the campus and then add occupancy later so we can remove cars and stuff
+with multiple drives being merged together."</p>
+<p><strong>The plan: NDT maps of the campus first; occupancy and removing parked cars after.</strong></p>
+<pre class="highlight"><code class="language-text"> ON THE CAR (people drive)                 OFFLINE, ON A LAPTOP (never on the car)
+ ─────────────────────────                 ─────────────────────────────────────────
+ pass 1 (Mon 9:00) ─┐                      map-drive each ─▶ NDT map + 2D map + chunks
+ pass 2 (Wed 14:00) ┼─ record-drive ─▶ SSD ─▶   │  placed by the GPS
+ pass 3 (Fri 17:00) ┘   points + cameras        ▼
+                                           merge the passes ─▶ occupancy across passes
+                                                │               (parked cars out)
+                                                ▼
+                                           camera labels ─▶ the map editor ─▶ the campus twin
+                                            (phase F)         (phase E)          (phase G)</code></pre>
+<h3 id="phase-c-the-recording-kit">Phase C: the recording kit</h3>
+<p><strong>Goal:</strong> one drive records everything the offline steps need.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -590,34 +963,181 @@ on a screen (no screen was free when it was built), and on the car.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>tools/record.sh --lidar</code> (cameras, radar, detections, localization, lidar)</td>
-<td>Built</td>
-</tr>
-<tr>
 <td><strong><code>pixi run record-drive</code></strong> (<a href="recording.html">Recording a mapping drive</a>): raw lidar, the IMU at full rate, wheels, raw GPS, every camera, the commands and who drives; MCAP + zstd in 2 GB / 5 min files</td>
-<td><strong>Built 19 Nov</strong>; tested in Ravensim (<code>--sim</code>), untested on the car</td>
+<td>Built 19 Nov; tested in Ravensim (<code>--sim</code>), <strong>untested on the car</strong></td>
 </tr>
 <tr>
-<td>Checks first: disk, every topic's rate, stamps, <code>/tf_static</code>'s sensor frames</td>
-<td><strong>Built 19 Nov</strong>; untested on the car</td>
+<td>Checks first (<code>--check</code>): disk, every topic's rate, stamps, <code>/tf_static</code>'s sensor frames, the clocks over ssh</td>
+<td>Built 19 Nov; untested on the car</td>
 </tr>
 <tr>
 <td>A summary after: per topic count, rate, gaps, size; "good for" the map, SLAM, labels, the transfer functions</td>
-<td><strong>Built 19 Nov</strong></td>
+<td>Built 19 Nov</td>
 </tr>
 <tr>
-<td>The clocks on every computer in step: <code>chronyc tracking</code> here and over ssh, in the checks</td>
-<td><strong>Built 19 Nov</strong>; to check on the car (blocker 5)</td>
-</tr>
-<tr>
-<td>Space: about <strong>87 GB an hour</strong> before zstd (3 JPEG cameras 49, lidar 37 with its packets), so a fast SSD on the Orin</td>
+<td>Space: about <strong>87 GB an hour</strong> before zstd (3 cameras 49, lidar 37), so a fast SSD on the Orin</td>
 <td>Estimated; to measure on the car</td>
 </tr>
 </tbody>
 </table></div>
-</section>
-<section class="card"><h2 id="phase-d-maps-from-hand-drives">Phase D: maps from hand drives</h2>
-<p><strong>Goal:</strong> the car finds itself on our own map, so a failing GPS stops mattering.</p>
+<h3 id="the-driving">The driving</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>By hand</strong>, at walking to jogging pace (under 2 m/s)</td>
+<td>the lidar's sweep blurs less; nothing drives itself on an unmapped place</td>
+</tr>
+<tr>
+<td><strong>The same route each pass</strong></td>
+<td><code>--merge</code> keeps only what several passes saw</td>
+</tr>
+<tr>
+<td><strong>Several passes of each area, at different times and days</strong></td>
+<td>different parked cars and people each time: what stays is the building</td>
+</tr>
+<tr>
+<td><strong>Loops</strong>: come back past where you started</td>
+<td>SLAM closes the loop and removes the drift</td>
+</tr>
+<tr>
+<td>One campus area a session (about 30-60 min)</td>
+<td>under the SSD's room; one area's maps checked before the next</td>
+</tr>
+<tr>
+<td>Note each pass (<code>--name</code>, <code>--note</code>): area, time, weather, parked cars</td>
+<td>the offline steps and the labels need it</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="offline-on-a-laptop-the-pipeline">Offline, on a laptop: the pipeline</h3>
+<p><code>pixi install --locked -e slam</code> once (x86_64 Linux, Apple-silicon Macs; not the Orin).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Command</th>
+<th>Makes</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>SLAM on each drive</td>
+<td><code>pixi run map-drive bags/&lt;drive&gt;</code> (KISS-SLAM)</td>
+<td>the path, NDT's 3D map, a 2D map (walls, kerbs), 64 m chunks</td>
+<td>Built 19 Nov; in Ravensim 2.3 cm off the truth's map; <strong>untested on the car</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Placed on the earth</td>
+<td>inside <code>map-drive</code>: fitted to the good GPS fixes</td>
+<td>the map in the site's frame, lined up with OpenStreetMap</td>
+<td>Built; untested with a real GPS</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Loop closures</td>
+<td>inside <code>map-drive</code> (MapClosures)</td>
+<td>less drift on long drives</td>
+<td>Built; <strong>none found in the plain sim lot</strong>; a real place should give features: untested</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Passes merged</td>
+<td><code>pixi run map-drive --merge &lt;A&gt; &lt;B&gt; --out maps/&lt;area&gt;</code></td>
+<td>one map; only points <strong>both</strong> drives saw within 25 cm</td>
+<td>Built, <strong>two drives only</strong>; more than two and the 2D maps: to build (TODO 250)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Occupancy across passes</strong></td>
+<td>to build</td>
+<td>static points kept, parked cars and people removed (below)</td>
+<td><strong>To build (TODO 259)</strong></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Camera labels onto the points</td>
+<td>phase F</td>
+<td>"car", "tree", "building" on each point: a parked car told from a wall even if it never moved</td>
+<td>To build (TODO 252)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>A person's final say</td>
+<td>the map editor, phase E</td>
+<td>box-delete, relabel, approve, save the chunks</td>
+<td>To build (TODO 251, next)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>The campus twin</td>
+<td>phase G</td>
+<td>Ravensim's campus from our maps</td>
+<td>To build (TODO 253)</td>
+</tr>
+<tr>
+<td>—</td>
+<td>All of it, one command</td>
+<td>to build</td>
+<td>a campus area from its drives, with one report</td>
+<td><strong>To build (TODO 260)</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="occupancy-across-passes">Occupancy across passes</h3>
+<p><code>--merge</code> today keeps what <strong>both</strong> drives saw. That drops a parked car, but also anything
+one pass missed because a truck hid it. Occupancy counts properly:</p>
+<pre class="highlight"><code class="language-text"> a cell, pass by pass:   pass 1   pass 2   pass 3     verdict
+ a building wall           hit      hit      hit       static: keep
+ a parked car              hit     free     hit       came and went: remove
+ behind a truck            hit     unseen    hit       never seen free: keep
+ a person                 free      hit     free      remove</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Hit</strong></td>
+<td>a lidar point landed in the cell</td>
+</tr>
+<tr>
+<td><strong>Free</strong></td>
+<td>a lidar beam passed <strong>through</strong> the cell (the 2D map already traces these rays)</td>
+</tr>
+<tr>
+<td><strong>Unseen</strong></td>
+<td>neither: no evidence, so it doesn't count against the cell</td>
+</tr>
+<tr>
+<td>Keep</td>
+<td>hit in every pass that could see it</td>
+</tr>
+<tr>
+<td>Remove</td>
+<td>hit in some passes, <strong>free</strong> in others</td>
+</tr>
+<tr>
+<td>Still unsure</td>
+<td>a car parked in the same spot every pass: occupancy can't tell; <strong>phase F's camera labels</strong> can</td>
+</tr>
+</tbody>
+</table></div>
+<p>Published tools to learn from first (licences to check): Removert, ERASOR, DUFOMap.</p>
+<h3 id="phase-d-the-car-finds-itself-on-our-map">Phase D: the car finds itself on our map</h3>
+<p><strong>Goal:</strong> a failing GPS stops mattering.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -628,49 +1148,26 @@ on a screen (no screen was free when it was built), and on the car.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>KISS-SLAM</strong> (offline: <code>pixi run map-drive</code>)</td>
-<td><strong>makes</strong> the map from a hand drive, closing loops, placed by the GPS</td>
-<td>Built 19 Nov (<a href="maps-from-drives.html">Maps from drives</a>); in Ravensim 2.3 cm off the truth's map (the EKF's: 27-33 cm); no loop closure found on the plain test lot; <strong>untested on the car</strong></td>
-</tr>
-<tr>
-<td>NDT's map from those poses</td>
-<td>the drive into NDT's map, in 64 m chunks</td>
-<td>Built (<code>map-drive</code>; <code>ndt-map build --poses-file</code>)</td>
-</tr>
-<tr>
-<td>A 2D map from the same points</td>
-<td>the planner's walls and kerbs: 0.3-2 m occupied, the rays free</td>
-<td>Built 19 Nov (<code>map-drive</code>): every occupied cell within one of the truth's</td>
-</tr>
-<tr>
-<td>Several drives merged</td>
-<td>keep what both saw (<code>map-drive --merge</code>)</td>
-<td>Built 19 Nov, two drives; more than two: to build</td>
-</tr>
-<tr>
 <td><strong>NDT</strong></td>
 <td>finds the car on the map, precisely</td>
-<td>Built; 5 cm in the sim</td>
+<td>Built; 5 cm in the sim; <strong>not in <code>car.launch.py</code> yet</strong> (TODO 261)</td>
 </tr>
 <tr>
-<td><strong>AMCL</strong> (Rust, 18 Nov)</td>
+<td><strong>AMCL</strong> (Rust)</td>
 <td>finds a <strong>lost</strong> car, then hands over to NDT</td>
-<td>Being built</td>
+<td>Built 18 Nov; ties stock on the lot</td>
 </tr>
 <tr>
-<td>NDT as the main position (GPS only checks)</td>
-<td>TODO 210</td>
-<td>To build</td>
+<td><strong>NDT leads, the GPS checks</strong> (<code>pose_source:=ndt</code>)</td>
+<td>NDT gives the position, the GPS only checks it</td>
+<td>Built 19 Nov, a challenger (TODO 210): Ravensim's lot, every leg with the GPS clean, stopped, jumped or drifting; the campus not scored yet; the car refuses it until a real map</td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Several drives on different days:</strong> what is there every time is permanent; what comes and
-goes (parked cars) drops out.</p>
 <p><strong>Passes when</strong> NDT on our own map stays within 0.2 m of the GPS on a good-GPS day, and
 keeps the car on its lane where the GPS fails.</p>
-</section>
-<section class="card"><h2 id="phase-e-the-map-editor">Phase E: the map editor</h2>
-<p><strong>Goal:</strong> an overhead map where a person can check and fix everything.</p>
+<h3 id="phase-e-the-map-editor">Phase E: the map editor</h3>
+<p><strong>Goal:</strong> an overhead map where a person checks and fixes everything (TODO 251, next).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -680,7 +1177,7 @@ keeps the car on its lane where the GPS fails.</p>
 </thead>
 <tbody>
 <tr>
-<td>Layers: OpenStreetMap's roads, our SLAM map, the labels</td>
+<td>Layers: OpenStreetMap's roads, our SLAM map, the 2D map, the labels</td>
 <td>see all of it at once</td>
 </tr>
 <tr>
@@ -689,7 +1186,7 @@ keeps the car on its lane where the GPS fails.</p>
 </tr>
 <tr>
 <td>Box-select and delete</td>
-<td>remove parked cars, people</td>
+<td>remove the parked cars occupancy missed</td>
 </tr>
 <tr>
 <td>Relabel ("tree, not wall")</td>
@@ -701,19 +1198,20 @@ keeps the car on its lane where the GPS fails.</p>
 </tr>
 </tbody>
 </table></div>
-<p>To build, in the developer window (Bevy). The campus from OpenStreetMap is already built
-(<code>pixi run campus</code>: 574 buildings, 7918 trees, 396 roads, 18 Nov).</p>
-</section>
-<section class="card"><h2 id="phase-f-the-labelling-loop">Phase F: the labelling loop</h2>
+<p><strong>Built, 19 Nov:</strong> <a href="map-editor.html">the map editor</a>, <code>pixi run map-edit bags/&lt;drive&gt;/map</code>
+(Bevy, like the developer window; no ROS). Each row above is in it; it saves a new folder,
+never over the old one. Proved in Ravensim: the parked cars deleted, NDT still finds the car.
+Not yet looked at on a screen, nor run on a real drive.</p>
+<h3 id="phase-f-the-labelling-loop">Phase F: the labelling loop</h3>
 <p><strong>Goal:</strong> after each drive, a model that tells <strong>trees, buildings, poles, kerbs, parked cars
-and people</strong> apart, and a score that shows whether it improved.</p>
-<pre class="highlight"><code>a drive ─► big offline models label it ─► labels onto the lidar points
-              ("tree", "building", "car")         │
-                                                  ▼
-                                   the editor: a person fixes mistakes
-                                                  │
-                                                  ▼
-             train our small model ─► score it on the drive ─► better than last time?</code></pre>
+and people</strong> apart, and a score that shows whether it improved (TODO 252).</p>
+<pre class="highlight"><code class="language-text"> a drive ─▶ big offline models label it ─▶ labels onto the lidar points
+                                                 │
+                                                 ▼
+                                  the editor: a person fixes mistakes
+                                                 │
+                                                 ▼
+            train our small model ─▶ score it on the drive ─▶ better than last time?</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -741,13 +1239,11 @@ and people</strong> apart, and a score that shows whether it improved.</p>
 </tbody>
 </table></div>
 <blockquote>
-<p>⚠️ <strong>Licences, if the work is ever commercial:</strong> the YOLO option is AGPL-3.0; the big
-public datasets (SemanticKITTI, nuScenes, Cityscapes) are non-commercial. Train on our own
-labelled drives.</p>
+<p>⚠️ <strong>Licences, if the work is ever commercial:</strong> the YOLO option is AGPL-3.0; the big public
+datasets (SemanticKITTI, nuScenes, Cityscapes) are non-commercial. Train on our own drives.</p>
 </blockquote>
-</section>
-<section class="card"><h2 id="phase-g-the-campus-twin">Phase G: the campus twin</h2>
-<p><strong>Goal:</strong> Ravensim's campus matches the real one, so every test runs there first.</p>
+<h3 id="phase-g-the-campus-twin">Phase G: the campus twin</h3>
+<p><strong>Goal:</strong> Ravensim's campus matches the real one, so every test runs there first (TODO 253).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -774,8 +1270,289 @@ labelled drives.</p>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Passes when</strong> the sim's lidar and the real lidar see the same scene: a drive replayed in
-the twin scores within NDT's error of the real drive.</p>
+<p><strong>Passes when</strong> a drive replayed in the twin scores within NDT's error of the real drive.</p>
+</section>
+<section class="card"><h2 id="the-car-driving-itself">The car driving itself</h2>
+<p>Only on an area that has passed phase D, after phases A and B.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The car started with NDT on that area's map, <code>pose_source:=ndt</code> (TODO 210, 261)</td>
+<td>NDT within 0.2 m of the GPS, standing and pushed by hand</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The same route <strong>in Ravensim first</strong> (the campus, then the twin)</td>
+<td>the route done, no stop-zone surprises</td>
+</tr>
+<tr>
+<td>3</td>
+<td>On the car, <strong>at walking pace</strong> (0.5 m/s), a short route, a safety driver ready</td>
+<td>done with no takeover needed for safety</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Longer routes, then up to the shared 1.0 m/s limit</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Every drive recorded and scored (<a href="league.html">the league</a>)</td>
+<td>the scores tracked, not gates</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-sessions-as-cards">The sessions, as cards</h2>
+<p>Copy a card, tick the boxes, put a photo in the team chat with the report folder's name.
+Every card: <strong>an e-stop person</strong>, named before the start, hand on the button the whole time.</p>
+<h3 id="card-0-after-the-install">Card 0: after the install</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>everyone; then the hardware lead and two more</td>
+<td>laptops; then the car, wheels off the ground</td>
+<td>30 min a laptop; 1-2 h the car</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] Every box in <a href="after-install.html">After the install</a> ✅</li>
+<li><strong>Feeds:</strong> card 1.</li>
+</ul>
+<h3 id="card-1-the-boot-self-test-every-start">Card 1: the boot self-test (every start)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>e-stop person, laptop person</td>
+<td>wherever the car is</td>
+<td>5 min</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] <code>pixi run doctor</code>, then <code>pixi run check car</code>: every topic at its rate</li>
+<li>[ ] The HUD and the debug page (key D) up</li>
+<li>[ ] Press the e-stop, see it, release it</li>
+<li>[ ] Today: by hand, the rows above. Once built (TODO 255): READY on the HUD</li>
+<li><strong>Pass:</strong> all ✅; else don't arm. <strong>Save:</strong> nothing. <strong>Feeds:</strong> every session.</li>
+</ul>
+<h3 id="card-2-stands-phase-a">Card 2: stands (phase A)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hardware lead, e-stop person, laptop person, a rear-wheel watcher (tachometer app)</td>
+<td>the shop, rear wheels off the ground</td>
+<td>2-3 h</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] Card 1 passed</li>
+<li>[ ] Steering's ends and centre: hardware panel B1-B9, <strong>LOCK-TO-LOCK CHECK</strong> PASSED</li>
+<li>[ ] <code>pixi run car-test --stands</code> (today with <code>--no-drive</code> until TODO 49b)</li>
+<li>[ ] Throttle by hand on the stands: speed up and slow down, the watcher reads the rear wheels</li>
+<li>[ ] Every fault on purpose stops the car</li>
+<li><strong>Pass:</strong> <code>report.md</code> all PASS. <strong>Save:</strong> <code>~/aav-tests/&lt;time&gt;-stands/</code>, the steering file.</li>
+<li><strong>Feeds:</strong> <code>vehicle.yaml</code>'s steering lines (pasted by a person); card 3.</li>
+</ul>
+<h3 id="card-3-map-the-hallway">Card 3: map the hallway</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>two people to push, laptop person</td>
+<td>the hallway, boxes and cones placed</td>
+<td>30 min, then 30 min offline</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] Tape the hallway; mark the start line; place the boxes and cones (photo them)</li>
+<li>[ ] <code>pixi run record-drive --check</code>, then <code>pixi run record-drive --name hallway</code></li>
+<li>[ ] Push the car slowly down and back, twice</li>
+<li>[ ] Offline: <code>pixi run map-drive bags/&lt;drive&gt;</code></li>
+<li><strong>Pass:</strong> the map shows both walls and every box sharp. <strong>Save:</strong> the bag, the map.</li>
+<li><strong>Feeds:</strong> NDT in cards 4 and 5 (once TODO 256 and 261 are built).</li>
+</ul>
+<h3 id="card-4-the-hallway-empty-phase-b">Card 4: the hallway, empty (phase B)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>e-stop person (walks beside), safety driver on the joystick, laptop person, a spotter at each end</td>
+<td>the hallway, cleared</td>
+<td>2 h</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] Card 2 passed; the car weighed empty</li>
+<li>[ ] Start indoors: <code>pixi run car &lt;machine&gt; gps:=false stands:=true</code></li>
+<li>[ ] <code>pixi run car-test --hallway --length &lt;taped&gt;</code>; three passes of each, turned round between</li>
+<li>[ ] The boxes still where card 3 put them</li>
+<li><strong>Pass:</strong> the trusted numbers' model within 10 % speed and 0.2 m stop.</li>
+<li><strong>Save:</strong> <code>~/aav-tests/&lt;time&gt;-hallway/</code>. <strong>Feeds:</strong> <code>vehicle.yaml</code> (pasted); the sim's car model.</li>
+</ul>
+<h3 id="card-5-the-hallway-a-person-aboard">Card 5: the hallway, a person aboard</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the same, plus the person aboard (weighed)</td>
+<td>the hallway</td>
+<td>2 h</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] Card 4 passed the same day or with the boxes unmoved</li>
+<li>[ ] The person's weight written on the card (until TODO 257 records it)</li>
+<li>[ ] The same passes as card 4</li>
+<li><strong>Pass:</strong> as card 4. <strong>Save:</strong> the session folder, the weights.</li>
+<li><strong>Feeds:</strong> the loaded transfer function → the adaptive brake (TODO 258).</li>
+</ul>
+<h3 id="card-6-the-lot">Card 6: the lot</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>e-stop person, safety driver, laptop person, a spotter</td>
+<td>an empty lot, the fence walked (site file)</td>
+<td>half a day</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] Cards 4 and 5 passed</li>
+<li>[ ] <code>actuator-test coast</code>, then <code>speed-up</code>, <code>brake --speeds 0.5 1.0</code>, <code>circles</code>, <code>straight</code></li>
+<li><strong>Pass:</strong> as card 4, at speed. <strong>Save:</strong> each test's folder. <strong>Feeds:</strong> <code>vehicle.yaml</code>.</li>
+</ul>
+<h3 id="card-7-a-campus-mapping-drive">Card 7: a campus mapping drive</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>driver, e-stop person, laptop person</td>
+<td>one campus area</td>
+<td>30-60 min a pass</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] The SSD has room (<code>record-drive --check</code>: disk vs 87 GB/h)</li>
+<li>[ ] <code>pixi run record-drive --name &lt;area&gt;-&lt;n&gt; --note "&lt;time, weather, parked cars&gt;"</code></li>
+<li>[ ] By hand, the same route as last pass, with a loop</li>
+<li>[ ] Read the summary: "good for" the map and SLAM</li>
+<li><strong>Pass:</strong> no gaps, every topic at rate. <strong>Save:</strong> the bag, copied off the car the same day.</li>
+<li><strong>Feeds:</strong> card 8. Repeat at least three times, on different days.</li>
+</ul>
+<h3 id="card-8-offline-processing">Card 8: offline processing</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>anyone with a laptop (Linux x86_64 or an Apple-silicon Mac)</td>
+<td>anywhere</td>
+<td>hours, unattended</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] <code>pixi run map-drive bags/&lt;drive&gt;</code> for each pass; read each <code>report.md</code></li>
+<li>[ ] <code>pixi run map-drive --merge &lt;A&gt; &lt;B&gt; --out maps/&lt;area&gt;</code></li>
+<li>[ ] Later: occupancy across passes (TODO 259), labels (phase F), the editor (phase E)</li>
+<li><strong>Pass:</strong> loop closures found or drift small; NDT on the map within 0.2 m of a good GPS.</li>
+<li><strong>Save:</strong> <code>maps/&lt;area&gt;/</code>. <strong>Feeds:</strong> card 9; the campus twin.</li>
+</ul>
+<h3 id="card-9-the-car-drives-itself">Card 9: the car drives itself</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>Where</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>safety driver, e-stop person, laptop person, a spotter</td>
+<td>a mapped area</td>
+<td>half a day</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>[ ] Cards 1-8 passed for this area; the route run in Ravensim first</li>
+<li>[ ] NDT leads (<code>pose_source:=ndt</code>), checked standing still</li>
+<li>[ ] 0.5 m/s first; record every drive</li>
+<li><strong>Pass:</strong> the route done, no takeover needed for safety. <strong>Save:</strong> the bag, the score.</li>
+</ul>
 </section>
 <section class="card"><h2 id="safety-rules-for-every-phase">Safety rules for every phase</h2>
 <div class="table-wrap"><table>
@@ -791,6 +1568,10 @@ the twin scores within NDT's error of the real drive.</p>
 <td>the one sure stop</td>
 </tr>
 <tr>
+<td>The boot self-test passed before anyone arms</td>
+<td>"control over everything"</td>
+</tr>
+<tr>
 <td>Wheels off the ground until phase A passes</td>
 <td>nothing can run away</td>
 </tr>
@@ -799,12 +1580,24 @@ the twin scores within NDT's error of the real drive.</p>
 <td>it needs a real wheel speed (TODO 101)</td>
 </tr>
 <tr>
-<td>The hallway cleared, a spotter at each end</td>
+<td>Never test braking distance on stands</td>
+<td>free wheels carry no weight</td>
+</tr>
+<tr>
+<td>The hallway taped, cleared, a spotter at each end</td>
 <td>people walk there</td>
+</tr>
+<tr>
+<td>A person aboard only after the empty hallway passed, and only with a safety driver's stop in reach</td>
+<td>the brake must be measured first</td>
 </tr>
 <tr>
 <td>The 1.0 m/s shared limit until phase B's numbers are in</td>
 <td>the stop distance is still a guess</td>
+</tr>
+<tr>
+<td>Mapping drives by hand; self-driving only on a mapped area</td>
+<td>NDT needs the map</td>
 </tr>
 <tr>
 <td>Record every session</td>
@@ -815,12 +1608,15 @@ the twin scores within NDT's error of the real drive.</p>
 </section>
 <section class="card"><h2 id="see-also">See also</h2>
 <ul>
+<li><a href="after-install.html">After the install</a>: phase 0, before the stands</li>
 <li><a href="tests.html">Every test</a>: every test, step by step</li>
-<li><a href="actuator-tests.html">Actuator tests</a>: the tests behind phase B</li>
+<li><a href="actuator-tests.html">Actuator tests</a>: the tests behind phases A and B</li>
+<li><a href="stopping.html">How the car stops</a>: the adaptive brake</li>
+<li><a href="recording.html">Recording a mapping drive</a> and <a href="maps-from-drives.html">Maps from drives</a></li>
 <li><a href="car-day.html">Car day</a>: the runbook for a day at the car</li>
 <li><a href="safety-case.html">The safety case</a>: the hazards, and the tests behind each</li>
 </ul></section>
-<nav class="prevnext"><a class="prev" href="tests.html"><small>Previous</small>← Every test</a>
+<nav class="prevnext"><a class="prev" href="after-install.html"><small>Previous</small>← After the install</a>
 <a class="next" href="know-the-car.html"><small>Next</small>Know the car →</a></nav>
 </main>
 <footer>Source: <code>docs/testing-plan.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>

@@ -54,6 +54,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `build_docs.py` | `docs/*.md` into HTML and the PDFs | `docs` |
 | `gen_interfaces_md.py` | `docs/interfaces.yaml` into `docs/interfaces.md`; `--check` | - (test.sh checks) |
 | `graph_picture.py` | the running graph as `docs/img/graph.svg` and `.png` | - (ros.sh) |
+| `teach_figures.py` | the teaching guide's diagrams (AMCL, NDT, ICP, A*, MPPI...) into `docs/img/teach/` (matplotlib, no ROS) | - |
 
 ### The car and car day
 
@@ -96,7 +97,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
 | `software_gl.sh` | Mesa's software renderer with no GPU: Vulkan (lavapipe) for Ravensim's cameras, which then run in lockstep (it exports `AAV_SOFTWARE_GL=1`); `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
-| `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt` (`--ndt-map`: another map), `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
+| `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt` (`--ndt-map`: another map), `--ndt-ekf`, `--ndt-leads`, `--gps-off`, `--gps-fault` (stop, jump, drift), `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
 | `diffusion.sh` | the diffusion planner trial's family: `data`, `train`, `score` (`models/diffusion/`) | `diffusion <data, train, score>` |
 | `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: our global costmap and planner, as the stack runs them, through `aav_planner`'s `teach` example (no ROS, no simulator; Nav2's servers until 17 Nov, TODO 242) | `diffusion data` |
 | `lattice_primitives.py` | the State Lattice planner's primitives for our car, by Nav2's generator (`--check`: still right for `vehicle.yaml`?) | - (needs `pixi run get vendor`) |
@@ -220,7 +221,7 @@ Each lands outside git, checksum pinned where the script says.
 | `replay_commands.sh` (always: it has no `--sim`) | **moves whatever shares the ROS domain**: on the car's network, the car |
 | `get.sh`, `get_*.sh`, `vendor.py`, `car_kit.sh` | download into `vendor/` (`car_kit.sh` caches in `vendor/car-kit-cache`), `models/`, `maps/`, `car-kit/` |
 | `car_day_build.sh` | writes `car-day/esp32/` and `docs/html/` |
-| `build_docs.py`, `graph_picture.py`, `vehicle_model.py`, `state_space_demo.py`, `measure_map.py` | write `docs/html/`, `docs/img/` (`measure_map.py` also its table in `docs/measure-the-car.md`) |
+| `build_docs.py`, `graph_picture.py`, `teach_figures.py`, `vehicle_model.py`, `state_space_demo.py`, `measure_map.py` | write `docs/html/`, `docs/img/` (`measure_map.py` also its table in `docs/measure-the-car.md`) |
 | `make_stop_sign.py`, `make_map.py` | write the stop sign's files in `ros/sim/aav_sim_models/models/`; a map's PGM and YAML |
 | `map_drive.py` | writes `<drive>/map/` (or `--out`); runs `cargo` for the chunks |
 | `record.sh`, `record_drive.py` | write `bags/`; `record_drive.py` also runs `chronyc` over ssh (keys only) and, with `--sim`, Ravensim on this computer |

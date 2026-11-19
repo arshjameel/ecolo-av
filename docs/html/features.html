@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">122 min read · 15 sections</div></header>
+<div class="meta">125 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,6 +19,8 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
@@ -37,12 +39,15 @@
 <span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -335,6 +340,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td><a href="maps-and-position.html#8-ndt-leads-the-gps-checks">NDT leads, the GPS checks</a> (<code>pose_source:=ndt</code>, <code>aav_pose_check</code>, a challenger)</td>
+<td>Ben, 18 Nov: "The gps is seeming to fail" (TODO 210). With NDT leading, <code>ekf_global</code> takes NDT's pose and never the GPS's while NDT is trusted, so a GPS that stops, jumps or drifts slowly can't move the pose or stop the car. The GPS still checks NDT: when they disagree beyond both covariances, NDT's score says which is wrong; a lost NDT starts again from AMCL, else the GPS; with neither, HOLD stops the car through the sensor watchdog. <code>sim-fault gps drift</code> is the hard case it was built for. Ravensim's lot, 3 runs each: every leg with the GPS clean, stopped, jumped or drifting, the EKF 0.01 m off (today's: held when it stops or jumps, 3.6 m off when it drifts)</td>
+<td>Ben Woodhead</td>
+<td>2026-11-19</td>
+<td>sim</td>
+</tr>
+<tr>
 <td>KISS-ICP lidar odometry as a trial (<code>aav_kiss_icp</code>, <code>kiss_icp:=true</code>; stock KISS-ICP, MIT, from its PyPI wheel); <a href="../history/trials-log.md#kiss-icp-into-the-local-ekf-1-nov">its twist into the local EKF</a> (<code>kiss_ekf:=true</code>, a trial)</td>
 <td>A third "how far did I move" beside the wheels and the IMU, from the lidar alone and with no map; with <code>kiss_ekf:=true</code> its twist (never its pose) feeds <code>ekf_local</code>, so wheels that slip are caught. Its covariance measured against Gazebo's truth, twists 5 sigma off refused, and ekf_local carries on when it stops. Later it builds the real lot's map for NDT</td>
 <td>Ben's idea; built by Ben</td>
@@ -344,6 +356,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tr>
 <td><a href="maps-from-drives.html">Maps from recorded drives</a> (<code>pixi run map-drive</code>, KISS-SLAM)</td>
 <td>Testing plan phase D (TODO 250): NDT's map made from the EKF's poses was blurred (walls drawn several times, 33 cm off the truth's map with the GPS). KISS-SLAM (KISS-ICP with loop closures and a pose graph, MIT) places the clouds instead, offline and with no ROS; the same points give NDT's map, a 2D map for the planner (0.3-2 m occupied, the rays free) and their 64 m chunks; the path is fitted to the good GPS fixes (or the start pose) so the map sits in the car's map frame. <code>--merge</code> keeps what two drives both saw. NDT and the planner can then run on our own map where the GPS is poor</td>
+<td>Ben Woodhead</td>
+<td>2026-11-19</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="map-editor.html">The map editor</a> (<code>pixi run map-edit</code>, Bevy; logic in <code>map-edit</code>)</td>
+<td>Testing plan phase E (TODO 251; Ben, 19 Nov: "a map editor ... merged with the street view and the grid square ... that will show us the actual overlay (SLAM)"): a person checks our map from a drive over OpenStreetMap, lines it up by hand, deletes what will not be there next time (parked cars) and labels what is, then approves. It saves a new folder with an edit log and the chunks cut again, never over the map it opened, so a map NDT drives by always has a person's yes behind it</td>
 <td>Ben Woodhead</td>
 <td>2026-11-19</td>
 <td>sim</td>
@@ -403,6 +422,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Steers back to the lane's centre: on the bench, from 0.3 m off to within 5 cm</td>
 <td>the 2025-26 team</td>
 <td>2026-10-10</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_lane_follower_rs/README.md">The lane follower in Rust</a> (<code>aav_lane_follower_rs</code> <code>control_interface</code>, <code>lane_follower_impl:=</code>), the default; the challengers pure pursuit and Stanley (<code>lane_follower:=</code>)</td>
+<td>Ben, 19 Nov: "We also need to port the lane following code.or find a better version." Rust where possible. The 2025-26 PID and its five states ported as a drop-in: the Python's commands, status lines and states on 2,797 shared events (its logic moved, unchanged, into <code>lane_follow.py</code>). Beside it, two challengers on the camera's fitted lane centre, each steering from where the car will be after its lag (<code>vehicle.yaml</code>): pure pursuit with a speed-scaled look-ahead, and Stanley. <code>measure lane</code> now counts the steering's flips and the seconds with the lane lost. Scored, 3 runs each (TODO 262): the Rust PID as the Python; pure pursuit 2.4 cm RMS on Library Road against the PID's 3.9-4.1, 1 flip a minute against 187, but slower back from an offset, so the PID stays the default</td>
+<td>Ben</td>
+<td>2026-11-19</td>
 <td>sim</td>
 </tr>
 <tr>

@@ -45,6 +45,25 @@ sensor_watchdog:
       stop: true
       max_jump_speed: 15.0      # m/s: the car can't; a bad fix can (latched: clear it)
       jump_margin: 5.0          # m more: two noisy fixes 0.2 s apart can be 2.5 m apart
+    # NDT leads, the GPS checks (pose_source:=ndt, TODO 210): sim.launch.py watches these
+    # two in place of gps. The GPS's own checks, said loudly but holding nothing: a silent,
+    # NaN or jumped GPS no longer moves the pose (pose_check holds it out of ekf_global).
+    # pose_check's own say stops instead: ERROR is HOLD (neither NDT nor the GPS trusted),
+    # and its silence (a dead pose_check) stops too.
+    gps_check:
+      topic: /sensors/gps/fix
+      kind: gps
+      max_age: 2.0
+      stop: false
+      max_jump_speed: 15.0
+      jump_margin: 5.0
+    pose_check:                 # 10 Hz
+      topic: /localization/pose_check/status
+      kind: status
+      status_name: pose_check
+      min_level: 2
+      max_age: 1.0
+      stop: true
     local:                      # ekf_local: Nav2's odometry
       topic: /localization/odom/local
       kind: odom

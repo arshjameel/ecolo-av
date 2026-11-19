@@ -19,6 +19,8 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
@@ -37,12 +39,15 @@
 <span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -292,6 +297,11 @@ others offer the EKFs only first.</p>
 <td>the EKF <strong>1.6 cm</strong> (<a href="../history/trials-log.md#ndt-into-the-global-ekf-30-oct">trials</a>)</td>
 </tr>
 <tr>
+<td><code>pose_source:=ndt</code></td>
+<td>NDT <strong>leads</strong> the global EKF; the GPS only checks it, and stands in when NDT is lost (a challenger, TODO 210; <code>aav_pose_check</code>)</td>
+<td>the EKF <strong>1 cm</strong>, and the same with the GPS stopped, jumping or drifting 5 m (<a href="maps-and-position.html#8-ndt-leads-the-gps-checks">Maps and position</a>)</td>
+</tr>
+<tr>
 <td><code>kiss_icp:=true</code></td>
 <td>how far the car moved, from the lidar alone (no map)</td>
 <td>0.02-0.04 m per 100 m driven</td>
@@ -432,6 +442,16 @@ swap an algorithm. The rest:</p>
 <td><code>perception</code>, <code>lane</code>, <code>camera_obstacles</code>, <code>faults</code></td>
 <td>the detector, lane keeping (<code>true</code> or <code>fake</code>), boxes into the costmap, the camera fault path (worlds with cameras)</td>
 <td><code>false</code></td>
+</tr>
+<tr>
+<td><code>lane_follower</code></td>
+<td>with <code>lane</code>: how lane keeping steers: <code>pid</code> (the 2025-26 PID), or the Rust challengers <code>pure_pursuit</code>, <code>stanley</code> (<a href="../../ros/drivers/aav_lane_follower_rs/README.md#scores">scores</a>)</td>
+<td><code>pid</code></td>
+</tr>
+<tr>
+<td><code>lane_follower_impl</code>, <code>lane_finder_impl</code></td>
+<td>with <code>lane</code>: the lane follower and the lane finder in <code>rust</code> or <code>python</code></td>
+<td><code>rust</code></td>
 </tr>
 <tr>
 <td><code>spine</code>, <code>esp32</code>, <code>esp32_loop</code>, <code>bridge</code></td>

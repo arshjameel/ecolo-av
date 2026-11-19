@@ -17,17 +17,19 @@ install(PROGRAMS
   scripts/fake_lane_geometry_pub.py
   DESTINATION lib/${PROJECT_NAME}
 )
-# control_interface.py imports it from beside itself.
-install(FILES scripts/lane_speed.py DESTINATION lib/${PROJECT_NAME})
+# control_interface.py imports them from beside itself.
+install(FILES scripts/lane_speed.py scripts/lane_follow.py DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch msg
   DESTINATION share/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
-  # The slow-down rule (no ROS needed).
+  # The slow-down rule and the follower (no ROS needed).
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_lane_speed test/test_lane_speed.py)
+  # The follower's logic, and that aav_lane_follower_rs's vectors are still its answers.
+  ament_add_pytest_test(test_lane_follow test/test_lane_follow.py)
 endif()
 
 ament_export_dependencies(rosidl_default_runtime)

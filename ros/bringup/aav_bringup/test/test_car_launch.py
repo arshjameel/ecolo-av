@@ -351,7 +351,12 @@ def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
     assert back['lane_finder.launch.py']['lane_finder_impl'] == 'python'
     with pytest.raises(ValueError, match='lane_finder_impl'):
         started(CAR, machine='orin', lane_finder_impl='c')
-    assert sent['lane_follower.launch.py'] == {'fake': 'false'}
+    # The Rust control_interface by default (19 Nov); lane_follower_impl:=python falls back.
+    assert sent['lane_follower.launch.py'] == {'fake': 'false', 'lane_follower_impl': 'rust'}
+    back = included(started(CAR, machine='orin', lane_follower_impl='Python'))
+    assert back['lane_follower.launch.py']['lane_follower_impl'] == 'python'
+    with pytest.raises(ValueError, match='lane_follower_impl'):
+        started(CAR, machine='orin', lane_follower_impl='c')
 
 
 def test_the_detector_is_named_after_its_machine(monkeypatch, tmp_path):
@@ -658,6 +663,10 @@ def test_the_car_day_stack_is_the_defaults():
     assert nav.get('amcl', 'false') == 'false'
     loc = included(started(CAR, machine='orin'))['localization.launch.py']
     assert loc.get('ndt_ekf', 'false') == 'false' and loc.get('kiss_ekf', 'false') == 'false'
+    # NDT leading (TODO 210) is the sim's challenger: the car refuses it, no lidar map yet.
+    assert loc['pose_source'] == 'gps'
+    with pytest.raises(ValueError, match='pose_source'):
+        started(CAR, machine='orin', pose_source='ndt')
 
 
 def test_the_diffusion_trial_speed_is_below_egos_own_cap():

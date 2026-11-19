@@ -15,6 +15,11 @@
   <depend>builtin_interfaces</depend>
 
   <exec_depend>rosidl_default_runtime</exec_depend>
+  <!-- lane_follower.launch.py also reads aav_description (vehicle.yaml) and starts
+       aav_lane_follower_rs (the default). Neither is listed: that package needs this one's
+       message, and Rust message crates (ros-env) break when aav_description's
+       aav_interfaces joins its build. aav_bringup, which includes the launch file, depends
+       on all three. -->
 
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>python3-pytest</test_depend>
