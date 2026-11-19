@@ -100,7 +100,7 @@ Parameters: `config/pose_check.yaml` (each number's reason is beside it).
 ```sh
 cd ros/localization/aav_pose_check && cargo test --locked -p pose-check-core
 pixi run build && colcon test --packages-select aav_pose_check && colcon test-result --verbose
-pixi run measure controllers --launch pose_source:=ndt --gps-fault drift
+pixi run measure controllers --ndt-leads --gps-fault drift
 ```
 
 `tools/test.sh` runs the first. `colcon test` adds the node's own test

@@ -34,6 +34,7 @@
 //!
 //! Every hand-over and every seed is logged. The logic is pose-check-core, with no ROS.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -55,9 +56,35 @@ fn main() -> Result<()> {
     let node = executor.create_node("pose_check")?;
     let _keep = start(&node)?;
     let commands = Arc::clone(executor.commands());
-    ctrlc::set_handler(move || commands.halt_spinning())?;
-    executor.spin(SpinOptions::default()).first_error()?;
-    Ok(())
+    let stopping = Arc::new(AtomicBool::new(false));
+    let stop = Arc::clone(&stopping);
+    ctrlc::set_handler(move || {
+        stop.store(true, Ordering::Release);
+        commands.halt_spinning();
+    })?;
+    // rcl_wait now and then answers RCL_RET_TIMEOUT with no timeout asked for (seen once
+    // in 24 campus tours, 19 Nov: the node exited, and the watchdog held the car on its
+    // silence). A safety input must not die of that: spin again.
+    loop {
+        let errors = executor.spin(SpinOptions::default());
+        if stopping.load(Ordering::Acquire) || !context.ok() {
+            return Ok(());
+        }
+        let timeouts = errors.iter().all(|e| {
+            matches!(
+                e,
+                RclrsError::RclError {
+                    code: RclReturnCode::Timeout,
+                    ..
+                }
+            )
+        });
+        match errors.into_iter().next() {
+            Some(e) if !timeouts => return Err(e.into()),
+            Some(_) => log_warn!(node.logger(), "the executor timed out: spinning again"),
+            None => return Ok(()),
+        }
+    }
 }
 
 struct State {
