@@ -8,7 +8,8 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
-      [actuator_model:=true] [speed_loop:=default|smooth|lqi|firm] [sim_speed:=]
+      [actuator_model:=true] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
+      [sim_speed:=]
       [payload:=0] [adaptive_brake:=false]
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
@@ -286,6 +287,9 @@ bench's argument names:
                       path follower's (mppi_lag, aav_track's mpc_lag, mpc_lag_rs; those
                       two refuse lqi), ego's trace and the behaviour planner's stopping
                       law (TODO 163). The real car's spine runs default
+  speed_loop_model:=smooth  the loop every model of the car assumes, when it is not the
+                      car's own: the car runs speed_loop:=, the models plan with this
+                      (TODO 163: car firm, models smooth). Empty (the default): speed_loop's
   simulator:=ravensim  Ravensim, our own simulator in Rust (aav_simulator,
                       docs/own-simulator.md), the only one since Gazebo was removed (16 Nov):
                       the worlds, the lidar and radar by ray casting, the cameras by Bevy
@@ -434,8 +438,11 @@ def launch_setup(context):
     if controller not in vehicle.CONTROLLERS:
         raise ValueError(f'controller:={controller}: pick one of {", ".join(vehicle.CONTROLLERS)}')
     tracker = vehicle.check_tracker(arg('tracker'), flag['reversing'])
-    # The simulated car's speed loop: the followers', ego's and behaviour's models take it.
-    speed_loop = vehicle.check_speed_loop(arg('speed_loop'), tracker if flag['nav'] else None)
+    # The simulated car's speed loop, and the one the followers', ego's and behaviour's
+    # models assume: the car's own unless speed_loop_model:= says otherwise (TODO 163).
+    speed_loop = vehicle.check_speed_loop(arg('speed_loop'))
+    model_loop = vehicle.check_speed_loop_model(arg('speed_loop_model'), speed_loop,
+                                                tracker if flag['nav'] else None)
     planner = vehicle.check_planner(arg('planner'))
     amcl = arg('amcl').lower() == 'true'
     # ndt_ekf: ekf_global takes NDT's pose, so NDT runs too.
@@ -550,8 +557,8 @@ def launch_setup(context):
                 sim_max_speed=sim_speed,
                 road_ahead=str(flag['behaviour'] and flag['nav']).lower(),
                 ego_impl=vehicle.check_ego_impl(arg('ego_impl')),
-                # The car's speed loop, so ego's trace predicts the car it drives (TODO 163).
-                speed_loop=speed_loop),
+                # The models' speed loop: the car's unless told (TODO 163).
+                speed_loop=model_loop),
         # ego's commands go to Ravensim (sim_adapter, or spine_bridge with spine:=true)
         # only while every source is SIM (aav_io_mux).
         include(context, 'aav_io_mux', 'io_mux.launch.py', target='sim', source='sim',
@@ -655,8 +662,8 @@ def launch_setup(context):
                                    arg('behaviour_impl')),
                                things=str(flag['things']).lower(),
                                lane_map=lane_map, lane_costs=lane_costs,
-                               # Every model of the car predicts the loop it runs (TODO 163).
-                               speed_loop=speed_loop,
+                               # Every model of the car: the car's loop unless told (TODO 163).
+                               speed_loop=model_loop,
                                lane_route=lane_route, lane_pass=arg('lane_pass'),
                                lane_corners=arg('lane_corners'),
                                lane_graph=check_lane_graph(arg('lane_graph')),
@@ -867,7 +874,12 @@ def generate_launch_description():
         DeclareLaunchArgument('speed_loop', default_value='default',
                               description="the speed loop's profile: default (today's gains)"
                                           ', smooth (TODO 27), lqi (TODO 3) or firm (TODO '
-                                          '163); every model of the car assumes it'),
+                                          '163); every model of the car assumes it, '
+                                          'unless speed_loop_model says otherwise'),
+        DeclareLaunchArgument('speed_loop_model', default_value='',
+                              description='the loop every model of the car assumes '
+                                          "(ego's trace, the follower, the behaviour "
+                                          "planner); empty: speed_loop's (TODO 163)"),
         DeclareLaunchArgument('payload', default_value='0',
                               description='kg aboard the modelled car: it speeds up and '
                                           'brakes less (ego is not told)'),

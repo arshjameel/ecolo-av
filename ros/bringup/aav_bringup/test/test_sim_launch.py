@@ -214,6 +214,19 @@ def test_the_simulated_cars_speed_loop_reaches_ego_and_the_car():
         started(SIM, speed_loop='fast')
     with pytest.raises(ValueError, match='PI'):
         started(SIM, speed_loop='lqi', tracker='mpc_lag', reversing='false')
+    # speed_loop_model:= (TODO 163): the car runs one loop, every model plans with another.
+    split = included(started(SIM, speed_loop='firm', speed_loop_model='smooth'))
+    assert split['ravensim.launch.py']['speed_loop'] == 'firm'
+    assert split['ego.launch.py']['speed_loop'] == 'smooth'
+    assert split['navigation.launch.py']['speed_loop'] == 'smooth'
+    with pytest.raises(ValueError, match='speed_loop_model:=fast'):
+        started(SIM, speed_loop_model='fast')
+    # The MPCs refuse the LQI as their model, not as the car's loop.
+    with pytest.raises(ValueError, match='PI'):
+        started(SIM, speed_loop_model='lqi', tracker='mpc_lag', reversing='false')
+    sent = included(started(SIM, speed_loop='lqi', speed_loop_model='smooth',
+                            tracker='mpc_lag', reversing='false'))
+    assert sent['ravensim.launch.py']['speed_loop'] == 'lqi'
 
 
 def test_the_stacks_switches_are_declared_empty_so_a_hand_set_one_is_seen():

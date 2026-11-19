@@ -60,6 +60,7 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 | `mpc_lag_rs_params(nav2, cfg, ego, max_speed)` | `aav_mpc_lag`'s (`tracker:=mpc_lag_rs`): `track_params` without the lookahead, and vehicle.yaml's actuators as `actuators.<key>` (`MPPI_LAG_ACTUATORS`) |
 | `mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)` | `aav_mppi_lag`'s: nav2.yaml's MPPI block and checks, the costmap's outline, vehicle.yaml's actuators (`MPPI_LAG_ACTUATORS`), ego's ramps; with `reversing`, set up to reverse as `nav2_tuned` sets Nav2's MPPI; with `lane` (a lane map), `/world/road_ahead` (`ROAD_AHEAD_TOPIC`) and our `LaneCritic` (`LANE_CRITIC`) |
 | `check_speed_loop(name, tracker)`, `DEFAULT_SPEED_LOOP` | `speed_loop:=`, checked against `car_model.SPEED_LOOP_PROFILES` (spine-core's names); `PI_ONLY_TRACKERS` (`mpc_lag`, `mpc_lag_rs`) refuse `lqi`. `track_params`, `mpc_lag_rs_params`, `mppi_lag_params` and `behaviour_params` take `speed_loop=` (default `default`), so every model of the car assumes the loop the sim runs (TODO 163) |
+| `check_speed_loop_model(name, car_loop, tracker)` | `speed_loop_model:=` (sim, bench): the loop the models assume when it is not the car's; empty gives `car_loop` (TODO 163) |
 | `obstacle_heights(v)`, `centre_of_mass(...)` | the lidar's height band; centre of mass from the scales |
 
 Constants: `SELF_MARGIN`, `SENSOR_HALF_SIZE` (m), `STOP_ZONE_AHEAD`, `STOP_ZONE_BEHIND`, `STOP_ZONE_MARGIN` (m),

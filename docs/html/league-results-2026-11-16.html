@@ -7,7 +7,7 @@
 <!-- Generated from docs/league-results-2026-11-16.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The league, scored: 16 Nov</h1>
-<div class="meta">16 min read · 7 sections</div></header>
+<div class="meta">18 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -716,6 +716,93 @@ challenger: the lane's corners as clothoids (TODO 211).</p>
 </tr>
 </tbody>
 </table></div>
+<h4 id="the-car-on-one-loop-the-models-on-another-18-nov-todo-163">The car on one loop, the models on another (18 Nov, TODO 163)</h4>
+<p><code>speed_loop:=</code> is the car's loop; <code>speed_loop_model:=</code> is what every model of the car
+assumes (ego's trace, <code>mppi_lag</code>, the behaviour planner). Ravensim on Ben's Mac, GPU,
+headless, <code>own_calm</code>, reversing.</p>
+<p><strong>The lot tour</strong> (<code>measure controllers --stacks own_calm --tours lot --runs 3 --reversing</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Car / models</th>
+<th>Runs</th>
+<th>Legs</th>
+<th>Left-right changes /100 m</th>
+<th>Sway (m/s²)</th>
+<th>Off the path, worst (m)</th>
+<th>Time a tour (s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>default / default</strong></td>
+<td>6</td>
+<td>24/24</td>
+<td>7.3, 7.5</td>
+<td>0.021, 0.023</td>
+<td>0.44-0.53</td>
+<td>155-167</td>
+</tr>
+<tr>
+<td>firm / firm</td>
+<td>3</td>
+<td>12/12</td>
+<td><strong>20.8</strong></td>
+<td><strong>0.034</strong></td>
+<td>0.49-0.75</td>
+<td>153-154</td>
+</tr>
+<tr>
+<td>firm / smooth</td>
+<td>6</td>
+<td>24/24</td>
+<td>9.6, 8.6</td>
+<td>0.024, 0.023</td>
+<td>0.46-<strong>1.05</strong></td>
+<td>159-169</td>
+</tr>
+</tbody>
+</table></div>
+<p>Two numbers in a cell: two batches of 3 runs. Load average 4-11 (other sessions).</p>
+<p><strong>The 25 m stop</strong> (<code>drive-to-point --sim --ahead 25</code>, recorded, <code>tools/score_drive.py</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Car / models</th>
+<th>Runs</th>
+<th>Top speed (m/s)</th>
+<th>Over the road ahead's limit (s)</th>
+<th>Stopped from B (m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>default / default</td>
+<td>2</td>
+<td>1.14</td>
+<td>6.7, 6.7</td>
+<td>0.13, 0.13</td>
+</tr>
+<tr>
+<td>firm / firm</td>
+<td>2</td>
+<td>1.00</td>
+<td>0.2, 0.2</td>
+<td>0.06, 0.08</td>
+</tr>
+<tr>
+<td><strong>firm / smooth</strong></td>
+<td>2</td>
+<td>1.00</td>
+<td><strong>0.0, 0.0</strong></td>
+<td>0.07, 0.08</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Verdict: firm / smooth stays a challenger.</strong> It stops as well as firm, and sways far
+less than firm / firm. But on the tour it is still a little worse than default: 23 % more
+left-right changes, and 3 of 6 runs went 0.8-1.05 m off the path (default: never past
+0.53). The worst moments are on the legs that back up ("turn back", "home").</p>
 </section>
 <section class="card"><h2 id="hybrids">Hybrids</h2>
 <div class="table-wrap"><table>
