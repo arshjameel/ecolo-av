@@ -70,9 +70,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let counts = placements(&std::fs::read_to_string(&file)?)?;
         let line: Vec<String> = counts.iter().map(|(p, n)| format!("{p}: {n}")).collect();
         println!("- {provider}: {} ({file})", line.join(", "));
-    }
-    for note in Detector::notes() {
-        println!("- onnxruntime: {note}");
+        for note in detector.notes() {
+            println!("  - onnxruntime: {note}");
+        }
     }
     Ok(())
 }
