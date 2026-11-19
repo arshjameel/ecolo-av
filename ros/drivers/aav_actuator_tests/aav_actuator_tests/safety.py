@@ -11,6 +11,7 @@ one says no. Every rule errs towards "this is the real car".
 | The person types the test's name to start it on the real car | confirmed |
 | Speed, distance and time limits per test, checked every tick | Envelope.breach |
 | Someone else is driving (the joystick outranks the tests) | taken_over |
+| The hallway: its top speed, room, checklist (phase B) | hallway_limits, HALLWAY_CHECKLIST |
 """
 
 from __future__ import annotations
@@ -194,13 +195,16 @@ GEOFENCE_QUIET = 1.0    # s without /safety/geofence/state: it went quiet
 
 
 def geofence_stop(state: Optional[str], age: Optional[float], stands: bool, real: bool,
-                  starting: bool = False) -> Optional[str]:
+                  starting: bool = False, hallway: bool = False) -> Optional[str]:
     """
     Why the geofence stops this test (or keeps it from starting), or None.
 
     state: the last /safety/geofence/state ("NEAR: why..."), None if never heard; age: s
     since it arrived. On stands nothing is fenced. On the real car the geofence must be
     heard, and not be in stands mode. starting: also refuse STARTING (the pose not settled).
+    hallway: indoors, no GPS (car.launch.py gps:=false stands:=true), so the geofence says
+    STANDS: the hallway's own fence (its room, by the wheels) stands in for it. It must
+    still be heard, and NEAR, OUTSIDE, LOST or JUMP still stop.
     """
     if stands:
         return None
@@ -210,7 +214,7 @@ def geofence_stop(state: Optional[str], age: Optional[float], stands: bool, real
     name = state.split(':', 1)[0].strip()
     if name in GEOFENCE_STOPS or (starting and name == 'STARTING'):
         return f'the geofence says {state}'
-    if name == 'STANDS' and real:
+    if name == 'STANDS' and real and not hallway:
         return ('the geofence is in stands mode (no fence) but this test is on the ground: '
                 'start the car without stands:=true')
     return None
@@ -323,3 +327,70 @@ def preflight_refusal(kind: Kind, drive: bool, speed_wheels: Optional[str],
                 "speed it can't reach and raises the throttle. Restart it with "
                 'speed_loop.mode open')
     return None
+
+
+# --- phase B, in a hallway (docs/testing-plan.md; TODO 248) ---------------------------
+
+HALL_ACCEL = 0.5       # m/s^2 to speed up: slow, as the testing plan's table
+HALL_DECEL = 0.5       # m/s^2 to stop: half the plan's 1.0, as the brake isn't measured yet
+HALL_REACTION = 0.3    # s from the brake point to the brake biting
+HALL_MARGIN = 3.0      # m: the default margin, left over at the far end
+HALL_MIN_SPEED = 0.2   # m/s: a hallway too short for this is refused
+
+
+@dataclass(frozen=True)
+class Hallway:
+    """What a hallway allows: its top speed and its room (the stop line from the start)."""
+
+    length: float      # m, measured with a tape: start line to the far wall
+    margin: float      # m left over at the far end, never driven into
+    top: float         # m/s: the safe top speed (within REAL_CAP)
+    room: float        # m: length - margin; the car must stand still before it
+
+    def needed(self, speed: float) -> float:
+        """Return the metres a run to `speed` and back to a stop takes, with the margin."""
+        return hall_needed(speed, self.margin)
+
+
+def hall_needed(speed: float, margin: float, accel: float = HALL_ACCEL,
+                decel: float = HALL_DECEL, reaction: float = HALL_REACTION) -> float:
+    """Return speed up + reaction + stop + margin (m): the plan's table, our numbers."""
+    v = abs(speed)
+    return v * v / (2 * accel) + v * reaction + v * v / (2 * decel) + margin
+
+
+def hallway_limits(length: float, margin: float = HALL_MARGIN, cap: float = REAL_CAP,
+                   accel: float = HALL_ACCEL, decel: float = HALL_DECEL,
+                   reaction: float = HALL_REACTION) -> Tuple[Optional[Hallway], str]:
+    """
+    Return the hallway's limits, or None and why not.
+
+    The top speed solves speed up + reaction + stop + margin = length, then is capped at
+    `cap` (the shared 1.0 m/s on the real car).
+    """
+    if not (math.isfinite(length) and length > 0):
+        return None, f'the hallway length must be above 0 m (got {length})'
+    if not (math.isfinite(margin) and margin >= 1.0):
+        return None, f'the margin must be at least 1 m (got {margin})'
+    room = length - margin
+    a = 1 / (2 * accel) + 1 / (2 * decel)
+    v = (-reaction + math.sqrt(reaction * reaction + 4 * a * max(room, 0.0))) / (2 * a)
+    top = round(min(v, cap), 2)
+    if top < HALL_MIN_SPEED:
+        return None, (f'a {length:g} m hallway with a {margin:g} m margin allows only '
+                      f'{v:.2f} m/s: too short (needs {hall_needed(HALL_MIN_SPEED, margin):.1f} '
+                      f'm for {HALL_MIN_SPEED} m/s)')
+    return Hallway(length, margin, top, room), ''
+
+
+HALLWAY_CHECKLIST = (
+    'Phase A passed on stands (pixi run car-test --stands)',
+    'The hallway is measured with a tape, start line to the far wall, and that is the '
+    'length typed here',
+    'The hallway is cleared, with a spotter at EACH end who stops people walking in',
+    'A safety driver holds the joystick: its deadman outranks this test',
+    'Someone else holds the e-stop (the Kar-Tech button) and walks beside the car',
+    'The car started indoors: pixi run car <machine> gps:=false stands:=true (no GPS, so '
+    "the geofence can't fence: this test's own fence, by the wheels, stops it)",
+    'The car points straight down the hallway, its rear axle on the start line',
+)
