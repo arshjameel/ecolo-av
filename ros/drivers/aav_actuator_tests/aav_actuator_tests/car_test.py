@@ -1,9 +1,13 @@
 """
-car-test --stands: phase A of docs/testing-plan.md, one command, one report. No ROS here.
+car-test: phase A (--stands) and phase B (--hallway) of docs/testing-plan.md. No ROS here.
 
     pixi run car-test --stands                       the real car, wheels off the ground
     pixi run car-test --stands --sim --no-manual     Ravensim as the stand-in (its own,
                                                      this computer only)
+    pixi run car-test --hallway                      phase B: the transfer functions, in a
+                                                     measured hallway (TODO 248)
+    pixi run car-test --hallway --sim --no-manual    the same in Ravensim, a pretend hallway
+    pixi run car-test --analyse <session>            a hallway session's report again
 
 car_test_node.py runs the steps; this module holds what they are and how each is judged:
 
@@ -17,6 +21,7 @@ car_test_node.py runs the steps; this module holds what they are and how each is
 | Does the watchdog name a sensor; a sensor fault's limit | named(), named_inputs(), limit_for() |
 | A fault's result: who said why, how fast it stood still | judge_fault(), judge_heartbeat_car() |
 | The report: the table, report.md | Result, table(), markdown() |
+| The hallway: its passes, both ways, repeated (hallway.py fits) | hall_passes(), hall_args() |
 
 Every rule errs towards stopping: any FAIL ends the run (the steps after it: NOT RUN).
 """
@@ -169,11 +174,38 @@ def plan(only: Sequence[str], sim: bool, no_manual: bool
 def parse(argv: Sequence[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog='car-test',
-        description='Phase A of docs/testing-plan.md on stands: the preflight, every sensor, '
-                    'the steering, throttle on free wheels, faults on purpose; one report.')
+        description='Phase A of docs/testing-plan.md on stands (--stands): the preflight, '
+                    'every sensor, the steering, throttle on free wheels, faults on purpose; '
+                    'phase B in a hallway (--hallway): speed-up, coast, brake, steer, the '
+                    'IMU with the wheels, the transfer functions with error bars. One report.')
     p.add_argument('--stands', action='store_true',
-                   help='the wheels are off the ground (required for now)')
-    p.add_argument('--ground', action='store_true', help='reserved: refused for now')
+                   help='phase A: the wheels are off the ground')
+    p.add_argument('--hallway', action='store_true',
+                   help='phase B: on the ground, in a measured, cleared hallway')
+    p.add_argument('--ground', action='store_true',
+                   help='reserved for the open lot: refused for now')
+    p.add_argument('--length', type=float,
+                   help='--hallway: m, measured, start line to the far wall (asked if not '
+                        f'given; --sim: {SIM_LENGTH:g})')
+    p.add_argument('--margin', type=float, default=HALL_MARGIN,
+                   help=f'--hallway: m left over at the far end (default {HALL_MARGIN:g})')
+    p.add_argument('--repeats', type=int, default=3,
+                   help='--hallway: each kind of pass this many times (default 3)')
+    p.add_argument('--kinds', nargs='+', default=list(HALL_KINDS), metavar='KIND',
+                   help=f'--hallway: which passes ({", ".join(HALL_KINDS)})')
+    p.add_argument('--one-way', action='store_true',
+                   help="--hallway: don't turn the car round between passes (the slope "
+                        "then can't be told from the IMU's offset)")
+    p.add_argument('--sim-actuators', default='',
+                   help="--hallway --sim: the simulated car's own numbers, "
+                        '"throttle_lag=0.3,drag=0.2" (the fits must find them; the drivers '
+                        'still read vehicle.yaml)')
+    p.add_argument('--wheel-noise', type=float, default=0.0,
+                   help='--sim: m/s of noise on each simulated wheel speed')
+    p.add_argument('--wheel-slip', type=float, default=0.0,
+                   help='--sim: the simulated wheels read this share too far')
+    p.add_argument('--analyse', metavar='SESSION',
+                   help='a hallway session folder: its report again, from its files (no ROS)')
     p.add_argument('--sim', action='store_true',
                    help='start Ravensim as the stand-in (this computer only) and test it')
     p.add_argument('--only', nargs='+', default=[], metavar='STEP',
@@ -184,11 +216,34 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
     p.add_argument('--out', help='the folder for reports (default ~/aav-tests, or '
                                  '$AAV_TESTS_DIR)')
     args = p.parse_args(argv)
+    if args.analyse:
+        return args
     if args.ground:
-        p.error('--ground is reserved for phase B and refused for now: the car stays on '
-                'stands until phase A passes (docs/testing-plan.md)')
-    if not args.stands:
-        p.error('add --stands: phase A runs with all four wheels off the ground')
+        p.error('--ground (the open lot) is refused for now: phase A on stands, then phase B '
+                'in the hallway (--hallway), first (docs/testing-plan.md)')
+    if args.stands == args.hallway:
+        p.error('add --stands (phase A, wheels off the ground) or --hallway (phase B, in a '
+                'measured hallway): one of them')
+    if args.hallway:
+        if args.only:
+            p.error('--only is for --stands; --hallway takes --kinds')
+        bad = [k for k in args.kinds if k not in HALL_KINDS]
+        if bad:
+            p.error(f'--kinds: no {", ".join(bad)} (pick from {", ".join(HALL_KINDS)})')
+        if args.repeats < 1:
+            p.error('--repeats must be at least 1')
+        if args.length is not None and not args.length > 0:
+            p.error('--length must be above 0 m')
+        if not args.sim and (args.sim_actuators or args.wheel_noise or args.wheel_slip):
+            p.error('--sim-actuators, --wheel-noise and --wheel-slip are for --sim only')
+        if args.sim_actuators:
+            try:
+                sim_overrides(args.sim_actuators)
+            except ValueError as e:
+                p.error(f'--sim-actuators: {e}')
+        if args.sim and args.length is None:
+            args.length = SIM_LENGTH
+        return args
     unknown = [w for w in args.only if w not in NAMES and w not in GROUPS]
     if unknown:
         p.error(f'--only: no step {", ".join(unknown)} (pick from {", ".join(NAMES)}, or '
@@ -196,11 +251,91 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
     return args
 
 
-def report_folder(base: Optional[str], sim: bool, now: datetime.datetime) -> str:
-    """Return the run's folder: <base>/<time>-stands[-sim] (not made here)."""
+def report_folder(base: Optional[str], sim: bool, now: datetime.datetime,
+                  phase: str = 'stands') -> str:
+    """Return the run's folder: <base>/<time>-<stands|hallway>[-sim] (not made here)."""
     base = os.path.expanduser(base or os.environ.get('AAV_TESTS_DIR', '~/aav-tests'))
-    return os.path.join(base, now.strftime('%Y-%m-%d-%H%M%S') + '-stands'
+    return os.path.join(base, now.strftime('%Y-%m-%d-%H%M%S') + f'-{phase}'
                         + ('-sim' if sim else ''))
+
+
+# --- phase B, the hallway ------------------------------------------------------------
+
+HALL_KINDS = ('coast', 'speed-up', 'brake', 'steer')   # coast first: its drag goes in the rest
+HALL_MARGIN = 3.0       # m (safety.HALL_MARGIN)
+SIM_LENGTH = 15.0       # m: Ravensim's pretend hallway
+# The overrides the simulated car may take: the car model's actuator numbers.
+SIM_KEYS = ('max_accel', 'throttle_lag', 'throttle_dead_time', 'max_brake', 'brake_lag',
+            'brake_dead_time', 'drag', 'steer_rate', 'steer_lag', 'steer_dead_time',
+            'steer_offset', 'steer_deadband', 'throttle_deadband')
+
+
+def sim_overrides(text: str) -> Mapping[str, float]:
+    """Parse --sim-actuators: 'name=value' pairs, by commas or spaces; names in SIM_KEYS."""
+    out = {}
+    for part in text.replace(',', ' ').split():
+        name, eq, value = part.partition('=')
+        if not eq:
+            raise ValueError(f'not name=value: {part!r}')
+        if name not in SIM_KEYS:
+            raise ValueError(f'no actuator number {name!r} (pick from {", ".join(SIM_KEYS)})')
+        try:
+            out[name] = float(value)
+        except ValueError:
+            raise ValueError(f'{name}: not a number: {value!r}') from None
+        if out[name] < 0:
+            raise ValueError(f'{name} must not be negative')
+    return out
+
+
+@dataclass(frozen=True)
+class HallPass:
+    number: int        # 1, 2, ...
+    kind: str          # coast, speed-up, brake, steer
+    direction: str     # there, back
+
+    @property
+    def test(self) -> str:
+        return f'hall-{self.kind}'
+
+    @property
+    def folder(self) -> str:
+        return f'{self.number:02d}-{self.test}-{self.direction}'
+
+
+def hall_passes(kinds: Sequence[str], repeats: int, both_ways: bool) -> List[HallPass]:
+    """
+    Return the passes in order: every kind (coast first), `repeats` times over.
+
+    Both ways: the car faces 'there', then 'back' (turned round), then 'there'...: each
+    pass starts where the last ended, and the IMU's offsets facing each way give the slope.
+    """
+    order = [k for k in HALL_KINDS if k in kinds]
+    out = []
+    for r in range(repeats):
+        for k in order:
+            n = len(out)
+            out.append(HallPass(n + 1, k, 'back' if both_ways and n % 2 else 'there'))
+    return out
+
+
+def hall_args(p: HallPass, length: float, margin: float, sim: bool, out: str) -> List[str]:
+    """actuator_test's arguments for one hallway pass."""
+    args = [p.test, '--hallway', f'{length:g}', '--margin', f'{margin:g}', '--direction',
+            p.direction, '--out', out]
+    return args + (['--sim'] if sim else [])
+
+
+def sim_launch_args(overrides: Mapping[str, float], wheel_noise: float,
+                    wheel_slip: float) -> Tuple[str, ...]:
+    """sim.launch.py's arguments for a pretend hallway: flat, empty, room behind and ahead."""
+    actuators = ','.join(f'{k}={v:g}' for k, v in overrides.items())
+    # Every pass starts where the last stopped, and in the sim nobody turns the car round:
+    # start far back on the empty world's 400 m plane.
+    return ('world:=empty', 'gui:=false', 'rviz:=false', 'nav:=false', 'cameras:=false',
+            'lidar:=false', 'radar:=false', 'start_x:=-180',
+            f'actuators:={actuators}', f'wheel_noise:={wheel_noise:g}',
+            f'wheel_slip:={wheel_slip:g}')
 
 
 # --- the tool steps ------------------------------------------------------------------

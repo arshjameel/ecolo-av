@@ -4,7 +4,7 @@ Ravensim as the car: the world, the car, its sensors, the adapter and the camera
   ros2 launch aav_sim_models ravensim.launch.py [world:=empty|test_lot|road|campus]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true]
       [radar:=true] [cameras:=true] [chase_camera:=true] [camera_lockstep:=auto]
-      [actuator_model:=true] [payload:=0] [adaptive_brake:=false]
+      [actuator_model:=true] [actuators:=] [payload:=0] [adaptive_brake:=false]
       [faults:=false] [spine:=false] [arm:=true]
       [esp32:=false] [esp32_loop:=pi] [bridge:=rust|python] [legacy_impl:=rust|python]
 
@@ -280,6 +280,7 @@ def launch_setup(context):
                           'payload': float(LaunchConfiguration('payload').perform(context)),
                           'adaptive_brake': flag(context, 'adaptive_brake'),
                           'lag_scale': float(LaunchConfiguration('lag_scale').perform(context)),
+                          'actuators': LaunchConfiguration('actuators').perform(context),
                           'spine': spine, 'esp32': esp32}, sim_time]),
         # Each sensor in a process of its own, as on the car: none waits behind another.
         Node(package='aav_sim_models', executable='sim_imu', name='sim_imu',
@@ -360,6 +361,11 @@ def generate_launch_description():
                               description='true: the adaptive brake after the actuator '
                                           "model's speed loop (docs/stopping.md); not with "
                                           'spine or esp32'),
+        DeclareLaunchArgument('actuators', default_value='',
+                              description="the car's own actuator numbers over vehicle.yaml's"
+                                          ', "throttle_lag=0.3,drag=0.2": a known car to '
+                                          'measure (car-test --hallway --sim); the drivers '
+                                          'keep vehicle.yaml'),
         DeclareLaunchArgument('lag_scale', default_value='1.0',
                               description="the actuator model's throttle, brake and steering "
                                           'lags times this (a robustness test)'),

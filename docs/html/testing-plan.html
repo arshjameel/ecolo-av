@@ -7,7 +7,7 @@
 <!-- Generated from docs/testing-plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The testing plan</h1>
-<div class="meta">14 min read · 12 sections</div></header>
+<div class="meta">16 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -250,6 +250,12 @@ test, in what order, and how we know each step passed</strong>. The detail of ea
 <td>by hand</td>
 <td>Built; <strong>untested on the car</strong></td>
 </tr>
+<tr>
+<td>In the hallway, all of phase B</td>
+<td><code>pixi run car-test --hallway</code> (<code>--sim --no-manual</code>: a pretend hallway in its own Ravensim)</td>
+<td>by hand</td>
+<td>Built 19 Nov (TODO 248); against Ravensim and the pretend car; <strong>untested on the car</strong></td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -372,31 +378,38 @@ nothing happens for the dead time, then the car moves towards the command with t
 <th>Actuator</th>
 <th>Numbers to measure</th>
 <th>Test</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Throttle</td>
 <td><code>throttle_dead_time</code>, <code>throttle_lag</code>, top acceleration</td>
-<td><code>speed-up</code> (4.1)</td>
+<td><code>hall-speed-up</code> (B1; 4.1 in a lot)</td>
+<td>Built; <strong>untested on the car</strong></td>
 </tr>
 <tr>
 <td>Drag</td>
 <td>how fast the car slows on its own</td>
-<td><code>coast</code> (4.2)</td>
+<td><code>hall-coast</code> (B2; 4.2)</td>
+<td>Built; <strong>untested on the car</strong></td>
 </tr>
 <tr>
 <td>Brake</td>
 <td><code>brake_dead_time</code>, <code>brake_lag</code>, deceleration, stopping distance</td>
-<td><code>brake</code> (4.3)</td>
+<td><code>hall-brake</code> (B3; 4.3)</td>
+<td>Built; <strong>untested on the car</strong></td>
 </tr>
 <tr>
 <td>Steering</td>
-<td><code>steer_dead_time</code>, <code>steer_lag</code>, rate, centre</td>
-<td><code>steer-rate</code> (3.11), <code>steer-centre</code> (3.12)</td>
+<td><code>steer_dead_time</code>, <code>steer_lag</code> on the ground; rate, centre on stands</td>
+<td><code>hall-steer</code> (B4); <code>steer-rate</code> (3.11), <code>steer-centre</code> (3.12)</td>
+<td>Built; <strong>untested on the car</strong></td>
 </tr>
 </tbody>
 </table></div>
+<p><strong>One command runs them all:</strong> <code>pixi run car-test --hallway</code> (TODO 248;
+<a href="actuator-tests.html#car-test-hallway-the-transfer-functions">how</a>).</p>
 <h3 id="why-the-hallway-works">Why the hallway works</h3>
 <p>We can't go fast indoors, but <strong>the model's numbers don't depend on speed</strong> at our speeds.
 Distance needed to reach a speed and stop again:</p>
@@ -435,6 +448,10 @@ Distance needed to reach a speed and stop again:</p>
 </tbody>
 </table></div>
 <p>Measure the hallway first, and keep the shared 1.0 m/s limit unless it is clearly long enough.</p>
+<p><code>car-test --hallway</code> works the top speed out from the length you type
+(<code>safety.hallway_limits</code>: speed up at 0.5 m/s², 0.3 s to react, stop at 0.5 m/s², plus the
+margin), never above 1.0 m/s. Each pass brakes in time to stand still before
+<strong>length − margin</strong>, by the wheels' distance; past it, it stops at once.</p>
 <h3 id="using-the-imu-as-well-as-the-wheels">Using the IMU as well as the wheels</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -470,11 +487,43 @@ Distance needed to reach a speed and stop again:</p>
 then blend the IMU's acceleration with the wheels' speed (the tests already record both:
 <code>ax</code> and the wheel speed in each run's CSV). The fit gives each number <strong>with error bars</strong>
 (TODO 104).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10 s still before each pass: the IMU's offset and noise</td>
+<td>Built (<code>fusion.still_imu</code>)</td>
+</tr>
+<tr>
+<td>The slope: the offsets facing each way (the car turned round between passes)</td>
+<td>Built (<code>fusion.slope_from</code>)</td>
+</tr>
+<tr>
+<td>The blend: a small Kalman filter, speed and IMU bias</td>
+<td>Built (<code>fusion.fuse</code>)</td>
+</tr>
+<tr>
+<td>Forces: F = m a, with <code>vehicle.yaml</code>'s mass</td>
+<td>Built (<code>fusion.forces</code>)</td>
+</tr>
+<tr>
+<td>Error bars: mean ± sd over the passes, trusted or not</td>
+<td>Built (<code>errorbars.py</code>)</td>
+</tr>
+</tbody>
+</table></div>
 <h3 id="compare-with-the-model">Compare with the model</h3>
 <p>For each run: feed the same commands into the model (the simulator's car) and lay the two
 speed curves over each other. <strong>Passes when</strong> the model's speed stays within 10 % of the
 car's, and its stopping distance within 0.2 m. Then the simulator, ego's predictions and the
 planners all use the measured car.</p>
+<p>Built (<code>hallway.replay</code>, <code>compare</code>): every pass, with the fitted numbers and with
+<code>vehicle.yaml</code>'s, into <code>compare.csv</code> and <code>overlays/</code>. <strong>Untested on the car.</strong></p>
 </section>
 <section class="card"><h2 id="the-debug-screen">The debug screen</h2>
 <p>Our professor's idea: the map screen doubles as a <strong>debug screen</strong>, like the hardware panel.</p>

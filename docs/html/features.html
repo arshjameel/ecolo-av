@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">118 min read · 15 sections</div></header>
+<div class="meta">119 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -561,6 +561,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <tr>
 <td><a href="actuator-tests.html#car-test-the-whole-stands-test">car-test: the whole stands test</a> (<code>pixi run car-test --stands</code>)</td>
 <td>Our professor asked for one automated testing system: phase A (the preflight, every sensor, the steering, throttle on free wheels, faults on purpose) in one command with one report, stopping at the first failure, so every stands day is run and recorded the same way</td>
+<td>Ben Woodhead</td>
+<td>2026-11-19</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="actuator-tests.html#car-test-hallway-the-transfer-functions">car-test --hallway: the transfer functions</a> (<code>pixi run car-test --hallway</code>, TODO 248)</td>
+<td>Ben, 19 Nov: "measuring all the acceleration and braking in the car and the imu data and the forces. and getting the transfer functions correct". Phase B in a measured hallway: the top speed from its length, every pass fenced to stop inside it; 10 s still for the IMU's offset, the slope from both ways, the IMU blended with the wheels (a Kalman filter), F = m a; drag, max_accel, max_brake, each lag and dead time with error bars and a trust flag; each pass replayed through the car model (10 % speed, 0.2 m stop); only trusted lines to paste. Ravensim's car can take its own numbers (<code>actuators:=</code>) so the fits are proven to find them</td>
 <td>Ben Woodhead</td>
 <td>2026-11-19</td>
 <td>sim</td>

@@ -1,9 +1,24 @@
 """
-car_test: phase A of docs/testing-plan.md on stands, one command, one report. The ROS part.
+car_test: phases A and B of docs/testing-plan.md, one command, one report. The ROS part.
 
     pixi run car-test --stands                      the real car, wheels off the ground
     pixi run car-test --stands --sim --no-manual    its own Ravensim (this computer only)
     pixi run car-test --stands --only faults        some steps (car_test.STEPS, or a group)
+    pixi run car-test --hallway                     phase B in a measured hallway (TODO 248)
+    pixi run car-test --hallway --sim --no-manual   the same in its own Ravensim
+    pixi run car-test --analyse <session>           a hallway session's report again
+
+--hallway (HallwayTest): asks the hallway's measured length (or --length) and works out
+its top speed (safety.hallway_limits: speed up + stop + margin, within 1.0 m/s); then each
+pass (car_test.hall_passes: coast, speed-up, brake, steer, --repeats times, the car turned
+round between passes unless --one-way) is an actuator_test hall-* child, which stands
+still 10 s (the IMU's offset), drives, and brakes in time to stop inside the room. On the
+car a person puts the car on the start line before each pass (Enter). Any pass that is
+refused or stopped by a safety rule ends the session. Then hallway.py fits everything,
+with error bars, and lays the model over each pass: ~/aav-tests/<time>-hallway[-sim]/
+report.md, fits.csv, compare.csv, overlays/, vehicle-yaml.txt, session.yaml. In --sim,
+Ravensim's empty world (no cameras), with --sim-actuators as the simulated car's own
+numbers (sim.launch.py actuators:=) and --wheel-noise, --wheel-slip.
 
 It writes one folder, ~/aav-tests/<time>-stands[-sim]/: report.md (the table), run.log
 (everything printed), and a folder per step with that step's own files.
@@ -51,6 +66,7 @@ import threading
 import time
 
 from aav_actuator_tests import car_test as ct
+from aav_actuator_tests import hallway
 from aav_actuator_tests import reports
 from aav_actuator_tests import safety
 from aav_actuator_tests.actuator_test import Aborted
@@ -98,17 +114,18 @@ class Tee:
 class SimLaunch:
     """Our own Ravensim: its own process group and log, so we only ever touch our own."""
 
-    def __init__(self, folder, say):
+    def __init__(self, folder, say, args=SIM_ARGS):
         self.log_path = os.path.join(folder, 'sim-launch.log')
         self.proc = None
         self.say = say
+        self.args = tuple(args)
 
     def start(self):
-        self.say(f"Starting Ravensim's road world on ROS domain {os.environ['ROS_DOMAIN_ID']} "
-                 f'(this computer only): {" ".join(SIM_ARGS)}')
+        self.say(f'Starting Ravensim on ROS domain {os.environ["ROS_DOMAIN_ID"]} '
+                 f'(this computer only): {" ".join(self.args)}')
         log = open(self.log_path, 'w')
         self.proc = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
-                                      *SIM_ARGS], stdout=log, stderr=subprocess.STDOUT,
+                                      *self.args], stdout=log, stderr=subprocess.STDOUT,
                                      start_new_session=True)
 
     def pid_of(self, name):
@@ -719,6 +736,148 @@ class CarTest:
         self.say(f'Saved in {self.folder} (report.md)')
 
 
+class HallwayTest(CarTest):
+    """Phase B: the hallway's passes, each an actuator_test hall-* child; then the fits."""
+
+    def __init__(self, node, args, folder, sim, out):
+        super().__init__(node, args, folder, sim, out)
+        self.hall = None
+        self.passes = []          # what each pass did, for session.yaml and report.md
+        self.session = None
+
+    def prepare(self):
+        """Every check before anything moves; returns why not, or None."""
+        node, a = self.node, self.args
+        if self.sim:
+            self.say('Waiting for our Ravensim: /system/source SIM, the speed, the output '
+                     'gate OPEN ...')
+            up = node.spin_for(SIM_UP, lambda: (
+                safety.source_kind(node.sources) is safety.Kind.SIM and self.fresh_odom()
+                and node.gate is not None and node.gate[1].startswith('OPEN')))
+            if not up:
+                return (f'Ravensim did not come up in {SIM_UP:.0f} s (see '
+                        f'{self.sim.log_path})')
+            node.spin_for(3.0)
+        else:
+            node.spin_for(3.0, lambda: bool(node.sources))
+            node.spin_for(1.0)
+        kind = safety.source_kind(node.sources)
+        d = safety.decide(kind, a.sim, False, 4)
+        if not d.allowed:
+            return d.reason
+        self.real = d.real
+        length = a.length
+        if length is None:
+            if not sys.stdin.isatty():
+                return 'the hallway length is needed: --length, or a person to type it'
+            typed = ask('The hallway, measured with a tape: metres from the start line to '
+                        'the far wall: ')
+            try:
+                length = float(typed or '')
+            except ValueError:
+                return f'not a length: {typed!r}'
+        hall, why = safety.hallway_limits(length, a.margin, min(d.cap, safety.REAL_CAP))
+        if hall is None:
+            return why
+        self.hall = hall
+        self.say(f'Hallway {hall.length:g} m, margin {hall.margin:g} m: the car stands still '
+                 f'before {hall.room:.1f} m; top speed {hall.top:g} m/s (speed up '
+                 f'{safety.HALL_ACCEL:g} m/s^2, stop {safety.HALL_DECEL:g} m/s^2, '
+                 f'{safety.HALL_REACTION:g} s to react: {hall.needed(hall.top):.1f} m)')
+        if d.real:
+            self.say()
+            self.say('THE REAL CAR, ON THE GROUND, IN THE HALLWAY. Check, out loud:')
+            for item in safety.HALLWAY_CHECKLIST:
+                self.say(f'  [ ] {item}')
+            self.say('Each pass asks again before it moves. To stop at any time: Ctrl-C '
+                     'here, the e-stop, or the joystick deadman.')
+            if not sys.stdin.isatty():
+                return 'the real car needs a person at the keyboard to confirm'
+            typed = ask('Type "hallway" to start (anything else cancels): ')
+            if not safety.confirmed(typed, 'hallway'):
+                return 'cancelled: nothing moved'
+        return None
+
+    def run(self):
+        a = self.args
+        why = self.prepare()
+        if why:
+            self.say(f'REFUSED: {why}')
+            self.notes.append(f'Refused before any pass: {why}')
+            return
+        both = not (a.one_way or a.sim)
+        if a.sim and not a.one_way:
+            self.notes.append('Ravensim: nobody turns the car round, and the floor is flat: '
+                              'every pass faces "there"')
+        stopped = None
+        for p in ct.hall_passes(a.kinds, a.repeats, both):
+            entry = {'pass': p.folder, 'test': p.test, 'direction': p.direction}
+            self.passes.append(entry)
+            if stopped:
+                entry.update(status='NOT RUN', detail=stopped)
+                continue
+            if self.real and not self.place(p):
+                entry.update(status='SKIPPED', detail='skipped by the person')
+                continue
+            self.say()
+            self.say(f'=== Pass {p.number}: {p.test}, facing {p.direction} ===')
+            sub = os.path.join(self.folder, p.folder)
+            os.makedirs(sub, exist_ok=True)
+            cmd = [sys.executable, '-m', 'aav_actuator_tests.actuator_test',
+                   *ct.hall_args(p, self.hall.length, self.hall.margin, bool(a.sim), sub)]
+            self.say(f'$ actuator-test {" ".join(cmd[3:])}')
+            try:
+                code = self.child(cmd, os.path.join(sub, 'output.log'))
+            except KeyboardInterrupt:
+                entry.update(status='FAIL', detail='Ctrl-C')
+                stopped = 'Ctrl-C'
+                continue
+            if code == 0:
+                entry.update(status='PASS', detail='ran to the end')
+            else:
+                entry.update(status='FAIL', detail=ct.TOOL_CODES.get(code, f'exit {code}'))
+                stopped = f'pass {p.number} ({p.test}): {entry["detail"]}: the session stops'
+
+    def place(self, p):
+        """On the car: the person puts it on the start line, facing the way. False: skip."""
+        if p.number == 1:
+            return True
+        turn = ('turn it round' if p.direction != self.passes[-2]['direction']
+                else 'facing the same way')
+        typed = ask(f'Put the car back on the start line, {turn} (now facing {p.direction}): '
+                    'push it, or drive it with the joystick. Then Enter (s skips this pass, '
+                    'q stops): ')
+        if (typed or '').strip().lower() == 'q':
+            raise KeyboardInterrupt
+        return (typed or '').strip().lower() != 's'
+
+    def report(self, started, where):
+        a = self.args
+        info = {'started': started, 'where': where, 'sim': bool(a.sim),
+                'length': self.hall.length if self.hall else a.length,
+                'margin': self.hall.margin if self.hall else a.margin,
+                'room': self.hall.room if self.hall else None,
+                'top': self.hall.top if self.hall else None, 'repeats': a.repeats,
+                'mass': float(self.cfg.get('vehicle', {}).get('mass', float('nan'))),
+                'passes': self.passes, 'notes': self.notes}
+        if a.sim:
+            overrides = ct.sim_overrides(a.sim_actuators)
+            info.update(sim_actuators=dict(overrides), wheel_noise=a.wheel_noise,
+                        wheel_slip=a.wheel_slip,
+                        truth=hallway.with_truth(reports.current_values(self.cfg), overrides))
+        with open(os.path.join(self.folder, 'session.yaml'), 'w') as f:
+            yaml.safe_dump(info, f, sort_keys=False)
+        self.say()
+        self.say('Working out the transfer functions (fits, error bars, the model replayed) ...')
+        self.session = hallway.analyse(self.folder, info)
+        hallway.write(self.session)
+        self.say(hallway.text_table(self.session))
+        self.say(f'Saved in {self.folder} (report.md, vehicle-yaml.txt, overlays/)')
+
+    def failed(self):
+        return any(e.get('status') == 'FAIL' for e in self.passes) or not self.passes
+
+
 class Waiting:
     """A prompt answered on another thread, so the runner can keep its 50 Hz meanwhile."""
 
@@ -762,8 +921,11 @@ def pick_domain():
 
 def main(argv=None):
     args = ct.parse(sys.argv[1:] if argv is None else argv)
+    if args.analyse:
+        return hallway.main([args.analyse])
     now = datetime.datetime.now()
-    folder = ct.report_folder(args.out, args.sim, now)
+    phase = 'hallway' if args.hallway else 'stands'
+    folder = ct.report_folder(args.out, args.sim, now, phase)
     os.makedirs(folder, exist_ok=True)
     out = Tee(os.path.join(folder, 'run.log'))
     started = now.strftime('%Y-%m-%d %H:%M:%S')
@@ -771,15 +933,23 @@ def main(argv=None):
     if args.sim:
         os.environ['ROS_DOMAIN_ID'] = pick_domain()
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-        sim = SimLaunch(folder, out.say)
+        launch = (ct.sim_launch_args(ct.sim_overrides(args.sim_actuators), args.wheel_noise,
+                                     args.wheel_slip)
+                  if args.hallway else SIM_ARGS)
+        sim = SimLaunch(folder, out.say, launch)
         sim.start()
-    where = (f"Ravensim's road world, started by the runner (ROS domain "
-             f"{os.environ.get('ROS_DOMAIN_ID')}, this computer only)" if args.sim
-             else 'the real car, on stands')
-    out.say(f'car-test --stands: {where}. Report folder: {folder}')
+    if args.hallway:
+        where = (f"Ravensim's empty world, a pretend {args.length:g} m hallway (ROS domain "
+                 f"{os.environ.get('ROS_DOMAIN_ID')}, this computer only)" if args.sim
+                 else 'the real car, in the hallway')
+    else:
+        where = (f"Ravensim's road world, started by the runner (ROS domain "
+                 f"{os.environ.get('ROS_DOMAIN_ID')}, this computer only)" if args.sim
+                 else 'the real car, on stands')
+    out.say(f'car-test --{phase}: {where}. Report folder: {folder}')
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     node = CarTestNode(bool(args.sim))
-    run = CarTest(node, args, folder, sim, out)
+    run = (HallwayTest if args.hallway else CarTest)(node, args, folder, sim, out)
     try:
         run.run()
     except KeyboardInterrupt:
@@ -794,6 +964,8 @@ def main(argv=None):
             rclpy.try_shutdown()
             if sim is not None:
                 sim.stop()
+    if args.hallway:
+        return 5 if run.failed() else 0
     return 5 if ct.failed(run.results) else 0
 
 

@@ -946,10 +946,26 @@ def wheel_steps(rows, ctx: Context) -> Report:
     return rep
 
 
+def hall_steer(rows, ctx: Context) -> Report:
+    """B4: one hallway pass's steering on the ground (hallway.single; the session: car-test)."""
+    from aav_actuator_tests import hallway
+    rep = Report('B4 steering on the ground (hallway)')
+    p = hallway.single(rows, ctx, 'steer')
+    for k, v in p.values.items():
+        rep.add(k.replace('_', ' '), v.value, 's', f'actuators.{k}' if 'delay' not in k else None,
+                ctx, note=v.problem)
+    rep.notes += p.notes + ['one pass: no error bars. car-test --hallway fits every pass '
+                            'together, with error bars']
+    return rep
+
+
 ANALYSES = {
     'steer-sweep': steer_sweep, 'steer-rate': steer_rate, 'steer-centre': steer_centre,
     'speed-up': speed_up, 'coast': coast, 'brake': brake, 'throttle-map': throttle_map,
     'circles': circles, 'straight': straight, 'wheel-steps': wheel_steps,
+    # The hallway's passes: each one alone, as its stage-4 twin (the session: hallway.py).
+    'hall-speed-up': speed_up, 'hall-coast': coast, 'hall-brake': brake,
+    'hall-steer': hall_steer,
 }
 
 
