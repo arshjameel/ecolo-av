@@ -484,3 +484,235 @@ impl Scene {
         best
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::math::Rot3;
+
+    fn ray(origin: [f64; 3], direction: [f64; 3]) -> Ray {
+        let d = Vec3::new(direction[0], direction[1], direction[2]);
+        Ray {
+            origin: Vec3::new(origin[0], origin[1], origin[2]),
+            direction: d * (1.0 / d.length()),
+        }
+    }
+
+    fn close(a: Option<f64>, b: f64) -> bool {
+        a.is_some_and(|a| (a - b).abs() < 1e-9)
+    }
+
+    #[test]
+    fn a_triangle_is_hit_from_either_side_and_only_ahead() {
+        let t = Triangle::new(
+            Vec3::new(2.0, -1.0, -1.0),
+            Vec3::new(2.0, 1.0, -1.0),
+            Vec3::new(2.0, 0.0, 1.0),
+        );
+        assert!(close(t.hit(&ray([0.0; 3], [1.0, 0.0, 0.0])), 2.0));
+        assert!(close(t.hit(&ray([4.0, 0.0, 0.0], [-1.0, 0.0, 0.0])), 2.0));
+        assert_eq!(
+            t.hit(&ray([4.0, 0.0, 0.0], [1.0, 0.0, 0.0])),
+            None,
+            "behind"
+        );
+        assert_eq!(
+            t.hit(&ray([0.0, 5.0, 0.0], [1.0, 0.0, 0.0])),
+            None,
+            "beside"
+        );
+        assert_eq!(
+            t.hit(&ray([0.0; 3], [0.0, 1.0, 0.0])),
+            None,
+            "along its plane"
+        );
+    }
+
+    #[test]
+    fn a_box_is_twelve_triangles_hit_on_each_face() {
+        let cube = Mesh::cuboid(Vec3::new(2.0, 4.0, 6.0));
+        assert_eq!(cube.triangles.len(), 12);
+        let scene = Scene::new(cube.triangles);
+        for (from, dir, d) in [
+            ([5.0, 0.0, 0.0], [-1.0, 0.0, 0.0], 4.0),
+            ([-5.0, 0.0, 0.0], [1.0, 0.0, 0.0], 4.0),
+            ([0.0, 5.0, 0.0], [0.0, -1.0, 0.0], 3.0),
+            ([0.0, -5.0, 0.0], [0.0, 1.0, 0.0], 3.0),
+            ([0.0, 0.0, 5.0], [0.0, 0.0, -1.0], 2.0),
+            ([0.0, 0.0, -5.0], [0.0, 0.0, 1.0], 2.0),
+        ] {
+            assert!(close(scene.cast(&ray(from, dir), 100.0), d), "{from:?}");
+        }
+        // From inside, a ray meets the wall it faces.
+        assert!(close(
+            scene.cast(&ray([0.0; 3], [1.0, 0.0, 0.0]), 100.0),
+            1.0
+        ));
+    }
+
+    #[test]
+    fn a_cylinder_and_a_plane_are_where_they_should_be() {
+        let post = Scene::new(Mesh::cylinder(0.5, 2.0, 32).triangles);
+        // Off the seam at y = 0: a ray exactly through an edge two faces share can slip
+        // between them by rounding (Möller-Trumbore's edges; 1 in billions of real rays).
+        let d = post.cast(&ray([3.0, 0.05, 0.0], [-1.0, 0.0, 0.0]), 10.0);
+        // A flat face of 32 sides sits a little inside the circle.
+        assert!(d.is_some_and(|d| (2.5..2.51).contains(&d)), "{d:?}");
+        assert!(close(
+            // Off the cap's centre, the corner its triangles share.
+            post.cast(&ray([0.1, 0.05, 5.0], [0.0, 0.0, -1.0]), 10.0),
+            4.0
+        ));
+        assert_eq!(
+            post.cast(&ray([3.0, 0.0, 1.5], [-1.0, 0.0, 0.0]), 10.0),
+            None
+        );
+        let ground = Scene::new(Mesh::plane(10.0, 10.0).triangles);
+        assert!(close(
+            ground.cast(&ray([1.0, 2.0, 3.0], [0.0, 0.0, -1.0]), 10.0),
+            3.0
+        ));
+        assert_eq!(
+            ground.cast(&ray([6.0, 0.0, 3.0], [0.0, 0.0, -1.0]), 10.0),
+            None
+        );
+    }
+
+    #[test]
+    fn nothing_beyond_the_limit_is_hit() {
+        let scene = Scene::new(Mesh::cuboid(Vec3::new(1.0, 1.0, 1.0)).triangles);
+        let r = ray([10.0, 0.0, 0.0], [-1.0, 0.0, 0.0]);
+        assert_eq!(scene.cast(&r, 9.0), None);
+        assert!(close(scene.cast(&r, 9.6), 9.5));
+        assert_eq!(Scene::default().cast(&r, 100.0), None, "an empty world");
+    }
+
+    #[test]
+    fn an_obj_file_reads_its_faces_as_fans() {
+        let text = "# a square and a triangle\n\
+                    v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\n\
+                    vn 0 0 1\n\
+                    f 1/1/1 2/2/1 3/3/1 4/4/1\n\
+                    f -1 -2 -3\n";
+        let mesh = Mesh::from_obj(text).expect("a good file");
+        assert_eq!(mesh.triangles.len(), 3);
+        assert_eq!(
+            mesh.triangles[0],
+            Triangle::new(
+                Vec3::new(0.0, 0.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(1.0, 1.0, 0.0)
+            )
+        );
+        assert_eq!(
+            mesh.triangles[2].a,
+            Vec3::new(0.0, 1.0, 0.0),
+            "-1: the last"
+        );
+    }
+
+    #[test]
+    fn a_broken_obj_file_says_which_line() {
+        let bad_vertex = Mesh::from_obj("v 0 0 0\nv 1 x 0\n").expect_err("x");
+        assert!(bad_vertex.starts_with("line 2"), "{bad_vertex}");
+        let short = Mesh::from_obj("v 0 0\n").expect_err("two numbers");
+        assert!(short.contains("x y z"), "{short}");
+        let missing = Mesh::from_obj("v 0 0 0\nf 1 2 3\n").expect_err("no vertex 2");
+        assert!(missing.starts_with("line 2"), "{missing}");
+    }
+
+    #[test]
+    fn scaled_and_moved_meshes_land_where_sdf_puts_them() {
+        let mesh = Mesh::cuboid(Vec3::new(1.0, 1.0, 1.0)).scaled(Vec3::new(2.0, 1.0, 1.0));
+        let pose = Pose::new(Vec3::new(10.0, 0.0, 0.0), Rot3::from_yaw(PI_2));
+        let scene = Scene::new(mesh.transformed(&pose).triangles);
+        // Turned a quarter: its 2 m side lies along y now.
+        assert!(close(
+            scene.cast(&ray([10.0, 5.0, 0.0], [0.0, -1.0, 0.0]), 10.0),
+            4.0
+        ));
+        assert!(close(
+            scene.cast(&ray([5.0, 0.0, 0.0], [1.0, 0.0, 0.0]), 10.0),
+            4.5
+        ));
+    }
+
+    const PI_2: f64 = std::f64::consts::FRAC_PI_2;
+
+    /// A repeatable spread of numbers in [0, 1) (a linear congruential generator).
+    fn numbers(seed: u64) -> impl Iterator<Item = f64> {
+        let mut s = seed;
+        std::iter::repeat_with(move || {
+            s = s
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (s >> 11) as f64 / (1u64 << 53) as f64
+        })
+    }
+
+    #[test]
+    fn the_tree_finds_what_trying_every_triangle_finds() {
+        let mut n = numbers(7);
+        let mut next = move || n.next().unwrap_or(0.5);
+        let triangles: Vec<Triangle> = (0..500)
+            .map(|_| {
+                let c = Vec3::new(next() * 40.0 - 20.0, next() * 40.0 - 20.0, next() * 4.0);
+                let mut corner = || c + Vec3::new(next() - 0.5, next() - 0.5, next() - 0.5);
+                Triangle::new(corner(), corner(), corner())
+            })
+            .collect();
+        let tree = Bvh::new(triangles.clone());
+        assert_eq!(tree.len(), 500);
+        let mut hits = 0;
+        for _ in 0..2000 {
+            let a = next() * std::f64::consts::TAU;
+            let r = ray([0.0, 0.0, 2.0], [a.cos(), a.sin(), next() * 0.2 - 0.1]);
+            let brute = triangles
+                .iter()
+                .filter_map(|t| t.hit(&r))
+                .filter(|d| *d < 30.0)
+                .fold(None, |best: Option<f64>, d| {
+                    Some(best.map_or(d, |b| b.min(d)))
+                });
+            assert_eq!(tree.cast(&r, 30.0), brute);
+            hits += usize::from(brute.is_some());
+        }
+        assert!(hits > 100, "the rays hit something: {hits}");
+    }
+
+    #[test]
+    fn placed_objects_come_and_go_by_name() {
+        let wall = Mesh::cuboid(Vec3::new(1.0, 10.0, 2.0));
+        let mut scene = Scene::new(
+            wall.transformed(&Pose::new(Vec3::new(20.0, 0.0, 0.0), Rot3::IDENTITY))
+                .triangles,
+        );
+        let r = ray([0.0, 0.0, 0.0], [1.0, 0.0, 0.0]);
+        assert_eq!(scene.cast_named(&r, 50.0), Some((19.5, None)));
+        let post = Mesh::cuboid(Vec3::new(1.0, 1.0, 2.0));
+        scene.place(
+            "post",
+            &post,
+            &Pose::new(Vec3::new(5.0, 0.0, 0.0), Rot3::IDENTITY),
+        );
+        assert_eq!(scene.cast_named(&r, 50.0), Some((4.5, Some("post"))));
+        // The same name again: moved, not doubled.
+        scene.place(
+            "post",
+            &post,
+            &Pose::new(Vec3::new(8.0, 0.0, 0.0), Rot3::IDENTITY),
+        );
+        assert_eq!(scene.placed().collect::<Vec<_>>(), ["post"]);
+        assert_eq!(scene.cast_named(&r, 50.0), Some((7.5, Some("post"))));
+        // Behind the wall, a placed thing is hidden by it.
+        scene.place(
+            "far",
+            &post,
+            &Pose::new(Vec3::new(30.0, 0.0, 0.0), Rot3::IDENTITY),
+        );
+        assert!(scene.remove("post"));
+        assert!(!scene.remove("post"), "already gone");
+        assert_eq!(scene.cast_named(&r, 50.0), Some((19.5, None)));
+        assert_eq!(scene.triangle_count(), 12, "the fixed world never changes");
+    }
+}
