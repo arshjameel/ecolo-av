@@ -972,6 +972,240 @@ def fig_multi_drive():
     save(fig, 'multi-drive.svg')
 
 
+# --------------------------------------------------------------------------- behaviour
+
+def _node(ax, x, y, w, h, title, sub='', color=BLUE, fill='white', size=12.5, sub_size=10.5):
+    """Draw a rounded box with a title and an optional second line, centred on (x, y)."""
+    ax.add_patch(FancyBboxPatch((x - w / 2, y - h / 2), w, h,
+                                boxstyle='round,pad=0.02,rounding_size=0.12',
+                                fc=fill, ec=color, lw=2.5, zorder=3))
+    dy = 0.17 * h if sub else 0.0
+    ax.text(x, y + dy, title, ha='center', va='center', fontsize=size, fontweight='bold',
+            zorder=4)
+    if sub:
+        ax.text(x, y - 0.22 * h, sub, ha='center', va='center', fontsize=sub_size, color=INK2,
+                zorder=4)
+
+
+def _arrow(ax, a, b, color=INK2, rad=0.0, lw=1.8):
+    ax.add_patch(FancyArrowPatch(a, b, arrowstyle='-|>', mutation_scale=16, color=color, lw=lw,
+                                 connectionstyle=f'arc3,rad={rad}', zorder=2,
+                                 shrinkA=2, shrinkB=2))
+
+
+def fig_behaviour_place():
+    fig, ax = plt.subplots(figsize=(14, 6.4))
+    clean(ax, equal=False)
+    ax.set_xlim(0, 14)
+    ax.set_ylim(0, 6.4)
+
+    ax.text(0.2, 6.05, '1. In most stacks: behaviour sits between the route and the motion '
+            'planner', fontsize=14.5, fontweight='bold')
+    general = [('Route', 'which streets?', INK2),
+               ('Behaviour', 'what to do now?\nfollow, slow, stop,\nyield, wait, go', ORANGE),
+               ('Motion planner', 'the line and the speed\nfor the next seconds', INK2),
+               ('Control', 'steer, throttle,\nbrake', INK2)]
+    w, gap, y = 2.9, 0.55, 4.25
+    for i, (t, sub, c) in enumerate(general):
+        x = 0.25 + w / 2 + i * (w + gap)
+        _node(ax, x, y, w, 1.5, t, sub, c)
+        if i:
+            _arrow(ax, (x - w / 2 - gap + 0.05, y), (x - w / 2 - 0.05, y))
+    bx = 0.25 + w / 2 + (w + gap)
+    ax.text(bx, 5.25, 'sees: people, cars, signs, lights, stop lines', ha='center',
+            fontsize=10.5, color=ORANGE)
+
+    ax.text(0.2, 2.75, '2. In our car: behaviour reads the plan and writes the road ahead',
+            fontsize=14.5, fontweight='bold')
+    ours = [('Route', 'aav_routes\n(streets, lanes)', INK2),
+            ('Path', 'aav_planner\n/plan', INK2),
+            ('Behaviour', 'aav_behaviour_rs\nstates + stopping law', ORANGE),
+            ('The road ahead', '/world/road_ahead\nits stops, its limits', AQUA),
+            ('ego', 'holds every follower\n(MPPI...) under it', BLUE)]
+    w2, gap2, y2 = 2.35, 0.42, 1.25
+    for i, (t, sub, c) in enumerate(ours):
+        x = 0.25 + w2 / 2 + i * (w2 + gap2)
+        _node(ax, x, y2, w2, 1.45, t, sub, c, size=12, sub_size=10)
+        if i:
+            _arrow(ax, (x - w2 / 2 - gap2 + 0.05, y2), (x - w2 / 2 - 0.05, y2))
+    bx2 = 0.25 + w2 / 2 + 2 * (w2 + gap2)
+    ax.text(bx2, 2.18, 'sees: the things, a stop sign, stop lines, the locks, the fence',
+            ha='center', fontsize=10.5, color=ORANGE)
+    ax.text(bx2, 0.2, 'it caps the speed; it never steers', ha='center', fontsize=11,
+            color=ORANGE, fontweight='bold')
+    save(fig, 'behaviour-place.svg')
+
+
+def fig_behaviour_states():
+    fig, ax = plt.subplots(figsize=(14, 8.2))
+    clean(ax, equal=False)
+    ax.set_xlim(-0.6, 14.4)
+    ax.set_ylim(-2.9, 5.6)
+    w, h = 2.9, 1.3
+    pos = {'DRIVE': (1.2, 4.0), 'APPROACH': (6.3, 4.0), 'STOPPED': (11.4, 4.0),
+           'GO': (1.2, 0.6), 'WAIT': (11.4, 0.6), 'ASK': (6.3, -1.9)}
+    caps = {'DRIVE': ('no cap', AQUA), 'APPROACH': ('cap = v_cap(left)', ORANGE),
+            'STOPPED': ('the floor, 0.3 m/s', BLUE), 'WAIT': ('the floor, 0.3 m/s', BLUE),
+            'GO': ('rises 0.5 m/s²', AQUA), 'ASK': ('a person is told', INK2)}
+    for name, (x, y) in pos.items():
+        sub, c = caps[name]
+        _node(ax, x, y, w, h, name, sub, c, size=14, sub_size=11)
+
+    def edge(a, b, label, lx, ly, rad=0.0):
+        (x0, y0), (x1, y1) = pos[a], pos[b]
+        dx, dy = x1 - x0, y1 - y0
+        # Leave and arrive at the boxes' edges.
+        k = max(abs(dx) / (w / 2 + 0.1), abs(dy) / (h / 2 + 0.1))
+        _arrow(ax, (x0 + dx / k, y0 + dy / k), (x1 - dx / k, y1 - dy / k), INK2, rad)
+        ax.text(lx, ly, label, ha='center', va='center', fontsize=10.5, color=INK2,
+                bbox=dict(fc='white', ec='none', pad=1.0), zorder=5)
+
+    edge('DRIVE', 'APPROACH', 'a stop binds\n(sign, obstacle, fence,\ngoal, stop line)',
+         3.75, 5.15, rad=-0.3)
+    edge('APPROACH', 'DRIVE', 'sign passed or lost;\nthe goal ended', 3.75, 3.1, rad=-0.3)
+    edge('APPROACH', 'STOPPED', 'its lock on,\nstanding still', 8.85, 4.75)
+    edge('STOPPED', 'WAIT', 'next tick', 12.35, 2.3)
+    edge('WAIT', 'GO', 'no lock, nothing moving near', 8.6, 0.95)
+    edge('GO', 'DRIVE', 'cap back up\nto the top speed', 0.0, 2.3)
+    edge('APPROACH', 'GO', 'what it slowed for\nhas gone (an obstacle:\ngone for 1 s)',
+         5.3, 1.95, rad=0.2)
+    edge('GO', 'APPROACH', 'a new stop\nbinds', 2.5, 2.3, rad=0.2)
+    edge('WAIT', 'ASK', 'fence NEAR, or a lock\n(not the sign\'s) over 30 s', 10.7, -1.15)
+    edge('ASK', 'GO', 'no lock', 2.8, -1.0)
+
+    ax.text(-0.5, -2.75,
+            'From any state:  the e-stop → WAIT  ·  the goal aborted → ASK  ·  a lock on and '
+            'standing → WAIT  ·  something moving near → WAIT (moving), until gone 1 s',
+            fontsize=10.5, color=INK2)
+    ax.set_title('Our behaviour planner: six states (aav_behaviour_rs, the same as '
+                 'behaviour.py)', loc='left')
+    save(fig, 'behaviour-states.svg')
+
+
+def behaviour_cap(t, binding, hold, base=1.3, low=1.0, fall=2.0, rise=0.5):
+    """
+    Return the cap over time, and the times DRIVE came back, for a flickering obstacle.
+
+    A sketch: our rules, made-up speeds. APPROACH while the obstacle binds (the cap falls to
+    `low` at `fall` m/s²); when it goes, GO (rises at `rise` m/s²), then DRIVE at `base`.
+    With `hold` s, APPROACH lets go only once it has stayed gone that long (TODO 189's
+    release_hold).
+    """
+    dt = t[1] - t[0]
+    state, cap, gone, drives = 'DRIVE', base, None, 0
+    caps = []
+    for now, b in zip(t, binding):
+        if b:
+            gone = None
+            state = 'APPROACH'
+            cap = max(low, cap - fall * dt)
+        elif state == 'APPROACH':
+            gone = now if gone is None else gone
+            if now - gone >= hold - 1e-9:
+                state, gone = 'GO', None
+        elif state == 'GO':
+            cap = min(base, cap + rise * dt)
+            if cap >= base:
+                state = 'DRIVE'
+                drives += 1
+        caps.append(cap)
+    return np.array(caps), drives
+
+
+def fig_behaviour_hysteresis():
+    t = np.arange(0.0, 12.0, 0.02)
+    # A person at the lane's edge: in it, out of it, in again (made up).
+    spells = [(1.0, 2.2), (3.0, 3.6), (4.4, 5.3), (6.1, 7.0)]
+    binding = np.zeros_like(t, dtype=bool)
+    for a, b in spells:
+        binding |= (t >= a) & (t < b)
+    no_hold, drives_no = behaviour_cap(t, binding, hold=0.0)
+    held, drives_held = behaviour_cap(t, binding, hold=1.0)
+
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(12, 6.6), sharex=True,
+                                 gridspec_kw={'height_ratios': [3, 1]})
+    a1.plot(t, no_hold, color=MUTED, lw=2.5,
+            label=f'no hold: APPROACH > GO > DRIVE {drives_no} times')
+    a1.plot(t, held, color=BLUE, lw=3,
+            label=f'release_hold 1 s: {drives_held} time, once it has really gone')
+    a1.set_ylabel('speed cap')
+    a1.set_ylim(0.85, 1.42)
+    a1.set_yticks([])
+    a1.legend(loc='lower right', frameon=False, fontsize=11)
+    note(a1, 0.1, 1.34, 'DRIVE: no cap', INK2, 11)
+    note(a1, 0.1, 0.95, 'APPROACH: the cap for the stop', ORANGE, 11)
+    for s in ('top', 'right'):
+        a1.spines[s].set_visible(False)
+    a1.set_title('Hysteresis: one person at the lane\'s edge, with and without the hold '
+                 '(a sketch)')
+
+    a2.fill_between(t, 0, binding.astype(float), step='post', color=ORANGE, alpha=0.8, lw=0)
+    a2.set_yticks([0, 1])
+    a2.set_yticklabels(['clear', 'in the lane'])
+    a2.set_ylim(-0.1, 1.2)
+    a2.set_xlabel('time (s)')
+    for s in ('top', 'right'):
+        a2.spines[s].set_visible(False)
+    save(fig, 'behaviour-hysteresis.svg')
+
+
+def fig_behaviour_tree():
+    fig, ax = plt.subplots(figsize=(15, 7.6))
+    clean(ax, equal=False)
+    ax.set_xlim(-0.8, 16.6)
+    ax.set_ylim(-0.9, 7.2)
+
+    def ctrl(x, y, sym, label, w=3.0):
+        _node(ax, x, y, w, 0.95, f'{sym}  {label}', '', INK2, fill='#f4f3f0', size=11.5)
+
+    def act(x, y, label, sub='', w=2.6, color=BLUE):
+        _node(ax, x, y, w, 1.05 if sub else 0.8, label, sub, color, size=11.5, sub_size=9.5)
+
+    def link(a, b):
+        ax.plot([a[0], b[0]], [a[1] - 0.48, b[1] + 0.5], color=MUTED, lw=1.6, zorder=1)
+
+    root = (8.1, 6.4)
+    ctrl(*root, '↻', 'Recovery: 6 tries', w=3.4)
+    pipe, rr = (4.0, 4.9), (12.6, 4.9)
+    ctrl(*pipe, '⇉', 'Pipeline: plan and follow', w=3.8)
+    ctrl(*rr, '⟳', 'Round robin: the next fix', w=3.8)
+    link(root, pipe)
+    link(root, rr)
+    rate, follow = (2.1, 3.4), (6.7, 3.4)
+    ctrl(*rate, '1 Hz', 'Rate: at most once a second', w=4.3)
+    act(*follow, 'FollowPath', 'the controller (MPPI)')
+    link(pipe, rate)
+    link(pipe, follow)
+    fallback = (2.0, 1.95)
+    ctrl(*fallback, '?', 'Fallback: try in turn', w=3.2)
+    link(rate, fallback)
+    keep, plan = (0.75, 0.25), (3.95, 0.25)
+    act(*keep, 'Keep the path?', 'valid, ends at the goal,\nunder 10 s old', w=2.5,
+        color=AQUA)
+    act(*plan, 'ComputePathToPose', 'the planner', w=3.3)
+    link(fallback, keep)
+    link(fallback, plan)
+    clear, wait, back = (10.4, 3.4), (12.9, 3.4), (15.2, 3.4)
+    act(*clear, 'Clear costmaps', 'both', w=2.3)
+    act(*wait, 'Wait', '5 s', w=1.9)
+    act(*back, 'BackUp', '1 m at 0.25 m/s', w=2.3)
+    for k in (clear, wait, back):
+        link(rr, k)
+    note(ax, 10.0, 2.35, 'no Spin: a car can\'t turn on the spot', INK2, 11)
+
+    legend = [('⇉', 'do the children in order, together'), ('?', 'try each until one works'),
+              ('↻', 'if it fails, run a fix and try again'),
+              ('green', 'a condition: a yes-or-no check'), ('blue', 'an action: calls a server')]
+    for i, (sym, what) in enumerate(legend):
+        y = 1.4 - i * 0.45
+        ax.text(8.6, y, sym, fontsize=11, fontweight='bold',
+                color=AQUA if sym == 'green' else BLUE if sym == 'blue' else INK)
+        ax.text(9.8, y, what, fontsize=11, color=INK2)
+    ax.set_title('A behaviour tree: Nav2\'s navigate-to-pose tree, as we ran it for a car '
+                 '(a sketch; retired with Nav2)', loc='left')
+    save(fig, 'behaviour-tree.svg')
+
+
 def main():
     fig_pipeline()
     fig_kalman()
@@ -989,6 +1223,10 @@ def main():
     fig_pure_pursuit()
     fig_costmap()
     fig_multi_drive()
+    fig_behaviour_place()
+    fig_behaviour_states()
+    fig_behaviour_hysteresis()
+    fig_behaviour_tree()
 
 
 if __name__ == '__main__':
