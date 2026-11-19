@@ -112,7 +112,7 @@ Navigation is just another driver, at priority 20. Its command joins the same pa
 | 3 | the planner (`aav_planner`, the State Lattice: paths a car can drive) | `/plan` | `nav_msgs/Path` | when asked | no path fits the turning circle | RViz shows the path |
 | 4 | `mppi_lag` (MPPI with lag) | `cmd_vel_nav` | `TwistStamped` | 20 Hz | no TF `map → odom → base_link` | `ros2 topic hz /cmd_vel_nav` |
 | 5 | `velocity_smoother` | `/drivers/nav/cmd_vel`, or `/control/cmd_vel_smoothed` where the radar runs | `TwistStamped` | 20 Hz | | `ros2 topic echo /drivers/nav/cmd_vel` |
-| 6 | the stop zone (`aav_stop_zone`, where the radar or lidar runs) | `/drivers/nav/cmd_vel` | `TwistStamped` | 20 Hz | a radar point in the 1 m stop zone, or a silent radar: it sends zero | `ros2 topic echo /safety/collision_monitor/state` |
+| 6 | the stop zone (`aav_stop_zone`, where the radar or lidar runs) | `/drivers/nav/cmd_vel` | `TwistStamped` | 20 Hz | a radar point in the 1 m stop zone, or a silent radar: it sends zero | `ros2 topic echo /safety/stop_zone/state` |
 | 7 | `twist_mux`, then ego and the backend | as in sections 1 to 3 | | | the joystick, the keyboard or a stop sign outranks navigation | `ros2 topic echo /control/cmd_vel` |
 
 A street route can go in too: `street_router` (and the language tools) call the action

@@ -549,7 +549,7 @@ changes.</p>
 <td><code>sim</code></td>
 <td><code>pixi run sim</code></td>
 <td>Ravensim, our own simulator (with no GPU: <code>tools/software_gl.sh</code> in front, the cameras in lockstep)</td>
-<td>the whole stack: both EKFs, <code>navsat_transform</code>, Nav2</td>
+<td>the whole stack: both EKFs, <code>navsat_transform</code>, our navigation</td>
 </tr>
 <tr>
 <td><code>car</code></td>
@@ -592,8 +592,8 @@ changes.</p>
 <tbody>
 <tr>
 <td><code>orin</code> (Jetson AGX Orin)</td>
-<td>the car's model, mux, ego, scripted and point drivers, the roof lidar, the two camera streams (RF-DETR inside), the stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove</td>
-<td>JetPack 6 (Ubuntu 22.04) and the 2025-26 Humble software. Ours goes on beside it from the car kit; not yet run on the real Orin (<a href="rollout.html">Rolling out</a>)</td>
+<td>the car's model, mux, ego, scripted and point drivers, the roof lidar, the two camera streams (RF-DETR inside), the stop-sign watcher, localization, our navigation, the CAN bus (wheels), Foxglove</td>
+<td>JetPack 6 (Ubuntu 22.04; JetPack 7.2 or newer next, the hardware lead's call) and the 2025-26 Humble software. Ours goes on beside it from the car kit; not yet run on the real Orin (<a href="rollout.html">Rolling out</a>)</td>
 </tr>
 <tr>
 <td><code>motor_pi</code></td>

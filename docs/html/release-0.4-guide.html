@@ -867,13 +867,14 @@ the brake, wheel speed, clocks, the steering's centre, a truth for "1 m"). The h
 lead decides each (<a href="release-0.4-rc1.html#the-seven-hardware-blockers">the list</a>).</p>
 </section>
 <section class="card"><h2 id="whats-next">What's next</h2>
-<p>Tonight's queue (17 Nov), one helper at a time:</p>
+<p>The queue of 17 Nov night, as it stands on 18 Nov:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>#</th>
 <th>Next</th>
 <th>Why</th>
+<th>18 Nov</th>
 </tr>
 </thead>
 <tbody>
@@ -881,29 +882,36 @@ lead decides each (<a href="release-0.4-rc1.html#the-seven-hardware-blockers">th
 <td>1</td>
 <td><strong>Six more ports to Rust</strong></td>
 <td>the rest of the heavy Python (TODO 185)</td>
+<td>✅ the lane finder, <code>joy_alive</code>, the stop-sign watcher, the point driver, <code>arm_when_open</code>, <code>camera_stream</code></td>
 </tr>
 <tr>
 <td>2</td>
 <td><strong>NDT in the EKF</strong> (<code>ndt_ekf</code>)</td>
 <td>find its one stop, add a fall back where a world has no NDT map, score again, swap (TODO 210)</td>
+<td>⬜</td>
 </tr>
 <tr>
 <td>3</td>
 <td><strong>Slow down for still obstacles</strong></td>
 <td>today the behaviour slows only for things that move; a still wall is stopped by the stop zone alone</td>
+<td>⬜</td>
 </tr>
 <tr>
 <td>4</td>
-<td><strong>AMCL out</strong></td>
-<td>the last Nav2 node; NDT with a start-up search replaces it (TODO 231)</td>
+<td><strong>AMCL in Rust</strong></td>
+<td>the last Nav2 node (TODO 231)</td>
+<td>🟡 <code>aav_amcl_rs</code> is the default, a tie with stock on the lot; <code>nav2_amcl</code> leaves <code>pixi.toml</code> after more runs (232)</td>
 </tr>
 <tr>
 <td>5</td>
 <td><strong>The survey's picks</strong></td>
 <td>smooth MPPI (212), an MPC that reverses (213), passing with a jerk limit (214), the ground ring by ring (215), Kinematic-ICP (216), a motion model per thing (217)</td>
+<td>⬜</td>
 </tr>
 </tbody>
 </table></div>
+<p>The newest order is at the top of <code>TODO.md</code> ("What is next"), and the testing plan
+(<a href="testing-plan.html">The testing plan</a>) is what the car does next.</p>
 <p>Then the car: the blockers, car day, one drive recorded and scored (<a href="car-day.html">Car day</a>).</p>
 </section>
 <section class="card"><h2 id="read-more">Read more</h2>

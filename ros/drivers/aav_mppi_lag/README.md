@@ -89,7 +89,7 @@ the newest map -> odom, as before), `map_correction_turn_rate` (1°/s),
 relocalisation, taken at once and logged). From the launch: `map_correction` (bool, false by default; `map_correction:=slow` gives true, as the sim's `ours` stack does since 15 Nov (it won there, TODO 168);
 `navigation.launch.py map_correction:=newest` gives false, the old way; never in the yaml,
 which would win); `steer_gamma` (the launch's `mppi_lag_steer_gamma:=`; below 0 or unset:
-gamma's, as Nav2: the steering's control cost weight, TODO 168, [the sway that was left](../../../docs/mppi-lag.md#the-sway-that-was-left)).
+gamma's, as Nav2: the steering's control cost weight, TODO 168, [the sway that was left](../../../docs/history/mppi-lag-log.md#the-sway-that-was-left)).
 All read once at start.
 
 ### Crate `mppi-lag`

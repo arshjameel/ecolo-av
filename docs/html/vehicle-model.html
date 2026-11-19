@@ -1315,7 +1315,7 @@ Three runs of each profile on Ben's Mac, beside two other helpers' simulators:</
 <p><code>spine-core</code> also has an LQI (<code>speed_loop:=lqi</code>): one signed acceleration for throttle
 and brake, its gains from this model by the discrete Riccati equation
 (<code>VehicleModel.speed_lqi</code>). It sits in the study above as <code>'lqi'</code>, and in the figure.
-The design and the results: <a href="controllers.html#2a-lqi-against-the-pi-results-29-oct">Controllers, 2a</a>.</p>
+The design and the results: <a href="../history/controllers-log.md#2a-lqi-against-the-pi-results-29-oct">Controllers, 2a</a>.</p>
 <h4 id="pole-placement-after-the-car-day">Pole placement, after the car day</h4>
 <p>Match the closed loop (no throttle lag) to the poles you want:</p>
 <pre class="highlight"><code class="language-text">s² + (d + a_max·kp) s + a_max·ki  =  s² + 2ζωn s + ωn²

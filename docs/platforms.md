@@ -7,11 +7,14 @@ the official packages. On a Mac or any other Linux, use Pixi: see [Run it](run.m
 with the 2025-26 Humble software (21 Oct and 6 Nov audits). Our Jazzy goes on beside it
 from the car kit, one computer at a time: [Rolling out](rollout.md).
 
+**18 Nov (Ben):** the Orin will move to **JetPack 7.2 or newer**. When to reflash is the
+hardware lead's call; the team was upgrading the car that day.
+
 ## Which computer gets Jazzy how
 
 | Computer | OS | Jazzy from |
 |---|---|---|
-| Jetson AGX Orin | JetPack 7.2 (Ubuntu 24.04): the target. Today JetPack 6 | apt. JetPack 6 is Ubuntu 22.04, so reflash first, after a backup (not yet done). Before then: Pixi, below. |
+| Jetson AGX Orin | JetPack 7.2 or newer (Ubuntu 24.04): the target. Today JetPack 6 | apt. JetPack 6 is Ubuntu 22.04, so reflash first, after a backup (not yet done). Before then: Pixi, below. |
 | Raspberry Pi 4 or 5 | Ubuntu 24.04 Server (arm64): the target. Today Ubuntu 22.04; the camera Pis stay on Pi OS, with no ROS | apt; or Pixi on today's OS, below |
 | Linux laptop | Ubuntu 24.04 | apt, or Pixi |
 | Mac | macOS 14 or newer | Pixi: [Your Mac](mac.md) |

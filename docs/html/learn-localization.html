@@ -808,7 +808,7 @@ pose to <code>ekf_global</code> beside GPS.</p>
 lidar ─► NDT + map ─► "at x 12.31, y 4.02, 87°" ─► ekf_global (needs the map)</code></pre>
 <p>The rule for each: odometry (how far I moved) goes to <code>ekf_local</code>; anything that says
 where I am on the map goes to <code>ekf_global</code>. Results of NDT into <code>ekf_global</code>:
-<a href="trials.html#ndt-into-the-global-ekf-30-oct">trials</a>.</p>
+<a href="../history/trials-log.md#ndt-into-the-global-ekf-30-oct">trials</a>.</p>
 <p>Not Tesla's way: Tesla has no lidar. Its "occupancy network" turns camera images into
 3D cubes, each marked filled or empty. That looks like NDT's squares, but it doesn't
 match a scan to a map.</p>

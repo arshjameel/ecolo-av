@@ -26,7 +26,7 @@ a person can still look at it in RViz or Lichtblick.
 
 | Sensor | Node | Topic | Read by |
 |---|---|---|---|
-| Roof lidar | `lidar_scan` (`aav_lidar_rs`; `aav_lidar` with `lidar_impl:=python`) | `/sensors/lidar/scan` | the local costmap's `lidar_layer`; `collision_monitor`; AMCL (`amcl:=true`); `behaviour` (`behaviour:=true`) |
+| Roof lidar | `lidar_scan` (`aav_lidar_rs`; `aav_lidar` with `lidar_impl:=python`) | `/sensors/lidar/scan` | the local costmap's `lidar_layer`; the stop zone; AMCL (`amcl:=true`); `behaviour` (`behaviour:=true`) |
 | Roof lidar | `voxels` (`aav_voxels`), only with `voxels:=true` | `/perception/voxels/cubes`, `/ground` | then the `lidar_layer` and `collision_monitor`, instead of the scan; the debug HUD and the developer window draw them |
 | Radar | the driver, or a stand-in | `/sensors/radar/points` | the local costmap's `obstacle_layer`; `collision_monitor`; the sensor watchdog (all with `radar:=true`: the bench and the simulators. Off on the car: no radar part yet) |
 | Radar | `radar_clusters` | `/perception/radar/clusters`, `/cluster_boxes` | `things` (`things:=true`, a trial: each cluster's speed); else **nobody**: for RViz only |

@@ -85,6 +85,6 @@ run with `ghost:=true`. A ghost 15 m ahead; the car drives 30 m.
 | Must | How it's measured |
 |---|---|
 | stop 0-2 m before the ghost | the bumper to the ghost, in the ghost's own scan: what navigation sees |
-| who stopped it | the stop zone (`/safety/collision_monitor/state`), or the controller's own collision check on the costmap, which can stop it first. Either counts |
+| who stopped it | the stop zone (`/safety/stop_zone/state`), or the controller's own collision check on the costmap, which can stop it first. Either counts |
 | the local costmap marks it | 99 or more of 100 there |
 | drive on once it's off | the goal reached, past where the ghost stood |

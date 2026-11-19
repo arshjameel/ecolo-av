@@ -304,7 +304,7 @@ lidar ─► NDT + map ─► "at x 12.31, y 4.02, 87°" ─► ekf_global (need
 
 The rule for each: odometry (how far I moved) goes to `ekf_local`; anything that says
 where I am on the map goes to `ekf_global`. Results of NDT into `ekf_global`:
-[trials](trials.md#ndt-into-the-global-ekf-30-oct).
+[trials](history/trials-log.md#ndt-into-the-global-ekf-30-oct).
 
 Not Tesla's way: Tesla has no lidar. Its "occupancy network" turns camera images into
 3D cubes, each marked filled or empty. That looks like NDT's squares, but it doesn't

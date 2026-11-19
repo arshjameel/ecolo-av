@@ -106,7 +106,7 @@ Off unless a switch turns them on; in the simulator only, except where it says
 | Description | `robot_state_publisher`, `joint_state_publisher`, `xacro` | the car's model and frames |
 | Localization | `robot_localization`: `ekf_node` (twice) and `navsat_transform_node` | where the car is: `ekf_local` to steer, `ekf_global` to plan, GPS into map coordinates |
 | Localization | `tf2_ros` | a fixed map-to-odom frame when there's no GPS |
-| Localization | `nav2_amcl` (kept, with its lifecycle manager, when the rest of Nav2 went); KISS-ICP (not ROS, MIT) | trials beside the EKFs, off by default |
+| Localization | `nav2_amcl` (kept, with its lifecycle manager, when the rest of Nav2 went: `amcl_impl:=stock`; ours in Rust, `aav_amcl_rs`, is the default since 18 Nov); KISS-ICP (not ROS, MIT) | trials beside the EKFs, off by default |
 | Drivers | `joy`, `teleop_twist_joy`, `joy_teleop` | the joystick, its deadman, its e-stop button |
 | Drivers | `teleop_twist_keyboard` | driving from a laptop's keyboard |
 | Messages | `nav2_msgs` | Nav2's action and message types: our navigator, planner and follower serve Nav2's names, so goal senders never changed. Nav2's servers went on 17 Nov ([as it was](history/nav2-as-it-was.md)) |

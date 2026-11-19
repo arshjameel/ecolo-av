@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_stop_zone</name>
   <version>0.1.0</version>
-  <description>The stop zone in Rust (rclrs), in shadow: Nav2's collision_monitor's stop decision ported, deciding beside it on the same inputs and publishing on its own topics (/safety/stop_zone/shadow/*); nothing drives by it until it scores the same (TODO 182). The decision is the stop-zone crate, with no ROS.</description>
+  <description>The stop zone in Rust (rclrs): Nav2's collision_monitor's stop decision ported; the lock that zeroes navigation's command since 17 Nov, after stopping every time Nav2's did in its shadow runs (TODO 182). Its state on /safety/stop_zone/state, status and box. The decision is the stop-zone crate, with no ROS.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
   <buildtool_depend>ament_cmake</buildtool_depend>

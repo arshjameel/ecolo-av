@@ -91,8 +91,8 @@ config files name their nodes `/**/joy_node` and so on, so they match in any nam
 | `/cmd_vel_smoothed` | `/control/cmd_vel_smoothed` |
 | `/ego/actuator_cmd` | unchanged; since 23 Oct the backends read `/control/<target>/actuator_cmd`, from the output mux ([Sources and targets](sources-and-targets.md)) |
 | `/estop` | `/safety/estop` |
-| `/collision_monitor_state` | `/safety/collision_monitor/state` |
-| `/collision_monitor/stop_zone`, `.../collision_points_marker` | `/safety/collision_monitor/stop_zone`, `.../collision_points_marker` |
+| `/collision_monitor_state` | `/safety/collision_monitor/state` (since 17 Nov `/safety/stop_zone/state`) |
+| `/collision_monitor/stop_zone`, `.../collision_points_marker` | `/safety/collision_monitor/stop_zone`, `.../collision_points_marker` (since 17 Nov `/safety/stop_zone/box`) |
 
 Changed from the proposal, once the code showed it:
 

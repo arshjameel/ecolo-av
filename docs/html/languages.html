@@ -7,7 +7,7 @@
 <!-- Generated from docs/languages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Python and Rust (and the C++ we don&#x27;t write)</h1>
-<div class="meta">12 min read · 7 sections</div></header>
+<div class="meta">13 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -175,6 +175,26 @@ programs only meet through messages.</p></div>
 <td>The ESP32's UART bridge and rc_driver, <code>aav_legacy_rs</code>, <code>aav_rc_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
 <td>Ports of <code>legacy_uart_bridge</code> and <code>rc_driver</code> (Ben, 17 Nov: "Rust tomorrow"): the same frames, byte for byte, packed by the firmware's own <code>legacy-link</code>. The default; <code>legacy_impl:=python</code>, <code>rc_impl:=python</code> fall back</td>
+</tr>
+<tr>
+<td><code>joy_alive</code>, the stop-sign watcher, <code>aav_joy_alive_rs</code>, <code>aav_stop_sign_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports (Ben, 17 Nov: "I don't think we want to do this again later"): the same answers on shared vectors. The default; <code>joy_alive_impl:=python</code>, <code>stop_sign_impl:=python</code> fall back</td>
+</tr>
+<tr>
+<td>The lane finder, <code>aav_lane_finder_rs</code></td>
+<td>Rust (<code>rclrs</code>), no OpenCV</td>
+<td>A port of <code>aav_lane_finder</code> (18 Nov): the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 %. The default; <code>lane_finder_impl:=python</code> falls back</td>
+</tr>
+<tr>
+<td>The camera stream, <code>aav_camera_stream_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>A port of <code>aav_camera_stream</code> (18 Nov), the default with no detector; with RF-DETR or YOLO the Python runs (the models stay Python). <code>camera_stream_impl:=python</code> falls back</td>
+</tr>
+<tr>
+<td>AMCL, <code>aav_amcl_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>A port of Nav2's <code>nav2_amcl</code>, its last node (18 Nov, TODO 231): a tie with stock on the lot. The default; <code>amcl_impl:=stock</code> runs <code>nav2_amcl</code></td>
 </tr>
 <tr>
 <td>Our older ROS nodes: drivers, bridges, adapters</td>
