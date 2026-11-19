@@ -20,7 +20,7 @@ think there is room to improve").
 
 | Order | Next step | Rows |
 |---|---|---|
-| 1 | The lane follower in Rust and its challengers (finish the scores); ONNX with Core ML (resume) | 262, 243 |
+| 1 | ONNX with Core ML (resume); then the camera's lanes into our stack | 243, 264 |
 | 2 | **Before the car**: NDT on the car (`car.launch.py`), the adaptive brake on the car, the boot self-test | 261, 258, 255 |
 | 3 | **Our models as ONNX, tested with Core ML** (Ben, 19 Nov: bumped up): `measure onnx` (CPU vs Core ML: same answers, every layer on the GPU, time), the diffusion planner and the lane finder from Rust, FP16; TensorRT once the Orin is on JetPack 7.2 | 243 |
 | 4 | The chunks' unknown grey (205) reads back as free | 263 |
@@ -83,6 +83,7 @@ and will do".
 | 159 | **The safety case**: one page per hazard | 🔧 left: a throttle stuck wide open; the spine in the loop |
 | 207 | **Stuck steering and speed noticed** (the watchdog) | ✅ in the sim; ⬜ the car (needs a measured angle, Q2) |
 | 262 | **The lane follower in Rust, and a better one** (Ben, 19 Nov: "We also need to port the lane following code.or find a better version."): `aav_lane_follower_rs`, the default (`lane_follower_impl:=python` falls back); challengers `lane_follower:=pure_pursuit`, `stanley` on the fitted lane centre, with the car's lag | ✅ ported: the Python's commands on 2,797 shared events; `measure lane`, 3 runs each: the Rust PID scores as the Python one; on Library Road pure pursuit 2.4 cm RMS against the PID's 3.9-4.1, 1 flip a minute against 187; on the straight it settles to 0.4-0.9 cm but comes back from 0.3 m off slower (8.4 cm RMS against 6.7). The PID stays the default. Left: pure pursuit's near look-ahead for a quicker return, then promote it; the car |
+| 264 | **The camera's lanes are an input, our stack follows them** (Ben, 19 Nov: "maybe we just need to take the lane identification idea out of it ... using the perception model and then do everything eelse ourselves"): the lane finder's lines into `/world/road_ahead` where there is no lane map (148's and 154's gap), so `mppi_lag` follows them with its lag and obstacles; scored against the PID and pure pursuit (262) on the same roads; then the PID follower is retired (kept, not deleted) | ⬜ after 243 |
 
 ## 4. Challengers
 

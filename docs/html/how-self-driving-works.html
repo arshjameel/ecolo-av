@@ -7,7 +7,7 @@
 <!-- Generated from docs/how-self-driving-works.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>How a self-driving car works: every algorithm, explained</h1>
-<div class="meta">72 min read · 12 sections</div></header>
+<div class="meta">74 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -2228,6 +2228,27 @@ brake works, and press harder.</p>
 <p>With 150 kg aboard our 181 kg car brakes at 55 % of its empty strength. In the simulator
 this cut a 0.87 m overrun to 0.21 m, then 0.05 m on the next stop.
 <strong>In our car:</strong> the adaptive brake, a switch (<a href="stopping.html#4-a-heavier-car-the-adaptive-brake">How the car stops</a>).</p>
+<h3 id="86-the-look-ahead-where-the-car-will-actually-go">8.6 The look-ahead: where the car will actually go</h3>
+<p><strong>The idea:</strong> run the car model a couple of seconds into the future, from how the car is
+<strong>now</strong>, to draw where it <strong>will</strong> go. The general name is a <strong>predicted trajectory</strong> (or
+a forward prediction, a rollout). It is not the pose: the pose is where the car is now.</p>
+<ol>
+<li>Start from the car as it is: its speed, and where the steering and pedals are.</li>
+<li>Hold what the driver (or the planner) is asking for.</li>
+<li>Push it through the car model: the speed loop, <strong>the dead times and lags</strong> (8.3), the
+   steering motor, the bicycle model (8.2).</li>
+<li>Keep a pose every 0.1 s, for 2 s: 21 poses, ten times a second.</li>
+</ol>
+<pre class="highlight"><code class="language-text">   plan (what the planner wants)   ─ ─ ─ ─ ─ ─ ─ ─ ─ ─▶
+   look-ahead (where the car goes) ━━━━━━━━━━━┓          the gap = the lag
+   the car ▶                                  ┗━━━━━━━▶  the model knows about</code></pre>
+<p><img alt="The squiggly line in the developer window: the bold line is the look-ahead" src="../img/dev-window-squiggly.png" /></p>
+<p>Good at: shows the lag before it matters; a planner can check its plan against it; it gets
+shorter when braking and longer when speeding up, like a Tesla's squiggly line. Bad at: only
+as right as the car model, and every number in it is a guess until the stands and hallway
+tests measure the transfer functions (<a href="testing-plan.html">the testing plan</a>).
+<strong>In our car:</strong> ego's look-ahead, <code>/ego/trace</code> (<code>aav_ego_rs</code>, the <strong>default</strong>), drawn by
+the HUD and the developer window (<a href="hud.html#the-squiggly-line-ahead">the squiggly line</a>).</p>
 </section>
 <section class="card"><h2 id="9-safety-the-locks-under-everything">9. Safety: the locks under everything</h2>
 <p><strong>The idea:</strong> no planner is trusted alone. Simple, separate checks can always stop the car.</p>

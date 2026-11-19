@@ -1276,6 +1276,33 @@ With 150 kg aboard our 181 kg car brakes at 55 % of its empty strength. In the s
 this cut a 0.87 m overrun to 0.21 m, then 0.05 m on the next stop.
 **In our car:** the adaptive brake, a switch ([How the car stops](stopping.md#4-a-heavier-car-the-adaptive-brake)).
 
+### 8.6 The look-ahead: where the car will actually go
+
+**The idea:** run the car model a couple of seconds into the future, from how the car is
+**now**, to draw where it **will** go. The general name is a **predicted trajectory** (or
+a forward prediction, a rollout). It is not the pose: the pose is where the car is now.
+
+1. Start from the car as it is: its speed, and where the steering and pedals are.
+2. Hold what the driver (or the planner) is asking for.
+3. Push it through the car model: the speed loop, **the dead times and lags** (8.3), the
+   steering motor, the bicycle model (8.2).
+4. Keep a pose every 0.1 s, for 2 s: 21 poses, ten times a second.
+
+```text
+   plan (what the planner wants)   ─ ─ ─ ─ ─ ─ ─ ─ ─ ─▶
+   look-ahead (where the car goes) ━━━━━━━━━━━┓          the gap = the lag
+   the car ▶                                  ┗━━━━━━━▶  the model knows about
+```
+
+![The squiggly line in the developer window: the bold line is the look-ahead](img/dev-window-squiggly.png)
+
+Good at: shows the lag before it matters; a planner can check its plan against it; it gets
+shorter when braking and longer when speeding up, like a Tesla's squiggly line. Bad at: only
+as right as the car model, and every number in it is a guess until the stands and hallway
+tests measure the transfer functions ([the testing plan](testing-plan.md)).
+**In our car:** ego's look-ahead, `/ego/trace` (`aav_ego_rs`, the **default**), drawn by
+the HUD and the developer window ([the squiggly line](hud.md#the-squiggly-line-ahead)).
+
 ## 9. Safety: the locks under everything
 
 **The idea:** no planner is trusted alone. Simple, separate checks can always stop the car.

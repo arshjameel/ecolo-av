@@ -1058,7 +1058,7 @@ def fig_behaviour_states():
         k = max(abs(dx) / (w / 2 + 0.1), abs(dy) / (h / 2 + 0.1))
         _arrow(ax, (x0 + dx / k, y0 + dy / k), (x1 - dx / k, y1 - dy / k), INK2, rad)
         ax.text(lx, ly, label, ha='center', va='center', fontsize=10.5, color=INK2,
-                bbox=dict(fc='white', ec='none', pad=1.0), zorder=5)
+                bbox={'fc': 'white', 'ec': 'none', 'pad': 1.0}, zorder=5)
 
     edge('DRIVE', 'APPROACH', 'a stop binds\n(sign, obstacle, fence,\ngoal, stop line)',
          3.75, 5.15, rad=-0.3)
@@ -1070,7 +1070,7 @@ def fig_behaviour_states():
     edge('APPROACH', 'GO', 'what it slowed for\nhas gone (an obstacle:\ngone for 1 s)',
          5.3, 1.95, rad=0.2)
     edge('GO', 'APPROACH', 'a new stop\nbinds', 2.5, 2.3, rad=0.2)
-    edge('WAIT', 'ASK', 'fence NEAR, or a lock\n(not the sign\'s) over 30 s', 10.7, -1.15)
+    edge('WAIT', 'ASK', "fence NEAR, or a lock\n(not the sign's) over 30 s", 10.7, -1.15)
     edge('ASK', 'GO', 'no lock', 2.8, -1.0)
 
     ax.text(-0.5, -2.75,
@@ -1136,7 +1136,7 @@ def fig_behaviour_hysteresis():
     note(a1, 0.1, 0.95, 'APPROACH: the cap for the stop', ORANGE, 11)
     for s in ('top', 'right'):
         a1.spines[s].set_visible(False)
-    a1.set_title('Hysteresis: one person at the lane\'s edge, with and without the hold '
+    a1.set_title("Hysteresis: one person at the lane's edge, with and without the hold "
                  '(a sketch)')
 
     a2.fill_between(t, 0, binding.astype(float), step='post', color=ORANGE, alpha=0.8, lw=0)
@@ -1191,7 +1191,7 @@ def fig_behaviour_tree():
     act(*back, 'BackUp', '1 m at 0.25 m/s', w=2.3)
     for k in (clear, wait, back):
         link(rr, k)
-    note(ax, 10.0, 2.35, 'no Spin: a car can\'t turn on the spot', INK2, 11)
+    note(ax, 10.0, 2.35, "no Spin: a car can't turn on the spot", INK2, 11)
 
     legend = [('⇉', 'do the children in order, together'), ('?', 'try each until one works'),
               ('↻', 'if it fails, run a fix and try again'),
@@ -1201,7 +1201,7 @@ def fig_behaviour_tree():
         ax.text(8.6, y, sym, fontsize=11, fontweight='bold',
                 color=AQUA if sym == 'green' else BLUE if sym == 'blue' else INK)
         ax.text(9.8, y, what, fontsize=11, color=INK2)
-    ax.set_title('A behaviour tree: Nav2\'s navigate-to-pose tree, as we ran it for a car '
+    ax.set_title("A behaviour tree: Nav2's navigate-to-pose tree, as we ran it for a car "
                  '(a sketch; retired with Nav2)', loc='left')
     save(fig, 'behaviour-tree.svg')
 

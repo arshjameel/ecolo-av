@@ -225,7 +225,8 @@ SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
           'how-self-driving-works.md': ('aav-how-self-driving-works.pdf',
                                         'how a self-driving car works'),
           'after-install.md': ('aav-after-install.pdf', 'after the install'),
-          'decisions-2026-11-19.md': ('aav-decisions-2026-11-19.pdf', 'what we decided, 18-19 Nov')}
+          'decisions-2026-11-19.md': ('aav-decisions-2026-11-19.pdf',
+                                      'what we decided, 18-19 Nov')}
 # A shared page's own PDF: a running footer, and the cover on a page of its own.
 RELEASE_STYLE = """
 @page {
