@@ -319,6 +319,29 @@ Like the steering's ends. **Placeholders** until car day A7, rows 6-8
 
 Not with `spine:=true` or `esp32:=true`: there the firmware decides the brake.
 
+### On the car (TODO 258, 19 Nov)
+
+**Built; untested on the car.** Off by default.
+
+| Command | What |
+|---|---|
+| `pixi run car motor_pi adaptive_brake:=true` | the adaptive brake in `legacy_uart_bridge`, after its pi speed loop |
+
+```text
+ ego ─▶ output mux ─▶ legacy_uart_bridge: pi loop ─▶ adaptive brake ─▶ frame ─▶ ESP32 ─▶ brake
+                                                         ▲
+                                               /vehicle/odom (wheels)
+ e-stop, stale command ─▶ legacy_uart_bridge: full stop brake       (never through it)
+```
+
+| | |
+|---|---|
+| Where | `legacy_uart_bridge` (Rust, and the Python twin): the last place a brake level exists before today's ESP32 |
+| The same maths | `firmware/spine/crates/adaptive-brake` is `adaptive_brake.py` in Rust; both pass `firmware/spine/adaptive_brake_vectors.txt` |
+| Needs | `actuators:=uart` and `legacy.yaml`'s `speed_loop.mode: pi` (open asks for no brake): refused otherwise, saying why |
+| Not yet | `actuators:=can`: the spine's firmware runs its own speed loop; refused there |
+| Its numbers | the car model from `vehicle.yaml` `actuators:`, the limits from `brake:` (placeholders until car day A7) |
+
 ### The check: `--loaded-stop`
 
 A stop from 2 m/s at 1 m/s², four times. The prediction is always the **empty** car

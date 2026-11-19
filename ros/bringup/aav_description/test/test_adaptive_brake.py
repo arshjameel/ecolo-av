@@ -153,3 +153,19 @@ def test_vehicle_yaml_gives_the_limits():
     limits = BrakeLimits.from_vehicle(vehicle.load(CONFIG))
     assert limits == BrakeLimits()     # the defaults are vehicle.yaml's placeholders
     assert BrakeLimits.from_vehicle({'vehicle': {}}) == BrakeLimits()
+
+
+# The shared examples (TODO 258): the car runs the Rust copy (firmware/spine/crates/
+# adaptive-brake, in legacy_uart_bridge), the sim this one; both check the same file.
+ROOT = Path(__file__).resolve().parents[4]
+VECTORS = ROOT / 'firmware' / 'spine' / 'adaptive_brake_vectors.txt'
+GENERATOR = ROOT / 'firmware' / 'spine' / 'gen_adaptive_brake_vectors.py'
+
+
+def test_the_shared_examples_are_up_to_date():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('gen_adaptive_brake_vectors', GENERATOR)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert VECTORS.read_text() == module.text(), \
+        'run python3 firmware/spine/gen_adaptive_brake_vectors.py'

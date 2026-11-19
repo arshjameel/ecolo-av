@@ -24,7 +24,9 @@
 //! Writes      frames at rate_hz on the serial port: frame_version 1 (13 bytes), 2 (17) or
 //!             3 (20), packed by the firmware's own legacy-link
 //! Reads       uplink frames on the same port, with uplink true
-//! Parameters  every one of the Python's (aav_legacy's config/legacy.yaml)
+//! Parameters  every one of the Python's (aav_legacy's config/legacy.yaml); adaptive_brake
+//!             (false; true needs speed_loop.mode pi), adaptive_brake.* (the car model) and
+//!             brake.* (the brake's limits), from vehicle.yaml through legacy.launch.py
 //!
 //! port is a device (/dev/ttyAMA0) or socket://host:port (Ravensim's sim_esp32). If it won't
 //! open, the bridge says so and tries again every second; no frames go out until it opens.
@@ -43,8 +45,8 @@ use anyhow::{anyhow, bail, Result};
 use legacy_bridge::link::frame_fields;
 use legacy_bridge::uplink::{self, UplinkReader};
 use legacy_bridge::{
-    programs_locked, CalMode, CalWhere, FrameVersion, LinkReport, Mapping, Relay, RelaySettings,
-    SpeedConfig, SpeedControl,
+    programs_locked, AdaptiveBrake, BrakeLimits, CalMode, CalWhere, CarModel, FrameVersion,
+    LinkReport, Mapping, Relay, RelaySettings, SpeedConfig, SpeedControl, Tuning,
 };
 use legacy_link::{CalState, Uplink};
 use rclrs::*;
@@ -129,6 +131,41 @@ fn start(node: &Node) -> Result<(Arc<Mutex<Bridge>>, Keep)> {
     } else {
         None
     };
+    // The adaptive brake (TODO 258): only with the pi loop, which asks for a brake; the
+    // car model and the brake's limits come from vehicle.yaml (legacy.launch.py).
+    let adaptive = if d.flag("adaptive_brake", false)? {
+        if !pi {
+            bail!(
+                "adaptive_brake needs speed_loop.mode pi: it sits after the speed loop, and \
+                 open sends no brake to adapt"
+            );
+        }
+        let car_default = CarModel::default();
+        let car = CarModel {
+            max_brake: d.number("adaptive_brake.max_brake", car_default.max_brake)?,
+            brake_lag: d.number("adaptive_brake.brake_lag", car_default.brake_lag)?,
+            brake_dead_time: d.number(
+                "adaptive_brake.brake_dead_time",
+                car_default.brake_dead_time,
+            )?,
+            drag: d.number("adaptive_brake.drag", car_default.drag)?,
+            throttle_dead_time: d.number(
+                "adaptive_brake.throttle_dead_time",
+                car_default.throttle_dead_time,
+            )?,
+            throttle_lag: d.number("adaptive_brake.throttle_lag", car_default.throttle_lag)?,
+        };
+        let limits = BrakeLimits::new(
+            d.number("brake.released", 400.0)?,
+            d.number("brake.touch", 800.0)?,
+            d.number("brake.full", 3500.0)?,
+            d.number("brake.safe_max", 3200.0)?,
+            d.number("brake.max_hold_time", 5.0)?,
+        )?;
+        Some(AdaptiveBrake::new(car, limits, Tuning::default()))
+    } else {
+        None
+    };
     let link_rate = d.number("link_frame_rate_hz", 10.0)?;
     if rate.is_nan() || rate <= 0.0 {
         bail!("rate_hz:={rate}: a rate must be above 0 Hz");
@@ -175,7 +212,16 @@ fn start(node: &Node) -> Result<(Arc<Mutex<Bridge>>, Keep)> {
         None
     };
     let mut bridge = Bridge {
-        relay: Relay::new(settings, speed_loop),
+        relay: match adaptive {
+            Some(brake) => {
+                log_info!(
+                    &logger,
+                    "adaptive_brake: on, after the pi loop; never above brake.safe_max"
+                );
+                Relay::new(settings, speed_loop).with_adaptive_brake(brake)
+            }
+            None => Relay::new(settings, speed_loop),
+        },
         link: LinkReport::new(link_rate)?,
         reader: UplinkReader::new(uplink_timeout),
         port: None,

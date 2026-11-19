@@ -1,0 +1,11 @@
+[package]
+name = "adaptive-brake"
+description = "The adaptive brake: brake harder when the car slows less than the car model says, never above the brake's safe max."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# exp() and floor() for the brake's lag and dead time, without the standard library.
+libm = "0.2"

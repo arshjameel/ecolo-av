@@ -25,7 +25,7 @@ firmware's own crate, `firmware/spine/crates/legacy-link`, the code the Rust ESP
 
 | Crate | Is | ROS? |
 |---|---|---|
-| `crates/legacy-bridge` | the logic: the mapping, the relay (counter, stale stop, e-stop, the steering calibration's rules, the lock), the `pi` speed loop, the uplink reader, the link report | no: `cargo test` on any laptop |
+| `crates/legacy-bridge` | the logic: the mapping, the relay (counter, stale stop, e-stop, the steering calibration's rules, the lock), the `pi` speed loop and after it the adaptive brake (`firmware/spine/crates/adaptive-brake`, TODO 258; why here: `aav_legacy`'s README), the uplink reader, the link report | no: `cargo test` on any laptop |
 | `crates/legacy-node` | the node, binary `legacy_uart_bridge`; the serial port (`serialport`, no libudev) or `socket://host:port` (Ravensim's `sim_esp32`) | yes (rclrs 0.8, `ros-env` 0.3) |
 
 colcon builds it through `CMakeLists.txt` (`cargo build --release --locked`), installed as
