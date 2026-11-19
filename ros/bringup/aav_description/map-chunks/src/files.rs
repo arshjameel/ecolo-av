@@ -8,7 +8,7 @@
 //! ```
 //!
 //! A chunk's `.pgm` keeps the map server's trinary colours (free 254, taken 0, unknown
-//! 205; `mode: trinary`, `negate: 0`), top row first as every `.pgm` is, so any image
+//! 128; `mode: trinary`, `negate: 0`), top row first as every `.pgm` is, so any image
 //! viewer shows it.
 
 use std::fmt;
@@ -130,10 +130,13 @@ fn occupancy_of(pixel: u8, yaml: &MapYaml) -> i8 {
     }
 }
 
-/// A cell as a trinary pixel: free 254, taken 0, unknown 205; costs between, greyed.
+/// A cell as a trinary pixel: free 254, taken 0, unknown 128; costs between, greyed.
+///
+/// Unknown is mid-grey (p = 0.498), unknown under any map YAML's thresholds; ROS 1's grey
+/// 205 (p = 0.196) reads back as free under the usual `free_thresh: 0.25` (TODO 263).
 fn pixel_of(cell: i8) -> u8 {
     match cell {
-        UNKNOWN => 205,
+        UNKNOWN => 128,
         c => (254 - i32::from(c.clamp(0, 100)) * 254 / 100) as u8,
     }
 }
@@ -286,7 +289,7 @@ pub fn read_chunk(
         origin: [0.0; 3],
         negate: 0,
         occupied_thresh: 0.65,
-        free_thresh: 0.1, // 205 (p = 0.196) is unknown, 254 free
+        free_thresh: 0.1, // 128 and old chunks' 205 (p = 0.196) unknown, 254 free
     };
     let cells = flip_rows(&pixels, width)
         .map(|v| occupancy_of(v, &trinary))

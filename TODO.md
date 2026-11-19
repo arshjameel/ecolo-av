@@ -22,7 +22,7 @@ think there is room to improve").
 |---|---|---|
 | 1 | **Our models as ONNX, tested with Core ML** (Ben, 19 Nov: bumped up; resume the helper): `measure onnx` (CPU vs Core ML: same answers, every layer on the GPU, time), the diffusion planner from Rust, FP16; TensorRT once the Orin is on JetPack 7.2 | 243 |
 | 2 | **Lanes into the costmap**, then the lane followers removed | 264 |
-| 3 | The chunks' unknown grey (205) reads back as free (small: done inline) | 263 |
+| 3 | The chunks' unknown grey (205) reads back as free (small: done inline) | 263 | **Unknown map cells read back as free** (found by the map editor, 19 Nov): grey 205 is p = 0.196, under every map YAML's `free_thresh: 0.25`. `make_map.py` and `map-chunks` now write unknown as 128 (p = 0.498), as `map-drive` and the map editor do; `example_lot_amcl.pgm` remade (244,730 cells inside its obstacles had read as free; `example_lot.pgm` byte for byte the same); a test pins it | ✅ 19 Nov; AMCL scored again on the lot |
 | 4 | **Before the car**: NDT on the car (`car.launch.py`), the adaptive brake on the car, the boot self-test | 261, 258, 255 |
 | 5 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
 | 6 | Occupancy across passes, the offline pipeline as one command, the labelling loop, then the campus twin | 259, 260, 252, 253 |
