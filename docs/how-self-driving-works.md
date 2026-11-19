@@ -20,6 +20,9 @@ each card below links to it.
 >   - **route**: which streets (**Dijkstra**, **A\***);
 >   - **path**: a line the car can really drive (**Hybrid-A\***, the **lattice**, **RRT**);
 >   - **motion**: the next few seconds (**Pure Pursuit**, **MPC**, **MPPI**, **diffusion**).
+> - **Behaviour** = "what should I do now?" Keep going, slow, stop, wait, go: a **state
+>   machine** (ours), a **behaviour tree** (Nav2's), or traffic-rule modules (Apollo,
+>   Autoware). Ours caps the speed and puts stops in the road ahead; it never steers.
 > - **Control** turns a speed and a curve into throttle, brake and steering
 >   (**Ackermann**, the **bicycle model**, **PID**).
 > - **Safety locks** sit under everything and are never swapped out.
@@ -36,10 +39,10 @@ each card below links to it.
 | [Route](#61-route-planning-which-streets) | which streets? | Dijkstra, **A\***, OpenStreetMap, Valhalla |
 | [Path](#62-path-planning-a-line-the-car-can-drive) | which line? | A\* on a grid, **Hybrid-A\***, state lattice, RRT and RRT\*, Dubins and Reeds-Shepp, smoothing |
 | [Motion](#63-motion-planning-and-control-the-next-few-seconds) | the next few seconds? | Pure Pursuit, Stanley, PID, **MPC**, **MPPI**, **diffusion** |
-| [Behaviour](#64-behaviour-the-rules-of-the-road) | what should I do now? | state machines, behaviour trees |
-| [Control](#7-control-and-the-car) | how do I move the wheels? | Ackermann, bicycle model, transfer functions, feed-forward plus PID, braking with a load |
-| [Safety](#8-safety-the-locks-under-everything) | what if it goes wrong? | watchdogs, e-stops, geofences, stop zones, simplex fallback |
-| [End-to-end](#9-end-to-end-learning-one-big-network) | why not one network? | UniAD, world models, Tesla, Wayve |
+| [Behaviour](#7-behaviour-deciding-what-to-do) | what should I do now? | **state machines**, hierarchical state machines, behaviour trees, traffic-rule modules (Apollo, Autoware), speed round obstacles and **hysteresis**, gap acceptance and yielding, POMDPs and games, imitation and reinforcement learning, **our behaviour planner** |
+| [Control](#8-control-and-the-car) | how do I move the wheels? | Ackermann, bicycle model, transfer functions, feed-forward plus PID, braking with a load |
+| [Safety](#9-safety-the-locks-under-everything) | what if it goes wrong? | watchdogs, e-stops, geofences, stop zones, simplex fallback |
+| [End-to-end](#10-end-to-end-learning-one-big-network) | why not one network? | UniAD, world models, Tesla, Wayve |
 
 ### The status words
 
@@ -828,47 +831,394 @@ MPPI ([what we decided](decisions-2026-11-19.md#mppi-and-diffusion-are-not-rival
 | CPU | tiny | tiny | small | big |
 | Ours | challenger | challenger | challenger | **default** |
 
-### 6.4 Behaviour: the rules of the road
+Behaviour, the rules of the road above these planners, has its own section next:
+[7. Behaviour](#7-behaviour-deciding-what-to-do).
 
-**The idea:** above the planners, decide **what kind of driving** to do now: drive,
-slow for a stop sign, wait for a person, go.
+## 7. Behaviour: deciding what to do
 
-#### State machines
+Ben, 19 Nov: "Behaviour might be good too."
 
-A short list of **states** and the **events** that move between them.
+The planners answer "**how** do I get there?". Behaviour answers "**what** should I do
+now?": keep going, slow for a stop sign, wait for a person, go again.
+
+| Part | The question |
+|---|---|
+| [7.1 Where it sits](#71-where-behaviour-sits) | between which parts? |
+| [7.2 State machines](#72-finite-state-machines) | which mode am I in? |
+| [7.3 Hierarchical state machines](#73-hierarchical-state-machines) | modes inside modes? |
+| [7.4 Behaviour trees](#74-behaviour-trees) | which small task now? |
+| [7.5 Traffic rules](#75-rule-based-traffic-logic) | stop lines, signs, crosswalks, right of way |
+| [7.6 Speed round obstacles](#76-speed-planning-round-obstacles-approach-follow-stop) | approach, follow, stop; no flip-flopping |
+| [7.7 Prediction-aware decisions](#77-prediction-aware-decisions-gaps-and-yielding) | is that gap big enough? |
+| [7.8 Under uncertainty](#78-decisions-under-uncertainty-pomdps-and-games) | what if I'm not sure what they'll do? |
+| [7.9 Learned behaviour](#79-learned-behaviour-imitation-and-reinforcement) | can a network learn the rules? |
+| [7.10 Ours](#710-our-behaviour-planner-aav_behaviour_rs) | what our car really does |
+
+### 7.1 Where behaviour sits
+
+**The idea:** behaviour sits **between the route and the motion planner**. The route says
+which streets; behaviour picks the manoeuvre; the motion planner draws the line and the speed.
+
+![Where behaviour sits: route, behaviour, motion planner, control; in our car, the path, then behaviour writes the road ahead, and ego holds every follower under it](img/teach/behaviour-place.svg)
+
+1. The **route** gives the streets and lanes to the goal.
+2. **Behaviour** looks at what perception sees (people, cars, signs, stop lines).
+3. It picks **what to do**: follow the lane, slow, stop, yield, wait, go.
+4. It hands the **motion planner** a goal for the next seconds: a stop point, a speed limit.
+5. The motion planner and control do the rest.
+
+**In our car** the order is slightly different: our path planner draws `/plan` first;
+the behaviour planner reads it and writes **the road ahead** (`/world/road_ahead`): the
+plan's next 40 m, its stops and its speed limits. Ego holds every follower under it
+([the whole car](designs/2026-11-14_the-whole-car.md#the-road-ahead)). **It caps the
+speed; it never steers.**
+
+### 7.2 Finite state machines
+
+**The idea:** a short list of **states** (modes), and the **events** that move the car from
+one to the next.
+
+**How it works**
+
+1. Write down the states: for example DRIVE, APPROACH, STOPPED, WAIT, GO.
+2. For each state, write what the car does in it (its speed cap, say).
+3. For each state, write the events that leave it, and where they go ("stop sign ahead": APPROACH).
+4. Each tick, check the current state's events; take the first that is true.
+5. Nothing else can happen: every path through the machine is on paper.
+
+Our states and every arrow between them are in [7.10](#710-our-behaviour-planner-aav_behaviour_rs).
+
+| Good at | Bad at |
+|---|---|
+| simple; every state and arrow can be tested | grows messy with many rules: arrows everywhere |
+| easy to explain and to show on a screen | every new rule touches many states |
+
+**In our car:** the behaviour planner (`aav_behaviour_rs`), **default** in `stack:=ours`;
+the navigator (`aav_navigator`: plan, follow, replan, recover), **default**. Both are
+state machines. The DARPA Urban Challenge cars (2007) drove on state machines too.
+
+### 7.3 Hierarchical state machines
+
+**The idea:** states **inside** states, so a big mode (ON THE ROAD) holds small ones
+(FOLLOW LANE, STOP AT LINE), and a rule written once on the big one holds for all of them.
 
 ```text
- DRIVE ──stop sign ahead──▶ APPROACH ──stopped──▶ STOPPED ──4 s──▶ GO ──▶ DRIVE
-   │                                                ▲
-   └──something moving in the lane──▶ WAIT ─────────┘ (until it's gone)
+ ┌ ON THE ROAD ───────────────────────────────┐        ┌ PARKING ──────────┐
+ │  FOLLOW LANE ─▶ APPROACH LINE ─▶ STOP ─▶ GO │ ─────▶ │  FIND ─▶ PARK     │
+ └──────────────── e-stop: from any inner state ─▶ SAFE STOP ◀──────────────┘
 ```
 
-Good at: simple, every state can be tested. Bad at: grows messy with many rules.
-**In our car:** the behaviour planner (`aav_behaviour_rs`), **default**, and the
-navigator, **default**. [How the car stops](stopping.md).
+1. Group states that belong together into a **parent** state.
+2. Rules that apply to the whole group go on the parent, once ("e-stop: SAFE STOP").
+3. Inside, the small machine runs as before.
+4. Leaving the parent leaves whichever inner state was running.
 
-#### Behaviour trees
+| Good at | Bad at |
+|---|---|
+| far fewer arrows than one flat machine | more to learn; tools help (statecharts, D. Harel, 1987) |
+| each level can be tested alone | deep nests hide where the car really is |
 
-A tree of small tasks, ticked from the top: "**try** these in order until one works",
-"**do** these in sequence". Good at: big behaviours from small reusable parts. Bad at:
-harder to follow than a short state machine. **In our car:** Nav2's `bt_navigator`
-used one; **retired** with Nav2. Our navigator is a state machine that drove the same.
+**In our car:** **studied**. Ours is flat, but each state carries a **reason**
+(`APPROACH(obstacle)`, `WAIT(moving)`), and "from any state" rules (the e-stop, an aborted
+goal, something moving near) sit above it: a small step toward a hierarchy.
 
-## 7. Control and the car
+### 7.4 Behaviour trees
+
+**The idea:** a tree of small tasks, **ticked** from the top many times a second; each
+returns *success*, *failure* or *running*.
+
+![A behaviour tree: Nav2's navigate-to-pose tree as we ran it for a car: a recovery node over plan-and-follow and the fixes; plan at most once a second, keep a good path; fixes in turn: clear costmaps, wait 5 s, back up 1 m](img/teach/behaviour-tree.svg)
+
+**How it works**
+
+1. **Leaves** do the work: an **action** ("ComputePathToPose") or a **condition** ("is the path still valid?").
+2. **Sequence** (→): do the children in order; stop at the first failure.
+3. **Fallback** (?): try the children in order; stop at the first success.
+4. **Decorators** wrap one child: "at most once a second", "retry 6 times".
+5. Each tick starts at the root and walks down to what is running.
+
+**Nav2's `bt_navigator`, as it was:** our trees were Nav2's
+`navigate_to_pose_w_replanning_and_recovery.xml` (Jazzy 1.3.13), changed for a car:
+
+| Part | What it did |
+|---|---|
+| Recovery, 6 tries | if plan-and-follow fails, run one fix, try again |
+| plan at most 1 Hz, but keep a good path | keep the path while it still ends at the goal, is valid and under 10 s old (20 s within 8 m of the goal); else plan again (TODO 149, TODO 17) |
+| FollowPath | the controller (MPPI) |
+| the fixes, in turn | clear both costmaps; wait 5 s; back up 1 m at 0.25 m/s (only with reversing) |
+| **no Spin** | a car can't turn on the spot |
+
+| Good at | Bad at |
+|---|---|
+| big behaviours from small, reusable parts | harder to follow than a short state machine |
+| easy to add a new fix or check | "what state is it in?" has no one answer |
+
+**In our car:** **retired** with Nav2 (17 Nov). Our navigator (`aav_navigator`) is one
+state machine that does the same steps, and drove the same in the league
+([our navigator](own-navigator.md)). From: Nav2 (Apache-2.0), BehaviorTree.CPP.
+
+### 7.5 Rule-based traffic logic
+
+**The idea:** each traffic rule (a stop line, a stop sign, a crosswalk, who goes first)
+is its own small module. Each one asks for a stop or a slower speed; the **lowest wins**.
+
+**How it works**
+
+1. The map and perception say what is ahead: a stop line in 20 m, a crosswalk, a junction.
+2. Each rule's module looks at its own thing: "a stop sign: stop at the line, stand, then go".
+3. Each module adds a **stop point** or a **speed limit** to the path ahead.
+4. The strictest one wins: the car stops at the nearest stop that applies.
+5. When a rule is satisfied (stood 2 s, the crosswalk is clear), its module lets go.
+
+| Rule | What it asks |
+|---|---|
+| **Stop line, stop sign** | stop with the bumper at the line, stand, then go |
+| **Crosswalk** | slow; stop if a person is on it or walking to it |
+| **Right of way** | at a junction, who came first, or who is on the main road, goes first |
+| **Traffic light** | stop on red or amber if there's room; go on green |
+
+**How the big stacks do it** (in general terms):
+
+| Stack | Behaviour is built as |
+|---|---|
+| **Apollo** (Baidu, Apache-2.0) | **scenarios** (lane follow, stop sign, traffic light, pull over...), each split into **stages** (approach, stop, creep, cross). A scenario manager picks one; its stages run in turn |
+| **Autoware** (Apache-2.0) | the **behaviour path planner** (modules that change the *line*: lane change, going round, pulling over) and the **behaviour velocity planner** (modules that change the *speed*: stop line, crosswalk, intersection, traffic light). Each module adds its own stop or slow-down |
+
+| Good at | Bad at |
+|---|---|
+| each rule alone, tested alone; matches the highway code | a module per rule: many modules |
+| easy to say why the car stopped | rules that clash need an order |
+
+**In our car:** stop signs, **in use** (a safety lock: the camera sees the sign, and the
+watcher's lock holds the car 4 s at 4.7 m, then ignores signs 10 s); stop lines from the
+route's Lanelet2 map (stand 2 s, then go; TODO 220), **challenger** with Lanelet2 routing.
+Crosswalks, traffic lights and right of way: **not built**. Ours is Autoware's shape in
+small: each rule adds a stop to the road ahead, and the lowest cap binds.
+
+### 7.6 Speed planning round obstacles: approach, follow, stop
+
+**The idea:** for each thing ahead, pick the **speed** that lets the car stop (or keep a
+safe gap) in the room left, and **don't flip-flop** when the thing flickers in and out.
+
+**How it works**
+
+1. **Approach:** find the room left to the thing (or the stop line), less a margin.
+2. **Stop:** the speed cap is the fastest speed that can still stop in that room (our
+   stopping law, `v_cap(left)`).
+3. **Follow:** if the thing moves the same way, keep a gap that grows with speed instead of
+   stopping (the car-following idea; for example the **IDM**, M. Treiber et al., 2000).
+4. **Hysteresis:** slow down **at once**, but speed up again only once the thing has
+   **stayed gone** a while.
+
+#### Hysteresis: why the hold
+
+A person at the lane's edge drops **in and out** of the lane, tick by tick. Without a
+hold, each drop out lets the cap rise, and each drop in brings it down: the car speeds up
+and slows again, over and over.
+
+![Hysteresis, a sketch: a person flickering in and out of the lane. Without the hold the cap goes APPROACH > GO > DRIVE four times; with release_hold 1 s it stays in APPROACH until the person has really gone](img/teach/behaviour-hysteresis.svg)
+
+What we found (TODO 189, 15 Nov, `sim-check --moving`): **one person crossing flipped the
+behaviour `APPROACH(obstacle) > GO > DRIVE` four times**. The fix is a **1 s
+`release_hold`**: an obstacle must stay gone 1 s before APPROACH lets go of it, keeping its
+cap meanwhile. **Slowing is never held.** Tested (a flickering obstacle stays in
+APPROACH); the simulator re-run of `--moving` is still to do.
+
+| Good at | Bad at |
+|---|---|
+| a stop the car can really make, at any speed | the stopping law's numbers are guesses until the car tests |
+| the hold stops the speed hunting | the hold makes the car a little slower to go again |
+
+**In our car:** approach and stop with the stopping law, and the 1 s hold: **default**
+in `stack:=ours`. Following a moving car at a gap: **not built**; ours waits for anything
+moving (below). [How the car stops](stopping.md).
+
+### 7.7 Prediction-aware decisions: gaps and yielding
+
+**The idea:** decide from where things **will be**, not only where they are: "will that
+person be in my lane when I get there?", "is that gap in the traffic big enough?".
+
+**How it works**
+
+1. **Predict** each thing a few seconds ahead (simplest: it keeps its speed and heading).
+2. **Predict** the car along its own path, at its speed.
+3. Do the two **meet**, in space and time, with some slack?
+4. **Gap acceptance:** at a junction, go only if the gap before the next car is longer than
+   the time you need to cross, plus a margin.
+5. **Yield** if not: slow or wait, and look again next tick.
+
+| Good at | Bad at |
+|---|---|
+| sees a person walking in before they're in the lane | a prediction's error grows with time |
+| smooth: slows early instead of braking late | people change their minds |
+
+**In our car:** two simple, straight-line predictions, both **default** with the things
+(`things:=true`, on in `stack:=ours`):
+
+| Rule | What it does |
+|---|---|
+| **Walking into the lane** (TODO 194, `Crossing`) | a thing 0.2 m/s or more toward the lane counts if, at its speed, it is in the lane before the car gets there, plus 2 s, within 6 s. Before, a person crossing was seen about 1 m from the bumper |
+| **Anything moving near** (17 Nov) | a thing moving 0.3 m/s or more within 10 m, or on the road ahead within 3 s: WAIT (moving); go 1 s after it has gone (Ben, 16 Nov: "we should likely just stop") |
+
+Gap acceptance at junctions: **not built** (we wait for anything moving instead).
+
+### 7.8 Decisions under uncertainty: POMDPs and games
+
+**The idea:** the car can't see what others **intend**, so keep a **belief** (odds) over
+what they might do, and pick the action that is best on average over that belief.
+
+**How it works (a POMDP, in general terms)**
+
+1. List what you can't see: "the person will cross" or "the person will wait".
+2. Keep a **belief**: the odds of each, say 30 % and 70 %.
+3. After each new look, **update** the odds (a Bayes filter, as in localization).
+4. For each action (go, creep, wait), add up its reward over the odds, a few steps ahead.
+5. Take the best; plan again next tick.
+
+**Game-theoretic ideas:** other drivers react to us too. Treat a merge or a four-way stop
+as a **game**: each driver picks a move knowing the other will answer. A car that creeps
+forward can make the other driver yield (D. Sadigh et al., RSS 2016).
+
+| Good at | Bad at |
+|---|---|
+| honest about what it doesn't know; creeps, then commits | heavy: the number of futures explodes |
+| handles the polite dance at a four-way stop | the odds and rewards need data to set |
+
+**In our car:** **studied**. A POMDP: L. P. Kaelbling, M. L. Littman, A. R. Cassandra, 1998.
+
+### 7.9 Learned behaviour: imitation and reinforcement
+
+**The idea:** instead of writing the rules, **learn** them: copy good drivers (imitation),
+or try, get a score, and improve (reinforcement).
+
+**How it works**
+
+1. **Imitation learning:** record people driving; train a network from what the car saw to
+   what the driver did (behaviour cloning; ALVINN, D. Pomerleau, 1989; ChauffeurNet,
+   M. Bansal et al., RSS 2019).
+2. Its weak spot: it never saw its own mistakes, so it doesn't know how to recover;
+   **DAgger** (S. Ross et al., 2011) asks the expert what to do in the states the network reaches.
+3. **Reinforcement learning:** in a simulator, the network tries actions and gets a
+   **reward** (progress, comfort; a crash costs a lot).
+4. Over millions of tries, it learns which actions pay.
+5. Behind a guard: the safety locks still stop the car whatever it decides.
+
+| Good at | Bad at |
+|---|---|
+| rules that are hard to write down (a polite merge) | hard to explain why it did something |
+| improves with more data | needs a lot of data or simulation; rewards are easy to get wrong |
+
+**In our car:** **studied only**. Our learned part is a **path** planner (diffusion,
+6.3), behind a guard; behaviour stays rules we can read.
+
+### 7.10 Our behaviour planner (`aav_behaviour_rs`)
+
+**The idea:** six states and one stopping law: know **why** the car should slow, and put
+a **speed cap** and a **stop** in the road ahead. It **can't stop the car** itself: a lock,
+ego at the road ahead's end, or the navigator's goal check makes every final stop.
+
+![Our behaviour planner's six states: DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and what moves between them](img/teach/behaviour-states.svg)
+
+**The two twins**
+
+| | Package | Status |
+|---|---|---|
+| Rust | `aav_behaviour_rs` | **default** in `stack:=ours`; the twin the car runs with `behaviour:=true` (the car champion runs with behaviour **off**) |
+| Python | `aav_behaviour` (`behaviour.py`) | the fall-back: `behaviour_impl:=python` |
+
+The Rust gives the Python's answers bit for bit (`vectors.json`), at 1.3 % of a core
+against 9.0 % (16 Nov). Not yet run on the car.
+
+**The states**
+
+| State | Its cap | Enters when |
+|---|---|---|
+| **DRIVE** | no cap (0.0 = no limit) | the start; GO's cap reaches the top speed; a sign passed by over 1 m or lost 5 s; the goal ended |
+| **APPROACH** | `v_cap(left)`, never below the floor 0.3 m/s; falls no faster than 2 m/s²; the sign's never rises | a stop **binds**: its `v_cap` is below the top speed |
+| **STOPPED** | the floor | in APPROACH, its own lock is on and the car stands (under 0.05 m/s) |
+| **WAIT** | the floor | the next tick after STOPPED; any lock on with the car standing; the e-stop; something moving near |
+| **GO** | rises at 0.5 m/s² from the floor | no lock left (and nothing moving near); or what APPROACH slowed for has gone (an obstacle: for 1 s) |
+| **ASK** | the floor; a person is told | the fence says NEAR with the car standing; a lock (not the sign's) over 30 s; the goal aborted |
+
+**What it stops for** (each a `Stop`: a reason and the metres `left`)
+
+| Reason | `left` is | The final stop |
+|---|---|---|
+| `sign` | camera range to the sign − 4.7 m | the `stop_sign` lock |
+| `obstacle` | to a moving thing in the lane (or the scan's nearest point), less bumper and gap | the stop zone, then the `stop_zone` lock |
+| `moving` | 0 m: the road ahead ends at the car | ego holds the car at 0 |
+| `stop_line` | to the route's stop line, the front bumper on it | the road ahead ends there; served after 2 s standing |
+| `fence` | along the plan to where the geofence would say NEAR | the geofence lock |
+| `goal` | along the plan to its end | the navigator's goal check |
+
+**The stopping law** (`aav_description` `stop_law.py`, and Rust `ego-core` `stop_law.rs`):
+
+```text
+   v_cap(d) = a·( √(τ² + 2d/a) − τ )      the fastest speed that can still stop in d metres
+   a = 1.0 m/s² (planned braking)   τ = 1.47 s (every delay, plus easing in the brake)
+```
+
+| Distance left | 0.5 m | 1 m | 2 m | 5 m | 10 m |
+|---|---|---|---|---|---|
+| `v_cap` | 0.31 m/s | 0.57 m/s | 1.01 m/s | 2.02 m/s | 3.24 m/s |
+
+Every number is a **guess** until the car tests ([How the car stops](stopping.md#1-the-stopping-law)).
+
+**How it works, each tick**
+
+1. Gather the stops in view: the sign, the lane ahead, the fence, the goal, stop lines.
+2. The stop with the **lowest** cap **binds**.
+3. Step the machine (the table above); "from any state" rules first.
+4. Work out the state's cap, falling no faster than 2 m/s².
+5. Write **the road ahead** (10 Hz): the plan's next 40 m, **its stops**, and its limits
+   under the cap. Ego holds every follower (MPPI, the trackers, the point driver) to it.
+6. Say the state on `/drivers/nav/behaviour/state` (5 Hz) for the screens.
+
+**Why it caps and doesn't steer:** a parked thing is the **path planner's** to go round
+(the lane pass); behaviour only waits for what **moves**. So one part owns the line, one
+owns "how fast, and where to stop", and the locks own the final stop. The cap is always
+0.0 (no limit) or between the floor and the top speed: it **only ever slows** the car, and
+never clears a lock.
+
+| Good at | Bad at |
+|---|---|
+| one law for every planned stop; the reason is on screen | holds for anyone walking beside the car within 10 m |
+| the locks still make every final stop | no traffic lights, crosswalks or right of way yet |
+| league: a little less sway with it (0.063 against 0.074 without) | ASK's reply from the HUD not built; not yet on the car |
+
+**In our car:** **default** in `stack:=ours`; the car champion: off. Numbers:
+[survey](stack-survey.md#the-behaviour-planner-and-the-stopping-law-aav_behaviour_rs).
+Designs: [behaviour and speed](designs/2026-11-05_behaviour-and-speed.md),
+[the whole car](designs/2026-11-14_the-whole-car.md).
+
+### Behaviour, at a glance
+
+| Idea | Decides by | Ours |
+|---|---|---|
+| Finite state machine | the current state's events | **default** (behaviour planner, navigator) |
+| Hierarchical state machine | states inside states | studied |
+| Behaviour tree | ticking small tasks | **retired** (Nav2's `bt_navigator`) |
+| Traffic-rule modules | one module per rule, lowest stop wins | stop signs **in use** (a lock); stop lines **challenger** |
+| Speed round obstacles, with a hold | the stopping law; hysteresis | **default** |
+| Prediction-aware | where things will be | **default** (crossing, moving near) |
+| POMDP, games | odds over intentions | studied |
+| Imitation, reinforcement | learned from data | studied |
+
+## 8. Control and the car
 
 The full story: [Learn: control](learn-control.md), [Car model](car-model.md),
 [The car as a linear model](vehicle-model.md), [Learn: state space](learn-state-space.md).
 
 ![Where each loop closes on our car: the path at 20 Hz, the speed loop, the steering motor](img/control-loops.svg)
 
-### 7.1 Ackermann steering
+### 8.1 Ackermann steering
 
 **The idea:** in a turn, the inner front wheel turns more than the outer one, so both
 roll round the same centre, on the line of the rear axle. The steering linkage does this
 by itself; our software sends **one** angle. [Learn: control](learn-control.md#4-ackermann-and-the-bicycle-model)
 has the picture and our numbers.
 
-### 7.2 The bicycle model
+### 8.2 The bicycle model
 
 **The idea:** merge the two front wheels into one in the middle, and the two rear wheels
 likewise. Then:
@@ -881,7 +1231,7 @@ v = speed, δ = steering angle, L = wheelbase (1.56 m, `vehicle.yaml`). Good at:
 our low speeds. Bad at: no tyre slip (fine below a few m/s). **In our car:** ego
 (`aav_ego_rs`), **in use**, and inside MPPI, MPC and Ravensim.
 
-### 7.3 Transfer functions: dead time plus a lag
+### 8.3 Transfer functions: dead time plus a lag
 
 **The idea:** each actuator is modelled as **wait, then ease toward the command**.
 
@@ -899,7 +1249,7 @@ our low speeds. Bad at: no tyre slip (fine below a few m/s). **In our car:** ego
 them, with error bars. **Untested on the car**: the numbers in `vehicle.yaml` are guesses
 until then ([testing plan, phase B](testing-plan.md#phase-b-the-transfer-functions-in-the-hallway)).
 
-### 7.4 Feed-forward plus PID
+### 8.4 Feed-forward plus PID
 
 **The idea:** **feed-forward** gives the push you expect to need, from the car's model
 ("this speed on the flat needs this much throttle"); **PID** fixes what's left.
@@ -912,7 +1262,7 @@ Good at: fast and calm, since PID only fixes the small error. Bad at: a wrong mo
 makes PID work harder. **In our car:** the speed loop, **default**; it overshoots 14 %
 today ([survey](stack-survey.md#6-control-and-the-car)).
 
-### 7.5 Braking with a heavier load
+### 8.5 Braking with a heavier load
 
 **The idea:** the same brake slows a heavier car less (a = F ÷ m). Measure how well the
 brake works, and press harder.
@@ -926,7 +1276,7 @@ With 150 kg aboard our 181 kg car brakes at 55 % of its empty strength. In the s
 this cut a 0.87 m overrun to 0.21 m, then 0.05 m on the next stop.
 **In our car:** the adaptive brake, a switch ([How the car stops](stopping.md#4-a-heavier-car-the-adaptive-brake)).
 
-## 8. Safety: the locks under everything
+## 9. Safety: the locks under everything
 
 **The idea:** no planner is trusted alone. Simple, separate checks can always stop the car.
 
@@ -941,7 +1291,7 @@ this cut a 0.87 m overrun to 0.21 m, then 0.05 m on the next stop.
 All **in use**; never swapped (`CLAUDE.md`). Layer by layer: [The safety case](safety-case.md),
 [survey](stack-survey.md#7-safety-the-locks-that-are-never-swapped).
 
-## 9. End-to-end learning: one big network
+## 10. End-to-end learning: one big network
 
 **The idea:** skip the separate parts; train one large network from **pictures to steering**,
 on huge amounts of human driving.
