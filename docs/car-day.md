@@ -988,6 +988,7 @@ the sensors' real noise (T2.4) and the replay (T2.5). Bags stay out of git.
 | 1 | **Parked, 5 min**: the IMU and the GPS, with their drivers (Humble, so on their Pi; it only writes `~/aav-bags`) | on LOCALIZATION: `source /opt/ros/humble/setup.bash; ros2 bag record -o ~/aav-bags/parked /imu/data_raw /imu/mag /aav/gps/fix` | the IMU's bias, the GPS's noise over 10 s (TODO 40) |
 | 2 | **The lidar, 1 min**, parked and with someone walking past | on the Orin, theirs: `source /opt/ros/humble/setup.bash; ros2 bag record -o ~/aav-bags/lidar /velodyne_points /scan` | the lidar layer, ghost obstacles |
 | 3 | **Every session of ours**, stands too (A6-A11) | on the Orin: `~/aav-jazzy/aav.sh tools/record.sh --lidar <session>` | ego and the actuator model against real; the lot's map |
+| 3b | **A mapping drive**, by hand, round the lot | on the Orin: `~/aav-jazzy/aav.sh tools/record.sh --mapping --name lot` ([Recording a mapping drive](recording.md)): checks first, a summary after; up to 87 GB an hour | the lot's NDT and SLAM maps, labels, the transfer functions |
 | 4 | The actuator tests | they save themselves: `~/aav-tests/` on the laptop | `vehicle.yaml`'s steering numbers |
 | 5 | **Every topic's size and rate**, our stack running | on the Orin: `~/aav-jazzy/aav.sh bandwidth --markdown` | the bandwidth budget (T1.7) |
 | 6 | The camera delay photos, the calibration pictures, the sheet | the phones; `~/aav-calib/` | session 5; Gate 1 |
