@@ -74,7 +74,46 @@ there". UFLD v2's losses (the column as a class, its expected value, the existen
 colour. Augmented: colour, light, blur, noise, mirrored. 40 epochs on the Mac's GPU
 (`mps`), about 25 minutes.
 
-SCORES
+The scores on the 1,286 held-out pictures (19 Nov): each line's points on the road, a fit
+between 4 and 25 m, against the lane map's line at 5, 10 and 15 m ahead.
+
+| Line | Found (of those in the map) | Error, median (m): 5 / 10 / 15 m ahead | 90th percentile (m) |
+|---|---|---|---|
+| **the car's left** | **100 %** of 1,277 | **0.012 / 0.021 / 0.035** | 0.18 / 0.25 / 0.35 |
+| **the car's right** | **99.9 %** of 1,278 | **0.013 / 0.022 / 0.036** | 0.23 / 0.21 / 0.30 |
+| the next one left | 92.9 % of 606 | 0.12 / 0.05 / 0.09 | about 3 (often the wrong line) |
+| the next one right | 97.6 % of 613 | 0.12 / 0.05 / 0.08 | about 3 (often the wrong line) |
+
+- Paint colour (white or yellow) right for 95 % of the car's two lines.
+- A line found where the map has none: 2.1 % (left neighbour), 12 % (right neighbour); for
+  the car's own lines only 9 pictures lack one, and the model found a line in 5 and 5.
+- On lane-core's Ravensim frames (University Drive) both lines, a lane 2.9-3.0 m wide; on a
+  blank road, none (`tests/model.rs`).
+- Training loss falls to almost 0: it learns Ravensim by heart. The held-out roads say it
+  still generalises across roads; the car's pictures (TODO 252) will say more.
+
+### On ONNX Runtime (`pixi run measure onnx --models lanes`)
+
+M4 Max, 19 Nov, median of 30 runs, the model alone. 190 MB (FP16: 95 MB). **PASS**.
+
+| File | Provider | Answers vs the CPU | Nodes on the provider | ms |
+|---|---|---|---|---|
+| FP32 | CPU | the reference | all | 11.4 |
+| FP32 | Core ML | the same (0.00 px) | **59 of 59, 1 piece** | **2.4** |
+| FP16 | CPU | the same rows, 0.06 px | all | 10.8 |
+| FP16 | Core ML | the same rows, 0.04 px | **63 of 63, 1 piece** | **1.3** |
+| PyTorch (`mps`) | | the same (0.00 px) | | 5.5 |
+
+| Core ML's units | FP32 | FP16 |
+|---|---|---|
+| all (what we ask) | 2.5 | **1.2** |
+| CPU and GPU | 2.4 | 2.1 |
+| CPU and **Neural Engine** | 4.8 | **1.2** |
+| CPU only | 4.7 | 3.0 |
+
+**The Neural Engine takes the FP16 model whole** (1.2 ms, within 0.04 px of the CPU's
+answers); the FP32 one runs on the GPU. The first export had one `Flatten` that Core ML
+handed back to the CPU (2 pieces); a fixed `Reshape` made it one piece.
 
 ## Retrain
 

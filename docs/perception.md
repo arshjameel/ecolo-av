@@ -428,8 +428,8 @@ the speed. On a campus road the lane runs from the yellow centre line to the whi
 ### A learned lane finder? The survey (19 Nov)
 
 Ben, 19 Nov: "or find a better version". Open lane detectors, their code's licence (from
-each repository), and the catch. **Not built**: it would run through ONNX (TODO 243),
-behind the same `/perception/lane/geometry`.
+each repository), and the catch. **Built the same day** (below): our UFLD-v2-style model,
+through ONNX (TODO 243), behind the same `/perception/lane/geometry`.
 
 | Model | Code licence | How it finds lanes | Speed | The catch |
 |---|---|---|---|---|
@@ -457,6 +457,24 @@ unchanged. **Trained by us**, not from the published weights: on Ravensim's pict
 labelled for free from the world's lane map, then on the car's recordings through the
 labelling loop (TODO 252). CLRNet stays the accuracy challenger once its NMS is outside
 the ONNX graph. TODO 262b.
+
+### The learned lane finder (19 Nov, TODO 262b, a challenger)
+
+`lane_finder_impl:=learned` ([aav_lane_finder_learned](../ros/perception/aav_lane_finder_learned/README.md)).
+Our own small UFLD-v2-style model (ResNet-18 from random weights; row anchors), trained on
+this Mac's GPU on **7,472 Ravensim pictures** labelled from the lane maps
+(`tools/lane_data.py`, `tools/lane_train.py`). Its lines go through the same lens, mount
+and fit as the classic finder's, into the same message.
+
+| On 1,286 held-out pictures (unseen campus roads) | The car's left line | Its right line |
+|---|---|---|
+| found | 100 % | 99.9 % |
+| error at 5 / 10 / 15 m, median | 1.2 / 2.1 / 3.5 cm | 1.3 / 2.2 / 3.6 cm |
+| error at 5 / 10 / 15 m, 90th percentile | 18 / 25 / 35 cm | 23 / 21 / 30 cm |
+
+Core ML runs it whole: 2.4 ms (FP32, GPU), **1.2 ms in FP16 on the Neural Engine**
+([ONNX](onnx.md)). **Not yet driven** with it, nor scored against the classic finder in
+Ravensim (stage 2); not yet trained on the car's pictures (TODO 252).
 
 ### Next
 

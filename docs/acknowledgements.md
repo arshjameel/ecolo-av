@@ -91,10 +91,12 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **libc** crate; **serde_yaml_ng** | MIT OR Apache-2.0 | runs | the Rust camera stream: stopping the decoder's process group (`killpg`); reading camera_info YAML calibrations |
 | NVIDIA TensorRT; Apple Core ML Tools | NVIDIA licence; BSD-3 | runs | the detector on the Orin and on Macs |
 | **ONNX Runtime** (Microsoft) | MIT | runs | the Rust detector (`aav_detector_rs`), the Rust diffusion worker (`aav_diffusion_rs`), `tools/onnx_check.py` and `onnx_measure.py`; its float16 converter makes the FP16 detector (`export_model.py --fp16`) ([ONNX](onnx.md)) |
-| **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `onnx-session`, `detector-core`, `diffusion-core` |
+| **`ort`** crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime | MIT or Apache-2.0 | runs | ONNX Runtime from Rust: `onnx-session`, `detector-core`, `diffusion-core`, `ufld-core` |
 | ONNX; onnxscript | Apache-2.0; MIT | runs | exporting RF-DETR to ONNX (`tools/export_model.py --format onnx`) |
 | rfdetr's PostProcess and COCO class list | Apache-2.0 | ported | `detector-core`'s decode and labels, through our `detr.py` |
-| **Ultra-Fast-Lane-Detection v2**: Z. Qin, P. Zhang, X. Li, TPAMI 2022 (`cfzd/Ultra-Fast-Lane-Detection-v2`) | MIT | idea (looked at) | the pick for a learned lane finder, trained by us (TODO 262b, `docs/perception.md`) |
+| **Ultra-Fast-Lane-Detection v2**: Z. Qin, P. Zhang, X. Li, "Ultra Fast Deep Lane Detection With Hybrid Anchor Driven Ordinal Classification", IEEE TPAMI 2022 (`cfzd/Ultra-Fast-Lane-Detection-v2`) | MIT | idea (our own code from the paper; no code or weights copied) | the learned lane finder (TODO 262b): row anchors, the column as a class with its expected value, the existence branch, the local expectation when decoding (`tools/lane_train.py`, `aav_lane_finder_learned`) |
+| **torchvision**'s ResNet-18 (the architecture; K. He et al., CVPR 2016) | BSD-3 | runs (random start, no pretrained weights) | the learned lane finder's backbone |
+| **Pillow**'s resampling (`precompute_coeffs`, its 8-bit fixed point) | MIT-CMU (HPND) | ported (the rules) | the learned lane finder's crop and scale in Rust, so the model gets the numbers it was trained on (`ufld-core` `preprocess.rs`) |
 | CLRNet (T. Zheng et al., CVPR 2022), CLRerNet; LaneATT (L. Tabelini et al., CVPR 2021); PolyLaneNet (L. Tabelini et al., 2020); CondLaneNet (L. Liu et al., ICCV 2021); YOLOP, YOLOPv2, TwinLiteNet | Apache-2.0; Apache-2.0; MIT; MIT; Apache-2.0; MIT | idea (looked at) | the lane detector survey (`docs/perception.md`); their published weights are trained on CULane (non-commercial), BDD100K, TuSimple or CurveLanes (not clearly open), so not used |
 
 ## Maps and routes
