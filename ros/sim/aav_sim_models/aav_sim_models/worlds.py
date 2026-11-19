@@ -44,6 +44,11 @@ CAMPUS_LANES = os.path.join('maps', 'campus', 'lanes.yaml')
 # recorded map, and stayed within 0.12 m of the truth. Whether a WRONG pose can score this
 # high isn't measured, so don't feed it to the EKF here (ndt_ekf) until it is.
 CAMPUS_NDT_MIN_SCORE = 1.5
+# NDT's median score per point at which it wins a disagreement with the GPS there
+# (pose_source:=ndt, aav_pose_check's trust_score; the lot's is 2.6). Its good fits scored
+# 1.73-1.94 on the guessed map (above): under this, the GPS is believed. TODO 121: a WRONG
+# pose's score is still unmeasured.
+CAMPUS_POSE_TRUST = 1.7
 # The grass is a kerb up, 0.30 m (Ben, 5 Nov), right on the car's usual 0.3 m floor, so half of
 # every hit on it would count as an obstacle, or as a wall for NDT. NDT looks above it. The
 # screen's cubes look below it, so the kerb and the grass show as the lidar's rings.

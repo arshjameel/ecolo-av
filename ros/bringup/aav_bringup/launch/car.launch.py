@@ -598,8 +598,14 @@ def launch_setup(context):
                             lane_finder_impl=impls['lane_finder_impl']),
                     include('aav_lane_geometry', 'lane_follower.launch.py', fake=False)]
     if on('localization'):
+        # NDT leading (pose_source:=ndt, TODO 210) is the sim's challenger until the real
+        # lot has a lidar map (pixi run map-drive) and the car its NDT: refuse it here.
+        source = LaunchConfiguration('pose_source', default='gps').perform(context)
+        if source.strip().lower() != 'gps':
+            raise ValueError(f'pose_source:={source}: the car runs pose_source:=gps only, '
+                             'until the real lot has a lidar map and NDT (TODO 210)')
         actions.append(include('aav_localization', 'localization.launch.py',
-                               gps=flag('gps'), start_x=arg('start_x'),
+                               gps=flag('gps'), pose_source='gps', start_x=arg('start_x'),
                                start_y=arg('start_y'), start_yaw=arg('start_yaw'),
                                localization_health_impl=impls['localization_health_impl']))
     if on('navigation'):

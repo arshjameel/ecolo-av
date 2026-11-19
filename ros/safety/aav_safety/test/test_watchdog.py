@@ -423,12 +423,26 @@ def test_the_configs_status_inputs_are_good_rules_that_only_warn():
         params = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
     status = {k: v for k, v in params.items() if isinstance(v, dict) and v['kind'] == 'status'}
     assert set(status) == {'status_costmap_local', 'status_costmap_global', 'status_planner',
-                           'status_navigator', 'status_mppi_lag'}
+                           'status_navigator', 'status_mppi_lag', 'pose_check'}
     for name, p in status.items():
         rule = Rule(name, p['topic'], 'status', p['max_age'], stop=p['stop'],
                     status_name=p.get('status_name', ''), min_level=p.get('min_level', 2),
                     quiet_ok=p.get('quiet_ok', False))
-        assert rule.stop is False, f'{name}: warn only (Ben, 18 Nov)'
+        if name == 'pose_check':
+            # Not navigation's: where the car is (TODO 210). HOLD (ERROR) and silence stop.
+            assert rule.stop and rule.min_level == 2 and not rule.quiet_ok
+        else:
+            assert rule.stop is False, f'{name}: warn only (Ben, 18 Nov)'
+
+
+def test_with_ndt_leading_the_gps_checks_only_warn():
+    path = os.path.join(os.path.dirname(__file__), '..', 'config', 'sensor_watchdog.yaml')
+    with open(path) as f:
+        params = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
+    gps, check = params['gps'], params['gps_check']
+    assert gps['stop'] is True and check['stop'] is False
+    assert {k: v for k, v in gps.items() if k != 'stop'} == {
+        k: v for k, v in check.items() if k != 'stop'}
 
 
 def test_status_settings_belong_to_status_inputs():
