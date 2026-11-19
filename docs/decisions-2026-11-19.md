@@ -159,8 +159,8 @@ Nav2 was deleted on 17 Nov, but its best parts live on, **ported to Rust**:
 
 "1000 MPPI samples" (TODO 152) is about **speed**: half today's 2000 futures, so the
 follower runs faster on the Orin. The diffusion planner is still a path challenger; it
-must be scored again in Ravensim (last scored in Gazebo, 2 Nov: every leg, 63 % of routes
-from the model).
+must be scored again with today's stack (last scored on 8 Nov in our own simulator, the
+lot: 12 of 12 legs; skipped in the 16 Nov league for time).
 
 ## 7. Scores, not gates
 

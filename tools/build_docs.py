@@ -34,7 +34,7 @@ OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
 READ_FIRST = 27    # PAGES[:27] are the reading list
-LEARN_END = 44    # PAGES[27:43] are the learn pages; the rest are reference
+LEARN_END = 46    # PAGES[27:46] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
