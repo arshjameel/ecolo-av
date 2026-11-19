@@ -337,6 +337,11 @@ def test_the_sim_and_the_bench_pass_their_speed_loop_on():
     assert sent_to_navigation(BENCH, nav='true', speed_loop='smooth')['speed_loop'] == 'smooth'
     with pytest.raises(ValueError, match='speed_loop:=fast'):
         sent_to_navigation(SIM, speed_loop='fast')
+    # speed_loop_model:= (TODO 163): navigation's models take it, not the car's loop.
+    assert sent_to_navigation(SIM, speed_loop='firm',
+                              speed_loop_model='smooth')['speed_loop'] == 'smooth'
+    assert sent_to_navigation(BENCH, nav='true', speed_loop='firm',
+                              speed_loop_model='default')['speed_loop'] == 'default'
 
 
 def test_the_steering_gamma_and_the_strong_smoother_reach_their_nodes():

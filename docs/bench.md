@@ -47,6 +47,7 @@ don't.
 | `reversing` | `true` | navigation may drive backwards |
 | `bridge` | `rust` | which `spine_bridge`: `rust` or `python` |
 | `speed_loop` | `default` | `spine_sim`'s speed loop: `default`, `smooth`, `lqi` or `firm` ([The car as a linear model](vehicle-model.md)); ego's trace and a lag-aware follower assume the same (TODO 163) |
+| `speed_loop_model` | (empty) | the loop ego's trace and the follower assume, when not `spine_sim`'s own; empty: `speed_loop`'s (TODO 163) |
 
 `start_y`, `start_yaw` and `bend_radius` are under [Lane keeping](#lane-keeping).
 

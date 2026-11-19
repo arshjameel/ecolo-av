@@ -20,6 +20,7 @@ The launch files use this so the car's measurements live in one file:
     vehicle.mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)  # aav_mppi_lag's
     vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed)  # aav_mpc_lag's (tracker:=mpc_lag_rs)
     vehicle.check_speed_loop(name, tracker)  # speed_loop:=, the profile every car model assumes
+    vehicle.check_speed_loop_model(name, car_loop, tracker)  # speed_loop_model:=, '' = car's
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
@@ -737,6 +738,22 @@ def check_speed_loop(name, tracker=None):
         raise ValueError(f"speed_loop:={profile}: tracker:={tracker} models the PI's "
                          'profiles only (default, smooth, firm)')
     return profile
+
+
+def check_speed_loop_model(name, car_loop, tracker=None):
+    """
+    Return the profile every model of the car assumes (speed_loop_model:=), or raise ValueError.
+
+    Empty: the car's own loop (car_loop), so the models predict the car they drive. Given:
+    the models plan with it while the car runs car_loop (TODO 163: car firm, models smooth).
+    tracker: as check_speed_loop.
+    """
+    if not str(name).strip():
+        return check_speed_loop(car_loop, tracker)
+    try:
+        return check_speed_loop(name, tracker)
+    except ValueError as err:
+        raise ValueError(str(err).replace('speed_loop:=', 'speed_loop_model:=', 1)) from None
 
 
 def smoother_params(cfg, ego, vehicle_yaml):

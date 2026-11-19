@@ -5,7 +5,8 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
       [perception:=false] [lane:=false|true|fake] [hud:=false] [arm:=true] [foxglove:=false]
       [start_y:=0.0] [start_yaw:=0.0] [bend_radius:=] [obstacle:=false]
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
-      [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [geofence_radius:=100.0]
+      [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
+      [geofence_radius:=100.0]
       [stop_sign_impl:=rust|python]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
@@ -93,12 +94,15 @@ def launch_setup(context):
         datum = yaml.safe_load(f)['navsat_transform']['ros__parameters']['datum']
 
     speed_loop = vehicle.check_speed_loop(LaunchConfiguration('speed_loop').perform(context))
+    # What every model of the car assumes: spine_sim's loop unless told (TODO 163).
+    model_loop = vehicle.check_speed_loop_model(
+        LaunchConfiguration('speed_loop_model').perform(context), speed_loop)
     actions = [
         # The car's own software, as car.launch.py starts it.
         include('aav_description', 'description.launch.py'),
         include('aav_command_mux', 'mux.launch.py', geofence_lock='true'),
-        # spine_sim's speed loop, so ego's trace predicts the car it drives (TODO 163).
-        include('aav_ego', 'ego.launch.py', speed_loop=speed_loop),
+        # The models' loop (spine_sim's unless told), for ego's trace (TODO 163).
+        include('aav_ego', 'ego.launch.py', speed_loop=model_loop),
         # ego's commands go to spine_bridge (source bench) only while everything is BENCH.
         include('aav_io_mux', 'io_mux.launch.py', target='bench', source='bench'),
         include('aav_scripted', 'scripted.launch.py'),
@@ -154,7 +158,7 @@ def launch_setup(context):
                                camera_obstacles=flag['camera_obstacles'],
                                reversing=str(flag['reversing']).lower(),
                                plan_around=str(flag['plan_around']).lower(),
-                               speed_loop=speed_loop))
+                               speed_loop=model_loop))
     # The sensor watchdog guards navigation and the AI slot (lane keeping) as on the car, always:
     # the mux's sensors lock needs its heartbeat (aav_command_mux mux.launch.py sensor_lock).
     actions.append(include('aav_safety', 'watchdog.launch.py',
@@ -283,7 +287,11 @@ def generate_launch_description():
                                           '(aav_spine)'),
         DeclareLaunchArgument('speed_loop', default_value='default',
                               description="spine_sim's speed loop profile: default (today's "
-                                          'gains), smooth (TODO 27) or lqi (TODO 3)'),
+                                          'gains), smooth (TODO 27), lqi (TODO 3) or '
+                                          'firm (TODO 163)'),
+        DeclareLaunchArgument('speed_loop_model', default_value='',
+                              description='the loop every model of the car assumes; '
+                                          "empty: speed_loop's (TODO 163)"),
         DeclareLaunchArgument('geofence_radius', default_value='100.0',
                               description='m: the geofence, a circle round where the car '
                                           'first stands still (the car: 30)'),

@@ -534,6 +534,21 @@ def test_check_speed_loop_takes_spine_cores_names_and_refuses_the_rest():
     assert vehicle.check_speed_loop('lqi', 'mppi_lag') == 'lqi'
 
 
+def test_the_models_loop_is_the_cars_unless_given():
+    # speed_loop_model:= (TODO 163): empty follows the car's loop; given, it wins.
+    assert vehicle.check_speed_loop_model('', 'firm') == 'firm'
+    assert vehicle.check_speed_loop_model('  ', 'default') == 'default'
+    assert vehicle.check_speed_loop_model('Smooth', 'firm') == 'smooth'
+    with pytest.raises(ValueError, match='speed_loop_model:=fast'):
+        vehicle.check_speed_loop_model('fast', 'firm')
+    with pytest.raises(ValueError, match='speed_loop:=fast'):
+        vehicle.check_speed_loop_model('', 'fast')
+    # The MPCs refuse the LQI as a model, even when the car runs it.
+    with pytest.raises(ValueError, match='PI'):
+        vehicle.check_speed_loop_model('lqi', 'firm', 'mpc_lag')
+    assert vehicle.check_speed_loop_model('smooth', 'lqi', 'mpc_lag') == 'smooth'
+
+
 def test_every_model_of_the_car_gets_the_speed_loop_asked_for():
     # TODO 163: the followers' and the behaviour planner's models predict the simulated
     # car's loop; default unchanged, an unknown name refused.
