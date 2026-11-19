@@ -61,7 +61,8 @@ def mux(context):
             package='aav_mux_state',
             executable='command_mux_state',
             name='command_mux_state',
-            parameters=[{'config_files': [f.perform(context) for f in files]}, sim_time],
+            # One dict, one source: no YAML entry to win over it (rclrs; docs/languages.md).
+            parameters=[{'config_files': [f.perform(context) for f in files], **sim_time}],
         ),
     ]
 

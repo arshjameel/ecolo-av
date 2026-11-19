@@ -62,7 +62,8 @@ class Run:
         self.state = None
 
     def start_mux(self):
-        """Start twist_mux with the car's config; no watchdog or geofence here: their locks off.
+        """
+        Start twist_mux with the car's config; no watchdog or geofence here: their locks off.
 
         And command_mux_state beside it, given the same files in the same order.
         """

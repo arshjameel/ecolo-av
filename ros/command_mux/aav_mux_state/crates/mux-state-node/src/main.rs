@@ -74,7 +74,17 @@ impl State {
         let key = choice.key();
         let changed = key != self.last_key;
         if changed {
-            log_info!(&self.logger, "driving: {}", choice.summary());
+            let locks = choice
+                .values()
+                .into_iter()
+                .find(|(k, _)| *k == "locks")
+                .map(|(_, v)| v)
+                .unwrap_or_default();
+            log_info!(
+                &self.logger,
+                "driving: {}; locks: {locks}",
+                choice.summary()
+            );
             self.last_key = key;
         }
         if !(always || changed) {
