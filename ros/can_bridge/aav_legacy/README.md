@@ -26,6 +26,24 @@ keeps slowing as it was, then the slowing fades with the speed, so it stops with
 jolt; stopped, the brake rises gently to `stopped_brake` and holds.
 In Ravensim: `pixi run sim esp32:=true`, the C++ firmware standing in (`aav_sim_models`). The design: `docs/designs/2026-10-27_control-plan.md`, step 1.
 
+### The adaptive brake (`adaptive_brake`, TODO 258)
+
+Off by default. With `adaptive_brake: true` (`car.launch.py adaptive_brake:=true`) and
+`speed_loop.mode: pi`, the sim's adaptive brake (`aav_description` `adaptive_brake.py`; the
+Rust bridge runs its twin, `firmware/spine/crates/adaptive-brake`) sits between the pi loop
+and the brake actuator: it brakes harder when the car slows less than the car model says,
+**never above `vehicle.yaml`'s `brake: safe_max`**.
+
+| Why here | |
+|---|---|
+| The brake level exists only after the speed loop | ego sends a speed, not a brake |
+| Below every lock | the stops (stale command, e-stop, calibration) send `stop_command` as before, never through it |
+| Today's car runs its speed loop here | `actuators:=uart`: the Motor Pi, before the ESP32's C++, which isn't ours to change |
+
+With `open` it is refused (no brake to adapt). With `actuators:=can` the spine's firmware
+runs the loop: `car.launch.py` refuses it there for now. Its car model (`adaptive_brake.*`)
+and limits (`brake.*`) come from `vehicle.yaml` through `legacy.launch.py`.
+
 ### The no-timeout lock
 
 | `frame_version` | `allow_programs_without_timeout` | `/safety/legacy_uart_bridge/lock` | Who drives |
@@ -116,6 +134,8 @@ ros2 run aav_legacy steering_limits --left 3420 --centre 1890 --right 480 --left
 | bridge | `speed_loop.max_accel`, `max_brake`, `drag` | from `vehicle.yaml` `actuators:` | m/s², m/s², 1/s |
 | bridge | `speed_loop.response_lag` | 0.3 (guess): how far behind ego the car is expected to run | s |
 | bridge | `speed_loop.hold_brake`, `speed_loop.odom_timeout` | 0.2, 0.3 | 0..1, s |
+| bridge | `adaptive_brake` | false (true needs `pi`; TODO 258) | |
+| bridge | `adaptive_brake.max_brake`, `brake_lag`, `brake_dead_time`, `drag`, `throttle_dead_time`, `throttle_lag`; `brake.released`, `touch`, `full`, `safe_max`, `max_hold_time` | from `vehicle.yaml` `actuators:` and `brake:` | m/s², s, 1/s; counts, s |
 | bridge | `speed_loop.smooth_stop_speed`, `smooth_stop_rate`, `weak_stop_decel`, `weak_stop_time`, `strong_stop_decel`, `stopped_brake`, `stopped_brake_rate` | 0.3 (0: off), 1.5, 0.2, 2.0, 1.0, 0.5, 1.0 (guesses) | m/s, 1/s, m/s², s, m/s², 0..1, per s |
 | encoder | `port`, `bind_address` | 10111, 0.0.0.0 | |
 | encoder | `wheel_diameter`, `counts_per_rev` | from `vehicle.yaml` | m, counts |
@@ -125,7 +145,8 @@ ros2 run aav_legacy steering_limits --left 3420 --centre 1890 --right 480 --left
 ### Launch
 
 `legacy.launch.py [uart:=true] [encoder:=true] [rc:=true] [legacy_impl:=rust] [rc_impl:=rust]
-[port:=] [frame_version:=]`: the bridge, the encoder, and `rc_driver` beside the bridge.
+[port:=] [frame_version:=] [adaptive_brake:=false]`: the bridge, the encoder, and
+`rc_driver` beside the bridge.
 `port` and `frame_version` (empty: `legacy.yaml`'s) change one run without editing the file,
 in both languages: the bridge has `namespace='/'`, so launch's values beat the YAML in Rust
 too (`docs/languages.md`, "Launch overrides"; `aav_bringup`'s `test_rust_overrides.py`).

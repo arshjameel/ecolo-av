@@ -30,6 +30,8 @@ parts:
   legacy_uart: false    # runs on motor_pi, which is wired to the ESP32
   legacy_encoder: false # the 2025-26 Pico sent only to the Motor Pi: see motor_pi.yaml
   foxglove: true
+  ndt: true             # NDT on the lot's lidar map, only with car ndt:=true ndt_map:= (TODO 261):
+                        # here, where the lidar's packets go
 
 # The geofence, next to the mux (aav_safety, docs/geofence.md). site: a polygon in
 # aav_safety's config/geofence.yaml, drawn for navsat.yaml's datum; empty: a circle of

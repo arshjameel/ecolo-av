@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+# self-test-core: the boot self-test's checks and verdict, with no ROS: cargo test -p self-test-core
+# self-test-node: the ROS node (rclrs), binary `boot_self_test`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/self-test-core", "crates/self-test-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

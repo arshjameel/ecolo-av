@@ -13,7 +13,7 @@ the day itself in [Car day](car-day.md); the checks after an install in
 > 1. **Bench → stands → hallway → lot → campus mapping drives → offline processing → the car
 >    drives itself.** Each step has a pass rule; nothing moves on until it passes.
 > 2. **A boot self-test** at every start: every sensor, actuator and lock answers, or the car
->    **refuses to arm**. Parts exist; the one check that gates arming is to build (TODO 255).
+>    **refuses to arm**. Built 19 Nov (TODO 255, `aav_self_test_rs`); untested on the car.
 > 3. **Stands**: speed up, slow down, steering lock to lock. Numbers into `vehicle.yaml`.
 > 4. **Hallway**: start and stop runs, measured three ways (wheels, IMU, NDT), **empty and
 >    with a person aboard**. The transfer functions tune the car model and the adaptive brake.
@@ -89,29 +89,37 @@ Ben, 19 Nov: "Make sure we have control over everything with a basic boot self t
 | `record-drive --check` | disk, rates, stamps, clocks, sensor frames | by hand, before a drive | Built; untested on the car |
 | **The spine's self-test** (`spine-core`, `Lifecycle::SelfTest`) | the steering and brake drivers, the throttle DAC, the wheel encoder: **nothing arms until they answer** | at every power-up, on the board | Built in the Rust spine; **not on the car** (it runs the 2025-26 C++ ESP32). TODO 0b (Arsh): today it passes after one tick with no fault |
 | `spine_bridge`'s arm rule | refuses `/spine/arm` during an e-stop or while the output gate isn't OPEN | every arm | Built |
+| **The boot self-test** (`boot_self_test`, `aav_self_test_rs`) | everything below, in one READY / NOT READY | always, next to the mux on the car | Built 19 Nov (TODO 255); **untested on the car** |
 
-### What is missing
+### The boot self-test (TODO 255)
 
 **One check, at start-up, that covers the whole car and refuses to arm until it passes.**
-Today each part is checked by a different command, by hand, and nothing stops a person
-arming a car whose lidar is silent.
 
 ```text
  power on ─▶ every computer up ─▶ BOOT SELF-TEST ─┬─ all ✅ ─▶ READY ─▶ a person arms
                                                    └─ any ❌ ─▶ NOT READY: says which; arming refused
 ```
 
-| It checks | Pass | Source today |
+| It checks | Pass | Reads |
 |---|---|---|
-| Every sensor: lidar, IMU, GPS, wheels, each camera, radar | at its rate, values in range, the IMU still reads gravity | the preflight's sensor lines |
-| Every actuator answers | the spine's self-test passed; steering, brake and throttle report a state | `/vehicle/status`, `/vehicle/steering`, `/vehicle/brake` |
-| Every lock is alive | the e-stop path, the sensor watchdog, the geofence, the output gate, joy_alive each publishing | their `/safety/*/state` topics |
-| The clocks | every computer within the limit of the Orin | `record-drive --check`'s `chronyc` |
-| The person's stop | the e-stop pressed once and seen, then released | the after-install's e-stop row |
+| Every sensor | the sensor watchdog speaks and doesn't say STOP: every sensor it watches at its rate (lidar, IMU, GPS, wheels, EKFs, cameras, HUD) | `/safety/sensor_watchdog/state` |
+| Every actuator answers | `actuators:=can`: the spine's status fresh, no steering, brake, throttle or CAN fault. Today's UART: the bridge's frames go out | `/vehicle/status`; `/control/car/link_frame` |
+| Every lock is alive | the sensor watchdog, the geofence, the output gate each speaking; the stop zone running where navigation is | their `/safety/*/state` topics; the ROS graph |
+| The clocks | the IMU's, the GPS's and the wheels' stamps within 0.5 s of the Orin's | their headers |
 
-Proposed: a node beside `spine_bridge` publishes READY or NOT READY (and why, for the HUD and
-the debug page); `spine_bridge` refuses `/spine/arm` until READY, as it already does for the
-gate. It moves nothing: no actuator steps (that stays on stands). **To build: TODO 255.**
+All passing for 2 s: **READY**. Any failing: **NOT READY - ** and each one, why.
+`/safety/self_test/status` (DiagnosticStatus; `ros2 topic echo`, Foxglove). Not on the
+HUD yet.
+
+| Who | How it refuses |
+|---|---|
+| `actuators:=can` | `spine_bridge` (`require_ready`, both languages) refuses `/spine/arm` until it said READY within 2 s; silence refuses too. Disarming and the e-stop never wait |
+| `actuators:=uart` (today) | nothing arms on that path (the UART bridge has no arm): READY is **for the person**, card 1 |
+| Ravensim, the bench | not run; their `spine_bridge` doesn't wait for it (`arm_when_open` arms them) |
+
+It moves nothing: no actuator steps (that stays on stands). **Gaps:** the person's e-stop
+press stays a card 1 row; the spine's own self-test passes after one tick (TODO 0b, Arsh's
+firmware), so a fault-free status says only that no driver reported a fault yet.
 
 ## Phase A: the car on stands
 
@@ -225,7 +233,7 @@ A 15 m+ hallway is needed for a **trusted drag** (TODO 248's finding).
 |---|---|---|---|---|
 | **Wheels** | speed, distance | no drift | the change in speed is noisy | Built |
 | **IMU** | acceleration, 100 times a second | quick and smooth | a small offset; the floor's slope looks like acceleration | Built (`fusion.py`) |
-| **NDT** on a hallway map | position, so distance and speed | independent of wheel slip and the wheel's size | **can slide along a plain corridor** (below) | **To build** in the hallway (TODO 256) |
+| **NDT** on a hallway map | position, so distance and speed | independent of wheel slip and the wheel's size | **can slide along a plain corridor** (below) | On the car: built, **untested** (TODO 261); its pose in `car-test --hallway`: **to build** (TODO 256) |
 
 How the first two are blended, all built, in `fusion.py` and `errorbars.py`:
 
@@ -257,9 +265,19 @@ here:** a long, plain corridor looks the same all along. Along the hallway NDT c
 | 4 | **Trust NDT across more than along**: use it to check the wheels' distance, never alone |
 | 5 | Where NDT and the wheels disagree by more than the error bars: look at the slip, the wheel's size, or NDT sliding |
 
-> ⚠️ **To build (TODO 256 and 261):** `car.launch.py` doesn't start NDT today (only the sim
-> launch has `ndt:=true`), and `car-test --hallway` doesn't record NDT's pose. With no GPS
-> indoors, `map-drive` places the map from the drive's start (it says so in its YAML).
+NDT on the car (TODO 261, built 19 Nov; **untested on the car**):
+
+```sh
+pixi run car orin ndt:=true ndt_map:=<the hallway's .pcd> [start_x:= start_y:= start_yaw:=]
+```
+
+It runs on the Orin (the machine file's `ndt` part, beside the lidar), as the sim runs it:
+from the start pose, scored only. Off by default; refused without its map or the lidar.
+`pose_source:=ndt` (NDT leads, the GPS checks) is allowed only with `ndt:=true` and
+`ndt_map:=`; the default stays `gps`.
+
+> ⚠️ **To build (TODO 256):** `car-test --hallway` doesn't record NDT's pose yet. With no
+> GPS indoors, `map-drive` places the map from the drive's start (it says so in its YAML).
 
 ### With and without a person aboard
 
@@ -272,7 +290,7 @@ The same brake stops a heavier car more slowly (a = F / m). In the car model, 15
 | 2 | `car-test --hallway` **empty** (driven from the laptop, a walker on the joystick beside it) | Built; untested on the car |
 | 3 | `car-test --hallway` **with a person aboard**, the same passes | Built; it has no way to note the load yet (TODO 257) |
 | 4 | Fit a transfer function for each load | Built (one fit per session) |
-| 5 | Feed both to the **adaptive brake** (`adaptive_brake:=true`): it brakes harder when the car stops slower than the model, never above `safe_max` | Built **in the sim only** (`sim_adapter`); not on the car's brake path (TODO 258) |
+| 5 | Feed both to the **adaptive brake** (`adaptive_brake:=true`): it brakes harder when the car stops slower than the model, never above `safe_max` | Built in the sim (`sim_adapter`) and on the car's brake path (TODO 258: `legacy_uart_bridge`, after its pi loop; [where and why](stopping.md#on-the-car-todo-258-19-nov)); **untested on the car** |
 
 ### Tune the TF
 
@@ -502,7 +520,7 @@ Every card: **an e-stop person**, named before the start, hand on the button the
 - [ ] `pixi run doctor`, then `pixi run check car`: every topic at its rate
 - [ ] The HUD and the debug page (key D) up
 - [ ] Press the e-stop, see it, release it
-- [ ] Today: by hand, the rows above. Once built (TODO 255): READY on the HUD
+- [ ] `ros2 topic echo /safety/self_test/status`: **READY** (TODO 255; untested on the car). NOT READY: fix what it names first
 - **Pass:** all ✅; else don't arm. **Save:** nothing. **Feeds:** every session.
 
 ### Card 2: stands (phase A)

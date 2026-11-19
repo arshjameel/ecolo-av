@@ -24,6 +24,7 @@
 
 mod bridge;
 mod gate;
+mod ready;
 pub mod wheels;
 
 pub use bridge::{
@@ -31,5 +32,6 @@ pub use bridge::{
     UnknownRole, Update,
 };
 pub use gate::{try_again, GateShut, OutputGate, Target, UnknownTarget, GATE_SHUT};
+pub use ready::{NotReady, ReadyGate, NOT_READY};
 pub use spine_core::protocol::{DriveCmd, EstopCmd, Mode, DRIVE_CMD_ID, ESTOP_CMD_ID};
 pub use wheels::{Direction, Reading, Side};

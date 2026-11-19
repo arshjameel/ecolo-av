@@ -7,6 +7,9 @@ members = [
     # Logic: no hardware, no dependencies.
     "crates/spine-core",
     "crates/aav-inputs",
+    # The adaptive brake (TODO 258): harder when the car slows less than the model says.
+    # Uses libm (exp, floor), so not quite "no dependencies"; the car's legacy bridge runs it.
+    "crates/adaptive-brake",
     # The other boards' logic: the wheel's spoke sensors and the wheel encoder's UDP
     # packet; the status display (the sentinel); the CAN wheel nodes (ESP32-S3 boards
     # on the front wheels).

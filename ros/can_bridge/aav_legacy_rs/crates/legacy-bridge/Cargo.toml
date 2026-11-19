@@ -9,6 +9,9 @@ publish.workspace = true
 [dependencies]
 # The firmware's own frames (versions 1, 2, 3 and the uplink): one implementation for both ends.
 legacy-link = { path = "../../../../../firmware/spine/crates/legacy-link" }
+# The adaptive brake (TODO 258), the sim's maths in Rust: after the pi speed loop, before
+# the brake actuator; checked against the Python with firmware/spine/adaptive_brake_vectors.txt.
+adaptive-brake = { path = "../../../../../firmware/spine/crates/adaptive-brake" }
 
 [dev-dependencies]
 # Reads the shared vectors, tests/vectors.json (gen_vectors.py, from the Python modules).

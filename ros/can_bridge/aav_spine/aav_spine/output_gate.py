@@ -61,6 +61,40 @@ class OutputGate:
         return f'{GATE_SHUT}: {why}'
 
 
+# The boot self-test (TODO 255): spine_bridge with require_ready (the car) refuses to arm
+# until /safety/self_test/status says READY (level OK) within READY_TIMEOUT s. The same
+# words as spine-bridge's ready.rs.
+NOT_READY = 'the boot self-test says NOT READY'
+READY_TIMEOUT = 2.0   # s: the self-test speaks twice a second
+
+
+class ReadyGate:
+    """The boot self-test's last word (ready, its message), and when it came."""
+
+    def __init__(self, timeout: float = READY_TIMEOUT):
+        self.timeout = timeout
+        self.ready: Optional[bool] = None
+        self.message = ''
+        self.time = 0.0
+
+    def heard(self, ready: bool, message: str, now: float) -> None:
+        """Keep one /safety/self_test/status: ready if its level is OK; steady s."""
+        self.ready, self.message, self.time = ready, message, now
+
+    def refusal(self, now: float) -> Optional[str]:
+        """None if the self-test said READY within the timeout; else why not, for people."""
+        if self.ready is None:
+            why = ('nothing heard from it yet (/safety/self_test/status); '
+                   'arm once it says READY')
+        elif now - self.time > self.timeout:
+            why = f'it has been quiet for {now - self.time:.1f} s; arm once it says READY'
+        elif not self.ready:
+            why = self.message
+        else:
+            return None
+        return f'{NOT_READY}: {why}'
+
+
 def try_again(success: bool, message: str, waited: float, give_up: float) -> bool:
     """
     arm_when_open: ask /spine/arm again? Only while the gate alone refused, for give_up s.

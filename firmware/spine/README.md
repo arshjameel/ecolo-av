@@ -22,6 +22,7 @@ is tested on a laptop, without a board. The board programs are in `boards/`:
 | Crate | What it is | Tests |
 |---|---|---|
 | [`spine-core`](./crates/spine-core/README.md) | the spine's logic: modes, arming, the 100 ms watchdog, the speed loop (closed, or open with no wheel speed), the encoder, the CAN frames, open-loop commands, the state machine and the hardware test mode (`fsm`), and the three choices still open (below) | 142 |
+| [`adaptive-brake`](./crates/adaptive-brake/README.md) (19 Nov) | the adaptive brake (TODO 258): harder when the car slows less than the model says, never above the brake's safe max; `aav_description`'s `adaptive_brake.py` in Rust, for `legacy_uart_bridge`'s pi loop. Uses `libm` | 6 |
 | [`wheel-core`](./crates/wheel-core/README.md) | the front wheel nodes' logic: Hall sensor pulses to speed, and the WHEEL_SPEED frame | 9 |
 | [`legacy-link`](./crates/legacy-link/README.md) | the 2025-26 UART link: the Motor-Pi's 13-byte frames, and the targets the C++ set for them; versions 2 and 3 (the heartbeat; the steering calibration's rules, `SteerCal`) and the uplink | 121 |
 | [`aav-inputs`](./crates/aav-inputs/README.md) | clean inputs: debounced switches, an e-stop that trips at once, counting with a lockout | 9 |

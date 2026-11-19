@@ -16,6 +16,7 @@
 use core::fmt;
 use core::str::FromStr;
 
+use adaptive_brake::{AdaptiveBrake, BrakeOut};
 use legacy_link::{CalRequest, Flags, Frame, FrameV2, FrameV3, COUNTS_MAX};
 
 use crate::mapping::{from_pedals, stop_command, to_legacy, Mapping, Values};
@@ -266,6 +267,8 @@ pub struct Relay {
     pedals: Option<Pedals>,
     cal_request: Option<CalAsk>,
     uplink_at: Option<f64>,
+    adaptive: Option<AdaptiveBrake>,
+    brake_out: Option<BrakeOut>,
 }
 
 impl Relay {
@@ -284,7 +287,25 @@ impl Relay {
             pedals: None,
             cal_request: None,
             uplink_at: None,
+            adaptive: None,
+            brake_out: None,
         }
+    }
+
+    /// The same relay with the adaptive brake (TODO 258) between the pi speed loop and the
+    /// brake: harder when the car slows less than the model says, never above the brake's
+    /// safe max. The stops (stale, e-stop, calibration) never pass through it: they send
+    /// the full stop brake as before. Without a speed loop (`open`) it never runs.
+    #[must_use]
+    pub fn with_adaptive_brake(mut self, brake: AdaptiveBrake) -> Self {
+        self.adaptive = Some(brake);
+        self
+    }
+
+    /// The adaptive brake's last answer, if it runs and has run since the last stop.
+    #[must_use]
+    pub fn brake_out(&self) -> Option<BrakeOut> {
+        self.brake_out
     }
 
     /// The settings it runs with.
@@ -328,6 +349,13 @@ impl Relay {
     pub fn set_estop(&mut self, on: bool) -> bool {
         let changed = on != self.estop;
         self.estop = on;
+        if on {
+            // An e-stop: the adaptive brake forgets what it learnt, as adaptive_brake.py says.
+            if let Some(b) = self.adaptive.as_mut() {
+                b.reset();
+            }
+            self.brake_out = None;
+        }
         changed
     }
 
@@ -445,6 +473,11 @@ impl Relay {
             self.last_tick = None;
             self.pedals = None;
         }
+        // A stop it didn't make: forget this stop, keep the effectiveness (a load stays).
+        if let Some(b) = self.adaptive.as_mut() {
+            b.reset_stop();
+        }
+        self.brake_out = None;
     }
 
     /// Runs the speed loop one tick; the frame's values.
@@ -463,7 +496,20 @@ impl Relay {
         match speed_loop.update(cmd.speed, measured, crate::py_max(dt, MIN_STEP)) {
             Ok(p) => {
                 self.pedals = Some(p);
-                from_pedals(cmd.steering, p.throttle, p.brake, &self.settings.mapping)
+                // The adaptive brake: never weaker than asked, never above the safe max. If
+                // it can't run this tick (a dead time too long for dt), the asked brake.
+                let step = crate::py_max(dt, MIN_STEP);
+                let brake = match self.adaptive.as_mut() {
+                    Some(b) => match b.update(p.throttle, p.brake, measured, step) {
+                        Ok(out) => {
+                            self.brake_out = Some(out);
+                            out.brake
+                        }
+                        Err(_) => p.brake,
+                    },
+                    None => p.brake,
+                };
+                from_pedals(cmd.steering, p.throttle, brake, &self.settings.mapping)
             }
             Err(_) => stop_command(&self.settings.mapping, self.last_steering),
         }
@@ -527,6 +573,78 @@ mod tests {
             },
             None,
         )
+    }
+
+    /// A pi relay (version 1 frames), with or without the adaptive brake.
+    fn pi_relay(adaptive: bool) -> Relay {
+        let r = Relay::new(
+            RelaySettings {
+                version: FrameVersion::V1,
+                ..RelaySettings::default()
+            },
+            Some(SpeedControl::new(crate::SpeedConfig::default())),
+        );
+        if adaptive {
+            r.with_adaptive_brake(AdaptiveBrake::new(
+                adaptive_brake::CarModel::default(),
+                adaptive_brake::BrakeLimits::default(),
+                adaptive_brake::Tuning::default(),
+            ))
+        } else {
+            r
+        }
+    }
+
+    fn accel(frame: &[u8]) -> f32 {
+        let bytes: [u8; legacy_link::FRAME_LEN] = frame.try_into().expect("a version 1 frame");
+        Frame::decode(&bytes).expect("a good frame").accel
+    }
+
+    #[test]
+    fn the_adaptive_brake_brakes_harder_on_a_weak_car_never_past_the_safe_max() {
+        // ego slows from 1.5 m/s to a stop; the car slows at half what the model says.
+        let (mut plain, mut adaptive) = (pi_relay(false), pi_relay(true));
+        let (mut v, mut harder) = (1.5, 0);
+        let safe = adaptive_brake::BrakeLimits::default().safe_max_fraction();
+        for k in 0..250 {
+            let now = f64::from(k) * 0.02;
+            let target = (1.5 - now * 0.5).max(0.0);
+            for r in [&mut plain, &mut adaptive] {
+                r.command(target, 0.0, now);
+                r.wheel_speed(v, now);
+            }
+            let (a, b) = (accel(&plain.frame(now)), accel(&adaptive.frame(now)));
+            assert!(
+                b <= a + 1e-6,
+                "never weaker than the plain loop: tick {k}, {b} > {a}"
+            );
+            harder += usize::from(b < a - 1e-4);
+            if let Some(out) = adaptive.brake_out() {
+                assert!(out.brake <= safe.max(out.asked) + 1e-12, "{out:?}");
+            }
+            v = (v - 0.02 * 0.5 * 0.5).max(0.0);
+        }
+        assert!(harder > 10, "it added brake on only {harder} ticks");
+        assert!(adaptive.brake_out().is_some_and(|o| o.effectiveness < 0.9));
+    }
+
+    #[test]
+    fn the_stops_never_pass_through_the_adaptive_brake() {
+        let (mut plain, mut adaptive) = (pi_relay(false), pi_relay(true));
+        for r in [&mut plain, &mut adaptive] {
+            r.command(1.0, 0.0, 0.0);
+            r.wheel_speed(1.0, 0.0);
+            r.frame(0.0);
+            r.set_estop(true);
+        }
+        // The e-stop: the full stop brake, the same bytes.
+        assert_eq!(plain.frame(0.02), adaptive.frame(0.02));
+        assert_eq!(adaptive.brake_out(), None);
+        // A stale command: the same.
+        for r in [&mut plain, &mut adaptive] {
+            r.set_estop(false);
+        }
+        assert_eq!(plain.frame(1.0), adaptive.frame(1.0));
     }
 
     #[test]

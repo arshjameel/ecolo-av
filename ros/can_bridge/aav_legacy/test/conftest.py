@@ -9,10 +9,18 @@ packages aren't built.
 """
 
 import os
+from pathlib import Path
 import signal
 import subprocess
+import sys
 
 import pytest
+
+# The adaptive brake's tests (test_uart_relay.py) import aav_description from the source
+# tree, so tools/test.sh runs them without a built workspace.
+DESCRIPTION = Path(__file__).resolve().parents[3] / 'bringup' / 'aav_description'
+if str(DESCRIPTION) not in sys.path:
+    sys.path.append(str(DESCRIPTION))
 
 try:
     from ament_index_python.packages import get_package_prefix, PackageNotFoundError
