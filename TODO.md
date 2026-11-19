@@ -192,6 +192,7 @@ The steps: [car day](docs/car-day.md), [know the car](docs/know-the-car.md),
 | 108 Shadow mode: the drivers score themselves while a person drives | after real recordings |
 | 96 A model builds our own algorithms from our recordings | after the car's data |
 | 78 The talking model: explains, never drives | design first |
+| Burn (Tracel, MIT/Apache: pure-Rust inference, ONNX import) as a challenger to `ort` (ONNX Runtime), for all-Rust builds; candle and tract noted (Ben, 19 Nov) | once the Orin's TensorRT numbers exist |
 | Learned scan models for AMCL (IR-MCL's idea), Transformer MCL, Scan Context | after real maps (231's scan model is swappable) |
 | zenoh (`rmw_zenoh`), if Fast DDS gives trouble on the car's WiFi (205) | if needed |
 | kiddo nearest neighbours (200), once ICP or grouping comes to Rust | if needed |
