@@ -20,7 +20,7 @@ think there is room to improve").
 
 | Order | Next step | Rows |
 |---|---|---|
-| 1 | Merge NDT leading, the GPS checking; the lane follower in Rust and its challenger | 210, 262 |
+| 1 | The lane follower in Rust and its challengers (finish the scores); ONNX with Core ML (resume) | 262, 243 |
 | 2 | **Before the car**: NDT on the car (`car.launch.py`), the adaptive brake on the car, the boot self-test | 261, 258, 255 |
 | 3 | **Our models as ONNX, tested with Core ML** (Ben, 19 Nov: bumped up): `measure onnx` (CPU vs Core ML: same answers, every layer on the GPU, time), the diffusion planner and the lane finder from Rust, FP16; TensorRT once the Orin is on JetPack 7.2 | 243 |
 | 4 | The chunks' unknown grey (205) reads back as free | 263 |
@@ -60,7 +60,7 @@ and will do".
 
 | # | Task | Status |
 |---|---|---|
-| 210 | **NDT leads, the GPS checks** (`pose_source:=ndt`): a failing GPS no longer moves or stops the car | 🟡 built; the lot scored (every leg with the GPS stopped, jumped or drifting); merging |
+| 210 | **NDT leads, the GPS checks** (`pose_source:=ndt`): a failing GPS no longer moves or stops the car | 🟡 merged 19 Nov, a challenger: the lot scored (every leg with the GPS stopped, jumped or drifting); ⬜ the campus runs (stopped by the usage limit); the car refuses it until 261 and a real map |
 | 231 | **AMCL in Rust** (`aav_amcl_rs`, the default): NDT's recovery | 🟡 ties stock on the lot; left: the campus, more runs |
 | 263 | **The chunks' unknown cells read back as free**: `map-chunks` writes unknown as grey 205, and `read_map` with thresholds 0.65 / 0.25 reads 205 (p = 0.196) as free; `map-drive` and the map editor write 128. Make every writer and reader agree (found by the map editor, 19 Nov) | ⬜ |
 | 121 | **NDT's score floor on the campus** (1.5 there, 2.3 in the lot): how high does a wrong pose score? | ⬜ |

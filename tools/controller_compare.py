@@ -39,6 +39,15 @@ The trials (docs/trials.md):
                     EKF, ndt_ekf:=true: compare its EKF numbers with --ndt's)
     pixi run measure controllers --ndt --gps-off    (the GPS stops once the EKF has its first
                     fix; with watchdog:=false geofence:=false, or they would hold the car)
+    pixi run measure controllers --ndt-leads        (NDT leads ekf_global, the GPS checks:
+                    pose_source:=ndt, TODO 210; each leg's note says pose_check's sources,
+                    hand-overs and seeds)
+    pixi run measure controllers --ndt --gps-fault drift --runs 3
+    pixi run measure controllers --ndt-leads --gps-fault drift --runs 3
+                    a GPS fault on purpose once the EKF has its first fix (sim-fault gps
+                    stop, jump or drift), the watchdog and the geofence ON: does the car stop,
+                    or drive on with a good pose? Latches are not cleared (a person would),
+                    and a leg the locks hold still for 20 s is cancelled
     pixi run measure controllers --voxels --tours lot
                     the costmap and the stop zone read the lidar as cubes (voxels:=true,
                     aav_voxels) instead of the flat scan: the same legs, and each leg's
@@ -283,6 +292,7 @@ BOX = 1.0               # m: the bench's obstacle, a cube (aav_sim_models models
 UP_TIME = 150.0         # s for the simulator, the EKF, then navigation, to come up
 SETTLE = 5.0            # s after that, before the first goal
 READY_TIME = 30.0       # s for the sensor watchdog to let the car drive, before each leg
+HELD_TIME = 20.0        # s (sim) the locks hold the car still before --gps-fault gives up a leg
 LEG_TIME = 60.0         # s for each leg, plus 4 s for every metre at the top speed
 TRACK_EVERY = 0.5       # s between the saved track's points
 SERIES_EVERY = 0.05     # s between --series' saved samples
@@ -389,6 +399,7 @@ class Recorder(Node):
         super().__init__('controller_compare', parameter_overrides=[
             Parameter('use_sim_time', value=True)])
         self.recording = False
+        self.clear_latches = True       # False (--gps-fault): a person would clear them
         self.watchdog = True            # False: watchdog:=false, nothing publishes its lock
         self.truth, self.plans, self.steering, self.asked = [], [], [], []
         self.wanted = []     # the steering angle ego was asked for (drive_metrics.clipped)
@@ -405,6 +416,12 @@ class Recorder(Node):
         self.lock, self.locked, self.states = None, False, set()
         self.monitor, self.monitor_stops = None, 0
         self.fence = set()   # the geofence's holds while driving (NEAR, OUTSIDE, ...)
+        self.fence_now = None   # the geofence's state, now
+        # pose_source:=ndt (TODO 210): pose_check's sources seen while driving, its last
+        # message, its hand-overs and seeds.
+        self.pose_check = {}
+        self.create_subscription(DiagnosticStatus, '/localization/pose_check/status',
+                                 self.on_pose_check, 10)
         self.create_subscription(Odometry, '/vehicle/sim/truth', self.on_truth, 10)
         self.create_subscription(Odometry, '/localization/odom/global', self.on_global, 10)
         self.create_subscription(Path, '/plan', self.on_plan, 10)
@@ -460,6 +477,7 @@ class Recorder(Node):
         self.own_plans = []
         self.locked, self.states, self.monitor_stops = False, set(), 0
         self.fence = set()
+        self.pose_check = {}
         self.recording = True
 
     def on_truth(self, msg):
@@ -582,9 +600,22 @@ class Recorder(Node):
         if self.recording and msg.data not in ('', 'OK'):
             self.states.add(msg.data[:90])
 
+    def on_pose_check(self, msg):
+        if not self.recording:
+            return
+        values = {kv.key: kv.value for kv in msg.values}
+        self.pose_check.setdefault('sources', set()).add(values.get('source', '?'))
+        self.pose_check['last'] = msg.message
+        if msg.level >= DiagnosticStatus.ERROR:
+            self.pose_check['hold'] = msg.message
+        for key in ('handovers', 'seeds'):
+            self.pose_check.setdefault(f'{key}0', values.get(key, '0'))
+            self.pose_check[key] = values.get(key, '0')
+
     def on_fence(self, msg):
         # 'STATE: why'. STARTING before the first leg isn't a hold while driving.
         state = msg.data.split(':', 1)[0]
+        self.fence_now = state
         if self.recording and state in ('NEAR', 'OUTSIDE', 'LOST', 'JUMP', 'COASTING'):
             self.fence.add(state)
 
@@ -697,6 +728,9 @@ def ready(rec):
         return []                       # watchdog:=false (--gps-off): no lock to wait for
     if rec.spin_for(READY_TIME, lambda: rec.lock is False):
         return []
+    if not rec.clear_latches:
+        # --gps-fault: a person would clear it, so nobody does.
+        return ['the sensor watchdog held the car before the goal (not cleared)']
     # Still locked: a latch (a GPS jump, the wheels against the IMU) waits for a person.
     rec.wait(rec.clear.call_async(Trigger.Request()), 5.0)
     if rec.spin_for(READY_TIME, lambda: rec.lock is False):
@@ -742,10 +776,26 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='lib/aav_mppi_lag/
         result = handle.get_result_async()
         # The simulator's time for the limit, and twice that in wall time in case it stalls.
         end_wall = time.monotonic() + 2.0 * timeout + 30.0
+        still_since = None
+        held = False
         while not result.done() and rec.now() < start + timeout and (
                 time.monotonic() < end_wall):
             rclpy.spin_once(rec, timeout_sec=0.05)
-        if result.done():
+            if not rec.clear_latches:
+                # --gps-fault: a car the locks hold still for HELD_TIME has stopped.
+                v = rec.last_truth.twist.twist.linear
+                locks = rec.lock or rec.fence_now not in (None, 'OK')
+                if math.hypot(v.x, v.y) < 0.05 and locks:
+                    still_since = rec.now() if still_since is None else still_since
+                    if rec.now() - still_since > HELD_TIME:
+                        held = True
+                        break
+                else:
+                    still_since = None
+        if held:
+            rec.wait(handle.cancel_goal_async(), 5.0)
+            notes.append(f'held still by the locks for {HELD_TIME:.0f} s: cancelled')
+        elif result.done():
             done = result.result()
             reached = done.status == GoalStatus.STATUS_SUCCEEDED
             missed = list(getattr(done.result, 'missed_waypoints', []))
@@ -780,6 +830,13 @@ def drive_leg(rec, pgid, goal, speed, body, obstacle, process='lib/aav_mppi_lag/
         notes.append(f'the stop zone stopped the car {rec.monitor_stops}x')
     if rec.fence:
         notes.append('the geofence held the car: ' + ', '.join(sorted(rec.fence)))
+    if rec.pose_check:
+        pc = rec.pose_check
+        handovers = int(pc.get('handovers', 0)) - int(pc.get('handovers0', 0))
+        seeds = int(pc.get('seeds', 0)) - int(pc.get('seeds0', 0))
+        notes.append(f'pose_check: {"/".join(sorted(pc.get("sources", [])))}, '
+                     f'{handovers} hand-overs, {seeds} seeds; last "{pc.get("last", "")}"' +
+                     (f'; HOLD "{pc["hold"]}"' if 'hold' in pc else ''))
     if rec.diffusion:
         notes.append(diffusion_note(rec.diffusion))
     if rec.voxels:
@@ -863,13 +920,14 @@ def ndt_calibration(results):
     return lines + ['']
 
 
-def gps_off(rec):
-    """Stop the GPS (aav_sim_models faults: sim_gps fault.gps stop); return a note."""
-    out = subprocess.run(['ros2', 'param', 'set', '/sim_gps', 'fault.gps', 'stop'],
+def gps_off(rec, mode='stop'):
+    """Set the GPS's fault (aav_sim_models faults: sim_gps fault.gps); return a note."""
+    out = subprocess.run(['ros2', 'param', 'set', '/sim_gps', 'fault.gps', mode],
                          capture_output=True, text=True, timeout=60)
     rec.spin_for(2.0)
-    return ('the GPS stopped' if out.returncode == 0 and 'successful' in out.stdout.lower()
-            else f'could not stop the GPS: {(out.stdout + out.stderr).strip()[:120]}')
+    return (f'the GPS fault on purpose: {mode}'
+            if out.returncode == 0 and 'successful' in out.stdout.lower()
+            else f'could not set the GPS to {mode}: {(out.stdout + out.stderr).strip()[:120]}')
 
 
 def private(used):
@@ -1062,7 +1120,9 @@ def session(tour, follower, args, out_dir, body, used, run=1):
         command.append(f'smoother:={smoother}')
     if args.amcl:
         command.append('amcl:=true')
-    if args.ndt_ekf:
+    if args.ndt_leads:
+        command += ['pose_source:=ndt', f'ndt_map:={ndt_map(plan.get("world"))}']
+    elif args.ndt_ekf:
         command += ['ndt_ekf:=true', f'ndt_map:={ndt_map(plan.get("world"))}']
     elif args.ndt:
         command += ['ndt:=true', f'ndt_map:={ndt_map(plan.get("world"))}']
@@ -1100,6 +1160,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
         rclpy.init()
         rec = Recorder()
         rec.watchdog = not args.gps_off
+        rec.clear_latches = not args.gps_fault
         try:
             up = rec.spin_for(UP_TIME, lambda: rec.last_truth is not None and rec.glob)
             server = rec.gps if plan.get('route') else rec.nav
@@ -1116,6 +1177,8 @@ def session(tour, follower, args, out_dir, body, used, run=1):
             if args.gps_off:
                 # After the EKF's first fix (the wait above): it knows where it started.
                 print(f'   {gps_off(rec)}', flush=True)
+            elif args.gps_fault:
+                print(f'   {gps_off(rec, args.gps_fault)}', flush=True)
             route = None
             if plan.get('route'):
                 route, end = campus_route(*plan['route'])
@@ -1225,7 +1288,12 @@ def report(results, args, started):
              ('reversing allowed' if args.reversing else 'forward only') +
              (', AMCL beside the EKF' if args.amcl else '') +
              (", NDT beside the EKF (its map: tools/ndt_map.py; Gazebo's lidar has no sweep, "
-              "the car's does)" if args.ndt and not args.ndt_ekf else '') +
+              "the car's does)" if args.ndt and not (args.ndt_ekf or args.ndt_leads)
+              else '') +
+             (', NDT leading ekf_global, the GPS checking (pose_source:=ndt, TODO 210)'
+              if args.ndt_leads else '') +
+             (f', a GPS fault on purpose after the first fix: {args.gps_fault} (the watchdog '
+              'and geofence on, latches not cleared)' if args.gps_fault else '') +
              (", NDT's pose into the global EKF (ndt_ekf:=true)" if args.ndt_ekf else '') +
              (', the GPS stopped after the first fix (watchdog:=false geofence:=false)'
               if args.gps_off else '') +
@@ -1407,6 +1475,12 @@ def main():
     parser.add_argument('--gps-off', action='store_true',
                         help='stop the GPS once the EKF has its first fix (watchdog:=false '
                              'geofence:=false)')
+    parser.add_argument('--ndt-leads', action='store_true',
+                        help='NDT leads ekf_global, the GPS checks (pose_source:=ndt, '
+                             'TODO 210); NDT scored as with --ndt')
+    parser.add_argument('--gps-fault', choices=('stop', 'jump', 'drift'), default=None,
+                        help='a GPS fault on purpose once the EKF has its first fix, the '
+                             'watchdog and geofence on; latches not cleared')
     parser.add_argument('--voxels', action='store_true',
                         help='the costmap and the stop zone read the lidar as cubes '
                              '(voxels:=true, aav_voxels), not the flat scan')
@@ -1460,7 +1534,7 @@ def main():
                      'leave out --reversing')
     if args.runs < 1:
         parser.error('--runs must be 1 or more')
-    args.ndt = args.ndt or args.ndt_ekf
+    args.ndt = args.ndt or args.ndt_ekf or args.ndt_leads
     if args.ndt_map:
         NDT_MAP_GIVEN.append(os.path.abspath(args.ndt_map))
     args.kiss_icp = args.kiss_icp or args.kiss_ekf

@@ -9,13 +9,15 @@ Publishes   sensors/gps/fix           sensor_msgs/NavSatFix, in gps_link, a fix,
             sensors/gps/fix_velocity  geometry_msgs/TwistWithCovarianceStamped, in
                                       gps_link: the antenna's velocity east, north, up
                                       (m/s), as ublox_gps publishes it; with each fix,
-                                      only while the GPS has no fault
+                                      only while the GPS has no fault (or drifts: a
+                                      bias in the position leaves the Doppler speed
+                                      true)
 
 Parameters  gps_stddev (0.5 m: GPS without RTK), gps_speed_stddev (0.05 m/s: a u-blox's
             speed accuracy), antenna_x, antenna_y (m from base_link: vehicle.yaml's
             gps_link), every (1: pass on every one of Ravensim's 5 Hz fixes; 5: one a
             second, as the car's receiver sends from the factory; may change while
-            running), fault.gps (ok; stop, freeze, nan, jump), seed (5: the velocity's
+            running), fault.gps (ok; stop, freeze, nan, jump, drift), seed (5: the velocity's
             noise, so a run repeats)
 
 One process of its own (relay.py).
@@ -38,6 +40,10 @@ def gps_nan(msg):
 
 def gps_jump(msg):
     msg.latitude = faults.jumped(msg.latitude)
+
+
+def gps_drift(msg, seconds):
+    msg.latitude = faults.jumped(msg.latitude, faults.drifted(seconds))
 
 
 class SimGps(SensorRelay):
@@ -69,10 +75,11 @@ class SimGps(SensorRelay):
                                    0.0, self.gps_var, 0.0,
                                    0.0, 0.0, 4 * self.gps_var]
         msg.position_covariance_type = NavSatFix.COVARIANCE_TYPE_DIAGONAL_KNOWN
-        msg = self.faulty(msg, nan=gps_nan, jump=gps_jump)
+        now = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        msg = self.faulty(msg, nan=gps_nan, jump=gps_jump, drift=gps_drift, now=now)
         if msg is not None:
             self.pub.publish(msg)
-            if self.fault.mode == 'ok':
+            if self.fault.mode in ('ok', 'drift'):
                 self.publish_velocity(msg.header.stamp)
 
     def publish_velocity(self, stamp):

@@ -1,0 +1,16 @@
+# ekf_global with NDT leading (pose_source:=ndt, a challenger, TODO 210): read on top of
+# ekf_global.yaml and ekf_global_ndt.yaml.
+#
+# pose_check (aav_pose_check) stands between the two absolute sources and the filter:
+#   pose0  NDT's fits, passed on only while NDT is trusted (ekf_global_ndt.yaml's numbers:
+#          x, y, yaw; refused past 5 sigma; late poses put in at their own time)
+#   odom1  the GPS's fixes, passed on only while NDT isn't trusted and the GPS is
+#          (ekf_global.yaml's numbers: x, y; refused past 10 sigma, a jump)
+# So the two never reach the filter together, and a GPS that drifts slowly can't pull
+# the pose while NDT leads. The GPS heading (imu1, from the receiver's Doppler velocity)
+# stays as it is: a bias in the position leaves the velocity true.
+# Why not fuse the GPS at a low weight: aav_pose_check's README.
+ekf_global:
+  ros__parameters:
+    pose0: /localization/pose_check/ndt_pose
+    odom1: /localization/pose_check/gps_odom

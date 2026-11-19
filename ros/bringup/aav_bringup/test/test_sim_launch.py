@@ -10,6 +10,7 @@ them (test_lot renders them since 15 Oct). The lidar is on by default (15 Oct).
 import importlib.util
 import os
 
+from aav_sim_models import worlds
 from ament_index_python.packages import get_package_prefix
 from ament_index_python.packages import get_package_share_directory
 from ament_index_python.packages import PackageNotFoundError
@@ -364,7 +365,8 @@ def test_the_geofence_runs_with_its_lock_and_a_sim_sized_circle():
     sent = included(started(SIM))
     assert sent['geofence.launch.py'] == {'backend': 'sim', 'radius': '200.0',
                                           'centre_x': '0.0', 'centre_y': '0.0',
-                                          'max_speed': '', 'use_sim_time': 'true'}
+                                          'max_speed': '', 'use_sim_time': 'true',
+                                          'fix_topic': '/localization/gps/odom'}
     assert included(started(SIM, spine='true'))['geofence.launch.py']['backend'] == 'spine'
     assert included(started(SIM, esp32='true'))['geofence.launch.py']['backend'] == \
         'sim_esp32'
@@ -691,6 +693,60 @@ def test_the_global_ekf_reads_ndt_only_with_ndt_ekf():
     assert 0 < p['pose0_rejection_threshold'] < 10
     # NDT's poses come late (the cloud's stamp): put each in at its own time.
     assert p['smooth_lagged_data'] is True and p['history_length'] >= 0.5
+
+
+def test_ndt_leads_only_with_pose_source_ndt(tmp_path):
+    # TODO 210, a challenger: off by default (today's GPS-led EKF, the GPS watched as ever).
+    sent = included(started(SIM, world='test_lot'))
+    assert sent['localization.launch.py']['pose_source'] == 'gps'
+    inputs = sent['watchdog.launch.py']['inputs'].split(',')
+    assert 'gps' in inputs and 'pose_check' not in inputs
+    assert sent['geofence.launch.py']['fix_topic'] == '/localization/gps/odom'
+    map_file = tmp_path / 'test_lot.pcd'
+    map_file.write_bytes(b'')
+    sent = included(started(SIM, world='test_lot', pose_source='ndt', ndt_map=str(map_file)))
+    assert 'ndt.launch.py' in sent                      # NDT runs
+    assert sent['localization.launch.py']['pose_source'] == 'ndt'
+    assert sent['localization.launch.py']['pose_trust_score'] == ''   # the lot: the file's
+    # The GPS's checks warn only; pose_check's HOLD stops; the geofence hears either's fix.
+    inputs = sent['watchdog.launch.py']['inputs'].split(',')
+    assert {'gps_check', 'pose_check'} <= set(inputs) and 'gps' not in inputs
+    assert sent['geofence.launch.py']['fix_topic'] == '/localization/pose_check/fix'
+    with pytest.raises(ValueError, match='pose_source'):
+        started(SIM, world='test_lot', pose_source='lidar')
+    with pytest.raises(ValueError, match='truth_pose'):
+        started(SIM, world='test_lot', pose_source='ndt', truth_pose='true',
+                ndt_map=str(map_file))
+
+
+def test_ndt_leading_on_the_campus_has_the_campus_trust_score(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    campus_files(tmp_path)
+    sent = included(started(SIM, world='campus', pose_source='ndt'))
+    assert float(sent['localization.launch.py']['pose_trust_score']) == pytest.approx(
+        worlds.CAMPUS_POSE_TRUST)
+
+
+def test_with_ndt_leading_the_global_ekf_reads_both_through_pose_check():
+    assert LOCALIZATION.pose_check_node(context_for(LOCALIZATION)) == []
+    assert global_ekf_files(pose_source='ndt') == [
+        'ekf_global.yaml', 'ekf_global_ndt.yaml', 'ekf_global_ndt_leads.yaml']
+    path = os.path.join(get_package_share_directory('aav_localization'), 'config',
+                        'ekf_global_ndt_leads.yaml')
+    with open(path) as f:
+        p = yaml.safe_load(f)['ekf_global']['ros__parameters']
+    assert p == {'pose0': '/localization/pose_check/ndt_pose',
+                 'odom1': '/localization/pose_check/gps_odom'}
+    context = context_for(LOCALIZATION, pose_source='ndt', pose_trust_score='1.7')
+    (check,) = LOCALIZATION.pose_check_node(context)
+    assert check._Node__node_executable == 'pose_check'
+    values = {}
+    for v in evaluate_parameters(context, check._Node__parameters):
+        if isinstance(v, dict):
+            values.update(v)
+    assert values['trust_score'] == 1.7
+    with pytest.raises(ValueError, match='pose_source'):
+        global_ekf_files(pose_source='both')
 
 
 def test_kiss_icp_needs_the_lidar_and_is_off_by_default():

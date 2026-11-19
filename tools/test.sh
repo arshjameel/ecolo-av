@@ -90,6 +90,8 @@ if command -v cargo >/dev/null; then
   (cd ros/safety/aav_stop_zone && cargo test -q --locked -p stop-zone)
   echo "== ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
   (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
+  echo "== ros/localization/aav_pose_check: NDT leads, the GPS checks; who is wrong; the seed"
+  (cd ros/localization/aav_pose_check && cargo test -q --locked -p pose-check-core)
   echo "== ros/localization/aav_amcl_rs: AMCL's filter: a near guess, a kidnap, KLD's bounds"
   (cd ros/localization/aav_amcl_rs && cargo test -q --locked -p amcl-core)
   echo "== ros/sim/aav_simulator: Ravensim's core: the car, the rays, the worlds, the camera lockstep"
@@ -157,6 +159,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/bringup/aav_description/lanelet-map
   rust_style ros/safety/aav_stop_zone -p stop-zone
   rust_style ros/localization/aav_ndt -p ndt-core
+  rust_style ros/localization/aav_pose_check -p pose-check-core
   rust_style ros/sim/aav_simulator -p sim-core --features shared
   rust_style ros/sim/aav_spine_sim -p bench-car
   rust_style ros/drivers/aav_mppi_lag -p mppi-lag --features shared

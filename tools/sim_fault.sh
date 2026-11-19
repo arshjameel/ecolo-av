@@ -4,10 +4,11 @@
 #
 # usage: pixi run sim-fault <sensor or actuator> <mode>
 #   sensor: gps, imu, odom (the wheels), radar; camera, lidar (need `pixi run sim faults:=true`)
-#   mode:   ok (mended), stop, freeze, nan (gps, imu, odom), jump (gps only)
+#   mode:   ok (mended), stop, freeze, nan (gps, imu, odom), jump, drift (gps only)
 #   actuator: steer (ok, stuck), throttle (ok, stuck), brake (ok, weak, dead)
 #   pixi run sim-fault gps stop      the GPS goes quiet
 #   pixi run sim-fault brake weak    the brake gives 30 % of what is asked
+#   pixi run sim-fault gps drift     the GPS slides 5 m north over a minute (no jump)
 #   pixi run sim-fault gps ok        back to normal
 #
 # After a GPS jump, or wheels that disagree with the IMU (odom freeze while the car speeds
@@ -18,7 +19,7 @@ if [[ "${1:-}" == clear ]]; then
   exec ros2 service call /safety/sensor_watchdog/clear std_srvs/srv/Trigger
 fi
 if [[ $# -ne 2 ]]; then
-  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 fi
 # Each sensor's own node takes its fault (aav_sim_models faults.py, NODES).

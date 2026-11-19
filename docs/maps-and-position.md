@@ -138,8 +138,53 @@ Sizes, cells, layers and sensors: [Costmaps](costmaps.md#the-two-costmaps).
 | A street route → the navigator | ✅ in the simulator ([Street routes](routes.md)); untested on the car |
 | A map of the real test site | ❌ only `empty` and an example lot |
 | Navigation knowing about roads and lanes | 🔧 the lane map and `path:=lane` (16 Nov, in `stack:=ours`) |
+| A failing GPS stops mattering | 🔧 `pose_source:=ndt` ([below](#8-ndt-leads-the-gps-checks)): a challenger, sim only |
 
-## 8. Try it
+## 8. NDT leads, the GPS checks
+
+**A challenger (TODO 210), `pose_source:=ndt`.** Ben, 18 Nov: "The gps is seeming to fail".
+Today `ekf_global` takes the GPS. With `pose_source:=ndt` it takes **NDT** (the lidar on a
+saved map), and the GPS only **checks** it ([the design](designs/2026-11-19_ndt-leads.md)).
+
+```text
+ NDT's pose ──┐                    ┌─ NDT trusted ──────────▶ NDT's pose ─▶ ekf_global
+ GPS fix ─────┼─▶ pose_check ──────┼─ else GPS trusted ─────▶ GPS's fix ─▶ ekf_global
+ AMCL pose ───┘  (aav_pose_check)  └─ else HOLD ─▶ the sensor watchdog stops the car
+                        └─ NDT lost ─▶ start NDT again from AMCL, else the GPS
+```
+
+| When | `ekf_global` takes | The car |
+|---|---|---|
+| NDT tracks | NDT only; the GPS is compared, never used | drives |
+| NDT and the GPS disagree (5 s, past both spreads and 1.5 m) | NDT, if its score is at its floor or better; else the GPS | drives; the status names the wrong one |
+| NDT lost | the GPS, if healthy; NDT restarts from AMCL or the GPS | drives |
+| neither trusted | nothing | **stops** (HOLD) |
+
+### Scored in Ravensim (19 Nov, the lot, 3 runs each)
+
+The GPS fault goes on once the EKF has its first fix; the watchdog and the geofence on;
+nobody clears a latch. "EKF off" = where `ekf_global` put the car, against the truth.
+
+| GPS | Today (`gps`): legs | EKF off, mean / worst | NDT leads (`ndt`): legs | EKF off, mean / worst |
+|---|---|---|---|---|
+| clean | 12/12 | 0.10 / 0.29 m | 12/12 | **0.01 / 0.15 m** |
+| stops | 3/12: held (STALE, geofence LOST) | 0.04 / 0.06 m | **12/12** | 0.01 / 0.15 m |
+| jumps 20 m | 3/12: held (JUMP, latched) | 0.04 / 0.06 m | **12/12** | 0.01 / 0.14 m |
+| drifts 5 m in a minute | 12/12, **on a pose 5 m wrong** | 3.61 / 5.19 m | **12/12** | **0.01 / 0.12 m** |
+
+- **Today** stops safely when the GPS stops or jumps, but drives on a wrong pose when it
+  drifts: nothing notices.
+- **NDT leading** drives every leg in every case. The drift is named ("GPS 5.0 m off NDT,
+  judged wrong; NDT carries on") and never reaches the pose.
+- The geofence kept working: it reads the fused pose, and "a fix arrived" from whichever
+  source `ekf_global` takes.
+- First try (trust score 2.6, Gazebo's): NDT's 5 s median dipped under it, the drifting
+  GPS was believed, and the pose went 3.3 m off. Now the trust score is NDT's own floor
+  (2.3): a right NDT scored 2.0-4.0 there, one 5 m off 0-2.0 (TODO 121).
+
+**Untested:** the car (no lidar map of the real lot yet: `car.launch.py` refuses it).
+
+## 9. Try it
 
 | You want to see | Run |
 |---|---|

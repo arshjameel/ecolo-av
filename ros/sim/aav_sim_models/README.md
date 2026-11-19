@@ -83,7 +83,8 @@ under `tools/software_gl.sh`), `graphics` (auto, simple, pretty; auto = pretty o
 | `sim_camera_relay` | `fault.camera` |
 | `sim_lidar_relay` | `fault.lidar` (ok, stop, freeze) |
 
-`fault.<sensor>` is one of ok, stop, freeze, nan, jump (GPS only). Set it live:
+`fault.<sensor>` is one of ok, stop, freeze, nan, jump and drift (GPS only: 5 m north
+over a minute, then held; TODO 210). Set it live:
 `pixi run sim-fault gps stop`.
 
 The actuators' faults (TODO 159, the actuator model only) sit between the speed loop and

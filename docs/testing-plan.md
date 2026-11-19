@@ -407,7 +407,7 @@ Published tools to learn from first (licences to check): Removert, ERASOR, DUFOM
 |---|---|---|
 | **NDT** | finds the car on the map, precisely | Built; 5 cm in the sim; **not in `car.launch.py` yet** (TODO 261) |
 | **AMCL** (Rust) | finds a **lost** car, then hands over to NDT | Built 18 Nov; ties stock on the lot |
-| **NDT leads, the GPS checks** (`pose_source:=ndt`) | NDT gives the position, the GPS only checks it | Built; being merged (TODO 210) |
+| **NDT leads, the GPS checks** (`pose_source:=ndt`) | NDT gives the position, the GPS only checks it | Built 19 Nov, a challenger (TODO 210): Ravensim's lot, every leg with the GPS clean, stopped, jumped or drifting; the campus not scored yet; the car refuses it until a real map |
 
 **Passes when** NDT on our own map stays within 0.2 m of the GPS on a good-GPS day, and
 keeps the car on its lane where the GPS fails.

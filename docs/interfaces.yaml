@@ -462,7 +462,7 @@ topics:
     type: sensor_msgs/msg/NavSatFix
     drop_in: {min_hz: 4.5, max_hz: 12, frame: gps_link}
     pub: [ublox_gps, gps_nmea, ublox_nav_sat_fix_hp, sim_gps, mock_gps, carla_adapter]
-    sub: [navsat_transform, hud, language_drive, actuator_test, sensor_watchdog, point_driver, debug_hud, hw_panel, localization_health]
+    sub: [navsat_transform, hud, language_drive, actuator_test, sensor_watchdog, point_driver, debug_hud, hw_panel, localization_health, pose_check]
     live: [sim, car, replay, bench]
     note: Lat/lon of the antenna (gps_link). On the car, from the driver gps_driver:= picks - ublox_gps (ublox, the default; Tentative, Q18), gps_nmea (nmea) or ublox_nav_sat_fix_hp (ublox_dgnss). ublox_gps publishes it reliable (depth 1), ublox_dgnss best-effort (SensorDataQoS), so subscribe best effort.
   /sensors/gps/fix_velocity:
@@ -798,13 +798,13 @@ topics:
   /localization/odom/global:
     type: nav_msgs/msg/Odometry
     pub: [ekf_global]
-    sub: [navsat_transform, map, sensor_watchdog, point_driver, point_cli, debug_hud, ndt, geofence, localization_health, dev_window, behaviour]
+    sub: [navsat_transform, map, sensor_watchdog, point_driver, point_cli, debug_hud, ndt, geofence, localization_health, dev_window, behaviour, pose_check]
     live: [sim, car, replay, bench]
     note: map frame. Includes GPS; can jump. The map window (map, aav_hud) draws the car from it.
   /localization/gps/odom:
     type: nav_msgs/msg/Odometry
     pub: [navsat_transform]
-    sub: [ekf_global, geofence]
+    sub: [ekf_global, geofence, pose_check]
     live: [sim, car, replay, bench]
     note: Each GPS fix as a map-frame position of base_link (antenna offset removed).
   /localization/gps/heading:
@@ -816,7 +816,7 @@ topics:
   /localization/amcl/pose:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: [amcl]
-    sub: [controller_compare, debug_hud]
+    sub: [controller_compare, debug_hud, pose_check]
     note: A trial (docs/trials.md) - AMCL's particle filter on the 2D map and the lidar scan, map frame (its amcl_pose, renamed). The node amcl is ours, aav_amcl_rs (amcl_impl:=rust, the default since 18 Nov, TODO 231), or stock nav2_amcl (amcl_impl:=stock); the same topics, parameters and frames. Only with amcl:=true (sim.launch.py world:=test_lot nav:=true lidar:=true). Its tf_broadcast is false - ekf_global keeps map -> odom - so nothing drives by it; measure controllers --amcl scores it against the sim's truth. Published only once the car has moved (update_min_d, update_min_a).
   /localization/amcl/particles:
     type: nav2_msgs/msg/ParticleCloud
@@ -841,18 +841,38 @@ topics:
   /localization/ndt/pose:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: [ndt]
-    sub: [debug_hud, ekf_global, dev_window]
+    sub: [debug_hud, ekf_global, dev_window, pose_check]
     note: A trial (docs/designs/2026-10-29_ndt.md) - where NDT (aav_ndt, Rust) puts base_link on the saved lidar map, map frame, stamped with the cloud's own stamp. Only good fits (score per point above min_score_per_point, converged, and while tracking no further than max_correction_m / max_correction_deg from the odometry's guess); x, y and yaw only, height, roll and pitch held at 0. Covariance - the x, y, yaw block k (-H^-1) with a floor, the rest 1e3; k fitted in Gazebo (NEES, docs/trials.md). Only with ndt:=true or ndt_ekf:=true (sim.launch.py world:=test_lot lidar:=true, the map file present). With ndt_ekf:=true (a trial, off by default) ekf_global fuses its x, y and yaw beside the GPS (pose0, refused past 5 sigma; aav_localization config/ekf_global_ndt.yaml); otherwise nothing reads it to drive. It never publishes TF. The debug HUD draws it (a purple car).
   /localization/ndt/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [ndt]
-    sub: [debug_hud, dev_window]
+    sub: [debug_hud, dev_window, pose_check]
     note: NDT's state after every cloud - name ndt, level OK (a good fit), WARN (a poor fit, or no start yet) or ERROR (LOST), message TRACKING, WAITING or LOST and why; values stamp (the cloud's, s), score_per_point, overlap, iterations, match_ms (wall clock, the match alone), points (after the filters), poor_in_row, restarts (from ekf_global after LOST), clouds_dropped (arrived while one was being matched), x, y, yaw, and for a fit cov_xx, cov_xy, cov_xyaw, cov_yy, cov_yyaw, cov_yawyaw (-H^-1 before the scale k and the floors, to fit k). WARN's why says which poor fit - score too low, out of iterations, or jumped from the guess. The debug HUD's panel shows it; measure controllers --ndt scores it.
   /localization/ndt/initial_pose:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
-    pub: []
+    pub: [pose_check]
     sub: [ndt]
-    note: Starts NDT again from a pose in the map frame (RViz "2D Pose Estimate" set to this topic). ndt:=true in Ravensim starts it from the sim's start pose without it (its start_x, start_y, start_yaw); on the car it would take ekf_global's (start_from_global).
+    note: Starts NDT again from a pose in the map frame (RViz "2D Pose Estimate" set to this topic). ndt:=true in Ravensim starts it from the sim's start pose without it (its start_x, start_y, start_yaw); on the car it would take ekf_global's (start_from_global). With pose_source:=ndt, pose_check (aav_pose_check) publishes here when NDT is lost or judged wrong - AMCL's pose if AMCL has converged, else the GPS's with the fused heading - at once, then every 5 s while it stays lost.
+  /localization/pose_check/ndt_pose:
+    type: geometry_msgs/msg/PoseWithCovarianceStamped
+    pub: [pose_check]
+    sub: [ekf_global]
+    note: A challenger (TODO 210, pose_source:=ndt, off by default) - NDT's good fits (/localization/ndt/pose) as they came, passed on only while pose_check trusts NDT (a fit in the last ndt_max_age, 1 s; not LOST; not judged wrong against the GPS). ekf_global's pose0 with pose_source:=ndt (aav_localization config/ekf_global_ndt_leads.yaml).
+  /localization/pose_check/gps_odom:
+    type: nav_msgs/msg/Odometry
+    pub: [pose_check]
+    sub: [ekf_global]
+    note: A challenger (TODO 210, pose_source:=ndt) - the GPS fixes on the map (/localization/gps/odom) as they came, passed on only while NDT isn't trusted and the GPS is (a fix, not NaN, its spread under gps_max_std, fresh, no jump, not judged wrong against NDT). ekf_global's odom1 with pose_source:=ndt, in place of /localization/gps/odom. So the GPS checks NDT and stands in for it, but never pulls the pose while NDT leads.
+  /localization/pose_check/fix:
+    type: nav_msgs/msg/Odometry
+    pub: [pose_check]
+    sub: [geofence]
+    note: A challenger (TODO 210, pose_source:=ndt) - every absolute pose pose_check passed to ekf_global, NDT's or the GPS's, as Odometry (map frame, child base_link). With pose_source:=ndt the geofence reads its arrival here in place of /localization/gps/odom's (gps_max_age, 2 s, silent - LOST), so a silent GPS doesn't hold the car while NDT leads.
+  /localization/pose_check/status:
+    type: diagnostic_msgs/msg/DiagnosticStatus
+    pub: [pose_check]
+    sub: [sensor_watchdog]
+    note: A challenger (TODO 210, pose_source:=ndt) - who leads ekf_global's pose, 10 Hz. Name pose_check; level OK (NDT, the GPS agrees), WARN (NDT with the GPS in doubt - silent, no fix, unsure, jumped or judged wrong; or the GPS leading while NDT is lost or judged wrong), ERROR (HOLD - neither trusted); message the source, a colon, and why, such as "NDT - GPS 4.8 m off NDT, judged wrong; NDT carries on". Values source, ndt, gps (each "ok" or why not), gap_m and nees (the 5 s window's mean NDT-GPS gap and d'(S_ndt + S_gps)^-1 d), score (NDT's median score per point), handovers, seeds. The sensor watchdog's pose_check input (kind status, FAULT at ERROR, stop) holds navigation on HOLD, and on its silence.
   /localization/kiss_icp/odom:
     type: nav_msgs/msg/Odometry
     pub: [kiss_icp]
