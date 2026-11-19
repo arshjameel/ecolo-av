@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">119 min read · 15 sections</div></header>
+<div class="meta">120 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1560,6 +1560,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-07</td>
 <td>built</td>
+</tr>
+<tr>
+<td><a href="../../ros/command_mux/aav_mux_state/README.md">Who is driving</a> (<code>aav_mux_state</code> <code>command_mux_state</code>, <code>/control/command_mux/state</code>)</td>
+<td>Our professor: the map screen should double as a debug screen, "see the commands being sent and maybe by who"; twist_mux never says which driver it passes on, so a Rust node reads its files and applies its rule beside it: the driver, its priority and age, the locks on and whom they hold (TODO 247). The map window's <a href="hud.html#the-debug-page-who-is-driving">debug page</a> (key D, <code>--debug-page</code>) lays out who drives, what it asks, what ego sends, the gate, what the car did, the locks, the sensors and real or simulated; the developer window's strip says DRIVING</td>
+<td>Ben Woodhead</td>
+<td>2026-11-19</td>
+<td>sim</td>
 </tr>
 </tbody>
 </table></div>

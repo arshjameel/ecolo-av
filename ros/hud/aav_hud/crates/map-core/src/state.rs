@@ -8,14 +8,17 @@ use std::{
 };
 
 use hud_core::{
+    gate::GATE_QUIET,
     health::{Health, LastSeen},
     origin::{Announcement, Origins},
     units::MetresPerSecond,
+    vehicle::VehicleStatus,
     watchdog::{self, Alarm},
 };
 
 use crate::{
     config::{MapConfig, Topic},
+    debug::{Ask, DebugState, MuxReport, Sent},
     geom::{Metres, Point, Pose},
     grid::Grid,
     route::{Progress, Route},
@@ -70,6 +73,18 @@ pub enum Update {
         /// Its frame.
         frame: String,
     },
+    /// Who is driving (aav_mux_state).
+    MuxState(MuxReport),
+    /// The command twist_mux passed on.
+    Command(Ask),
+    /// Ego's command to the car.
+    Actuator(Sent),
+    /// The output mux's line.
+    Gate(String),
+    /// The car's status.
+    Vehicle(VehicleStatus),
+    /// The navigator's path follower, from `/system/algorithms`.
+    Follower(String),
 }
 
 /// How far is left.
@@ -118,6 +133,8 @@ pub struct MapState {
     pub origins: Origins,
     /// The sensor watchdog's last verdict.
     pub watchdog: Option<String>,
+    /// What only the debug page shows.
+    pub debug: DebugState,
     seen: HashMap<Topic, LastSeen>,
 }
 
@@ -141,6 +158,7 @@ impl MapState {
             goal_at: None,
             origins: Origins::default(),
             watchdog: None,
+            debug: DebugState::default(),
             seen: HashMap::new(),
         }
     }
@@ -155,6 +173,12 @@ impl MapState {
             Update::Source(_) => Topic::Source,
             Update::Watchdog(_) => Topic::Watchdog,
             Update::StreetRoute { .. } => Topic::StreetRoute,
+            Update::MuxState(_) => Topic::MuxState,
+            Update::Command(_) => Topic::Command,
+            Update::Actuator(_) => Topic::Actuator,
+            Update::Gate(_) => Topic::Gate,
+            Update::Vehicle(_) => Topic::Vehicle,
+            Update::Follower(_) => Topic::Algorithms,
         };
         self.seen.entry(topic).or_default().heard(now);
         match update {
@@ -181,6 +205,12 @@ impl MapState {
                 self.street_route = route;
                 self.street_route_frame = frame;
             }
+            Update::MuxState(m) => self.debug.mux = Some(m),
+            Update::Command(a) => self.debug.ask = Some(a),
+            Update::Actuator(c) => self.debug.sent = Some(c),
+            Update::Gate(g) => self.debug.gate = Some(g),
+            Update::Vehicle(v) => self.debug.vehicle = Some(v),
+            Update::Follower(f) => self.debug.follower = Some(f),
         }
     }
 
@@ -194,9 +224,18 @@ impl MapState {
     #[must_use]
     pub fn health(&self, topic: Topic, now: Instant) -> Health {
         let limit = match topic {
-            Topic::Odom | Topic::Watchdog => self.config.stale_after(),
+            Topic::Odom
+            | Topic::Watchdog
+            | Topic::MuxState
+            | Topic::Command
+            | Topic::Actuator
+            | Topic::Vehicle => self.config.stale_after(),
+            // The output mux speaks twice a second, as on the HUD.
+            Topic::Gate => GATE_QUIET,
             Topic::Plan => self.plan_limit(),
-            Topic::Map | Topic::Goal | Topic::Source | Topic::StreetRoute => Duration::MAX,
+            Topic::Map | Topic::Goal | Topic::Source | Topic::StreetRoute | Topic::Algorithms => {
+                Duration::MAX
+            }
         };
         self.seen
             .get(&topic)

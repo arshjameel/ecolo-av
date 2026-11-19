@@ -24,6 +24,8 @@
   <depend>nav2_msgs</depend>
   <!-- debug_hud: keys 1-4 call aav_track's parameter service (sim only). -->
   <depend>rcl_interfaces</depend>
+  <!-- hw_panel (the graphs page) and map (the debug page): ego's command. -->
+  <depend>ackermann_msgs</depend>
   <!-- map: the car's outline, from vehicle.yaml (a copy built in, the installed one at launch). -->
   <depend>aav_description</depend>
   <!-- map: the datum (map 0,0 on the Earth) for the street map, from navsat.yaml (a copy

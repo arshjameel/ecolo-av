@@ -35,11 +35,23 @@ pub enum Topic {
     Watchdog,
     /// street_router's street route (aav_routes, latched): a suggestion, not Nav2's plan.
     StreetRoute,
+    /// Who is driving (aav_mux_state): the debug page.
+    MuxState,
+    /// The command twist_mux passed on (`/control/cmd_vel`): the debug page.
+    Command,
+    /// Ego's command to the car (`/ego/actuator_cmd`): the debug page.
+    Actuator,
+    /// The output mux's gate (`/safety/output_mux/state`): the debug page.
+    Gate,
+    /// What the car says about itself (`/vehicle/status`): the debug page.
+    Vehicle,
+    /// Which algorithms the run uses (`/system/algorithms`, latched): the navigator's name.
+    Algorithms,
 }
 
 impl Topic {
     /// Every topic, in the order the screen lists them.
-    pub const ALL: [Topic; 7] = [
+    pub const ALL: [Topic; 13] = [
         Topic::Map,
         Topic::Odom,
         Topic::Plan,
@@ -47,6 +59,12 @@ impl Topic {
         Topic::Source,
         Topic::Watchdog,
         Topic::StreetRoute,
+        Topic::MuxState,
+        Topic::Command,
+        Topic::Actuator,
+        Topic::Gate,
+        Topic::Vehicle,
+        Topic::Algorithms,
     ];
 
     /// The ROS parameter that holds this topic's name.
@@ -60,6 +78,12 @@ impl Topic {
             Self::Source => "source_topic",
             Self::Watchdog => "watchdog_topic",
             Self::StreetRoute => "street_route_topic",
+            Self::MuxState => "mux_state_topic",
+            Self::Command => "command_topic",
+            Self::Actuator => "actuator_topic",
+            Self::Gate => "output_mux_topic",
+            Self::Vehicle => "vehicle_status_topic",
+            Self::Algorithms => "algorithms_topic",
         }
     }
 }
@@ -81,6 +105,18 @@ pub struct MapConfig {
     pub watchdog_topic: String,
     /// street_router's street route.
     pub street_route_topic: String,
+    /// Who is driving (the debug page).
+    pub mux_state_topic: String,
+    /// The command twist_mux passed on (the debug page).
+    pub command_topic: String,
+    /// Ego's command to the car (the debug page).
+    pub actuator_topic: String,
+    /// The output mux's gate (the debug page).
+    pub output_mux_topic: String,
+    /// The car's status (the debug page).
+    pub vehicle_status_topic: String,
+    /// The run's algorithms (the debug page: the navigator's follower).
+    pub algorithms_topic: String,
     /// Seconds without a position before the car shows STALE.
     pub stale_after: f64,
     /// Seconds without a new plan before the trip shows NO NEW PLAN.
@@ -176,6 +212,12 @@ impl MapConfig {
             Topic::Source => &self.source_topic,
             Topic::Watchdog => &self.watchdog_topic,
             Topic::StreetRoute => &self.street_route_topic,
+            Topic::MuxState => &self.mux_state_topic,
+            Topic::Command => &self.command_topic,
+            Topic::Actuator => &self.actuator_topic,
+            Topic::Gate => &self.output_mux_topic,
+            Topic::Vehicle => &self.vehicle_status_topic,
+            Topic::Algorithms => &self.algorithms_topic,
         }
     }
 
@@ -189,6 +231,12 @@ impl MapConfig {
             Topic::Source => &mut self.source_topic,
             Topic::Watchdog => &mut self.watchdog_topic,
             Topic::StreetRoute => &mut self.street_route_topic,
+            Topic::MuxState => &mut self.mux_state_topic,
+            Topic::Command => &mut self.command_topic,
+            Topic::Actuator => &mut self.actuator_topic,
+            Topic::Gate => &mut self.output_mux_topic,
+            Topic::Vehicle => &mut self.vehicle_status_topic,
+            Topic::Algorithms => &mut self.algorithms_topic,
         };
         *slot = name;
     }

@@ -300,7 +300,53 @@ navigation.
 | S | the street map on / off |
 | mouse wheel, + and - | zoom |
 | drag | move the map (a free view; F goes back to the car) |
+| D | the [debug page](#the-debug-page-who-is-driving) over the map, and back |
 | F11 | full screen |
+
+### The debug page (who is driving)
+
+Our professor's idea (TODO 247): the map screen doubles as a debug screen, like the
+hardware panel. **Press D.** The map goes behind frosted glass and two columns of cards
+show who drives the car and what may stop it. Press D again for the map.
+
+```text
+ THE COMMAND, STEP BY STEP          WHAT MAY STOP IT
+ ┌ WHO DRIVES   NAVIGATOR (AI) ┐    ┌ LOCKS    NONE         ┐
+ ▼ IT ASKS      0.80 m/s       │    ├ SENSORS  OK           │
+ ▼ EGO SENDS    0.80 m/s       │    └ DATA     SIMULATED    ┘
+ ▼ GATE         OPEN           │
+ └ THE CAR DID  0.78 m/s       ┘
+```
+
+| Card | Says | From |
+|---|---|---|
+| WHO DRIVES | JOYSTICK, RC REMOTE, KEYBOARD, PANEL BUTTONS (a person); ACTUATOR TEST, SCRIPT, REPLAY, DRIVE TO POINT, NAVIGATOR (AI), AI SLOT (a program); NOBODY. The navigator's line names its path follower (`mppi_lag`...) | `/control/command_mux/state` ([`aav_mux_state`](../ros/command_mux/aav_mux_state/README.md)); `/system/algorithms` |
+| IT ASKS | its speed (m/s) and turn (rad/s, left or right) | `/control/cmd_vel` |
+| EGO SENDS | speed, steering angle, braking or speeding up | `/ego/actuator_cmd` |
+| GATE | OPEN, WAIT or STOP, and why | `/safety/output_mux/state` |
+| THE CAR DID | its speed; steering, throttle %, brake %, mode; E-STOP or FAULT | `/vehicle/status` |
+| LOCKS | NONE, or each lock on (E-STOP, SENSORS, GEOFENCE, STOP SIGN...) and whom it holds | `/control/command_mux/state` |
+| SENSORS | OK, WARN, or STOP and the sensor | `/safety/sensor_watchdog/state` |
+| DATA | REAL, or SIMULATED / BENCH / REPLAY | `/system/source` |
+
+Each card has one colour, on its big word and down its left edge:
+
+| Colour | Means |
+|---|---|
+| green | all is well |
+| amber | held, waiting, or not real |
+| red | stopped, silent, a fault, the e-stop |
+| grey | nothing to say: nobody sending, never heard |
+
+**Who is driving** is new: twist_mux passes on one driver but never says which.
+`command_mux_state` reads twist_mux's own files and applies its rule beside it
+([its README](../ros/command_mux/aav_mux_state/README.md)). The developer window shows
+the same line in its status strip: **DRIVING: keyboard (90)**.
+
+| Run it | |
+|---|---|
+| `pixi run map --demo --debug-page` | pretend data, a 30 s loop: the navigator, a person on the keyboard, the sensors lock holding the navigator, the navigator again |
+| `pixi run sim map:=true`, then D | live, beside Ravensim |
 
 ### Run it
 
@@ -315,7 +361,7 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor
 
 | Part | What it does |
 |---|---|
-| `crates/map-core` | the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status. `cargo test -p map-core` (in `tools/test.sh`) |
+| `crates/map-core` | the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status, the debug page's cards (`debug`). `cargo test -p map-core` (in `tools/test.sh`) |
 | `crates/map-app` | the window and the node, built like the HUD's. `--demo`, `--screenshot FILE`, `--vehicle FILE` |
 | `config/map.yaml` | every topic name, the limits: `stale_after`, `plan_stale_after` (3 s; 25 s, `plan_kept_for`, within `final_approach` 8 m of the plan's end, where the navigator keeps its path), `arrive_within` (1 m), and `street_map`, the street map's file |
 
@@ -489,6 +535,7 @@ Try a search from a terminal: `cargo run --release -p map-core --example search 
 | `--pick N` | with `--search`: picks result N |
 | `--keyboard` | opens the box with the on-screen keyboard showing |
 | `--send-goal TEXT` | once `/map` and the car are known: sends the first result inside the navigation map, and says so on the terminal |
+| `--debug-page` | starts on the [debug page](#the-debug-page-who-is-driving) (D switches) |
 
 #### Tested (15 October, a Mac)
 

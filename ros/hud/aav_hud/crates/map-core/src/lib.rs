@@ -21,6 +21,7 @@
 //! | [`places`] | the place search: names and addresses from `ottawa.db` (SQLite) |
 //! | [`destination`] | the search box, picking a place, and whether it can be Nav2's goal |
 //! | [`keyboard`] | the on-screen keyboard for the search: where its keys are, which one a tap hit |
+//! | [`debug`] | the debug page (key D): who drives, what it asks, what ego sends, the gate, the car, the locks |
 //! | [`state`] | everything above, as one value the screen draws |
 // The Rust API Guidelines, kept (TODO 176): every public item documented, its errors
 // too, and a pure function's value never dropped.
@@ -28,6 +29,7 @@
 
 pub mod car;
 pub mod config;
+pub mod debug;
 pub mod destination;
 pub mod earth;
 pub mod geom;

@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">66 min read · 8 sections</div></header>
+<div class="meta">68 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -759,8 +759,122 @@ navigation.</p>
 <td>move the map (a free view; F goes back to the car)</td>
 </tr>
 <tr>
+<td>D</td>
+<td>the <a href="#the-debug-page-who-is-driving">debug page</a> over the map, and back</td>
+</tr>
+<tr>
 <td>F11</td>
 <td>full screen</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-debug-page-who-is-driving">The debug page (who is driving)</h3>
+<p>Our professor's idea (TODO 247): the map screen doubles as a debug screen, like the
+hardware panel. <strong>Press D.</strong> The map goes behind frosted glass and two columns of cards
+show who drives the car and what may stop it. Press D again for the map.</p>
+<pre class="highlight"><code class="language-text"> THE COMMAND, STEP BY STEP          WHAT MAY STOP IT
+ ┌ WHO DRIVES   NAVIGATOR (AI) ┐    ┌ LOCKS    NONE         ┐
+ ▼ IT ASKS      0.80 m/s       │    ├ SENSORS  OK           │
+ ▼ EGO SENDS    0.80 m/s       │    └ DATA     SIMULATED    ┘
+ ▼ GATE         OPEN           │
+ └ THE CAR DID  0.78 m/s       ┘</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Card</th>
+<th>Says</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WHO DRIVES</td>
+<td>JOYSTICK, RC REMOTE, KEYBOARD, PANEL BUTTONS (a person); ACTUATOR TEST, SCRIPT, REPLAY, DRIVE TO POINT, NAVIGATOR (AI), AI SLOT (a program); NOBODY. The navigator's line names its path follower (<code>mppi_lag</code>...)</td>
+<td><code>/control/command_mux/state</code> (<a href="../../ros/command_mux/aav_mux_state/README.md"><code>aav_mux_state</code></a>); <code>/system/algorithms</code></td>
+</tr>
+<tr>
+<td>IT ASKS</td>
+<td>its speed (m/s) and turn (rad/s, left or right)</td>
+<td><code>/control/cmd_vel</code></td>
+</tr>
+<tr>
+<td>EGO SENDS</td>
+<td>speed, steering angle, braking or speeding up</td>
+<td><code>/ego/actuator_cmd</code></td>
+</tr>
+<tr>
+<td>GATE</td>
+<td>OPEN, WAIT or STOP, and why</td>
+<td><code>/safety/output_mux/state</code></td>
+</tr>
+<tr>
+<td>THE CAR DID</td>
+<td>its speed; steering, throttle %, brake %, mode; E-STOP or FAULT</td>
+<td><code>/vehicle/status</code></td>
+</tr>
+<tr>
+<td>LOCKS</td>
+<td>NONE, or each lock on (E-STOP, SENSORS, GEOFENCE, STOP SIGN...) and whom it holds</td>
+<td><code>/control/command_mux/state</code></td>
+</tr>
+<tr>
+<td>SENSORS</td>
+<td>OK, WARN, or STOP and the sensor</td>
+<td><code>/safety/sensor_watchdog/state</code></td>
+</tr>
+<tr>
+<td>DATA</td>
+<td>REAL, or SIMULATED / BENCH / REPLAY</td>
+<td><code>/system/source</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Each card has one colour, on its big word and down its left edge:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Colour</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>green</td>
+<td>all is well</td>
+</tr>
+<tr>
+<td>amber</td>
+<td>held, waiting, or not real</td>
+</tr>
+<tr>
+<td>red</td>
+<td>stopped, silent, a fault, the e-stop</td>
+</tr>
+<tr>
+<td>grey</td>
+<td>nothing to say: nobody sending, never heard</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Who is driving</strong> is new: twist_mux passes on one driver but never says which.
+<code>command_mux_state</code> reads twist_mux's own files and applies its rule beside it
+(<a href="../../ros/command_mux/aav_mux_state/README.md">its README</a>). The developer window shows
+the same line in its status strip: <strong>DRIVING: keyboard (90)</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run it</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi run map --demo --debug-page</code></td>
+<td>pretend data, a 30 s loop: the navigator, a person on the keyboard, the sensors lock holding the navigator, the navigator again</td>
+</tr>
+<tr>
+<td><code>pixi run sim map:=true</code>, then D</td>
+<td>live, beside Ravensim</td>
 </tr>
 </tbody>
 </table></div>
@@ -780,7 +894,7 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor</c
 <tbody>
 <tr>
 <td><code>crates/map-core</code></td>
-<td>the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status. <code>cargo test -p map-core</code> (in <code>tools/test.sh</code>)</td>
+<td>the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status, the debug page's cards (<code>debug</code>). <code>cargo test -p map-core</code> (in <code>tools/test.sh</code>)</td>
 </tr>
 <tr>
 <td><code>crates/map-app</code></td>
@@ -1201,6 +1315,10 @@ a bug.</p>
 <tr>
 <td><code>--send-goal TEXT</code></td>
 <td>once <code>/map</code> and the car are known: sends the first result inside the navigation map, and says so on the terminal</td>
+</tr>
+<tr>
+<td><code>--debug-page</code></td>
+<td>starts on the <a href="#the-debug-page-who-is-driving">debug page</a> (D switches)</td>
 </tr>
 </tbody>
 </table></div>

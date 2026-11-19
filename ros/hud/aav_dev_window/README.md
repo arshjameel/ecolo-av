@@ -8,7 +8,7 @@ simulator; the other choices are made at launch. The plan:
 [our own simulator](../../../docs/designs/2026-11-05_own-simulator.md).
 
 ```text
-┌─ GO / STOP and why · e-stop · source ─────────────┐
+┌─ GO / STOP and why · DRIVING: who · e-stop · source ┐
 ├────────────────────────────┬──────────────────────┤
 │ the scene: the car driving │ debug: what the      │
 │                            │ lidar sees, and NDT  │
@@ -49,6 +49,10 @@ pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
 pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
 pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, their saved map
 ```
+
+The status strip says who is driving (19 Nov, TODO 247): **DRIVING: keyboard (90)**, from
+`/control/command_mux/state` (`aav_mux_state`), grey `DRIVING: ?` when it is quiet. The
+map window's debug page (key D) shows the whole command path.
 
 | Key | Does | Key | Does |
 |---|---|---|---|

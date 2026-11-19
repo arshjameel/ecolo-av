@@ -219,15 +219,15 @@ topics:
   /control/cmd_vel:
     type: geometry_msgs/msg/TwistStamped
     pub: [twist_mux]
-    sub: [ego, actuator_test, point_driver, hw_panel, ekf_local, ekf_global]
+    sub: [ego, actuator_test, point_driver, hw_panel, ekf_local, ekf_global, map]
     live: [turtle, sim, car, bench]
     note: The one command ego obeys. v (m/s) and w (rad/s) in base_link.
   /control/command_mux/state:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [command_mux_state]
-    sub: [map]
+    sub: [map, dev_window]
     live: [turtle, sim, car, bench]
-    note: "Who is driving (TODO 247, the debug screen) - twist_mux never says which input it passes on, so command_mux_state (aav_mux_state, Rust) runs beside it wherever mux.launch.py starts it, reads the same parameter files in the same order, hears the same inputs and locks and applies twist_mux 4.5.0's rule (the highest-priority input heard within its timeout and not below the highest lock that is on; a lock is on while its last value was true or it has been silent past its timeout). 10 Hz, and at once when the driver, the locks or the held inputs change. name command_mux; level OK (0), or WARN (1) when nobody drives while a lock holds someone; message one line, such as \"keyboard (90)\" or \"nobody; held: nav by sensors 30 silent\"; values driver (joy, keyboard, nav... or none), priority, topic, age_s (since its last command, by the node's clock), locks (the locks on, highest first, as name priority and silent when silence locked it, or none), lock_priority, held (fresh inputs a lock holds, or none). The map window's debug page (D) shows it. aav_command_mux's test_mux_runtime.py checks it names the driver a real twist_mux passes."
+    note: "Who is driving (TODO 247, the debug screen) - twist_mux never says which input it passes on, so command_mux_state (aav_mux_state, Rust) runs beside it wherever mux.launch.py starts it, reads the same parameter files in the same order, hears the same inputs and locks and applies twist_mux 4.5.0's rule (the highest-priority input heard within its timeout and not below the highest lock that is on; a lock is on while its last value was true or it has been silent past its timeout). 10 Hz, and at once when the driver, the locks or the held inputs change. name command_mux; level OK (0), or WARN (1) when nobody drives while a lock holds someone; message one line, such as \"keyboard (90)\" or \"nobody; held: nav by sensors 30 silent\"; values driver (joy, keyboard, nav... or none), priority, topic, age_s (since its last command, by the node's clock), locks (the locks on, highest first, as name priority and silent when silence locked it, or none), lock_priority, held (fresh inputs a lock holds, or none). The map window's debug page (D) shows it, and the developer window's status strip (DRIVING: keyboard (90)). aav_command_mux's test_mux_runtime.py checks it names the driver a real twist_mux passes."
   /ego/trace:
     type: nav_msgs/msg/Path
     pub: [ego]
@@ -255,7 +255,7 @@ topics:
   /ego/actuator_cmd:
     type: ackermann_msgs/msg/AckermannDriveStamped
     pub: [ego]
-    sub: [output_mux, hw_panel, sensor_watchdog]
+    sub: [output_mux, hw_panel, sensor_watchdog, map]
     live: [turtle, sim, car, bench]
     note: 50 Hz, always. speed (m/s), steering_angle (rad, + left), acceleration, steering_angle_velocity. No backend reads it - the output mux passes it on to the one target's /control/<target>/actuator_cmd (aav_io_mux, docs/sources-and-targets.md). The hardware panel's GRAPHS page reads it only to judge the first hop (ego), and pairs it with the mux's output by stamp. aav_ego_rs publishes it by default (ego_impl:=rust, since 16 Nov; ego_impl:=python runs the Python), from one Rust process holding the nodes ego and look_ahead, with the same names, QoS and answers.
 
@@ -326,7 +326,7 @@ topics:
   /safety/output_mux/state:
     type: std_msgs/msg/String
     pub: [output_mux]
-    sub: [hud, spine_bridge, dev_window, car_test]
+    sub: [hud, spine_bridge, dev_window, car_test, map]
     live: [turtle, sim, car, bench]
     note: One line for people, 2 Hz and on each change - OPEN (passing ego's commands on), WAIT (closed, not latched - the sensor mux not heard yet or quiet for 3 s, its doubts, a node on /system/source whose announcement hasn't arrived yet, or settling for 2 s after all clear) or STOP (latched, and why, such as "STOP - target car needs REAL - camera_front_left is SIM (sim_adapter)"). The target first, such as "OPEN - car". spine_bridge (role spine) reads it as the safety gate - /spine/arm is refused unless it said OPEN for the bridge's own target within gate_timeout (1.5 s); Ben, 24 Oct. The HUD's GO / STOP panel shows it, with the first reason.
 
@@ -340,7 +340,7 @@ topics:
   /system/algorithms:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [run_info]
-    sub: []
+    sub: [map]
     live: [sim]
     note: Which algorithms this run uses, as the launch chose them (aav_run_info run_info; sim.launch.py always, car.launch.py where navigation runs). Latched (reliable, transient local, depth 1), again every 2 s. name algorithms, level OK, message one short line (lattice, mppi, voxels, NDT scored...), hardware_id the run (sim world:=road, car); values one row each - run, planner, path follower (MPPI or RPP, or a trial tracker), obstacles (lidar scan or voxels, radar), local EKF and global EKF (their inputs), NDT, KISS-ICP, AMCL (off, scored only, or into an EKF). What the launch asked for, not what is alive - a live tracker swap shows on /drivers/nav/track/status. The cockpit layout's Algorithms table shows it.
   /system/sensor_mux/state:
@@ -362,7 +362,7 @@ topics:
     type: aav_interfaces/msg/VehicleStatus
     drop_in: {min_hz: 10}
     pub: [spine_bridge, sim_adapter, turtlesim_adapter, carla_adapter, legacy_uart_bridge]
-    sub: [hud, language_drive, debug_hud, hw_panel, dev_window, car_test]
+    sub: [hud, language_drive, debug_hud, hw_panel, dev_window, car_test, map]
     live: [turtle, sim, bench]
     note: Mode, armed, e-stop, measured speed and steering, actuator levels, fault bits. For the HUD and Foxglove. legacy_uart_bridge publishes it, 10 Hz, only with uplink true (the ESP32's uplink frame on TX1, TODO 50 - off until its wire is confirmed) - speed NaN (that ESP32 has no wheel speed), steering_angle the steering Jrk's position or NaN; mode COMPUTER also while the transmitter's switch is on RC via ROS (/vehicle/rc has the switch).
   /vehicle/steering:

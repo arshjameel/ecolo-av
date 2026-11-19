@@ -95,6 +95,7 @@ struct Topics {
     status: String,
     gate: String,
     watchdog: String,
+    driving: String,
     goal: String,
     estop: String,
     cancel_goal: String,
@@ -667,6 +668,10 @@ fn spin(
     let _watchdog = node.create_subscription(topics.watchdog.as_str().sensor_data_qos(), {
         let tx = tx.clone();
         move |m: StringMsg| send(&tx, Update::Watchdog(m.data))
+    })?;
+    let _driving = node.create_subscription(topics.driving.as_str().sensor_data_qos(), {
+        let tx = tx.clone();
+        move |m: DiagnosticStatus| send(&tx, Update::Driving(m.message))
     })?;
     // The squiggly line: all four in base_link, 10 Hz (aav_ego's ego and look_ahead).
     let _trace = node.create_subscription(topics.trace.as_str().qos(newest), {

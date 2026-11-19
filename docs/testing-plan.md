@@ -23,7 +23,7 @@ test, in what order, and how we know each step passed**. The detail of each test
 | **F** | **The labelling loop**: trees, buildings, parked cars; a better model after each drive | a laptop with a GPU, then the Orin | phases C and E |
 | **G** | **The campus twin** in Ravensim, built from the labelled maps | a laptop | phases D to F |
 
-Alongside A and B: **the debug screen**: who is sending commands, and what (below).
+Alongside A and B: **the debug screen**: who is sending commands, and what (below; built 19 Nov, the map window's D page).
 
 ## What runs automatically today
 
@@ -152,15 +152,17 @@ Our professor's idea: the map screen doubles as a **debug screen**, like the har
 
 | It shows | From | Status |
 |---|---|---|
-| **Who is driving**: joystick, keyboard, the navigator (the AI), a test, the buttons | the command mux | **To build**: the mux's choice isn't published yet |
-| What that driver asks (speed, turn) | `/drivers/<driver>/cmd_vel` | Built (topics exist) |
-| What ego sends to the car (steering, throttle, brake) | `/ego/actuator_cmd` | Built (topic exists) |
-| Whether the output gate is open, and why not | `/safety/output_mux/state` | Built (topic exists) |
-| What the car did (the actuators, the wheels) | `/vehicle/*` | Built (topics exist) |
-| Real or simulated data | `/system/source` | Built: the orange band |
+| **Who is driving**: joystick, keyboard, the navigator (the AI), a test, the buttons | `/control/command_mux/state` (`aav_mux_state`: twist_mux's rule, beside it) | **Built 19 Nov**; in the sim it named the keyboard, the navigator, a takeover and the hand-back, agreeing with twist_mux's output 226 times of 227 |
+| What that driver asks (speed, turn) | `/control/cmd_vel` (the chosen driver's, as twist_mux passed it) | **Built 19 Nov** |
+| What ego sends to the car (steering, braking or speeding up) | `/ego/actuator_cmd` | **Built 19 Nov** |
+| Whether the output gate is open, and why not | `/safety/output_mux/state` | **Built 19 Nov** |
+| What the car did (speed, steering, throttle, brake, mode, faults) | `/vehicle/status` | **Built 19 Nov** |
+| The locks, and whom they hold; the sensor watchdog | `/control/command_mux/state`, `/safety/sensor_watchdog/state` | **Built 19 Nov** |
+| Real or simulated data | `/system/source` | **Built 19 Nov** (and the orange band) |
 
-So the work is a page on the map window that lays these side by side, plus one new topic: the
-mux's current driver.
+It is the map window's **debug page**: press D ([how it looks](hud.md#the-debug-page-who-is-driving)).
+`pixi run map --demo --debug-page` shows it with pretend data. **Untested:** the page drawn
+on a screen (no screen was free when it was built), and on the car.
 
 ## Phase C: the recording kit
 
