@@ -24,6 +24,10 @@ programs only meet through messages.
 | The sensor mux and the output mux, `aav_io_mux_rs` | Rust (`rclrs`) | Ports of `aav_io_mux`'s nodes (Ben, 17 Nov: "Rust tomorrow"): the same answers, step by step. The default; `io_mux_impl:=python` falls back |
 | The point driver and its client, `aav_drive_to_point_rs`; arm_when_open (`aav_spine_bridge`) | Rust (`rclrs`) | Ports of `aav_drive_to_point`'s two nodes and `aav_spine`'s `arm_when_open` (18 Nov): the same answers, drive for drive. The default; `drive_to_point_impl:=python`, `arm_when_open_impl:=python` fall back |
 | The ESP32's UART bridge and rc_driver, `aav_legacy_rs`, `aav_rc_rs` | Rust (`rclrs`) | Ports of `legacy_uart_bridge` and `rc_driver` (Ben, 17 Nov: "Rust tomorrow"): the same frames, byte for byte, packed by the firmware's own `legacy-link`. The default; `legacy_impl:=python`, `rc_impl:=python` fall back |
+| `joy_alive`, the stop-sign watcher, `aav_joy_alive_rs`, `aav_stop_sign_rs` | Rust (`rclrs`) | Ports (Ben, 17 Nov: "I don't think we want to do this again later"): the same answers on shared vectors. The default; `joy_alive_impl:=python`, `stop_sign_impl:=python` fall back |
+| The lane finder, `aav_lane_finder_rs` | Rust (`rclrs`), no OpenCV | A port of `aav_lane_finder` (18 Nov): the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 %. The default; `lane_finder_impl:=python` falls back |
+| The camera stream, `aav_camera_stream_rs` | Rust (`rclrs`) | A port of `aav_camera_stream` (18 Nov), the default with no detector; with RF-DETR or YOLO the Python runs (the models stay Python). `camera_stream_impl:=python` falls back |
+| AMCL, `aav_amcl_rs` | Rust (`rclrs`) | A port of Nav2's `nav2_amcl`, its last node (18 Nov, TODO 231): a tie with stock on the lot. The default; `amcl_impl:=stock` runs `nav2_amcl` |
 | Our older ROS nodes: drivers, bridges, adapters | Python | Glue that runs 50 times a second or less. Ported to Rust where possible (Ben, 16 Nov) |
 | Launch files | Python | That's how ROS 2 launch works |
 | Stock packages: the EKFs, twist_mux (Nav2 until 17 Nov) | C++ | Not ours: we only configure them |
