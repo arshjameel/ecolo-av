@@ -19,7 +19,7 @@ Mac). The node, its guard and its fallback stay the Python's: only the model mov
 
 | Where | Runs on | Tested |
 |---|---|---|
-| a Mac | Core ML: all 2,178 nodes, in one piece, the GPU; 9.7 ms a plan | [[works]] the CPU's paths (1e-6); the lot tour in Ravensim |
+| a Mac | Core ML: all 2,178 nodes, in one piece, the GPU; 9.7 ms a plan | [[works]] the CPU's and PyTorch's paths (1e-6); Ravensim scoring deferred (Ben, 19 Nov) |
 | any computer | the CPU | [[works]] 87 ms a plan |
 | the Orin | TensorRT (`-DDIFFUSION_RS=ON -DDIFFUSION_FEATURES=tensorrt`) | [[untested]] never built there |
 

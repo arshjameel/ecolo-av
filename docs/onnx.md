@@ -46,6 +46,33 @@ of tolerance, or it can't run. `--json FILE` keeps it all.
 The same from Rust, any model: `cargo run --release -p onnx-session --features coreml
 --example measure -- <model.onnx>` (in `ros/perception/aav_detector_rs`).
 
+## The diffusion planner from Rust
+
+Only the model moved: `aav_diffusion_rs`'s `diffusion_worker` speaks the Python worker's
+pipe, so the node, its window, its guard (G1-G8) and the lattice's fallback are unchanged.
+`diffusion_impl:=rust diffusion_provider:=auto`.
+
+| | ms a plan (16 paths, 10 steps) | Paths against the CPU's |
+|---|---|---|
+| Python worker, ONNX Runtime, CPU (today's default) | 63-87 | the reference |
+| PyTorch (`mps`) | 22.9 | same (0.000 m) |
+| **Rust, Core ML** (all 2,178 nodes, one piece) | **9.7** | same (6e-7 in the window's units) |
+| Rust, CPU | 87 | the same session |
+
+To get there the export changed (19 Nov), the same numbers: 16 samples fixed (Core ML
+can't build an open number; another number runs in batches), and no ScatterND, Expand,
+Flatten, 1D AveragePool or Resize (the 0.3 export went to Core ML in 376 pieces, slower
+than the CPU). The model was trained again on this Mac (`pixi run diffusion data`,
+`train --epochs 40`, 57 min): 58.6 % of samples pass the guard, 84.7 % of plans have one
+(0.3's: 63 %, 87 %).
+
+**Found on the way**: the node asked for the global costmap as "transient local"; ours
+(Rust, since 16 Nov) sends it "volatile", so it never arrived and every plan was the
+lattice's. Fixed: the node reads it volatile. A first look after the fix (one tour, cut
+short): 2 of 4 plans a leg from the model. **Ravensim scoring deferred** (Ben, 19 Nov:
+algorithm testing comes after the ports): `pixi run measure controllers --planners
+diffusion diffusion_rs --reversing --tours lot --runs 2`.
+
 ## FP16
 
 `tools/export_model.py --format onnx --fp16` (the detector; ONNX Runtime's converter) and
