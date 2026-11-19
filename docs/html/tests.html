@@ -7,7 +7,7 @@
 <!-- Generated from docs/tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every test we&#x27;ve talked about</h1>
-<div class="meta">26 min read · 8 sections</div></header>
+<div class="meta">27 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -284,7 +284,7 @@ no rows here yet: their results are on <a href="stopping.html">How the car stops
 <tr>
 <td>1.18</td>
 <td><strong>The diffusion planner's lot tour</strong></td>
-<td><code>pixi run measure controllers --planners own diffusion --reversing --tours lot</code> (<a href="trials.html#diffusion-2-nov-a-model-draws-the-lattice-guards">trials</a>)</td>
+<td><code>pixi run measure controllers --planners own diffusion --reversing --tours lot</code> (<a href="../history/trials-log.md#diffusion-2-nov-a-model-draws-the-lattice-guards">trials</a>)</td>
 <td>every leg, as the lattice; no plan tighter than full lock; the share of plans from the model (<code>/drivers/nav/diffusion/status</code>)</td>
 <td>✅ 2 Nov, 2 runs: 8 of 8 legs, 63 % from the model; 3 Nov, 3 runs: 12 of 12 legs, 73 % from the model, never tighter than full lock</td>
 </tr>
@@ -298,7 +298,7 @@ no rows here yet: their results are on <a href="stopping.html">How the car stops
 <tr>
 <td>1.20</td>
 <td><strong>Every switch starts and drives a leg</strong></td>
-<td><code>pixi run measure controllers --tours lot --legs 1</code> with each switch (<a href="switches.html">switches</a>, <a href="trials.html#3-nov-everything-for-02">the runs</a>)</td>
+<td><code>pixi run measure controllers --tours lot --legs 1</code> with each switch (<a href="switches.html">switches</a>, <a href="../history/trials-log.md#3-nov-everything-for-02">the runs</a>)</td>
 <td>each planner, follower, localizer and <code>voxels</code> starts, and the car finishes the first leg</td>
 <td>✅ 3 Nov: 23 of 23 (lattice32 and smac2d on a second try: the first, on a busy Mac, stalled)</td>
 </tr>

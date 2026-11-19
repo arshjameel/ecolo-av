@@ -7,7 +7,7 @@
 <!-- Generated from docs/release-0.4.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>0.4-rc1: start here</h1>
-<div class="meta">5 min read · 5 sections</div></header>
+<div class="meta">6 min read · 5 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -281,6 +281,22 @@ next (<a href="league-results-2026-11-16.html#final-configuration">the league, 1
 <td>Safety (16 Nov)</td>
 <td>the watchdog latches OVERSPEED (a stuck throttle) as it does STUCK steering</td>
 </tr>
+<tr>
+<td>Rust (17-18 Nov)</td>
+<td>the Python nodes the car runs alone, ported: <code>joy_alive</code>, the stop-sign watcher, the lane finder, the point driver, <code>arm_when_open</code>, <code>camera_stream</code>; each Python one falls back with <code>*_impl:=python</code></td>
+</tr>
+<tr>
+<td>AMCL (18 Nov)</td>
+<td>ours in Rust (<code>aav_amcl_rs</code>), the default; a tie with stock <code>nav2_amcl</code> on the lot (TODO 231)</td>
+</tr>
+<tr>
+<td>Navigator (18 Nov)</td>
+<td>a follower's feedback counts from the moment a path is sent, so a lost answer no longer aborts a drive (TODO 240)</td>
+</tr>
+<tr>
+<td>Speed loop (18 Nov)</td>
+<td><code>speed_loop_model:=</code>: the car runs one loop while the planners model another (TODO 163)</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -307,7 +323,7 @@ next (<a href="league-results-2026-11-16.html#final-configuration">the league, 1
 </tr>
 <tr>
 <td>More heavy Python nodes in Rust</td>
-<td>six run in Rust by default since 17 Nov (ego, behaviour, watchdog, localization_health, lidar_scan, things); the rest in TODO 185</td>
+<td>by 18 Nov the defaults are Rust for ego, behaviour, the watchdog, localization_health, lidar_scan, things, the muxes, the Motor Pi's bridge and RC, <code>joy_alive</code>, the stop-sign watcher, the lane finder, the point driver, <code>arm_when_open</code>, <code>camera_stream</code> and AMCL (<a href="languages.html">Languages</a>); the rest in TODO 185</td>
 </tr>
 </tbody>
 </table></div>

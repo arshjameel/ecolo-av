@@ -7,7 +7,7 @@
 <!-- Generated from docs/packages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>What each package does</h1>
-<div class="meta">24 min read · 10 sections</div></header>
+<div class="meta">27 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -128,11 +128,15 @@
 <main>
 <nav class="toc"><span>On this page:</span><a href="#at-a-glance">At a glance</a><a href="#sensors">Sensors</a><a href="#description-and-localization">Description and localization</a><a href="#drivers-the-mux-and-ego">Drivers, the mux and ego</a><a href="#perception">Perception</a><a href="#backends">Backends</a><a href="#bench-mode">Bench mode</a><a href="#interfaces-and-bringup">Interfaces and bringup</a><a href="#firmware">Firmware</a><a href="#the-hud">The HUD</a></nav>
 <div class="lead"><p>Every ROS package in <code>ros/</code>, area by area (<code>ros/&lt;area&gt;/&lt;package&gt;</code>), with what it reads
-and writes. Then the firmware, the HUD and the examples. 51 packages build with colcon
-today (counted 14 Nov; the Flask HUD went to the archive on 25 Oct), and none is parked.
+and writes. Then the firmware, the HUD and the examples. 72 packages build with colcon
+today (counted 18 Nov; the Flask HUD went to the archive on 25 Oct), and none is parked.
 Two more folders are plain Rust programs, built with cargo: <code>aav_dev_window</code> and
-<code>aav_sim_cameras</code>. The newest packages (30 Oct to 8 Nov) are in the first table only:
-each one's README has its topics.</p></div>
+<code>aav_sim_cameras</code>. The newest packages (30 Oct to 18 Nov) are in the first table only:
+each one's README has its topics.</p>
+<blockquote>
+<p><strong>"Gazebo" in a status</strong> means it was tested there, before Gazebo went on 16 Nov.
+Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-run there.</p>
+</blockquote></div>
 <section class="card"><h2 id="at-a-glance">At a glance</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -158,6 +162,13 @@ each one's README has its topics.</p></div>
 <td>one node per front camera: the camera Pi's H.264 stream, decoded, with RF-DETR inside</td>
 <td><span class="badge b-works">works</span> on a Mac; <span class="badge b-untested">untested</span> on the Orin</td>
 <td>new</td>
+</tr>
+<tr>
+<td><code>aav_camera_stream_rs</code></td>
+<td>sources</td>
+<td><code>camera_stream</code> in Rust, the default (18 Nov) where no detector or <code>decoder:=opencv</code> is asked (<code>camera_stream_impl:=python</code> falls back): the same topics, QoS and diagnostics</td>
+<td><span class="badge b-works">works</span> <code>measure stream</code> on a Mac; <span class="badge b-untested">untested</span> on the Orin</td>
+<td>new: a port of <code>aav_camera_stream</code></td>
 </tr>
 <tr>
 <td><code>aav_imu_yahboom</code></td>
@@ -230,6 +241,20 @@ each one's README has its topics.</p></div>
 <td>new, around stock KISS-ICP (MIT)</td>
 </tr>
 <tr>
+<td><code>aav_amcl_rs</code></td>
+<td>localization</td>
+<td>AMCL in Rust, the default (18 Nov; <code>amcl_impl:=stock</code> runs <code>nav2_amcl</code>): a particle filter on the 2D map and the scan, a trial (<code>amcl:=true</code>); never TF</td>
+<td><span class="badge b-works">works</span> Ravensim, the lot: a tie with stock, 3 runs each (<a href="../history/trials-log.md#18-nov-amcl-in-rust-against-stock">Trials</a>)</td>
+<td>new: a port of Nav2's <code>nav2_amcl</code></td>
+</tr>
+<tr>
+<td><code>aav_lane_pose</code></td>
+<td>localization</td>
+<td><code>lane_pose</code>: the lane finder's offset in its lane, against the lane map, as a sideways pose for the global EKF</td>
+<td>ours' default since 17 Nov (TODO 155); <span class="badge b-untested">untested</span> on the car</td>
+<td>new</td>
+</tr>
+<tr>
 <td><code>aav_teleop</code></td>
 <td>drivers</td>
 <td>joystick → <code>/drivers/joy/cmd_vel</code>, plus an e-stop button</td>
@@ -265,6 +290,13 @@ each one's README has its topics.</p></div>
 <td>new</td>
 </tr>
 <tr>
+<td><code>aav_drive_to_point_rs</code></td>
+<td>drivers</td>
+<td><code>point_driver</code> and <code>drive_to_point</code> in Rust, the default (18 Nov; <code>drive_to_point_impl:=python</code> falls back)</td>
+<td><span class="badge b-works">works</span> the Python's numbers on shared vectors; <span class="badge b-untested">untested</span> on the car</td>
+<td>new: a port of <code>aav_drive_to_point</code></td>
+</tr>
+<tr>
 <td><code>aav_language</code></td>
 <td>drivers</td>
 <td>plain English: a local model plans drive tools, you say yes</td>
@@ -288,9 +320,16 @@ each one's README has its topics.</p></div>
 <tr>
 <td><code>aav_track</code></td>
 <td>drivers</td>
-<td>trial path followers in <code>controller_server</code>'s place (<code>tracker:=</code> pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag)</td>
+<td>trial path followers in <code>mppi_lag</code>'s place (<code>tracker:=</code> pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag)</td>
 <td>built 29 Oct; trials, off by default (<a href="trials.html">Trials</a>)</td>
 <td>new</td>
+</tr>
+<tr>
+<td><code>aav_mpc_lag</code></td>
+<td>drivers</td>
+<td><code>mpc_lag_rs</code>: <code>aav_track</code>'s lag-aware MPC in Rust, a challenger (<code>tracker:=mpc_lag_rs</code>)</td>
+<td>built 15 Nov; scored 16 Nov (<a href="league-results-2026-11-16.html">league</a>)</td>
+<td>new: a port of <code>aav_track</code>'s <code>mpc_lag</code></td>
 </tr>
 <tr>
 <td><code>aav_mppi_lag</code></td>
@@ -375,6 +414,13 @@ each one's README has its topics.</p></div>
 <td>one command → speed and steering the car can do</td>
 <td><span class="badge b-works">works</span></td>
 <td>new</td>
+</tr>
+<tr>
+<td><code>aav_ego_rs</code></td>
+<td>ego</td>
+<td><code>ego</code> and <code>look_ahead</code> in Rust, the default (16 Nov; <code>ego_impl:=python</code> falls back): the same topics and answers</td>
+<td><span class="badge b-works">works</span> against the Python's answers; Ravensim; <span class="badge b-untested">untested</span> on the car</td>
+<td>new: a port of <code>aav_ego</code></td>
 </tr>
 <tr>
 <td><code>aav_spine</code></td>
@@ -468,6 +514,13 @@ each one's README has its topics.</p></div>
 <td>new</td>
 </tr>
 <tr>
+<td><code>aav_joy_alive_rs</code></td>
+<td>safety</td>
+<td><code>joy_alive</code> in Rust, the default (17 Nov; <code>joy_alive_impl:=python</code> falls back)</td>
+<td><span class="badge b-works">works</span> against the Python's answers; <span class="badge b-untested">untested</span> on the car</td>
+<td>new: a port of <code>aav_safety</code>'s <code>joy_alive</code></td>
+</tr>
+<tr>
 <td><code>aav_watchdog_rs</code></td>
 <td>safety</td>
 <td><code>sensor_watchdog</code> in Rust, the default (Ben, 16 Nov) beside <code>aav_safety</code>'s (<code>watchdog_impl:=python</code>): the same topics and answers</td>
@@ -515,6 +568,13 @@ each one's README has its topics.</p></div>
 <td>RF-DETR (the default) or YOLO on the camera's images, and the stop-sign watcher</td>
 <td><span class="badge b-works">works</span> on the bench</td>
 <td>2024-25 <code>camera_ros2_ws</code></td>
+</tr>
+<tr>
+<td><code>aav_stop_sign_rs</code></td>
+<td>perception</td>
+<td><code>stop_sign_watcher</code> in Rust, the default (17 Nov; <code>stop_sign_impl:=python</code> falls back)</td>
+<td><span class="badge b-works">works</span> against the Python's answers, and a process test</td>
+<td>new: a port of <code>aav_detector</code>'s watcher</td>
 </tr>
 <tr>
 <td><code>aav_radar_clusters</code></td>
@@ -571,6 +631,13 @@ each one's README has its topics.</p></div>
 <td>the lane lines in the camera's pictures, as <code>/perception/lane/geometry</code> (OpenCV)</td>
 <td><span class="badge b-works">works</span> on the bench</td>
 <td>new</td>
+</tr>
+<tr>
+<td><code>aav_lane_finder_rs</code></td>
+<td>perception</td>
+<td><code>lane_finder</code> in Rust, the default (18 Nov; <code>lane_finder_impl:=python</code> falls back): no OpenCV</td>
+<td><span class="badge b-works">works</span> the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 % in Ravensim</td>
+<td>new: a port of <code>aav_lane_finder</code></td>
 </tr>
 <tr>
 <td><code>aav_lane_geometry</code></td>
