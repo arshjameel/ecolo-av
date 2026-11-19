@@ -155,19 +155,10 @@ impl Grid2d {
         if align.is_identity() {
             return self.clone();
         }
-        let (lo, hi) = self.bounds();
-        let corners =
-            [lo, hi, Point::new(lo.x, hi.y), Point::new(hi.x, lo.y)].map(|p| align.apply(p));
-        let Some((min, max)) = crate::geom::bounds_of(corners) else {
-            return self.clone();
-        };
-        let origin = Point::new(min.x.floor(), min.y.floor());
-        let r = self.resolution;
-        let width = ((max.x - origin.x) / r).ceil().max(1.0) as usize;
-        let height = ((max.y - origin.y) / r).ceil().max(1.0) as usize;
+        let (origin, width, height) = self.aligned_frame(align);
         let mut out = Self {
             origin,
-            resolution: r,
+            resolution: self.resolution,
             width,
             height,
             cells: vec![Cell::Unknown; width * height],
@@ -179,6 +170,24 @@ impl Grid2d {
             }
         }
         out
+    }
+
+    /// Where [`Grid2d::aligned`] puts the moved map: its origin (whole metres, or the
+    /// same origin with no move), cells across and up. Cheap: no cells are made.
+    #[must_use]
+    pub fn aligned_frame(&self, align: &Align) -> (Point, usize, usize) {
+        if align.is_identity() {
+            return (self.origin, self.width, self.height);
+        }
+        let (lo, hi) = self.bounds();
+        let corners =
+            [lo, hi, Point::new(lo.x, hi.y), Point::new(hi.x, lo.y)].map(|p| align.apply(p));
+        let (min, max) = crate::geom::bounds_of(corners).unwrap_or((lo, hi));
+        let origin = Point::new(min.x.floor(), min.y.floor());
+        let r = self.resolution;
+        let width = ((max.x - origin.x) / r).ceil().max(1.0) as usize;
+        let height = ((max.y - origin.y) / r).ceil().max(1.0) as usize;
+        (origin, width, height)
     }
 
     /// The trinary `.pgm`'s pixels, top row first.

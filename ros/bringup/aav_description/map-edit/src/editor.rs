@@ -195,7 +195,7 @@ impl Editor {
     }
 
     /// NDT's points still there, in the source map's frame.
-    pub fn kept_points(&self) -> impl Iterator<Item = &Point3> {
+    pub fn kept_points(&self) -> impl Iterator<Item = &Point3> + Clone {
         self.map
             .points
             .iter()

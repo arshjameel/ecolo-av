@@ -2674,6 +2674,7 @@ dependencies = [
  "lanelet-map",
  "map-chunks",
  "map-core",
+ "map-edit",
  "rclrs",
  "ros-env",
  "serde",
@@ -4180,6 +4181,16 @@ dependencies = [
  "serde",
  "serde_yaml_ng",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "map-edit"
+version = "0.1.0"
+dependencies = [
+ "map-chunks",
+ "ndt-core",
+ "serde",
+ "serde_yaml_ng",
 ]
 
 [[package]]
