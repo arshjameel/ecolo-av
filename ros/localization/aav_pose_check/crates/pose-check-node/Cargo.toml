@@ -1,0 +1,20 @@
+[package]
+name = "pose-check-node"
+description = "pose_check: NDT leads ekf_global's pose, the GPS checks it; seeds a lost NDT from AMCL or the GPS"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "pose_check"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+pose-check-core = { path = "../pose-check-core" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"
