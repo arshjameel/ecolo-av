@@ -171,9 +171,11 @@ on a screen (no screen was free when it was built), and on the car.
 | Item | Status |
 |---|---|
 | `tools/record.sh --lidar` (cameras, radar, detections, localization, lidar) | Built |
-| A full mode for mapping drives: raw lidar, the IMU at full rate, wheels, raw GPS, every camera | To build |
-| The clocks on every computer in step (`chronyc tracking`) | To check on the car (blocker 5) |
-| Space: about **40 GB an hour**, so a fast SSD on the Orin | To check |
+| **`pixi run record-drive`** ([Recording a mapping drive](recording.md)): raw lidar, the IMU at full rate, wheels, raw GPS, every camera, the commands and who drives; MCAP + zstd in 2 GB / 5 min files | **Built 19 Nov**; tested in Ravensim (`--sim`), untested on the car |
+| Checks first: disk, every topic's rate, stamps, `/tf_static`'s sensor frames | **Built 19 Nov**; untested on the car |
+| A summary after: per topic count, rate, gaps, size; "good for" the map, SLAM, labels, the transfer functions | **Built 19 Nov** |
+| The clocks on every computer in step: `chronyc tracking` here and over ssh, in the checks | **Built 19 Nov**; to check on the car (blocker 5) |
+| Space: about **87 GB an hour** before zstd (3 JPEG cameras 49, lidar 37 with its packets), so a fast SSD on the Orin | Estimated; to measure on the car |
 
 ## Phase D: maps from hand drives
 

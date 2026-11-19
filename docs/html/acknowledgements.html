@@ -39,6 +39,7 @@
 <a href="tests.html">Every test</a>
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -791,6 +792,18 @@ Each has a TODO row to port its idea.</p>
 <td>MIT</td>
 <td>examples and tests only</td>
 <td>MPPI's <code>follow_plan</code> reads a recording's plans (<code>examples/bag</code>, TODO 202)</td>
+</tr>
+<tr>
+<td><strong>rosbag2</strong> (its MCAP storage, <code>zstd_fast</code> preset); image_transport's <code>republish</code></td>
+<td>Apache-2.0; BSD</td>
+<td>runs</td>
+<td>the mapping drive's recorder and its JPEG copies of the cameras (<code>pixi run record-drive</code>, TODO 249)</td>
+</tr>
+<tr>
+<td><strong>chrony</strong> (<code>chronyc tracking</code>)</td>
+<td>GPL-2.0</td>
+<td>runs, a separate program</td>
+<td>the recording kit's clock check on each car computer (TODO 249)</td>
 </tr>
 <tr>
 <td><strong>criterion</strong> (Brook Heisler, Jorge Aparicio)</td>

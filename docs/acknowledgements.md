@@ -144,6 +144,8 @@ Each has a TODO row to port its idea.
 | **rstar** (the georust project) | MIT / Apache-2.0 | runs | an R-tree of the Lanelet2 map's centre lines, for the nearest lane (`lanelet-map`, TODO 201) |
 | **Rerun** (rerun.io) | MIT / Apache-2.0 | a trial viewer, laptops only | our MCAP recordings opened as they are (`pixi run -e rerun view-bag`, TODO 197) |
 | **mcap** (Foxglove) | MIT | examples and tests only | MPPI's `follow_plan` reads a recording's plans (`examples/bag`, TODO 202) |
+| **rosbag2** (its MCAP storage, `zstd_fast` preset); image_transport's `republish` | Apache-2.0; BSD | runs | the mapping drive's recorder and its JPEG copies of the cameras (`pixi run record-drive`, TODO 249) |
+| **chrony** (`chronyc tracking`) | GPL-2.0 | runs, a separate program | the recording kit's clock check on each car computer (TODO 249) |
 | **criterion** (Brook Heisler, Jorge Aparicio) | MIT / Apache-2.0 | benchmarks only | MPPI's tick, the planner's legs, the costmap's updates and an NDT match timed with statistics (`benches/`, TODO 203) |
 | **tracing**, **tracing-subscriber** (tokio-rs) | MIT | runs, only when built in | the MPPI tick's stages as spans, timed on stderr (`aav_mppi_lag` feature `trace`, TODO 196) |
 | **Tracy** (Bartosz Taudul), through **tracing-tracy** | BSD-3-Clause; MIT / Apache-2.0 | runs, only when built in | the same spans, live in the Tracy viewer (feature `tracy`) |

@@ -39,6 +39,7 @@
 <a href="tests.html">Every test</a>
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -2873,6 +2874,12 @@ the sensors' real noise (T2.4) and the replay (T2.5). Bags stay out of git.</p>
 <td><strong>Every session of ours</strong>, stands too (A6-A11)</td>
 <td>on the Orin: <code>~/aav-jazzy/aav.sh tools/record.sh --lidar &lt;session&gt;</code></td>
 <td>ego and the actuator model against real; the lot's map</td>
+</tr>
+<tr>
+<td>3b</td>
+<td><strong>A mapping drive</strong>, by hand, round the lot</td>
+<td>on the Orin: <code>~/aav-jazzy/aav.sh tools/record.sh --mapping --name lot</code> (<a href="recording.html">Recording a mapping drive</a>): checks first, a summary after; up to 87 GB an hour</td>
+<td>the lot's NDT and SLAM maps, labels, the transfer functions</td>
 </tr>
 <tr>
 <td>4</td>
