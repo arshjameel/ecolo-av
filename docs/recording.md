@@ -142,7 +142,8 @@ truth:
 
 The recording is usable, but **a map from the EKF's poses is blurred**: each wall is drawn
 several times (6 times the points). That is why phase D makes the map with SLAM
-(KISS-SLAM), not from the EKF.
+(KISS-SLAM), not from the EKF: [Maps from drives](maps-from-drives.md) (`pixi run
+map-drive`: 2.3 cm off).
 
 The first run found two faults, both fixed: 60 ms of jitter at 50 Hz counted as a gap (now
 a gap must also be over 0.1 s), and Ravensim's cameras, still being built, came up after the

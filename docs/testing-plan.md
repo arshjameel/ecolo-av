@@ -183,9 +183,10 @@ on a screen (no screen was free when it was built), and on the car.
 
 | Tool | Its job | Status |
 |---|---|---|
-| **KISS-SLAM** (offline) | **makes** the map from a hand drive, closing loops | To build (KISS-ICP, its first half, is built) |
-| `ndt-map build --poses` | turns the drive into NDT's map, in 64 m chunks | Built |
-| A 2D map from the same points | the planner's walls and kerbs | To build |
+| **KISS-SLAM** (offline: `pixi run map-drive`) | **makes** the map from a hand drive, closing loops, placed by the GPS | Built 19 Nov ([Maps from drives](maps-from-drives.md)); in Ravensim 2.3 cm off the truth's map (the EKF's: 27-33 cm); no loop closure found on the plain test lot; **untested on the car** |
+| NDT's map from those poses | the drive into NDT's map, in 64 m chunks | Built (`map-drive`; `ndt-map build --poses-file`) |
+| A 2D map from the same points | the planner's walls and kerbs: 0.3-2 m occupied, the rays free | Built 19 Nov (`map-drive`): every occupied cell within one of the truth's |
+| Several drives merged | keep what both saw (`map-drive --merge`) | Built 19 Nov, two drives; more than two: to build |
 | **NDT** | finds the car on the map, precisely | Built; 5 cm in the sim |
 | **AMCL** (Rust, 18 Nov) | finds a **lost** car, then hands over to NDT | Being built |
 | NDT as the main position (GPS only checks) | TODO 210 | To build |

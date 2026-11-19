@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">20 min read · 8 sections</div></header>
+<div class="meta">22 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -40,6 +40,7 @@
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="infrastructure.html">Infrastructure</a>
@@ -51,8 +52,8 @@
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
-<a href="learn-lidar.html">Learn: lidar</a>
 <span class="sep">Reference:</span>
+<a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -354,6 +355,54 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>MIT</td>
 <td>runs</td>
 <td><code>kiss_icp:=true</code>, scored beside the EKF</td>
+</tr>
+<tr>
+<td><strong>KISS-SLAM</strong>: T. Guadagnino, B. Mersch, S. Gupta, I. Vizzo, G. Grisetti, C. Stachniss, "KISS-SLAM: A Simple, Robust, and Accurate 3D LiDAR SLAM System With Enhanced Generalization Capabilities", IROS 2025 (PRBonn, <code>kiss-slam</code> 0.0.2 on PyPI)</td>
+<td>MIT (its wheel builds in g2o, BSD, and SuiteSparse's CHOLMOD, LGPL-2.1+: an offline tool, never on the car)</td>
+<td>runs</td>
+<td><code>pixi run map-drive</code>: a map from a recorded drive, with loop closures (TODO 250, <a href="maps-from-drives.html">Maps from drives</a>)</td>
+</tr>
+<tr>
+<td><strong>MapClosures</strong>: S. Gupta, T. Guadagnino, B. Mersch, I. Vizzo, C. Stachniss, "Effectively Detecting Loop Closures using Point Cloud Density Maps", ICRA 2024</td>
+<td>MIT</td>
+<td>runs</td>
+<td>KISS-SLAM's loop closures, in <code>map-drive</code></td>
+</tr>
+<tr>
+<td><strong>g2o</strong>: R. Kümmerle, G. Grisetti, H. Strasdat, K. Konolige, W. Burgard, ICRA 2011</td>
+<td>BSD (core)</td>
+<td>runs</td>
+<td>KISS-SLAM's pose graph, in <code>map-drive</code></td>
+</tr>
+<tr>
+<td><strong>Open3D</strong>: Q.-Y. Zhou, J. Park, V. Koltun, 2018</td>
+<td>MIT</td>
+<td>runs</td>
+<td>KISS-SLAM's closure check; <code>map-drive --merge</code>'s ICP between two drives' maps</td>
+</tr>
+<tr>
+<td><strong>Least-squares fit of two point sets</strong>: S. Umeyama, IEEE TPAMI, 1991 (after W. Kabsch, 1976)</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>map-drive</code>: the SLAM path turned and moved onto the good GPS fixes (<code>slam_map.fit_2d</code>)</td>
+</tr>
+<tr>
+<td><strong>UTM by series</strong>: J. P. Snyder, <em>Map Projections: A Working Manual</em>, USGS, 1987</td>
+<td>public domain</td>
+<td>idea</td>
+<td><code>slam_map.utm</code>, checked against GeoConvert's numbers in <code>aav_hud</code>'s <code>earth.rs</code></td>
+</tr>
+<tr>
+<td><strong>Occupancy grids</strong>: A. Elfes, "Using Occupancy Grids for Mobile Robot Perception and Navigation", Computer, 1989</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>map-drive</code>'s 2D map: hits and free rays per cell</td>
+</tr>
+<tr>
+<td><strong>TUM trajectory format</strong>: J. Sturm et al., "A Benchmark for the Evaluation of RGB-D SLAM Systems", IROS 2012</td>
+<td>format</td>
+<td>idea</td>
+<td><code>map-drive</code>'s <code>poses.tum</code>; <code>ndt-map build --poses-file</code></td>
 </tr>
 <tr>
 <td>AMCL (Nav2's <code>nav2_amcl</code>, from Player's amcl: A. Howard, B. Gerkey, K. Stoy)</td>
@@ -792,6 +841,12 @@ Each has a TODO row to port its idea.</p>
 <td>MIT</td>
 <td>examples and tests only</td>
 <td>MPPI's <code>follow_plan</code> reads a recording's plans (<code>examples/bag</code>, TODO 202)</td>
+</tr>
+<tr>
+<td><strong>mcap</strong>, <strong>mcap-ros2-support</strong> (Foxglove, Python)</td>
+<td>MIT</td>
+<td>runs, laptops only</td>
+<td><code>map-drive</code> reads a recording without ROS (TODO 250)</td>
 </tr>
 <tr>
 <td><strong>rosbag2</strong> (its MCAP storage, <code>zstd_fast</code> preset); image_transport's <code>republish</code></td>

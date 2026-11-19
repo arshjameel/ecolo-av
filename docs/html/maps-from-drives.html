@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maps from drives · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/maps-from-drives.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Maps from drives</h1>
+<div class="meta">8 min read · 9 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-setup.html">Car setup</a>
+<span class="sep">Learn:</span>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a class="here" href="maps-from-drives.html">Maps from drives</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<span class="sep">Reference:</span>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#why-slam">Why SLAM</a><a href="#what-it-does">What it does</a><a href="#what-it-writes">What it writes</a><a href="#the-proof-in-ravensim">The proof in Ravensim</a><a href="#ndt-on-the-slam-map">NDT on the SLAM map</a><a href="#loop-closures">Loop closures</a><a href="#several-drives">Several drives</a><a href="#licences">Licences</a><a href="#code">Code</a></nav>
+<div class="lead"><p>A recorded drive becomes <strong>our own map</strong>: NDT's 3D map and a 2D map for the planner, made
+with SLAM, not from the EKF. Phase D of the <a href="testing-plan.html">testing plan</a> (TODO 250).</p>
+<pre class="highlight"><code class="language-sh">pixi install --locked -e slam                       # once (x86_64 Linux, Apple-silicon Macs)
+pixi run record-drive --name lot --note "the lot"   # the drive (Recording a mapping drive)
+pixi run map-drive bags/&lt;drive&gt;                     # its maps, into bags/&lt;drive&gt;/map/
+pixi run map-drive --merge &lt;map A&gt; &lt;map B&gt; --out maps/lot   # two drives: what both saw</code></pre>
+<div class="admonition warning">
+<p class="admonition-title">Not yet run on the car</p>
+<p>Built and proved in Ravensim (19 Nov). A real drive, its GPS and its lidar's sweep
+are untested. Loop closures were never found in the sim (below).</p>
+</div></div>
+<section class="card"><h2 id="why-slam">Why SLAM</h2>
+<p>The recording kit's first NDT map was placed by the EKF's poses: each wall drawn several
+times, <strong>33 cm</strong> off the truth's map (median; 1.2 m at 95 %). SLAM places each cloud by
+matching it to the others, so the walls land once.</p>
+</section>
+<section class="card"><h2 id="what-it-does">What it does</h2>
+<pre class="highlight"><code> bag (MCAP) ──▶ lidar clouds ──▶ KISS-SLAM ──▶ poses ──▶ fit to GPS ──▶ poses in the map
+  no ROS        base_link,        odometry,              (or the start       │
+                ground cut        loop closures,          pose)              ▼
+                                  pose graph                     NDT map + 2D map + chunks</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read</td>
+<td>the drive's MCAP files, with <code>mcap-ros2-support</code>: no ROS needed</td>
+</tr>
+<tr>
+<td>SLAM</td>
+<td>KISS-SLAM: KISS-ICP's odometry in local maps every 30 m (<code>--split</code>), MapClosures' loop closures, g2o's pose graph. The ground (below 0.3 m) is cut out, as <code>aav_kiss_icp</code> does</td>
+</tr>
+<tr>
+<td>Flatten</td>
+<td>x, y, yaw only: the stack is 2D. With the ground cut, a 3D path sank 1 m in 91 m</td>
+</tr>
+<tr>
+<td>Place</td>
+<td>the path fitted to the good GPS fixes by least squares (<code>slam_map.georeference</code>); too few fixes: the EKF's start pose; neither: left local</td>
+</tr>
+<tr>
+<td>NDT map</td>
+<td>the same rules as <code>ndt-map</code>: ground out, 45 m, one point per 10 cm</td>
+</tr>
+<tr>
+<td>2D map</td>
+<td>0.25 m cells. Occupied: hit 0.3-2 m above the ground in 2 clouds or more. Free: the lidar's rays crossed it. Else unknown</td>
+</tr>
+<tr>
+<td>Chunks</td>
+<td>the 64 m chunks (<code>chunk-map</code>, <code>ndt-chunks</code>), when <code>cargo</code> is here</td>
+</tr>
+<tr>
+<td>Score</td>
+<td>a Ravensim drive only: against the truth (below)</td>
+</tr>
+</tbody>
+</table></div>
+<p>A good GPS fix: status 0 or more, at most 0.5 m standard deviation (<code>--gps-sd</code>). The fit
+needs 20 of them, 15 m apart. The map's YAML says how it was placed, and the move from
+SLAM's frame to the map (<code>placed: slam_to_map</code>).</p>
+</section>
+<section class="card"><h2 id="what-it-writes">What it writes</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ndt.pcd</code>, <code>ndt.yaml</code></td>
+<td>NDT's map: give it to <code>ndt:=true ndt_map:=</code></td>
+</tr>
+<tr>
+<td><code>map2d.pgm</code>, <code>map2d.yaml</code></td>
+<td>the 2D map, a map server's trinary map (<code>aav_costmap</code>'s <code>map_server</code>)</td>
+</tr>
+<tr>
+<td><code>chunks/</code></td>
+<td><code>chunks.yaml</code>, <code>fine/</code>, <code>coarse/</code> (the 2D map), <code>ndt/</code> (NDT's)</td>
+</tr>
+<tr>
+<td><code>poses.tum</code></td>
+<td>the path in the map frame, TUM format (<code>t x y z qx qy qz qw</code>)</td>
+</tr>
+<tr>
+<td><code>poses_slam.tum</code></td>
+<td>the path in SLAM's own frame</td>
+</tr>
+<tr>
+<td><code>closures.yaml</code></td>
+<td>the loop closures found, and where</td>
+</tr>
+<tr>
+<td><code>report.md</code></td>
+<td>all of this, and the scores</td>
+</tr>
+<tr>
+<td><code>truth.pcd</code>, <code>ekf.pcd</code></td>
+<td>Ravensim only: the same clouds on the truth's and the EKF's poses</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>ndt-map build &lt;bag&gt; --poses-file poses.tum</code> builds NDT's map from any file of poses too.</p>
+</section>
+<section class="card"><h2 id="the-proof-in-ravensim">The proof in Ravensim</h2>
+<p>Two drives on the test lot, recorded with <code>record-drive --sim</code> (the short one: two legs)
+and <code>record-drive --sim --loop</code> (the whole route, back home: 208 m, 225 s).</p>
+<p><img alt="The loop drive's 2D map, its SLAM path in red, the start in blue" src="../img/map-drive-lot.png" /></p>
+<p><strong>The maps against the truth's map</strong> (the same clouds placed by Ravensim's truth):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Drive</th>
+<th>Poses</th>
+<th>Path off: median</th>
+<th>95 %</th>
+<th>Map off: median</th>
+<th>95 %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>short (91 m)</td>
+<td><strong>KISS-SLAM</strong></td>
+<td>3.1 cm</td>
+<td>6.5 cm</td>
+<td><strong>2.3 cm</strong></td>
+<td>10 cm</td>
+</tr>
+<tr>
+<td>short</td>
+<td>EKF, with GPS</td>
+<td>8.6 cm</td>
+<td>20 cm</td>
+<td>33 cm</td>
+<td>1.2 m</td>
+</tr>
+<tr>
+<td>loop (208 m)</td>
+<td><strong>KISS-SLAM</strong></td>
+<td>3.7 cm</td>
+<td>7.2 cm</td>
+<td><strong>2.3 cm</strong></td>
+<td>11 cm</td>
+</tr>
+<tr>
+<td>loop</td>
+<td>EKF, with GPS</td>
+<td>8.9 cm</td>
+<td>20 cm</td>
+<td>27 cm</td>
+<td>1.1 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>Placed by the GPS (Ravensim's fixes are noisy: 0.5 m off the fit, median): the fit was
+1 cm and 0.02° from the truth. <strong>The 2D map</strong>: every occupied cell of a map made the same
+way on the truth's poses found within one cell, and every one of ours right.</p>
+<p><strong>Placed by the start pose instead</strong> (<code>--no-gps</code>): 11 cm off (the EKF's start was 10 cm
+out), so the GPS fit is the default.</p>
+<p><strong>Two drives merged</strong> (short onto loop's, ICP, then only points both saw within 25 cm):
+109,000 points, 3.1 cm off the truth (median), 11 cm at 95 %. Moved 1 m and 3° on
+purpose first, ICP put it back (-0.96 m, 0.56 m, -3.03°).</p>
+</section>
+<section class="card"><h2 id="ndt-on-the-slam-map">NDT on the SLAM map</h2>
+<p><code>ndt:=true</code> in Ravensim's test lot, the lot tour (4 legs, 152 m), the loop drive's maps:</p>
+<pre class="highlight"><code class="language-sh">pixi run measure controllers --ndt --ndt-map bags/&lt;drive&gt;/map/ndt.pcd --tours lot --controllers mppi</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>NDT's map</th>
+<th>Off the truth, mean per leg</th>
+<th>Worst</th>
+<th>Clouds with a pose</th>
+<th>Restarts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>KISS-SLAM's</strong> (<code>ndt.pcd</code>)</td>
+<td>3.5 / 4.2 / 4.4 / 4.7 cm</td>
+<td>11 cm</td>
+<td>100 %</td>
+<td>0</td>
+</tr>
+<tr>
+<td>the same clouds on the truth (<code>truth.pcd</code>)</td>
+<td>0.3 / 0.4 / 0.3 / 0.3 cm</td>
+<td>8 cm</td>
+<td>100 %</td>
+<td>0</td>
+</tr>
+</tbody>
+</table></div>
+<p>NDT on our map is as steady as on the truth's, and as far off as the map is: about 4 cm,
+mostly where the GPS fit put it (Ravensim's GPS wanders). Each match: 1.1-1.4 ms. All four
+legs reached.</p>
+</section>
+<section class="card"><h2 id="loop-closures">Loop closures</h2>
+<p>None were found on the test lot, at any <code>--split</code> (15, 30, 50 m) or density-map cell (0.2,
+0.25, 0.5, 1 m): MapClosures matches ORB features on a picture of each local map seen
+from above, and drops features that look like others. The lot's plain walls and boxes give
+it almost none. KISS-ICP alone stayed within 11 cm over 208 m there, so nothing needed
+closing. <strong>A real place (trees, kerbs, parked cars) should give it features: untested.</strong></p>
+</section>
+<section class="card"><h2 id="several-drives">Several drives</h2>
+<p><code>--merge A B</code> fits B's NDT map onto A's (Open3D's point-to-plane ICP, x, y and yaw only:
+both maps are flat), then keeps only the points the other map has within 25 cm
+(<code>--radius</code>). A car parked in one drive only drops out. So does anything only one drive
+saw: drive the same route each time.</p>
+<p>Next: more than two drives (keep what most saw), the 2D maps merged the same way, and a
+person checking the result in the map editor (phase E).</p>
+</section>
+<section class="card"><h2 id="licences">Licences</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Licence</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KISS-SLAM, KISS-ICP, MapClosures (PRBonn)</td>
+<td>MIT</td>
+<td></td>
+</tr>
+<tr>
+<td>g2o (in KISS-SLAM's wheel)</td>
+<td>BSD</td>
+<td>its CHOLMOD solver: SuiteSparse's, LGPL-2.1+</td>
+</tr>
+<tr>
+<td>Open3D</td>
+<td>MIT</td>
+<td>from conda-forge: PyPI's Linux wheel needs a newer glibc than the workspace's</td>
+</tr>
+<tr>
+<td>mcap, mcap-ros2-support</td>
+<td>MIT</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>The LGPL part is linked into a wheel we install from PyPI and run on a laptop; we never
+ship it on the car, so that is fine. No GPL.</p>
+<p><strong>Platforms:</strong> x86_64 Linux and Apple-silicon Macs. kiss-slam and map-closures have no
+wheel for 64-bit ARM Linux (the Orin): make maps on a laptop, copy the files to the car.</p>
+</section>
+<section class="card"><h2 id="code">Code</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tools/map_drive.py</code></td>
+<td>the command: reads the bag, runs KISS-SLAM, writes the maps (the slam env)</td>
+</tr>
+<tr>
+<td><code>tools/slam_map.py</code></td>
+<td>its maths, no ROS: poses, UTM and the GPS fit, the 2D map, scores, merging (<code>tools/tests/test_slam_map.py</code>)</td>
+</tr>
+<tr>
+<td><code>tools/ndt_map.py</code></td>
+<td>NDT's map rules, shared; <code>--poses-file</code></td>
+</tr>
+<tr>
+<td><code>tools/record_drive.py</code></td>
+<td><code>--sim --loop</code>: the whole route, for a loop</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="recording.html"><small>Previous</small>← Recording a mapping drive</a>
+<a class="next" href="measure-the-car.html"><small>Next</small>Measure the car →</a></nav>
+</main>
+<footer>Source: <code>docs/maps-from-drives.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>
