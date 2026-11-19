@@ -203,7 +203,7 @@ Ben, 30 Oct: "this is a car not a needle. We need to quickly know something is i
 
 The costmap's `lidar_layer` and the stop zone read the cubes instead of the scan. It's
 off unless asked for (`pixi run sim world:=test_lot voxels:=true`); `stack:=ours` runs the cubes for the things and the kerbs. The numbers:
-[Trials](trials.md#voxels-30-oct-the-lidar-as-cubes). The design:
+[Trials](history/trials-log.md#voxels-30-oct-the-lidar-as-cubes). The design:
 `docs/designs/2026-10-30_voxels.md`.
 
 ## 6. Cubes into objects, with names
@@ -303,7 +303,7 @@ the lidar's 2D scan.
 
 Both run **beside** `ekf_global` (`ndt:=true`, `amcl:=true`): AMCL's pose goes out on
 `/localization/amcl/pose`, it never takes over `map → odom`, and it's scored against the
-EKF on the same drives ([Trials](trials.md#18-nov-amcl-in-rust-against-stock)).
+EKF on the same drives ([Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock)).
 
 ## 10. Seeing it all: the debug HUD
 

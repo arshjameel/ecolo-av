@@ -324,7 +324,7 @@ how far off the path you are.
 | ❌ Weaknesses | jumpy at low speed (÷ speed) unless softened; sensitive to a noisy heading, and our GPS heading is weak at walking pace; no model of the steering lag |
 | Needs | the pose at the front axle (our `base_link` is at the rear: a shift by the wheelbase), the path |
 | On our car | Orin: `ros/drivers/aav_track`, `trackers/stanley.py`, `tracker:=stanley` |
-| Status | **trial, built** (29 Oct). Gazebo, 29 Oct, 3 runs: 12 of 12 legs ([Trials](trials.md#results-29-october)) |
+| Status | **trial, built** (29 Oct). Gazebo, 29 Oct, 3 runs: 12 of 12 legs ([Trials](history/trials-log.md#results-29-october)) |
 
 ### LQR, scheduled by speed
 
@@ -342,7 +342,7 @@ wheel angle]. Choose weights, solve once per speed, steer with u = −K x.
 | ❌ Weaknesses | blind to limits: it can ask for more angle or angle rate than the car has; the margin shrinks with delay at speed (below); a straight-road linearisation: on a tight curve it needs feed-forward from the curvature |
 | Needs | the model (`vehicle_model.lateral()`), the pose, the path |
 | On our car | Orin: `ros/drivers/aav_track`, `trackers/lqr.py`, `tracker:=lqr` (TODO 2) |
-| Status | **trial, built** (29 Oct; rebuilt with a preview the same afternoon). Gazebo, 29 Oct: 8, then 10 of 12 legs ([Trials](trials.md#results-29-october-afternoon-lqr-rebuilt-and-mpc_full)). Also the yardstick for MPC: the same model, without limits |
+| Status | **trial, built** (29 Oct; rebuilt with a preview the same afternoon). Gazebo, 29 Oct: 8, then 10 of 12 legs ([Trials](history/trials-log.md#results-29-october-afternoon-lqr-rebuilt-and-mpc_full)). Also the yardstick for MPC: the same model, without limits |
 
 Example, worked out with the model (weights Q = diag(1, 1, 0), R = 1: picked for this
 page, not tuned):
@@ -544,7 +544,7 @@ The campus tour runs only when asked for. Results are in `log/controller-compare
 The **planner** draws the path; the **follower** (MPPI, a tracker) drives it. Ours is
 `aav_planner` (Rust, [Our own planner](own-planner.md)): Nav2's State Lattice and
 Hybrid-A*, ported. The lattice is the default since 1 Nov (`docs/trials.md`,
-[Planners, 30 Oct](trials.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32)).
+[Planners, 30 Oct](history/trials-log.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32)).
 
 ```text
  goal ─► navigator ─► planner ("compute_path_to_pose") ─► the path ─► follower
@@ -559,7 +559,7 @@ Hybrid-A*, ported. The lattice is the default since 1 Nov (`docs/trials.md`,
 |---|---|---|
 | `planner_search:=lattice` (default) | joins short car moves from a ready-made list, our **primitives** (below) | **yes** |
 | `planner_search:=hybrid` | searches with real car moves: straight, full left, full right; Reeds-Shepp curves to finish | **yes** |
-| `planner:=diffusion` | a model draws the path, a guard checks it, the lattice's path if it fails ([Trials](trials.md#diffusion-7-8-nov-the-u-turn-the-orin-the-car)); on the car only behind `diffusion_trial:=true`, 0.5 m/s | **yes** (the guard checks) |
+| `planner:=diffusion` | a model draws the path, a guard checks it, the lattice's path if it fails ([Trials](history/trials-log.md#diffusion-7-8-nov-the-u-turn-the-orin-the-car)); on the car only behind `diffusion_trial:=true`, 0.5 m/s | **yes** (the guard checks) |
 
 Nav2 also had three planners that ignore the turning circle (Smac 2D, NavFn, Theta*).
 We tried them in Gazebo (29-30 Oct) and the car refused them; they went with Nav2 on
@@ -701,8 +701,8 @@ trials too. The basics: [Learn: localization](learn-localization.md).
 | Way | What it is | ✅ | ❌ | Status |
 |---|---|---|---|---|
 | **EKF** (`robot_localization`) | a Kalman filter: wheels + IMU + GPS, two of them, 30 Hz | stock; cheap; works anywhere | only as good as GPS: 1-3 m without RTK | **in use** |
-| **AMCL** (ours in Rust, `aav_amcl_rs`, since 18 Nov; stock `nav2_amcl` with `amcl_impl:=stock`) | a particle filter: thousands of guesses, each lidar scan kills the unlikely ones | about 5-10 cm where the lidar sees posts, curbs, walls | needs a map first (`slam_toolbox`); a bare lot gives it little | **trial, built** (`amcl:=true`, the test lot; scored only). 29 Oct: 6-11 cm once tuned ([Trials](trials.md#29-oct-afternoon-amcl-tuned-and-why-it-was-lost)); 18 Nov: ours ties with stock, 5-9 cm a leg ([Trials](trials.md#18-nov-amcl-in-rust-against-stock)) |
-| **NDT** (`aav_ndt`, ours in Rust) | slide the lidar scan onto a map of blobs ([how](learn-localization.md#ndt-blobs)) | centimetres without RTK; Autoware's way | needs a lidar map of the lot (`pixi run ndt-map drive`) | **trial, built** (`ndt:=true`; `ndt_ekf:=true` feeds the global EKF). 30 Oct, Gazebo: the EKF 17 → 1.6 cm ([Trials](trials.md#ndt-into-the-global-ekf-30-oct)) |
+| **AMCL** (ours in Rust, `aav_amcl_rs`, since 18 Nov; stock `nav2_amcl` with `amcl_impl:=stock`) | a particle filter: thousands of guesses, each lidar scan kills the unlikely ones | about 5-10 cm where the lidar sees posts, curbs, walls | needs a map first (`slam_toolbox`); a bare lot gives it little | **trial, built** (`amcl:=true`, the test lot; scored only). 29 Oct: 6-11 cm once tuned ([Trials](history/trials-log.md#29-oct-afternoon-amcl-tuned-and-why-it-was-lost)); 18 Nov: ours ties with stock, 5-9 cm a leg ([Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock)) |
+| **NDT** (`aav_ndt`, ours in Rust) | slide the lidar scan onto a map of blobs ([how](learn-localization.md#ndt-blobs)) | centimetres without RTK; Autoware's way | needs a lidar map of the lot (`pixi run ndt-map drive`) | **trial, built** (`ndt:=true`; `ndt_ekf:=true` feeds the global EKF). 30 Oct, Gazebo: the EKF 17 → 1.6 cm ([Trials](history/trials-log.md#ndt-into-the-global-ekf-30-oct)) |
 | **KISS-ICP** (stock, MIT) | how far the car moved, from the lidar alone | no map needed | drifts, as any odometry | **trial, built** (`kiss_icp:=true`; `kiss_ekf:=true` feeds the local EKF: no clear win, 1 Nov) |
 
 A localizer feeds `ekf_global` only once it wins on a bag from the real lot, not just in

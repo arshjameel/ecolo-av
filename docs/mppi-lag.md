@@ -22,7 +22,7 @@ The comparisons with Nav2's MPPI below are the record.
 > - **Gazebo, 7 Nov:** not a fair test: on a loaded computer the odometry stalled and it gave up
 >   ([below](#in-gazebo)); while driving it was closer to the path (0.13 m against 0.20 m).
 > - **Our simulator, 8 Nov** (newer; the numbers live on other pages): the lot tour, 3 runs,
->   **11 of 12 legs** (Nav2's MPPI 8: [trials](trials.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)).
+>   **11 of 12 legs** (Nav2's MPPI 8: [trials](history/trials-log.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)).
 >   In an all-ours stack it passes the campus's first goal at 2.5 m/s and uses twice
 >   Nav2's MPPI's CPU (33-39 % against 17-18 %: [our navigator](own-navigator.md#the-verdict)).
 >   Open: TODO 152 (slow earlier near the goal, fewer futures, time it on the Orin).
