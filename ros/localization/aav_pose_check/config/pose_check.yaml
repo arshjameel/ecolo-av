@@ -8,10 +8,12 @@ pose_check:
     # NDT: a good fit every cloud (10 Hz). 1 s without one: stale. LOST comes from NDT.
     ndt_max_age: 1.0
     # NDT's median score per point (over `window`) at which it wins a disagreement with the
-    # GPS. The lot (Gazebo, 30 Oct, 5,852 good fits): every good fit scored 2.6 or more; a
-    # wrong one on the made-up lot 1.2; NDT refuses under 2.3 (ndt.yaml). TODO 121: how high
-    # a WRONG pose scores is not measured; until it is, this is the lot's good-fit floor.
-    trust_score: 2.6
+    # GPS: NDT's own floor (ndt.yaml's min_score_per_point, 2.3 in the lot), so a fit good
+    # enough to publish is good enough to win. Ravensim's lot, 19 Nov (TODO 121), 12 tours:
+    # NDT on the right place scored 2.0-4.0 (99 % over 2.5, median about 3); seeded 5 m off
+    # by a drifting GPS it scored 0-2.0 (median about 1.2). 2.6 (Gazebo's good-fit floor)
+    # judged a right NDT wrong when the GPS drifted: its median over 5 s dipped under 2.6.
+    trust_score: 2.3
     # The GPS: as the sensor watchdog's and the geofence's. Over 3 m of its own spread
     # (1 sigma) it is no fall-back; the sim's is 0.5 m, a plain u-blox's 1-2.5 m.
     gps_max_age: 2.0

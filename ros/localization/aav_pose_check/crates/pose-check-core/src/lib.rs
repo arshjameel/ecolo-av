@@ -308,7 +308,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             ndt_max_age: 1.0,
-            trust_score: 2.6,
+            trust_score: 2.3,
             gps_max_age: 2.0,
             gps_max_std: 3.0,
             max_jump_speed: 15.0,

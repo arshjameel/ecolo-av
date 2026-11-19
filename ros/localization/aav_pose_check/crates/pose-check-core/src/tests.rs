@@ -218,8 +218,9 @@ fn ndt_back_on_track_takes_the_lead_again() {
 #[test]
 fn a_weak_ndt_that_disagrees_with_a_healthy_gps_is_judged_wrong() {
     let mut c = checker();
-    // NDT tracking 4 m off the truth, on a score under trust_score (2.6): the wrong wall.
-    let wrong = |t: f64| Some((Pose2::new(t, 4.0, 0.0), 2.4));
+    // NDT tracking 4 m off the truth, on a score under trust_score (2.3): the wrong wall
+    // (Ravensim's lot, 19 Nov: NDT 5 m off scored 0-2.0).
+    let wrong = |t: f64| Some((Pose2::new(t, 4.0, 0.0), 1.2));
     let run = drive(&mut c, 0.0, 10.0, wrong, clean_gps);
     assert!(matches!(c.verdict(), Verdict::NdtWrong { .. }));
     let last = run.ticks.last().unwrap();
