@@ -766,7 +766,7 @@ def generate_launch_description():
                                           "lane's centre (TODO 148); empty: off"),
         DeclareLaunchArgument('lane_source', default_value=lane_map.DEFAULT_LANE_SOURCE,
                               description="the lanes layer's lanes: map (lane_costs:='s "
-                                          'roads), camera (the lane finder\'s lines, on '
+                                          "roads), camera (the lane finder's lines, on "
                                           '/perception/lane/geometry; needs it running) or '
                                           'both (the map wins where it has a road; TODO 264)'),
         DeclareLaunchArgument('costmap_chunks', default_value='',

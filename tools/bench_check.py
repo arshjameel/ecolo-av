@@ -51,7 +51,6 @@ beside it). AAV_BENCH_LOG=/tmp/mine.log moves them. --lane (lane keeping) went w
 follower on 19 Nov (TODO 264; git tag save/lane-followers).
 """
 
-import bisect
 import math
 import os
 import signal

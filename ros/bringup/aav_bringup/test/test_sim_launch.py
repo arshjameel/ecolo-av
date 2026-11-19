@@ -452,9 +452,11 @@ def test_camera_lanes_start_the_lane_finder_and_reach_the_costmap():
     assert (nav['lane_source'], nav['lane_costs']) == ('camera', '')
     both = included(started(SIM, world='road', lanes='both'))['navigation.launch.py']
     assert both['lane_source'] == 'both' and both['lane_costs'].endswith('road.lanes.yaml')
+    # Off (ours' lanes level): the lane source stays the map's (the lane finder may still
+    # run, for ours' lane pose).
     off = included(started(SIM, world='road'))
-    assert 'lane_finder.launch.py' not in off
     assert off['navigation.launch.py']['lane_source'] == 'map'
+    assert 'lane_finder.launch.py' not in included(started(SIM, world='road', pose='ekf'))
     with pytest.raises(ValueError, match='lane_source:=camera'):
         started(SIM, world='empty', lanes='camera')
 

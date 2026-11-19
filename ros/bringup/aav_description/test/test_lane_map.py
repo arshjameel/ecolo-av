@@ -4,8 +4,8 @@ from collections import namedtuple
 import math
 
 from aav_description.lane_map import check_lane_graph, lanelet2_beside, planner_block
+from aav_description.lane_map import check_lane_source, LaneMap, lanes_block, Road
 from aav_description.lane_map import costmap_block, from_dict, lane_line, lane_offset
-from aav_description.lane_map import check_lane_source, lanes_block, LaneMap, Road
 from aav_description.lane_map import with_edges
 from aav_description.road_ahead import build
 from aav_description.stop_law import from_car_model

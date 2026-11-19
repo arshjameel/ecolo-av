@@ -2,8 +2,8 @@ import math
 
 from aav_lane_finder.birds_eye import BirdsEye, Grid, Lens, Mount
 from aav_lane_finder.lane_lines import (draw, lane_from, LaneFinder, Line, MAX_RADIUS,
-                                        PAINT_UNKNOWN, PAINT_WHITE, PAINT_YELLOW, paint_mask,
-                                        paint_of, Settings, STRAIGHT)
+                                        paint_mask, paint_of, PAINT_UNKNOWN, PAINT_WHITE,
+                                        PAINT_YELLOW, Settings, STRAIGHT)
 import numpy as np
 from scenes import BENCH_CAMERA, picture
 

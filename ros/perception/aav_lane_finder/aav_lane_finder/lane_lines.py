@@ -55,8 +55,8 @@ class Settings:
     max_lane_width: float = 5.0    # m
     lookahead: float = 3.0         # m ahead of base_link: where the offset is measured
     wheelbase: float = 1.57        # m, for steering_hint (vehicle.yaml)
-    yellow_ratio: float = 0.75     # paint is yellow when its blue is below this share of
-                                   # the lower of its red and green
+    # Paint is yellow when its blue is below this share of the lower of its red and green.
+    yellow_ratio: float = 0.75
 
 
 @dataclass(frozen=True)
