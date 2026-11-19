@@ -95,7 +95,7 @@ page. All of these are trials or sim-only unless the row says "default".
 |---|---|---|
 | **Localization** | | |
 | NDT on a saved lidar map (29 Oct) | `aav_ndt` (Rust), `ndt:=true`; into the global EKF with `ndt_ekf:=true` | [[works]] in Gazebo: 1-3 cm off on the lot tour (29 Oct); the EKF 17 → 1.6 cm with it (30 Oct). Off: it needs the lot's map (`pixi run ndt-map drive`, not in git). [[untested]] on a real lot ([Trials](trials.md)) |
-| AMCL (29 Oct) | stock `nav2_amcl`, `amcl:=true` | [[works]] in Gazebo, 29 Oct: 6-11 cm off once tuned. Scored only, never steers |
+| AMCL (29 Oct; in Rust 18 Nov) | ours, `aav_amcl_rs` (stock `nav2_amcl` with `amcl_impl:=stock`), `amcl:=true` | [[works]] in Gazebo, 29 Oct: 6-11 cm off once tuned; ours in Ravensim, 18 Nov: a tie with stock, 3 runs each. Scored only, never steers |
 | KISS-ICP lidar odometry (30 Oct) | `aav_kiss_icp` (stock, MIT), `kiss_icp:=true`, `kiss_ekf:=true` | [[works]] in Gazebo, 30 Oct, one run: 0.04 m drift per 100 m. Into `ekf_local` (1 Nov): no clear win yet. Off |
 | Localization health checks (1 Nov, Betsi) | `aav_localization_health` | [[works]] in its tests; `pixi run check` prints its line. It only warns. Thresholds tuned in Gazebo only |
 | **Perception** | | |
