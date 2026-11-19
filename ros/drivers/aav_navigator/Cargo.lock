@@ -714,6 +714,9 @@ dependencies = [
 [[package]]
 name = "navigator"
 version = "0.1.0"
+dependencies = [
+ "futures",
+]
 
 [[package]]
 name = "navigator-node"
