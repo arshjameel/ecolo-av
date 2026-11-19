@@ -36,7 +36,7 @@ since 8 Nov, the only simulator since 16 Nov** (`simulator:=own` still works for
 | pub | `/clock` | 1 kHz |
 | pub | `/vehicle/sim/odom` | Odometry, 50 Hz, `odom` |
 | pub | `/vehicle/sim/truth` | Odometry, 50 Hz, `map`: height and tilt on the ground too |
-| pub | `/vehicle/sim/imu` | Imu, 50 Hz, `imu_link`, gravity +9.8 |
+| pub | `/vehicle/sim/imu` | Imu, 50 Hz, `imu_link`, gravity +9.8. Since 18 Nov (S3) it reads as a real IMU: turn rates on all three axes, from how the car turned since the last reading (slopes too); the mean acceleration since then (the car model catches each command in 1-2 ms at up to 10 m/s², so an instant's would read 10 or 0); the turn's pull at the sensor's place; gravity as the tilted car feels it. The car's IMU sends 200 Hz; this one stays at Gazebo's 50 |
 | pub | `/vehicle/sim/navsat` | NavSatFix, 5 Hz, `gps_link` |
 | pub | `/joint_states` | JointState, 100 Hz: four wheels, two steering joints |
 | pub | `/sensors/lidar/points` | PointCloud2, 10 Hz, `lidar_link`, 1800 x 16, reliable (`lidar`) |

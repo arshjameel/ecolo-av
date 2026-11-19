@@ -438,7 +438,7 @@ topics:
     pub: [imu_node, sim_imu, mock_imu, carla_adapter]
     sub: [imu_filter_madgwick, actuator_test]
     live: [sim, car, replay, bench]
-    note: Gyro and accelerometer in imu_link, with covariances; no orientation. In Ravensim, sim_imu adds the car's own acceleration, worked out from Ravensim's odometry.
+    note: Gyro and accelerometer in imu_link, with covariances; no orientation. In Ravensim, sim_imu passes on Ravensim's own reading (since 18 Nov, S3; accel_from odometry works it out from the odometry, as before).
   /sensors/imu/mag:
     type: sensor_msgs/msg/MagneticField
     pub: [imu_node, mock_imu]
@@ -701,7 +701,7 @@ topics:
     pub: [simulator]
     sub: [sim_imu]
     live: [sim]
-    note: Ravensim's raw IMU, imu_link, 50 Hz - orientation, turn rate, gravity (+9.8 up), noise; sim_imu adds the car's own acceleration and publishes /sensors/imu/data_raw. Was /gazebo/imu.
+    note: Ravensim's raw IMU, imu_link, 50 Hz - orientation, turn rates on all three axes (how base_link turned since the last reading, slopes too), and the specific force - the car's mean acceleration since the last reading, the turn's pull at the sensor, gravity (+9.8 up) as the tilted car feels it - with noise (S3, 18 Nov); sim_imu publishes it as /sensors/imu/data_raw, without the orientation, as the car's IMU. Was /gazebo/imu.
   /vehicle/sim/navsat:
     type: sensor_msgs/msg/NavSatFix
     pub: [simulator]

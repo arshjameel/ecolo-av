@@ -14,8 +14,9 @@
 //!             vehicle/sim/truth       nav_msgs/Odometry, 50 Hz, map -> base_link: where the
 //!                                     car really is (for checks only)
 //!             vehicle/sim/imu              sensor_msgs/Imu, 50 Hz, imu_link: orientation, turn
-//!                                     rate and specific force (gravity +9.8 up), with
-//!                                     Gazebo's old noise
+//!                                     rates and specific force (gravity +9.8 up), each
+//!                                     averaged since the last reading as a real IMU's
+//!                                     (sim-core sim.rs), with Gazebo's old noise
 //!             vehicle/sim/navsat           sensor_msgs/NavSatFix, 5 Hz, gps_link: the antenna on
 //!                                     the world's datum, with its noise
 //!             joint_states            sensor_msgs/JointState, 100 Hz: the four wheels' spin
