@@ -69,6 +69,9 @@ def main(argv=None) -> int:
     p.add_argument('model', nargs='?', default='models/rf-detr-nano.pth',
                    help='a .pth (RF-DETR) or .pt (YOLO); default models/rf-detr-nano.pth')
     p.add_argument('--format', choices=sorted(FORMATS), default='coreml')
+    p.add_argument('--fp16', action='store_true',
+                   help='with --format onnx: also <name>_fp16.onnx, half precision inside, '
+                        'float32 in and out (from the .onnx, made first if missing)')
     args = p.parse_args(argv)
     model = Path(args.model)
     model = model if model.is_absolute() else ROOT / model
@@ -85,6 +88,10 @@ def main(argv=None) -> int:
         return 2
     out = model.with_suffix(FORMATS[args.format])
     start = time.monotonic()
+    if args.fp16 and args.format == 'onnx' and out.exists():
+        half = half_precision(out)
+        print(f'{half}: made in {time.monotonic() - start:.0f} s')
+        return 0
     if model.suffix == '.pth':
         made = export_rfdetr(model, args.format, out)
     elif model.suffix == '.pt':
@@ -93,7 +100,25 @@ def main(argv=None) -> int:
         print(f'{model}: export a .pth (RF-DETR) or a .pt (YOLO)', file=sys.stderr)
         return 2
     print(f'{made}: made in {time.monotonic() - start:.0f} s')
+    if args.fp16 and args.format == 'onnx':
+        print(f'{half_precision(Path(made))}: made')
     return 0
+
+
+def half_precision(onnx_file: Path) -> Path:
+    """
+    Write <name>_fp16.onnx: the weights and the work in half precision, in and out float32.
+
+    ONNX Runtime's own converter (onnxruntime.transformers.float16). For the GPUs that
+    work faster in half: TensorRT on the Orin, and Core ML's Neural Engine on a Mac.
+    `pixi run measure onnx` checks it against the float32 file.
+    """
+    import onnx
+    from onnxruntime.transformers.float16 import convert_float_to_float16
+    out = onnx_file.with_name(onnx_file.stem + '_fp16.onnx')
+    model = convert_float_to_float16(onnx.load(str(onnx_file)), keep_io_types=True)
+    onnx.save(model, str(out))
+    return out
 
 
 if __name__ == '__main__':

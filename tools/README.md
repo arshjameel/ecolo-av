@@ -162,12 +162,13 @@ Each lands outside git, checksum pinned where the script says.
 | `scorecard.py` | the numbers behind `score_drive.py` (no ROS) | - |
 | `slam_map.py` | the numbers behind `map-drive`: poses flattened, UTM and the GPS fit, the 2D map, map errors, merging (no ROS) | - |
 | `recording.py` | the numbers behind `record-drive`: what it records, GB an hour, the checks, the summary and its verdicts (no ROS) | - |
-| `measure.sh` | picks one of the five measurements below and runs it (the simulator ones `--local`) | `measure <controllers, timing, stream, atob, bandwidth>` |
+| `measure.sh` | picks one of the measurements below and runs it (the simulator ones `--local`) | `measure <controllers, timing, stream, atob, lane, bandwidth, diffusion, onnx>` |
 | `link_check.py` | did the Motor Pi's frames reach the ESP32? A bag (or the live topics) against the ESP32's status lines: PASS, FAIL, NOT TESTED (its maths without ROS) | `link-check` |
 | `atob_score.py` | scores A-to-B runs (bag or CSV): speed up, hold, stop on B; EKF vs truth or tape | `measure atob` |
 | `can_load.py` | the CAN bus load from `firmware/can/aav.dbc` | - |
 | `compare_detectors.py` | YOLO11, YOLO26 and RF-DETR on the same pictures | - |
 | `export_model.py` | a detector to Core ML (Mac) or ONNX (Orin, and the Rust detector) | - (`pixi run -e ml python3 tools/export_model.py --format coreml`) |
+| `onnx_measure.py` | every ONNX model in `models/` (the detector, the diffusion planner; their FP16 twins): Core ML against the CPU and PyTorch, its share of the graph, what fell back, ms; PASS/WARN/FAIL, `--json` ([ONNX](../docs/onnx.md)) | `measure onnx` |
 | `onnx_check.py` | the ONNX detector's boxes against PyTorch's, and each runtime's ms a picture (`--time`); `--write-fixtures` for `detector-core`'s tests ([ONNX](../docs/onnx.md)) | - (`pixi run -e ml python3 tools/onnx_check.py`) |
 | `vehicle_model.py` | the car's linear model: poles, steps, margins | - |
 | `state_space_demo.py` | the state-space teaching example | - |
