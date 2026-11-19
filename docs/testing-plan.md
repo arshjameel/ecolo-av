@@ -1,230 +1,445 @@
 # The testing plan
 
-Written 18 November 2026 by Ben Woodhead, for the team and our professor. It says **what we
-test, in what order, and how we know each step passed**. The detail of each test is in
-[Every test](tests.md) and [Actuator tests](actuator-tests.md); the day itself in
-[Car day](car-day.md).
+**The testers' strategy**: what the people on the team do with the car, in order, and what
+each session gives the next. First written 18 November 2026 by Ben Woodhead; rewritten
+19 November around the testers' sessions (Ben: "Now that we know what we have and what is
+possible then lets start figuring out testing").
+
+The detail of each test is in [Every test](tests.md) and [Actuator tests](actuator-tests.md);
+the day itself in [Car day](car-day.md); the checks after an install in
+[After the install](after-install.md).
 
 > **The short version**
-> - **Seven phases**, from the car on stands to a twin of the campus in Ravensim.
-> - **One command per phase** runs its tests and writes one report. Today most tests run one by one; the plan makes them one automated system (our professor's ask).
-> - **Stands first** (the car is being upgraded now), then **the hallway** this winter, then mapping drives outside.
-> - Every row says **Built**, **To build** or **Untested on the car**. Nothing is "works" until it has run on the car.
+> 1. **Bench → stands → hallway → lot → campus mapping drives → offline processing → the car
+>    drives itself.** Each step has a pass rule; nothing moves on until it passes.
+> 2. **A boot self-test** at every start: every sensor, actuator and lock answers, or the car
+>    **refuses to arm**. Parts exist; the one check that gates arming is to build (TODO 255).
+> 3. **Stands**: speed up, slow down, steering lock to lock. Numbers into `vehicle.yaml`.
+> 4. **Hallway**: start and stop runs, measured three ways (wheels, IMU, NDT), **empty and
+>    with a person aboard**. The transfer functions tune the car model and the adaptive brake.
+> 5. **Mapping drives, then offline processing on a laptop**: several passes of each campus
+>    area → NDT maps first → occupancy later, to remove parked cars and people.
+> 6. Every row says **Built**, **To build** or **Untested on the car**. Nothing is "works"
+>    until it has run on the car. Today **nothing here has run on the car** (it is being upgraded).
 
-## The order
+## The strategy on one page
 
-| Phase | What | Where | Needs |
-|---|---|---|---|
-| **A** | The car on stands: preflight, every sensor, steering, throttle, **faults on purpose** (losing the Orin too) | the shop, wheels off the ground | the hardware lead; the upgraded car |
-| **B** | **The transfer functions**: accelerate, brake, steer, measured and compared with the model | **the long hallway** (winter), then a lot | phase A passed |
-| **C** | **The recording kit**: every sensor, clocks in step | the car | phase A |
-| **D** | **Maps from hand drives**: SLAM makes the map, NDT and AMCL find the car on it | campus, driven by hand | phase C |
-| **E** | **The map editor**: an overhead map, street maps and ours, editable | a laptop | phase D's maps |
-| **F** | **The labelling loop**: trees, buildings, parked cars; a better model after each drive | a laptop with a GPU, then the Orin | phases C and E |
-| **G** | **The campus twin** in Ravensim, built from the labelled maps | a laptop | phases D to F |
+### The ladder
 
-Alongside A and B: **the debug screen**: who is sending commands, and what (below; built 19 Nov, the map window's D page).
+```text
+ 0 bench / laptops ─▶ 1 boot self-test ─▶ 2 stands ─▶ 3 hallway ─▶ 4 lot
+   (after-install)      (every start)       (A)         (B)          (B, faster)
+                                                                        │
+       7 the car drives itself ◀── 6 offline processing ◀── 5 campus mapping drives
+         (NDT leads, routes)        (laptop: D, E, F, G)       (C: record by hand)
+```
+
+### Each step: why, its pass rule, and what it feeds
+
+| # | Step | Why | Passes when | Feeds |
+|---|---|---|---|---|
+| 0 | **Bench and laptops** ([after the install](after-install.md)) | the code and every computer work before the car | every box ✅ | step 1 |
+| 1 | **Boot self-test** | "make sure we have control over everything" | every sensor, actuator and lock answers; the car arms | every session after |
+| 2 | **Stands** (phase A) | steering and throttle measured with nothing able to run away | `car-test --stands` all PASS; every fault stops the car | steering numbers → `vehicle.yaml`; step 3 |
+| 3 | **Hallway** (phase B) | the transfer functions, indoors, in winter | the model's speed within 10 % of the car's, its stop within 0.2 m | delays and lags → `vehicle.yaml` → the sim's car model → ego and the planners; the adaptive brake |
+| 4 | **Lot** (phase B, faster) | the same at 2-3 m/s; circles; drift | the same rule, at the higher speeds | the same, at speed |
+| 5 | **Mapping drives** (phase C) | the raw points and pictures every map is built from | `record-drive`'s summary says "good for" the map and SLAM | step 6 |
+| 6 | **Offline processing** (phases D-G) | maps, labels and the twin, made on a laptop, never on the car | NDT on our map within 0.2 m of a good GPS | NDT's map → step 7; the campus twin in Ravensim |
+| 7 | **The car drives itself** | the goal | the route done at low speed, no takeover needed for safety | the scores we track |
+
+### How the numbers flow
+
+```text
+ stands ─────── steering: offset, deadband, rate, max angle ──┐
+ hallway, lot ─ throttle, brake, steering: dead time + lag ───┼─▶ vehicle.yaml ─▶ the sim's car model
+ scales ─────── mass, empty and with a person ────────────────┘        │            │
+                                                                        ▼            ▼
+                                                     the adaptive brake      ego's limits, MPPI, MPC
+ mapping drives ─▶ map-drive (offline) ─▶ NDT's map + 2D map ─▶ NDT leads ─▶ the car drives itself
+```
 
 ## What runs automatically today
 
 | Level | Command | When | Status |
 |---|---|---|---|
 | The code | `pixi run test` (2149 tests, 18 Nov) | every push and pull request (CI: Linux, ARM) | Built |
-| The simulator | `pixi run sim-check` and its modes (`--obstacle`, `--kerb`, `--movers`, `--faults`, `--actuator-faults`, `--three-point`...) | each night on CI; by hand before a release | Built |
+| The simulator | `pixi run sim-check` and its modes (`--obstacle`, `--kerb`, `--movers`, `--faults`, `--actuator-faults`, `--three-point`, `--loaded-stop`...) | each night on CI; by hand before a release | Built |
 | The ESP32 | in QEMU: it brakes when the Orin's heartbeat stops | in `pixi run test` | Built; untested on the real board |
 | The bench | `pixi run bench`, `pixi run bench-check` | by hand | Built |
+| After the install | [one page of checks](after-install.md) (phase 0) | after each upgrade | Written; untested on the car |
 | On stands | `pixi run actuator-test preflight --stands` | by hand | Built; **untested on the car** |
 | On stands, all of phase A | `pixi run car-test --stands` (`--sim --no-manual`: against its own Ravensim) | by hand | Built 19 Nov; against Ravensim 11 PASS, 3 SKIPPED (car only); **untested on the car** |
-| On the ground | `pixi run actuator-test speed-up / coast / brake` | by hand | Built; **untested on the car** |
-| In the hallway, all of phase B | `pixi run car-test --hallway` (`--sim --no-manual`: a pretend hallway in its own Ravensim) | by hand | Built 19 Nov (TODO 248); against Ravensim and the pretend car; **untested on the car** |
+| In the hallway, all of phase B | `pixi run car-test --hallway` (`--sim --no-manual`: a pretend hallway) | by hand | Built 19 Nov (TODO 248); **untested on the car** |
+| On the ground | `pixi run actuator-test speed-up / coast / brake / circles / straight` | by hand, in a lot | Built; **untested on the car** |
+| A mapping drive | `pixi run record-drive` (`--sim`: its own test) | by hand | Built 19 Nov; **untested on the car** |
+| Maps from a drive | `pixi run map-drive` (offline) | by hand, on a laptop | Built 19 Nov; Ravensim only |
+
+## The boot self-test
+
+Ben, 19 Nov: "Make sure we have control over everything with a basic boot self test."
+
+### What exists today
+
+| Check | What it covers | When it runs | Status |
+|---|---|---|---|
+| `car_setup.sh <role> check` | one computer: its release, its devices (`/dev/aav/*`), its service | by hand, after an install | Built; untested on the upgraded car |
+| `pixi run check car` | every topic in the contract, at its rate | by hand, from a laptop | Built; untested on the car |
+| `actuator-test preflight --stands` | every sensor's rate and values; speed up, hold, slow, brake; steer | by hand, on stands | Built; untested on the car |
+| `car-test --stands` | the preflight, steering, throttle, faults on purpose | by hand, on stands | Built; untested on the car |
+| `record-drive --check` | disk, rates, stamps, clocks, sensor frames | by hand, before a drive | Built; untested on the car |
+| **The spine's self-test** (`spine-core`, `Lifecycle::SelfTest`) | the steering and brake drivers, the throttle DAC, the wheel encoder: **nothing arms until they answer** | at every power-up, on the board | Built in the Rust spine; **not on the car** (it runs the 2025-26 C++ ESP32). TODO 0b (Arsh): today it passes after one tick with no fault |
+| `spine_bridge`'s arm rule | refuses `/spine/arm` during an e-stop or while the output gate isn't OPEN | every arm | Built |
+
+### What is missing
+
+**One check, at start-up, that covers the whole car and refuses to arm until it passes.**
+Today each part is checked by a different command, by hand, and nothing stops a person
+arming a car whose lidar is silent.
+
+```text
+ power on ─▶ every computer up ─▶ BOOT SELF-TEST ─┬─ all ✅ ─▶ READY ─▶ a person arms
+                                                   └─ any ❌ ─▶ NOT READY: says which; arming refused
+```
+
+| It checks | Pass | Source today |
+|---|---|---|
+| Every sensor: lidar, IMU, GPS, wheels, each camera, radar | at its rate, values in range, the IMU still reads gravity | the preflight's sensor lines |
+| Every actuator answers | the spine's self-test passed; steering, brake and throttle report a state | `/vehicle/status`, `/vehicle/steering`, `/vehicle/brake` |
+| Every lock is alive | the e-stop path, the sensor watchdog, the geofence, the output gate, joy_alive each publishing | their `/safety/*/state` topics |
+| The clocks | every computer within the limit of the Orin | `record-drive --check`'s `chronyc` |
+| The person's stop | the e-stop pressed once and seen, then released | the after-install's e-stop row |
+
+Proposed: a node beside `spine_bridge` publishes READY or NOT READY (and why, for the HUD and
+the debug page); `spine_bridge` refuses `/spine/arm` until READY, as it already does for the
+gate. It moves nothing: no actuator steps (that stays on stands). **To build: TODO 255.**
 
 ## Phase A: the car on stands
 
-**Goal:** before the wheels touch the ground, every part answers, and every fault stops the car.
+**Goal:** before the wheels touch the ground, every part answers, every number the stands can
+give is measured, and every fault stops the car.
 
-### A1. The preflight (built)
+**Who:** the hardware lead (the car, the stands, the cables), the e-stop person, the laptop
+person, someone watching the rear wheels.
 
-`pixi run actuator-test preflight --stands`: speed up, hold, slow, brake, steer, and every
-sensor at once. **PASS / FAIL per line.** It presses the e-stop itself if the car won't stop.
+### Speed up and slow down
 
-### A2. One command for the whole stands test (built 19 Nov; untested on the car)
+| Test | What | Status |
+|---|---|---|
+| `actuator-test preflight --stands` | speed up to 0.3 m/s, hold 5 s, slow to 0.15, brake, steer | Built; untested on the car |
+| `wheel-steps` (3.14, in `car-test --stands`) | 0.1, 0.2, 0.3, 0.15 m/s, 4 s each: does the wheel speed follow | Built; untested on the car |
 
-`pixi run car-test --stands` runs, in order, and writes one report folder
-(`~/aav-tests/<time>-stands/report.md`). Any FAIL ends the run. How it works:
-[car-test](actuator-tests.md#car-test-the-whole-stands-test).
+> ⚠️ **The known gap (TODO 49b): nothing measures the driven rear wheels on stands.** The
+> wheel sensors are on the **front** wheels; the motor drives the **rear**. On stands
+> `/vehicle/odom` reads 0 while the rear wheels spin, so no speed cap can work. Until
+> `vehicle.yaml`'s `speed_wheels` says `rear`, the preflight runs `--no-drive` (sensors only).
+> Until then: a tachometer app on a rear wheel, read by a person, and the throttle by hand.
 
-| Step | Test | Passes when | Status |
+### Steering lock to lock
+
+| Test | What | Gives (`vehicle.yaml`) | Status |
 |---|---|---|---|
-| 1 | The preflight (A1) | every line PASS | Built; untested on the car |
-| 2 | Every sensor read: lidar, the front camera, radar, IMU, GPS, wheels (the preflight's `--no-drive`) | each at its documented rate | Built; untested on the car |
-| 3 | Steering: sweep, rate, centre (`steer-sweep`, `steer-rate`, `steer-centre`) | its numbers printed for `vehicle.yaml` | Built; untested on the car |
-| 4 | Throttle on free wheels (`wheel-steps`, 3.14: 0.1, 0.2, 0.3, 0.15 m/s) | the wheels' speed follows the command | Built; untested on the car |
-| 5 | **Faults on purpose** (table below) | each one stops the car, and something says why | Built; untested on the car |
+| **LOCK-TO-LOCK CHECK** (hardware panel, key K) | the steering actuator's ends and centre marked, then centre → left limit → right limit → centre at 100 counts a second; **PASSED** or **STOPPED** and why | the ends and centre (`calibration.rs`); `max_steering_angle` | Built; untested on the car |
+| `steer-sweep` (3.10) | full left → centre → full right and back | `max_steering_angle`, `steer_offset` | Built; untested on the car |
+| `steer-rate` (3.11) | centre → full lock → centre, each way | `steer_rate`, `steer_lag` | Built; untested on the car |
+| `steer-centre` (3.12) | tiny steps (0.002 rad) each way | `steer_offset`, `steer_deadband` | Built; untested on the car |
+
+No steering sensor yet? Each test stops and asks for the angle: read it with a protractor or
+a phone on the wheel. How: [Actuator tests](actuator-tests.md#find-the-steering-actuators-ends-and-centre).
+
+> ⚠️ **Never test braking distance on stands.** Free wheels carry no weight, so the brake
+> numbers mean nothing there. Braking is phase B, on the ground.
+
+### One command for the whole stands test
+
+`pixi run car-test --stands` runs, in order, and writes one report
+(`~/aav-tests/<time>-stands/report.md`). Any FAIL ends the run.
+[How it works](actuator-tests.md#car-test-the-whole-stands-test).
+
+| Step | Test | Passes when |
+|---|---|---|
+| 1 | The preflight | every line PASS |
+| 2 | Every sensor read (`--no-drive`) | each at its documented rate |
+| 3 | Steering: sweep, rate, centre | its numbers printed for `vehicle.yaml` |
+| 4 | Throttle on free wheels (`wheel-steps`) | the wheels' speed follows the command |
+| 5 | **Faults on purpose** (below) | each one stops the car, and something says why |
 
 | Fault | How the runner causes it | Expected | Status |
 |---|---|---|---|
-| **The Orin is lost** | car: asks a person to pull the Orin's cable to the Motor Pi; sim: pauses its own Ravensim's output mux | the ESP32 brakes and holds, on its own | Built; untested on the car. No new hook in the output mux |
-| The GPS, the front camera or the IMU is lost | car: asks a person to unplug it; sim: Ravensim's `fault.<sensor> stop` | the sensor watchdog **names it** within its `max_age` + 1 s | Built; untested on the car |
-| The lidar is lost | car: asks a person to unplug it; sim: Ravensim's `fault.lidar stop` (`sim_lidar_relay`) | the same: the watchdog's `lidar` input (1.0 s, stops, as the camera; TODO 246) | Built; untested on the car |
-| A Pi is lost | asks a person to pull the camera Pi's cable | the car stops, something says why | Built; car only |
-| The e-stop | car: asks a person to press it; sim: the runner presses `/safety/estop` | everything stops | Built; untested on the car |
-| A cable is pulled | asks a person to pull it | the same as the software version | Built; car only |
+| **The Orin is lost** | car: a person pulls the Orin's cable to the Motor Pi; sim: pauses the output mux | the ESP32 brakes and holds, on its own | Built; untested on the car |
+| The GPS, the front camera or the IMU is lost | car: unplug it; sim: Ravensim's `fault.<sensor> stop` | the sensor watchdog **names it** within its `max_age` + 1 s | Built; untested on the car |
+| The lidar is lost | car: unplug it; sim: `fault.lidar stop` | the watchdog's `lidar` input (1.0 s) | Built; untested on the car |
+| A Pi is lost | a person pulls the camera Pi's cable | the car stops, something says why | Built; car only |
+| The e-stop | car: a person presses it; sim: the runner presses `/safety/estop` | everything stops | Built; untested on the car |
+| A cable is pulled | a person pulls it | the same as the software version | Built; car only |
 
-> ℹ️ The sensor watchdog's lock holds navigation and the AI slot, never a test: so on a
-> sensor fault the runner stops itself once the watchdog **names** the sensor. The step
-> measures how fast the watchdog notices.
-
-> ⚠️ **On stands, never test braking distance.** Free wheels carry no weight, so the brake
-> numbers mean nothing there. Braking is phase B, on the ground.
+The numbers it prints are **pasted into `vehicle.yaml` by a person**: no test writes the file.
 
 ## Phase B: the transfer functions, in the hallway
 
-**Goal:** the numbers in `vehicle.yaml` are measured, not guessed, and the model matches the car.
+**Goal:** the numbers in `vehicle.yaml` are measured, not guessed, for the car **empty and
+with a person aboard**, and the model matches the car. Ben, 19 Nov: "going down the hallway
+start and stop using the imu and ndt data to measure the transfer function ... We need to
+tune the tf".
 
 ### What "the transfer function" is here
 
 Each actuator is modelled as **a dead time, then a first-order lag**: the command goes in,
 nothing happens for the dead time, then the car moves towards the command with time constant
-"lag". Today these are **guesses** in `vehicle.yaml`:
+"lag". Today these are **guesses** in `vehicle.yaml`.
 
-| Actuator | Numbers to measure | Test | Status |
+```text
+ command ──┐                ┌──────────────── car's speed
+           │  dead time     │  lag (63 % of the way after one lag)
+           └────────────────┘
+```
+
+| Actuator | Numbers | Pass | Status |
 |---|---|---|---|
-| Throttle | `throttle_dead_time`, `throttle_lag`, top acceleration | `hall-speed-up` (B1; 4.1 in a lot) | Built; **untested on the car** |
-| Drag | how fast the car slows on its own | `hall-coast` (B2; 4.2) | Built; **untested on the car** |
-| Brake | `brake_dead_time`, `brake_lag`, deceleration, stopping distance | `hall-brake` (B3; 4.3) | Built; **untested on the car** |
-| Steering | `steer_dead_time`, `steer_lag` on the ground; rate, centre on stands | `hall-steer` (B4); `steer-rate` (3.11), `steer-centre` (3.12) | Built; **untested on the car** |
+| Throttle | `throttle_dead_time`, `throttle_lag`, `max_accel` | `hall-speed-up` (B1) | Built; **untested on the car** |
+| Drag | how fast the car slows on its own | `hall-coast` (B2) | Built; **untested on the car** |
+| Brake | `brake_dead_time`, `brake_lag`, `max_brake`, stopping distance | `hall-brake` (B3) | Built; **untested on the car** |
+| Steering | `steer_dead_time`, `steer_lag` on the ground | `hall-steer` (B4) | Built; **untested on the car** |
 
-**One command runs them all:** `pixi run car-test --hallway` (TODO 248;
-[how](actuator-tests.md#car-test-hallway-the-transfer-functions)).
+**One command runs them all:** `pixi run car-test --hallway`
+([how](actuator-tests.md#car-test-hallway-the-transfer-functions)). Each pass: still 10 s,
+speed up, then coast, brake or steer, then stop. Three times each, the car turned round
+between passes so the floor's slope cancels.
 
 ### Why the hallway works
 
 We can't go fast indoors, but **the model's numbers don't depend on speed** at our speeds.
-Distance needed to reach a speed and stop again:
+`car-test --hallway` works the top speed out from the length you type (never above 1.0 m/s):
 
-| Top speed | Speed up (0.5 m/s²) | Stop (1 m/s²) | Plus a safety margin | Total |
+| Hallway (taped) | Margin | Top speed |
+|---|---|---|
+| 4 m | 3 m | 0.64 m/s |
+| 5.3 m | 3 m | 1.0 m/s |
+| 12 m | 3 m | 1.0 m/s |
+| under 3.2 m | 3 m | refused |
+
+A 15 m+ hallway is needed for a **trusted drag** (TODO 248's finding).
+
+### Three measures of distance and speed
+
+| Source | Gives | Good | Weak | Status |
 |---|---|---|---|---|
-| 0.5 m/s | 0.25 m | 0.13 m | 3 m | about 3.5 m |
-| 1.0 m/s | 1.0 m | 0.5 m | 4 m | about 5.5 m |
-| 1.5 m/s | 2.3 m | 1.1 m | 5 m | about 8.5 m |
+| **Wheels** | speed, distance | no drift | the change in speed is noisy | Built |
+| **IMU** | acceleration, 100 times a second | quick and smooth | a small offset; the floor's slope looks like acceleration | Built (`fusion.py`) |
+| **NDT** on a hallway map | position, so distance and speed | independent of wheel slip and the wheel's size | **can slide along a plain corridor** (below) | **To build** in the hallway (TODO 256) |
 
-Measure the hallway first, and keep the shared 1.0 m/s limit unless it is clearly long enough.
+How the first two are blended, all built, in `fusion.py` and `errorbars.py`:
 
-`car-test --hallway` works the top speed out from the length you type
-(`safety.hallway_limits`: speed up at 0.5 m/s², 0.3 s to react, stop at 0.5 m/s², plus the
-margin), never above 1.0 m/s. Each pass brakes in time to stand still before
-**length − margin**, by the wheels' distance; past it, it stops at once.
-
-### Using the IMU as well as the wheels
-
-| Source | Gives | Good | Weak |
-|---|---|---|---|
-| Wheel speed | speed | no drift | its acceleration (the change in speed) is noisy |
-| **IMU** | **acceleration directly**, 100 times a second | quick and smooth | a small offset; the floor's slope shows up as acceleration |
-| Both together | acceleration and braking force you can trust | | |
-
-How: stand still for 10 s first to measure the IMU's offset; check the hallway is level;
-then blend the IMU's acceleration with the wheels' speed (the tests already record both:
-`ax` and the wheel speed in each run's CSV). The fit gives each number **with error bars**
-(TODO 104).
-
-| Step | Status |
+| Step | How |
 |---|---|
-| 10 s still before each pass: the IMU's offset and noise | Built (`fusion.still_imu`) |
-| The slope: the offsets facing each way (the car turned round between passes) | Built (`fusion.slope_from`) |
-| The blend: a small Kalman filter, speed and IMU bias | Built (`fusion.fuse`) |
-| Forces: F = m a, with `vehicle.yaml`'s mass | Built (`fusion.forces`) |
-| Error bars: mean ± sd over the passes, trusted or not | Built (`errorbars.py`) |
+| Offset | stand still 10 s before each pass: the IMU's offset and noise (`fusion.still_imu`) |
+| Slope | the offsets facing each way (`fusion.slope_from`); level enough under 1 % |
+| Blend | a small Kalman filter: speed and the IMU's bias (`fusion.fuse`) |
+| Forces | F = m a, with `vehicle.yaml`'s mass (`fusion.forces`) |
+| Error bars | mean ± sd over the passes; a number is **trusted** or not (`errorbars.py`) |
 
-### Compare with the model
+### NDT in the hallway: the third measure
 
-For each run: feed the same commands into the model (the simulator's car) and lay the two
-speed curves over each other. **Passes when** the model's speed stays within 10 % of the
-car's, and its stopping distance within 0.2 m. Then the simulator, ego's predictions and the
-planners all use the measured car.
+NDT matches the lidar to a map, so it measures distance without the wheels. **Its weakness
+here:** a long, plain corridor looks the same all along. Along the hallway NDT can slide: it
+"finds the wrong place". Across the hallway (the walls) it is sharp.
 
-Built (`hallway.replay`, `compare`): every pass, with the fitted numbers and with
-`vehicle.yaml`'s, into `compare.csv` and `overlays/`. **Untested on the car.**
+```text
+   wall  ║▓▓   ▓▓         ▓▓   ▓▓║   ▓▓ = a box or cone, fixed for the session
+         ║    ─────car────▶      ║   across: the walls pin it (trust)
+   wall  ║  ▓▓        ▓▓        ▓║   along:  only the boxes pin it (trust less)
+```
+
+| Step | How |
+|---|---|
+| 1 | Put **a few fixed objects** (boxes, cones) along both walls, at uneven gaps; leave them all session |
+| 2 | **Map the hallway first**: `pixi run record-drive --name hallway`, pushed slowly by hand, then `pixi run map-drive bags/<drive>` on a laptop |
+| 3 | Run NDT on that map during the passes; record its pose beside the wheels and the IMU |
+| 4 | **Trust NDT across more than along**: use it to check the wheels' distance, never alone |
+| 5 | Where NDT and the wheels disagree by more than the error bars: look at the slip, the wheel's size, or NDT sliding |
+
+> ⚠️ **To build (TODO 256 and 261):** `car.launch.py` doesn't start NDT today (only the sim
+> launch has `ndt:=true`), and `car-test --hallway` doesn't record NDT's pose. With no GPS
+> indoors, `map-drive` places the map from the drive's start (it says so in its YAML).
+
+### With and without a person aboard
+
+The same brake stops a heavier car more slowly (a = F / m). In the car model, 150 kg aboard a
+181 kg car brakes at 55 % of its empty strength ([How the car stops](stopping.md#4-a-heavier-car-the-adaptive-brake)).
+
+| Step | How | Status |
+|---|---|---|
+| 1 | **Weigh the car**, empty and with the person (TODO 14) | To do on the car |
+| 2 | `car-test --hallway` **empty** (driven from the laptop, a walker on the joystick beside it) | Built; untested on the car |
+| 3 | `car-test --hallway` **with a person aboard**, the same passes | Built; it has no way to note the load yet (TODO 257) |
+| 4 | Fit a transfer function for each load | Built (one fit per session) |
+| 5 | Feed both to the **adaptive brake** (`adaptive_brake:=true`): it brakes harder when the car stops slower than the model, never above `safe_max` | Built **in the sim only** (`sim_adapter`); not on the car's brake path (TODO 258) |
+
+### Tune the TF
+
+```text
+ hallway passes ─▶ fits ± error bars ─▶ vehicle-yaml.txt ─▶ a person pastes ─▶ vehicle.yaml
+                                                                                     │
+       re-run the passes through the model ◀────────── the sim's car model ◀─────────┘
+              │
+              └─▶ within 10 % speed and 0.2 m stop?  yes: done   no: more passes, or a better model
+```
+
+| Step | How | Status |
+|---|---|---|
+| Fit | each pass's dead time and lag; their mean ± sd | Built |
+| Only trusted numbers | printed to paste; the rest commented out, with why | Built |
+| Paste | a person pastes the lines into `vehicle.yaml` (no test writes the file) | by hand |
+| Check | every pass replayed through the model with the fitted numbers and the old ones (`hallway.replay`, `compare.csv`, `overlays/`). **Passes when** the speed is within 10 % and the stop within 0.2 m, inside the error bars | Built; **untested on the car** |
+| Then | the simulator, ego's predictions and the planners all use the measured car | automatic, from `vehicle.yaml` |
+
+### Then the lot
+
+The same tests faster, outdoors: `actuator-test speed-up`, `coast`, `brake --speeds 0.5 1.0`,
+`circles`, `straight` ([stage 4](actuator-tests.md#stage-4-in-an-empty-lot)). Same pass rule.
+Built; untested on the car.
 
 ## The debug screen
 
 Our professor's idea: the map screen doubles as a **debug screen**, like the hardware panel.
+Press **D** on the map window ([how it looks](hud.md#the-debug-page-who-is-driving)).
 
 | It shows | From | Status |
 |---|---|---|
-| **Who is driving**: joystick, keyboard, the navigator (the AI), a test, the buttons | `/control/command_mux/state` (`aav_mux_state`: twist_mux's rule, beside it) | **Built 19 Nov**; in the sim it named the keyboard, the navigator, a takeover and the hand-back, agreeing with twist_mux's output 226 times of 227 |
-| What that driver asks (speed, turn) | `/control/cmd_vel` (the chosen driver's, as twist_mux passed it) | **Built 19 Nov** |
-| What ego sends to the car (steering, braking or speeding up) | `/ego/actuator_cmd` | **Built 19 Nov** |
-| Whether the output gate is open, and why not | `/safety/output_mux/state` | **Built 19 Nov** |
-| What the car did (speed, steering, throttle, brake, mode, faults) | `/vehicle/status` | **Built 19 Nov** |
-| The locks, and whom they hold; the sensor watchdog | `/control/command_mux/state`, `/safety/sensor_watchdog/state` | **Built 19 Nov** |
-| Real or simulated data | `/system/source` | **Built 19 Nov** (and the orange band) |
+| **Who is driving**: joystick, keyboard, the navigator, a test, the buttons | `/control/command_mux/state` | Built 19 Nov; agreed with twist_mux 226 times of 227 in the sim |
+| What that driver asks (speed, turn) | `/control/cmd_vel` | Built 19 Nov |
+| What ego sends to the car | `/ego/actuator_cmd` | Built 19 Nov |
+| Whether the output gate is open, and why not | `/safety/output_mux/state` | Built 19 Nov |
+| What the car did (speed, steering, throttle, brake, mode, faults) | `/vehicle/status` | Built 19 Nov |
+| The locks, and whom they hold; the sensor watchdog | `/control/command_mux/state`, `/safety/sensor_watchdog/state` | Built 19 Nov |
+| Real or simulated data | `/system/source` | Built 19 Nov (and the orange band) |
 
-It is the map window's **debug page**: press D ([how it looks](hud.md#the-debug-page-who-is-driving)).
-`pixi run map --demo --debug-page` shows it with pretend data. **Untested:** the page drawn
-on a screen (no screen was free when it was built), and on the car.
+`pixi run map --demo --debug-page` shows it with pretend data. **Untested:** drawn on a screen,
+and on the car. Keep it open at every session.
 
-## Phase C: the recording kit
+## Mapping drives and offline processing
 
-**Goal:** one drive records everything the later phases need.
+Ben, 19 Nov: "Add offline processing to the list of stuff we can and will do. So we want to
+build ndt maps of the campus and then add occupancy later so we can remove cars and stuff
+with multiple drives being merged together."
+
+**The plan: NDT maps of the campus first; occupancy and removing parked cars after.**
+
+```text
+ ON THE CAR (people drive)                 OFFLINE, ON A LAPTOP (never on the car)
+ ─────────────────────────                 ─────────────────────────────────────────
+ pass 1 (Mon 9:00) ─┐                      map-drive each ─▶ NDT map + 2D map + chunks
+ pass 2 (Wed 14:00) ┼─ record-drive ─▶ SSD ─▶   │  placed by the GPS
+ pass 3 (Fri 17:00) ┘   points + cameras        ▼
+                                           merge the passes ─▶ occupancy across passes
+                                                │               (parked cars out)
+                                                ▼
+                                           camera labels ─▶ the map editor ─▶ the campus twin
+                                            (phase F)         (phase E)          (phase G)
+```
+
+### Phase C: the recording kit
+
+**Goal:** one drive records everything the offline steps need.
 
 | Item | Status |
 |---|---|
-| `tools/record.sh --lidar` (cameras, radar, detections, localization, lidar) | Built |
-| **`pixi run record-drive`** ([Recording a mapping drive](recording.md)): raw lidar, the IMU at full rate, wheels, raw GPS, every camera, the commands and who drives; MCAP + zstd in 2 GB / 5 min files | **Built 19 Nov**; tested in Ravensim (`--sim`), untested on the car |
-| Checks first: disk, every topic's rate, stamps, `/tf_static`'s sensor frames | **Built 19 Nov**; untested on the car |
-| A summary after: per topic count, rate, gaps, size; "good for" the map, SLAM, labels, the transfer functions | **Built 19 Nov** |
-| The clocks on every computer in step: `chronyc tracking` here and over ssh, in the checks | **Built 19 Nov**; to check on the car (blocker 5) |
-| Space: about **87 GB an hour** before zstd (3 JPEG cameras 49, lidar 37 with its packets), so a fast SSD on the Orin | Estimated; to measure on the car |
+| **`pixi run record-drive`** ([Recording a mapping drive](recording.md)): raw lidar, the IMU at full rate, wheels, raw GPS, every camera, the commands and who drives; MCAP + zstd in 2 GB / 5 min files | Built 19 Nov; tested in Ravensim (`--sim`), **untested on the car** |
+| Checks first (`--check`): disk, every topic's rate, stamps, `/tf_static`'s sensor frames, the clocks over ssh | Built 19 Nov; untested on the car |
+| A summary after: per topic count, rate, gaps, size; "good for" the map, SLAM, labels, the transfer functions | Built 19 Nov |
+| Space: about **87 GB an hour** before zstd (3 cameras 49, lidar 37), so a fast SSD on the Orin | Estimated; to measure on the car |
 
-## Phase D: maps from hand drives
+### The driving
 
-**Goal:** the car finds itself on our own map, so a failing GPS stops mattering.
+| Rule | Why |
+|---|---|
+| **By hand**, at walking to jogging pace (under 2 m/s) | the lidar's sweep blurs less; nothing drives itself on an unmapped place |
+| **The same route each pass** | `--merge` keeps only what several passes saw |
+| **Several passes of each area, at different times and days** | different parked cars and people each time: what stays is the building |
+| **Loops**: come back past where you started | SLAM closes the loop and removes the drift |
+| One campus area a session (about 30-60 min) | under the SSD's room; one area's maps checked before the next |
+| Note each pass (`--name`, `--note`): area, time, weather, parked cars | the offline steps and the labels need it |
+
+### Offline, on a laptop: the pipeline
+
+`pixi install --locked -e slam` once (x86_64 Linux, Apple-silicon Macs; not the Orin).
+
+| # | Step | Command | Makes | Status |
+|---|---|---|---|---|
+| 1 | SLAM on each drive | `pixi run map-drive bags/<drive>` (KISS-SLAM) | the path, NDT's 3D map, a 2D map (walls, kerbs), 64 m chunks | Built 19 Nov; in Ravensim 2.3 cm off the truth's map; **untested on the car** |
+| 2 | Placed on the earth | inside `map-drive`: fitted to the good GPS fixes | the map in the site's frame, lined up with OpenStreetMap | Built; untested with a real GPS |
+| 3 | Loop closures | inside `map-drive` (MapClosures) | less drift on long drives | Built; **none found in the plain sim lot**; a real place should give features: untested |
+| 4 | Passes merged | `pixi run map-drive --merge <A> <B> --out maps/<area>` | one map; only points **both** drives saw within 25 cm | Built, **two drives only**; more than two and the 2D maps: to build (TODO 250) |
+| 5 | **Occupancy across passes** | to build | static points kept, parked cars and people removed (below) | **To build (TODO 259)** |
+| 6 | Camera labels onto the points | phase F | "car", "tree", "building" on each point: a parked car told from a wall even if it never moved | To build (TODO 252) |
+| 7 | A person's final say | the map editor, phase E | box-delete, relabel, approve, save the chunks | To build (TODO 251, next) |
+| 8 | The campus twin | phase G | Ravensim's campus from our maps | To build (TODO 253) |
+| — | All of it, one command | to build | a campus area from its drives, with one report | **To build (TODO 260)** |
+
+### Occupancy across passes
+
+`--merge` today keeps what **both** drives saw. That drops a parked car, but also anything
+one pass missed because a truck hid it. Occupancy counts properly:
+
+```text
+ a cell, pass by pass:   pass 1   pass 2   pass 3     verdict
+ a building wall           hit      hit      hit       static: keep
+ a parked car              hit     free     hit       came and went: remove
+ behind a truck            hit     unseen    hit       never seen free: keep
+ a person                 free      hit     free      remove
+```
+
+| Idea | How |
+|---|---|
+| **Hit** | a lidar point landed in the cell |
+| **Free** | a lidar beam passed **through** the cell (the 2D map already traces these rays) |
+| **Unseen** | neither: no evidence, so it doesn't count against the cell |
+| Keep | hit in every pass that could see it |
+| Remove | hit in some passes, **free** in others |
+| Still unsure | a car parked in the same spot every pass: occupancy can't tell; **phase F's camera labels** can |
+
+Published tools to learn from first (licences to check): Removert, ERASOR, DUFOMap.
+
+### Phase D: the car finds itself on our map
+
+**Goal:** a failing GPS stops mattering.
 
 | Tool | Its job | Status |
 |---|---|---|
-| **KISS-SLAM** (offline: `pixi run map-drive`) | **makes** the map from a hand drive, closing loops, placed by the GPS | Built 19 Nov ([Maps from drives](maps-from-drives.md)); in Ravensim 2.3 cm off the truth's map (the EKF's: 27-33 cm); no loop closure found on the plain test lot; **untested on the car** |
-| NDT's map from those poses | the drive into NDT's map, in 64 m chunks | Built (`map-drive`; `ndt-map build --poses-file`) |
-| A 2D map from the same points | the planner's walls and kerbs: 0.3-2 m occupied, the rays free | Built 19 Nov (`map-drive`): every occupied cell within one of the truth's |
-| Several drives merged | keep what both saw (`map-drive --merge`) | Built 19 Nov, two drives; more than two: to build |
-| **NDT** | finds the car on the map, precisely | Built; 5 cm in the sim |
-| **AMCL** (Rust, 18 Nov) | finds a **lost** car, then hands over to NDT | Being built |
-| NDT as the main position (GPS only checks) | TODO 210 | To build |
-
-**Several drives on different days:** what is there every time is permanent; what comes and
-goes (parked cars) drops out.
+| **NDT** | finds the car on the map, precisely | Built; 5 cm in the sim; **not in `car.launch.py` yet** (TODO 261) |
+| **AMCL** (Rust) | finds a **lost** car, then hands over to NDT | Built 18 Nov; ties stock on the lot |
+| **NDT leads, the GPS checks** (`pose_source:=ndt`) | NDT gives the position, the GPS only checks it | Built; being merged (TODO 210) |
 
 **Passes when** NDT on our own map stays within 0.2 m of the GPS on a good-GPS day, and
 keeps the car on its lane where the GPS fails.
 
-## Phase E: the map editor
+### Phase E: the map editor
 
-**Goal:** an overhead map where a person can check and fix everything.
+**Goal:** an overhead map where a person checks and fixes everything (TODO 251, next).
 
 | Feature | Why |
 |---|---|
-| Layers: OpenStreetMap's roads, our SLAM map, the labels | see all of it at once |
+| Layers: OpenStreetMap's roads, our SLAM map, the 2D map, the labels | see all of it at once |
 | Drag our map onto OpenStreetMap | line them up |
-| Box-select and delete | remove parked cars, people |
+| Box-select and delete | remove the parked cars occupancy missed |
 | Relabel ("tree, not wall") | fix the labels |
 | Approve, then save the chunks | a person always has the last word |
 
-To build, in the developer window (Bevy). The campus from OpenStreetMap is already built
-(`pixi run campus`: 574 buildings, 7918 trees, 396 roads, 18 Nov).
+To build, in the developer window (Bevy). The campus from OpenStreetMap is built
+(`pixi run campus`).
 
-## Phase F: the labelling loop
+### Phase F: the labelling loop
 
 **Goal:** after each drive, a model that tells **trees, buildings, poles, kerbs, parked cars
-and people** apart, and a score that shows whether it improved.
+and people** apart, and a score that shows whether it improved (TODO 252).
 
-```
-a drive ─► big offline models label it ─► labels onto the lidar points
-              ("tree", "building", "car")         │
-                                                  ▼
-                                   the editor: a person fixes mistakes
-                                                  │
-                                                  ▼
-             train our small model ─► score it on the drive ─► better than last time?
+```text
+ a drive ─▶ big offline models label it ─▶ labels onto the lidar points
+                                                 │
+                                                 ▼
+                                  the editor: a person fixes mistakes
+                                                 │
+                                                 ▼
+            train our small model ─▶ score it on the drive ─▶ better than last time?
 ```
 
 | Part | Status |
@@ -234,13 +449,12 @@ a drive ─► big offline models label it ─► labels onto the lidar points
 | Camera boxes onto lidar points (camera-to-lidar calibration, TODO 156) | To build |
 | The score after each drive | To build |
 
-> ⚠️ **Licences, if the work is ever commercial:** the YOLO option is AGPL-3.0; the big
-> public datasets (SemanticKITTI, nuScenes, Cityscapes) are non-commercial. Train on our own
-> labelled drives.
+> ⚠️ **Licences, if the work is ever commercial:** the YOLO option is AGPL-3.0; the big public
+> datasets (SemanticKITTI, nuScenes, Cityscapes) are non-commercial. Train on our own drives.
 
-## Phase G: the campus twin
+### Phase G: the campus twin
 
-**Goal:** Ravensim's campus matches the real one, so every test runs there first.
+**Goal:** Ravensim's campus matches the real one, so every test runs there first (TODO 253).
 
 | From the labelled map | In Ravensim |
 |---|---|
@@ -249,23 +463,165 @@ a drive ─► big offline models label it ─► labels onto the lidar points
 | Kerbs and roads | from our map |
 | Parking areas | cars parked at random, to test "not on the map" |
 
-**Passes when** the sim's lidar and the real lidar see the same scene: a drive replayed in
-the twin scores within NDT's error of the real drive.
+**Passes when** a drive replayed in the twin scores within NDT's error of the real drive.
+
+## The car driving itself
+
+Only on an area that has passed phase D, after phases A and B.
+
+| # | Step | Pass |
+|---|---|---|
+| 1 | The car started with NDT on that area's map, `pose_source:=ndt` (TODO 210, 261) | NDT within 0.2 m of the GPS, standing and pushed by hand |
+| 2 | The same route **in Ravensim first** (the campus, then the twin) | the route done, no stop-zone surprises |
+| 3 | On the car, **at walking pace** (0.5 m/s), a short route, a safety driver ready | done with no takeover needed for safety |
+| 4 | Longer routes, then up to the shared 1.0 m/s limit | the same |
+| 5 | Every drive recorded and scored ([the league](league.md)) | the scores tracked, not gates |
+
+## The sessions, as cards
+
+Copy a card, tick the boxes, put a photo in the team chat with the report folder's name.
+Every card: **an e-stop person**, named before the start, hand on the button the whole time.
+
+### Card 0: after the install
+
+| Who | Where | How long |
+|---|---|---|
+| everyone; then the hardware lead and two more | laptops; then the car, wheels off the ground | 30 min a laptop; 1-2 h the car |
+
+- [ ] Every box in [After the install](after-install.md) ✅
+- **Feeds:** card 1.
+
+### Card 1: the boot self-test (every start)
+
+| Who | Where | How long |
+|---|---|---|
+| e-stop person, laptop person | wherever the car is | 5 min |
+
+- [ ] `pixi run doctor`, then `pixi run check car`: every topic at its rate
+- [ ] The HUD and the debug page (key D) up
+- [ ] Press the e-stop, see it, release it
+- [ ] Today: by hand, the rows above. Once built (TODO 255): READY on the HUD
+- **Pass:** all ✅; else don't arm. **Save:** nothing. **Feeds:** every session.
+
+### Card 2: stands (phase A)
+
+| Who | Where | How long |
+|---|---|---|
+| hardware lead, e-stop person, laptop person, a rear-wheel watcher (tachometer app) | the shop, rear wheels off the ground | 2-3 h |
+
+- [ ] Card 1 passed
+- [ ] Steering's ends and centre: hardware panel B1-B9, **LOCK-TO-LOCK CHECK** PASSED
+- [ ] `pixi run car-test --stands` (today with `--no-drive` until TODO 49b)
+- [ ] Throttle by hand on the stands: speed up and slow down, the watcher reads the rear wheels
+- [ ] Every fault on purpose stops the car
+- **Pass:** `report.md` all PASS. **Save:** `~/aav-tests/<time>-stands/`, the steering file.
+- **Feeds:** `vehicle.yaml`'s steering lines (pasted by a person); card 3.
+
+### Card 3: map the hallway
+
+| Who | Where | How long |
+|---|---|---|
+| two people to push, laptop person | the hallway, boxes and cones placed | 30 min, then 30 min offline |
+
+- [ ] Tape the hallway; mark the start line; place the boxes and cones (photo them)
+- [ ] `pixi run record-drive --check`, then `pixi run record-drive --name hallway`
+- [ ] Push the car slowly down and back, twice
+- [ ] Offline: `pixi run map-drive bags/<drive>`
+- **Pass:** the map shows both walls and every box sharp. **Save:** the bag, the map.
+- **Feeds:** NDT in cards 4 and 5 (once TODO 256 and 261 are built).
+
+### Card 4: the hallway, empty (phase B)
+
+| Who | Where | How long |
+|---|---|---|
+| e-stop person (walks beside), safety driver on the joystick, laptop person, a spotter at each end | the hallway, cleared | 2 h |
+
+- [ ] Card 2 passed; the car weighed empty
+- [ ] Start indoors: `pixi run car <machine> gps:=false stands:=true`
+- [ ] `pixi run car-test --hallway --length <taped>`; three passes of each, turned round between
+- [ ] The boxes still where card 3 put them
+- **Pass:** the trusted numbers' model within 10 % speed and 0.2 m stop.
+- **Save:** `~/aav-tests/<time>-hallway/`. **Feeds:** `vehicle.yaml` (pasted); the sim's car model.
+
+### Card 5: the hallway, a person aboard
+
+| Who | Where | How long |
+|---|---|---|
+| the same, plus the person aboard (weighed) | the hallway | 2 h |
+
+- [ ] Card 4 passed the same day or with the boxes unmoved
+- [ ] The person's weight written on the card (until TODO 257 records it)
+- [ ] The same passes as card 4
+- **Pass:** as card 4. **Save:** the session folder, the weights.
+- **Feeds:** the loaded transfer function → the adaptive brake (TODO 258).
+
+### Card 6: the lot
+
+| Who | Where | How long |
+|---|---|---|
+| e-stop person, safety driver, laptop person, a spotter | an empty lot, the fence walked (site file) | half a day |
+
+- [ ] Cards 4 and 5 passed
+- [ ] `actuator-test coast`, then `speed-up`, `brake --speeds 0.5 1.0`, `circles`, `straight`
+- **Pass:** as card 4, at speed. **Save:** each test's folder. **Feeds:** `vehicle.yaml`.
+
+### Card 7: a campus mapping drive
+
+| Who | Where | How long |
+|---|---|---|
+| driver, e-stop person, laptop person | one campus area | 30-60 min a pass |
+
+- [ ] The SSD has room (`record-drive --check`: disk vs 87 GB/h)
+- [ ] `pixi run record-drive --name <area>-<n> --note "<time, weather, parked cars>"`
+- [ ] By hand, the same route as last pass, with a loop
+- [ ] Read the summary: "good for" the map and SLAM
+- **Pass:** no gaps, every topic at rate. **Save:** the bag, copied off the car the same day.
+- **Feeds:** card 8. Repeat at least three times, on different days.
+
+### Card 8: offline processing
+
+| Who | Where | How long |
+|---|---|---|
+| anyone with a laptop (Linux x86_64 or an Apple-silicon Mac) | anywhere | hours, unattended |
+
+- [ ] `pixi run map-drive bags/<drive>` for each pass; read each `report.md`
+- [ ] `pixi run map-drive --merge <A> <B> --out maps/<area>`
+- [ ] Later: occupancy across passes (TODO 259), labels (phase F), the editor (phase E)
+- **Pass:** loop closures found or drift small; NDT on the map within 0.2 m of a good GPS.
+- **Save:** `maps/<area>/`. **Feeds:** card 9; the campus twin.
+
+### Card 9: the car drives itself
+
+| Who | Where | How long |
+|---|---|---|
+| safety driver, e-stop person, laptop person, a spotter | a mapped area | half a day |
+
+- [ ] Cards 1-8 passed for this area; the route run in Ravensim first
+- [ ] NDT leads (`pose_source:=ndt`), checked standing still
+- [ ] 0.5 m/s first; record every drive
+- **Pass:** the route done, no takeover needed for safety. **Save:** the bag, the score.
 
 ## Safety rules for every phase
 
 | Rule | Why |
 |---|---|
 | A named e-stop person at every test | the one sure stop |
+| The boot self-test passed before anyone arms | "control over everything" |
 | Wheels off the ground until phase A passes | nothing can run away |
 | Never the `pi` brake loop on stands | it needs a real wheel speed (TODO 101) |
-| The hallway cleared, a spotter at each end | people walk there |
+| Never test braking distance on stands | free wheels carry no weight |
+| The hallway taped, cleared, a spotter at each end | people walk there |
+| A person aboard only after the empty hallway passed, and only with a safety driver's stop in reach | the brake must be measured first |
 | The 1.0 m/s shared limit until phase B's numbers are in | the stop distance is still a guess |
+| Mapping drives by hand; self-driving only on a mapped area | NDT needs the map |
 | Record every session | the report is the evidence |
 
 ## See also
 
+- [After the install](after-install.md): phase 0, before the stands
 - [Every test](tests.md): every test, step by step
-- [Actuator tests](actuator-tests.md): the tests behind phase B
+- [Actuator tests](actuator-tests.md): the tests behind phases A and B
+- [How the car stops](stopping.md): the adaptive brake
+- [Recording a mapping drive](recording.md) and [Maps from drives](maps-from-drives.md)
 - [Car day](car-day.md): the runbook for a day at the car
 - [The safety case](safety-case.md): the hazards, and the tests behind each

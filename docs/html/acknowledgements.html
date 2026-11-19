@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">22 min read · 8 sections</div></header>
+<div class="meta">25 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,6 +19,8 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
@@ -37,12 +39,14 @@
 <span class="sep">Learn:</span>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -128,7 +132,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#taught-in-the-guide-19-nov">Taught in the guide (19 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
 <div class="lead"><p>Everything we copied, ported, or took an idea from, with its licence and where we used it.
 Ben, 14 Nov: "give acknowlegement to stuff we have looked at or used as insperation".
 Add a row in the same commit as the work (<code>CLAUDE.md</code>). Copied or ported code also keeps
@@ -699,6 +703,106 @@ Each has a TODO row to port its idea.</p>
 <td>MIT</td>
 <td>idea</td>
 <td>the next lidar-odometry challenger (TODO 216); yardsticks for NDT</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="taught-in-the-guide-19-nov">Taught in the guide (19 Nov)</h2>
+<p>Explained in <a href="how-self-driving-works.html">How a self-driving car works</a>, not built (or
+not yet). The papers the guide names; the ones we built on are in the tables above.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ICP</strong>: P. J. Besl, N. D. McKay, "A Method for Registration of 3-D Shapes", IEEE T-PAMI, 1992</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's ICP; inside KISS-ICP and <code>map-drive --merge</code></td>
+</tr>
+<tr>
+<td><strong>Scan Context</strong>: G. Kim, A. Kim, IROS 2018; <strong>OverlapNet</strong>: X. Chen et al., RSS 2020; <strong>IR-MCL</strong> (PRBonn, 2023)</td>
+<td>paper</td>
+<td>idea</td>
+<td>place recognition and learned MCL: studied</td>
+</tr>
+<tr>
+<td><strong>YOLO</strong>: J. Redmon et al., CVPR 2016; <strong>DETR</strong>: N. Carion et al., ECCV 2020</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's detectors (we run Ultralytics YOLO and RF-DETR, above)</td>
+</tr>
+<tr>
+<td><strong>SORT</strong>: A. Bewley et al., ICIP 2016</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's tracking</td>
+</tr>
+<tr>
+<td><strong>RRT</strong>: S. M. LaValle, 1998; <strong>RRT*</strong>: S. Karaman, E. Frazzoli, IJRR 2011</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's sampling planners: not built</td>
+</tr>
+<tr>
+<td><strong>Dubins</strong> curves: L. E. Dubins, American J. Mathematics, 1957</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's curves (Reeds-Shepp, above, is the one we use)</td>
+</tr>
+<tr>
+<td><strong>UniAD</strong>: Y. Hu et al., "Planning-oriented Autonomous Driving", CVPR 2023; Wayve's GAIA-1</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's end-to-end section: studied</td>
+</tr>
+<tr>
+<td><strong>Statecharts</strong>: D. Harel, "Statecharts: A Visual Formalism for Complex Systems", Science of Computer Programming, 1987</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's hierarchical state machines: studied</td>
+</tr>
+<tr>
+<td><strong>BehaviorTree.CPP</strong> (Nav2's tree engine); Nav2's <code>navigate_to_pose_w_replanning_and_recovery.xml</code></td>
+<td>MIT; Apache-2.0</td>
+<td>idea</td>
+<td>the guide's behaviour trees: the tree we ran for a car until Nav2 went (17 Nov)</td>
+</tr>
+<tr>
+<td><strong>Apollo's scenarios and stages</strong>; <strong>Autoware's behaviour path and behaviour velocity planners</strong></td>
+<td>Apache-2.0</td>
+<td>idea</td>
+<td>the guide's traffic-rule modules, in general terms; our road ahead's stops are the same shape in small</td>
+</tr>
+<tr>
+<td><strong>IDM</strong>, the Intelligent Driver Model: M. Treiber, A. Hennecke, D. Helbing, Physical Review E, 2000</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's car following: not built</td>
+</tr>
+<tr>
+<td><strong>POMDPs</strong>: L. P. Kaelbling, M. L. Littman, A. R. Cassandra, Artificial Intelligence, 1998; D. Sadigh et al., "Planning for Autonomous Cars that Leverage Effects on Human Actions", RSS 2016</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's decisions under uncertainty and games: studied</td>
+</tr>
+<tr>
+<td><strong>ALVINN</strong>: D. Pomerleau, NIPS 1989; <strong>ChauffeurNet</strong>: M. Bansal et al., RSS 2019; <strong>DAgger</strong>: S. Ross, G. Gordon, D. Bagnell, AISTATS 2011</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's learned behaviour: studied</td>
+</tr>
+<tr>
+<td>matplotlib; NumPy</td>
+<td>PSF-based; BSD-3</td>
+<td>runs</td>
+<td>drawing the guide's pictures (<code>tools/teach_figures.py</code>)</td>
 </tr>
 </tbody>
 </table></div>

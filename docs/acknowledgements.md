@@ -124,6 +124,28 @@ Each has a TODO row to port its idea.
 | **Fast-Poly / Poly-MOT** (X. Li et al., 2023-24); **OC-SORT** (J. Cao et al., CVPR 2023); **MapMOS** (PRBonn) | MIT | idea | motion models per kind and re-found tracks for `aav_things` (TODO 217) |
 | **Kinematic-ICP** (T. Guadagnino et al., PRBonn, 2025); **small_gicp** (K. Koide); **GenZ-ICP** (D. Lee et al., 2024) | MIT | idea | the next lidar-odometry challenger (TODO 216); yardsticks for NDT |
 
+## Taught in the guide (19 Nov)
+
+Explained in [How a self-driving car works](how-self-driving-works.md), not built (or
+not yet). The papers the guide names; the ones we built on are in the tables above.
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| **ICP**: P. J. Besl, N. D. McKay, "A Method for Registration of 3-D Shapes", IEEE T-PAMI, 1992 | paper | idea | the guide's ICP; inside KISS-ICP and `map-drive --merge` |
+| **Scan Context**: G. Kim, A. Kim, IROS 2018; **OverlapNet**: X. Chen et al., RSS 2020; **IR-MCL** (PRBonn, 2023) | paper | idea | place recognition and learned MCL: studied |
+| **YOLO**: J. Redmon et al., CVPR 2016; **DETR**: N. Carion et al., ECCV 2020 | paper | idea | the guide's detectors (we run Ultralytics YOLO and RF-DETR, above) |
+| **SORT**: A. Bewley et al., ICIP 2016 | paper | idea | the guide's tracking |
+| **RRT**: S. M. LaValle, 1998; **RRT\***: S. Karaman, E. Frazzoli, IJRR 2011 | paper | idea | the guide's sampling planners: not built |
+| **Dubins** curves: L. E. Dubins, American J. Mathematics, 1957 | paper | idea | the guide's curves (Reeds-Shepp, above, is the one we use) |
+| **UniAD**: Y. Hu et al., "Planning-oriented Autonomous Driving", CVPR 2023; Wayve's GAIA-1 | paper | idea | the guide's end-to-end section: studied |
+| **Statecharts**: D. Harel, "Statecharts: A Visual Formalism for Complex Systems", Science of Computer Programming, 1987 | paper | idea | the guide's hierarchical state machines: studied |
+| **BehaviorTree.CPP** (Nav2's tree engine); Nav2's `navigate_to_pose_w_replanning_and_recovery.xml` | MIT; Apache-2.0 | idea | the guide's behaviour trees: the tree we ran for a car until Nav2 went (17 Nov) |
+| **Apollo's scenarios and stages**; **Autoware's behaviour path and behaviour velocity planners** | Apache-2.0 | idea | the guide's traffic-rule modules, in general terms; our road ahead's stops are the same shape in small |
+| **IDM**, the Intelligent Driver Model: M. Treiber, A. Hennecke, D. Helbing, Physical Review E, 2000 | paper | idea | the guide's car following: not built |
+| **POMDPs**: L. P. Kaelbling, M. L. Littman, A. R. Cassandra, Artificial Intelligence, 1998; D. Sadigh et al., "Planning for Autonomous Cars that Leverage Effects on Human Actions", RSS 2016 | paper | idea | the guide's decisions under uncertainty and games: studied |
+| **ALVINN**: D. Pomerleau, NIPS 1989; **ChauffeurNet**: M. Bansal et al., RSS 2019; **DAgger**: S. Ross, G. Gordon, D. Bagnell, AISTATS 2011 | paper | idea | the guide's learned behaviour: studied |
+| matplotlib; NumPy | PSF-based; BSD-3 | runs | drawing the guide's pictures (`tools/teach_figures.py`) |
+
 ## Simulators and screens
 
 | Source | Licence | Kind | Where we used it |
