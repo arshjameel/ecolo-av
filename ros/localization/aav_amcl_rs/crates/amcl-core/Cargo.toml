@@ -1,0 +1,11 @@
+[package]
+name = "amcl-core"
+description = "AMCL for a car, without ROS: a particle filter on a 2D map, nav2_amcl's odometry motion model and likelihood field (behind a trait), a KLD-adaptive particle count, low-variance resampling and random-pose recovery"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# No dependencies: the random numbers are our own (rng.rs), so it builds offline, as CI's
+# car kit does, and a seed gives the same run every time.
+[dependencies]

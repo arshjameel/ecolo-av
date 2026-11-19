@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+# amcl-core: the particle filter, its motion and scan models, the map's distance field.
+#   No ROS: cargo test -p amcl-core
+# amcl-node: the ROS node (rclrs). colcon builds it through CMakeLists.txt.
+members = ["crates/amcl-core", "crates/amcl-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+# A port of nav2_amcl (LGPL-2.1-or-later), so the same licence: PROVENANCE.md.
+license = "LGPL-2.1-or-later"
+publish = false
+
+# 2000 particles x 180 beams per update: the tests run the filter for many updates.
+[profile.test]
+opt-level = 2

@@ -1221,7 +1221,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>amcl</code></td>
 <td><code>controller_compare</code>, <code>debug_hud</code></td>
 <td>-</td>
-<td>A trial (docs/trials.md) - stock nav2_amcl's particle filter on the 2D map and the lidar scan, map frame (its amcl_pose, renamed). Only with amcl:=true (sim.launch.py world:=test_lot nav:=true lidar:=true). Its tf_broadcast is false - ekf_global keeps map -&gt; odom - so nothing drives by it; measure controllers --amcl scores it against the sim's truth. Published only once the car has moved (update_min_d, update_min_a).</td>
+<td>A trial (docs/trials.md) - AMCL's particle filter on the 2D map and the lidar scan, map frame (its amcl_pose, renamed). The node amcl is ours, aav_amcl_rs (amcl_impl:=rust, the default since 18 Nov, TODO 231), or stock nav2_amcl (amcl_impl:=stock); the same topics, parameters and frames. Only with amcl:=true (sim.launch.py world:=test_lot nav:=true lidar:=true). Its tf_broadcast is false - ekf_global keeps map -&gt; odom - so nothing drives by it; measure controllers --amcl scores it against the sim's truth. Published only once the car has moved (update_min_d, update_min_a).</td>
 </tr>
 <tr>
 <td><code>/localization/amcl/particles</code></td>

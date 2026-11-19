@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">19 min read · 8 sections</div></header>
+<div class="meta">20 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -349,10 +349,22 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><code>kiss_icp:=true</code>, scored beside the EKF</td>
 </tr>
 <tr>
-<td>AMCL (Nav2)</td>
-<td>LGPL-2.1</td>
-<td>runs</td>
-<td><code>amcl:=true</code>, a trial</td>
+<td>AMCL (Nav2's <code>nav2_amcl</code>, from Player's amcl: A. Howard, B. Gerkey, K. Stoy)</td>
+<td>LGPL-2.1-or-later</td>
+<td>runs, ported</td>
+<td><code>amcl:=true</code>, a trial: stock with <code>amcl_impl:=stock</code>; ported to Rust as <code>aav_amcl_rs</code> (the default, TODO 231; same licence; its <code>PROVENANCE.md</code> lists the files)</td>
+</tr>
+<tr>
+<td><strong>Monte Carlo localization and KLD sampling</strong>: D. Fox, W. Burgard, F. Dellaert, S. Thrun, AAAI 1999; D. Fox, IJRR 2003; S. Thrun, W. Burgard, D. Fox, <em>Probabilistic Robotics</em>, 2005</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>aav_amcl_rs</code>: the filter, the odometry motion model, low-variance resampling, recovery's averages</td>
+</tr>
+<tr>
+<td><strong>Distance transform</strong>: P. Felzenszwalb, D. Huttenlocher, "Distance Transforms of Sampled Functions", Theory of Computing, 2012</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>aav_amcl_rs</code>: the likelihood field's distances to the walls</td>
 </tr>
 <tr>
 <td><strong>Lane markings against a map</strong>: Autoware's YabLoc (camera road markings matched to a vector map); D. Schreiber, B. Switkes, C. Stiller, "LaneLoc: Lane marking based localization using highly accurate maps", IEEE IV 2013</td>

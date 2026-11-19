@@ -32,7 +32,9 @@
   <exec_depend>aav_diffusion_planner</exec_depend>
   <exec_depend>aav_behaviour</exec_depend>
   <exec_depend>aav_ego</exec_depend>
-  <!-- The one Nav2 package kept (amcl:=true, a scored trial), with its lifecycle manager. -->
+  <!-- AMCL (amcl:=true, a scored trial): ours, and the one Nav2 package kept as the
+       fall-back (amcl_impl:=stock), with its lifecycle manager. -->
+  <exec_depend>aav_amcl_rs</exec_depend>
   <exec_depend>nav2_amcl</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>launch</exec_depend>

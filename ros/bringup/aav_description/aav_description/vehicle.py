@@ -430,6 +430,21 @@ def check_lidar_impl(impl):
     return name
 
 
+# Which AMCL runs (amcl:=true, amcl_impl:=): rust (aav_amcl_rs, the default since 18 Nov,
+# TODO 231: stock's topics, parameters and frames, a plain node) or stock (nav2_amcl, a
+# lifecycle node with its own manager; the fall-back). Each one's package.
+AMCL_IMPLS = {'rust': 'aav_amcl_rs', 'stock': 'nav2_amcl'}
+DEFAULT_AMCL_IMPL = 'rust'
+
+
+def check_amcl_impl(impl):
+    """Return which AMCL runs (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in AMCL_IMPLS:
+        raise ValueError(f'amcl_impl:={impl}: pick one of {", ".join(AMCL_IMPLS)}')
+    return name
+
+
 # Which things node tracks the cubes (things:=true, things_impl:=): rust (aav_things_rs,
 # the default since 17 Nov: the same node name, topics, parameters and things, 1.5 % of a
 # core against 7.5 %) or python (aav_things, the fallback). Each one's package.

@@ -13,9 +13,10 @@ goal (RViz, HUD, street_router, language_drive) -> navigator -> planner + mppi_l
 ## Overview
 
 It starts our nodes: the map server, the costmaps, the planner, the navigator, a path
-follower, the smoother, and the stop zone where a sensor feeds it. AMCL (stock `nav2_amcl`)
-only as a trial, `amcl:=true`: robot_localization does localization. The car's footprint,
-turning radius and reverse speed come from
+follower, the smoother, and the stop zone where a sensor feeds it. AMCL (ours,
+`aav_amcl_rs`; stock `nav2_amcl` with `amcl_impl:=stock`) only as a trial, `amcl:=true`:
+robot_localization does localization. The car's footprint, turning radius and reverse
+speed come from
 `ros/bringup/aav_description/config/vehicle.yaml`; `aav_description`'s
 `vehicle.nav2_tuned()` and `vehicle.rewrite()` write them into a copy of `config/nav2.yaml`
 (the blocks our ports read, in Nav2's layout).
@@ -66,12 +67,13 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `lane_corners` | arc | with `lane_route`: the lane line's corners as circle arcs; `clothoid`: clothoid, arc, clothoid, the curvature never jumping (TODO 211, a challenger: a tie on University Drive, 17 Nov) |
 | `lane_graph` | `lanes_yaml` | with `lane_route`: `lanelet2` routes on the Lanelet2 map beside the `lanes.yaml` (`maps/campus/campus.osm`, `lane_map.planner_block`): its lanes, neighbours and stop lines (`/drivers/nav/planner/route_stops`). A challenger (TODO 175, step 6) |
 | `local_chunks` | false | with `costmap_chunks`: true, the local costmap's static layer from the 3 x 3 chunks round the car too, so no costmap of ours reads `/map` (TODO 175) |
-| `amcl` | false | true (needs `lidar:=true`): stock AMCL, scored only, on `/localization/amcl/pose` (`config/amcl.yaml`: `tf_broadcast: false`) |
+| `amcl` | false | true (needs `lidar:=true`): AMCL, scored only, on `/localization/amcl/pose` (`config/amcl.yaml`: `tf_broadcast: false`) |
+| `amcl_impl` | `rust` | with `amcl`: `rust` (`aav_amcl_rs`, the default since 18 Nov, TODO 231: a plain node) or `stock` (`nav2_amcl` and its lifecycle manager, the fall-back). The same `config/amcl.yaml`, topics and frames |
 | `amcl_x`, `amcl_y`, `amcl_yaw` | 0 | AMCL's start pose, map frame (`sim.launch.py` gives the sim's start) |
 | `amcl_map` | empty | empty: AMCL reads `/map`; else its own map YAML, on `/localization/amcl/map` (`sim.launch.py`: `maps/example_lot_amcl.yaml`, [why](./maps/README.md#why-amcl-has-a-map-of-its-own)) |
 | `use_sim_time`, `autostart` | false, true | |
 
-Nodes started (all ours but AMCL):
+Nodes started (all ours; stock AMCL only with `amcl_impl:=stock`):
 
 | Node | Does |
 |---|---|
@@ -88,7 +90,7 @@ Nodes started (all ours but AMCL):
 | `lidar_scan` (`aav_lidar_rs`, or `aav_lidar` with `lidar_impl:=python`), `ghost_obstacle` | with `lidar:=true`, `ghost:=true` |
 | `things` (`aav_things_rs`, or `aav_things` with `things_impl:=python`) | with `lidar:=true things:=true` |
 | `voxels` (`aav_voxels`, or `aav_voxels_rs` with `voxels_impl:=rust`) | with `voxels:=true` or `screen_cubes:=true`; `aav_voxels_rs` with `kerbs:=true` |
-| `amcl`, `lifecycle_manager_localization`, `amcl_map_server` | with `amcl:=true`: stock AMCL and its lifecycle manager; with `amcl_map:=`, our map server for its map |
+| `amcl` (`aav_amcl_rs`), `amcl_map_server` | with `amcl:=true`: our AMCL; with `amcl_map:=`, our map server for its map. With `amcl_impl:=stock`, `amcl` is `nav2_amcl`, with `lifecycle_manager_localization` |
 
 Inputs: `/localization/odom/local`, `/tf`, `/goal_pose`, and the obstacle topics above.
 All commands are `geometry_msgs/TwistStamped`.
@@ -100,7 +102,7 @@ Files:
 | `config/nav2.yaml` | the blocks our ports read, in Nav2's layout (the costmaps, MPPI, the lattice, the smoother, the stop zone) |
 | `config/lattice_ackermann.json` | the State Lattice planner's moves for our car: made by Nav2's generator, `pixi run python3 tools/lattice_primitives.py` (`tools/lattice_primitives.py`); never edit by hand. `lattice_ackermann_32.json`: the same with 32 headings, a trial (`--headings 32`, `lattice_headings:=32`) |
 | `config/lattice_ackermann_smooth.json`, `_smooth_fast.json` | the smooth moves, a trial (`lattice_moves:=`): made by `pixi run python3 tools/lattice_smooth.py` (ours: Nav2's generator draws no ramps); never edit by hand |
-| `config/amcl.yaml` | AMCL, the trial (`amcl:=true`): `tf_broadcast: false`, the lidar scan, base_link |
+| `config/amcl.yaml` | AMCL, the trial (`amcl:=true`), ours and stock alike: `tf_broadcast: false`, the lidar scan, base_link |
 | `maps/` | `empty` and `example_lot` maps and their specs ([maps/README.md](./maps/README.md)) |
 
 ## Invariants

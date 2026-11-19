@@ -12,7 +12,8 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [payload:=0] [adaptive_brake:=false]
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
-      [amcl:=false] [voxels:=false] [voxels_impl:=python] [kerbs:=] [ego_impl:=rust]
+      [amcl:=false] [amcl_impl:=rust] [voxels:=false] [voxels_impl:=python] [kerbs:=]
+      [ego_impl:=rust]
       [lidar_impl:=rust] [things_impl:=rust] [lane_finder_impl:=rust]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [io_mux_impl:=rust] [stop_sign_impl:=rust]
@@ -166,8 +167,9 @@ bench's argument names:
                       chunks round the car instead of /map;
                       things_background_below:=0.7 (the default): only cubes under
                       it drop
-  amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
-                      in world:=test_lot with nav:=true and the lidar, from the start pose
+  amcl:=true          AMCL beside the global EKF, scored only (docs/trials.md): only
+                      in world:=test_lot with nav:=true and the lidar, from the start pose;
+                      amcl_impl:=stock for Nav2's nav2_amcl in ours' place (aav_amcl_rs)
   voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
@@ -638,6 +640,7 @@ def launch_setup(context):
                                # HUD's panel shows which): the sim only, never the car.
                                live_swap='true',
                                amcl=amcl, amcl_x=start_x, amcl_y=start_y,
+                               amcl_impl=vehicle.check_amcl_impl(arg('amcl_impl')),
                                amcl_yaw=start_yaw,
                                # The test lot's map for AMCL: finer, outlines only
                                # (maps/README.md). AMCL runs only in the test lot.
@@ -1105,8 +1108,11 @@ def generate_launch_description():
                                           'docs/trials.md). Empty: '
                                           "the stack's choice"),
         DeclareLaunchArgument('amcl', default_value='false',
-                              description='stock AMCL beside the EKF, scored only '
+                              description='AMCL beside the EKF, scored only '
                                           '(world:=test_lot nav:=true lidar:=true)'),
+        DeclareLaunchArgument('amcl_impl', default_value=vehicle.DEFAULT_AMCL_IMPL,
+                              description='rust or stock: which AMCL (aav_amcl_rs, or '
+                                          "Nav2's nav2_amcl)"),
         DeclareLaunchArgument('ndt', default_value='false',
                               description='NDT on the saved lidar map, scored only '
                                           '(world:=test_lot lidar:=true, ndt_map present)'),

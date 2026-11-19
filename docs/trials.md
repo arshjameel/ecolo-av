@@ -14,7 +14,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 
 > **The short version**
 > - **Trackers** (`aav_track`): pure pursuit, Stanley, LQR, MPC, and `mpc_full` (speed and steering together), in our chain, in `mppi_lag`'s place (in controller_server's, until 17 Nov). `tracker:=lqr`.
-> - **AMCL** (stock `nav2_amcl`): a particle filter on the map and the lidar, scored against the EKF, never steering. `amcl:=true`.
+> - **AMCL** (ours in Rust, `aav_amcl_rs`, since 18 Nov; stock `nav2_amcl` with `amcl_impl:=stock`): a particle filter on the map and the lidar, scored against the EKF, never steering. `amcl:=true`. [Ours against stock](#18-nov-amcl-in-rust-against-stock).
 > - **NDT** (`aav_ndt`, ours in Rust): the lidar matched to a saved lidar map, scored against the EKF, never steering. `ndt:=true`.
 > - **Score:** `pixi run measure controllers --trackers pure_pursuit lqr --runs 3`.
 > - **Results (29 Oct, Gazebo, 3 runs):** pure pursuit, Stanley and MPC finished every leg; MPPI, RPP and LQR lost legs on the U-turn. AMCL lost itself; the EKF wins. [Results](#results-29-october).
@@ -199,7 +199,35 @@ one run, `--tours lot --controllers mppi --amcl`):
   mean, then AMCL dropped 68 scans (its transforms came late) and published nothing more.
   With the computer this loaded, AMCL's numbers are only worth what its pose count says.
 
-## NDT into the global EKF (30 Oct)
+### 18 Nov: AMCL in Rust against stock
+
+TODO 231: `nav2_amcl` was the last Nav2 node. Ours (`aav_amcl_rs`, `amcl_impl:=rust`, now
+the default) reads the same `amcl.yaml`, topics and frames. Stock stays as
+`amcl_impl:=stock`.
+
+**How:** `measure controllers --amcl --tours lot --runs 3 --launch amcl_impl:=stock`, then
+`amcl_impl:=rust`. Ravensim on a Mac (M4 Max, with a GPU), `mppi_lag`, 1 m/s, AMCL's own
+0.05 m map. Results in `/tmp/amcl_cmp/` (not in git).
+
+AMCL off the truth, mean of each run's mean (m), and the worst of all runs (m):
+
+| Leg | Stock, 3 runs | Ours, 3 runs | EKF |
+|---|---|---|---|
+| a left turn | 0.103 (0.09-0.11), worst 0.16 | 0.089 (0.08-0.10), worst 0.14 | 0.10 |
+| round the building | 0.051, worst 0.15 | 0.053, worst 0.11 | 0.11 |
+| turn back | 0.067, worst 0.20 | 0.060, worst 0.15 | 0.09 |
+| home | 0.075, worst 0.18 | 0.076, worst 0.13 | 0.10 |
+
+- **A tie**, as a port should be: means within 0.015 m a leg, every leg reached, the same
+  number of poses (each resample), heading within 1°.
+- **One bad start**, in a single run before these (seed from the clock): ours was 0.27 m
+  mean on leg 1, 0.94 m worst, over 1 m off or without a pose for 5.8 s, then 0.06-0.09 m
+  on the other legs. Stock's single run then: 0.11 m, 0.15 worst. Not seen in the next 4
+  runs of leg 1 (0.08-0.10 m). The first pose comes from the start's 0.5 m cloud after one
+  scan; watch for it in more runs.
+- Recovery (`recovery_alpha_*`) is still off, in both, as `amcl.yaml` had it.
+
+
 
 `ndt_ekf:=true`: `ekf_global` takes NDT's x, y and yaw beside the GPS. Off by default.
 

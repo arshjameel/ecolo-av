@@ -1,7 +1,10 @@
-# AMCL as a trial (docs/trials.md): stock nav2_amcl's particle filter on Nav2's 2D map and
-# the flattened roof lidar. navigation.launch.py amcl:=true starts it (with its own
-# lifecycle manager), only beside the lidar (lidar:=true); sim.launch.py only in the test
-# lot (world:=test_lot nav:=true lidar:=true), the one world with a real map.
+# AMCL as a trial (docs/trials.md): a particle filter on the 2D map and the flattened roof
+# lidar. Read by ours (aav_amcl_rs, amcl_impl:=rust, the default since 18 Nov) and by stock
+# nav2_amcl (amcl_impl:=stock) alike: ours takes the same names, and refuses tf_broadcast
+# true and any other motion or laser model. navigation.launch.py amcl:=true starts it
+# (stock with its own lifecycle manager), only beside the lidar (lidar:=true);
+# sim.launch.py only in the test lot (world:=test_lot nav:=true lidar:=true), the one
+# world with a real map.
 #
 # It never drives the car: tf_broadcast is false, so ekf_global keeps map -> odom, and its
 # pose (amcl_pose, renamed /localization/amcl/pose) is only scored, by
