@@ -33,8 +33,8 @@ DOCS = ROOT / 'docs'
 OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
-READ_FIRST = 27    # PAGES[:27] are the reading list
-LEARN_END = 46    # PAGES[27:46] are the learn pages; the rest are reference
+READ_FIRST = 28    # PAGES[:28] are the reading list
+LEARN_END = 47    # PAGES[28:47] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
@@ -57,6 +57,8 @@ PAGES = [
     ('how-it-fits.md', 'How it fits', 'What each box does, and the safety layers'),
     ('stack-survey.md', 'The stack, surveyed',
      'Every algorithm we built or studied: where from, what testing found, still used?'),
+    ('how-self-driving-works.md', 'How self-driving works',
+     'Every algorithm, taught: AMCL, NDT, SLAM, A*, Hybrid-A*, MPC, MPPI, with pictures'),
     ('start-up.md', 'Bottom-up', 'Each layer from the device up; start-up; testing each layer'),
     ('team.md', 'Starting points', 'One per team member: read, run, first tasks'),
     ('packages.md', 'Packages', 'What each package does, layer by layer'),
@@ -218,6 +220,8 @@ SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
           'release-0.4-guide.md': ('aav-0.4-guide.pdf', 'the 0.4 guide'),
           'testing-plan.md': ('aav-testing-plan.pdf', 'the testing plan'),
           'stack-survey.md': ('aav-stack-survey.pdf', 'the self-driving survey'),
+          'how-self-driving-works.md': ('aav-how-self-driving-works.pdf',
+                                        'how a self-driving car works'),
           'after-install.md': ('aav-after-install.pdf', 'after the install'),
           'decisions-2026-11-19.md': ('aav-decisions-2026-11-19.pdf', 'what we decided, 18-19 Nov')}
 # A shared page's own PDF: a running footer, and the cover on a page of its own.
