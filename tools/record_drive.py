@@ -14,6 +14,9 @@ functions.
     pixi run record-drive --sim                Ravensim's test lot on this computer, a short
                                                drive, recorded, summarised, then the NDT map
                                                built from it (about 5 min)
+    pixi run record-drive --sim --loop         ... the whole mapping route round the lot and
+                                               back to the start: a loop for SLAM to close
+                                               (TODO 250; about 8 min)
     tools/record.sh --mapping ...              the same as pixi run record-drive
 
 One folder a drive, bags/<date>_<name>/:
@@ -71,6 +74,9 @@ CAR_COMPUTERS = (('orin', '192.168.1.140'), ('motor_pi', '192.168.1.120'),
                  ('localization', '192.168.1.113'), ('dash', '192.168.1.196'))
 # Ravensim's short drive: two legs of tools/ndt_map.py's mapping route.
 SIM_ROUTE = (('the south side', 44.0, -4.0, 0.0), ('the east lane', 45.0, 42.0, 90.0))
+# --loop: the whole route, back home (ndt_map.ROUTE), so a SLAM run has a loop to close.
+SIM_LOOP = (SIM_ROUTE + (('the north side', 5.0, 44.0, 180.0),
+                         ('the west side', -4.0, 12.0, -90.0), ('home', 0.0, 0.0, 0.0)))
 SIM_POSES = '/localization/odom/global'
 ME = 'record_drive_check'
 
@@ -496,7 +502,7 @@ def sim_drive(args):
             proc, rlog = start_recording(session, items, True, args)
             car.spin_for(3.0)
             print(f'== Recording into {session}/bag; driving:', flush=True)
-            for name, x, y, heading in SIM_ROUTE:
+            for name, x, y, heading in (SIM_LOOP if args.loop else SIM_ROUTE):
                 leg, notes = cc.drive_leg(car, sim.pid, (x, y, math.radians(heading)), 1.0,
                                           None, None)
                 print(f'   {name}: ' + ('reached' if leg['reached'] else 'NOT reached') +
@@ -532,6 +538,8 @@ def main():
                         help='stop after this many seconds (default: Ctrl-C)')
     parser.add_argument('--sim', action='store_true',
                         help="Ravensim on this computer: the kit's own test")
+    parser.add_argument('--loop', action='store_true',
+                        help='with --sim: the whole route round the lot, back to the start')
     parser.add_argument('--check', action='store_true', help='only the checks')
     parser.add_argument('--summary', type=Path, metavar='SESSION',
                         help="a recorded drive's summary again")

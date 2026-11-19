@@ -33,6 +33,8 @@ The trials (docs/trials.md):
                     a pose, time over 1 m off, each match's wall-clock time; and its
                     covariance against its errors: NEES, the k that would make it honest,
                     and how far off each band of score per point was)
+    pixi run measure controllers --ndt --ndt-map bags/<drive>/map/ndt.pcd
+                    (NDT on a map map-drive made from a recording, TODO 250)
     pixi run measure controllers --ndt-ekf          (the same, with NDT's pose into the global
                     EKF, ndt_ekf:=true: compare its EKF numbers with --ndt's)
     pixi run measure controllers --ndt --gps-off    (the GPS stops once the EKF has its first
@@ -308,8 +310,14 @@ PLAN_TIME = 15.0        # s (wall) for the planner alone to answer, before each 
 NDT_MAP = os.path.join(ROOT, 'maps', 'ndt', 'test_lot.pcd')
 
 
+# --ndt-map: another map for NDT, such as one map-drive made from a recording (TODO 250).
+NDT_MAP_GIVEN = []
+
+
 def ndt_map(world):
-    """Return NDT's map for a tour's world: the campus's own (pixi run campus), else the lot's."""
+    """Return NDT's map for a tour's world: --ndt-map's, the campus's own, else the lot's."""
+    if NDT_MAP_GIVEN:
+        return NDT_MAP_GIVEN[0]
     return os.path.join(ROOT, worlds.CAMPUS_NDT) if world == worlds.CAMPUS else NDT_MAP
 
 
@@ -1391,6 +1399,9 @@ def main():
     parser.add_argument('--ndt', action='store_true',
                         help='run NDT beside the EKF (ndt:=true) and score it too; needs '
                              'the map: pixi run ndt-map drive')
+    parser.add_argument('--ndt-map', metavar='PCD',
+                        help="with --ndt: this map, not the world's own (such as "
+                             "map-drive's <drive>/map/ndt.pcd)")
     parser.add_argument('--ndt-ekf', action='store_true',
                         help="as --ndt, and the global EKF takes NDT's pose (ndt_ekf:=true)")
     parser.add_argument('--gps-off', action='store_true',
@@ -1450,6 +1461,8 @@ def main():
     if args.runs < 1:
         parser.error('--runs must be 1 or more')
     args.ndt = args.ndt or args.ndt_ekf
+    if args.ndt_map:
+        NDT_MAP_GIVEN.append(os.path.abspath(args.ndt_map))
     args.kiss_icp = args.kiss_icp or args.kiss_ekf
     for tour in args.tours:
         # The files a tour needs, before half an hour of driving finds one missing.
