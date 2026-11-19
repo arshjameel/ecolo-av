@@ -103,7 +103,7 @@ section 1, and `TODO.md` 158.
 | 2 | COASTING until the stop is measured | test 4.3, then a decel in `vehicle.yaml` |
 | 3 | The brake doesn't follow a wish | the `pi` brake loop, unless `open` stops within 1 m |
 | 4 | Wheel speed not yet seen on the car | the Arduino's CAN frames seen (TODO 60) |
-| 5 | Clocks across the computers | `chronyc tracking` on each |
+| 5 | Clocks across the computers | `chronyc tracking` on each; `pixi run record-drive --check` asks every car computer it can reach by ssh ([Recording](recording.md)) |
 | 6 | Steering pulls right; its ends and centre unknown | measure them (TODO 67) |
 | 7 | No way to score "1 m" | a tape mark at B (proposed) |
 
