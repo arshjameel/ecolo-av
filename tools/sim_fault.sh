@@ -3,7 +3,7 @@
 # (docs/full-simulation.md step 6). Run it next to `pixi run sim`, on the same ROS domain.
 #
 # usage: pixi run sim-fault <sensor or actuator> <mode>
-#   sensor: gps, imu, odom (the wheels), radar, camera (needs `pixi run sim faults:=true`)
+#   sensor: gps, imu, odom (the wheels), radar; camera, lidar (need `pixi run sim faults:=true`)
 #   mode:   ok (mended), stop, freeze, nan (gps, imu, odom), jump (gps only)
 #   actuator: steer (ok, stuck), throttle (ok, stuck), brake (ok, weak, dead)
 #   pixi run sim-fault gps stop      the GPS goes quiet
@@ -25,6 +25,7 @@ fi
 case "$1" in
   odom|steer|throttle|brake) node=sim_adapter ;;
   camera) node=sim_camera_relay ;;
+  lidar) node=sim_lidar_relay ;;
   *) node="sim_$1" ;;
 esac
 exec ros2 param set "/$node" "fault.$1" "$2"

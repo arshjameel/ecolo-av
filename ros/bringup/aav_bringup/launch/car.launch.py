@@ -92,7 +92,9 @@ Parts and what they start:
   imu, gps,       sensor drivers (on the machine the device is plugged into);
   radar, battery  gps_driver picks the GPS's: ublox (the default), nmea or ublox_dgnss
   lidar           the roof Velodyne VLP-16, through the stock velodyne driver ->
-                  /sensors/lidar/points. On the machine its packets go to: the Jetson
+                  /sensors/lidar/points. On the machine its packets go to: the Jetson.
+                  Where the mux runs too, the sensor watchdog watches it (lidar: STALE
+                  after 1 s, FROZEN; it stops navigation and the AI slot)
   camera          usb_cam -> /sensors/camera/front_left/image_raw (Linux only)
   camera_stream   the front cameras' H.264 streams from the camera Pi's MediaMTX (RTSP,
                   port 8554): one camera_stream_<camera> node each (aav_camera_stream),
@@ -503,10 +505,13 @@ def launch_setup(context):
         # the watchdog itself goes quiet (the lock's 1 s timeout). Navigation and the sensors may
         # run on other machines: it watches their topics over the network. The HUD starts
         # on its own (aav-hud.service), wherever the screen is: its heartbeat says it lives.
-        # And each camera stream this machine starts, through its detections.
+        # And each camera stream this machine starts, through its detections; and the lidar
+        # where this machine runs its driver (the VLP-16 sends to the Jetson only, which
+        # runs the mux too; lidar:=false: none), as the stop zone and costmap need it.
         actions.append(include('aav_safety', 'watchdog.launch.py',
                                inputs='odom,imu,local,global' + (',gps' if flag('gps') else '')
                                + (',hud' if flag('watch_hud') else '')
+                               + (',lidar' if on('lidar') else '')
                                + ''.join(f',{c}_stream' for c in streaming),
                                watchdog_impl=impls['watchdog_impl']))
         # The goal leash (TODO 116), next to the mux, always: the language driver runs on a

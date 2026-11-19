@@ -204,6 +204,8 @@ this tests it against Ravensim's cameras and radar stand-in, which see the road 
    screen, the check beats for it (/hud/heartbeat, 10 Hz, a rising count) and stops, as a
    frozen HUD does. Latched: beating again, it must still hold the navigator (hud LOST) 5 s later,
    until the check clears it (/safety/sensor_watchdog/clear), as a person would.
+   `lidar stop` (TODO 246): sim_lidar_relay stops the roof lidar; the watchdog's lidar input
+   goes STALE after 1 s and holds the navigator, as on the car (car-test's step 5e).
    With --no-watchdog it only reports, without the watchdog's own two.
 11. With --lane: the road world again, with lane keeping (lane:=true) and nothing else driving, the
    car 0.3 m left of the road's centre. lane_finder and control_interface must bring it
@@ -353,7 +355,8 @@ LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, 
 # The watchdog's own two: hang (mended by SIGCONT) early; kill last, as nothing mends it.
 FAULTS = [('gps', 'stop'), ('watchdog', 'hang'), ('hud', 'stop'), ('imu', 'stop'),
           ('odom', 'stop'),
-          ('odom', 'freeze'), ('camera', 'freeze'), ('radar', 'stop'), ('imu', 'freeze'),
+          ('odom', 'freeze'), ('camera', 'freeze'), ('radar', 'stop'), ('lidar', 'stop'),
+          ('imu', 'freeze'),
           ('gps', 'jump'), ('gps', 'nan'), ('odom', 'nan'), ('imu', 'nan'), ('watchdog', 'kill')]
 REACT = 6.0             # s of sim time from the fault to standing still
 STILL = 0.05            # m/s: standing still
@@ -3394,11 +3397,12 @@ def main():
                 'actuator faults', world='empty')
     if '--faults' in args:
         # Its own run: a fault spoils the car's software for a while, and the camera's
-        # picture goes through sim_adapter (faults:=true). No lidar: a lighter run.
+        # picture and the lidar's cloud go through their relays (faults:=true). With the
+        # lidar, as the car: its own fault, `lidar stop` (TODO 246).
         watchdog = '--no-watchdog' not in args
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-faults{ext}')
-        session(['faults:=true', 'lidar:=false', f'watchdog:={str(watchdog).lower()}',
+        session(['faults:=true', f'watchdog:={str(watchdog).lower()}',
                  f'watch_hud:={str(watchdog).lower()}'],
                 [lambda probe: check_faults(probe, watchdog)], logs[-1], 'faults')
     if {'--drive-to-point', '--drive-to-point-only', '--spine-points',

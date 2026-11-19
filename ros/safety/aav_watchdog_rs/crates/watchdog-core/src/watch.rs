@@ -9,7 +9,7 @@ use ego_core::fmt_g;
 use crate::wheels::{radians, CrossCheck, WheelCheck, EARTH_RADIUS};
 use crate::{hypot, py_max};
 
-/// m/s: faster than this, the camera's picture must change.
+/// m/s: faster than this, a camera's picture or a cloud (the lidar's) must change.
 pub const MOVING: f64 = 0.2;
 /// s: the overspeed check's look back, for "is it slowing?".
 pub const SLOWING_WINDOW: f64 = 0.5;
@@ -73,6 +73,15 @@ impl Kind {
             Kind::Speed => "speed",
             Kind::Status => "status",
         }
+    }
+}
+
+impl Kind {
+    /// Whether its FROZEN check counts only while the car moves (`MOVING_KINDS`): a
+    /// camera's picture, a lidar's cloud.
+    #[must_use]
+    pub fn frozen_only_moving(self) -> bool {
+        matches!(self, Kind::Image | Kind::Cloud)
     }
 }
 
@@ -375,7 +384,7 @@ pub struct Arrival {
     pub fix: Option<(f64, f64)>,
     /// The GPS says it has no fix.
     pub no_fix: bool,
-    /// The car's newest wheel speed (m/s), for the camera's frozen check.
+    /// The car's newest wheel speed (m/s), for a camera's or a cloud's frozen check.
     pub speed: Option<f64>,
     /// The fix's own time (s).
     pub stamp: Option<f64>,
@@ -532,7 +541,10 @@ impl Watch {
         }
         if self.rule.frozen_after > 0.0 {
             if let Some(digest) = a.digest {
-                let moving = kind != Kind::Image || a.speed.is_some_and(|v| v.abs() > MOVING);
+                // A camera or a cloud only while the car moves: a still car in a still
+                // world sees the same picture, and a noiseless lidar the same cloud.
+                let moving =
+                    !kind.frozen_only_moving() || a.speed.is_some_and(|v| v.abs() > MOVING);
                 if Some(&digest) != self.digest.as_ref() || !moving {
                     self.same_since = Some(now);
                 }
@@ -935,6 +947,19 @@ mod tests {
             ..Rule::new("radar", "/sensors/radar/points", Kind::Cloud, 1.0)
         }
     }
+    fn lidar() -> Rule {
+        Rule {
+            frozen_after: 1.0,
+            ..Rule::new("lidar", "/sensors/lidar/points", Kind::Cloud, 1.0)
+        }
+    }
+    fn cloud(digest: u32, speed: f64) -> Arrival {
+        Arrival {
+            digest: Some(Digest::Crc(digest)),
+            speed: Some(speed),
+            ..Arrival::default()
+        }
+    }
     fn latched_hud() -> Rule {
         Rule {
             frozen_after: 1.0,
@@ -1024,6 +1049,45 @@ mod tests {
             arrive(dog, "speed", t, values(&[command(t), measured(t)]));
         }
         t
+    }
+
+    #[test]
+    fn a_silent_lidar_goes_stale_and_stops_the_drivers() {
+        let mut d = dog(vec![lidar()]);
+        for k in 0..10_u32 {
+            arrive(&mut d, "lidar", f64::from(k) * 0.1, cloud(k, 1.0));
+        }
+        assert_eq!(state(&mut d, "lidar", 1.8), State::Ok);
+        assert!(!d.locked(1.8));
+        assert_eq!(state(&mut d, "lidar", 2.0), State::Stale);
+        assert!(d.locked(2.0));
+        arrive(&mut d, "lidar", 2.1, cloud(99, 1.0));
+        assert_eq!(state(&mut d, "lidar", 2.1), State::Ok);
+    }
+
+    #[test]
+    fn a_repeated_lidar_cloud_is_frozen_only_while_the_car_moves() {
+        let mut d = dog(vec![lidar()]);
+        for k in 0..30_u32 {
+            arrive(&mut d, "lidar", f64::from(k) * 0.1, cloud(7, 0.0)); // parked
+        }
+        assert_eq!(state(&mut d, "lidar", 2.9), State::Ok);
+        for k in 30..45_u32 {
+            arrive(&mut d, "lidar", f64::from(k) * 0.1, cloud(7, 1.0)); // driving
+        }
+        assert_eq!(state(&mut d, "lidar", 4.4), State::Frozen);
+        assert!(d.locked(4.4));
+        arrive(&mut d, "lidar", 4.5, cloud(8, 1.0));
+        assert_eq!(state(&mut d, "lidar", 4.5), State::Ok);
+    }
+
+    #[test]
+    fn a_cloud_without_frozen_after_never_freezes() {
+        let mut d = dog(vec![radar()]);
+        for k in 0..30_u32 {
+            arrive(&mut d, "radar", f64::from(k) * 0.1, cloud(7, 2.0));
+        }
+        assert_eq!(state(&mut d, "radar", 2.9), State::Ok);
     }
 
     #[test]

@@ -265,9 +265,19 @@ impl Feed {
         }
     }
 
-    /// A cloud (only its arrival counts).
-    pub fn cloud(&mut self, now: f64, name: &str) {
-        self.arrive(now, name, Arrival::default());
+    /// A cloud (a lidar's, a radar's): its digest (`picture_digest` of its data), for the
+    /// frozen check where its rule has one (only while the car moves).
+    pub fn cloud(&mut self, now: f64, name: &str, digest: u32) {
+        let speed = self.speed.map(|(v, _)| v);
+        self.arrive(
+            now,
+            name,
+            Arrival {
+                digest: Some(Digest::Crc(digest)),
+                speed,
+                ..Arrival::default()
+            },
+        );
     }
 
     /// `/vehicle/odom`, where no input watches it: only the speed.

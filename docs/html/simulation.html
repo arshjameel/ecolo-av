@@ -304,7 +304,7 @@ Gazebo passed. Its maps cut into chunks are <strong>RavenTiles</strong> (<a href
 <tr>
 <td><code>faults</code></td>
 <td><code>false</code></td>
-<td><code>true</code>: the front left picture goes through <code>sim_camera_relay</code> too, so it can freeze on purpose</td>
+<td><code>true</code>: the front left picture goes through <code>sim_camera_relay</code>, and the lidar through <code>sim_lidar_relay</code>, so they can stop or freeze on purpose</td>
 </tr>
 <tr>
 <td><code>actuator_model</code></td>
@@ -636,6 +636,11 @@ ones once the tests are done: no code changes.</p>
 <td><code>sim_camera_relay</code></td>
 <td>the front left picture, only with <code>faults:=true</code></td>
 <td><code>usb_cam</code></td>
+</tr>
+<tr>
+<td><code>sim_lidar_relay</code></td>
+<td><code>/sensors/lidar/points</code>, only with <code>faults:=true</code> and the lidar</td>
+<td><code>velodyne</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1228,11 +1233,16 @@ pixi run sim-fault clear                  # after a GPS jump or a lost HUD: a pe
 <td><code>/sensors/camera/front_left/image_raw</code> (with <code>faults:=true</code>)</td>
 <td><code>stop</code>, <code>freeze</code></td>
 </tr>
+<tr>
+<td><code>lidar</code></td>
+<td><code>/sensors/lidar/points</code> (with <code>faults:=true</code>; TODO 246)</td>
+<td><code>stop</code>, <code>freeze</code></td>
+</tr>
 </tbody>
 </table></div>
 <p><code>freeze</code> sends the last good message again, with fresh stamps: it looks alive. It's a
 parameter, <code>fault.&lt;sensor&gt;</code>, of that sensor's node (<code>sim_gps</code>, <code>sim_imu</code>,
-<code>sim_radar</code>, <code>sim_camera_relay</code>; the wheels' is <code>sim_adapter</code>'s). The logic is
+<code>sim_radar</code>, <code>sim_camera_relay</code>, <code>sim_lidar_relay</code>; the wheels' is <code>sim_adapter</code>'s). The logic is
 <code>aav_sim_models/faults.py</code>.</p>
 <h3 id="actuator-failures-on-purpose-15-nov-todo-159">Actuator failures on purpose (15 Nov, TODO 159)</h3>
 <p>The actuators break too, in <code>sim_adapter</code>, between the speed loop and the car:</p>

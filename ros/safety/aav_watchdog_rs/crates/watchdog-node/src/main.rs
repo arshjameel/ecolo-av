@@ -226,9 +226,10 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
             )?)),
             Kind::Cloud => keep.push(Box::new(worker.create_subscription(
                 topic.sensor_data_qos(),
-                move |s: &mut Dog, _: PointCloud2| {
+                move |s: &mut Dog, m: PointCloud2| {
+                    // A frozen lidar repeats its whole cloud: a sample, as for a picture.
                     let now = s.now();
-                    s.feed.cloud(now, &name);
+                    s.feed.cloud(now, &name, picture_digest(&m.data));
                 },
             )?)),
             Kind::Heartbeat => keep.push(Box::new(worker.create_subscription(

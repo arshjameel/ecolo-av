@@ -33,7 +33,7 @@ The watchdog works through a twist_mux lock (priority 30, in `aav_command_mux`).
 | `NEVER` | nothing yet |
 | `STALE` | nothing good for `max_age` s. A GPS fix with no fix (or NaN) isn't good: after `max_age` it reads STALE, "no fix ..." |
 | `NAN` | NaN or inf in the newest message |
-| `FROZEN` | the same values for `frozen_after` s (a camera only while the car moves) |
+| `FROZEN` | the same values for `frozen_after` s (a camera or the lidar only while the car moves) |
 | `JUMP` | two GPS fixes too far apart for the car. Latched |
 | `DISAGREE` | the wheels' speed or turn against the IMU and the GPS (`wheel_check.py`). Latched |
 | `STUCK` | an actuator (`/vehicle/steering`) more than `follow_tolerance` off its command for `follow_persist` s (TODO 207). Latched; NaN on a side is no check, not a fault |
@@ -151,12 +151,20 @@ it starts the mux; the bench always; Ravensim with `geofence:=true` (the default
 | `hud` | `/hud/heartbeat` | heartbeat, latched | 1.0 s | yes |
 | `steering` | `/vehicle/steering` | actuator (STUCK: 0.15 rad for 1 s) | 1.0 s | yes; the sim only so far (not with `esp32:=true`), the car's uplink has no measured angle |
 | `speed` | `/ego/actuator_cmd`, against `/vehicle/odom`'s speed | speed (0.2 m/s over while not slowing: OVER after 1 s, OVERSPEED after 2 s) | 1.0 s | yes; the sim only so far |
+| `lidar` | `/sensors/lidar/points` | cloud (FROZEN: the same cloud 1 s while moving) | 1.0 s | yes, as the camera (TODO 246). Watched only where a lidar runs |
 | `radar` | `/sensors/radar/points` | cloud | 1.0 s | no (the stop zone stops navigation itself) |
 | `node_costmap`, `node_planner`, `node_navigator`, `node_mppi_lag`, `node_smoother`, `node_behaviour`, `node_voxels`, `node_things`, `node_ego`, `node_look_ahead` | the node's full name (`/planner`...), looked for in the ROS graph | node | 3.0 s | no: warn only (Ben, 14 Nov). The sim watches the ones it starts |
 | `status_costmap_local`, `status_costmap_global` | `/drivers/nav/costmap/status` (by `status_name`) | status, FAULT at WARN | 3.0 s, 5.0 s | no: warn only (Ben, 18 Nov, TODO 171) |
 | `status_planner` | `/drivers/nav/planner/status` | status, FAULT at ERROR, `quiet_ok` | 3.0 s | no |
 | `status_navigator` | `/drivers/nav/navigator/status` | status, FAULT at ERROR | 2.0 s | no |
 | `status_mppi_lag` | `/drivers/nav/track/status` (`track`) | status, FAULT at WARN (a late tick), `quiet_ok` | 1.0 s | no |
+
+**Why the lidar stops the car (TODO 246).** The stop zone and the costmap see through
+the roof lidar. The stop zone already stops navigation when a source goes silent, but
+not the point driver or the AI slot, and it never says why on the HUD. So the lidar
+stops like the camera: 1.0 s (10 clouds at 10 Hz, as the camera's 10 pictures), `stop:
+true`. Each launch adds it only where a lidar runs (`lidar:=false`, the bench without
+one, turtle: not watched), as the camera.
 
 **Why the status inputs only warn.** The car already stops when a navigation node it
 needs dies or hangs: each respawns after 1 s, `mppi_lag` stops on a costmap older than
@@ -220,6 +228,9 @@ answers tick by tick. `watchdog_impl:=python` runs this one.
 - Fail-safe: twist_mux treats 1 s without a lock message as locked, so a dead or hung
   watchdog stops them too.
 - Ages are about 5 messages at the sensor's rate, never under ego's 0.5 s command timeout.
+- A cloud's FROZEN check (the lidar's) compares the CRC-32 of every 997th byte, as a
+  picture's, and only while the wheels say over 0.2 m/s: the bench's pretend lidar has no
+  noise, so a still car there sees the same cloud.
 - `inputs` is set by the launch file, never in the YAML, or the file would win.
 - After a stall of the watchdog itself (seen on a steady clock), it latches nothing for 3 s.
 - One HUD dropout within `latch_grace` (5 s) of its first beat is forgiven.

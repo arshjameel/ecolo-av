@@ -1,12 +1,14 @@
 """car-test --stands (car_test.py): its steps, options, judging and report. No ROS."""
 
 import datetime
+import os
 
 from aav_actuator_tests import car_test as ct
 from aav_actuator_tests import procedures as pr
 from aav_actuator_tests import reports
 from fake_car import drive
 import pytest
+import yaml
 
 
 def names(planned, runs=True):
@@ -46,9 +48,9 @@ def test_no_manual_on_the_car_skips_every_person_step():
 
 def test_the_sim_does_the_faults_it_can_and_says_why_not_the_rest():
     planned = {s.name: w for s, w in ct.plan([], sim=True, no_manual=True)}
-    for name in ('heartbeat', 'gps', 'imu', 'camera', 'estop'):
+    # The lidar since TODO 246: its watchdog input, and Ravensim's fault.lidar.
+    for name in ('heartbeat', 'gps', 'imu', 'camera', 'lidar', 'estop'):
         assert planned[name] is None, name
-    assert 'lidar' in planned['lidar']
     assert 'car only' in planned['pi-link'] and 'car only' in planned['cable']
 
 
@@ -181,6 +183,19 @@ def test_a_sensors_limit_is_its_max_age_and_a_margin():
     inputs = {'gps': {'max_age': 2.0}, 'imu': {'max_age': 0.5}}
     assert ct.limit_for('gps', inputs) == 2.0 + ct.WATCHDOG_MARGIN
     assert ct.limit_for('lidar', inputs) is None
+    assert ct.limit_for('hud', inputs) is None
+
+
+def test_every_sensor_fault_step_has_a_watchdog_input():
+    # TODO 246: step 5e found sensor_watchdog.yaml had no lidar input.
+    path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'safety', 'aav_safety',
+                        'config', 'sensor_watchdog.yaml')
+    with open(path) as f:
+        inputs = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
+    for step in ct.STEPS:
+        if step.sensor:
+            assert ct.limit_for(step.sensor, inputs) is not None, step.sensor
+            assert inputs[step.sensor]['stop'] is True, step.sensor
 
 
 def test_judge_fault():

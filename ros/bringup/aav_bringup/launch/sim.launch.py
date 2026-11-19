@@ -258,8 +258,9 @@ bench's argument names:
                       can't be trusted
   watch_hud:=true     the watchdog watches /hud/heartbeat without the HUD window: something
                       else beats (sim-check --faults stands in for the screen)
-  faults:=true        the front left picture through sim_camera_relay, so its fault.camera
-                      works (pixi run sim-fault camera freeze); the other faults always do
+  faults:=true        the front left picture through sim_camera_relay and the lidar through
+                      sim_lidar_relay, so fault.camera and fault.lidar work (pixi run
+                      sim-fault camera freeze, lidar stop); the other faults always do
   spine:=true         the spine in the loop: ego -> spine_bridge -> CAN frames -> spine_sim
                       (the spine's own firmware logic: arming, its 100 ms command
                       watchdog, both e-stops, faults, its speed loop) -> the actuator
@@ -696,6 +697,9 @@ def launch_setup(context):
                               or lane_pose or flag['faults'])
         inputs = (['odom', 'imu', 'gps', 'local', 'global'] + (['camera'] if camera else [])
                   + (['radar'] if radar else [])
+                  # The roof lidar, where this world has one (TODO 246's step 5e): the stop
+                  # zone and the costmap see through it, so a dead one stops, as the camera.
+                  + (['lidar'] if lidar else [])
                   # The steering asked against measured (TODO 207): the adapter or
                   # spine_bridge publishes it; not checked yet with the ESP32 in the loop.
                   + ([] if arg('esp32').lower() == 'true' else ['steering'])

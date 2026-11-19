@@ -215,7 +215,12 @@ def test_the_rear_camera_sees_behind_only_when_its_detector_reads_it_for_people(
 
 def test_the_watchdog_guards_navigation():
     sent = included(started(CAR, machine='all'))
-    assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,local,global,gps,hud'
+    assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,local,global,gps,hud,lidar'
+    # The lidar where this machine runs it (TODO 246's step 5e); lidar:=false, none.
+    no_lidar = included(started(CAR, machine='all', lidar='false'))
+    assert 'lidar' not in no_lidar['watchdog.launch.py']['inputs'].split(',')
+    alone = included(started(CAR, machine='motor_pi_alone'))     # no lidar on that Pi
+    assert 'lidar' not in alone['watchdog.launch.py']['inputs'].split(',')
     no_gps = included(started(CAR, machine='all', gps='false'))
     assert 'gps' not in no_gps['watchdog.launch.py']['inputs']
     # The safety drivers rely on the HUD: watched unless the session has no screen.

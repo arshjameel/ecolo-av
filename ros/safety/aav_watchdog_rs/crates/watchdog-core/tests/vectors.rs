@@ -113,7 +113,10 @@ fn every_tick_is_the_pythons() {
                 "heartbeat" => feed.heartbeat(t, text(&e[2]), e[3].as_u64().expect("count")),
                 "actuator" => feed.actuator(t, text(&e[2]), f(&e[3]), f(&e[4])),
                 "speed" => feed.speed(t, text(&e[2]), f(&e[3])),
-                "cloud" => feed.cloud(t, text(&e[2])),
+                "cloud" => {
+                    let digest = u32::try_from(e[3].as_u64().expect("digest")).expect("u32");
+                    feed.cloud(t, text(&e[2]), digest);
+                }
                 "status" => {
                     let level = u8::try_from(e[4].as_u64().expect("level")).expect("u8");
                     feed.status(t, text(&e[2]), text(&e[3]), level, text(&e[5]));

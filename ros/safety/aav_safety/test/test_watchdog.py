@@ -1,14 +1,17 @@
 import math
+import os
 
 from aav_safety import watchdog
 from aav_safety.watchdog import FROZEN, JUMP, LOST, NAN, NEVER, OK, Rule, STALE, Watchdog
 import pytest
+import yaml
 
 ODOM = Rule('odom', '/vehicle/odom', 'odom', max_age=0.5)
 IMU = Rule('imu', '/sensors/imu/data', 'imu', max_age=0.5, frozen_after=1.0)
 GPS = Rule('gps', '/sensors/gps/fix', 'gps', max_age=2.0, max_jump_speed=15.0)
 CAMERA = Rule('camera', '/sensors/camera/front_left/image_raw', 'image', max_age=1.0,
               frozen_after=1.0)
+LIDAR = Rule('lidar', '/sensors/lidar/points', 'cloud', max_age=1.0, frozen_after=1.0)
 RADAR = Rule('radar', '/sensors/radar/points', 'cloud', max_age=1.0, stop=False)
 HUD = Rule('hud', '/hud/heartbeat', 'heartbeat', max_age=1.0, frozen_after=1.0)
 LATCHED_HUD = Rule('hud', '/hud/heartbeat', 'heartbeat', max_age=1.0, frozen_after=1.0,
@@ -102,6 +105,49 @@ def test_a_still_camera_is_frozen_only_while_the_car_moves():
     for k in range(30, 45):                           # driving: the picture must change
         cam.arrived(k * 0.1, digest='street', speed=1.0)
     assert state(dog, 'camera', 4.4) == FROZEN
+
+
+def test_a_silent_lidar_goes_stale_and_stops_the_drivers():
+    dog = Watchdog([LIDAR])
+    lidar = dog.watches['lidar']
+    for k in range(10):                               # 10 Hz, a new cloud each time
+        lidar.arrived(k * 0.1, digest=k, speed=1.0)
+    assert state(dog, 'lidar', 1.8) == OK and not dog.locked(1.8)
+    assert state(dog, 'lidar', 2.0) == STALE and dog.locked(2.0)    # 1.1 s of nothing
+    lidar.arrived(2.1, digest=99, speed=1.0)           # back: drives again on its own
+    assert state(dog, 'lidar', 2.1) == OK and not dog.locked(2.1)
+
+
+def test_a_repeated_lidar_cloud_is_frozen_only_while_the_car_moves():
+    dog = Watchdog([LIDAR])
+    lidar = dog.watches['lidar']
+    for k in range(30):                               # parked: the same cloud is fine
+        lidar.arrived(k * 0.1, digest='kerb', speed=0.0)
+    assert state(dog, 'lidar', 2.9) == OK
+    for k in range(30, 45):                           # driving: the cloud must change
+        lidar.arrived(k * 0.1, digest='kerb', speed=1.0)
+    assert state(dog, 'lidar', 4.4) == FROZEN and dog.locked(4.4)
+    lidar.arrived(4.5, digest='road', speed=1.0)      # a new cloud: OK again
+    assert state(dog, 'lidar', 4.5) == OK
+
+
+def test_a_cloud_without_frozen_after_never_freezes():
+    dog = Watchdog([RADAR])
+    radar = dog.watches['radar']
+    for k in range(30):
+        radar.arrived(k * 0.1, digest='same', speed=2.0)
+    assert state(dog, 'radar', 2.9) == OK
+
+
+def test_the_lidar_input_stops_as_the_camera_does():
+    path = os.path.join(os.path.dirname(__file__), '..', 'config', 'sensor_watchdog.yaml')
+    with open(path) as f:
+        cfg = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
+    lidar, camera = cfg['lidar'], cfg['camera']
+    assert lidar['topic'] == '/sensors/lidar/points' and lidar['kind'] == 'cloud'
+    assert lidar['stop'] is True and lidar['stop'] == camera['stop']
+    assert lidar['max_age'] == camera['max_age'] == 1.0     # both 10 Hz
+    assert lidar['frozen_after'] == camera['frozen_after']
 
 
 def test_the_hud_must_beat_before_and_while_nav2_drives():
@@ -372,8 +418,6 @@ def test_a_status_input_can_be_switched_to_stop():
 
 
 def test_the_configs_status_inputs_are_good_rules_that_only_warn():
-    import os
-    import yaml
     path = os.path.join(os.path.dirname(__file__), '..', 'config', 'sensor_watchdog.yaml')
     with open(path) as f:
         params = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']

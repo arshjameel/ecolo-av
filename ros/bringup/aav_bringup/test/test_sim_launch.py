@@ -300,7 +300,7 @@ def test_the_road_world_adds_the_radar_to_navigation_and_its_clusters():
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     # The sensors, then our own nodes the stack starts (warn only: TODO 180).
     sensors = [i for i in inputs if not i.startswith(('node_', 'status_'))]
-    assert sensors == 'odom,imu,gps,local,global,camera,radar,steering,speed'.split(',')
+    assert sensors == 'odom,imu,gps,local,global,camera,radar,lidar,steering,speed'.split(',')
     # Nothing reads it on the champions' stack (best), so the watchdog leaves it alone.
     stock = included(started(SIM, world='road', stack='best'))['watchdog.launch.py']
     assert 'camera' not in stock['inputs'].split(',')
@@ -314,6 +314,10 @@ def test_the_lidar_alone_guards_the_car_with_the_radar_off():
     assert 'radar_clusters.launch.py' not in sent
     assert sent['ravensim.launch.py']['radar'] == 'false'
     assert 'radar' not in sent['watchdog.launch.py']['inputs']
+    assert 'lidar' in sent['watchdog.launch.py']['inputs'].split(',')
+    # No lidar, nothing to watch (TODO 246): its silence would stop the car for nothing.
+    off = included(started(SIM, world='road', lidar='false'))['watchdog.launch.py']
+    assert 'lidar' not in off['inputs'].split(',')
 
 
 def test_faults_route_the_camera_and_the_watchdog_can_be_left_out():
@@ -469,6 +473,27 @@ def test_ravensim_runs_the_sensors_only_where_the_world_renders_them():
     # No Gazebo left: no gz sim, no bridges, no spawning.
     road = names(started(RAVENSIM, world='road'))
     assert not any(n.startswith(('gz_', 'spawn_')) for n in road)
+
+
+def remaps(a):
+    """Return the node's remappings, as (from, to) text."""
+    return [tuple(part if isinstance(part, str)
+                  else perform_substitutions(LaunchContext(), list(part)) for part in pair)
+            for pair in (a._Node__remappings or [])]
+
+
+def test_faults_route_the_lidar_through_its_relay():
+    # TODO 246: fault.lidar can stop or freeze the lidar, only with faults:=true.
+    plain = started(RAVENSIM, world='road')
+    assert 'sim_lidar_relay' not in names(plain)
+    assert remaps(node(plain, 'simulator')) == []
+    faulty = started(RAVENSIM, world='road', faults='true')
+    assert {'sim_lidar_relay', 'sim_camera_relay'} <= names(faulty)
+    assert remaps(node(faulty, 'simulator')) == [('/sensors/lidar/points',
+                                                  '/vehicle/sim/lidar/points')]
+    # No lidar, no relay.
+    no_lidar = started(RAVENSIM, world='road', faults='true', lidar='false')
+    assert 'sim_lidar_relay' not in names(no_lidar)
 
 
 def test_ravensim_obstacle_and_start_pose():

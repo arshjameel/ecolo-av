@@ -71,8 +71,10 @@ the car, for Lichtblick's cockpit layout (tools/foxglove/cockpit.json), and its 
 
 lidar:=false drops the roof lidar; radar:=false leaves out /sensors/radar/points.
 
-faults:=true routes the front left camera's picture through sim_camera_relay, so its
-fault.camera can freeze or stop it (faults.py); the other sensors' faults work without it.
+faults:=true routes the front left camera's picture through sim_camera_relay, and the
+roof lidar's cloud through sim_lidar_relay (the simulator's /sensors/lidar/points remapped
+to /vehicle/sim/lidar/points), so fault.camera and fault.lidar can freeze or stop them
+(faults.py); the other sensors' faults work without it.
 
 obstacle:=true puts the bench's 1 m box in the car's lane, 15 m ahead. start_y and
 start_yaw put the car this far left of the world's origin, turned this far left of east
@@ -193,7 +195,7 @@ def cameras_process(share, world, chase, relay, looks):
                           additional_env=env or None)
 
 
-def simulator_node(context, share, world, car, lidar, radar, lockstep):
+def simulator_node(context, share, world, car, lidar, radar, lockstep, lidar_relay=False):
     """Ravensim itself (aav_simulator): the world, the car, its rays and its clock."""
     v = car['vehicle']
     mounts = car['sensors']
@@ -205,8 +207,11 @@ def simulator_node(context, share, world, car, lidar, radar, lockstep):
     start = {k: float(LaunchConfiguration(k).perform(context))
              for k in ('start_x', 'start_y', 'start_yaw')}
     x, y = worlds.OBSTACLE
+    # faults:=true: the lidar's cloud goes to sim_lidar_relay first, which passes it on
+    # through fault.lidar (TODO 246).
+    remap = [(faults.LIDAR, faults.LIDAR_RELAYED)] if lidar_relay else []
     return Node(package='aav_simulator', executable='simulator', name='simulator',
-                output='screen',
+                output='screen', remappings=remap,
                 parameters=[{'world': world, 'models': ':'.join(models), **start,
                              'clock_hz': float(LaunchConfiguration('clock_hz').perform(context)),
                              # TODO 179: noisy, slipping wheels, seeded; off by default.
@@ -249,6 +254,7 @@ def launch_setup(context):
     chase = cameras and flag(context, 'chase_camera')
     radar = sensors and flag(context, 'radar')
     relay = cameras and flag(context, 'faults')
+    lidar_relay = lidar and flag(context, 'faults')
     spine = flag(context, 'spine')
     esp32 = flag(context, 'esp32')
     if spine and esp32:
@@ -262,7 +268,7 @@ def launch_setup(context):
     v = car['vehicle']
     sim_time = {'use_sim_time': True}
     actions = [
-        simulator_node(context, share, world, car, lidar, radar, lockstep),
+        simulator_node(context, share, world, car, lidar, radar, lockstep, lidar_relay),
         IncludeLaunchDescription(
             os.path.join(FindPackageShare('aav_description').perform(context), 'launch',
                          'description.launch.py'),
@@ -296,6 +302,9 @@ def launch_setup(context):
     if relay:
         actions.append(Node(package='aav_sim_models', executable='sim_camera_relay',
                             name='sim_camera_relay', parameters=[sim_time]))
+    if lidar_relay:
+        actions.append(Node(package='aav_sim_models', executable='sim_lidar_relay',
+                            name='sim_lidar_relay', parameters=[sim_time]))
     if spine:
         actions += spine_in_the_loop(context, v, sim_time)
     if esp32:
@@ -371,7 +380,9 @@ def generate_launch_description():
                                           'lags times this (a robustness test)'),
         DeclareLaunchArgument('faults', default_value='false',
                               description='true: the front left picture goes through '
-                                          'sim_camera_relay, so fault.camera can freeze it'),
+                                          'sim_camera_relay, and the lidar through '
+                                          'sim_lidar_relay, so fault.camera and fault.lidar '
+                                          'can freeze or stop them'),
         DeclareLaunchArgument('spine', default_value='false',
                               description='the spine in the loop: spine_bridge, CAN frames '
                                           "and spine_sim, the spine's own logic, in front "

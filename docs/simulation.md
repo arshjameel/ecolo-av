@@ -80,7 +80,7 @@ Rows below dated before 16 Nov were measured in Gazebo; Ravensim copies its numb
 | `lidar` | `true` | the simulated roof lidar, in the road and test_lot worlds, read by the costmap and the stop zone ([below](#the-lidar-the-sim-only)); `false` drops it |
 | `radar` | `true` | the radar stand-in, in the road and test_lot worlds; `false`: the lidar alone feeds the stop zone |
 | `watchdog` | `true` | the sensor watchdog: stops navigation and the AI slot when a sensor fails ([below](#sensor-failures-on-purpose)) |
-| `faults` | `false` | `true`: the front left picture goes through `sim_camera_relay` too, so it can freeze on purpose |
+| `faults` | `false` | `true`: the front left picture goes through `sim_camera_relay`, and the lidar through `sim_lidar_relay`, so they can stop or freeze on purpose |
 | `actuator_model` | `true` | the car answers like `vehicle.yaml`'s `actuators:` say ([below](#the-actuator-model)); `false`: the old instant car, to compare |
 
 **Gazebo's source** is still in `vendor/gazebo/` (`pixi run get vendor`), to read: Ravensim
@@ -201,6 +201,7 @@ How the simulated car connects:
   | `sim_gps` | `/sensors/gps/fix` | `ublox_gps` |
   | `sim_radar` | `/sensors/radar/points` (road world) | the TI driver |
   | `sim_camera_relay` | the front left picture, only with `faults:=true` | `usb_cam` |
+  | `sim_lidar_relay` | `/sensors/lidar/points`, only with `faults:=true` and the lidar | `velodyne` |
 
   Each is a process of its own, so each runs on its own core: until 22 Oct one Python
   node did all of it on one thread, and the IMU sometimes went quiet behind it.
@@ -493,10 +494,11 @@ pixi run sim-fault clear                  # after a GPS jump or a lost HUD: a pe
 | `odom` | the wheels: `/vehicle/odom`, `/vehicle/wheels` | `stop`, `freeze`, `nan` |
 | `radar` | `/sensors/radar/points` | `stop`, `freeze` |
 | `camera` | `/sensors/camera/front_left/image_raw` (with `faults:=true`) | `stop`, `freeze` |
+| `lidar` | `/sensors/lidar/points` (with `faults:=true`; TODO 246) | `stop`, `freeze` |
 
 `freeze` sends the last good message again, with fresh stamps: it looks alive. It's a
 parameter, `fault.<sensor>`, of that sensor's node (`sim_gps`, `sim_imu`,
-`sim_radar`, `sim_camera_relay`; the wheels' is `sim_adapter`'s). The logic is
+`sim_radar`, `sim_camera_relay`, `sim_lidar_relay`; the wheels' is `sim_adapter`'s). The logic is
 `aav_sim_models/faults.py`.
 
 ### Actuator failures on purpose (15 Nov, TODO 159)
