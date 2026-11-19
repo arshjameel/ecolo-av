@@ -96,7 +96,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
 | `software_gl.sh` | Mesa's software renderer with no GPU: Vulkan (lavapipe) for Ravensim's cameras, which then run in lockstep (it exports `AAV_SOFTWARE_GL=1`); `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
-| `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt` (`--ndt-map`: another map), `--ndt-ekf`, `--gps-off`, `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
+| `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt` (`--ndt-map`: another map), `--ndt-ekf`, `--ndt-leads`, `--gps-off`, `--gps-fault` (stop, jump, drift), `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
 | `diffusion.sh` | the diffusion planner trial's family: `data`, `train`, `score` (`models/diffusion/`) | `diffusion <data, train, score>` |
 | `diffusion_data.py` | the teachers' paths (the lattice, Hybrid-A*) on random maps: our global costmap and planner, as the stack runs them, through `aav_planner`'s `teach` example (no ROS, no simulator; Nav2's servers until 17 Nov, TODO 242) | `diffusion data` |
 | `lattice_primitives.py` | the State Lattice planner's primitives for our car, by Nav2's generator (`--check`: still right for `vehicle.yaml`?) | - (needs `pixi run get vendor`) |
