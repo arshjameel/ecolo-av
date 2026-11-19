@@ -132,6 +132,41 @@ detectors see the same red and white. The lane finder did a little better on rea
 | The trait | `sim-core` `CarModel`: `step`, `state`, `reset`, `hold`. The shared `car-model` crate goes in behind it at the merge |
 | `ActuatorCar` | the actuator model itself, to `car-model`'s rules (exact lags, rate-limited motor, deadband, dead time). Tested; not wired in yet |
 
+## Noisy wheels (S4)
+
+The car's wheel odometry drifts; by default Ravensim's doesn't, as Gazebo's didn't. Turn
+it on to see whether the EKF, NDT and the watchdog cope (Ben, 14 Nov: seeded, off by
+default).
+
+```sh
+pixi run sim wheel_noise:=0.05 wheel_slip:=0.02 noise_seed:=7
+pixi run sim-check --with wheel_noise:=0.05 --with wheel_slip:=0.02
+```
+
+| Setting | Off | Try | Why that value |
+|---|---|---|---|
+| `wheel_noise` | 0 | 0.05 m/s | jitter on each wheel reading while the wheels turn. Well under the watchdog's wheel checks (0.3 m/s against the IMU, 0.15 m/s against the GPS), so a healthy car never trips them |
+| `wheel_slip` | 0 | 0.02 (2 % too far) | a tyre's rolling radius moves a few per cent with pressure and load; the wheels then read too far, and the odometry drifts about 2 m a 100 m |
+| `noise_seed` | 1 | any | the same seed, the same drift: a run repeats |
+
+Standing still, the wheels read nothing (no noise). The truth (`/vehicle/sim/truth`) never
+drifts. **Not measured on the car yet**: the values are picks; replace them with a bag's
+numbers (the wheels against the GPS on a straight).
+
+## The IMU (S3, 18 Nov)
+
+What `/sensors/imu/data_raw` gives, the car against Ravensim:
+
+| | The car (`imu_node`, Yahboom) | Ravensim (`simulator` → `sim_imu`) |
+|---|---|---|
+| Turn rates | x, y and z | x, y and z: how the car turned since the last reading (slopes and kerbs too). Before 18 Nov: z only |
+| Acceleration | what it feels: speeding up, the turn's pull, gravity | the same: the mean since the last reading, the pull at the sensor's place, gravity as the tilted car feels it. Before: an instant's, which read 10 or 0 m/s² while the car model caught each command, so `sim_imu` replaced it with dv/dt of the odometry (noisy with `wheel_noise`, and no gravity on a slope) |
+| Orientation | none (covariance -1) | none, the same |
+| Noise | 0.02 rad/s, 0.2 m/s² (its covariances) | the same numbers, added once (before: twice on the acceleration) |
+| Rate | 200 Hz (if set up, `aav_imu_yahboom`) | 50 Hz, as Gazebo's |
+
+`sim_imu accel_from:=odometry` gives the old way back.
+
 ## Plug-in points
 
 | For | Where | What it gets |
