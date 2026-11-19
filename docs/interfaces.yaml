@@ -1009,7 +1009,7 @@ topics:
     type: nav_msgs/msg/Path
     pub: [street_router]
     sub: [map, dev_window]
-    note: Transient local (latched). The whole route in the map frame (each point through /fromLL). The map window (map, aav_hud) draws it violet under the blue plan; the developer window too (key H), and the chunks along its next 100 m are the ones it shows loaded (TODO 175); RViz and Foxglove can too. Not a plan the follower drives: the planner makes its own.
+    note: Transient local (latched). The whole route in the map frame (each point through /fromLL). The map window (map, aav_hud) draws it violet under the blue plan; the developer window too (key H), and the chunks along its next 100 m are the ones it shows loaded (TODO 175); RViz and Foxglove can too. Not a plan the follower drives - the planner makes its own.
   /drivers/nav/route/status:
     type: std_msgs/msg/String
     pub: [street_router]
