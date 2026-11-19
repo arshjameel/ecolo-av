@@ -750,7 +750,8 @@ def test_the_watchdog_watches_only_our_nodes_that_run():
     with open(config) as f:
         rules = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
     for name in ours:
-        assert rules[name]['kind'] == 'node' and rules[name]['stop'] is False
+        kind = 'status' if name.startswith('status_') else 'node'
+        assert rules[name]['kind'] == kind and rules[name]['stop'] is False, name
 
 
 def test_lane_pose_runs_the_lane_finder_and_feeds_the_global_ekf():
