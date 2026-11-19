@@ -583,10 +583,11 @@ def nodes(context):
                   ('particle_cloud', '/localization/amcl/particles'),
                   ('initialpose', '/localization/amcl/initial_pose')]
         if amcl_impl == 'rust':
-            # Not a lifecycle node: it respawns like our others.
+            # Not a lifecycle node: it respawns like our others. namespace='/': so the
+            # start (a launch dict) beats amcl.yaml in rclrs too (docs/languages.md).
             actions.append(Node(
                 package=vehicle.AMCL_IMPLS['rust'], executable='amcl', name='amcl',
-                output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
+                namespace='/', output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
                 parameters=[config, start], remappings=remaps))
         else:
             actions += [
