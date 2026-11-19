@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">123 min read · 4 sections</div></header>
+<div class="meta">124 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -194,10 +194,10 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/drivers/tests/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/TwistStamped</code></td>
-<td><code>actuator_test</code></td>
+<td><code>actuator_test</code>, <code>car_test</code></td>
 <td><code>twist_mux</code>, <code>language_drive</code></td>
 <td>-</td>
-<td>Priority 60, below both people (joystick 100, keyboard 90) and above every other program. Only while an actuator test runs (aav_actuator_tests, pixi run actuator-test; docs/tests.md stages 3-4), or the preflight on stands (pixi run actuator-test preflight --stands, that is actuator-test preflight, which also counts every sensor topic it subscribes to). It also reads /control/cmd_vel, to stop when someone else takes over.</td>
+<td>Priority 60, below both people (joystick 100, keyboard 90) and above every other program. Only while an actuator test runs (aav_actuator_tests, pixi run actuator-test; docs/tests.md stages 3-4), or the preflight on stands (pixi run actuator-test preflight --stands, that is actuator-test preflight, which also counts every sensor topic it subscribes to). It also reads /control/cmd_vel, to stop when someone else takes over. car_test (pixi run car-test --stands, phase A in one command) runs those as child processes, and between them publishes here itself - a slow roll (0.2 m/s, within the stands' 0.3 cap) that each fault on purpose starts from.</td>
 </tr>
 <tr>
 <td><code>/drivers/buttons/cmd_vel</code></td>
@@ -259,7 +259,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/sensor_watchdog/lock</code></td>
 <td><code>std_msgs/msg/Bool</code></td>
 <td><code>sensor_watchdog</code></td>
-<td><code>twist_mux</code>, <code>point_driver</code>, <code>behaviour</code></td>
+<td><code>twist_mux</code>, <code>point_driver</code>, <code>behaviour</code>, <code>car_test</code></td>
 <td>sim</td>
 <td>true while a sensor navigation or the AI slot needs is stale, NaN, frozen, jumped, or (the wheels) disagrees with the IMU, or the steering is STUCK off its command, or the car runs over ego's speed (OVERSPEED - 0.2 m/s over for 2 s while not slowing, sim only so far, TODO 207); false otherwise (aav_safety sensor_watchdog, 10 Hz) - a heartbeat. A twist_mux lock at priority 30, as the stop sign - it holds navigation and the AI slot, never a person or a test. Fail-safe - the lock's 1 s timeout holds them too when the watchdog dies or hangs (aav_command_mux mux.launch.py sensor_lock, true wherever a watchdog runs - Ravensim with watchdog:=true, the bench, and the car next to the mux; false on the turtle). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python).</td>
 </tr>
@@ -275,9 +275,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/sensor_watchdog/state</code></td>
 <td><code>std_msgs/msg/String</code></td>
 <td><code>sensor_watchdog</code></td>
-<td><code>hud</code>, <code>map</code>, <code>dev_window</code></td>
+<td><code>hud</code>, <code>map</code>, <code>dev_window</code>, <code>car_test</code></td>
 <td>sim</td>
-<td>One line for people, 10 Hz - OK, or STOP (the lock is on) or WARN, then each input that isn't OK and why, those that stop first, such as "STOP - gps STALE (nothing for 2.3 s (more than 2 s))". The HUD and the map window show it as a banner, and the HUD the first input in its GO / STOP panel, red for STOP or when it goes silent (then twist_mux holds navigation too). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python). Since 18 Nov (TODO 171) our navigation nodes speak here too, warn only - "WARN - status_costmap_local FAULT (says WARN - local costmap - waiting for odometry)", or STALE when a status topic goes silent.</td>
+<td>One line for people, 10 Hz - OK, or STOP (the lock is on) or WARN, then each input that isn't OK and why, those that stop first, such as STOP, a colon, then "gps STALE (nothing for 2.3 s (more than 2 s))" (watchdog-core summary() - each input as name STATE (why), joined by semicolons; car_test reads the names). The HUD and the map window show it as a banner, and the HUD the first input in its GO / STOP panel, red for STOP or when it goes silent (then twist_mux holds navigation too). With watchdog_impl:=rust (watchdog.launch.py, sim.launch.py) aav_watchdog_rs publishes it instead, with the same node name, QoS and answers (the default since Ben, 16 Nov - "watchdog in rust sure"; watchdog_impl:=python runs the Python). Since 18 Nov (TODO 171) our navigation nodes speak here too, warn only - "WARN - status_costmap_local FAULT (says WARN - local costmap - waiting for odometry)", or STALE when a status topic goes silent.</td>
 </tr>
 <tr>
 <td><code>/hud/heartbeat</code></td>
@@ -426,10 +426,10 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <tr>
 <td><code>/safety/estop</code></td>
 <td><code>std_msgs/msg/Bool</code></td>
-<td><code>joy_teleop</code>, <code>hud</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>hw_panel</code>, <code>dev_window</code></td>
-<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code>, <code>ego</code></td>
+<td><code>joy_teleop</code>, <code>hud</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>hw_panel</code>, <code>dev_window</code>, <code>car_test</code></td>
+<td><code>twist_mux</code>, <code>spine_bridge</code>, <code>legacy_uart_bridge</code>, <code>language_drive</code>, <code>actuator_test</code>, <code>carla_adapter</code>, <code>point_driver</code>, <code>hw_panel</code>, <code>behaviour</code>, <code>ego</code>, <code>car_test</code></td>
 <td>-</td>
-<td>true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop. None of them ever publishes false.</td>
+<td>true = stop. ego turns the pedal off (full braking) while true. Lock on twist_mux (priority 255) and the backends brake at once. Cleared only by publishing false, from a laptop. The HUD's e-stop button (hud, aav_hud) only ever publishes true (five times in 0.5 s), reliable like the backends' subscriptions; language_drive (aav_language) does the same from its estop() tool, and the hardware panel (hw_panel) from its E-STOP button; actuator_test's preflight sets it when the car is still moving 5 s after its stop, and car_test the same after any of its steps; car_test --sim also presses it as its last step (the e-stop), standing in for the person. None of them ever publishes false.</td>
 </tr>
 <tr>
 <td><code>/control/cmd_vel</code></td>
@@ -571,7 +571,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/output_mux/state</code></td>
 <td><code>std_msgs/msg/String</code></td>
 <td><code>output_mux</code></td>
-<td><code>hud</code>, <code>spine_bridge</code>, <code>dev_window</code></td>
+<td><code>hud</code>, <code>spine_bridge</code>, <code>dev_window</code>, <code>car_test</code></td>
 <td>turtle, sim, car, bench</td>
 <td>One line for people, 2 Hz and on each change - OPEN (passing ego's commands on), WAIT (closed, not latched - the sensor mux not heard yet or quiet for 3 s, its doubts, a node on /system/source whose announcement hasn't arrived yet, or settling for 2 s after all clear) or STOP (latched, and why, such as "STOP - target car needs REAL - camera_front_left is SIM (sim_adapter)"). The target first, such as "OPEN - car". spine_bridge (role spine) reads it as the safety gate - /spine/arm is refused unless it said OPEN for the bridge's own target within gate_timeout (1.5 s); Ben, 24 Oct. The HUD's GO / STOP panel shows it, with the first reason.</td>
 </tr>
@@ -611,7 +611,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/vehicle/status</code></td>
 <td><code>aav_interfaces/msg/VehicleStatus</code></td>
 <td><code>spine_bridge</code>, <code>sim_adapter</code>, <code>turtlesim_adapter</code>, <code>carla_adapter</code>, <code>legacy_uart_bridge</code></td>
-<td><code>hud</code>, <code>language_drive</code>, <code>debug_hud</code>, <code>hw_panel</code>, <code>dev_window</code></td>
+<td><code>hud</code>, <code>language_drive</code>, <code>debug_hud</code>, <code>hw_panel</code>, <code>dev_window</code>, <code>car_test</code></td>
 <td>turtle, sim, bench</td>
 <td>Mode, armed, e-stop, measured speed and steering, actuator levels, fault bits. For the HUD and Foxglove. legacy_uart_bridge publishes it, 10 Hz, only with uplink true (the ESP32's uplink frame on TX1, TODO 50 - off until its wire is confirmed) - speed NaN (that ESP32 has no wheel speed), steering_angle the steering Jrk's position or NaN; mode COMPUTER also while the transmitter's switch is on RC via ROS (/vehicle/rc has the switch).</td>
 </tr>

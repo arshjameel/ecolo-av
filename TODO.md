@@ -34,7 +34,7 @@ screen "were we can see the commands being sent and maybe by who". The whole pla
 
 | # | Task | Status |
 |---|---|---|
-| 246 | **Phase A: `pixi run car-test --stands`**: the preflight, every sensor, the steering tests, throttle on free wheels, then faults on purpose (the Orin's heartbeat stopped, each sensor driver stopped, a Pi's link, the e-stop, a pulled cable when told), one report | ⬜ |
+| 246 | **Phase A: `pixi run car-test --stands`**: the preflight, every sensor, the steering tests, throttle on free wheels, then faults on purpose (the Orin's heartbeat stopped, each sensor driver stopped, a Pi's link, the e-stop, a pulled cable when told), one report | ✅ built 19 Nov, run against Ravensim (`--sim --no-manual`); ⬜ the car. Found: the preflight's last-resort e-stop raised instead of pressing (fixed); the watchdog has no lidar input (step 5e fails on the car until it has one) |
 | 247 | **The debug screen** on the map window: who is driving (a new topic: the command mux's current driver), what it asks, what ego sends, the output gate and why, what the car did | ⬜ |
 | 248 | **Phase B: the transfer functions in the hallway**: `speed-up`, `coast`, `brake`, steering on the ground; the IMU's acceleration blended with the wheel speed; each run laid over the model's (10 % speed, 0.2 m stop); with error bars (TODO 104) | ⬜ the car |
 | 249 | **Phase C: the recording kit**: `record.sh` full mode for mapping drives (raw lidar, IMU at full rate, wheels, raw GPS, every camera), clocks checked first, ~40 GB/h | ⬜ |

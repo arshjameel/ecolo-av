@@ -20,6 +20,7 @@ setup(
     entry_points={
         'console_scripts': [
             'actuator_test = aav_actuator_tests.actuator_test:main',
+            'car_test = aav_actuator_tests.car_test_node:main',
         ],
     },
 )

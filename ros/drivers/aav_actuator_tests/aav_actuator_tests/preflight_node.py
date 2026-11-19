@@ -99,8 +99,8 @@ NO_DRIVE = pr.Test('preflight', '3.P', 3, 'preflight, the sensors only (--no-dri
 class PreflightNode(ActuatorTest):
     """actuator_test's node, with a counter on every sensor."""
 
-    def __init__(self, sim):
-        super().__init__(sim)
+    def __init__(self, sim, name='actuator_test'):
+        super().__init__(sim, name)
         self.samples = {s.name: pf.Samples() for s in pf.SENSORS}
         self.v['gps_speed'] = float('nan')
         self.lock = None   # the legacy bridge's no-timeout lock: None until heard
@@ -126,8 +126,13 @@ class PreflightNode(ActuatorTest):
     def on_lock(self, msg):
         self.lock = bool(msg.data)
 
-    def estop(self):
-        """Set the e-stop (never clear it: only a person does, pixi run clear estop)."""
+    def press_estop(self):
+        """
+        Set the e-stop (never clear it: only a person does, pixi run clear estop).
+
+        Not `estop`: ActuatorTest's `self.estop` (the bool last heard) would hide it, and
+        the call would raise instead of pressing (test_car_test.py checks the names).
+        """
         self.estop_pub.publish(Bool(data=True))
 
 
@@ -211,7 +216,7 @@ class PreflightRun(Run):
             self.result = 6
             end = time.monotonic() + ESTOP_TIME
             while time.monotonic() < end:
-                node.estop()
+                node.press_estop()
                 node.send(0.0, 0.0, wheelbase)
                 rclpy.spin_once(node, timeout_sec=0.05)
             self.say('The e-stop stays set: clear it by hand once the car is safe '

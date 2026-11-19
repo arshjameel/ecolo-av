@@ -16,6 +16,8 @@ TwistStamped on /drivers/tests/cmd_vel and logs what the car did.
   straight      4.7   10 m with the steering straight: the sideways drift
   preflight     3.P   on stands: speed up, hold, slow, brake, steer; every sensor checked
                       at once (preflight.py judges it)
+  wheel-steps   3.14  on stands: throttle on free wheels, a few speed steps; the wheel
+                      speed must follow them (car_test.py's step 4)
 
 Steering can only change while the car moves (ego holds it below 0.05 m/s), so the
 stage-3 tests creep along: on stands the wheels spin slowly, in Gazebo the car crawls.
@@ -306,6 +308,26 @@ def preflight(s: Settings) -> List[Step]:
     ]
 
 
+WHEEL_STEP_FRACTIONS = (1 / 3, 2 / 3, 1.0, 0.5)   # of the cap: up, up, up, down
+WHEEL_STEP_TIME = 4.0                             # s at each speed
+WHEEL_STEP_PHASE = 'wheel step'                   # each step's phase: 'wheel step 0.10'
+
+
+def wheel_steps(s: Settings) -> List[Step]:
+    """
+    Return throttle on free wheels: a few speed steps, each held WHEEL_STEP_TIME s.
+
+    On stands the speeds are the stands' cap and below (0.1, 0.2, 0.3, 0.15 m/s at 0.3);
+    reports.wheel_steps judges whether the wheel speed followed them.
+    """
+    steps = [still()]
+    for f in WHEEL_STEP_FRACTIONS:
+        v = round(f * s.cap, 3)
+        steps.append(Step(f'{WHEEL_STEP_PHASE} {v:.2f}', v, 0.0, until=Until.TIME,
+                          value=WHEEL_STEP_TIME))
+    return steps + [stop()]
+
+
 def circle_length(angle: float, wheelbase: float) -> float:
     """Return the length of one circle of base_link at this wheel angle (m)."""
     return 2.0 * math.pi * wheelbase / math.tan(max(abs(angle), 0.02))
@@ -336,6 +358,8 @@ TESTS: Dict[str, Test] = {t.name: t for t in (
     Test('straight', '4.7', 4, 'straight line: the sideways drift over 10 m', straight),
     Test('preflight', '3.P', 3, 'preflight: speed, brake, steering and every sensor at '
          'once, PASS / FAIL', preflight),
+    Test('wheel-steps', '3.14', 3, 'throttle on free wheels: the wheel speed follows a few '
+         'speed steps', wheel_steps),
 )}
 
 

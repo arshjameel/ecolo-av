@@ -39,6 +39,7 @@ slot: below every person (joystick, RC, keyboard), above navigation and every ot
 | `circles` | 4.5, 4.6 | lot | one full circle per angle, both ways, at 1 m/s | real wheel angle per command; tightest circle |
 | `straight` | 4.7 | lot | 10 m at 0.5 m/s, steering straight | sideways drift; `steer_offset` |
 | `actuator-test preflight --stands` | 3.P | stands | speed up, hold, slow, brake; steer left, right, centre; every sensor counted | PASS / FAIL per line, no `vehicle.yaml` lines ([below](#the-preflight-on-stands)) |
+| `wheel-steps` | 3.14 | stands | 0.1, 0.2, 0.3, 0.15 m/s, 4 s each: throttle on free wheels | does the wheel speed follow; no `vehicle.yaml` lines |
 
 The steering tests creep at 0.2 m/s: ego only turns the wheels while the car moves. On
 stands the wheels spin slowly; in the simulator the car crawls in arcs.
@@ -356,6 +357,98 @@ The word to type: `preflight`. If the car is still moving 5 s after the stop, it
 | Bench (`--bench`), spine armed | every sensor line PASS (IMU 50 Hz, \|a\| 9.78; GPS 5 Hz; camera 640x360 10 Hz; battery 50.9 V). The drive stopped itself: the front wheels read 0 for over 2 s of a slow start (8 Hall clicks a turn), so the "speed nobody sees" stop, then at 2 s, fired; now 4 s. The run again at 4 s: not yet done |
 | `--no-drive`, the real car | untested: no car |
 
+## car-test: the whole stands test
+
+Phase A of [the testing plan](testing-plan.md#phase-a-the-car-on-stands) in one command
+(TODO 246). It runs every step below in order and writes **one report folder**.
+
+```bash
+pixi run car-test --stands                       # the real car, wheels off the ground
+pixi run car-test --stands --sim --no-manual     # its own Ravensim (this computer only)
+pixi run car-test --stands --only faults         # some steps (or a group: steering, faults)
+```
+
+| # | Step | How | Passes when |
+|---|---|---|---|
+| 1 | the preflight | `actuator-test preflight --stands` | every line PASS |
+| 2 | every sensor | `actuator-test preflight --stands --no-drive` (15 s still) | each at its documented rate |
+| 3a-c | steering | `steer-sweep`, `steer-rate`, `steer-centre` | its `vehicle.yaml` lines printed |
+| 4 | throttle on free wheels | `wheel-steps` (new, 3.14): 0.1, 0.2, 0.3, 0.15 m/s, 4 s each | the wheel speed follows: each step up within 25 % (or 0.05 m/s), the step down slower |
+| 5a | the Orin is lost | car: a person pulls the Orin's cable to the Motor Pi. Sim: the runner pauses its own output mux | car: the ESP32 brakes, and **holds** while still asked to roll once the cable is back. Sim: still within 2 s |
+| 5b-d | GPS, IMU, camera lost | car: a person unplugs it. Sim: `fault.<sensor> stop` | the sensor watchdog names it within its `max_age` + 1 s; still 3 s later |
+| 5e | lidar lost | car: a person unplugs it | **FAIL today**: the watchdog has no lidar input |
+| 5f-g | a Pi's link; a cable | a person pulls it (car only) | the car stops, and something says why |
+| 5h | the e-stop | car: a person presses it. Sim: the runner publishes `/safety/estop` true | still within 2 s |
+
+**Each fault** starts from a slow roll (0.2 m/s, inside the stands' 0.3 cap) and records
+**who said why** (the sensor watchdog's line, `/vehicle/status`, `/safety/estop`, the output
+gate) and **how soon the car stood still**.
+
+!!! warning "The sensor faults: the runner stops itself"
+    The watchdog's lock (priority 30) holds navigation and the AI slot, **never the tests
+    (60)**: that is by design. So the runner rolls, waits for the watchdog to **say** the
+    sensor's name, then stops itself, as navigation would be held. The step measures how fast
+    the watchdog notices, not a lock on the tests.
+
+### The rules
+
+| Rule | Why |
+|---|---|
+| `--stands` required; `--ground` refused | phase A is on stands only |
+| Any FAIL **ends the run**: the steps after it are NOT RUN | the car stays on stands |
+| After each step: zeros until still; not still in 5 s → `/safety/estop` **true** (never false) | as the preflight does |
+| On the car: type `car-test` to start, and each test asks again | a person confirms every move |
+| A person's step prints what to do and waits for Enter; `skip` skips it | the e-stop person stays at the button |
+| `--no-manual`: every person's step is SKIPPED, and listed | for the stand-in and CI |
+| `--sim`: its own Ravensim, its own ROS domain (`AAV_SIM_DOMAIN`, or a free one), `--local` | never reaches a car |
+| The e-stop is the last step | it latches: nothing drives after it |
+
+### The report folder
+
+`~/aav-tests/<time>-stands[-sim]/`:
+
+| File | Holds |
+|---|---|
+| `report.md` | the table: PASS / FAIL / SKIPPED / NOT RUN per step, what happened, the `vehicle.yaml` lines |
+| `report.yaml` | the same, for tools |
+| `run.log` | everything printed |
+| `<step>/` | each test's own folder (`log.csv`, `summary.txt`, `meta.yaml`) and `output.log` |
+| `sim-launch.log` | `--sim`: our Ravensim's log |
+
+### No new hook for the heartbeat
+
+The output mux makes the heartbeat. Rather than add a "stop the heartbeat" switch to a
+safety lock, the runner:
+
+- **in `--sim`**, pauses **its own** Ravensim's `output_mux` (SIGSTOP, then SIGCONT),
+  found in its own launch log and checked in its own process group. Commands and heartbeat
+  stop together; Ravensim's backend brakes on its 0.2 s timeout. The ESP32 isn't in
+  Ravensim's loop: its own check is `pixi run esp qemu-check`;
+- **on the car**, asks a person to pull the Orin's cable to the Motor Pi. The Pi keeps
+  sending the last command with a **frozen counter** for 0.3 s; the ESP32 brakes after
+  100 ms on its own. Once the cable is back, the runner still asks to roll for 2 s: the
+  wheels must stay braked (the ESP32's latch), and `/vehicle/status` say disarmed or
+  `CMD_TIMEOUT`.
+
+### Tested, 19 Nov (Ravensim only)
+
+`pixi run car-test --stands --sim --no-manual`, Ben's MacBook, its own Ravensim (road world,
+domain 110), about 7 minutes:
+
+| Step | Result |
+|---|---|
+| 1-2 preflight, sensors | PASS (Ravensim has no battery: skipped, and said) |
+| 3a-c steering | PASS: lines for `max_steering_angle`, `steer_offset`, `steer_lag`, `steer_rate`, `steer_deadband` |
+| 4 wheel-steps | PASS: 0.10 → 0.09, 0.20 → 0.21, 0.30 → 0.31, 0.15 → 0.23 m/s |
+| 5a heartbeat | PASS: still 0.50 s after the output mux paused |
+| 5b-d GPS, IMU, camera | PASS: the watchdog named each 2.11, 0.57, 1.09 s after its last message; still 0.41-0.45 s after its word |
+| 5e-g lidar, Pi, cable | SKIPPED: not in Ravensim |
+| 5h e-stop | PASS: still 0.67 s after it |
+
+The first runs found: Ravensim's cameras build on first use (the runner now waits for the
+camera), and the watchdog writes `STOP: gps STALE (...)`, not `STOP - ...` as the contract
+said (fixed there). **On the car: untested.**
+
 ## Trusting the fits
 
 Each lag fit is now a **dead time, then a lag** (FOPDT). The old fit (a lag alone)
@@ -527,3 +620,5 @@ drift over 10 m was 0.06 m; the full-lock circle was 6.8 m across, not 5.75 (6.0
 | `test/synthetic.py`, `test/test_robustness.py` | pretend data with play, Hall pulses, noise; the fits must give the numbers back or refuse |
 | `test/fake_car.py` | ego's model + Gazebo's actuator model: the tests check each test gets the numbers back |
 | `tools/actuator_test.sh` | the pixi task: `--local` only with `--sim` |
+| `car_test.py`, `car_test_node.py`, `test/test_car_test.py` | car-test: its steps and judging (no ROS, unit-tested), and its ROS runner |
+| `tools/car_test.sh` | the pixi task `car-test`: `--local` only with `--sim` |

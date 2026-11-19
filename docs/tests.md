@@ -101,6 +101,7 @@ trigger, a little throttle, wheels turning, then:
 | 3.11 | **Steering speed**: centre to full lock | seconds, from a video (or `actuator-test steer-rate --stands`, once a steering sensor reports) | written in `vehicle.yaml` | 🔧 |
 | 3.12 | **Centre**: command straight | the wheels' angle; `actuator-test steer-centre --stands` | under 1°, or the offset written down | 🔧 |
 | 3.13 | Wheel speed on stands | `/vehicle/status` speed vs a phone tachometer app | within 10% | ⬜ |
+| 3.14 | **Throttle on free wheels** | `pixi run actuator-test wheel-steps --stands`: 0.1, 0.2, 0.3, 0.15 m/s, 4 s each (step 4 of `pixi run car-test --stands`) | each step up within 25 % (or 0.05 m/s), the step down slower | ⬜ the car |
 
 ## Stage 4: the car in an empty lot
 
