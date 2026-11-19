@@ -469,6 +469,22 @@ DETECTOR_IMPLS = {'python': 'aav_detector', 'rust': 'aav_detector_rs'}
 DEFAULT_DETECTOR_IMPL = 'python'
 
 
+# Which model worker the diffusion planner runs (navigation.launch.py, sim.launch.py
+# diffusion_impl:=): python (worker.py in the learn environment; the default) or rust
+# (aav_diffusion_rs's diffusion_worker: the same pipe, ONNX Runtime from Rust, a
+# challenger, docs/onnx.md). The node, its guard and the lattice's fallback are the same.
+DIFFUSION_IMPLS = ('python', 'rust')
+DEFAULT_DIFFUSION_IMPL = 'python'
+
+
+def check_diffusion_impl(impl):
+    """Return the diffusion worker's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in DIFFUSION_IMPLS:
+        raise ValueError(f'diffusion_impl:={impl}: pick one of {", ".join(DIFFUSION_IMPLS)}')
+    return name
+
+
 def check_detector_impl(impl):
     """Return the detector's language (lower case), or raise ValueError saying what to pick."""
     name = str(impl).strip().lower()

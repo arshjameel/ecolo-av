@@ -916,3 +916,13 @@ def test_ours_runs_the_things_so_the_behaviour_can_hold_for_what_moves():
         'things'] == 'false'
     # The empty world has no lidar: the stack's things are off there, not an error.
     assert included(started(SIM))['navigation.launch.py']['things'] == 'false'
+
+
+def test_diffusion_impl_picks_the_rust_worker_or_says_what_to_pick():
+    # diffusion_impl:=rust: aav_diffusion_rs's worker under the same node (TODO 243).
+    sent = included(started(SIM, world='test_lot', planner='diffusion', diffusion_impl='Rust',
+                            diffusion_provider='auto'))
+    nav = sent['navigation.launch.py']
+    assert (nav['diffusion_impl'], nav['diffusion_provider']) == ('rust', 'auto')
+    with pytest.raises(ValueError, match='diffusion_impl:=cpp: pick one of python, rust'):
+        started(SIM, world='test_lot', planner='diffusion', diffusion_impl='cpp')

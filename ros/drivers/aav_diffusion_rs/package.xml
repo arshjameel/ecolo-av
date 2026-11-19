@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_diffusion_rs</name>
+  <version>0.1.0</version>
+  <description>The diffusion planner's model worker in Rust: a drop-in for aav_diffusion_planner's worker.py (diffusion_impl:=rust), a challenger. Its ONNX through ONNX Runtime (the ort crate): Core ML on a Mac, the CPU anywhere, TensorRT on the Orin (untested). No ROS: the planner node starts it and talks to it over a pipe; the guard and the lattice's fallback stay in the node.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

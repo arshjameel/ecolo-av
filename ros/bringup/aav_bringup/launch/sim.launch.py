@@ -96,7 +96,9 @@ bench's argument names:
                       fails (aav_diffusion_planner, a trial: pixi install --locked -e
                       learn, pixi run diffusion train first); diffusion_model:=<.onnx>
                       another model; diffusion_record:=<folder> each plan's inputs, to
-                      replay offline; diffusion_smoothing:=average the 2 Nov smoothing.
+                      replay offline; diffusion_smoothing:=average the 2 Nov smoothing;
+                      diffusion_impl:=rust the model from Rust (aav_diffusion_rs), with
+                      diffusion_provider:=auto (Core ML on a Mac; docs/onnx.md).
                       own (the default): our planner (aav_planner: Nav2's lattice in
                       Rust; docs/own-planner.md). Nav2's planners went on 17 Nov.
                       lattice_headings:=32: the lattice's trial file, 32 headings
@@ -678,6 +680,9 @@ def launch_setup(context):
                                diffusion_model=arg('diffusion_model'),
                                diffusion_record=arg('diffusion_record'),
                                diffusion_smoothing=arg('diffusion_smoothing'),
+                               diffusion_impl=vehicle.check_diffusion_impl(
+                                   arg('diffusion_impl')),
+                               diffusion_provider=arg('diffusion_provider'),
                                # A trial tracker may be swapped live here (the debug
                                # HUD's panel shows which): the sim only, never the car.
                                live_swap='true',
@@ -1082,6 +1087,14 @@ def generate_launch_description():
         DeclareLaunchArgument('diffusion_record', default_value='',
                               description="with planner:=diffusion: a folder for each plan's "
                                           'inputs, to replay offline (training/replay.py)'),
+        DeclareLaunchArgument('diffusion_impl', default_value=vehicle.DEFAULT_DIFFUSION_IMPL,
+                              description="with planner:=diffusion: the model's worker: "
+                                          'python (worker.py) or rust (aav_diffusion_rs, '
+                                          'ONNX Runtime from Rust; docs/onnx.md)'),
+        DeclareLaunchArgument('diffusion_provider', default_value='CPUExecutionProvider',
+                              description="with planner:=diffusion: ONNX Runtime's engine "
+                                          '(CPUExecutionProvider, CoreMLExecutionProvider...; '
+                                          'the Rust worker also auto, coreml, tensorrt)'),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value=stacks.CHOSEN,
                               description="with tracker:=mppi_lag: its steering's control cost "
                                           "weight (TODO 168): 0.05; nav2.yaml's gamma when "

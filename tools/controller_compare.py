@@ -93,6 +93,8 @@ The trials (docs/trials.md):
                     plans came from the model, how many from the lattice (the guard's
                     fallback) and why, and the guard's refusals by check.
                     diffusion_nomodel: the same with no model file (every plan the lattice's).
+                    diffusion_rs: its model from Rust (ONNX Runtime, Core ML on a Mac);
+                    diffusion_coreml: the Python worker on Core ML.
                     --diffusion-model <.onnx> another model; --diffusion-record <folder>
                     each plan's inputs, for pixi run diffusion replay
 
@@ -1049,6 +1051,13 @@ PLANNER_VARIANTS['own_hybrid'] = ('own', ['planner_search:=hybrid'])
 # diffusion_nomodel: the diffusion trial with no model file, so every plan must be the
 # lattice's (its guard's fallback test: docs/tests.md).
 PLANNER_VARIANTS['diffusion_nomodel'] = ('diffusion', ['diffusion_model:=/nonexistent.onnx'])
+# diffusion_rs: the same trial, its model run from Rust (aav_diffusion_rs's worker, ONNX
+# Runtime; Core ML on a Mac: auto). diffusion_coreml: the Python worker on Core ML.
+# The node, its guard and the lattice's fallback are the same (TODO 243, docs/onnx.md).
+PLANNER_VARIANTS['diffusion_rs'] = ('diffusion', ['diffusion_impl:=rust',
+                                                  'diffusion_provider:=auto'])
+PLANNER_VARIANTS['diffusion_coreml'] = ('diffusion',
+                                        ['diffusion_provider:=CoreMLExecutionProvider'])
 PLANNER_WORDS = vehicle.PLANNERS + tuple(PLANNER_VARIANTS)
 
 
@@ -1107,7 +1116,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     if planner:
         command += planner_launch(planner)
         if planner.startswith('diffusion'):
-            if args.diffusion_model and planner == 'diffusion':
+            if args.diffusion_model and planner != 'diffusion_nomodel':
                 command.append(f'diffusion_model:={os.path.abspath(args.diffusion_model)}')
             if args.diffusion_smoothing:
                 command.append(f'diffusion_smoothing:={args.diffusion_smoothing}')

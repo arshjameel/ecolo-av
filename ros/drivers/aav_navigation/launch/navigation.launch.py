@@ -7,7 +7,7 @@ Navigation as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out
       [kerbs:=false] [lidar_impl:=rust] [things_impl:=rust]
       [reversing:=false] [max_speed:=] [planner:=own] [planner_search:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
-      [diffusion_python:=] [diffusion_smoothing:=gear]
+      [diffusion_python:=] [diffusion_smoothing:=gear] [diffusion_impl:=python]
       [plan_around:=true] [behaviour:=false] [behaviour_impl:=rust] [things:=false]
       [replan_hz:=1.0] [tracker:=mppi_lag] [live_swap:=false]
       [map_correction:=newest] [speed_loop:=default]
@@ -555,6 +555,8 @@ def nodes(context):
                 'provider': LaunchConfiguration('diffusion_provider').perform(context),
                 'record': LaunchConfiguration('diffusion_record').perform(context),
                 'learn_python': LaunchConfiguration('diffusion_python').perform(context),
+                'worker': vehicle.check_diffusion_impl(
+                    LaunchConfiguration('diffusion_impl').perform(context)),
                 'smoothing': LaunchConfiguration('diffusion_smoothing').perform(context),
                 'use_sim_time': use_sim_time}],
             # It reads our global costmap's grid (/drivers/nav/costmap/global) itself.
@@ -708,6 +710,10 @@ def generate_launch_description():
         DeclareLaunchArgument('diffusion_smoothing', default_value='gear',
                               description="with planner:=diffusion: gear (each gear's run "
                                           'smoothed on its own) or average (2 Nov)'),
+        DeclareLaunchArgument('diffusion_impl', default_value=vehicle.DEFAULT_DIFFUSION_IMPL,
+                              description="with planner:=diffusion: the model's worker: "
+                                          'python (worker.py) or rust (aav_diffusion_rs, '
+                                          'ONNX Runtime from Rust; docs/onnx.md)'),
         DeclareLaunchArgument('diffusion_python', default_value='',
                               description="with planner:=diffusion: the model worker's "
                                           "Python (empty: Pixi's learn environment)"),
