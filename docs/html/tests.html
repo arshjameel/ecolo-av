@@ -513,6 +513,10 @@ trigger, a little throttle, wheels turning, then:</p>
 The test script (<code>pixi run actuator-test &lt;test&gt;</code>, <a href="actuator-tests.html">docs</a>) logs the IMU (g),
 the wheel speed, the pose and the GPS for every test.
 Which test fits which number, and when to stop repeating it: <a href="know-the-car.html">Know the car</a>.</p>
+<p><strong>First, in a hallway (phase B, this winter):</strong> speed up, coast, brake and steer on the
+ground, with the IMU blended with the wheels and error bars on every number, in one command:
+<code>pixi run car-test --hallway</code> (<a href="actuator-tests.html#car-test-hallway-the-transfer-functions">docs</a>).
+Built; <strong>untested on the car</strong>.</p>
 <h3 id="4a-speed-up-coast-brake">4a. Speed up, coast, brake</h3>
 <div class="table-wrap"><table>
 <thead>

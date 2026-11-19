@@ -36,6 +36,7 @@ Alongside A and B: **the debug screen**: who is sending commands, and what (belo
 | On stands | `pixi run actuator-test preflight --stands` | by hand | Built; **untested on the car** |
 | On stands, all of phase A | `pixi run car-test --stands` (`--sim --no-manual`: against its own Ravensim) | by hand | Built 19 Nov; against Ravensim 11 PASS, 3 SKIPPED (car only); **untested on the car** |
 | On the ground | `pixi run actuator-test speed-up / coast / brake` | by hand | Built; **untested on the car** |
+| In the hallway, all of phase B | `pixi run car-test --hallway` (`--sim --no-manual`: a pretend hallway in its own Ravensim) | by hand | Built 19 Nov (TODO 248); against Ravensim and the pretend car; **untested on the car** |
 
 ## Phase A: the car on stands
 
@@ -86,12 +87,15 @@ Each actuator is modelled as **a dead time, then a first-order lag**: the comman
 nothing happens for the dead time, then the car moves towards the command with time constant
 "lag". Today these are **guesses** in `vehicle.yaml`:
 
-| Actuator | Numbers to measure | Test |
-|---|---|---|
-| Throttle | `throttle_dead_time`, `throttle_lag`, top acceleration | `speed-up` (4.1) |
-| Drag | how fast the car slows on its own | `coast` (4.2) |
-| Brake | `brake_dead_time`, `brake_lag`, deceleration, stopping distance | `brake` (4.3) |
-| Steering | `steer_dead_time`, `steer_lag`, rate, centre | `steer-rate` (3.11), `steer-centre` (3.12) |
+| Actuator | Numbers to measure | Test | Status |
+|---|---|---|---|
+| Throttle | `throttle_dead_time`, `throttle_lag`, top acceleration | `hall-speed-up` (B1; 4.1 in a lot) | Built; **untested on the car** |
+| Drag | how fast the car slows on its own | `hall-coast` (B2; 4.2) | Built; **untested on the car** |
+| Brake | `brake_dead_time`, `brake_lag`, deceleration, stopping distance | `hall-brake` (B3; 4.3) | Built; **untested on the car** |
+| Steering | `steer_dead_time`, `steer_lag` on the ground; rate, centre on stands | `hall-steer` (B4); `steer-rate` (3.11), `steer-centre` (3.12) | Built; **untested on the car** |
+
+**One command runs them all:** `pixi run car-test --hallway` (TODO 248;
+[how](actuator-tests.md#car-test-hallway-the-transfer-functions)).
 
 ### Why the hallway works
 
@@ -106,6 +110,11 @@ Distance needed to reach a speed and stop again:
 
 Measure the hallway first, and keep the shared 1.0 m/s limit unless it is clearly long enough.
 
+`car-test --hallway` works the top speed out from the length you type
+(`safety.hallway_limits`: speed up at 0.5 m/s², 0.3 s to react, stop at 0.5 m/s², plus the
+margin), never above 1.0 m/s. Each pass brakes in time to stand still before
+**length − margin**, by the wheels' distance; past it, it stops at once.
+
 ### Using the IMU as well as the wheels
 
 | Source | Gives | Good | Weak |
@@ -119,12 +128,23 @@ then blend the IMU's acceleration with the wheels' speed (the tests already reco
 `ax` and the wheel speed in each run's CSV). The fit gives each number **with error bars**
 (TODO 104).
 
+| Step | Status |
+|---|---|
+| 10 s still before each pass: the IMU's offset and noise | Built (`fusion.still_imu`) |
+| The slope: the offsets facing each way (the car turned round between passes) | Built (`fusion.slope_from`) |
+| The blend: a small Kalman filter, speed and IMU bias | Built (`fusion.fuse`) |
+| Forces: F = m a, with `vehicle.yaml`'s mass | Built (`fusion.forces`) |
+| Error bars: mean ± sd over the passes, trusted or not | Built (`errorbars.py`) |
+
 ### Compare with the model
 
 For each run: feed the same commands into the model (the simulator's car) and lay the two
 speed curves over each other. **Passes when** the model's speed stays within 10 % of the
 car's, and its stopping distance within 0.2 m. Then the simulator, ego's predictions and the
 planners all use the measured car.
+
+Built (`hallway.replay`, `compare`): every pass, with the fitted numbers and with
+`vehicle.yaml`'s, into `compare.csv` and `overlays/`. **Untested on the car.**
 
 ## The debug screen
 

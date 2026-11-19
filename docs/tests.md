@@ -110,6 +110,11 @@ The test script (`pixi run actuator-test <test>`, [docs](actuator-tests.md)) log
 the wheel speed, the pose and the GPS for every test.
 Which test fits which number, and when to stop repeating it: [Know the car](know-the-car.md).
 
+**First, in a hallway (phase B, this winter):** speed up, coast, brake and steer on the
+ground, with the IMU blended with the wheels and error bars on every number, in one command:
+`pixi run car-test --hallway` ([docs](actuator-tests.md#car-test-hallway-the-transfer-functions)).
+Built; **untested on the car**.
+
 ### 4a. Speed up, coast, brake
 
 | # | Test | How | Measure | Status |
