@@ -22,11 +22,12 @@ think there is room to improve").
 |---|---|---|
 | 1 | Merge NDT leading, the GPS checking | 210 |
 | 2 | **The map editor**: our SLAM map over the street map | 251 |
-| 3 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
-| 4 | The labelling loop, then the campus twin | 252, 253 |
-| 5 | The planner faster; reversing in a narrow street | 152, 174 |
-| 6 | Speed hunting; the backing legs' drift | 189, 163 |
-| 7 | The challengers, then the Rust crates and a more Rust-like pass | below |
+| 3 | **Our models as ONNX, tested with Core ML** (Ben, 19 Nov: bumped up): `measure onnx` (CPU vs Core ML: same answers, every layer on the GPU, time), the diffusion planner and the lane finder from Rust, FP16; TensorRT once the Orin is on JetPack 7.2 | 243 |
+| 4 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
+| 5 | The labelling loop, then the campus twin | 252, 253 |
+| 6 | The planner faster; reversing in a narrow street | 152, 174 |
+| 7 | Speed hunting; the backing legs' drift | 189, 163 |
+| 8 | The challengers, then the Rust crates and a more Rust-like pass | below |
 | waits | **The car** (being upgraded, 18 Nov): the stands, the hallway, a mapping drive | 246-250, 173 |
 
 ## 1. The testing plan
