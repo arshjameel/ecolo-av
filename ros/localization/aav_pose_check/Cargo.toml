@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# pose-check-core: who ekf_global believes, NDT or the GPS, and why. No ROS:
+#   cargo test -p pose-check-core
+# pose-check-node: the ROS node (rclrs), binary `pose_check`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/pose-check-core", "crates/pose-check-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

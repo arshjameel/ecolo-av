@@ -15,6 +15,7 @@
   <!-- vehicle.py: which localization_health runs (localization_health_impl:=). -->
   <exec_depend>aav_description</exec_depend>
   <exec_depend>aav_lane_pose</exec_depend>
+  <exec_depend>aav_pose_check</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>

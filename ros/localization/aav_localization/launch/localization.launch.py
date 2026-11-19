@@ -6,6 +6,7 @@ map -> odom, worked out on top of ekf_local's odom -> base_link.
 
   ros2 launch aav_localization localization.launch.py [gps:=true] [gps_heading:=true]
       [health:=true] [localization_health_impl:=rust] [ndt_ekf:=false] [kiss_ekf:=false]
+      [pose_source:=gps] [pose_trust_score:=]
       [lane_pose:=false] [lane_map:=]
       [start_x:=0.0] [start_y:=0.0]
       [start_yaw:=0.0] [use_sim_time:=false]
@@ -31,6 +32,21 @@ simulator's truth instead.
 ndt_ekf:=true (a trial, docs/trials.md): ekf_global also takes NDT's pose,
 /localization/ndt/pose (x, y, yaw), with config/ekf_global_ndt.yaml on top of
 ekf_global.yaml. NDT itself is aav_ndt's: sim.launch.py ndt_ekf:=true starts both.
+
+pose_source:=ndt (a challenger, TODO 210; gps, the default, is today's): NDT leads,
+the GPS checks. pose_check (aav_pose_check) passes NDT's fits to ekf_global while NDT is
+trusted, the GPS's only while it isn't and the GPS is, and HOLDs (an ERROR status the
+sensor watchdog stops on) when neither is; ekf_global reads both through it
+(config/ekf_global_ndt.yaml, then config/ekf_global_ndt_leads.yaml on top). NDT itself,
+the watchdog's inputs and the geofence's fix are the caller's: sim.launch.py
+pose_source:=ndt sets them. pose_trust_score: NDT's score per point that wins a
+disagreement (empty: pose_check.yaml's, the lot's).
+
+  /localization/ndt/pose, /localization/ndt/status, /localization/gps/odom,
+  /sensors/gps/fix, /localization/amcl/pose ──> pose_check
+      ──> /localization/pose_check/ndt_pose, /localization/pose_check/gps_odom (ekf_global),
+          /localization/pose_check/fix (the geofence), /localization/pose_check/status,
+          /localization/ndt/initial_pose (a seed for a lost NDT)
 
 kiss_ekf:=true (a trial, docs/trials.md): ekf_local also takes KISS-ICP's twist,
 /localization/kiss_icp/odom (vx, vyaw; never its pose), with config/ekf_local_kiss.yaml
@@ -71,6 +87,8 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 import yaml
 
+POSE_SOURCES = ('gps', 'ndt')
+
 
 def health_node(context):
     """Start localization_health in Python or Rust (localization_health_impl:=), or none."""
@@ -86,6 +104,28 @@ def health_node(context):
         parameters=[os.path.join(FindPackageShare('aav_localization_health').perform(context),
                                  'config', 'localization_health.yaml'),
                     {'use_sim_time': LaunchConfiguration('use_sim_time')}])]
+
+
+def pose_source(context):
+    """Return pose_source:= checked: gps (today's) or ndt (NDT leads, TODO 210)."""
+    source = LaunchConfiguration('pose_source').perform(context).strip().lower()
+    if source not in POSE_SOURCES:
+        raise ValueError(f'pose_source:={source}: use {" or ".join(POSE_SOURCES)}')
+    return source
+
+
+def pose_check_node(context):
+    """Start pose_check (aav_pose_check) with pose_source:=ndt, else nothing."""
+    if pose_source(context) != 'ndt':
+        return []
+    params = [os.path.join(FindPackageShare('aav_pose_check').perform(context), 'config',
+                           'pose_check.yaml'),
+              {'use_sim_time': LaunchConfiguration('use_sim_time')}]
+    trust = LaunchConfiguration('pose_trust_score').perform(context).strip()
+    if trust:
+        params.append({'trust_score': float(trust)})
+    return [Node(package='aav_pose_check', executable='pose_check', name='pose_check',
+                 namespace='/', parameters=params)]
 
 
 def ekf_services(node_name):
@@ -117,9 +157,13 @@ def global_ekf(context):
     config = PathJoinSubstitution([FindPackageShare('aav_localization'), 'config'])
     initial_state = [x, y, 0.0, 0.0, 0.0, yaw] + [0.0] * 9
     files = [PathJoinSubstitution([config, 'ekf_global.yaml'])]
-    ndt = LaunchConfiguration('ndt_ekf').perform(context).lower() == 'true'
+    leads = pose_source(context) == 'ndt'
+    ndt = LaunchConfiguration('ndt_ekf').perform(context).lower() == 'true' or leads
     if ndt:
         files.append(PathJoinSubstitution([config, 'ekf_global_ndt.yaml']))
+    if leads:
+        # NDT's pose and the GPS's, both through pose_check (TODO 210).
+        files.append(PathJoinSubstitution([config, 'ekf_global_ndt_leads.yaml']))
     if LaunchConfiguration('lane_pose').perform(context).lower() == 'true':
         # robot_localization reads pose0, pose1... in order: after NDT's, the lane's is pose1.
         files.append(lane_pose_params(
@@ -173,6 +217,13 @@ def generate_launch_description():
                                           '(aav_localization_health, or its _rs port)'),
         DeclareLaunchArgument('ndt_ekf', default_value='false',
                               description="ekf_global also takes NDT's pose (a trial)"),
+        DeclareLaunchArgument('pose_source', default_value='gps',
+                              description="gps (today's) or ndt: NDT leads ekf_global's "
+                                          'pose, the GPS checks it (pose_check, a '
+                                          'challenger, TODO 210)'),
+        DeclareLaunchArgument('pose_trust_score', default_value='',
+                              description="pose_source:=ndt: NDT's score per point that "
+                                          "wins a disagreement (empty: pose_check.yaml's)"),
         DeclareLaunchArgument('kiss_ekf', default_value='false',
                               description="ekf_local also takes KISS-ICP's twist (a trial)"),
         DeclareLaunchArgument('lane_pose', default_value='false',
@@ -191,6 +242,7 @@ def generate_launch_description():
         OpaqueFunction(function=local_ekf),
         OpaqueFunction(function=global_ekf),
         OpaqueFunction(function=lane_pose_node),
+        OpaqueFunction(function=pose_check_node),
         Node(
             package='robot_localization',
             executable='navsat_transform_node',

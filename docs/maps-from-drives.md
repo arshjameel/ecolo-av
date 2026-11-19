@@ -118,8 +118,8 @@ both maps are flat), then keeps only the points the other map has within 25 cm
 (`--radius`). A car parked in one drive only drops out. So does anything only one drive
 saw: drive the same route each time.
 
-Next: more than two drives (keep what most saw), the 2D maps merged the same way, and a
-person checking the result in the map editor (phase E).
+Next: more than two drives (keep what most saw) and the 2D maps merged the same way. A
+person checks the result in the [map editor](map-editor.md) (phase E, `pixi run map-edit`).
 
 ## Licences
 

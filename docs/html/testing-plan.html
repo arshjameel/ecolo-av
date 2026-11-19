@@ -44,6 +44,7 @@
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -1197,8 +1198,10 @@ keeps the car on its lane where the GPS fails.</p>
 </tr>
 </tbody>
 </table></div>
-<p>To build, in the developer window (Bevy). The campus from OpenStreetMap is built
-(<code>pixi run campus</code>).</p>
+<p><strong>Built, 19 Nov:</strong> <a href="map-editor.html">the map editor</a>, <code>pixi run map-edit bags/&lt;drive&gt;/map</code>
+(Bevy, like the developer window; no ROS). Each row above is in it; it saves a new folder,
+never over the old one. Proved in Ravensim: the parked cars deleted, NDT still finds the car.
+Not yet looked at on a screen, nor run on a real drive.</p>
 <h3 id="phase-f-the-labelling-loop">Phase F: the labelling loop</h3>
 <p><strong>Goal:</strong> after each drive, a model that tells <strong>trees, buildings, poles, kerbs, parked cars
 and people</strong> apart, and a score that shows whether it improved (TODO 252).</p>

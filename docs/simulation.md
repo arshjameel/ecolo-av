@@ -489,7 +489,7 @@ pixi run sim-fault clear                  # after a GPS jump or a lost HUD: a pe
 
 | Sensor | Topic it breaks | Faults |
 |---|---|---|
-| `gps` | `/sensors/gps/fix` | `stop`, `freeze`, `nan`, `jump` (20 m north) |
+| `gps` | `/sensors/gps/fix` | `stop`, `freeze`, `nan`, `jump` (20 m north), `drift` (5 m north over a minute, then stays: no jump, never silent; TODO 210) |
 | `imu` | `/sensors/imu/data_raw` | `stop`, `freeze`, `nan` |
 | `odom` | the wheels: `/vehicle/odom`, `/vehicle/wheels` | `stop`, `freeze`, `nan` |
 | `radar` | `/sensors/radar/points` | `stop`, `freeze` |

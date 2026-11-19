@@ -20,14 +20,14 @@ think there is room to improve").
 
 | Order | Next step | Rows |
 |---|---|---|
-| 1 | Merge NDT leading, the GPS checking | 210 |
-| 2 | **The map editor**: our SLAM map over the street map | 251 |
+| 1 | The lane follower in Rust and its challengers (finish the scores); ONNX with Core ML (resume) | 262, 243 |
+| 2 | **Before the car**: NDT on the car (`car.launch.py`), the adaptive brake on the car, the boot self-test | 261, 258, 255 |
 | 3 | **Our models as ONNX, tested with Core ML** (Ben, 19 Nov: bumped up): `measure onnx` (CPU vs Core ML: same answers, every layer on the GPU, time), the diffusion planner and the lane finder from Rust, FP16; TensorRT once the Orin is on JetPack 7.2 | 243 |
-| 4 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
-| 5 | The labelling loop, then the campus twin | 252, 253 |
-| 6 | The planner faster; reversing in a narrow street | 152, 174 |
-| 7 | Speed hunting; the backing legs' drift | 189, 163 |
-| 8 | The challengers, then the Rust crates and a more Rust-like pass | below |
+| 4 | The chunks' unknown grey (205) reads back as free | 263 |
+| 5 | The last of Nav2: `nav2_amcl` out, the one-option switches | 232 |
+| 6 | Occupancy across passes, the labelling loop, then the campus twin | 259, 252, 253 |
+| 7 | The planner faster; reversing in a narrow street; speed hunting; the backing legs' drift | 152, 174, 189, 163 |
+| 8 | The challengers (score diffusion, 177 and 178 again with ours), then the Rust crates and a more Rust-like pass | below |
 | waits | **The car** (being upgraded, 18 Nov): the stands, the hallway, a mapping drive | 246-250, 173 |
 
 ## 1. The testing plan
@@ -45,7 +45,7 @@ and will do".
 | 248 | **Phase B, the hallway**: speed-up, coast, brake, steering; IMU blended with the wheels; each run over the model, with error bars | ✅ built; ⬜ the car. Open: 0.05 m/s wheel noise trips the runaway rule (a person decides) |
 | 249 | **Phase C, recording**: `pixi run record-drive`, every raw sensor at full rate | ✅ built; ⬜ the car. **87 GB/h**: a big SSD (tell the hardware lead) |
 | 250 | **Phase D, maps from drives**: `pixi run map-drive` (KISS-SLAM): NDT's map, a 2D map, 64 m chunks; drives merged | ✅ built, 2.3 cm off the truth in Ravensim; ⬜ the car, loop closures on a real place, 3+ drives, the 2D maps merged |
-| 251 | **Phase E, the map editor**: layers (OpenStreetMap, our points, the 2D map, chunks, labels), align, box-delete, relabel, approve, save | ⬜ next |
+| 251 | **Phase E, the map editor**: [`pixi run map-edit <drive>/map`](docs/map-editor.md): layers (OpenStreetMap, our points, the 2D map, chunks, labels, the path), align, box-delete, label, undo, approve into a new folder | ✅ built 19 Nov; NDT on an edited sim map 3.6-4.9 cm; ⬜ seen on a screen; ⬜ a real drive |
 | 252 | **Phase F, labelling**: open-vocabulary models offline, camera boxes onto lidar points, fixed in the editor, our small model retrained after each drive | ⬜ |
 | 253 | **Phase G, the campus twin** in Ravensim from our maps; passes when a replayed drive scores within NDT's error of the real one | ⬜ |
 | 255 | **The boot self-test that refuses to arm** (Ben, 19 Nov: "make sure we have control over everything"): at start-up every sensor at rate, every actuator answering (the spine's self-test, 0b), every lock alive, the clocks; READY / NOT READY and why on the HUD; `spine_bridge` refuses `/spine/arm` until READY. Moves nothing | ⬜ |
@@ -60,8 +60,9 @@ and will do".
 
 | # | Task | Status |
 |---|---|---|
-| 210 | **NDT leads, the GPS checks** (`pose_source:=ndt`): a failing GPS no longer moves or stops the car | 🟡 built; the lot scored (every leg with the GPS stopped, jumped or drifting); merging |
+| 210 | **NDT leads, the GPS checks** (`pose_source:=ndt`): a failing GPS no longer moves or stops the car | 🟡 merged 19 Nov, a challenger: the lot scored (every leg with the GPS stopped, jumped or drifting); ⬜ the campus runs (stopped by the usage limit); the car refuses it until 261 and a real map |
 | 231 | **AMCL in Rust** (`aav_amcl_rs`, the default): NDT's recovery | 🟡 ties stock on the lot; left: the campus, more runs |
+| 263 | **The chunks' unknown cells read back as free**: `map-chunks` writes unknown as grey 205, and `read_map` with thresholds 0.65 / 0.25 reads 205 (p = 0.196) as free; `map-drive` and the map editor write 128. Make every writer and reader agree (found by the map editor, 19 Nov) | ⬜ |
 | 121 | **NDT's score floor on the campus** (1.5 there, 2.3 in the lot): how high does a wrong pose score? | ⬜ |
 | 175 | **Three levels, fixed chunks**: routes, paths and moves on 64 m chunks | 🔧 left: `global_window:=192` scored on the campus; seen live |
 | 191 | **Stops reset the drift**: wheels that read nothing mean the car stands | 🔧 left: the parked yaw creep, before and after (the car) |

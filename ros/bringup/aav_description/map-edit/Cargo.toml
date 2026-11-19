@@ -1,0 +1,19 @@
+[package]
+name = "map-edit"
+description = "The map editor's logic (TODO 251): a map-drive folder loaded, aligned, boxes deleted and labelled, then saved as a new folder with its edit log and chunks. No ROS, no window."
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# Its own workspace: a std crate beside map-chunks, used by the dev window's map editor
+# (ros/hud/aav_dev_window, the map_edit binary). docs/map-editor.md.
+[workspace]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_yaml_ng = "0.10"
+# Ours: the 64 m chunks and the 2D map's files (map-drive cuts its chunks with these).
+map-chunks = { path = "../map-chunks" }
+# Ours: NDT's PCD files and its chunks, the same code ndt-chunks runs.
+ndt-core = { path = "../../../localization/aav_ndt/crates/ndt-core" }

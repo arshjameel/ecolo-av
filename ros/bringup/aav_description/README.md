@@ -177,6 +177,15 @@ and one link per sensor in `vehicle.yaml`. Gazebo's `aav.gazebo.xacro` and
 `aav.sensors.gazebo.xacro` were removed with Gazebo (16 Nov); the `sim`, `lidar` and
 `chase_camera` arguments are still accepted, and do nothing.
 
+### Rust crates beside the package (no ROS, their own workspaces)
+
+| Crate | What |
+|---|---|
+| [`car-model/`](./car-model/README.md) | the car model's Rust twin |
+| [`map-chunks/`](./map-chunks/README.md) | the map in fixed 64 m chunks |
+| [`lanelet-map/`](./lanelet-map/README.md) | Lanelet2 maps in Rust |
+| [`map-edit/`](./map-edit/README.md) | the map editor's edits, saves and layers (TODO 251) |
+
 ## Invariants
 
 - One file holds every measurement. Never copy a number into another package.

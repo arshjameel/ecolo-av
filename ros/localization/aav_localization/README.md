@@ -31,6 +31,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 | `global_ekf` | true | false: no `ekf_global`; a test, sim only (`sim.launch.py truth_pose:=true`: `aav_sim_models`'s `truth_localizer` gives `map → odom` from the simulator's truth) |
 | `kiss_ekf` | false | a trial: `ekf_local` also takes KISS-ICP's twist (`/localization/kiss_icp/odom`: vx, vyaw; never its pose), with `config/ekf_local_kiss.yaml` on top. `sim.launch.py kiss_ekf:=true` starts KISS-ICP too |
 | `ndt_ekf` | false | a trial: `ekf_global` also takes NDT's pose (`/localization/ndt/pose`: x, y, yaw), with `config/ekf_global_ndt.yaml` on top. `sim.launch.py ndt_ekf:=true` starts NDT too |
+| `pose_source` | gps | `ndt`: a challenger (TODO 210), NDT leads, the GPS checks. [aav_pose_check](../aav_pose_check/README.md)'s `pose_check` runs, and `ekf_global` reads NDT's pose and the GPS's only through it (`config/ekf_global_ndt.yaml`, then `config/ekf_global_ndt_leads.yaml`); `pose_trust_score` (empty: its file's) is NDT's score that wins a disagreement. `sim.launch.py pose_source:=ndt` starts NDT and changes the watchdog's and geofence's GPS too; the car refuses it |
 | `lane_pose`, `lane_map` | false, empty | a trial (TODO 155): `lane_pose` ([aav_lane_pose](../aav_lane_pose/README.md)) runs on `lane_map` (a lanes.yaml), and `ekf_global` takes its x and y, with `config/ekf_global_lane.yaml` on top (`pose1` after NDT's). `sim.launch.py lane_pose:=true` starts the lane finder too |
 | `health` | true | false leaves out `localization_health` |
 | `localization_health_impl` | rust | [aav_localization_health_rs](../aav_localization_health_rs/README.md) (Ben, 16 Nov); `python`: aav_localization_health instead, the same node name, topics and answers |
@@ -60,6 +61,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 | `config/ekf_global.yaml` | 30 Hz, `world_frame: map`; GPS fixes refused past 10 sigma (`odom1_pose_rejection_threshold`); yaw process noise 0.01; x, y start 100 m unsure, so the first fix decides them |
 | `config/ekf_local_kiss.yaml` | only with `kiss_ekf:=true`: `odom1` = KISS-ICP's twist, vx and vyaw; refused past 5 sigma; `smooth_lagged_data` with 1 s of history (its twists carry the cloud's stamp) |
 | `config/ekf_global_ndt.yaml` | only with `ndt_ekf:=true`: `pose0` = NDT's pose, x, y, yaw; refused past 5 sigma; `smooth_lagged_data` with 1 s of history (NDT's poses carry the cloud's stamp, so they come late) |
+| `config/ekf_global_ndt_leads.yaml` | only with `pose_source:=ndt`: `pose0` = `/localization/pose_check/ndt_pose`, `odom1` = `/localization/pose_check/gps_odom`: the two never reach the filter together |
 | `config/ekf_global_lane.yaml` | only with `lane_pose:=true`: `pose0` = the lane pose, x and y; refused past 5 sigma; `smooth_lagged_data` (the picture's stamp) |
 | `config/navsat.yaml` | `wait_for_datum: true`; `datum` [45.3860, -75.6960, 0] is a placeholder near Carleton (TODO: the test site) |
 
@@ -83,7 +85,8 @@ The two EKFs never read each other's topic. They meet only in TF.
 ## Verification
 
 This package has no tests of its own (config only); `aav_bringup`'s
-`test_sim_launch.py` checks `ndt_ekf` and `ekf_global_ndt.yaml`, `kiss_ekf` and
+`test_sim_launch.py` checks `ndt_ekf` and `ekf_global_ndt.yaml`, `pose_source` and
+`ekf_global_ndt_leads.yaml`, `kiss_ekf` and
 `ekf_local_kiss.yaml`, `lane_pose` and `ekf_global_lane.yaml`.
 
 ```sh

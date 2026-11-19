@@ -663,6 +663,10 @@ def test_the_car_day_stack_is_the_defaults():
     assert nav.get('amcl', 'false') == 'false'
     loc = included(started(CAR, machine='orin'))['localization.launch.py']
     assert loc.get('ndt_ekf', 'false') == 'false' and loc.get('kiss_ekf', 'false') == 'false'
+    # NDT leading (TODO 210) is the sim's challenger: the car refuses it, no lidar map yet.
+    assert loc['pose_source'] == 'gps'
+    with pytest.raises(ValueError, match='pose_source'):
+        started(CAR, machine='orin', pose_source='ndt')
 
 
 def test_the_diffusion_trial_speed_is_below_egos_own_cap():

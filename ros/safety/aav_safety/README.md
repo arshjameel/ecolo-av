@@ -114,7 +114,7 @@ Started next to the mux on the car, in the sim and on the bench. Calls each acti
 | In / out | Topic | Type |
 |---|---|---|
 | in | `/localization/odom/global` | `nav_msgs/Odometry`: pose, heading, speed, covariance |
-| in | `/localization/gps/odom` | `nav_msgs/Odometry`: only its arrival (silent 2 s: LOST) |
+| in | `/localization/gps/odom` (`fix_topic`) | `nav_msgs/Odometry`: only its arrival (silent 2 s: LOST). With NDT leading (`pose_source:=ndt`), `/localization/pose_check/fix`: NDT's pose or the GPS's, whichever `ekf_global` takes |
 | out | `/safety/geofence/lock`, at `rate_hz` | `std_msgs/Bool`: twist_mux's `geofence` lock (priority 51, fail-safe 1 s) |
 | out | `/safety/geofence/state`, at `rate_hz` | `std_msgs/String`: `STATE: why` |
 | out | `/safety/geofence/fence` | `geometry_msgs/PolygonStamped`, map frame, transient local |
@@ -131,7 +131,8 @@ Started next to the mux on the car, in the sim and on the bench. Calls each acti
 | `STANDS` (`stands:=true`) | open, logged every 5 s | |
 
 `launch/geofence.launch.py backend:=spine|uart|sim|sim_esp32 [radius:=30]
-[centre_x:=0] [centre_y:=0] [site:=] [max_speed:=] [gps:=true] [stands:=false]`: it works
+[centre_x:=0] [centre_y:=0] [site:=] [max_speed:=] [gps:=true] [stands:=false]
+[fix_topic:=/localization/gps/odom]`: it works
 out the stopping numbers (`motion_from`) from `ego.yaml`, `vehicle.yaml` and the backend's
 config, and passes them. `config/geofence.yaml`: `margin` 1.0, `hysteresis` 0.5, `max_std`
 3.0, `max_age` 1.0, `gps_max_age` 2.0, `settle_time` 3.0, `jump_margin` 2.0, `pose_lag`
@@ -145,6 +146,8 @@ it starts the mux; the bench always; Ravensim with `geofence:=true` (the default
 | `odom` | `/vehicle/odom` | odom, with cross check | 0.5 s | yes |
 | `imu` | `/sensors/imu/data` | imu | 0.5 s | yes |
 | `gps` | `/sensors/gps/fix` | gps (jump: 15 m/s + 5 m) | 2.0 s | yes |
+| `gps_check` | `/sensors/gps/fix` | gps, as `gps` | 2.0 s | no: with NDT leading (`pose_source:=ndt`, TODO 210) it stands in for `gps`, as the GPS no longer moves the pose |
+| `pose_check` | `/localization/pose_check/status` | status, FAULT at ERROR (HOLD: neither NDT nor the GPS trusted) | 1.0 s | yes: with `pose_source:=ndt` only |
 | `local`, `global` | `/localization/odom/local`, `/global` | odom | 0.5 s | yes |
 | `camera` | `/sensors/camera/front_left/image_raw` | image | 1.0 s | yes |
 | `front_left_stream`, `front_right_stream` | `/perception/detections` (by `frame_id`) | detections | 1.0 s | yes |
