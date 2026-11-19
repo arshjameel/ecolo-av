@@ -227,7 +227,7 @@ AMCL off the truth, mean of each run's mean (m), and the worst of all runs (m):
   scan; watch for it in more runs.
 - Recovery (`recovery_alpha_*`) is still off, in both, as `amcl.yaml` had it.
 
-
+## NDT into the global EKF (30 Oct)
 
 `ndt_ekf:=true`: `ekf_global` takes NDT's x, y and yaw beside the GPS. Off by default.
 
