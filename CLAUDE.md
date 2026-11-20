@@ -137,7 +137,7 @@ EGM artifact directory: docs/designs
 - Pixi + RoboStack provide Jazzy without admin rights: on Ben's AlmaLinux workstation
   (oirp-spss), on Macs, and on any Linux. `pixi.toml` and `pixi.lock` define the
   environment; `pixi run <task>` runs a command inside it. That machine has no screen
-  for GUIs: run headless there (`QT_QPA_PLATFORM=offscreen`, `gui:=false`).
+  for GUIs: run headless there (`QT_QPA_PLATFORM=offscreen`, `rviz:=false`).
 - Say what you actually ran. A profile that hasn't been launched is "untested", not
   "works".
 - Keep `pixi run test` all green: it's the first thing a new laptop runs.

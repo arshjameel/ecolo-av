@@ -87,9 +87,8 @@ def test_a_campus_made_before_gazebo_went_still_renders(tmp_path):
 
 def test_the_old_simulator_name_works_for_one_release_and_gazebo_is_gone():
     assert worlds.check_simulator('ravensim') == 'ravensim'
-    assert worlds.check_simulator('own') == 'ravensim'
-    assert 'simulator:=ravensim' in worlds.simulator_warning('own')
-    assert worlds.simulator_warning('ravensim') == ''
+    with pytest.raises(ValueError, match='old name'):
+        worlds.check_simulator('own')
     with pytest.raises(ValueError, match='Gazebo was removed'):
         worlds.check_simulator('gazebo')
 

@@ -114,7 +114,7 @@ def run_once(domain, launch_args, gyro_bias, log_path, wrong_start=0.0, gps_ever
     os.environ.update(env)
     log = open(log_path, 'w')
     launch = subprocess.Popen(
-        ['ros2', 'launch', 'aav_bringup', 'sim.launch.py', 'world:=empty', 'gui:=false',
+        ['ros2', 'launch', 'aav_bringup', 'sim.launch.py', 'world:=empty',
          'rviz:=false', 'nav:=false', 'lidar:=false', 'radar:=false', *launch_args],
         cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     rclpy.init()

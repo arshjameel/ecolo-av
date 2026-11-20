@@ -70,7 +70,7 @@ Parameters  actuator_model (true), speed_loop (default: the actuator model's spe
             a car slower than vehicle.yaml says; only the model's), spine (false), rate_hz (50),
             cmd_timeout (0.2 s), wheelbase,
             wheel_radius, rendered (the world renders sensors), cameras (it draws the
-            cameras: rendered unless simulator:=own), radar, lidar (what
+            cameras: rendered by aav_sim_cameras), radar, lidar (what
             /system/source announces), fault.odom, fault.steer, fault.throttle,
             fault.brake (ok), speed_variance
 
@@ -206,7 +206,7 @@ class SimAdapter(Node):
         self.create_subscription(JointState, 'joint_states', self.on_joints, 10)
         self.create_timer(1.0 / rate, self.tick)
         rendered = self.declare_parameter('rendered', False).value
-        # Our own simulator renders the lidar and radar but no cameras (simulator:=own).
+        # Our own simulator renders the lidar and radar but no cameras (aav_sim_cameras draws them).
         cameras = self.declare_parameter('cameras', rendered).value
         self.announce(sources.simulated(rendered=rendered, lidar=lidar,
                                         radar=self.declare_parameter('radar', False).value,

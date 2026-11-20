@@ -14,8 +14,7 @@ One launch for every target: target:= picks who plays the car, and so the profil
 source:= may only say the target's own: the real car only ever runs on real data, and a
 simulator never drives on real sensors. The sensor mux and the output mux (aav_io_mux)
 check the same while it runs, so a wrong mix that slips past here still can't move the
-car. target:=gazebo, the name before Gazebo was removed (16 Nov), still means
-ravensim for one release. The `pixi run` tasks (turtle, sim, bench, car) start the same
+car. The `pixi run` tasks (turtle, sim, bench, car) start the same
 files directly.
 """
 
@@ -32,16 +31,10 @@ PROFILES = {'turtle': 'turtle.launch.py', 'ravensim': 'sim.launch.py',
             'bench': 'bench.launch.py', 'car': 'car.launch.py', 'carla': 'carla.launch.py'}
 # target:= here names the program; the output mux only knows the job: any simulator is `sim`.
 MUX_TARGET = {'ravensim': 'sim'}
-# The old name, for one release.
-OLD_TARGETS = {'gazebo': 'ravensim'}
 
 
 def launch_setup(context):
     target = LaunchConfiguration('target').perform(context).strip()
-    if target in OLD_TARGETS:
-        print(f'[stack.launch.py] target:={target} is now target:={OLD_TARGETS[target]}',
-              flush=True)
-        target = OLD_TARGETS[target]
     if target not in PROFILES:
         raise ValueError(f'target:={target}: use one of {", ".join(PROFILES)}')
     choose(MUX_TARGET.get(target, target),

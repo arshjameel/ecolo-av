@@ -156,7 +156,7 @@ car). Watching over Foxglove or Lichtblick (port 8765) costs only what you open:
 
 ## Measured in Gazebo (23 Oct)
 
-`pixi run measure bandwidth --local --seconds 30` beside `pixi run sim world:=road gui:=false
+`pixi run measure bandwidth --local --seconds 30` beside `pixi run sim world:=road
 rviz:=false` (Cyclone, its own ROS domain and Gazebo partition), parked; then again while
 Nav2 drove 40 m. Gazebo ran at 0.92-0.98 x real time, so its 10 Hz sensors read 9.2-9.8 Hz.
 

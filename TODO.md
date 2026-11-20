@@ -139,8 +139,8 @@ stage 2 scores them in Ravensim.
 | # | Task | Status |
 |---|---|---|
 | 232 | **After Nav2**: `nav2_amcl` out of `pixi.toml`; the one-option switches (`costmap:=`, `navigator:=`, `smoother:=`, `controller:=`): keep as hooks or remove; `nav2.yaml`'s name | ✅ 20 Nov: stock `nav2_amcl` and its lifecycle manager gone (`pixi.toml`, `pixi.lock`; tag `save/nav2-amcl`), `amcl_impl:=rust` the one choice; the four switches kept as hooks (the league's `stacks.yaml` names them); `nav2.yaml` keeps its name (Nav2's layout) |
-| 242 | **Untried after Gazebo**: `stream_check.py`'s moved sign, `sim_frames.py`, `pixi run demo` with Ravensim | ⬜ |
-| 241 | **Ravensim's old names out**: `simulator:=own`, `target:=gazebo`, `car:=gazebo`, ignored args | ⬜ |
+| 242 | **Untried after Gazebo**: `stream_check.py`'s moved sign, `sim_frames.py`, `pixi run demo` with Ravensim | 🧪 20 Nov: checked at the import and argument level (Ravensim serves `spawn_entity`, `delete_entity`, `set_entity_state`; every launch switch they pass exists); `stream_check.py`'s words say Ravensim. Not run against a live sim |
+| 241 | **Ravensim's old names out**: `simulator:=own`, `target:=gazebo`, `car:=gazebo`, ignored args | ✅ 20 Nov: all four gone, and the URDF's and `description.launch.py`'s `sim`, `lidar`, `chase_camera`, and `sim.launch.py gui:=` (the tools no longer pass it); tag `save/old-names` |
 | 23 | **The nightly sim job**: drop `continue-on-error` after a few green nights (the 240 fix) | 👀 |
 | 114 | **The developer window** on a slower laptop | ⬜ |
 

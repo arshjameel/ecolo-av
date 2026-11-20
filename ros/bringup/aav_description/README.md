@@ -12,7 +12,7 @@ through the Python helper `aav_description.vehicle`.
 
 | File | Starts |
 |---|---|
-| `description.launch.py [sim:=] [use_sim_time:=] [lidar:=] [chase_camera:=] [joint_state_publisher:=true]` | `robot_state_publisher` from the URDF; `joint_state_publisher`, which merges `/vehicle/joint_states` |
+| `description.launch.py [use_sim_time:=] [joint_state_publisher:=true]` | `robot_state_publisher` from the URDF; `joint_state_publisher`, which merges `/vehicle/joint_states` |
 | `view.launch.py` (`pixi run view`) | the model in RViz, with joint sliders |
 
 ### Topics
@@ -174,8 +174,8 @@ car model says (`docs/stopping.md`, "A heavier car").
 
 `aav.urdf.xacro` builds `base_link`, `chassis`, four wheels with two steering joints,
 and one link per sensor in `vehicle.yaml`. Gazebo's `aav.gazebo.xacro` and
-`aav.sensors.gazebo.xacro` were removed with Gazebo (16 Nov); the `sim`, `lidar` and
-`chase_camera` arguments are still accepted, and do nothing.
+`aav.sensors.gazebo.xacro` were removed with Gazebo (16 Nov); its `sim`, `lidar` and
+`chase_camera` arguments on 20 Nov (TODO 241).
 
 ### Rust crates beside the package (no ROS, their own workspaces)
 

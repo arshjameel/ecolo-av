@@ -334,7 +334,7 @@ def drive(bag):
     print(f'== the test lot, headless, on ROS domain {domain} (this computer only)', flush=True)
     with open(log_path, 'w') as log:
         sim = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
-                                'world:=test_lot', 'gui:=false', 'rviz:=false',
+                                'world:=test_lot', 'rviz:=false',
                                 'lidar:=true', 'reversing:=false',
                                 # The champions' stack (best; Nav2's until it went, 17
                                 # Nov): cc.Recorder() sends the goals to /navigate_to_pose.

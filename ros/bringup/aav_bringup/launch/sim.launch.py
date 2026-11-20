@@ -317,8 +317,7 @@ bench's argument names:
   simulator:=ravensim  Ravensim, our own simulator in Rust (aav_simulator,
                       docs/own-simulator.md), the only one since Gazebo was removed (16 Nov):
                       the worlds, the lidar and radar by ray casting, the cameras by Bevy
-                      (aav_sim_cameras), no window. simulator:=own, its old name, still works
-                      for one release, with a warning
+                      (aav_sim_cameras), no window.
   camera_lockstep:=auto  Ravensim's clock waits for each camera's picture: auto when
                       tools/software_gl.sh draws them (no GPU), true or false
   graphics:=auto      how much the cameras draw: pretty (grain, a sky, haze), simple (plain
@@ -522,8 +521,6 @@ def launch_setup(context):
     kiss_ekf = arg('kiss_ekf').lower() == 'true'
     kiss_icp = arg('kiss_icp').lower() == 'true' or kiss_ekf
     models_share = FindPackageShare('aav_sim_models').perform(context)
-    if worlds.simulator_warning(arg('simulator')):
-        print(f'[sim.launch.py] {worlds.simulator_warning(arg("simulator"))}', flush=True)
     simulator = worlds.check_simulator(arg('simulator'))
     world_path = worlds.world_file(models_share, world)
     lane_map = worlds.lane_map_file(models_share, world, arg('lane_map').strip())
@@ -922,10 +919,6 @@ def generate_launch_description():
         DeclareLaunchArgument('nav', default_value='true'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer'),
-        # Gazebo's window, gone with Gazebo (16 Nov): Ravensim has none. Still taken, and
-        # ignored, so the old commands (gui:=false) run for one release.
-        DeclareLaunchArgument('gui', default_value='false',
-                              description='ignored: Ravensim has no window'),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher (the ml '

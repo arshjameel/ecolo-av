@@ -160,7 +160,7 @@ bench_check.py tests the car's software against pretend sensors that draw a flat
 this tests it against Ravensim's cameras and radar stand-in, which see the road world
 (aav_sim_models worlds/road.sdf: the bench road and its stop sign, in 3D).
 
-1. Starts sim.launch.py world:=road gui:=false rviz:=false on a private ROS domain,
+1. Starts sim.launch.py world:=road rviz:=false on a private ROS domain,
    on this computer only.
 2. Start-up: the truth, the global EKF, the camera and the radar stand-in all run,
    and navigation is up (unless nav:=false).
@@ -3158,7 +3158,7 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
           f"{env['ROS_DOMAIN_ID']} (this computer only)...", flush=True)
     log = open(log_path, 'w')
     launch = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py', f'world:={world}',
-                               'gui:=false', 'rviz:=false', *launch_args, *EVERY_RUN],
+                               'rviz:=false', *launch_args, *EVERY_RUN],
                               cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
                               start_new_session=True)
     LAUNCH.update(pgid=launch.pid, log=log_path)
@@ -3289,8 +3289,6 @@ def main():
         except ValueError as e:
             print(f'--simulator: {e}', file=sys.stderr)
             return 2
-        if worlds.simulator_warning(given):
-            print(worlds.simulator_warning(given), file=sys.stderr)
     # Always said: the checks place models and read logs the way this simulator wants.
     EVERY_RUN.append(f'simulator:={SIMULATOR}')
     global COSTMAP
