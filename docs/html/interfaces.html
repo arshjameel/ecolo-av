@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">131 min read · 4 sections</div></header>
+<div class="meta">132 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -927,7 +927,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>voxels</code></td>
 <td><code>costmap</code>, <code>stop_zone</code></td>
 <td>-</td>
-<td>The kerbs (TODO 119), only with navigation.launch.py kerbs:=true (sim.launch.py's kerbs level; needs the lidar) - the Rust voxels node (aav_voxels_rs, steps:=true; it runs for this whatever voxels_impl says) finds sudden steps in the ground, which the cubes' 0.3 m floor misses. In base_link, the cloud's stamp, 10 Hz, fields x, y, z (float32) - the high side of every step, a point 0.10 to 0.5 m above a point within 0.3 m of it flat (voxels::steps), out to 12 m; one point per 0.1 m square holding 2 or more; and every such point of the last 10 s (step_keep), kept in odom by /localization/odom/local and sent back in base_link while within 12 m (voxels::StepMemory) - the roof lidar loses a kerb about 4 m before the bumper. Not a slope or ramp to 10 degrees, the road's camber, a 7.5 cm speed bump or grass. The local costmap's kerb_layer marks with it, marks only and kept; the stop zone's steps source stops for it. Reliable, depth 1, with each cube cloud.</td>
+<td>The kerbs (TODO 119), only with navigation.launch.py kerbs:=true (sim.launch.py's kerbs level; needs the lidar) - the Rust voxels node (aav_voxels_rs, steps:=true; it runs for this whatever voxels_impl says) finds sudden steps in the ground, which the cubes' 0.3 m floor misses. In base_link, the cloud's stamp, 10 Hz, fields x, y, z (float32) - the high side of every step, a point 0.10 to 0.5 m above a point within 0.3 m of it flat (voxels::steps), out to 12 m, but not within 0.3 m of a point 0.5 to 2 m over the road (the foot or face of something taller than a kerb, a person or a wall, which is a cube and may walk away; voxels::kerbs_only, TODO 189); one point per 0.1 m square holding 2 or more; and every such point of the last 10 s (step_keep), kept in odom by /localization/odom/local and sent back in base_link while within 12 m (voxels::StepMemory) - the roof lidar loses a kerb about 4 m before the bumper. Not a slope or ramp to 10 degrees, the road's camber, a 7.5 cm speed bump or grass. The local costmap's kerb_layer marks with it, marks only and kept; the stop zone's steps source stops for it. Reliable, depth 1, with each cube cloud.</td>
 </tr>
 <tr>
 <td><code>/perception/voxels/status</code></td>

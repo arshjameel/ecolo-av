@@ -363,7 +363,7 @@ misses lines on some stretches.</p>
 </tr>
 <tr>
 <td><code>sim-check --moving</code> (189)</td>
-<td>❌ twice: the car holds for the walker, sets off, then stays in APPROACH(obstacle) 1.13 m short and never reaches the goal. Being fixed</td>
+<td>❌ twice, then fixed: the walker's feet were kept as a kerb for ever. Since the fix in the voxels' step memory: ✅ the car waits, sets off and reaches the goal</td>
 </tr>
 </tbody>
 </table></div>
@@ -379,22 +379,18 @@ misses lines on some stretches.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>sim-check --moving</code>: the car stays stopped behind the walker</td>
-</tr>
-<tr>
-<td>2</td>
 <td>Diffusion: the Rust worker the default; score it on the campus</td>
 </tr>
 <tr>
-<td>3</td>
+<td>2</td>
 <td><code>mppi_lag_1k</code> timed on the Orin, then into <code>stack:=car</code></td>
 </tr>
 <tr>
-<td>4</td>
+<td>3</td>
 <td>A 2D map for the campus (<code>map-drive</code> makes one), so AMCL can be scored there</td>
 </tr>
 <tr>
-<td>5</td>
+<td>4</td>
 <td>The camera's lanes where they miss lines; then <code>path:=lane</code> with the camera's lanes</td>
 </tr>
 </tbody>

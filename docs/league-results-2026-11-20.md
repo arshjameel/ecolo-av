@@ -67,14 +67,13 @@ misses lines on some stretches.
 | NDT leading (`--ndt-leads`), campus | every leg; 92 % of clouds gave a pose, heading off 0.1° at worst, 1.7 ms a match |
 | AMCL (`--amcl`), campus | **not run**: AMCL runs only on the test lot, the only world with a 2D map |
 | `sim-check --blocked-street` (174) | ✅ the car backs out |
-| `sim-check --moving` (189) | ❌ twice: the car holds for the walker, sets off, then stays in APPROACH(obstacle) 1.13 m short and never reaches the goal. Being fixed |
+| `sim-check --moving` (189) | ❌ twice, then fixed: the walker's feet were kept as a kerb for ever. Since the fix in the voxels' step memory: ✅ the car waits, sets off and reaches the goal |
 
 ## What next
 
 | # | Do |
 |---|---|
-| 1 | `sim-check --moving`: the car stays stopped behind the walker |
-| 2 | Diffusion: the Rust worker the default; score it on the campus |
-| 3 | `mppi_lag_1k` timed on the Orin, then into `stack:=car` |
-| 4 | A 2D map for the campus (`map-drive` makes one), so AMCL can be scored there |
-| 5 | The camera's lanes where they miss lines; then `path:=lane` with the camera's lanes |
+| 1 | Diffusion: the Rust worker the default; score it on the campus |
+| 2 | `mppi_lag_1k` timed on the Orin, then into `stack:=car` |
+| 3 | A 2D map for the campus (`map-drive` makes one), so AMCL can be scored there |
+| 4 | The camera's lanes where they miss lines; then `path:=lane` with the camera's lanes |

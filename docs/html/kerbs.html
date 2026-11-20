@@ -7,7 +7,7 @@
 <!-- Generated from docs/kerbs.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Kerbs</h1>
-<div class="meta">9 min read · 10 sections</div></header>
+<div class="meta">10 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -367,7 +367,11 @@ next on its face or top.</p>
 </tr>
 </tbody>
 </table></div>
-<p>Walls and parked cars do give steps at their feet. That's fine: they are in the way too.</p>
+<p>Walls, parked cars and people give steps at their feet too, and up their faces (each
+ring hits a post 0.1-0.5 m above the one below). Since 20 Nov (TODO 189) those are
+dropped: a step within 0.3 m of a point more than 0.5 m over the road (and under 2 m)
+is the foot of something taller than any kerb (<code>kerbs_only</code>). That thing is a cube, so
+the costmap and the stop zone see it anyway; and it may walk away (below).</p>
 </section>
 <section class="card"><h2 id="the-memory">The memory</h2>
 <p>The roof lidar's lowest ring meets the road 4.4 m past the bumper. A kerb nearer than
@@ -428,6 +432,34 @@ it gone either. Once the car backs away and it is in view, it ages again: 10 s.<
 </tbody>
 </table></div>
 <p><code>cargo test -p voxels memory</code> (<code>a_kerb_under_every_beam_is_kept_while_the_car_stands_before_it</code>).</p>
+<h3 id="a-walkers-foot-20-nov-todo-189">A walker's foot (20 Nov, TODO 189)</h3>
+<p><code>sim-check --moving</code> failed twice: the car waited for a person crossing 3 m ahead, then
+stood in APPROACH(obstacle) for good. The person's foot made steps as they crossed, under
+every beam, so the memory kept them for ever: a "kerb" across the lane. The behaviour
+planner slowed for it (<code>left</code> -0.3 m) and the stop zone held the car.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Before</th>
+<th>Since 20 Nov</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a post's foot and face</td>
+<td>steps, kept</td>
+<td>dropped (<code>kerbs_only</code>): the cubes have it</td>
+</tr>
+<tr>
+<td>a kerb, even beside a post</td>
+<td>kept</td>
+<td>kept (only within 0.3 m of the post is dropped)</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>cargo test -p voxels steps</code> (<code>a_walker_crossing_under_every_beam_leaves_no_kerb_behind</code>:
+the old way keeps the walker's trail, the new one nothing).</p>
 </section>
 <section class="card"><h2 id="does-the-real-lidar-see-a-kerb">Does the real lidar see a kerb?</h2>
 <p>The roof VLP-16: 16 rings, 2° apart, the lidar 1.52 m up (<code>vehicle.yaml</code>), 1.31 m
