@@ -6,7 +6,8 @@ its things.yaml, and plays a box walking 1 m/s across the car's path, 8 m ahead:
 cubes (base_link) at 10 Hz, and odom <- base_link on /tf at each cloud's stamp. The node
 must publish one thing, its id, place and speed; the markers' DELETEALL, box, arrow and
 words. (Until 20 Nov the Python modules gave the exact answer; they went, tag
-save/python-things: tests/vectors.rs holds their answers now.) Needs the workspace built and sourced: `colcon test` runs it.
+save/python-things: tests/vectors.rs holds their answers now.) Needs the workspace built
+and sourced: `colcon test` runs it.
 """
 
 import os

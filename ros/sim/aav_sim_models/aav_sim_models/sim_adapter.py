@@ -206,7 +206,7 @@ class SimAdapter(Node):
         self.create_subscription(JointState, 'joint_states', self.on_joints, 10)
         self.create_timer(1.0 / rate, self.tick)
         rendered = self.declare_parameter('rendered', False).value
-        # Our own simulator renders the lidar and radar but no cameras (aav_sim_cameras draws them).
+        # Our own simulator renders the lidar and radar; aav_sim_cameras draws the cameras.
         cameras = self.declare_parameter('cameras', rendered).value
         self.announce(sources.simulated(rendered=rendered, lidar=lidar,
                                         radar=self.declare_parameter('radar', False).value,

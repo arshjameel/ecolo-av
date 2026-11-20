@@ -145,7 +145,7 @@ def check_simulator(name: str) -> str:
     """Return the simulator's name, checked: one of SIMULATORS."""
     if name not in SIMULATORS:
         gone = {'gazebo': ' (Gazebo was removed on 16 Nov)',
-                'own': ' (own is Ravensim\'s old name, gone on 20 Nov)'}.get(name, '')
+                'own': " (own is Ravensim's old name, gone on 20 Nov)"}.get(name, '')
         raise ValueError(f'simulator:={name}: pick one of {", ".join(SIMULATORS)}{gone}')
     return name
 

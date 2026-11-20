@@ -693,7 +693,8 @@ def check_joy_alive_impl(impl):
 # Which geofence, stop_hold and goal_leash run (geofence_impl:=, stop_hold_impl:=,
 # goal_leash_impl:=): rust (aav_safety_rs, the defaults since 19 Nov: Ben, 16 Nov, "lets
 # remove python were possible"; the Python's answers event by event and bit by bit). The
-# Python nodes went on 20 Nov (tag save/python-safety-nodes); the switches stay, hooks. geofence.launch.py, navigation.launch.py, car, sim and bench pass them on.
+# Python nodes went on 20 Nov (tag save/python-safety-nodes); the switches stay, hooks.
+# geofence.launch.py, navigation.launch.py, car, sim and bench pass them on.
 SAFETY_IMPLS = {'rust': 'aav_safety_rs'}
 GEOFENCE_IMPLS = STOP_HOLD_IMPLS = GOAL_LEASH_IMPLS = SAFETY_IMPLS
 DEFAULT_GEOFENCE_IMPL = 'rust'

@@ -34,8 +34,8 @@ lifecycle node: each respawns 1 s after it dies, and while one is down the car s
   stop_zone         the stop zone (aav_stop_zone, a safety lock): /control/cmd_vel_smoothed
                     -> /drivers/nav/cmd_vel, zero for points in the box ahead (behind,
                     reversing) or a silent sensor; its state on /safety/stop_zone/state
-  stop_hold         with the stop zone (aav_safety_rs): holds its stops until the zone stays clear for 1 s,
-                    through twist_mux's stop_zone lock
+  stop_hold         with the stop zone (aav_safety_rs): holds its stops until the zone
+                    stays clear for 1 s, through twist_mux's stop_zone lock
   lidar_scan        with lidar:=true (aav_lidar_rs): the roof lidar's cloud ->
                     /sensors/lidar/scan, for the costmap and the stop zone;
                     lidar_impl:=python for the Python node (aav_lidar)
@@ -77,7 +77,7 @@ Switches:
                           ring by ring, the costmap on them (TODO 215, a challenger)
   kerbs:=true             (with lidar:=true) the Rust voxels node's step finder: the local
                           costmap's kerb_layer and the stop zone's steps source (TODO 119)
-  behaviour:=true         the behaviour planner (aav_behaviour_rs):         
+  behaviour:=true         the behaviour planner (aav_behaviour_rs):
                           the states and a speed cap, in /world/road_ahead's limits; lane_map:=
                           a lanes.yaml for the road ahead's line
   lane_costs:=, lane_source:=, costmap_chunks:=, local_chunks:=true, lane_route:=,

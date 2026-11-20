@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Write docs/codemap.md: one line per package, grouped by area, so you find code without
-searching the tree. No ROS needed; the standard library only.
+Write docs/codemap.md: one line per package, grouped by area.
+
+So you find code without searching the tree. No ROS needed; the standard library only.
 
 For each package under ros/<area>/: what it is (package.xml's description, its first
 sentence), its language, and where its logic, node, tests and config live. Then the
@@ -110,7 +111,7 @@ def describe(pkg):
 def render():
     """Return the page."""
     out = ['# The code map', '',
-           'Where the code is: **read this to find code; don\'t search the tree.** One line',
+           "Where the code is: **read this to find code; don't search the tree.** One line",
            'per package, by area. Written by `tools/codemap.py` (`tools/test.sh` checks it is',
            'current): after adding, moving or removing a package, run',
            '`python3 tools/codemap.py > docs/codemap.md`.', '',
@@ -142,9 +143,10 @@ def render():
         out.append(f'| `{c.name}` | {what} |')
     out += ['', '## Elsewhere', '', '| Folder | Holds |', '|---|---|',
             '| `firmware/can/` | `aav.dbc`, the CAN contract, and its shared test vectors |',
-            '| `firmware/legacy/` | the 2025-26 ESP32 firmware, kept until the Rust one is flashed |',
-            '| `firmware/status/`, `firmware/udp/` | the boards\' status lines; the wheel '
-            'encoder\'s UDP vectors |',
+            '| `firmware/legacy/` | the 2025-26 ESP32 firmware, kept until the Rust one '
+            'is flashed |',
+            "| `firmware/status/`, `firmware/udp/` | the boards' status lines; the wheel "
+            "encoder's UDP vectors |",
             '| `tools/` | scripts and checks (`pixi run ...`); their tests in `tools/tests/` |',
             '| `docs/` | the guide; `interfaces.yaml` is the topic contract |',
             '| `maps/`, `models/` | maps and trained models (most made, not kept in git) |',
