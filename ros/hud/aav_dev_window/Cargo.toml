@@ -10,6 +10,9 @@ description = "The developer window, as a test of Bevy: Ben's layout, with prete
 version = "0.1.0"
 edition = "2021"
 publish = false
+# Two programs since the map editor (map_edit); a plain `cargo run` (tools/dev_window.sh)
+# starts the window.
+default-run = "dev_window"
 
 [[bin]]
 name = "dev_window"
