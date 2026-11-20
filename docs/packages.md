@@ -68,6 +68,7 @@ each one's README has its topics.
 | `aav_bench` | sim | pretend sensors: IMU, GPS, battery, camera, radar, lidar | [[works]] | new |
 | `aav_safety` | safety | the sensor watchdog: a twist_mux lock (30) when a sensor is stale, NaN, frozen or jumps | [[works]] Gazebo and the bench | new |
 | `aav_joy_alive_rs` | safety | `joy_alive` in Rust, the default (17 Nov; `joy_alive_impl:=python` falls back) | [[works]] against the Python's answers; [[untested]] on the car | new: a port of `aav_safety`'s `joy_alive` |
+| `aav_safety_rs` | safety | `geofence`, `stop_hold` and `goal_leash` in Rust, the defaults (19 Nov; `*_impl:=python` falls back) | [[works]] against the Python's answers, to the bit; [[untested]] on the car | new: a port of `aav_safety`'s three nodes |
 | `aav_watchdog_rs` | safety | `sensor_watchdog` in Rust, the default (Ben, 16 Nov) beside `aav_safety`'s (`watchdog_impl:=python`): the same topics and answers | [[works]] against the Python's answers, tick by tick | new: a port of `aav_safety`'s watchdog |
 | `aav_ghost` | safety | ghost obstacles: a pretend person only navigation sees | [[works]] in Gazebo | new |
 | `aav_stop_zone` | safety | the stop zone (Rust): zeroes navigation's command when the radar or lidar sees points just ahead, or goes silent; the lock since 17 Nov | [[works]] in Ravensim: stopped every time Nav2's `collision_monitor` did, in its shadow run ([Nav2, as it was](history/nav2-as-it-was.md)) | new: a port of Nav2's `collision_monitor` |

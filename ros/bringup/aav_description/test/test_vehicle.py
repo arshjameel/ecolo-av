@@ -1093,6 +1093,20 @@ def test_rewrite_follows_rewrittenyamls_rules():
     assert cfg['a']['footprint'] == 'x'          # a copy
 
 
+def test_safety_impls_are_python_or_rust():
+    for name, check, default in (
+            ('geofence_impl', vehicle.check_geofence_impl, vehicle.DEFAULT_GEOFENCE_IMPL),
+            ('stop_hold_impl', vehicle.check_stop_hold_impl, vehicle.DEFAULT_STOP_HOLD_IMPL),
+            ('goal_leash_impl', vehicle.check_goal_leash_impl,
+             vehicle.DEFAULT_GOAL_LEASH_IMPL)):
+        assert default == 'rust'
+        assert check(' Python ') == 'python'
+        with pytest.raises(ValueError, match=f'{name}:=c'):
+            check('c')
+    assert vehicle.GEOFENCE_IMPLS['rust'] == 'aav_safety_rs'
+    assert vehicle.STOP_HOLD_IMPLS['python'] == 'aav_safety'
+
+
 def test_joy_alive_impl_is_python_or_rust():
     assert vehicle.DEFAULT_JOY_ALIVE_IMPL == 'rust'
     assert vehicle.check_joy_alive_impl(' Python ') == 'python'

@@ -194,6 +194,12 @@ for odom, `cross_check`, `cross_window` (s), `cross_speed_tolerance` (m/s),
 [`aav_watchdog_rs`](../aav_watchdog_rs/README.md): the same node in Rust, with this one's
 answers tick by tick. `watchdog_impl:=python` runs this one.
 
+Since 19 Nov `geofence`, `stop_hold` and `goal_leash` run in Rust by default too:
+[`aav_safety_rs`](../aav_safety_rs/README.md) (`geofence_impl`, `stop_hold_impl`,
+`goal_leash_impl:=python` for these). `test_safety_rs_vectors.py` checks `geofence.py`,
+`hold.py` and `leash.py` still give the answers the Rust is checked against: after a change
+to one, run `aav_safety_rs/gen_vectors.py` (and port it).
+
 | Module | No ROS? | Holds |
 |---|---|---|
 | `watchdog.py` | yes | `Rule`, `Watch`, `Watchdog`; the states above; `KINDS` |

@@ -1,0 +1,30 @@
+[package]
+name = "safety-node"
+description = "The geofence, the stop hold and the goal leash as ROS nodes (rclrs)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "geofence"
+path = "src/bin/geofence.rs"
+
+[[bin]]
+name = "stop_hold"
+path = "src/bin/stop_hold.rs"
+
+[[bin]]
+name = "goal_leash"
+path = "src/bin/goal_leash.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+safety-core = { path = "../safety-core" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"
+# vehicle.yaml's body, for the geofence's footprint (as aav_behaviour_rs reads it).
+serde_yaml_ng = "0.10"

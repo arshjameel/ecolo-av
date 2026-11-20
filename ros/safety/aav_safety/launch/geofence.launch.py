@@ -2,6 +2,7 @@
 The geofence: stops every program before the car's stopping distance reaches the fence.
 
   ros2 launch aav_safety geofence.launch.py backend:=spine|uart|sim|sim_esp32
+      [geofence_impl:=rust|python]
       [radius:=30.0] [centre_x:=0.0] [centre_y:=0.0] [site:=] [max_speed:=]
       [gps:=true] [stands:=false] [fix_topic:=/localization/gps/odom] [use_sim_time:=false]
 
@@ -83,9 +84,12 @@ def node_parameters(context):
 
 
 def geofence(context):
+    # geofence_impl: rust (aav_safety_rs, the default since 19 Nov) or python (this
+    # package's): the same node name, topics, parameters and answers.
+    impl = vehicle.check_geofence_impl(LaunchConfiguration('geofence_impl').perform(context))
     # These aren't in the file, so this dict adds them rather than losing to it.
-    return [Node(package='aav_safety', executable='geofence', name='geofence',
-                 output='screen',
+    return [Node(package=vehicle.GEOFENCE_IMPLS[impl], executable='geofence', name='geofence',
+                 namespace='/', output='screen',
                  parameters=[share('aav_safety', 'config', 'geofence.yaml'),
                              node_parameters(context)],
                  remappings=[('/localization/gps/odom',
@@ -115,5 +119,7 @@ def generate_launch_description():
                               description='where a fix into the EKF arrives: '
                                           '/localization/pose_check/fix with NDT leading'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
+        DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
+                              description='rust (aav_safety_rs, the default) or python'),
         OpaqueFunction(function=geofence),
     ])

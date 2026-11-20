@@ -30,6 +30,7 @@ The real car. One launch file for every machine; a machine file picks the parts.
       [io_mux_impl:=rust] [legacy_impl:=rust] [rc_impl:=rust] [lane_finder_impl:=rust]
       [joy_alive_impl:=rust] [stop_sign_impl:=rust] [drive_to_point_impl:=rust]
       [camera_stream_impl:=rust] [lane_follower_impl:=rust]
+      [geofence_impl:=rust] [stop_hold_impl:=rust] [goal_leash_impl:=rust]
                           (Rust on the car since Ben, 16 Nov: aav_ego_rs, aav_behaviour_rs,
                            aav_watchdog_rs, aav_localization_health_rs; since 17 Nov
                            aav_lidar_rs, aav_things_rs, aav_io_mux_rs (both muxes),
@@ -460,7 +461,10 @@ def launch_setup(context):
              'stop_sign_impl': vehicle.check_stop_sign_impl(arg('stop_sign_impl')),
              'drive_to_point_impl': vehicle.check_drive_to_point_impl(
                  arg('drive_to_point_impl')),
-             'camera_stream_impl': vehicle.check_camera_stream_impl(arg('camera_stream_impl'))}
+             'camera_stream_impl': vehicle.check_camera_stream_impl(arg('camera_stream_impl')),
+             'geofence_impl': vehicle.check_geofence_impl(arg('geofence_impl')),
+             'stop_hold_impl': vehicle.check_stop_hold_impl(arg('stop_hold_impl')),
+             'goal_leash_impl': vehicle.check_goal_leash_impl(arg('goal_leash_impl'))}
     get_logger('car.launch.py').info(
         'languages: ' + ' '.join(f'{k}:={v}' for k, v in impls.items())
         + ' (any of them :=python falls back)')
@@ -520,7 +524,8 @@ def launch_setup(context):
         # The goal leash (TODO 116), next to the mux, always: the language driver runs on a
         # laptop and sends goals to drivers here; if its beats stop (the laptop dropped off),
         # its goals are cancelled and the car slows to a stop. Idle until a first beat.
-        actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash'))
+        actions.append(Node(package=vehicle.GOAL_LEASH_IMPLS[impls['goal_leash_impl']],
+                            executable='goal_leash', name='goal_leash'))
         # The geofence, next to the mux, always (F6, docs/geofence.md): twist_mux's geofence
         # lock holds every program near the fence's edge, while the global pose can't be
         # trusted, and when the geofence itself goes quiet (the lock's 1 s timeout).
@@ -532,7 +537,8 @@ def launch_setup(context):
                                radius=arg('geofence_radius'), centre_x=arg('start_x'),
                                centre_y=arg('start_y'), site=site,
                                max_speed=arg('max_speed'), gps=str(flag('gps')).lower(),
-                               stands=str(flag('stands')).lower()))
+                               stands=str(flag('stands')).lower(),
+                               geofence_impl=impls['geofence_impl']))
     if on('ego'):
         actions.append(include('aav_ego', 'ego.launch.py',
                                ego_impl=impls['ego_impl']))
@@ -643,6 +649,7 @@ def launch_setup(context):
                                voxels=bool(flag('voxels') and on('lidar')),
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
                                lidar_impl=impls['lidar_impl'],
+                               stop_hold_impl=impls['stop_hold_impl'],
                                things_impl=impls['things_impl'],
                                behaviour_impl=impls['behaviour_impl'],
                                stop_zone=(on('radar') or on('lidar') or flag('ghost')
@@ -782,6 +789,15 @@ def generate_launch_description():
         DeclareLaunchArgument('rc_impl', default_value=vehicle.DEFAULT_RC_IMPL,
                               description='rust (aav_rc_rs) or python (aav_rc): rc_driver, '
                                           'beside legacy_uart_bridge'),
+        DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'the geofence'),
+        DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'stop_hold, with navigation'),
+        DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'the goal leash'),
         DeclareLaunchArgument('joy_alive_impl', default_value=vehicle.DEFAULT_JOY_ALIVE_IMPL,
                               description='rust (aav_joy_alive_rs) or python (aav_safety): '
                                           'joy_alive, between joy_node and teleop_twist_joy'),

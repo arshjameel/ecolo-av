@@ -366,7 +366,8 @@ def test_the_geofence_runs_with_its_lock_and_a_sim_sized_circle():
     assert sent['geofence.launch.py'] == {'backend': 'sim', 'radius': '200.0',
                                           'centre_x': '0.0', 'centre_y': '0.0',
                                           'max_speed': '', 'use_sim_time': 'true',
-                                          'fix_topic': '/localization/gps/odom'}
+                                          'fix_topic': '/localization/gps/odom',
+                                          'geofence_impl': 'rust'}
     assert included(started(SIM, spine='true'))['geofence.launch.py']['backend'] == 'spine'
     assert included(started(SIM, esp32='true'))['geofence.launch.py']['backend'] == \
         'sim_esp32'

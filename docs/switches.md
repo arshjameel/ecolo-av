@@ -135,6 +135,7 @@ swap an algorithm. The rest:
 | `perception`, `lane`, `camera_obstacles`, `faults` | the detector, lane keeping (`true` or `fake`), boxes into the costmap, the camera fault path (worlds with cameras) | `false` |
 | `lane_follower` | with `lane`: how lane keeping steers: `pid` (the 2025-26 PID), or the Rust challengers `pure_pursuit`, `stanley` ([scores](../ros/drivers/aav_lane_follower_rs/README.md#scores)) | `pid` |
 | `lane_follower_impl`, `lane_finder_impl` | with `lane`: the lane follower and the lane finder in `rust` or `python` | `rust` |
+| `geofence_impl`, `stop_hold_impl`, `goal_leash_impl` | the geofence, the stop hold and the goal leash in `rust` (`aav_safety_rs`, 19 Nov: the Python's answers to the bit) or `python` (`aav_safety`); the car and the bench take them too | `rust` |
 | `spine`, `esp32`, `esp32_loop`, `bridge` | the spine or today's ESP32 in the loop; `pi` or `open`; `rust` or `python` | `false`, `false`, `pi`, `rust` |
 | `start_x`, `start_y`, `start_yaw` | where the car starts (m, rad) | `0.0` |
 | `geofence_radius` | the fence's circle (m) | `200.0` |

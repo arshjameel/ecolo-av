@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# safety-core: the geofence's, the stop hold's and the goal leash's rules without ROS
+#   (aav_safety's geofence.py, hold.py and leash.py, ported): cargo test -p safety-core
+# safety-node: the ROS nodes (rclrs), binaries `geofence`, `stop_hold` and `goal_leash`.
+#   colcon builds them through CMakeLists.txt.
+members = ["crates/safety-core", "crates/safety-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

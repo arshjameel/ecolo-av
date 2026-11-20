@@ -19,6 +19,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [lane_follower_impl:=rust] [lane_follower:=pid]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [io_mux_impl:=rust] [stop_sign_impl:=rust]
+      [geofence_impl:=rust] [stop_hold_impl:=rust] [goal_leash_impl:=rust]
       [ndt:=false] [ndt_ekf:=false] [pose_source:=gps] [ndt_map:=maps/ndt/test_lot.pcd]
       [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
@@ -648,6 +649,8 @@ def launch_setup(context):
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
                                lidar_impl=vehicle.check_lidar_impl(arg('lidar_impl')),
                                things_impl=vehicle.check_things_impl(arg('things_impl')),
+                               stop_hold_impl=vehicle.check_stop_hold_impl(
+                                   arg('stop_hold_impl')),
                                cube_floor=(worlds.CAMPUS_CUBE_FLOOR
                                            if world == worlds.CAMPUS and not flag['voxels']
                                            else ''),
@@ -749,7 +752,9 @@ def launch_setup(context):
                                    arg('watchdog_impl'))))
     # The goal leash (TODO 116): a laptop driver (aav_language) that goes quiet loses its
     # goals, as on the car. Does nothing until the language driver beats.
-    actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash',
+    actions.append(Node(package=vehicle.GOAL_LEASH_IMPLS[
+                            vehicle.check_goal_leash_impl(arg('goal_leash_impl'))],
+                        executable='goal_leash', name='goal_leash',
                         parameters=[{'use_sim_time': True}]))
     if flag['geofence']:
         actions.append(include(context, 'aav_safety', 'geofence.launch.py',
@@ -761,6 +766,8 @@ def launch_setup(context):
                                centre_y=start_y, max_speed=sim_speed,
                                fix_topic=('/localization/pose_check/fix' if pose_ndt
                                           else '/localization/gps/odom'),
+                               geofence_impl=vehicle.check_geofence_impl(
+                                   arg('geofence_impl')),
                                use_sim_time='true'))
     if flag['teleop']:
         actions.append(include(context, 'aav_teleop', 'teleop.launch.py', use_sim_time='true'))
@@ -1031,6 +1038,15 @@ def generate_launch_description():
                               description='python or rust: which object detector runs, '
                                           'with perception:=true (aav_detector, or '
                                           'aav_detector_rs: ONNX Runtime)'),
+        DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'the geofence'),
+        DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'stop_hold, with navigation'),
+        DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'the goal leash'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
                               description='python or rust: which sensor watchdog runs '
                                           '(aav_safety, or aav_watchdog_rs)'),

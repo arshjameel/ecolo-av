@@ -8,6 +8,7 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
       [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
       [geofence_radius:=100.0]
       [stop_sign_impl:=rust|python]
+      [geofence_impl:=rust|python] [stop_hold_impl:=rust|python] [goal_leash_impl:=rust|python]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
   pixi run -e ml bench perception:=true     (adds YOLO and the stop-sign watcher)
@@ -159,19 +160,25 @@ def launch_setup(context):
                                camera_obstacles=flag['camera_obstacles'],
                                reversing=str(flag['reversing']).lower(),
                                plan_around=str(flag['plan_around']).lower(),
-                               speed_loop=model_loop))
+                               speed_loop=model_loop,
+                               stop_hold_impl=vehicle.check_stop_hold_impl(
+                                   LaunchConfiguration('stop_hold_impl').perform(context))))
     # The sensor watchdog guards navigation and the AI slot (lane keeping) as on the car, always:
     # the mux's sensors lock needs its heartbeat (aav_command_mux mux.launch.py sensor_lock).
     actions.append(include('aav_safety', 'watchdog.launch.py',
                            inputs='odom,imu,gps,local,global,radar'
                            + (',lidar' if flag['lidar'] else '')))
     # The goal leash (TODO 116): a laptop driver that goes quiet loses its goals, as on the car.
-    actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash'))
+    leash = vehicle.check_goal_leash_impl(LaunchConfiguration('goal_leash_impl').perform(context))
+    actions.append(Node(package=vehicle.GOAL_LEASH_IMPLS[leash], executable='goal_leash',
+                        name='goal_leash'))
     # The geofence holds every program near its edge, as on the car, always: the mux's
     # geofence lock needs its heartbeat (mux.launch.py geofence_lock).
     actions.append(include('aav_safety', 'geofence.launch.py', backend='spine',
                            radius=LaunchConfiguration('geofence_radius').perform(context),
-                           centre_x=0.0, centre_y=start['start_y'], max_speed=''))
+                           centre_x=0.0, centre_y=start['start_y'], max_speed='',
+                           geofence_impl=vehicle.check_geofence_impl(
+                               LaunchConfiguration('geofence_impl').perform(context))))
     teleop = LaunchConfiguration('teleop').perform(context).lower()
     if teleop not in ('false', 'true', 'stand_in'):
         raise ValueError(f'teleop:={teleop}: use true (a joystick here), stand_in or false')
@@ -241,6 +248,15 @@ def generate_launch_description():
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher '
                                           '(the ml environment)'),
+        DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'the geofence'),
+        DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'stop_hold, with navigation'),
+        DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
+                              description='rust (aav_safety_rs) or python (aav_safety): '
+                                          'the goal leash'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
                               description='rust or python: which point_driver drives to a '
