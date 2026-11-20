@@ -1520,6 +1520,17 @@ def with_global_window(cfg, metres):
 PLAN_SMOOTHINGS = {'nav2': None, 'strong': {'w_data': 0.02, 'w_smooth': 0.3}}
 
 
+GROUNDS = ('plane', 'patchwork')
+
+
+def check_ground(value):
+    """Return ground:= checked: plane (empty too) or patchwork (TODO 215)."""
+    value = str(value).strip().lower() or GROUNDS[0]
+    if value not in GROUNDS:
+        raise ValueError(f'ground:={value}: one of {", ".join(GROUNDS)}')
+    return value
+
+
 MPPI_LAG_SAMPLINGS = ('correlated', 'smooth')
 
 

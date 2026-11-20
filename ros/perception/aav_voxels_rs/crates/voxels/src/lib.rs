@@ -21,6 +21,7 @@
 pub mod cloud;
 pub mod memory;
 mod mount;
+pub mod patchwork;
 pub mod steps;
 
 use std::{cmp::Ordering, error::Error, fmt};

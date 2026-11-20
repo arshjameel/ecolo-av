@@ -142,6 +142,11 @@ levels:
       # sim-check --kerb stopped 0.80-0.82 m before a 0.3 m kerb (it drove into it
       # before), and no worse on the lot and University Drive (2 runs each, no new stops).
       'on': {kerbs: 'true'}
+      # And the ground a plane a patch, ring by ring (Patchwork++'s idea, TODO 215): the
+      # cubes start 0.15 m over the ground right under them, not 0.3 m over one plane, so a
+      # kerb is a cube too; the costmap reads the cubes. A challenger (19 Nov), scored in
+      # stage 2.
+      patchwork: {kerbs: 'true', ground: patchwork}
     score: ''
 
 # Each stack names an option per level; a level left out takes its champion.

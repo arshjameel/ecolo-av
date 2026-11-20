@@ -73,6 +73,8 @@ Switches:
   voxels:=true            (with lidar:=true) aav_voxels' 0.25 m cubes instead of the scan,
                           for the costmap and the stop zone; voxels_impl:=rust for the
                           Rust node. screen_cubes:=true: the cubes for the screens only
+  ground:=patchwork       (with lidar:=true) the cubes over a ground plane a patch,
+                          ring by ring, the costmap on them (TODO 215, a challenger)
   kerbs:=true             (with lidar:=true) the Rust voxels node's step finder: the local
                           costmap's kerb_layer and the stop zone's steps source (TODO 119)
   behaviour:=true         the behaviour planner (aav_behaviour_rs; behaviour_impl:=python):
@@ -274,6 +276,11 @@ def nodes(context):
     things_impl = vehicle.check_things_impl(LaunchConfiguration('things_impl').perform(context))
     # The kerbs need the lidar; a world without one just runs without them.
     kerbs = flag(context, 'kerbs') and lidar
+    # TODO 215: ground:=patchwork, the ground a plane a patch (Patchwork++'s idea) in the
+    # Rust voxels node, so a lower kerb is a cube; the costmap then reads the cubes.
+    patchwork = vehicle.check_ground(LaunchConfiguration('ground').perform(context)) == \
+        'patchwork' and lidar
+    voxels = voxels or patchwork
     if (voxels or screen_cubes or things) and not lidar:
         raise ValueError('voxels:=true (and things:=true) needs lidar:=true: the cubes come '
                          'from the lidar')
@@ -404,10 +411,12 @@ def nodes(context):
         # voxels_impl:=rust: the Rust port, the same name and topics; it reads no
         # vehicle.yaml, so the car's numbers come with it.
         # kerbs:=true: only the Rust node finds steps, so it runs whatever voxels_impl says.
-        impl = 'rust' if kerbs else voxels_impl
+        impl = 'rust' if kerbs or patchwork else voxels_impl
         car = voxels_car(cfg) if impl == 'rust' else {}
         if kerbs:
             car['steps'] = True
+        if patchwork:
+            car['ground'] = 'patchwork'
         actions.append(Node(package=vehicle.VOXELS_IMPLS[impl], executable='voxels',
                             name='voxels', namespace='/', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
@@ -682,6 +691,11 @@ def generate_launch_description():
                               description='true (with lidar:=true): the trial, aav_voxels: '
                                           "the costmap's lidar_layer and collision_monitor "
                                           'read 0.25 m cubes instead of the flat scan'),
+        DeclareLaunchArgument('ground', default_value='',
+                              description='with lidar:=true: plane (empty too: one road plane '
+                                          'a cloud) or patchwork, a plane a patch ring by ring '
+                                          "in the Rust voxels node, the costmap on its cubes "
+                                          '(TODO 215, a challenger)'),
         DeclareLaunchArgument('kerbs', default_value='false',
                               description='true (with lidar:=true): the Rust voxels node '
                                           'finds kerbs (steps in the ground) and the local '

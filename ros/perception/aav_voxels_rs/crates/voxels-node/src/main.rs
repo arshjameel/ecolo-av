@@ -30,7 +30,11 @@
 //!             (voxels_impl:=rust); they have no defaults, so a missing one stops the node.
 //!             steps (bool, false), step_min (m, 0.10), step_radius (m, 0.3), step_range
 //!             (m, 12), step_keep (s, 10): the kerbs' step finder and how long it keeps
-//!             each kerb (navigation.launch.py kerbs:=true).
+//!             each kerb (navigation.launch.py kerbs:=true). ground (plane, the default;
+//!             patchwork: the ground a plane a patch, ring by ring, so a lower kerb is a
+//!             cube: voxels::patchwork, TODO 215, a challenger; navigation.launch.py
+//!             ground:=patchwork), patch_min_height (m, 0.15: its floor over a patch's own
+//!             plane).
 //!
 //! No serving, no calls, never TF. The maths is the `voxels` crate, with no ROS.
 
@@ -47,7 +51,9 @@ use ros_env::sensor_msgs::msg::{PointCloud2, PointField};
 use ros_env::std_msgs::msg::Header;
 use voxels::{
     cloud::{self, CloudView, Field},
-    cubes, steps, usable, Body, CubeShape, Cubes, Mount, Point, Pose2, StepMemory, StepShape,
+    cubes,
+    patchwork::{self, Ground, PatchSettings},
+    steps, usable, Body, CubeShape, Cubes, Mount, Point, Pose2, StepMemory, StepShape,
 };
 
 /// The lidar's period (10 Hz): to count the clouds that came while one was cut.
@@ -63,6 +69,7 @@ fn main() -> Result<()> {
     let (shape, mount, lidar_xyz) = params.read()?;
     let step_shape = params.read_steps()?;
     let step_keep = params.step_keep.get();
+    let ground_finder = params.read_ground()?;
     log_info!(
         node.logger(),
         "voxels (Rust): {:.2} m cubes from {:.2} to {:.2} m above the fitted road, out to \
@@ -87,6 +94,7 @@ fn main() -> Result<()> {
     // connect, and a Mac's UDP doesn't lose whole clouds.
     let state = State {
         shape,
+        patches: ground_finder,
         mount,
         last_stamp: None,
         dropped: 0,
@@ -135,6 +143,8 @@ fn main() -> Result<()> {
 /// The worker's payload.
 struct State {
     shape: CubeShape,
+    /// Patchwork's settings with ground:=patchwork (TODO 215); None: one plane.
+    patches: Option<PatchSettings>,
     mount: Mount,
     /// The last cloud's stamp (s), to count the ones dropped since.
     last_stamp: Option<f64>,
@@ -190,7 +200,10 @@ impl State {
             }
         };
         let base: Vec<Point> = points.iter().map(|p| self.mount.to_base(p)).collect();
-        let found = cubes(&base, &self.shape);
+        let found = match &self.patches {
+            Some(patches) => patchwork::cubes(&base, &self.shape, patches),
+            None => cubes(&base, &self.shape),
+        };
         let header = Header {
             stamp: msg.header.stamp.clone(),
             frame_id: "base_link".into(),
@@ -330,6 +343,8 @@ struct Params {
     step_radius: ReadOnlyParameter<f64>,
     step_range: ReadOnlyParameter<f64>,
     step_keep: ReadOnlyParameter<f64>,
+    ground: ReadOnlyParameter<Arc<str>>,
+    patch_min_height: ReadOnlyParameter<f64>,
 }
 
 impl Params {
@@ -366,6 +381,12 @@ impl Params {
             step_radius: number("step_radius", s.radius)?,
             step_range: number("step_range", s.range_max)?,
             step_keep: number("step_keep", 10.0)?,
+            ground: node
+                .declare_parameter("ground")
+                .default(Arc::from("plane"))
+                .read_only()
+                .context("parameter ground (plane or patchwork)")?,
+            patch_min_height: number("patch_min_height", PatchSettings::default().min_height)?,
         })
     }
 
@@ -388,6 +409,22 @@ impl Params {
         let xyz = three("lidar_xyz", self.lidar_xyz.get())?;
         let rpy = three("lidar_rpy", self.lidar_rpy.get())?;
         Ok((shape, Mount::new(xyz, rpy), xyz))
+    }
+
+    /// Patchwork's settings with ground:=patchwork (TODO 215); None: one plane.
+    fn read_ground(&self) -> Result<Option<PatchSettings>> {
+        let ground: Ground = self
+            .ground
+            .get()
+            .parse()
+            .map_err(|e: String| anyhow::anyhow!(e))?;
+        Ok(match ground {
+            Ground::Plane => None,
+            Ground::Patchwork => Some(PatchSettings {
+                min_height: self.patch_min_height.get(),
+                ..PatchSettings::default()
+            }),
+        })
     }
 
     /// The step finder's shape, with steps:=true.

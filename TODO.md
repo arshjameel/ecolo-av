@@ -97,7 +97,7 @@ scored with Nav2's follower (177, 178) are scored again with ours.
 | 213 | **`mpc_lag_rs` that reverses and doesn't swing** (Autoware's MPC idea); was 132 | 🟡 follows closer, sways 2.5x |
 | 212 | **Smooth MPPI** (sample the steering's change): `steer:=mppi_lag_smooth` (`mppi_lag_sampling:=smooth`) | 🟡 built; scored in stage 2 |
 | 214 | **Passing with a jerk limit** (Apollo, Autoware): `path:=lane_jerk` (`lane_pass_shape:=jerk`) | 🟡 built; scored in stage 2 |
-| 215 | **The ground ring by ring** (Patchwork++), for kerbs | ⬜ |
+| 215 | **The ground ring by ring** (Patchwork++), for kerbs: `kerbs:=patchwork` (`ground:=patchwork`) | 🟡 built; scored in stage 2 |
 | 216 | **Kinematic-ICP**: lidar odometry that knows the car can't slide sideways | ⬜ |
 | 217 | **A tracker with a motion model per kind** (car, person) | ⬜ |
 | 243 | **Our models from Rust** (`ort`): the detector done on a Mac (8 ms); left: TensorRT on the Orin (JetPack 7.2), the diffusion planner | 🟡 |

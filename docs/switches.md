@@ -154,6 +154,16 @@ swap an algorithm. The rest:
 Mac: the track node ran MPC, NDT tracked (2 ms a match), AMCL stayed off, the speed loop
 said LQI, and a Nav2 goal 15 m ahead ended SUCCEEDED.
 
+## Stage 1, batch 8: challengers built 19 Nov, scored in stage 2
+
+Each is off by default, and a drop-in: the same topics as the champion.
+
+| Switch (league option) | In plain words | TODO |
+|---|---|---|
+| `mppi_lag_sampling:=smooth` (`steer:=mppi_lag_smooth`) | MPPI samples the steering's change, so its commands come out smooth | 212 |
+| `lane_pass_shape:=jerk` (`path:=lane_jerk`) | a parked obstacle passed within a lateral-jerk limit (a QP) | 214 |
+| `ground:=patchwork` (`kerbs:=patchwork`) | the ground found patch by patch, ring by ring: a lower kerb is an obstacle, a hill isn't | 215 |
+
 ## The defaults: what runs if you say nothing
 
 Checked 3 Nov ([the runs](history/trials-log.md#3-nov-everything-for-02)): every switch that existed then

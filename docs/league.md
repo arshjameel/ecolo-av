@@ -20,7 +20,8 @@ waiting to beat it.
   │ smoother   │ ours      │                              │
   │ lanes      │ off       │ ramp (lane costs)            │
   │ behaviour  │ off       │ on (road ahead and things)   │
-  │ kerbs      │ off       │ on (the step finder)         │
+  │ kerbs      │ off       │ on (the step finder),        │
+  │            │           │ patchwork (ground by patch)  │
   └────────────┴───────────┴──────────────────────────────┘
           │
           ▼

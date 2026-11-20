@@ -344,6 +344,16 @@ def test_the_sim_and_the_bench_pass_their_speed_loop_on():
                               speed_loop_model='default')['speed_loop'] == 'default'
 
 
+def test_patchwork_ground_runs_the_rust_voxels_node_with_it():
+    # TODO 215: ground:=patchwork, the Rust voxels node with ground patchwork; none: plane.
+    assert 'voxels' not in nav_nodes(lidar='true')
+    nodes = nav_nodes(lidar='true', ground='patchwork', voxels_impl='python')
+    assert nodes['voxels']._Node__package == 'aav_voxels_rs'
+    assert given(nodes['voxels'])['ground'] == 'patchwork'
+    with pytest.raises(ValueError, match='ground'):
+        nav_nodes(lidar='true', ground='ransac')
+
+
 def test_smooth_sampling_reaches_mppi_lag():
     # TODO 212: mppi_lag_sampling:=smooth, a challenger; none: the node's own (correlated).
     assert 'sampling' not in given(nav_nodes(tracker='mppi_lag')['mppi_lag'])
