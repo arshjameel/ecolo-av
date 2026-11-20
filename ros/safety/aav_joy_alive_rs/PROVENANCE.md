@@ -15,3 +15,7 @@ as the fall-back (`joy_alive_impl:=python`).
 ## Where it differs
 
 A negative `motion_axes` entry is refused at start-up (the Python read it from the end).
+
+**20 Nov:** the Python node(s) in `aav_safety` were removed (Ben, 16 Nov: "lets remove python
+were possible"; tag `save/python-safety-nodes`). The maths modules stay there, so
+`gen_vectors.py` still runs.

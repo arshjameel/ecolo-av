@@ -1006,11 +1006,12 @@ def test_behaviour_impl_is_rust():
         vehicle.check_behaviour_impl('c')
 
 
-def test_watchdog_impl_is_python_or_rust():
+def test_watchdog_impl_is_rust():
     assert vehicle.DEFAULT_WATCHDOG_IMPL == 'rust'
-    assert vehicle.check_watchdog_impl('python') == 'python'
     assert vehicle.check_watchdog_impl(' Rust ') == 'rust'
-    assert vehicle.WATCHDOG_IMPLS == {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+    assert vehicle.WATCHDOG_IMPLS == {'rust': 'aav_watchdog_rs'}
+    with pytest.raises(ValueError, match='watchdog_impl:=python'):
+        vehicle.check_watchdog_impl('python')
     with pytest.raises(ValueError, match='watchdog_impl:=c'):
         vehicle.check_watchdog_impl('c')
 
@@ -1119,24 +1120,25 @@ def test_gps_heading_impl_is_rust():
         vehicle.check_gps_heading_impl('c')
 
 
-def test_safety_impls_are_python_or_rust():
+def test_safety_impls_are_rust():
     for name, check, default in (
             ('geofence_impl', vehicle.check_geofence_impl, vehicle.DEFAULT_GEOFENCE_IMPL),
             ('stop_hold_impl', vehicle.check_stop_hold_impl, vehicle.DEFAULT_STOP_HOLD_IMPL),
             ('goal_leash_impl', vehicle.check_goal_leash_impl,
              vehicle.DEFAULT_GOAL_LEASH_IMPL)):
         assert default == 'rust'
-        assert check(' Python ') == 'python'
-        with pytest.raises(ValueError, match=f'{name}:=c'):
-            check('c')
-    assert vehicle.GEOFENCE_IMPLS['rust'] == 'aav_safety_rs'
-    assert vehicle.STOP_HOLD_IMPLS['python'] == 'aav_safety'
+        assert check(' Rust ') == 'rust'
+        with pytest.raises(ValueError, match=f'{name}:=python'):
+            check('python')
+    assert vehicle.GEOFENCE_IMPLS == {'rust': 'aav_safety_rs'}
 
 
-def test_joy_alive_impl_is_python_or_rust():
+def test_joy_alive_impl_is_rust():
     assert vehicle.DEFAULT_JOY_ALIVE_IMPL == 'rust'
-    assert vehicle.check_joy_alive_impl(' Python ') == 'python'
-    assert vehicle.JOY_ALIVE_IMPLS['rust'] == 'aav_joy_alive_rs'
+    assert vehicle.check_joy_alive_impl(' Rust ') == 'rust'
+    assert vehicle.JOY_ALIVE_IMPLS == {'rust': 'aav_joy_alive_rs'}
+    with pytest.raises(ValueError, match='joy_alive_impl:=python'):
+        vehicle.check_joy_alive_impl('python')
     with pytest.raises(ValueError, match='joy_alive_impl:=c'):
         vehicle.check_joy_alive_impl('c')
 

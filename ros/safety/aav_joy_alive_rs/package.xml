@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_joy_alive_rs</name>
   <version>0.1.0</version>
-  <description>joy_alive in Rust (rclrs): the default since 17 Nov (Ben: "I don't think we want to do this again later"), beside aav_safety's Python one (joy_alive_impl:=rust|python). The same node name, topics and parameters: /drivers/joy/joy passes on as /drivers/joy/joy_checked only while the joystick is really there and moving (OK, WAITING, SILENT, FROZEN on /drivers/joy/alive). The rules are the joy-alive-core crate, with no ROS, checked against joy_alive.py's answers.</description>
+  <description>joy_alive in Rust (rclrs): the default since 17 Nov (Ben: "I don't think we want to do this again later"), in place of aav_safety's Python one (removed 20 Nov). The same node name, topics and parameters: /drivers/joy/joy passes on as /drivers/joy/joy_checked only while the joystick is really there and moving (OK, WAITING, SILENT, FROZEN on /drivers/joy/alive). The rules are the joy-alive-core crate, with no ROS, checked against joy_alive.py's answers.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

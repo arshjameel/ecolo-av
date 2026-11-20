@@ -17,3 +17,7 @@ stays, as the fall-back (`*_impl:=python`).
 
 A datum's `repr` in an error line never uses the exponent form; the geofence reads
 `vehicle.yaml`'s body itself (`vehicle_yaml`).
+
+**20 Nov:** the Python node(s) in `aav_safety` were removed (Ben, 16 Nov: "lets remove python
+were possible"; tag `save/python-safety-nodes`). The maths modules stay there, so
+`gen_vectors.py` still runs.

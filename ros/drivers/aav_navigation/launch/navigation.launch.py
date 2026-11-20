@@ -34,8 +34,7 @@ lifecycle node: each respawns 1 s after it dies, and while one is down the car s
   stop_zone         the stop zone (aav_stop_zone, a safety lock): /control/cmd_vel_smoothed
                     -> /drivers/nav/cmd_vel, zero for points in the box ahead (behind,
                     reversing) or a silent sensor; its state on /safety/stop_zone/state
-  stop_hold         with the stop zone (aav_safety_rs; stop_hold_impl:=python for
-                    aav_safety's): holds its stops until the zone stays clear for 1 s,
+  stop_hold         with the stop zone (aav_safety_rs): holds its stops until the zone stays clear for 1 s,
                     through twist_mux's stop_zone lock
   lidar_scan        with lidar:=true (aav_lidar_rs): the roof lidar's cloud ->
                     /sensors/lidar/scan, for the costmap and the stop zone;
@@ -400,7 +399,7 @@ def nodes(context):
         # a zone flickers between stop and go at its edge. It locks nothing until the zone
         # first says STOP.
         config = FindPackageShare('aav_safety').perform(context) + '/config/stop_hold.yaml'
-        # stop_hold_impl: rust (aav_safety_rs, the default since 19 Nov) or python.
+        # stop_hold_impl: rust (aav_safety_rs; the Python went on 20 Nov).
         hold = vehicle.check_stop_hold_impl(
             LaunchConfiguration('stop_hold_impl').perform(context))
         actions.append(Node(package=vehicle.STOP_HOLD_IMPLS[hold], executable='stop_hold',

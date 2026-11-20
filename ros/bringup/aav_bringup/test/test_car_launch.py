@@ -265,21 +265,17 @@ def test_the_geofence_runs_wherever_the_mux_does():
         'bench_road', '5', 'spine', 'true')
 
 
-def test_the_safety_nodes_are_rust_by_default_and_python_one_switch_away():
+def test_the_safety_nodes_are_rust():
     # Ben, 16 Nov: "lets remove python were possible". The geofence, stop_hold and the
-    # goal leash in Rust (aav_safety_rs), each one switch from the Python.
+    # goal leash in Rust (aav_safety_rs); the Python nodes went on 20 Nov.
     sent = started(CAR, machine='all')
     assert included(sent)['geofence.launch.py']['geofence_impl'] == 'rust'
     assert ('aav_safety_rs', 'goal_leash') in nodes(sent)
     if 'navigation.launch.py' in included(sent):
         assert included(sent)['navigation.launch.py']['stop_hold_impl'] == 'rust'
-    back = started(CAR, machine='all', geofence_impl='python', goal_leash_impl='python',
-                   stop_hold_impl='python')
-    assert included(back)['geofence.launch.py']['geofence_impl'] == 'python'
-    assert ('aav_safety', 'goal_leash') in nodes(back)
     for name in ('geofence_impl', 'stop_hold_impl', 'goal_leash_impl'):
         with pytest.raises(ValueError, match=name):
-            started(CAR, machine='all', **{name: 'c'})
+            started(CAR, machine='all', **{name: 'python'})
 
 
 def test_the_sensor_watchdog_runs_wherever_the_mux_does():
@@ -324,10 +320,8 @@ def test_joy_alive_is_rust_by_default_and_python_one_switch_away():
     for machine in ('motor_pi_alone', 'all'):
         assert included(started(CAR, machine=machine))['teleop.launch.py'][
             'joy_alive_impl'] == 'rust', machine
-    assert included(started(CAR, machine='motor_pi_alone', joy_alive_impl='python'))[
-        'teleop.launch.py']['joy_alive_impl'] == 'python'
     with pytest.raises(ValueError, match='joy_alive_impl'):
-        started(CAR, machine='motor_pi_alone', joy_alive_impl='c')
+        started(CAR, machine='motor_pi_alone', joy_alive_impl='python')
 
 
 def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():

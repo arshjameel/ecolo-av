@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_safety_rs</name>
   <version>0.1.0</version>
-  <description>The geofence, the stop hold and the goal leash in Rust (rclrs): the defaults since 19 Nov (Ben, 16 Nov: "lets remove python were possible"), beside aav_safety's Python nodes (geofence_impl, stop_hold_impl, goal_leash_impl :=rust|python). The same node names, topics, QoS, parameters and answers. Safety locks: the Python is one switch away. The rules are the safety-core crate, with no ROS, checked event by event and bit by bit against the Python's answers.</description>
+  <description>The geofence, the stop hold and the goal leash in Rust (rclrs): the defaults since 19 Nov (Ben, 16 Nov: "lets remove python were possible"), in place of aav_safety's Python nodes (removed 20 Nov). The same node names, topics, QoS, parameters and answers. Safety locks: the Python is one switch away. The rules are the safety-core crate, with no ROS, checked event by event and bit by bit against the Python's answers.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

@@ -7,7 +7,7 @@ The sensor watchdog in Rust (rclrs): the **default**, in place of `aav_safety`'s
 "convert anything that uses a lot of resources to rust" (TODO 185).
 
 **A safety lock.** Ben decided (16 Nov: "watchdog in rust sure"): this one is the default
-on the car and in the simulator. `watchdog_impl:=python` falls back until a car day
+on the car and in the simulator. The Python was removed on 20 Nov (tag `save/python-safety-nodes`). until a car day
 proves it.
 
 ```

@@ -45,7 +45,7 @@ each one's README has its topics.
 | `aav_navigator` | drivers | our own navigator in Rust (`navigator:=own`): what `bt_navigator` and `waypoint_follower` do | built 8 Nov; the only one since 17 Nov ([its page](own-navigator.md)) | new |
 | `aav_smoother` | drivers | our own velocity smoother in Rust (`smoother:=own`): the turn rate from where the wheels can be | built 8 Nov; the only one since 17 Nov ([its page](own-smoother.md)) | new |
 | `aav_diffusion_planner` | drivers | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | built 2 Nov; a trial, off by default ([Trials](trials.md)) | new |
-| `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov) (the Python removed 20 Nov): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
+| `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_mux_state` | command_mux | `command_mux_state` (Rust): who twist_mux passes on, its age, the locks on and whom they hold (TODO 247) | [[works]] beside a real twist_mux (its colcon test) and in the sim; [[untested]] on the car | new: twist_mux's rule, rewritten in Rust |
 | `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
@@ -65,9 +65,9 @@ each one's README has its topics.
 | `aav_spine_sim` | sim | the spine on a laptop: the firmware's logic on a model car (Rust) | [[works]] | new |
 | `aav_bench` | sim | pretend sensors: IMU, GPS, battery, camera, radar, lidar | [[works]] | new |
 | `aav_safety` | safety | the sensor watchdog: a twist_mux lock (30) when a sensor is stale, NaN, frozen or jumps | [[works]] Gazebo and the bench | new |
-| `aav_joy_alive_rs` | safety | `joy_alive` in Rust, the default (17 Nov; `joy_alive_impl:=python` falls back) | [[works]] against the Python's answers; [[untested]] on the car | new: a port of `aav_safety`'s `joy_alive` |
+| `aav_joy_alive_rs` | safety | `joy_alive` in Rust, the default (17 Nov; the Python removed 20 Nov) | [[works]] against the Python's answers; [[untested]] on the car | new: a port of `aav_safety`'s `joy_alive` |
 | `aav_safety_rs` | safety | `geofence`, `stop_hold` and `goal_leash` in Rust, the defaults (19 Nov; `*_impl:=python` falls back) | [[works]] against the Python's answers, to the bit; [[untested]] on the car | new: a port of `aav_safety`'s three nodes |
-| `aav_watchdog_rs` | safety | `sensor_watchdog` in Rust, the default (Ben, 16 Nov) beside `aav_safety`'s (`watchdog_impl:=python`): the same topics and answers | [[works]] against the Python's answers, tick by tick | new: a port of `aav_safety`'s watchdog |
+| `aav_watchdog_rs` | safety | `sensor_watchdog` in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers | [[works]] against the Python's answers, tick by tick | new: a port of `aav_safety`'s watchdog |
 | `aav_ghost` | safety | ghost obstacles: a pretend person only navigation sees | [[works]] in Gazebo | new |
 | `aav_stop_zone` | safety | the stop zone (Rust): zeroes navigation's command when the radar or lidar sees points just ahead, or goes silent; the lock since 17 Nov | [[works]] in Ravensim: stopped every time Nav2's `collision_monitor` did, in its shadow run ([Nav2, as it was](history/nav2-as-it-was.md)) | new: a port of Nav2's `collision_monitor` |
 | `aav_interfaces` | ecolo_msgs | our 13 messages (such as `VehicleStatus`, `DataSource`, `Heartbeat`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) | [[works]] builds | new |

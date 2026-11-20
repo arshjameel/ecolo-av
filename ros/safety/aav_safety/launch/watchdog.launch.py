@@ -10,8 +10,8 @@ twist_mux's sensors lock (aav_command_mux config/twist_mux.yaml) reads its
 /safety/sensor_watchdog/lock. docs/simulation.md ("Sensor failures on purpose").
 
 watchdog_impl (rust): aav_watchdog_rs, the default since Ben decided (16 Nov: "watchdog in
-rust sure"). python runs aav_safety's sensor_watchdog instead, the same node (name, topics,
-parameters and answers): the fall-back until a car day proves the Rust.
+rust sure"). The Python node went on 20 Nov (tag save/python-safety-nodes); this package
+keeps its maths, config and launch files.
 """
 
 from aav_description import vehicle
@@ -41,7 +41,7 @@ def generate_launch_description():
                               description='which of config/sensor_watchdog.yaml to watch'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
-                              description='rust (aav_watchdog_rs) or python (aav_safety, the '
-                                          'same node in Python)'),
+                              description='rust (aav_watchdog_rs; the Python removed '
+                                          '20 Nov)'),
         OpaqueFunction(function=watchdog),
     ])

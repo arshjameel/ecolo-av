@@ -870,7 +870,7 @@ def generate_launch_description():
                               description='rust (aav_behaviour_rs; the Python removed 20 Nov), '
                                           'where navigation runs with behaviour:=true'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
-                              description='rust (aav_watchdog_rs) or python (aav_safety): '
+                              description='rust (aav_watchdog_rs; the Python removed 20 Nov): '
                                           'the sensor watchdog'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
                               description='rust (aav_io_mux_rs) or python (aav_io_mux): '
@@ -883,16 +883,16 @@ def generate_launch_description():
                               description='rust (aav_rc_rs) or python (aav_rc): rc_driver, '
                                           'beside legacy_uart_bridge'),
         DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the geofence'),
         DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'stop_hold, with navigation'),
         DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the goal leash'),
         DeclareLaunchArgument('joy_alive_impl', default_value=vehicle.DEFAULT_JOY_ALIVE_IMPL,
-                              description='rust (aav_joy_alive_rs) or python (aav_safety): '
+                              description='rust (aav_joy_alive_rs; the Python removed 20 Nov): '
                                           'joy_alive, between joy_node and teleop_twist_joy'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
                               description='rust (aav_stop_sign_rs) or python (aav_detector): '

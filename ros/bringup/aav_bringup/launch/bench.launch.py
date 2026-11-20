@@ -8,7 +8,7 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
       [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
       [geofence_radius:=100.0]
       [stop_sign_impl:=rust|python]
-      [geofence_impl:=rust|python] [stop_hold_impl:=rust|python] [goal_leash_impl:=rust|python]
+      [geofence_impl:=rust] [stop_hold_impl:=rust] [goal_leash_impl:=rust]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
   pixi run -e ml bench perception:=true     (adds YOLO and the stop-sign watcher)
@@ -242,13 +242,13 @@ def generate_launch_description():
                               description='the object detector and the stop-sign watcher '
                                           '(the ml environment)'),
         DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the geofence'),
         DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'stop_hold, with navigation'),
         DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the goal leash'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,

@@ -524,9 +524,9 @@ SIM_DEFAULT_BEHAVIOUR_IMPL = DEFAULT_BEHAVIOUR_IMPL
 
 # Which sensor watchdog runs (watchdog.launch.py, car.launch.py, sim.launch.py
 # watchdog_impl:=): rust (aav_watchdog_rs, the default since Ben decided, 16 Nov:
-# "watchdog in rust sure") or python (aav_safety's: the same node name, topics and
-# answers; kept selectable until a car day proves the Rust). Each one's package.
-WATCHDOG_IMPLS = {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+# "watchdog in rust sure"). The Python went on 20 Nov (tag save/python-safety-nodes); the
+# switch stays, a challenger's hook.
+WATCHDOG_IMPLS = {'rust': 'aav_watchdog_rs'}
 DEFAULT_WATCHDOG_IMPL = 'rust'
 
 
@@ -677,8 +677,8 @@ def camera_stream_runs(impl, detector, decoder):
 
 # Which joy_alive runs (teleop.launch.py, car.launch.py; joy_alive_impl:=): rust
 # (aav_joy_alive_rs, the default since Ben, 17 Nov: "I don't think we want to do this again
-# later") or python (aav_safety's: the same node name, topics, parameters and answers).
-JOY_ALIVE_IMPLS = {'python': 'aav_safety', 'rust': 'aav_joy_alive_rs'}
+# later"). The Python went on 20 Nov (tag save/python-safety-nodes).
+JOY_ALIVE_IMPLS = {'rust': 'aav_joy_alive_rs'}
 DEFAULT_JOY_ALIVE_IMPL = 'rust'
 
 
@@ -692,10 +692,9 @@ def check_joy_alive_impl(impl):
 
 # Which geofence, stop_hold and goal_leash run (geofence_impl:=, stop_hold_impl:=,
 # goal_leash_impl:=): rust (aav_safety_rs, the defaults since 19 Nov: Ben, 16 Nov, "lets
-# remove python were possible"; the Python's answers event by event and bit by bit) or
-# python (aav_safety's: the same node names, topics, parameters and answers). Each
-# one's package. geofence.launch.py, navigation.launch.py, car, sim and bench pass them on.
-SAFETY_IMPLS = {'python': 'aav_safety', 'rust': 'aav_safety_rs'}
+# remove python were possible"; the Python's answers event by event and bit by bit). The
+# Python nodes went on 20 Nov (tag save/python-safety-nodes); the switches stay, hooks. geofence.launch.py, navigation.launch.py, car, sim and bench pass them on.
+SAFETY_IMPLS = {'rust': 'aav_safety_rs'}
 GEOFENCE_IMPLS = STOP_HOLD_IMPLS = GOAL_LEASH_IMPLS = SAFETY_IMPLS
 DEFAULT_GEOFENCE_IMPL = 'rust'
 DEFAULT_STOP_HOLD_IMPL = 'rust'

@@ -527,11 +527,11 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_sim_cameras` | Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
 | `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |
 | `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (`ego_impl:=python` falls back) | `ros/ego/aav_ego_rs/README.md` |
-| `aav_watchdog_rs` | the sensor watchdog in Rust, the default (`watchdog_impl:=python` falls back) | `ros/safety/aav_watchdog_rs/README.md` |
+| `aav_watchdog_rs` | the sensor watchdog in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_watchdog_rs/README.md` |
 | `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (`io_mux_impl:=python` falls back) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
 | `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |
-| `aav_joy_alive_rs` | `joy_alive` in Rust, the default (`joy_alive_impl:=python` falls back) | `ros/safety/aav_joy_alive_rs/README.md` |
+| `aav_joy_alive_rs` | `joy_alive` in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_joy_alive_rs/README.md` |
 | `aav_safety_rs` | `geofence`, `stop_hold`, `goal_leash` in Rust, the defaults (`*_impl:=python` falls back) | `ros/safety/aav_safety_rs/README.md` |
 | `aav_mux_state` | `command_mux_state` (Rust): who twist_mux passes on, on `/control/command_mux/state`, for the debug screen | `ros/command_mux/aav_mux_state/README.md` |
 | `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (`stop_sign_impl:=python` falls back) | `ros/perception/aav_stop_sign_rs/README.md` |

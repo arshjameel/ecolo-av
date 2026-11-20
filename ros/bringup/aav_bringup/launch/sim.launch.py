@@ -203,8 +203,8 @@ bench's argument names:
   behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), with behaviour on
                       (TODO 185); the only one since the Python went on 20 Nov
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs): the same topics and
-                      answers as the Python's; the default on the car and here since
-                      16 Nov (Ben: "watchdog in rust sure"; python: aav_safety's)
+                      answers as the Python's had; the only one since 20 Nov (Ben, 16 Nov:
+                      "watchdog in rust sure")
   stop_sign_impl:=rust  with perception:=true, stop_sign_watcher in Rust (aav_stop_sign_rs):
                       the same node name, topics and answers; the default since 17 Nov
                       (python: aav_detector's)
@@ -1073,17 +1073,17 @@ def generate_launch_description():
                                           'with perception:=true (aav_detector, or '
                                           'aav_detector_rs: ONNX Runtime)'),
         DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the geofence'),
         DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'stop_hold, with navigation'),
         DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the goal leash'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
-                              description='python or rust: which sensor watchdog runs '
-                                          '(aav_safety, or aav_watchdog_rs)'),
+                              description='rust (aav_watchdog_rs): which sensor watchdog '
+                                          'runs (the Python removed 20 Nov)'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
                               description='python or rust: which stop_sign_watcher runs, '
                                           'with perception:=true (aav_detector, or '

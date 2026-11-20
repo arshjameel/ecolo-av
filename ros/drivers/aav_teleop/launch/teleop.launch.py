@@ -9,11 +9,11 @@ The command is TwistStamped; the button publishes /safety/estop true.
 joy_device:=false leaves joy_node out, for a stand-in that publishes /drivers/joy/joy
 itself (tools/bench_check.py's frozen pad).
 
-joy_alive (aav_safety) sits between joy_node and teleop_twist_joy: it passes the stick on
+joy_alive (aav_joy_alive_rs) sits between joy_node and teleop_twist_joy: it passes the stick on
 as /drivers/joy/joy_checked only while the joystick is really there and moving, and says
 why not on /drivers/joy/alive (TODO 74a). The e-stop button reads joy_node directly.
-joy_alive_impl: rust (aav_joy_alive_rs, the default since 17 Nov) or python (aav_safety's;
-the same node name, topics, parameters and answers).
+joy_alive_impl: rust (aav_joy_alive_rs, the default since 17 Nov; the Python went on
+20 Nov, tag save/python-safety-nodes).
 
 The joystick is a driver like any other: it publishes a velocity command into
 twist_mux and never talks to the wheels. Run it on the machine the USB receiver is
@@ -60,8 +60,8 @@ def generate_launch_description():
                               description='Start joy_node (false: a stand-in publishes joy)'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('joy_alive_impl', default_value=vehicle.DEFAULT_JOY_ALIVE_IMPL,
-                              description='joy_alive in rust (aav_joy_alive_rs, the default) '
-                                          'or python (aav_safety)'),
+                              description='joy_alive in rust (aav_joy_alive_rs; the Python '
+                                          'removed 20 Nov)'),
         Node(
             package='joy',
             executable='joy_node',
