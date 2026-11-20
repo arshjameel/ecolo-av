@@ -16,7 +16,8 @@
 //! - pictures: reliable, depth 1; best effort loses most big messages over WiFi;
 //! - the e-stop: reliable, depth 10, what spine_bridge and legacy_uart_bridge use;
 //! - the heartbeat: reliable, depth 10, as the sensor watchdog subscribes;
-//! - the watchdog's and the output mux's one-line states: reliable, depth 1;
+//! - the watchdog's and the output mux's one-line states, and the boot self-test's
+//!   status: reliable, depth 1;
 //! - `/system/source`: reliable, transient local, depth 1, so the HUD gets each
 //!   announcer's one message even when it starts later;
 //! - the squiggly line (`/ego/trace`, `/ego/plan_ahead`, `/ego/stop_point`, `/ego/ahead`):
@@ -43,6 +44,7 @@ use hud_core::{
     heartbeat::{Frames, Heartbeat},
     origin::{Announcement, Entry, Origin},
     picture::Picture,
+    self_test::Report,
     state::{Battery, EstopReport, Update},
     things::Thing,
     units::{Fraction, MetresPerSecond, Radians},
@@ -250,6 +252,20 @@ fn spin(
         {
             let tx = tx.clone();
             move |m: StringMsg| send(&tx, Update::OutputMux(m.data))
+        },
+    )?;
+    let _self_test = node.create_subscription(
+        config
+            .topic(Topic::SelfTest)
+            .qos(QoSProfile::topics_default().reliable().keep_last(1)),
+        {
+            let tx = tx.clone();
+            move |m: DiagnosticStatus| {
+                send(
+                    &tx,
+                    Update::SelfTest(Report::from_status(m.level, &m.message)),
+                )
+            }
         },
     )?;
 

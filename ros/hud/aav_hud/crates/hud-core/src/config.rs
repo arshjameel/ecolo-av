@@ -46,6 +46,8 @@ pub enum Topic {
     Watchdog,
     /// The output mux's gate (aav_io_mux): OPEN, WAIT or STOP, in the GO / STOP panel.
     OutputMux,
+    /// The boot self-test (aav_self_test_rs): READY, or a banner with why not.
+    SelfTest,
     /// `/hud/heartbeat`, sent: the screen is alive (hud_core::heartbeat).
     Heartbeat,
     /// The squiggly line (hud_core::ahead): ego's trace, the bold line.
@@ -75,13 +77,15 @@ impl Topic {
     ];
 
     /// The topics that aren't listed: the e-stop and the heartbeat (sent), the source
-    /// (latched), the watchdog (a banner of its own) and the output mux (its own panel).
-    /// The squiggly line's four, the things and the car's pose have their own panel, AHEAD.
-    pub const UNLISTED: [Topic; 11] = [
+    /// (latched), the watchdog and the self-test (banners of their own) and the output mux
+    /// (its own panel). The squiggly line's four, the things and the car's pose have their
+    /// own panel, AHEAD.
+    pub const UNLISTED: [Topic; 12] = [
         Topic::Estop,
         Topic::Source,
         Topic::Watchdog,
         Topic::OutputMux,
+        Topic::SelfTest,
         Topic::Heartbeat,
         Topic::Trace,
         Topic::PlanAhead,
@@ -105,6 +109,7 @@ impl Topic {
             Self::Source => "source_topic",
             Self::Watchdog => "watchdog_topic",
             Self::OutputMux => "output_mux_topic",
+            Self::SelfTest => "self_test_topic",
             Self::Heartbeat => "heartbeat_topic",
             Self::Trace => "trace_topic",
             Self::PlanAhead => "plan_ahead_topic",
@@ -139,6 +144,8 @@ pub struct HudConfig {
     pub watchdog_topic: String,
     /// [`Topic::OutputMux`]'s topic.
     pub output_mux_topic: String,
+    /// [`Topic::SelfTest`]'s topic.
+    pub self_test_topic: String,
     /// [`Topic::Heartbeat`]'s topic.
     pub heartbeat_topic: String,
     /// [`Topic::Trace`]'s topic.
@@ -243,6 +250,7 @@ impl HudConfig {
             Topic::Source => &self.source_topic,
             Topic::Watchdog => &self.watchdog_topic,
             Topic::OutputMux => &self.output_mux_topic,
+            Topic::SelfTest => &self.self_test_topic,
             Topic::Heartbeat => &self.heartbeat_topic,
             Topic::Trace => &self.trace_topic,
             Topic::PlanAhead => &self.plan_ahead_topic,
@@ -266,6 +274,7 @@ impl HudConfig {
             Topic::Source => &mut self.source_topic,
             Topic::Watchdog => &mut self.watchdog_topic,
             Topic::OutputMux => &mut self.output_mux_topic,
+            Topic::SelfTest => &mut self.self_test_topic,
             Topic::Heartbeat => &mut self.heartbeat_topic,
             Topic::Trace => &mut self.trace_topic,
             Topic::PlanAhead => &mut self.plan_ahead_topic,
