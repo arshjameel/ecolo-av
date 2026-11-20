@@ -28,7 +28,7 @@ the background; each merged with a real merge (Ben's history stays).
 | 2 | ✅ **Lanes into the costmap** (yellow vs white, the lane map's costs, `lanes:=camera`); the lane followers removed (merged 19 Nov) | 264 |
 | 3 | ✅ **Before the car** (merged 19 Nov; untested on the car): NDT in `car.launch.py`, the adaptive brake on the car, the boot self-test that refuses to arm | 261, 258, 255 |
 | 4 | ✅ **Maps offline** (merged 19 Nov): occupancy across passes, the offline pipeline as one command, 3+ drives and the 2D maps merged | 259, 260, 250 |
-| 5 | **Labels and the twin**: the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
+| 5 | ✅ **Labels and the twin** (merged 19 Nov): the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
 | 6 | **Driving**: reversing in a narrow street and in `aav_track`; the planner's checks on every core and a 1000-sample `mppi_lag` option; behaviour slows for kerbs | 174, 152, 219 |
 | 7 | **The last Python nodes to Rust**: the geofence, stop hold and goal leash (safety: shared vectors, both twins), the lane pose, the GPS heading, the street router; then the drivers (battery, radar) where worth it | Rust first |
 | 8 | **The challengers built**: smooth MPPI, jerk-limited passing, ground ring by ring, Kinematic-ICP, a tracker per kind | 212, 214-217 |
