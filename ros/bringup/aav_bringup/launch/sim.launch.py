@@ -105,6 +105,8 @@ bench's argument names:
                       mppi_lag_steer_gamma:=0.05: mppi_lag's control cost on its steering
                       (empty: nav2.yaml's gamma, 0.015), a challenger: less sampling
                       jitter (TODO 168)
+                      mppi_lag_sampling:=smooth: mppi_lag samples the steering's
+                      change, so its commands come out smooth (TODO 212, a challenger)
                       lattice_moves:=smooth|smooth_fast: the lattice's trial moves,
                       curvature no faster than the steering turns (tools/lattice_smooth.py)
                       planner_search:=hybrid: ours runs Nav2's Hybrid-A* ported instead
@@ -411,7 +413,7 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false',
+                  'mppi_lag_steer_gamma': '', 'mppi_lag_sampling': '', 'lane_costs': 'false', 'lane_route': 'false',
                   'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
                   'local_chunks': 'false', 'lane_pose': 'false'}
@@ -663,6 +665,7 @@ def launch_setup(context):
                                plan_smoothing=vehicle.check_plan_smoothing(
                                    arg('plan_smoothing')),
                                mppi_lag_steer_gamma=arg('mppi_lag_steer_gamma'),
+                               mppi_lag_sampling=arg('mppi_lag_sampling'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
@@ -1082,6 +1085,10 @@ def generate_launch_description():
         DeclareLaunchArgument('diffusion_record', default_value='',
                               description="with planner:=diffusion: a folder for each plan's "
                                           'inputs, to replay offline (training/replay.py)'),
+        DeclareLaunchArgument('mppi_lag_sampling', default_value=stacks.CHOSEN,
+                              description="with tracker:=mppi_lag: correlated (the champion) "
+                                          "or smooth, noise on the steering's change (TODO "
+                                          "212, a challenger: steer:=mppi_lag_smooth)"),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value=stacks.CHOSEN,
                               description="with tracker:=mppi_lag: its steering's control cost "
                                           "weight (TODO 168): 0.05; nav2.yaml's gamma when "

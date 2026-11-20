@@ -118,7 +118,7 @@ Each has a TODO row to port its idea.
 
 | Source | Licence | Kind | Where we used it |
 |---|---|---|---|
-| **Smooth MPPI / KMPPI** (`pytorch_mppi`, UM ARM Lab) | MIT | idea | to try in `mppi_lag` (TODO 212) |
+| **Smooth MPPI / KMPPI** (`pytorch_mppi`, UM ARM Lab) | MIT | idea | `mppi_lag`'s smooth sampling: the steering's noise drawn on its change and summed (`aav_mppi_lag` `optimizer.rs`, `mppi_lag_sampling:=smooth`, TODO 212) |
 | **Autoware's MPC lateral controller** (the Autoware Foundation) | Apache-2.0 | idea | a steering-rate cost and reverse for `mpc_lag_rs` (TODO 213) |
 | **Vector Pursuit** (`vector_pursuit_controller`, Black Coffee Robotics) | Apache-2.0 | idea | looked at as a follower yardstick |
 | **Apollo's piecewise-jerk path** (Baidu; Zhang et al., "Optimal Vehicle Path Planning Using Quadratic Optimization for Baidu Apollo Open Platform", IV 2020); Autoware's static obstacle avoidance | Apache-2.0; paper | idea | smooth lane corners and passes in `lane.rs` and `pass.rs` (TODO 211, 214) |

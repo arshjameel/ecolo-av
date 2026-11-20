@@ -344,6 +344,15 @@ def test_the_sim_and_the_bench_pass_their_speed_loop_on():
                               speed_loop_model='default')['speed_loop'] == 'default'
 
 
+def test_smooth_sampling_reaches_mppi_lag():
+    # TODO 212: mppi_lag_sampling:=smooth, a challenger; none: the node's own (correlated).
+    assert 'sampling' not in given(nav_nodes(tracker='mppi_lag')['mppi_lag'])
+    p = given(nav_nodes(tracker='mppi_lag', mppi_lag_sampling='smooth')['mppi_lag'])
+    assert p['sampling'] == 'smooth'
+    with pytest.raises(ValueError, match='mppi_lag_sampling'):
+        nav_nodes(tracker='mppi_lag', mppi_lag_sampling='jerky')
+
+
 def test_the_steering_gamma_and_the_strong_smoother_reach_their_nodes():
     # TODO 168: mppi_lag_steer_gamma:= gives mppi_lag its steer_gamma (none: gamma's);
     # plan_smoothing:=strong gives our planner the smoother's weights.

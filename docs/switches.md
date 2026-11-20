@@ -59,6 +59,10 @@ refuses `diffusion` without `diffusion_trial`). More: [Controllers, Planners](co
 | `tracker:=mpc_lag` | ours: MPC that knows the car is late, and plans for it (7 Nov) | Ravensim, 8 Nov: 6 of 12 (no U-turn by the building; [trials](history/trials-log.md#lag-aware-mpc-7-nov-mpc_lag)) |
 | `tracker:=mppi_lag` (default; Nav2's MPPI and RPP went on 17 Nov) | ours: Nav2's MPPI in Rust, knowing the steering and pedals lag ([page](mppi-lag.md)) | Ravensim, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; [trials](history/trials-log.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU ([our navigator](own-navigator.md#the-verdict)) |
 
+`tracker:=mppi_lag mppi_lag_sampling:=smooth` (or `steer:=mppi_lag_smooth`; TODO 212, a
+challenger, scored in stage 2): MPPI samples the steering's **change**, so its commands come
+out smooth without a larger control cost.
+
 `aav_track`'s trackers drive forward only: give them `reversing:=false` (the menu does).
 `mppi_lag` reverses (14 Nov).
 In `demo --debug`, keys 1-4 swap the tracker live. More: [Controllers](controllers.md),

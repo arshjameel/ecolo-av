@@ -93,6 +93,11 @@ levels:
       # under Nav2's on the lot and the campus (docs/mppi-lag.md, "The sway that was left").
       mppi_lag_calm: {controller: mppi, tracker: mppi_lag, map_correction: slow,
                       mppi_lag_steer_gamma: '0.05'}
+      # mppi_lag_calm's map correction, its steering's noise drawn on the change a step
+      # (SMPPI's idea, TODO 212): smooth commands without the larger control cost. A
+      # challenger (19 Nov), scored in stage 2.
+      mppi_lag_smooth: {controller: mppi, tracker: mppi_lag, map_correction: slow,
+                        mppi_lag_sampling: smooth}
       mpc_lag: {controller: mppi, tracker: mpc_lag}
       # mpc_lag in Rust (aav_mpc_lag), beside the Python one: a challenger (TODO 132, 199).
       mpc_lag_rs: {controller: mppi, tracker: mpc_lag_rs}

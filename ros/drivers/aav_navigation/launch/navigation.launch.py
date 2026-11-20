@@ -57,6 +57,7 @@ Switches:
                           another follower serves follow_path (aav_track's; mpc_lag_rs:
                           aav_mpc_lag). aav_track's and mpc_lag_rs drive forwards only
   mppi_lag_steer_gamma:=0.05  mppi_lag's steering control cost (TODO 168)
+  mppi_lag_sampling:=smooth   mppi_lag samples the steering's change (TODO 212)
   live_swap:=true         aav_track's tracker can change while it runs
   map_correction:=slow    the follower's held map -> odom moves toward the newest slowly
                           (TODO 186)
@@ -510,6 +511,10 @@ def nodes(context):
     gamma = LaunchConfiguration('mppi_lag_steer_gamma').perform(context).strip()
     if gamma:
         slew['steer_gamma'] = vehicle.check_steer_gamma(gamma)
+    # TODO 212: mppi_lag samples the steering's change (smooth), a challenger.
+    sampling = LaunchConfiguration('mppi_lag_sampling').perform(context).strip()
+    if sampling:
+        slew['sampling'] = vehicle.check_mppi_lag_sampling(sampling)
     # The behaviour planner's speed cap is in /world/road_ahead's limits (TODO 233).
     if tracker == 'mpc_lag_rs':
         # aav_mpc_lag (Rust): aav_track's mpc_lag ported, a challenger beside it.
@@ -726,6 +731,10 @@ def generate_launch_description():
                                           'trial: curvature no faster than the steering '
                                           'turns at 1 or 2.5 m/s, the smoother off '
                                           '(config/lattice_ackermann_smooth*.json)'),
+        DeclareLaunchArgument('mppi_lag_sampling', default_value='',
+                              description='with tracker:=mppi_lag: correlated (empty too: '
+                                          "the steering's noise AR(1)) or smooth (TODO 212, "
+                                          "a challenger: noise on the steering's change)"),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value='',
                               description="with tracker:=mppi_lag: its steering's control "
                                           "cost weight; empty: nav2.yaml's gamma (0.015, as "
