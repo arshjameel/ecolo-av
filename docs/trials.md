@@ -14,7 +14,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 
 > **The short version**
 > - **Trackers** (`aav_track`): pure pursuit, Stanley, LQR, MPC, and `mpc_full` (speed and steering together), in our chain, in `mppi_lag`'s place (in controller_server's, until 17 Nov). `tracker:=lqr`.
-> - **AMCL** (ours in Rust, `aav_amcl_rs`, since 18 Nov; stock `nav2_amcl` with `amcl_impl:=stock`): a particle filter on the map and the lidar, scored against the EKF, never steering. `amcl:=true`. [Ours against stock](history/trials-log.md#18-nov-amcl-in-rust-against-stock).
+> - **AMCL** (ours in Rust, `aav_amcl_rs`, since 18 Nov; stock `nav2_amcl` removed 20 Nov, TODO 232): a particle filter on the map and the lidar, scored against the EKF, never steering. `amcl:=true`. [Ours against stock](history/trials-log.md#18-nov-amcl-in-rust-against-stock).
 > - **NDT** (`aav_ndt`, ours in Rust): the lidar matched to a saved lidar map, scored against the EKF, never steering. `ndt:=true`.
 > - **Score:** `pixi run measure controllers --trackers pure_pursuit lqr --runs 3`.
 > - **Results (29 Oct, Gazebo, 3 runs):** pure pursuit, Stanley and MPC finished every leg; MPPI, RPP and LQR lost legs on the U-turn. AMCL lost itself; the EKF wins. [Results](history/trials-log.md#results-29-october).

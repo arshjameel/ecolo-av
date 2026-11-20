@@ -330,7 +330,7 @@ def sim_launch_args(overrides: Mapping[str, float], wheel_noise: float,
     actuators = ','.join(f'{k}={v:g}' for k, v in overrides.items())
     # Every pass starts where the last stopped, and in the sim nobody turns the car round:
     # start far back on the empty world's 400 m plane.
-    return ('world:=empty', 'gui:=false', 'rviz:=false', 'nav:=false', 'cameras:=false',
+    return ('world:=empty', 'rviz:=false', 'nav:=false', 'cameras:=false',
             'lidar:=false', 'radar:=false', 'start_x:=-180',
             f'actuators:={actuators}', f'wheel_noise:={wheel_noise:g}',
             f'wheel_slip:={wheel_slip:g}')

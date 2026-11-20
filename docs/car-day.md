@@ -453,22 +453,22 @@ The same venv also runs the engine once on the test stop sign, with the score an
 
 ### 4f. The Rust nodes are the ones running
 
-Since 16 Nov (Ben) four nodes run in **Rust** on the car by default; since 17 Nov six. The Python twins
-stay installed, one switch away. Check this each time you start `car.launch.py`.
+Since 16 Nov (Ben) four nodes run in **Rust** on the car by default; since 17 Nov six. Since
+20 Nov some have no Python twin left (below: "none"); the rest stay one switch away. Check this each time you start `car.launch.py`.
 
 | Node | Rust package (default) | Fall back to Python |
 |---|---|---|
 | ego + look_ahead | `aav_ego_rs` | `ego_impl:=python` |
-| behaviour (with `behaviour:=true`) | `aav_behaviour_rs` | `behaviour_impl:=python` |
-| sensor watchdog | `aav_watchdog_rs` | `watchdog_impl:=python` |
-| localization_health | `aav_localization_health_rs` | `localization_health_impl:=python` |
+| behaviour (with `behaviour:=true`) | `aav_behaviour_rs` | none: the Python removed 20 Nov (`save/python-behaviour`) |
+| sensor watchdog | `aav_watchdog_rs` | none: the Python removed 20 Nov (`save/python-safety-nodes`) |
+| localization_health | `aav_localization_health_rs` | none: the Python removed 20 Nov (`save/python-localization-health`) |
 | lidar_scan (the flat scan) | `aav_lidar_rs` | `lidar_impl:=python` |
-| things (with `things:=true`) | `aav_things_rs` | `things_impl:=python` |
+| things (with `things:=true`) | `aav_things_rs` | none: the Python removed 20 Nov (`save/python-things`) |
 | sensor mux + output mux (the ESP32's heartbeat; the Motor Pi alone too) | `aav_io_mux_rs` | `io_mux_impl:=python` |
 | legacy_uart_bridge (the ESP32's UART, on the Motor Pi) | `aav_legacy_rs` | `legacy_impl:=python` |
 | rc_driver (beside the bridge) | `aav_rc_rs` | `rc_impl:=python` |
 | lane_finder (with the `lane` part; since 18 Nov) | `aav_lane_finder_rs` | `lane_finder_impl:=python` |
-| joy_alive (the joystick's check, wherever teleop runs) | `aav_joy_alive_rs` | `joy_alive_impl:=python` |
+| joy_alive (the joystick's check, wherever teleop runs) | `aav_joy_alive_rs` | none: the Python removed 20 Nov (`save/python-safety-nodes`) |
 | stop_sign_watcher (the stop_signs part, next to the mux) | `aav_stop_sign_rs` | `stop_sign_impl:=python` |
 | camera_stream (the camera_stream part, only with `detector: none` in `orin.yaml`: RF-DETR runs in the Python one; since 18 Nov) | `aav_camera_stream_rs` | `camera_stream_impl:=python` |
 
@@ -479,8 +479,8 @@ stay installed, one switch away. Check this each time you start `car.launch.py`.
 | 3 | `ros2 node list` | `/ego`, `/look_ahead`, `/sensor_watchdog`, `/localization_health`, `/lidar_scan`, `/sensor_mux`, `/output_mux` (and `/things`): the same names as the Python's | |
 
 **If a Rust node misbehaves:** stop the car (e-stop), stop the launch, and start it again
-with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... watchdog_impl:=python`.
-With the short form, put `--` before the switch: `~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python`
+with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... ego_impl:=python`.
+With the short form, put `--` before the switch: `~/aav-jazzy/aav.sh car orin -- ego_impl:=python`
 (without `--`, Pixi stops: "received more arguments than expected"). One switch
 per node; the others stay Rust. Write down what you saw: it decides whether the Rust stays.
 

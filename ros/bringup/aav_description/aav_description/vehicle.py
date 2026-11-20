@@ -432,9 +432,9 @@ def check_lidar_impl(impl):
 
 
 # Which AMCL runs (amcl:=true, amcl_impl:=): rust (aav_amcl_rs, the default since 18 Nov,
-# TODO 231: stock's topics, parameters and frames, a plain node) or stock (nav2_amcl, a
-# lifecycle node with its own manager; the fall-back). Each one's package.
-AMCL_IMPLS = {'rust': 'aav_amcl_rs', 'stock': 'nav2_amcl'}
+# TODO 231: stock's topics, parameters and frames, a plain node). Stock nav2_amcl, the last
+# of Nav2, went on 20 Nov (TODO 232, tag save/nav2-amcl); the switch stays, a hook.
+AMCL_IMPLS = {'rust': 'aav_amcl_rs'}
 DEFAULT_AMCL_IMPL = 'rust'
 
 
@@ -448,8 +448,9 @@ def check_amcl_impl(impl):
 
 # Which things node tracks the cubes (things:=true, things_impl:=): rust (aav_things_rs,
 # the default since 17 Nov: the same node name, topics, parameters and things, 1.5 % of a
-# core against 7.5 %) or python (aav_things, the fallback). Each one's package.
-THINGS_IMPLS = {'python': 'aav_things', 'rust': 'aav_things_rs'}
+# core against 7.5 %). The Python went on 20 Nov (tag save/python-things); the switch
+# stays, a challenger's hook.
+THINGS_IMPLS = {'rust': 'aav_things_rs'}
 DEFAULT_THINGS_IMPL = 'rust'
 
 
@@ -513,9 +514,9 @@ def check_ego_impl(impl):
 
 # Which behaviour node runs, with behaviour:=true (navigation.launch.py, car.launch.py,
 # sim.launch.py behaviour_impl:=): rust (aav_behaviour_rs, the default on the car and in
-# the simulator, Ben, 16 Nov) or python (aav_behaviour: the same node name, topics and
-# answers; kept selectable until a car day proves the Rust). Each one's package.
-BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+# the simulator, Ben, 16 Nov). The Python went on 20 Nov (tag save/python-behaviour); the
+# switch stays, a challenger's hook.
+BEHAVIOUR_IMPLS = {'rust': 'aav_behaviour_rs'}
 DEFAULT_BEHAVIOUR_IMPL = 'rust'
 # The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
 SIM_DEFAULT_BEHAVIOUR_IMPL = DEFAULT_BEHAVIOUR_IMPL
@@ -523,9 +524,9 @@ SIM_DEFAULT_BEHAVIOUR_IMPL = DEFAULT_BEHAVIOUR_IMPL
 
 # Which sensor watchdog runs (watchdog.launch.py, car.launch.py, sim.launch.py
 # watchdog_impl:=): rust (aav_watchdog_rs, the default since Ben decided, 16 Nov:
-# "watchdog in rust sure") or python (aav_safety's: the same node name, topics and
-# answers; kept selectable until a car day proves the Rust). Each one's package.
-WATCHDOG_IMPLS = {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+# "watchdog in rust sure"). The Python went on 20 Nov (tag save/python-safety-nodes); the
+# switch stays, a challenger's hook.
+WATCHDOG_IMPLS = {'rust': 'aav_watchdog_rs'}
 DEFAULT_WATCHDOG_IMPL = 'rust'
 
 
@@ -676,8 +677,8 @@ def camera_stream_runs(impl, detector, decoder):
 
 # Which joy_alive runs (teleop.launch.py, car.launch.py; joy_alive_impl:=): rust
 # (aav_joy_alive_rs, the default since Ben, 17 Nov: "I don't think we want to do this again
-# later") or python (aav_safety's: the same node name, topics, parameters and answers).
-JOY_ALIVE_IMPLS = {'python': 'aav_safety', 'rust': 'aav_joy_alive_rs'}
+# later"). The Python went on 20 Nov (tag save/python-safety-nodes).
+JOY_ALIVE_IMPLS = {'rust': 'aav_joy_alive_rs'}
 DEFAULT_JOY_ALIVE_IMPL = 'rust'
 
 
@@ -691,10 +692,10 @@ def check_joy_alive_impl(impl):
 
 # Which geofence, stop_hold and goal_leash run (geofence_impl:=, stop_hold_impl:=,
 # goal_leash_impl:=): rust (aav_safety_rs, the defaults since 19 Nov: Ben, 16 Nov, "lets
-# remove python were possible"; the Python's answers event by event and bit by bit) or
-# python (aav_safety's: the same node names, topics, parameters and answers). Each
-# one's package. geofence.launch.py, navigation.launch.py, car, sim and bench pass them on.
-SAFETY_IMPLS = {'python': 'aav_safety', 'rust': 'aav_safety_rs'}
+# remove python were possible"; the Python's answers event by event and bit by bit). The
+# Python nodes went on 20 Nov (tag save/python-safety-nodes); the switches stay, hooks.
+# geofence.launch.py, navigation.launch.py, car, sim and bench pass them on.
+SAFETY_IMPLS = {'rust': 'aav_safety_rs'}
 GEOFENCE_IMPLS = STOP_HOLD_IMPLS = GOAL_LEASH_IMPLS = SAFETY_IMPLS
 DEFAULT_GEOFENCE_IMPL = 'rust'
 DEFAULT_STOP_HOLD_IMPL = 'rust'
@@ -724,9 +725,9 @@ def check_goal_leash_impl(impl):
 
 
 # Which gps_heading runs (localization.launch.py, gps_heading_impl:=): rust
-# (aav_gps_heading_rs, the default since 19 Nov: course.py's answers to the bit) or python
-# (aav_gps_heading: the same node name, topics and parameters). Each one's package.
-GPS_HEADING_IMPLS = {'python': 'aav_gps_heading', 'rust': 'aav_gps_heading_rs'}
+# (aav_gps_heading_rs, the default since 19 Nov: course.py's answers to the bit). The
+# Python went on 20 Nov (tag save/python-gps-heading); the switch stays, a challenger's hook.
+GPS_HEADING_IMPLS = {'rust': 'aav_gps_heading_rs'}
 DEFAULT_GPS_HEADING_IMPL = 'rust'
 
 
@@ -756,11 +757,10 @@ def check_stop_sign_impl(impl):
 
 # Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
 # localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
-# in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or
-# python (aav_localization_health: the same node name, topics and answers; kept selectable
-# until a car day proves the Rust). Each one's package. Warn only, so no safety lock.
-LOCALIZATION_HEALTH_IMPLS = {'python': 'aav_localization_health',
-                             'rust': 'aav_localization_health_rs'}
+# in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %). The
+# Python went on 20 Nov (tag save/python-localization-health); the switch stays, a hook.
+# Warn only, so no safety lock.
+LOCALIZATION_HEALTH_IMPLS = {'rust': 'aav_localization_health_rs'}
 DEFAULT_LOCALIZATION_HEALTH_IMPL = 'rust'
 # The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
 SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = DEFAULT_LOCALIZATION_HEALTH_IMPL
@@ -1383,7 +1383,7 @@ def costmap_params(tuned, v, radar=False, camera=False):
 def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CONTROLLER,
                      speed_loop=DEFAULT_SPEED_LOOP):
     """
-    Return aav_behaviour's parameters: the cap's top, the lane ahead, ego's limits.
+    Return aav_behaviour_rs's parameters: the cap's top, the lane ahead, ego's limits.
 
     base_speed is the controller's own top speed (MPPI's vx_max, RPP's desired_linear_vel,
     or `max_speed`, sim_speed:=): a higher cap would raise MPPI's envelope. front and

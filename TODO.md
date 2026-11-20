@@ -24,15 +24,15 @@ the background; each merged with a real merge (Ben's history stays).
 
 | Batch | What | Rows |
 |---|---|---|
-| 1 | ✅ **ONNX with Core ML**: `measure onnx`, the diffusion planner from Rust, FP16, TensorRT ready (merged 19 Nov) | 243 |
-| 2 | ✅ **Lanes into the costmap** (yellow vs white, the lane map's costs, `lanes:=camera`); the lane followers removed (merged 19 Nov) | 264 |
-| 3 | ✅ **Before the car** (merged 19 Nov; untested on the car): NDT in `car.launch.py`, the adaptive brake on the car, the boot self-test that refuses to arm | 261, 258, 255 |
-| 4 | ✅ **Maps offline** (merged 19 Nov): occupancy across passes, the offline pipeline as one command, 3+ drives and the 2D maps merged | 259, 260, 250 |
-| 5 | ✅ **Labels and the twin** (merged 19 Nov): the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
-| 6 | ✅ **Driving** (merged 19 Nov): reversing in a narrow street and in `aav_track`; the planner's checks on every core and a 1000-sample `mppi_lag` option; behaviour slows for kerbs | 174, 152, 219 |
-| 7 | ✅ **The last Python nodes to Rust** (merged 19 Nov: geofence, stop hold, goal leash, GPS heading; lane pose and street router left, 265): the geofence, stop hold and goal leash (safety: shared vectors, both twins), the lane pose, the GPS heading, the street router; then the drivers (battery, radar) where worth it | Rust first |
-| 8 | ✅ **The challengers built** (merged 19 Nov; scored in stage 2): smooth MPPI, jerk-limited passing, ground ring by ring, Kinematic-ICP, a tracker per kind | 212, 214-217 |
-| 9 | **Clean-up**: the last of Nav2, Ravensim's old names, the leftovers; a more Rust-like pass | 232, 241, 242, 176 |
+| 1 | ✅ ONNX with Core ML (merged 19 Nov) | 243 |
+| 2 | ✅ Lanes into the costmap (merged 19 Nov) | 264 |
+| 3 | ✅ Before the car (merged 19 Nov) | 261, 258, 255 |
+| 4 | ✅ Maps offline (merged 19 Nov) | 259, 260, 250 |
+| 5 | ✅ Labels and the twin (merged 19 Nov) | 252, 253 |
+| 6 | ✅ Driving (merged 19 Nov) | 174, 152, 219 |
+| 7 | ✅ The last Python nodes to Rust (merged 19 Nov) | Rust first |
+| 8 | ✅ The challengers built (merged 19 Nov) | 212, 214-217 |
+| 9 | 🧪 **Clean-up** (20 Nov, on a branch): the last of Nav2 (232), Ravensim's old names (241), the leftovers checked (242); the Python twins of gps_heading, localization_health, behaviour, things and aav_safety's five nodes removed (`save/python-*` tags); `docs/codemap.md`. Left: the Python ego, io_mux, lidar, camera_stream, rc, drive_to_point, stop_sign and lane_finder nodes (their launch files, configs or tests still lean on them), and 176 | 232, 241, 242, 176 |
 | test | **One full `pixi run test`** on everything | |
 
 ### Stage 2: score the algorithms together
@@ -80,7 +80,6 @@ and will do".
 |---|---|---|
 | 210 | **NDT leads, the GPS checks** (`pose_source:=ndt`): a failing GPS no longer moves or stops the car | 🟡 merged 19 Nov, a challenger: the lot scored (every leg with the GPS stopped, jumped or drifting); ⬜ the campus runs (stopped by the usage limit); the car refuses it until 261 and a real map |
 | 231 | **AMCL in Rust** (`aav_amcl_rs`, the default): NDT's recovery | 🟡 ties stock on the lot; left: the campus, more runs |
-| 263 | **Unknown map cells read back as free** (found by the map editor, 19 Nov): grey 205 is p = 0.196, under every map YAML's `free_thresh: 0.25`. `make_map.py` and `map-chunks` now write unknown as 128 (p = 0.498), as `map-drive` and the map editor do; `example_lot_amcl.pgm` remade (244,730 cells inside its obstacles had read as free; `example_lot.pgm` byte for byte the same); a test pins it | ✅ 19 Nov. AMCL on the remade map, the lot, 2 runs: 0.06-0.07 m mean a leg, worst 0.09-0.14 m (18 Nov: 0.05-0.09, worst 0.15-0.20); one run's follower aborted a leg (error 107: the follower, not AMCL) |
 | 121 | **NDT's score floor on the campus** (1.5 there, 2.3 in the lot): how high does a wrong pose score? | ⬜ |
 | 175 | **Three levels, fixed chunks**: routes, paths and moves on 64 m chunks | 🔧 left: `global_window:=192` scored on the campus; seen live |
 | 191 | **Stops reset the drift**: wheels that read nothing mean the car stands | 🔧 left: the parked yaw creep, before and after (the car) |
@@ -100,7 +99,6 @@ and will do".
 | 171 | **No switch leaves a gap**: respawn, age checks, the nodes' own tests | 🔧 |
 | 159 | **The safety case**: one page per hazard | 🔧 left: a throttle stuck wide open; the spine in the loop |
 | 207 | **Stuck steering and speed noticed** (the watchdog) | ✅ in the sim; ⬜ the car (needs a measured angle, Q2) |
-| 262 | **The lane follower in Rust, and a better one** (Ben, 19 Nov: "We also need to port the lane following code.or find a better version."): `aav_lane_follower_rs`, the default (`lane_follower_impl:=python` falls back); challengers `lane_follower:=pure_pursuit`, `stanley` on the fitted lane centre, with the car's lag | ✅ ported: the Python's commands on 2,797 shared events; `measure lane`, 3 runs each: the Rust PID scores as the Python one; on Library Road pure pursuit 2.4 cm RMS against the PID's 3.9-4.1, 1 flip a minute against 187; on the straight it settles to 0.4-0.9 cm but comes back from 0.3 m off slower (8.4 cm RMS against 6.7). The PID stays the default. Left: pure pursuit's near look-ahead for a quicker return, then promote it; the car. **Removed 19 Nov** with the other followers (264): [their scores](docs/history/lane-followers.md) |
 | 264 | **Lanes are perception, the costmap prices them, navigation drives** (Ben, 19 Nov: "put lanes in the cost map and then behaviour keep to the right side. then the motion planner can just cross the line when its go no other choice", then "drop there code all together ... curb, high cost, yllow line med cost, lright side low cost, car in the way high cost, person in the way high cost"): the lane finder tells yellow from white and the road's edge; the lanes layer (148, `lanes.rs`) is drawn from the camera's lines where there is no lane map: kerb and off-road high, the yellow line and the oncoming lane medium, the right lane's centre low, every lane cost below a wall's; cars and people stay walls (the obstacle layer). Scored on the same roads against the followers' numbers (262: PID 3.9 cm, pure pursuit 2.4 cm on Library Road). Then **the lane-follower drivers are removed** (the 2025-26 PID, its Rust port, pure pursuit, Stanley, the `lane_follower*` switches), tagged `save/` first; the lane finder and `LaneGeometry` stay | ✅ built 19 Nov: both lane finders say each line's paint (`left_paint`, `right_paint`); `aav_costmap` `camera_lanes.rs` draws the lines with the lane map's own costs (`lanes::across`), `lanes:=camera` or `both` (the map wins where it has a road); the car's lane is the one it is in, a yellow right line puts it in the oncoming lane ([docs](docs/own-costmap.md#the-lanes-from-the-camera-19-nov-todo-264)). The followers removed (tag `save/lane-followers`, [scores](docs/history/lane-followers.md)). ⬜ stage 2: score `lanes:=camera` on the same roads |
 
 ## 4. Challengers
@@ -138,9 +136,7 @@ stage 2 scores them in Ravensim.
 
 | # | Task | Status |
 |---|---|---|
-| 232 | **After Nav2**: `nav2_amcl` out of `pixi.toml`; the one-option switches (`costmap:=`, `navigator:=`, `smoother:=`, `controller:=`): keep as hooks or remove; `nav2.yaml`'s name | ⬜ |
-| 242 | **Untried after Gazebo**: `stream_check.py`'s moved sign, `sim_frames.py`, `pixi run demo` with Ravensim | ⬜ |
-| 241 | **Ravensim's old names out**: `simulator:=own`, `target:=gazebo`, `car:=gazebo`, ignored args | ⬜ |
+| 242 | **Untried after Gazebo**: `stream_check.py`'s moved sign, `sim_frames.py`, `pixi run demo` with Ravensim | 🧪 20 Nov: checked at the import and argument level (Ravensim serves `spawn_entity`, `delete_entity`, `set_entity_state`; every launch switch they pass exists); `stream_check.py`'s words say Ravensim. Not run against a live sim |
 | 23 | **The nightly sim job**: drop `continue-on-error` after a few green nights (the 240 fix) | 👀 |
 | 114 | **The developer window** on a slower laptop | ⬜ |
 

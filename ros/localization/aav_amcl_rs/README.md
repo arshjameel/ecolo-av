@@ -4,8 +4,8 @@
 
 AMCL in Rust (rclrs), in stock `nav2_amcl`'s place: **`amcl_impl:=rust`**, the default
 (TODO 231). A **trial**, scored only, as stock's was: never TF, nothing drives by it.
-`measure controllers --amcl` scores it against the simulator's truth. Stock stays
-beside it as the fall-back, `amcl_impl:=stock`.
+`measure controllers --amcl` scores it against the simulator's truth. Stock was
+removed on 20 Nov (TODO 232, tag `save/nav2-amcl`); its scores stay below.
 
 ```
 /sensors/lidar/scan ──────┐                         ┌─▶ /localization/amcl/pose

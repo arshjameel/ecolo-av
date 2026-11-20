@@ -32,8 +32,8 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | Area (`ros/<area>/`) | Modules |
 |---|---|
 | [sources](#sensors) | `aav_sensors`, `aav_imu_yahboom`, `aav_battery_victron`, `aav_radar_ti`; `aav_camera_stream` ([one line](#more-packages-see-their-readmes)) |
-| [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading`; `aav_localization_health`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
-| [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_rc_rs`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
+| [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading_rs`; `aav_localization_health_rs`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
+| [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_rc_rs`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour_rs` ([one line](#more-packages-see-their-readmes)) |
 | [command_mux, io_mux, ego](#mux-and-ego) | `aav_command_mux`, `aav_io_mux`, `aav_ego` |
 | [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_sim_models`, `aav_carla`; `aav_spine_bridge`, `aav_legacy_rs`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
 | [perception](#perception) | `aav_detector`, `aav_radar_clusters`, `aav_lane_finder`, `aav_lane_geometry`; `aav_lidar`, `aav_voxels`, `aav_voxels_rs` ([one line](#more-packages-see-their-readmes)) |
@@ -133,7 +133,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | **Test** | `pixi run check sim`; replay a bag ([Simulation](simulation.md)) |
 | **Read first** | `config/ekf_local.yaml`; why there are two: [Topic areas](naming.md#why-the-two-ekfs-dont-talk) |
 
-### aav_gps_heading
+### aav_gps_heading_rs
 
 | | |
 |---|---|
@@ -144,8 +144,8 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | **Origin** | ours: no stock package does it |
 | **Status** | [[works]] in Gazebo (`pixi run tools/ros.sh --local python3 tools/heading_check.py`: median heading error 1.6-2.1°, was 2.2-2.8). Car: needs `gps_driver:=ublox` |
 | **Run alone** | starts with `localization.launch.py` (`gps_heading:=false` leaves it out) |
-| **Test** | `test/test_course.py` (in `tools/test.sh`) |
-| **Read first** | `aav_gps_heading/course.py` |
+| **Test** | `cargo test -p gps-heading-core` (in `tools/test.sh`); the golden `vectors.json` from the Python (removed 20 Nov) |
+| **Read first** | `aav_gps_heading_rs/crates/gps-heading-core/src/lib.rs` |
 
 ## Drivers
 
@@ -507,12 +507,11 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_spine_bridge` | `spine_bridge` in Rust, the default; the same node as `aav_spine`'s Python one | `ros/can_bridge/aav_spine_bridge/README.md` |
 | `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | `ros/perception/aav_lidar/README.md` |
 | `aav_lidar_rs` | `lidar_scan` in Rust, the default (`lidar_impl:=`): the same scan | `ros/perception/aav_lidar_rs/README.md` |
-| `aav_things_rs` | `things` in Rust, the default (`things_impl:=`): the same things | `ros/perception/aav_things_rs/README.md` |
 | `aav_voxels_rs` | `voxels` in Rust: the lidar's cubes, the Python node's drop-in (`voxels_impl:=rust`) | `ros/perception/aav_voxels_rs/README.md` |
 | `aav_safety` | the sensor watchdog: a twist_mux lock (30) when a sensor fails | `ros/safety/aav_safety/README.md`, then [Simulation](simulation.md#the-sensor-watchdog) |
 | `aav_ghost` | ghost obstacles: a pretend person only navigation sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
 | `aav_run_info` | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | `ros/bringup/aav_run_info/README.md` |
-| `aav_localization_health` | warn-only checks on what the EKFs read and say (`/localization/health`, `/diagnostics`) | `ros/localization/aav_localization_health/README.md` |
+| `aav_localization_health_rs` | warn-only checks on what the EKFs read and say (`/localization/health`, `/diagnostics`) | `ros/localization/aav_localization_health_rs/README.md` |
 | `aav_ndt` | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | `ros/localization/aav_ndt/README.md`, then [the design](designs/2026-10-29_ndt.md) |
 | `aav_kiss_icp` | KISS-ICP lidar odometry, a trial (`kiss_icp:=true`) | `ros/localization/aav_kiss_icp/README.md`, then [the design](designs/2026-10-30_kiss-icp.md) |
 | `aav_voxels` | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for the costmap | `ros/perception/aav_voxels/README.md`, then [the design](designs/2026-10-30_voxels.md) |
@@ -523,30 +522,27 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_navigator` | our own navigator in Rust, the only one (`navigator:=own`), in `bt_navigator`'s old place | `ros/drivers/aav_navigator/README.md`, then [Our navigator](own-navigator.md) |
 | `aav_smoother` | our own velocity smoother in Rust, the only one (`smoother:=own`) | `ros/drivers/aav_smoother/README.md`, then [Our smoother](own-smoother.md) |
 | `aav_diffusion_planner` | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | `ros/drivers/aav_diffusion_planner/README.md`, then [the design](designs/2026-11-02_diffusion-planner.md) |
-| `aav_behaviour` | the behaviour planner (`behaviour:=true`, on in `stack:=ours`): six states and the road ahead; the Python twin of `aav_behaviour_rs` | `ros/drivers/aav_behaviour/README.md`, then [How the car stops](stopping.md) |
+| `aav_behaviour_rs` | the behaviour planner (`behaviour:=true`, on in `stack:=ours`): six states and the road ahead; the Python twin of `aav_behaviour_rs` | `ros/drivers/aav_behaviour/README.md`, then [How the car stops](stopping.md) |
 | `aav_simulator` | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | `ros/sim/aav_simulator/README.md`, then [Ravensim](own-simulator.md) |
 | `aav_sim_cameras` | Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
 | `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |
 | `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (`ego_impl:=python` falls back) | `ros/ego/aav_ego_rs/README.md` |
-| `aav_behaviour_rs` | the behaviour planner in Rust, the default (`behaviour_impl:=python` falls back) | `ros/drivers/aav_behaviour_rs/README.md`, then [How the car stops](stopping.md) |
-| `aav_watchdog_rs` | the sensor watchdog in Rust, the default (`watchdog_impl:=python` falls back) | `ros/safety/aav_watchdog_rs/README.md` |
-| `aav_localization_health_rs` | `localization_health` in Rust, the default (`localization_health_impl:=python` falls back) | `ros/localization/aav_localization_health_rs/README.md` |
+| `aav_watchdog_rs` | the sensor watchdog in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_watchdog_rs/README.md` |
 | `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (`io_mux_impl:=python` falls back) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
 | `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |
-| `aav_joy_alive_rs` | `joy_alive` in Rust, the default (`joy_alive_impl:=python` falls back) | `ros/safety/aav_joy_alive_rs/README.md` |
+| `aav_joy_alive_rs` | `joy_alive` in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_joy_alive_rs/README.md` |
 | `aav_safety_rs` | `geofence`, `stop_hold`, `goal_leash` in Rust, the defaults (`*_impl:=python` falls back) | `ros/safety/aav_safety_rs/README.md` |
-| `aav_gps_heading_rs` | `gps_heading` in Rust, the default (`gps_heading_impl:=python` falls back) | `ros/localization/aav_gps_heading_rs/README.md` |
 | `aav_mux_state` | `command_mux_state` (Rust): who twist_mux passes on, on `/control/command_mux/state`, for the debug screen | `ros/command_mux/aav_mux_state/README.md` |
 | `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (`stop_sign_impl:=python` falls back) | `ros/perception/aav_stop_sign_rs/README.md` |
 | `aav_lane_finder_rs` | `lane_finder` in Rust, the default (`lane_finder_impl:=python` falls back) | `ros/perception/aav_lane_finder_rs/README.md` |
 | `aav_camera_stream_rs` | `camera_stream` in Rust, the default with no detector (`camera_stream_impl:=python` falls back) | `ros/sources/aav_camera_stream_rs/README.md`, then [Camera pipeline](camera-pipeline.md) |
 | `aav_drive_to_point_rs` | `point_driver` and `drive_to_point` in Rust, the default (`drive_to_point_impl:=python` falls back) | `ros/drivers/aav_drive_to_point_rs/README.md`, then [A to B](a-to-b.md) |
 | `aav_detector_rs` | the detector in Rust through ONNX Runtime, a challenger (`detector_impl:=rust`) | `ros/perception/aav_detector_rs/README.md`, then [ONNX](onnx.md) |
-| `aav_amcl_rs` | AMCL in Rust, the default AMCL (`amcl_impl:=stock` runs `nav2_amcl`); a trial, `amcl:=true` | `ros/localization/aav_amcl_rs/README.md`, then [Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock) |
+| `aav_amcl_rs` | AMCL in Rust, the default AMCL (stock `nav2_amcl` removed 20 Nov); a trial, `amcl:=true` | `ros/localization/aav_amcl_rs/README.md`, then [Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock) |
 | `aav_lane_pose` | `lane_pose`: the lane finder's offset as a sideways pose for the global EKF (`stack:=ours`) | `ros/localization/aav_lane_pose/README.md` |
 | `aav_mpc_lag` | `mpc_lag_rs`: the lag-aware MPC in Rust, a challenger (`tracker:=mpc_lag_rs`) | `ros/drivers/aav_mpc_lag/README.md`, then [Trials](trials.md) |
-| `aav_things` | the things near the car: the cubes grouped and tracked, on `/world/things` (`things:=true`) | `ros/perception/aav_things/README.md`, then [How the car stops](stopping.md) |
+| `aav_things_rs` | the things near the car: the cubes grouped and tracked, on `/world/things` (`things:=true`) | `ros/perception/aav_things/README.md`, then [How the car stops](stopping.md) |
 | `aav_stop_zone` | the stop zone in Rust: the lock that zeroes navigation's command for points just ahead or behind | `ros/safety/aav_stop_zone/README.md`, then [The safety case](safety-case.md) |
 
 `aav_actuator_tests` has its card under [Drivers](#drivers).

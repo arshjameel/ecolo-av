@@ -569,42 +569,38 @@ def test_the_cameras_graphics_pass_through():
     assert included(started(SIM, world='road'))['ravensim.launch.py']['graphics'] == 'auto'
 
 
-def test_the_old_simulator_name_still_works_for_a_release():
-    assert 'ravensim.launch.py' in included(started(SIM, simulator='own'))
+def test_the_old_simulator_names_are_refused():
+    with pytest.raises(ValueError, match='old name'):
+        started(SIM, simulator='own')
     with pytest.raises(ValueError, match='Gazebo was removed'):
         started(SIM, simulator='gazebo')
 
 
 def test_the_lidar_only_where_the_world_renders_it():
     road = started(RAVENSIM, world='road', lidar='true')
-    assert included(road)['description.launch.py']['lidar'] == 'true'
     assert parameters(node(road, 'simulator'))['lidar'] is True
     lot = started(RAVENSIM, world='test_lot', lidar='true')
-    assert included(lot)['description.launch.py']['lidar'] == 'true'
+    assert parameters(node(lot, 'simulator'))['lidar'] is True
     actions = started(RAVENSIM, world='empty', lidar='true')
-    assert included(actions)['description.launch.py']['lidar'] == 'false'
     assert parameters(node(actions, 'simulator'))['lidar'] is False
 
 
 def test_the_lidar_is_on_by_default():
     road = started(RAVENSIM, world='road')
-    assert included(road)['description.launch.py']['lidar'] == 'true'
+    assert parameters(node(road, 'simulator'))['lidar'] is True
     assert included(started(SIM, world='road'))['ravensim.launch.py']['lidar'] == 'true'
     off = started(RAVENSIM, world='road', lidar='false')
-    assert included(off)['description.launch.py']['lidar'] == 'false'
     assert parameters(node(off, 'simulator'))['lidar'] is False
 
 
 def test_the_chase_camera_only_where_the_world_renders_it():
     road = started(RAVENSIM, world='road')
-    assert included(road)['description.launch.py']['chase_camera'] == 'true'
     assert '--cameras' not in cameras_command(road)     # all four, the chase camera too
     jpeg = node(road, 'chase_jpeg')
     assert (jpeg.node_package, jpeg.node_executable) == ('image_transport', 'republish')
     assert included(started(SIM, world='road'))['ravensim.launch.py']['chase_camera'] == 'true'
     for actions in (started(RAVENSIM, world='empty'),
                     started(RAVENSIM, world='road', chase_camera='false')):
-        assert included(actions)['description.launch.py']['chase_camera'] == 'false'
         assert 'chase_jpeg' not in names(actions)
     cmd = cameras_command(started(RAVENSIM, world='road', chase_camera='false'))
     assert cmd[cmd.index('--cameras') + 1] == 'front_left,front_right,rear'

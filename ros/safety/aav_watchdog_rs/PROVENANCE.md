@@ -20,3 +20,7 @@ written out). The Python stays, as the default.
 
 None on purpose. The steady clock (for a stalled node) is Rust's `Instant`; the Python's is
 `time.monotonic()`.
+
+**20 Nov:** the Python node(s) in `aav_safety` were removed (Ben, 16 Nov: "lets remove python
+were possible"; tag `save/python-safety-nodes`). The maths modules stay there, so
+`gen_vectors.py` still runs.

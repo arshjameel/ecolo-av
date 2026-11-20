@@ -12,7 +12,7 @@ through the Python helper `aav_description.vehicle`.
 
 | File | Starts |
 |---|---|
-| `description.launch.py [sim:=] [use_sim_time:=] [lidar:=] [chase_camera:=] [joint_state_publisher:=true]` | `robot_state_publisher` from the URDF; `joint_state_publisher`, which merges `/vehicle/joint_states` |
+| `description.launch.py [use_sim_time:=] [joint_state_publisher:=true]` | `robot_state_publisher` from the URDF; `joint_state_publisher`, which merges `/vehicle/joint_states` |
 | `view.launch.py` (`pixi run view`) | the model in RViz, with joint sliders |
 
 ### Topics
@@ -109,7 +109,7 @@ The strip every level shares (`/world/road_ahead`; [the whole car](../../../docs
 
 | Item | What |
 |---|---|
-| `build(plan, car, stops, curve, base)` | the writer's (`aav_behaviour`): the plan's next 40 m from the car, a point every 0.5 m; its stops; its end (the nearest stop); the speed limit by the stopping law, 0 at the end |
+| `build(plan, car, stops, curve, base)` | the writer's (`aav_behaviour_rs`): the plan's next 40 m from the car, a point every 0.5 m; its stops; its end (the nearest stop); the speed limit by the stopping law, 0 at the end |
 | `limit_at(strip, x, y, curve, base)`, `room_at`, `along_of` | the readers' (ego): the speed allowed here, the metres left to the end; no strip allows 0 |
 | `capped(strip, cap)` | the writer's: no limit above the behaviour planner's cap (TODO 233); 0.0 is no cap |
 | `Strip`, `StopOnLine`, `resample`; `WAIT`, `FINAL` | the strip; a stop on it; the plan cut into points |
@@ -174,8 +174,8 @@ car model says (`docs/stopping.md`, "A heavier car").
 
 `aav.urdf.xacro` builds `base_link`, `chassis`, four wheels with two steering joints,
 and one link per sensor in `vehicle.yaml`. Gazebo's `aav.gazebo.xacro` and
-`aav.sensors.gazebo.xacro` were removed with Gazebo (16 Nov); the `sim`, `lidar` and
-`chase_camera` arguments are still accepted, and do nothing.
+`aav.sensors.gazebo.xacro` were removed with Gazebo (16 Nov); its `sim`, `lidar` and
+`chase_camera` arguments on 20 Nov (TODO 241).
 
 ### Rust crates beside the package (no ROS, their own workspaces)
 

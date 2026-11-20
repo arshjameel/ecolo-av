@@ -24,6 +24,7 @@ add_custom_target(cargo_build ALL
 
 install(PROGRAMS ${CARGO_TARGET_DIR}/release/localization_health
   DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   # The checks without ROS, and the Python module's answers (vectors.json).

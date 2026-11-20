@@ -2,7 +2,7 @@
 
 Human drivers: the joystick, its e-stop button, and the keyboard. Stock ROS packages,
 set up by our config files, plus `joy_alive` between the joystick and teleop_twist_joy
-(`aav_joy_alive_rs`, Rust, the default since 17 Nov; `joy_alive_impl:=python`: `aav_safety`'s):
+(`aav_joy_alive_rs`, Rust, since 17 Nov; the Python went on 20 Nov):
 no code of its own. A person is a driver like any
 other: they publish a velocity command into twist_mux and never talk to the wheels.
 
@@ -31,7 +31,7 @@ Nodes (all in the namespace `/drivers/joy`, so relative topics land there):
 | Node (package) | Reads | Writes |
 |---|---|---|
 | `joy_node` (joy) | the USB joystick | `/drivers/joy/joy` (`sensor_msgs/Joy`), 20 Hz while held |
-| `joy_alive` (`aav_joy_alive_rs`, Rust, the default; `joy_alive_impl:=python`: `aav_safety`'s) | `/drivers/joy/joy` | `/drivers/joy/joy_checked` (each message, or a released copy while stopped); `/drivers/joy/alive` (`std_msgs/String`, 10 Hz: `OK`, `WAITING`, `SILENT`, `FROZEN`, and why) |
+| `joy_alive` (`aav_joy_alive_rs`, Rust) | `/drivers/joy/joy` | `/drivers/joy/joy_checked` (each message, or a released copy while stopped); `/drivers/joy/alive` (`std_msgs/String`, 10 Hz: `OK`, `WAITING`, `SILENT`, `FROZEN`, and why) |
 | `teleop_twist_joy_node` (teleop_twist_joy) | `/drivers/joy/joy_checked` | `/drivers/joy/cmd_vel` (`geometry_msgs/TwistStamped`, `base_link`) |
 | `joy_teleop` (joy_teleop), if `estop_button` | `/drivers/joy/joy` | `/safety/estop` (`std_msgs/Bool`) true, once per press |
 
@@ -84,7 +84,7 @@ twist_mux priorities: joystick 100, keyboard 90 (`aav_command_mux`).
 ## Verification
 
 `test/test_joy_chain.py` (`colcon test --packages-select aav_teleop`) runs the chain, with
-each `joy_alive_impl` (rust, python): a pretend pad on `/drivers/joy/joy`, this launch file
+the Rust `joy_alive`: a pretend pad on `/drivers/joy/joy`, this launch file
 (`joy_device:=false`), twist_mux and ego. A live hand drives ego; frozen stops it, and it
 stays stopped with the trigger held; released and pressed it drives; silent stops it.
 `joy_alive`'s logic is tested in `aav_safety` and `aav_joy_alive_rs` (the same vectors);

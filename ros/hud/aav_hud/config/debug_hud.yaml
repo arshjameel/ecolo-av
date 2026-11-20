@@ -26,7 +26,7 @@ debug_hud:
     track_status_topic: /drivers/nav/track/status # diagnostic_msgs/msg/DiagnosticStatus: the trial tracker, tracker:= on
     ndt_status_topic: /localization/ndt/status    # diagnostic_msgs/msg/DiagnosticStatus: NDT's score per point, ms per match, LOST
     voxels_status_topic: /perception/voxels/status  # diagnostic_msgs/msg/DiagnosticStatus: the voxels trial's ms, cube count, road fit OK/WARN
-    health_topic: /localization/health            # std_msgs/msg/String, 1 Hz: OK, or WARN and each check (aav_localization_health, health:=true)
+    health_topic: /localization/health            # std_msgs/msg/String, 1 Hz: OK, or WARN and each check (aav_localization_health_rs, health:=true)
     source_topic: /system/source                  # aav_interfaces/msg/DataSource, latched: the SIMULATED banner
     # --- keys 1-4 (sim only): the trial tracker's parameter service (aav_track, live_swap) ---
     track_parameters_service: /track/set_parameters   # rcl_interfaces/srv/SetParameters

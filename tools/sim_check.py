@@ -86,7 +86,7 @@ docs/league-results-2026-11-16.md).
                                             0.25 m with the adaptive brake. The empty
                                             world, one more run; --loaded-stop-only skips
                                             the road world's run. docs/stopping.md)
-    pixi run sim-check --things           (the things, things:=true, aav_things: a box
+    pixi run sim-check --things           (the things, things:=true, aav_things_rs: a box
                                             placed 12 m ahead must be listed on
                                             /world/things within 1 m, standing; taken away,
                                             still listed 1.5 s on, gone after 5 s. One more
@@ -160,7 +160,7 @@ bench_check.py tests the car's software against pretend sensors that draw a flat
 this tests it against Ravensim's cameras and radar stand-in, which see the road world
 (aav_sim_models worlds/road.sdf: the bench road and its stop sign, in 3D).
 
-1. Starts sim.launch.py world:=road gui:=false rviz:=false on a private ROS domain,
+1. Starts sim.launch.py world:=road rviz:=false on a private ROS domain,
    on this computer only.
 2. Start-up: the truth, the global EKF, the camera and the radar stand-in all run,
    and navigation is up (unless nav:=false).
@@ -233,7 +233,7 @@ this tests it against Ravensim's cameras and radar stand-in, which see the road 
    the sensor watchdog's lock). Each drive's truth goes to /tmp/aav-sim-points/ as an
    measure atob CSV (`pixi run measure atob /tmp/aav-sim-points/1-*.csv --speed 1`).
 
-14. With --things: the road world again with things:=true (aav_things), the car standing.
+14. With --things: the road world again with things:=true (aav_things_rs), the car standing.
    The bench's box 12 m past the bumper must be on /world/things within 1 m of where it
    is (relative to the car: the truth for the box, the local EKF for the thing), at under
    0.3 m/s. Then the box goes: the same id must still be listed 1.5 s later (the memory,
@@ -3158,7 +3158,7 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
           f"{env['ROS_DOMAIN_ID']} (this computer only)...", flush=True)
     log = open(log_path, 'w')
     launch = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py', f'world:={world}',
-                               'gui:=false', 'rviz:=false', *launch_args, *EVERY_RUN],
+                               'rviz:=false', *launch_args, *EVERY_RUN],
                               cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
                               start_new_session=True)
     LAUNCH.update(pgid=launch.pid, log=log_path)
@@ -3289,8 +3289,6 @@ def main():
         except ValueError as e:
             print(f'--simulator: {e}', file=sys.stderr)
             return 2
-        if worlds.simulator_warning(given):
-            print(worlds.simulator_warning(given), file=sys.stderr)
     # Always said: the checks place models and read logs the way this simulator wants.
     EVERY_RUN.append(f'simulator:={SIMULATOR}')
     global COSTMAP

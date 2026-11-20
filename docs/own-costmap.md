@@ -362,7 +362,7 @@ one from `/map`) stays a challenger.
 
 | Reader | When |
 |---|---|
-| `aav_things` (the background: walls aren't things) | `things:=true` |
+| `aav_things_rs` (the background: walls aren't things) | `things:=true` |
 | the screens: RViz, the map window, the dev window, Foxglove's cockpit | when they run |
 | AMCL | `amcl:=true`, without its own map |
 | `sim_check.py` | its checks |

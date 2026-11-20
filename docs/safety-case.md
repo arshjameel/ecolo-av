@@ -65,7 +65,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | Stop zone | `aav_stop_zone` zeroes `/drivers/nav/cmd_vel` when the radar or lidar sees 3 points in front of the bumper, or a sensor goes silent. Nav2's `collision_monitor` until 17 Nov; ours took the lock after its shadow run ([the swap](#the-stop-zones-swap-17-nov)) | `aav_stop_zone` |
 | Stop hold | holds the stop until the zone stays clear 1 s, so it can't flicker (twist_mux 21) | `aav_safety` `stop_hold.py` |
 | Costmap | the follower's own collision check can stop first | `aav_costmap`, `aav_mppi_lag` |
-| Behaviour planner | slows before the stop zone (a trial, off) | `aav_behaviour` |
+| Behaviour planner | slows before the stop zone (a trial, off) | `aav_behaviour_rs` |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -264,7 +264,7 @@ measurement.
 |---|---|---|
 | Sensor watchdog | GPS lost, NaN or jumped: holds the point driver, navigation and the AI slot | `aav_safety` |
 | Geofence | `LOST` (no pose 1 s, spread over 3 m, no GPS into the EKF 2 s), `JUMP` (latched) | `aav_safety` `geofence.py` |
-| Localization health | warns only: gyro bias, GPS quality, clock skew, runaway EKFs | `aav_localization_health` (Betsi) |
+| Localization health | warns only: gyro bias, GPS quality, clock skew, runaway EKFs | `aav_localization_health_rs` (Betsi) |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -334,8 +334,8 @@ stop." ([stopping](stopping.md#anything-moving-near-stop-and-wait-17-nov))
 
 | Layer | What | Where |
 |---|---|---|
-| The things | the lidar's cubes grouped and followed: each one's place and speed | `aav_things`, `things:=true` (on in `stack:=ours`) |
-| Behaviour planner | anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still | `aav_behaviour_rs` (`aav_behaviour`) |
+| The things | the lidar's cubes grouped and followed: each one's place and speed | `aav_things_rs`, `things:=true` (on in `stack:=ours`) |
+| Behaviour planner | anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still | `aav_behaviour_rs` (`aav_behaviour_rs`) |
 | Ego | holds the automatic drivers to the road ahead's limit: 0 at its end | `aav_ego_rs` |
 | Stop zone | still stops the car for anything in front of the bumper, moving or not | `aav_navigation` |
 

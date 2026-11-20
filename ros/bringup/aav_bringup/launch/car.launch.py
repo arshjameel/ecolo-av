@@ -857,8 +857,8 @@ def generate_launch_description():
                                           'camera Pi stream (aav_camera_stream_rs, or '
                                           'aav_camera_stream); a detector runs the Python one'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
-                              description='python or rust: which things node tracks the '
-                                          'cubes (aav_things, or aav_things_rs)'),
+                              description='rust (aav_things_rs): which things node tracks '
+                                          'the cubes (the Python removed 20 Nov)'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
@@ -867,10 +867,10 @@ def generate_launch_description():
                               description='rust (aav_ego_rs, ego and look_ahead in one '
                                           'process) or python (aav_ego)'),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
-                              description='rust (aav_behaviour_rs) or python (aav_behaviour), '
+                              description='rust (aav_behaviour_rs; the Python removed 20 Nov), '
                                           'where navigation runs with behaviour:=true'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
-                              description='rust (aav_watchdog_rs) or python (aav_safety): '
+                              description='rust (aav_watchdog_rs; the Python removed 20 Nov): '
                                           'the sensor watchdog'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
                               description='rust (aav_io_mux_rs) or python (aav_io_mux): '
@@ -883,24 +883,24 @@ def generate_launch_description():
                               description='rust (aav_rc_rs) or python (aav_rc): rc_driver, '
                                           'beside legacy_uart_bridge'),
         DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the geofence'),
         DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'stop_hold, with navigation'),
         DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the goal leash'),
         DeclareLaunchArgument('joy_alive_impl', default_value=vehicle.DEFAULT_JOY_ALIVE_IMPL,
-                              description='rust (aav_joy_alive_rs) or python (aav_safety): '
+                              description='rust (aav_joy_alive_rs; the Python removed 20 Nov): '
                                           'joy_alive, between joy_node and teleop_twist_joy'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
                               description='rust (aav_stop_sign_rs) or python (aav_detector): '
                                           'stop_sign_watcher, the stop_signs part'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
-                              description='rust (aav_localization_health_rs) or python '
-                                          '(aav_localization_health)'),
+                              description='rust (aav_localization_health_rs; the Python '
+                                          'removed 20 Nov)'),
         DeclareLaunchArgument('ghost', default_value='false',
                               description='true: a pretend person only navigation sees, placed '
                                           'with pixi run ghost ahead 10 (it only adds)'),

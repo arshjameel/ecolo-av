@@ -8,7 +8,7 @@ removed 16 Nov). It reads SDF world files, moves the car, casts the lidar's and 
 and publishes on `/vehicle/sim/*`. `aav_sim_models`'s nodes (`sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar`) and
 the whole stack above them run unchanged. The cameras are their own program,
 `aav_sim_cameras`, drawing the same world file; the launch starts both. **The default
-since 8 Nov, the only simulator since 16 Nov** (`simulator:=own` still works for a release).
+since 8 Nov, the only simulator since 16 Nov** (its old name, `simulator:=own`, went on 20 Nov).
 
 ```text
 /control/sim/actuator_cmd ─> sim_adapter ─> /vehicle/sim/cmd_vel ─> simulator (the car)

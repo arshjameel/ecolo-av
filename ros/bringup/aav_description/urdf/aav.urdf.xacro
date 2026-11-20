@@ -16,11 +16,6 @@
 <robot name="aav" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <xacro:arg name="vehicle_config" default="$(find aav_description)/config/vehicle.yaml"/>
-  <!-- sim, lidar, chase_camera: Gazebo's plugins and sensors, gone with Gazebo (16 Nov).
-       Still taken, and ignored: Ravensim reads vehicle.yaml itself. -->
-  <xacro:arg name="sim" default="false"/>
-  <xacro:arg name="lidar" default="false"/>
-  <xacro:arg name="chase_camera" default="false"/>
 
   <xacro:property name="cfg" value="${xacro.load_yaml('$(arg vehicle_config)')}"/>
   <xacro:property name="veh" value="${cfg['vehicle']}"/>

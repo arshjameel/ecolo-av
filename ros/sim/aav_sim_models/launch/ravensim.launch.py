@@ -272,10 +272,8 @@ def launch_setup(context):
         IncludeLaunchDescription(
             os.path.join(FindPackageShare('aav_description').perform(context), 'launch',
                          'description.launch.py'),
-            launch_arguments={'sim': 'true', 'use_sim_time': 'true',
-                              'joint_state_publisher': 'false',
-                              'lidar': str(lidar).lower(),
-                              'chase_camera': str(chase).lower()}.items()),
+            launch_arguments={'use_sim_time': 'true',
+                              'joint_state_publisher': 'false'}.items()),
         Node(package='aav_sim_models', executable='sim_adapter', name='sim_adapter',
              parameters=[{'wheelbase': float(v['wheelbase']), 'rendered': sensors,
                           'cameras': cameras,

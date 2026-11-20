@@ -60,7 +60,7 @@ tools/software_gl.sh pixi run sim world:=road   # no GPU: the cameras in softwar
 since 8 Nov and the only one since 16 Nov). Gazebo played the car until then:
 [Gazebo, as it was](history/gazebo-as-it-was.md). Ravensim passed every `sim-check` leg
 Gazebo passed. Its maps cut into chunks are **RavenTiles** ([Campus](campus.md)).
-`simulator:=own`, its old name, still works for one release.
+`simulator:=own`, its old name, went on 20 Nov (TODO 241).
 
 | Name | What |
 |---|---|

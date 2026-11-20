@@ -53,6 +53,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 |---|---|---|
 | `build_docs.py` | `docs/*.md` into HTML and the PDFs | `docs` |
 | `gen_interfaces_md.py` | `docs/interfaces.yaml` into `docs/interfaces.md`; `--check` | - (test.sh checks) |
+| `codemap.py` | `docs/codemap.md`, the code map: one line per package; `--check` | - (test.sh checks) |
 | `graph_picture.py` | the running graph as `docs/img/graph.svg` and `.png` | - (ros.sh) |
 | `teach_figures.py` | the teaching guide's diagrams (AMCL, NDT, ICP, A*, MPPI...) into `docs/img/teach/` (matplotlib, no ROS) | - |
 

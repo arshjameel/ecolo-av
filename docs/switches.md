@@ -87,7 +87,7 @@ others offer the EKFs only first.
 |---|---|---|
 | (nothing) | the EKFs: wheels, IMU and GPS | ~17 cm |
 | `ndt:=true ndt_map:=maps/ndt/test_lot.pcd` | the lidar slid onto a saved map | **1-3 cm** |
-| `amcl:=true` | many guesses; keep the ones that match the walls (ours in Rust; `amcl_impl:=stock` for Nav2's) | 6-11 cm (5-9 cm, 18 Nov) |
+| `amcl:=true` | many guesses; keep the ones that match the walls (ours in Rust; stock removed 20 Nov) | 6-11 cm (5-9 cm, 18 Nov) |
 | `ndt_ekf:=true ndt_map:=maps/ndt/test_lot.pcd` | NDT, and the global EKF **uses** it beside the GPS (a trial) | the EKF **1.6 cm** ([trials](history/trials-log.md#ndt-into-the-global-ekf-30-oct)) |
 | `pose_source:=ndt` | NDT **leads** the global EKF; the GPS only checks it, and stands in when NDT is lost (a challenger, TODO 210; `aav_pose_check`) | the EKF **1 cm**, and the same with the GPS stopped, jumping or drifting 5 m ([Maps and position](maps-and-position.md#8-ndt-leads-the-gps-checks)) |
 | `kiss_icp:=true` | how far the car moved, from the lidar alone (no map) | 0.02-0.04 m per 100 m driven |
@@ -146,8 +146,8 @@ swap an algorithm. The rest:
 | `teleop`, `hud`, `map`, `foxglove` | a joystick here, the HUD, the map window, the Foxglove bridge | `false` |
 | `perception`, `lane`, `camera_obstacles`, `faults` | the detector, the lane finder alone (`true`), boxes into the costmap, the camera fault path (worlds with cameras) | `false` |
 | `lane_finder_impl` | with `lane` or `lanes:=camera`: the lane finder in `rust` or `python`. `lane_follower`, `lane_follower_impl` and `lane:=fake` went with the lane followers on 19 Nov ([their scores](history/lane-followers.md)) | `rust` |
-| `geofence_impl`, `stop_hold_impl`, `goal_leash_impl` | the geofence, the stop hold and the goal leash in `rust` (`aav_safety_rs`, 19 Nov: the Python's answers to the bit) or `python` (`aav_safety`); the car and the bench take them too | `rust` |
-| `gps_heading_impl` | the GPS heading in `rust` (`aav_gps_heading_rs`, 19 Nov: `course.py`'s answers to the bit) or `python` (`aav_gps_heading`); `localization.launch.py`'s | `rust` |
+| `geofence_impl`, `stop_hold_impl`, `goal_leash_impl` | the geofence, the stop hold and the goal leash in `rust` (`aav_safety_rs`, 19 Nov: the Python's answers to the bit; the Python removed 20 Nov); the car and the bench take them too | `rust` |
+| `gps_heading_impl` | the GPS heading in `rust` (`aav_gps_heading_rs`, 19 Nov: `course.py`'s answers to the bit; the Python removed 20 Nov); `localization.launch.py`'s | `rust` |
 | `spine`, `esp32`, `esp32_loop`, `bridge` | the spine or today's ESP32 in the loop; `pi` or `open`; `rust` or `python` | `false`, `false`, `pi`, `rust` |
 | `start_x`, `start_y`, `start_yaw` | where the car starts (m, rad) | `0.0` |
 | `geofence_radius` | the fence's circle (m) | `200.0` |

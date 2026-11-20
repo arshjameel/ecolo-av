@@ -26,8 +26,7 @@ The trials (docs/trials.md):
                     the car's lags twice what vehicle.yaml says (sim's lag_scale:=2), the
                     followers none the wiser: how each copes with a slower car
     pixi run measure controllers --amcl             (AMCL beside the EKF, amcl:=true: scored
-                    against the truth, as the EKF is; ours, aav_amcl_rs. Add
-                    --launch amcl_impl:=stock for Nav2's nav2_amcl, the fall-back)
+                    against the truth, as the EKF is; ours, aav_amcl_rs)
     pixi run measure controllers --ndt              (NDT beside the EKF, ndt:=true, on the map
                     pixi run ndt-map drive made: its errors, the share of clouds that gave
                     a pose, time over 1 m off, each match's wall-clock time; and its
@@ -99,7 +98,7 @@ The trials (docs/trials.md):
                     each plan's inputs, for pixi run diffusion replay
 
 For each tour and controller it:
-1. starts sim.launch.py world:=test_lot gui:=false rviz:=false stack:=best (the
+1. starts sim.launch.py world:=test_lot rviz:=false stack:=best (the
    champions, then the piece under test on top) tracker:=<name> [planner:=<name>]
    reversing:=false (forward only, unless --reversing), on a ROS domain of its
    own, on this computer only;
@@ -1104,7 +1103,7 @@ def session(tour, follower, args, out_dir, body, used, run=1):
     log_path = os.path.join(out_dir, f'sim-{tour}-{tag}.log')
     command = ['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
                f'world:={plan.get("world", "test_lot")}',
-               'gui:=false', 'rviz:=false',
+               'rviz:=false',
                # Every run on the champions' stack (best), then the piece under test on
                # top: each column differs from the next only in what it names. Until 17 Nov
                # this was Nav2's stock stack (docs/league-results-2026-11-16.md).

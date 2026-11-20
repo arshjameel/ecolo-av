@@ -24,3 +24,5 @@ its `sum()` is below). The Python stays, as the default.
 |---|---|---|
 | A stop sign with no TF at its picture's stamp | `lookup_transform` waits up to 0.1 s (blocking the node), then drops it | dropped at once, with the same warning: the TF can't arrive while the callback runs anyway |
 | A fence of 3+ corners under 1 m² | `Polygon` raises in the callback | logged, and no fence |
+
+**20 Nov:** the Python (`aav_behaviour`) was removed (Ben, 16 Nov: "lets remove python were possible"; tag `save/python-behaviour`). `gen_vectors.py` went with it; `vectors.json` is a golden fixture now.

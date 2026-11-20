@@ -2,7 +2,8 @@
 
 Ported for `ecolo-av` on 2026-11-19: a Rust rewrite of our own Python node and module
 (Ben's code): `ros/localization/aav_gps_heading`'s `gps_heading.py` and `course.py`, at
-commit `ceab7c55`. The Python stays, as the fall-back (`gps_heading_impl:=python`).
+commit `ceab7c55`. The Python stayed as the fall-back until 20 Nov, then went (tag `save/python-gps-heading`);
+`vectors.json` is now a golden fixture.
 
 | Part | From |
 |---|---|

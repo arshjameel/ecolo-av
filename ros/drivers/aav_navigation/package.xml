@@ -14,7 +14,6 @@
   <exec_depend>aav_lidar</exec_depend>
   <exec_depend>aav_lidar_rs</exec_depend>
   <exec_depend>aav_voxels</exec_depend>
-  <exec_depend>aav_things</exec_depend>
   <exec_depend>aav_things_rs</exec_depend>
   <exec_depend>aav_voxels_rs</exec_depend>
   <exec_depend>aav_ghost</exec_depend>
@@ -31,13 +30,9 @@
   <exec_depend>aav_behaviour_rs</exec_depend>
   <exec_depend>aav_localization</exec_depend>
   <exec_depend>aav_diffusion_planner</exec_depend>
-  <exec_depend>aav_behaviour</exec_depend>
   <exec_depend>aav_ego</exec_depend>
-  <!-- AMCL (amcl:=true, a scored trial): ours, and the one Nav2 package kept as the
-       fall-back (amcl_impl:=stock), with its lifecycle manager. -->
+  <!-- AMCL (amcl:=true, a scored trial): ours; stock nav2_amcl went on 20 Nov. -->
   <exec_depend>aav_amcl_rs</exec_depend>
-  <exec_depend>nav2_amcl</exec_depend>
-  <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

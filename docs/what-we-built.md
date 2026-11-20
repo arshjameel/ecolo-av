@@ -124,7 +124,7 @@ A frozen screen stops the car: each screen sends a heartbeat, STALE within 1 s
 | Objects in the cameras | ✅ RF-DETR Nano; YOLO as an option; Core ML on a Mac | Python (ONNX) | sim | saw a stop sign from 20 m (YOLO11n: 10 m) |
 | Lane lines | ✅ the lane finder | Python | sim | lane keeping on a 171 m campus road, mean error 4 cm |
 | Radar | ✅ radar clusters | Rust | sim | ported from the 2025-26 team's C++ |
-| Things that move | ✅ **the things tracker** (`aav_things`), cubes on the map's walls dropped | Python | sim | 9.9 things to 1.7; every walker found within 0.2 s |
+| Things that move | ✅ **the things tracker** (`aav_things_rs`), cubes on the map's walls dropped | Rust | sim | 9.9 things to 1.7; every walker found within 0.2 s |
 
 ### Maps: three levels on fixed chunks
 

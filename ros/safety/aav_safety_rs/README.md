@@ -8,9 +8,9 @@ topics, QoS, parameters and answers as the Python; each is one switch away.
 
 | Node | Lock | Switch |
 |---|---|---|
-| `geofence` | twist_mux's geofence lock (51): every program held before its stopping paths reach the fence | `geofence_impl:=rust\|python` |
-| `stop_hold` | twist_mux's stop_zone lock (21): a stop zone's stop held until the way stays clear | `stop_hold_impl:=rust\|python` |
-| `goal_leash` | a laptop driver's goals cancelled when its beats stop | `goal_leash_impl:=rust\|python` |
+| `geofence` | twist_mux's geofence lock (51): every program held before its stopping paths reach the fence | `geofence_impl:=rust` |
+| `stop_hold` | twist_mux's stop_zone lock (21): a stop zone's stop held until the way stays clear | `stop_hold_impl:=rust` |
+| `goal_leash` | a laptop driver's goals cancelled when its beats stop | `goal_leash_impl:=rust` |
 
 What each one does, its states and its rules: `aav_safety`'s README and
 `docs/geofence.md`.

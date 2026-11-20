@@ -4,7 +4,7 @@
 
 `joy_alive` in Rust (rclrs): **the default since 17 Nov** (Ben: "I don't think we want
 to do this again later"), in place of `aav_safety`'s Python node. The same node name,
-topics, parameters and answers. `joy_alive_impl:=python` falls back.
+topics, parameters and answers. The Python was removed on 20 Nov (tag `save/python-safety-nodes`).
 
 ```
 joy_node ─► /drivers/joy/joy ─► joy_alive ─► /drivers/joy/joy_checked ─► teleop_twist_joy
@@ -39,7 +39,7 @@ Parameters (`aav_teleop` `config/joy_alive.yaml`): `enable_button` 0, `motion_ax
 
 ### Which one runs
 
-`teleop.launch.py joy_alive_impl:=rust|python` (`vehicle.JOY_ALIVE_IMPLS`, default
+`teleop.launch.py joy_alive_impl:=rust` (`vehicle.JOY_ALIVE_IMPLS`, default
 `rust`); `car.launch.py` passes it on. Not in `stacks.yaml`: the same algorithm in
 another language.
 

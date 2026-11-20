@@ -21,12 +21,9 @@
   <depend>visualization_msgs</depend>
   <depend>aav_interfaces</depend>
 
-  <!-- Its things.yaml: the same settings as the Python node. -->
-  <exec_depend>aav_things</exec_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_cmake_test</test_depend>
-  <test_depend>aav_things</test_depend>
   <test_depend>python3-numpy</test_depend>
   <test_depend>sensor_msgs_py</test_depend>
 

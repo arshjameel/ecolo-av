@@ -24,7 +24,7 @@ Two helpers:
 
 | File | Does |
 |---|---|
-| `stack.launch.py target:=turtle\|ravensim\|bench\|car\|carla [source:=]` (`gazebo` still means ravensim) | one launch for every target; refuses a `source:=` that isn't the target's own |
+| `stack.launch.py target:=turtle\|ravensim\|bench\|car\|carla [source:=]` | one launch for every target; refuses a `source:=` that isn't the target's own |
 | `foxglove.launch.py` | foxglove_bridge for Foxglove or Lichtblick: `foxglove_address`, `foxglove_port` (8765), `foxglove_control`, `foxglove_topics` (`wifi` or `all`), `foxglove_preview` |
 
 Each launch file's docstring lists all its arguments. The common ones:

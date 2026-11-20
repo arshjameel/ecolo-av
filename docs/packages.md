@@ -22,13 +22,11 @@ each one's README has its topics.
 | `aav_radar_ti` | sources | the TI mmWave radar, as point clouds | [[untested]] | 2025-26 `Nav_Radar` |
 | `aav_description` | bringup | the car's model (URDF) and `vehicle.yaml` | [[works]] the numbers are guesses | new |
 | `aav_localization` | localization | the two EKFs and `navsat_transform`: configuration only | [[works]] turtle, Gazebo and the bench | new |
-| `aav_gps_heading` | localization | `gps_heading`: the heading from the GPS receiver's velocity, for `ekf_global` | [[works]] Gazebo | new |
-| `aav_gps_heading_rs` | localization | `gps_heading` in Rust, the default (19 Nov; `gps_heading_impl:=python` falls back) | [[works]] against `course.py`'s answers, to the bit; [[untested]] on the car | new: a port of `aav_gps_heading` |
-| `aav_localization_health` | localization | warn-only checks on what the EKFs read and say, on `/localization/health` and `/diagnostics` | built 1 Nov | new (Betsi) |
-| `aav_localization_health_rs` | localization | `localization_health` in Rust (`localization_health_impl:=rust`): the same topics and answers | [[works]] against the Python's answers; Ravensim's road world | new: a port of `aav_localization_health` |
+| `aav_gps_heading_rs` | localization | `gps_heading`: the heading from the GPS receiver's velocity, for `ekf_global`; Rust (the Python removed 20 Nov) | [[works]] against `course.py`'s answers, to the bit; [[untested]] on the car | new: a port of `aav_gps_heading` |
+| `aav_localization_health_rs` | localization | `localization_health`: warn-only checks on what the EKFs read and say; Rust (the Python removed 20 Nov) | [[works]] against the Python's answers; Ravensim's road world | new: a port of `aav_localization_health` |
 | `aav_ndt` | localization | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | built 29 Oct; a trial, off by default ([Trials](trials.md)) | new |
 | `aav_kiss_icp` | localization | KISS-ICP lidar odometry, a trial (`kiss_icp:=true`): how far the car moved, from the lidar alone | built 30 Oct; a trial, off by default ([Trials](trials.md)) | new, around stock KISS-ICP (MIT) |
-| `aav_amcl_rs` | localization | AMCL in Rust, the default (18 Nov; `amcl_impl:=stock` runs `nav2_amcl`): a particle filter on the 2D map and the scan, a trial (`amcl:=true`); never TF | [[works]] Ravensim, the lot: a tie with stock, 3 runs each ([Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock)) | new: a port of Nav2's `nav2_amcl` |
+| `aav_amcl_rs` | localization | AMCL in Rust, the default (18 Nov; stock `nav2_amcl` removed 20 Nov): a particle filter on the 2D map and the scan, a trial (`amcl:=true`); never TF | [[works]] Ravensim, the lot: a tie with stock, 3 runs each ([Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock)) | new: a port of Nav2's `nav2_amcl` |
 | `aav_lane_pose` | localization | `lane_pose`: the lane finder's offset in its lane, against the lane map, as a sideways pose for the global EKF | ours' default since 17 Nov (TODO 155); [[untested]] on the car | new |
 | `aav_teleop` | drivers | joystick → `/drivers/joy/cmd_vel`, plus an e-stop button | [[untested]] | new; the button map from 2025-26 `joy_teleop_ackerman` |
 | `aav_rc` | drivers | the RC transmitter, on "RC via ROS", as a driver (priority 95, proposed) | built 24 Oct; off until the hardware lead confirms the wire (H9) | new |
@@ -47,8 +45,7 @@ each one's README has its topics.
 | `aav_navigator` | drivers | our own navigator in Rust (`navigator:=own`): what `bt_navigator` and `waypoint_follower` do | built 8 Nov; the only one since 17 Nov ([its page](own-navigator.md)) | new |
 | `aav_smoother` | drivers | our own velocity smoother in Rust (`smoother:=own`): the turn rate from where the wheels can be | built 8 Nov; the only one since 17 Nov ([its page](own-smoother.md)) | new |
 | `aav_diffusion_planner` | drivers | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | built 2 Nov; a trial, off by default ([Trials](trials.md)) | new |
-| `aav_behaviour` | drivers | the behaviour planner, a trial (`behaviour:=true`): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on navigation | built 7 Nov; off by default ([How the car stops](stopping.md)) | new |
-| `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov) beside `aav_behaviour`'s (`behaviour_impl:=python`): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
+| `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_mux_state` | command_mux | `command_mux_state` (Rust): who twist_mux passes on, its age, the locks on and whom they hold (TODO 247) | [[works]] beside a real twist_mux (its colcon test) and in the sim; [[untested]] on the car | new: twist_mux's rule, rewritten in Rust |
 | `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
@@ -68,9 +65,9 @@ each one's README has its topics.
 | `aav_spine_sim` | sim | the spine on a laptop: the firmware's logic on a model car (Rust) | [[works]] | new |
 | `aav_bench` | sim | pretend sensors: IMU, GPS, battery, camera, radar, lidar | [[works]] | new |
 | `aav_safety` | safety | the sensor watchdog: a twist_mux lock (30) when a sensor is stale, NaN, frozen or jumps | [[works]] Gazebo and the bench | new |
-| `aav_joy_alive_rs` | safety | `joy_alive` in Rust, the default (17 Nov; `joy_alive_impl:=python` falls back) | [[works]] against the Python's answers; [[untested]] on the car | new: a port of `aav_safety`'s `joy_alive` |
+| `aav_joy_alive_rs` | safety | `joy_alive` in Rust, the default (17 Nov; the Python removed 20 Nov) | [[works]] against the Python's answers; [[untested]] on the car | new: a port of `aav_safety`'s `joy_alive` |
 | `aav_safety_rs` | safety | `geofence`, `stop_hold` and `goal_leash` in Rust, the defaults (19 Nov; `*_impl:=python` falls back) | [[works]] against the Python's answers, to the bit; [[untested]] on the car | new: a port of `aav_safety`'s three nodes |
-| `aav_watchdog_rs` | safety | `sensor_watchdog` in Rust, the default (Ben, 16 Nov) beside `aav_safety`'s (`watchdog_impl:=python`): the same topics and answers | [[works]] against the Python's answers, tick by tick | new: a port of `aav_safety`'s watchdog |
+| `aav_watchdog_rs` | safety | `sensor_watchdog` in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers | [[works]] against the Python's answers, tick by tick | new: a port of `aav_safety`'s watchdog |
 | `aav_ghost` | safety | ghost obstacles: a pretend person only navigation sees | [[works]] in Gazebo | new |
 | `aav_stop_zone` | safety | the stop zone (Rust): zeroes navigation's command when the radar or lidar sees points just ahead, or goes silent; the lock since 17 Nov | [[works]] in Ravensim: stopped every time Nav2's `collision_monitor` did, in its shadow run ([Nav2, as it was](history/nav2-as-it-was.md)) | new: a port of Nav2's `collision_monitor` |
 | `aav_interfaces` | ecolo_msgs | our 13 messages (such as `VehicleStatus`, `DataSource`, `Heartbeat`) and 2 actions (`ScriptedDrive`, `DriveToPoint`) | [[works]] builds | new |

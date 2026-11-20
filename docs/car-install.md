@@ -137,7 +137,7 @@ theirs never see each other: no mixed Humble and Jazzy messages, no topic clashe
 | any ROS command | `~/aav-jazzy/aav.sh ros2 topic list` |
 | the Motor-Pi's part of the car | `~/aav-jazzy/aav.sh car motor_pi` |
 | the Orin's part | `~/aav-jazzy/aav.sh car orin` |
-| the Orin's part, one switch changed | `~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python` (the `--` is needed) |
+| the Orin's part, one switch changed | `~/aav-jazzy/aav.sh car orin -- ego_impl:=python` (the `--` is needed) |
 | a rebuild after an edit | `~/aav-jazzy/aav.sh build` |
 
 `aav.sh` runs `pixi run --as-is` in `~/aav-jazzy/aav`, after clearing anything a Humble

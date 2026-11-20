@@ -48,7 +48,7 @@ Signals     --sim only: its own Ravensim's output_mux, SIGSTOP then SIGCONT (the
             step), found in its own launch's log and checked in its own process group:
             never anyone else's process
 Runs        python -m aav_actuator_tests.actuator_test per tool step; with --sim,
-            sim.launch.py (world:=road faults:=true nav:=false gui:=false rviz:=false),
+            sim.launch.py (world:=road faults:=true nav:=false rviz:=false),
             in its own process group, stopped by that group at the end
 
 The logic is in car_test.py (no ROS); this file only connects it to ROS.
@@ -90,7 +90,7 @@ SIM_UP = 600.0         # s for our Ravensim to come up (its cameras may build fi
 MEND_TIME = 30.0       # s for the watchdog to say OK again after a fault is mended
 # What the watchdog's inputs are called in the preflight's sensor counts (preflight.SENSORS).
 COUNTED = {'gps': 'gps', 'imu': 'imu_filtered', 'camera': 'camera', 'lidar': 'lidar'}
-SIM_ARGS = ('world:=road', 'gui:=false', 'rviz:=false', 'faults:=true', 'nav:=false')
+SIM_ARGS = ('world:=road', 'rviz:=false', 'faults:=true', 'nav:=false')
 
 
 class Tee:

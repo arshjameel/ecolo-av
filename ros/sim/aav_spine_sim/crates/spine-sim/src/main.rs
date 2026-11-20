@@ -69,8 +69,6 @@ impl CarKind {
         match name {
             "model" => Ok(CarKind::Model),
             "ravensim" => Ok(CarKind::Ravensim),
-            // car:=gazebo, the name before Gazebo was removed (16 Nov): for one release.
-            "gazebo" => Ok(CarKind::Ravensim),
             other => bail!("car:={other}: use model (the bench) or ravensim"),
         }
     }

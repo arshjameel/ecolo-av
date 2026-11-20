@@ -519,7 +519,7 @@ def sim_drive(args):
           flush=True)
     with open(sim_log, 'w') as log:
         sim = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
-                                'world:=test_lot', 'gui:=false', 'rviz:=false',
+                                'world:=test_lot', 'rviz:=false',
                                 'lidar:=true', 'reversing:=false', 'stack:=best'],
                                cwd=ROOT, env=dict(os.environ), stdout=log,
                                stderr=subprocess.STDOUT, start_new_session=True)

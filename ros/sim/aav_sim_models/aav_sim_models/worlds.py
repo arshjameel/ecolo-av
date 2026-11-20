@@ -60,10 +60,9 @@ CAMPUS_CUBE_FLOOR = 0.12
 # Who plays the world (simulator:=): Ravensim, our own simulator (aav_simulator, Rust), the
 # only one since Gazebo was removed (16 Nov). It casts the lidar's and radar's rays; its
 # cameras are their own program (aav_sim_cameras, Bevy), drawing the same world file.
-# simulator:=own, its name before 16 Nov, still works for one release, with a warning.
+# simulator:=own, its name before 16 Nov, went on 20 Nov (TODO 241).
 RAVENSIM = 'ravensim'
 SIMULATORS = (RAVENSIM,)
-OLD_NAMES = {'own': RAVENSIM}
 DEFAULT_SIMULATOR = RAVENSIM
 
 
@@ -143,20 +142,12 @@ def campus_start(place_text: str) -> Tuple[float, float, float]:
 
 
 def check_simulator(name: str) -> str:
-    """Return the simulator's name, checked: one of SIMULATORS (or an old name for one)."""
-    name = OLD_NAMES.get(name, name)
+    """Return the simulator's name, checked: one of SIMULATORS."""
     if name not in SIMULATORS:
-        gone = ' (Gazebo was removed on 16 Nov)' if name == 'gazebo' else ''
+        gone = {'gazebo': ' (Gazebo was removed on 16 Nov)',
+                'own': " (own is Ravensim's old name, gone on 20 Nov)"}.get(name, '')
         raise ValueError(f'simulator:={name}: pick one of {", ".join(SIMULATORS)}{gone}')
     return name
-
-
-def simulator_warning(name: str) -> str:
-    """Return what to say when simulator:= is an old name, or '' when it isn't."""
-    if name in OLD_NAMES:
-        return (f'simulator:={name} is now simulator:={OLD_NAMES[name]} (Ravensim): '
-                f'the old name goes in the next release')
-    return ''
 
 
 def has_cameras(path: str, simulator: str = RAVENSIM) -> bool:

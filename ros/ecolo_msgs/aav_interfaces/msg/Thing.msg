@@ -1,6 +1,6 @@
 # One thing near the car: a group of lidar cubes, followed over time.
 # Part of Things, on /world/things (docs/designs/2026-11-14_the-whole-car.md,
-# "Seeing: things, not just points"; aav_things).
+# "Seeing: things, not just points"; aav_things_rs).
 #
 #          ▲ vx, vy (m/s, odom)
 #      ┌───┼───┐

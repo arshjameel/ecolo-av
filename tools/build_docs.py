@@ -33,8 +33,8 @@ DOCS = ROOT / 'docs'
 OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
-READ_FIRST = 28    # PAGES[:28] are the reading list
-LEARN_END = 49    # PAGES[28:49] are the learn pages; the rest are reference
+READ_FIRST = 29    # PAGES[:29] are the reading list
+LEARN_END = 50    # PAGES[29:50] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
@@ -63,6 +63,8 @@ PAGES = [
     ('team.md', 'Starting points', 'One per team member: read, run, first tasks'),
     ('packages.md', 'Packages', 'What each package does, layer by layer'),
     ('modules.md', 'Every module', 'One card per package, crate and board'),
+    ('codemap.md', 'Code map',
+     'Where the code is: one line per package (made by tools/codemap.py)'),
     ('work.md', 'Work', "The plan, what's done, what needs doing"),
     ('plan.md', 'The plan', 'The proposal as a to-do list: the gates, every task'),
     ('features.md', 'Features', 'What the software does, why, and who built it'),

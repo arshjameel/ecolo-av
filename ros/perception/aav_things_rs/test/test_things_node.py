@@ -1,12 +1,13 @@
 """
-The Rust things node itself: cubes and TF in, the Python's things out.
+The Rust things node itself: cubes and TF in, one tracked thing out.
 
 It starts the built node on its own ROS domain (160-199), on this computer only, with
-aav_things' things.yaml, and plays a box walking 1 m/s across the car's path, 8 m ahead:
-its cubes (base_link) at 10 Hz, and odom <- base_link on /tf at each cloud's stamp. The
-same clouds through aav_things' Python modules (groups.py, tracker.py) give the list the
-node must publish: one thing, its id, place and speed; the markers' DELETEALL, box, arrow
-and words. Needs the workspace built and sourced: `colcon test` runs it.
+its things.yaml, and plays a box walking 1 m/s across the car's path, 8 m ahead: its
+cubes (base_link) at 10 Hz, and odom <- base_link on /tf at each cloud's stamp. The node
+must publish one thing, its id, place and speed; the markers' DELETEALL, box, arrow and
+words. (Until 20 Nov the Python modules gave the exact answer; they went, tag
+save/python-things: tests/vectors.rs holds their answers now.) Needs the workspace built
+and sourced: `colcon test` runs it.
 """
 
 import os
@@ -19,8 +20,6 @@ import pytest
 
 try:
     from aav_interfaces.msg import Things
-    from aav_things.groups import group, GroupShape, to_frame
-    from aav_things.tracker import Tracker
     from ament_index_python.packages import get_package_prefix, get_package_share_directory
     from geometry_msgs.msg import TransformStamped
     import rclpy
@@ -52,8 +51,8 @@ def environment():
     return env
 
 
-def test_a_walker_is_the_pythons_thing():
-    config = os.path.join(get_package_share_directory('aav_things'), 'config', 'things.yaml')
+def test_a_walker_is_one_thing():
+    config = os.path.join(get_package_share_directory('aav_things_rs'), 'config', 'things.yaml')
     binary = os.path.join(get_package_prefix('aav_things_rs'), 'lib', 'aav_things_rs',
                           'things')
     node = subprocess.Popen([binary, '--ros-args', '--params-file', config],
@@ -68,7 +67,6 @@ def test_a_walker_is_the_pythons_thing():
         newest = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE)
         cubes = me.create_publisher(PointCloud2, '/perception/voxels/cubes', newest)
         tf = me.create_publisher(TFMessage, '/tf', 100)
-        python = Tracker()
         start, k = time.time(), 0
         end = time.monotonic() + 60.0
         # Wait for the node to hear us, then play 3 s of the walker.
@@ -88,9 +86,6 @@ def test_a_walker_is_the_pythons_thing():
             tf.publish(TFMessage(transforms=[pose]))
             points = box(8.0, -1.5 + 0.1 * k)
             cubes.publish(point_cloud2.create_cloud_xyz32(header, points))
-            python.step(header.stamp.sec + header.stamp.nanosec * 1e-9,
-                        to_frame(group(points.astype(float), GroupShape()), 2.0, 0.0, 0.0),
-                        (2.0, 0.0))
             k += 1
             stop = time.monotonic() + 0.1
             while time.monotonic() < stop:
@@ -104,16 +99,15 @@ def test_a_walker_is_the_pythons_thing():
         last = listed[-1]
         assert last.header.frame_id == 'odom'
         (thing,) = last.things
-        t = last.header.stamp.sec + last.header.stamp.nanosec * 1e-9
-        (want,) = python.at(t)
-        assert thing.id == want.id == 1
+        assert thing.id == 1
         assert thing.kind == 'unknown' and not thing.radar
-        # The same filter, read at the same time: a hair apart (float32, the stamp).
-        assert thing.x == pytest.approx(want.x[0], abs=0.02)
-        assert thing.y == pytest.approx(want.x[1], abs=0.02)
-        assert thing.vy == pytest.approx(want.x[3], abs=0.02)
+        # 8 m ahead of a car 2 m along odom, walking from y -1.5 at 1 m/s: at the list's
+        # stamp (it coasts on after the last cloud) the box is at -1.5 + (stamp - start).
+        t = last.header.stamp.sec + last.header.stamp.nanosec * 1e-9
+        assert thing.x == pytest.approx(10.0, abs=0.1)
+        assert thing.y == pytest.approx(-1.5 + (t - start), abs=0.3)
         assert thing.vy == pytest.approx(1.0, abs=0.3)
-        assert thing.seen == want.seen
+        assert thing.seen >= 10
         array = marks[-1].markers
         assert array[0].action == Marker.DELETEALL
         assert [m.type for m in array[1:]] == [

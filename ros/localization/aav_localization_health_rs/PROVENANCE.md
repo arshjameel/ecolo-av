@@ -5,7 +5,9 @@ module (Betsi's, 1 Nov): `ros/localization/aav_localization_health`'s
 `localization_health.py` and `health.py` at commit `3cb75bbe`. No outside code: nothing
 new for `docs/acknowledgements.md` (CPython's `hypot` and `%g` are `ego-core`'s, its
 `sum()`, `max()` and `min()` are `watchdog-core`'s, all reused; tf2's `Time()` lookup is
-written out from what tf2 does, checked against tf2's own Buffer). The Python stays.
+written out from what tf2 does, checked against tf2's own Buffer). The Python stayed until 20 Nov, then went (tag
+`save/python-localization-health`); `config/localization_health.yaml` moved here, and
+`vectors.json` is now a golden fixture.
 
 | Part | From the Python |
 |---|---|

@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_watchdog_rs</name>
   <version>0.1.0</version>
-  <description>The sensor watchdog in Rust (rclrs): the default since 16 Nov (Ben), beside aav_safety's Python sensor_watchdog (watchdog.launch.py watchdog_impl:=rust). The same node name, topics, QoS, parameters and answers: each input's topic in; /safety/sensor_watchdog/lock, /safety/sensor_watchdog/state and /diagnostics out; the clear service. A safety lock; the Python is one switch away (watchdog_impl:=python). The logic is the watchdog-core crate, with no ROS, checked tick by tick against the Python node's answers.</description>
+  <description>The sensor watchdog in Rust (rclrs): the default since 16 Nov (Ben), in place of aav_safety's Python sensor_watchdog (removed 20 Nov). The same node name, topics, QoS, parameters and answers: each input's topic in; /safety/sensor_watchdog/lock, /safety/sensor_watchdog/state and /diagnostics out; the clear service. A safety lock; the Python is one switch away (watchdog_impl:=python). The logic is the watchdog-core crate, with no ROS, checked tick by tick against the Python node's answers.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

@@ -17,8 +17,7 @@ map -> odom, worked out on top of ekf_local's odom -> base_link.
       ──> ekf_global ──> /localization/odom/global, TF map -> odom
   /sensors/gps/fix, /localization/odom/global ──> navsat_transform
       ──> /localization/gps/odom, /localization/gps/fix
-  /sensors/gps/fix_velocity, /vehicle/odom ──> gps_heading (aav_gps_heading_rs;
-      gps_heading_impl:=python, aav_gps_heading)
+  /sensors/gps/fix_velocity, /vehicle/odom ──> gps_heading (aav_gps_heading_rs)
       ──> /localization/gps/heading: the heading from the receiver's velocity, while the
       car moves (TODO 13). gps_heading:=false leaves it out
 
@@ -69,13 +68,12 @@ Park on the marked start spot and these are its numbers.
 Without GPS (gps:=false: the bench, indoors, phase 0-1) only ekf_local runs and a
 static map -> odom identity stands in, so map-frame tools still work.
 
-  everything above, TF ──> localization_health (aav_localization_health)
+  everything above, TF ──> localization_health (aav_localization_health_rs)
       ──> /localization/health, /diagnostics: warn-only checks (gyro bias, IMU mounting,
       GPS quality, stamps, frames, TF, front wheels, runaway EKFs). Drives nothing and
       changes nothing above. health:=false leaves it out.
-      localization_health_impl: rust (aav_localization_health_rs), the default since
-      16 Nov (Ben); python runs aav_localization_health instead: the same node name,
-      topics and answers
+      localization_health_impl: rust (aav_localization_health_rs), the only one since
+      the Python went on 20 Nov
 """
 
 import os
@@ -93,7 +91,7 @@ POSE_SOURCES = ('gps', 'ndt')
 
 
 def health_node(context):
-    """Start localization_health in Python or Rust (localization_health_impl:=), or none."""
+    """Start localization_health (localization_health_impl:=), or none."""
     if LaunchConfiguration('health').perform(context).lower() != 'true':
         return []
     impl = vehicle.check_localization_health_impl(
@@ -102,8 +100,7 @@ def health_node(context):
         package=vehicle.LOCALIZATION_HEALTH_IMPLS[impl],
         executable='localization_health',
         name='localization_health', namespace='/',
-        # The Rust one reads the Python package's settings too: one file for both.
-        parameters=[os.path.join(FindPackageShare('aav_localization_health').perform(context),
+        parameters=[os.path.join(FindPackageShare('aav_localization_health_rs').perform(context),
                                  'config', 'localization_health.yaml'),
                     {'use_sim_time': LaunchConfiguration('use_sim_time')}])]
 
@@ -226,13 +223,13 @@ def generate_launch_description():
         DeclareLaunchArgument('gps', default_value='true'),
         DeclareLaunchArgument('gps_heading', default_value='true'),
         DeclareLaunchArgument('gps_heading_impl', default_value=vehicle.DEFAULT_GPS_HEADING_IMPL,
-                              description='rust (aav_gps_heading_rs, the default) or python '
-                                          '(aav_gps_heading): which gps_heading runs'),
+                              description='rust (aav_gps_heading_rs): which gps_heading runs '
+                                          '(the Python removed 20 Nov)'),
         DeclareLaunchArgument('health', default_value='true'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
-                              description='python or rust: which localization_health runs '
-                                          '(aav_localization_health, or its _rs port)'),
+                              description='rust (aav_localization_health_rs): which '
+                                          'localization_health runs (the Python removed 20 Nov)'),
         DeclareLaunchArgument('ndt_ekf', default_value='false',
                               description="ekf_global also takes NDT's pose (a trial)"),
         DeclareLaunchArgument('pose_source', default_value='gps',

@@ -62,8 +62,6 @@ def included(actions):
 
 @pytest.mark.parametrize('target, profile', [
     ('turtle', 'turtle.launch.py'), ('ravensim', 'sim.launch.py'),
-    # The old name, for one release.
-    ('gazebo', 'sim.launch.py'),
     ('bench', 'bench.launch.py'), ('car', 'car.launch.py'), ('carla', 'carla.launch.py')])
 def test_the_target_picks_the_profile(target, profile):
     assert list(included(started(STACK, target=target))) == [profile]

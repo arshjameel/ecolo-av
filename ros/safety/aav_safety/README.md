@@ -2,6 +2,13 @@
 
 ## Overview
 
+**Since 20 Nov this package holds the maths, the configs and the launch files; the nodes
+run in Rust** ([`aav_watchdog_rs`](../aav_watchdog_rs/README.md),
+[`aav_joy_alive_rs`](../aav_joy_alive_rs/README.md),
+[`aav_safety_rs`](../aav_safety_rs/README.md)). The Python nodes were removed (tag
+`save/python-safety-nodes`); the modules stay, as the vectors' source and for the tools
+that import them (`bench_check.py`, `aav_language`, `aav_drive_to_point`).
+
 The sensor watchdog. When a sensor navigation, the point driver or the AI slot needs dies, lies or freezes,
 it stops them, and says why loudly: in the log, on `/diagnostics` and on the HUD. People and
 test scripts can still drive.
@@ -88,10 +95,10 @@ In the namespace `/drivers/joy` (aav_teleop `teleop.launch.py`).
 Parameters: aav_teleop `config/joy_alive.yaml`: `enable_button` 0, `motion_axes` [1],
 `motion_threshold` 0.05, `silent_after` 0.5, `frozen_after` 2.0, `rate_hz` 10.
 
-Since 17 Nov the Rust twin, [`aav_joy_alive_rs`](../aav_joy_alive_rs/README.md), runs by
-default (`teleop.launch.py joy_alive_impl:=rust`); this one with `joy_alive_impl:=python`.
-`test_joy_alive_vectors.py` checks this module still gives the answers the Rust is checked
-against: after a change here, run `aav_joy_alive_rs/gen_vectors.py` (and port it).
+The node is [`aav_joy_alive_rs`](../aav_joy_alive_rs/README.md) (the Python one went on
+20 Nov). `test_joy_alive_vectors.py` checks `joy_alive.py` still gives the answers the
+Rust is checked against: after a change here, run `aav_joy_alive_rs/gen_vectors.py` (and
+port it).
 
 ### Node `goal_leash` (TODO 116)
 
@@ -192,11 +199,10 @@ for odom, `cross_check`, `cross_window` (s), `cross_speed_tolerance` (m/s),
 [watchdog_impl:=rust]`: each profile passes the inputs it has (sim, bench, car).
 `watchdog_impl:=rust`, the default since Ben, 16 Nov ("watchdog in rust sure"), runs
 [`aav_watchdog_rs`](../aav_watchdog_rs/README.md): the same node in Rust, with this one's
-answers tick by tick. `watchdog_impl:=python` runs this one.
+answers tick by tick; the only one since the Python node went (20 Nov).
 
 Since 19 Nov `geofence`, `stop_hold` and `goal_leash` run in Rust by default too:
-[`aav_safety_rs`](../aav_safety_rs/README.md) (`geofence_impl`, `stop_hold_impl`,
-`goal_leash_impl:=python` for these). `test_safety_rs_vectors.py` checks `geofence.py`,
+[`aav_safety_rs`](../aav_safety_rs/README.md); their Python nodes went on 20 Nov. `test_safety_rs_vectors.py` checks `geofence.py`,
 `hold.py` and `leash.py` still give the answers the Rust is checked against: after a change
 to one, run `aav_safety_rs/gen_vectors.py` (and port it).
 
@@ -204,15 +210,10 @@ to one, run `aav_safety_rs/gen_vectors.py` (and port it).
 |---|---|---|
 | `watchdog.py` | yes | `Rule`, `Watch`, `Watchdog`; the states above; `KINDS` |
 | `wheel_check.py` | yes | `CrossCheck` (settings), `WheelCheck`: wheels vs IMU vs GPS |
-| `sensor_watchdog.py` | no | the node |
 | `hold.py` | yes | `StopHold`: locked from a stop until `clear_time` s of no stop |
-| `stop_hold.py` | no | the node |
 | `geofence.py` | yes | `Circle`, `Polygon`, `site_fence`; `Motion`, `reaction_time`, `braking`, `backend_stale`, `measured_stop`, `coasts`, `motion_from`, `stopping_distance`, `along_arc`; `Settings`, `Pose`, `Geofence` (the states) |
-| `geofence_node.py` | no | the node `geofence` |
 | `joy_alive.py` | yes | `JoyAlive`: the joystick's `WAITING`, `SILENT`, `FROZEN` and their latch |
-| `joy_alive_node.py` | no | the node `joy_alive` |
 | `leash.py` | yes | `Leash`: armed by beats, trips once after `timeout` s quiet, disarmed by `GOODBYE` |
-| `goal_leash_node.py` | no | the node `goal_leash` |
 
 ## Invariants
 

@@ -125,7 +125,7 @@ bench's argument names:
                       docs/league-results-2026-11-16.md)
   behaviour:=false    no behaviour planner (on by default with stack:=ours). On:
                       the behaviour states and a speed cap on the follower from the stopping law
-                      (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
+                      (aav_behaviour_rs, a trial: docs/stopping.md); it also sends the road ahead
                       (/world/road_ahead), and ego holds navigation to it (ego road_ahead:=true)
   kerbs:=true         the kerbs (TODO 119), where the lidar runs: the Rust voxels node finds
                       steps in the ground (aav_voxels_rs steps:=true) and the local
@@ -171,7 +171,7 @@ bench's argument names:
                       clothoid, the curvature continuous (TODO 211, a challenger: a tie
                       on University Drive); arc (the default): circle arcs
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
-                      /world/things (aav_things; voxels runs for it): only with nav:=true
+                      /world/things (aav_things_rs; voxels runs for it): only with nav:=true
                       and the lidar. The behaviour planner waits for what moves (a hold
                       for anything moving near, 17 Nov). Empty: the stack's choice (on in
                       ours, where nav and the lidar run)
@@ -183,14 +183,12 @@ bench's argument names:
                       it drop
   amcl:=true          AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose;
-                      amcl_impl:=stock for Nav2's nav2_amcl in ours' place (aav_amcl_rs)
+                      (aav_amcl_rs; stock nav2_amcl removed 20 Nov)
   voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
   lidar_impl:=python  the Python lidar_scan (aav_lidar) in the Rust one's place (the
                       default since 17 Nov): the same scan
-  things_impl:=python the Python things node (aav_things) in the Rust one's place (the
-                      default since 17 Nov), with things: the same topics and things
   lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
                       one's place (the default since 18 Nov), with lane:=true or
                       lane_pose:=true: the same topics and lanes
@@ -202,12 +200,11 @@ bench's argument names:
   ego_impl:=rust      ego and look_ahead in Rust, one process (aav_ego_rs), in the Python
                       nodes' place: the same node names, topics and answers (TODO 185);
                       the default on the car and here since 16 Nov (python: aav_ego's two nodes)
-  behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), in the Python one's
-                      place, with behaviour on: the same topics and answers (TODO 185);
-                      the default on the car and here since 16 Nov (python: aav_behaviour)
+  behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), with behaviour on
+                      (TODO 185); the only one since the Python went on 20 Nov
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs): the same topics and
-                      answers as the Python's; the default on the car and here since
-                      16 Nov (Ben: "watchdog in rust sure"; python: aav_safety's)
+                      answers as the Python's had; the only one since 20 Nov (Ben, 16 Nov:
+                      "watchdog in rust sure")
   stop_sign_impl:=rust  with perception:=true, stop_sign_watcher in Rust (aav_stop_sign_rs):
                       the same node name, topics and answers; the default since 17 Nov
                       (python: aav_detector's)
@@ -215,9 +212,8 @@ bench's argument names:
                       node names, topics and answers; the default on the car and here
                       since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
   localization_health_impl:=rust  localization_health in Rust
-                      (aav_localization_health_rs), in the Python one's place: the same
-                      topics and answers; warn only (TODO 185); the default on the car
-                      and here since 16 Nov (python: aav_localization_health)
+                      (aav_localization_health_rs): warn only (TODO 185); the only one
+                      since the Python went on 20 Nov
   ndt:=true          NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
@@ -321,8 +317,7 @@ bench's argument names:
   simulator:=ravensim  Ravensim, our own simulator in Rust (aav_simulator,
                       docs/own-simulator.md), the only one since Gazebo was removed (16 Nov):
                       the worlds, the lidar and radar by ray casting, the cameras by Bevy
-                      (aav_sim_cameras), no window. simulator:=own, its old name, still works
-                      for one release, with a warning
+                      (aav_sim_cameras), no window.
   camera_lockstep:=auto  Ravensim's clock waits for each camera's picture: auto when
                       tools/software_gl.sh draws them (no GPU), true or false
   graphics:=auto      how much the cameras draw: pretty (grain, a sky, haze), simple (plain
@@ -526,8 +521,6 @@ def launch_setup(context):
     kiss_ekf = arg('kiss_ekf').lower() == 'true'
     kiss_icp = arg('kiss_icp').lower() == 'true' or kiss_ekf
     models_share = FindPackageShare('aav_sim_models').perform(context)
-    if worlds.simulator_warning(arg('simulator')):
-        print(f'[sim.launch.py] {worlds.simulator_warning(arg("simulator"))}', flush=True)
     simulator = worlds.check_simulator(arg('simulator'))
     world_path = worlds.world_file(models_share, world)
     lane_map = worlds.lane_map_file(models_share, world, arg('lane_map').strip())
@@ -926,10 +919,6 @@ def generate_launch_description():
         DeclareLaunchArgument('nav', default_value='true'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer'),
-        # Gazebo's window, gone with Gazebo (16 Nov): Ravensim has none. Still taken, and
-        # ignored, so the old commands (gui:=false) run for one release.
-        DeclareLaunchArgument('gui', default_value='false',
-                              description='ignored: Ravensim has no window'),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher (the ml '
@@ -1045,7 +1034,7 @@ def generate_launch_description():
                                           'the costmap stays on the flat scan'),
         DeclareLaunchArgument('things', default_value=stacks.CHOSEN,
                               description='true: the cubes as tracked things on /world/things '
-                                          '(aav_things; with nav and the lidar). Empty: the '
+                                          '(aav_things_rs; with nav and the lidar). Empty: the '
                                           "stack's choice (on in ours since 17 Nov, where the "
                                           'lidar and nav run)'),
         DeclareLaunchArgument('voxels', default_value='false',
@@ -1067,8 +1056,8 @@ def generate_launch_description():
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
-                              description='python or rust: which things node tracks the '
-                                          'cubes (aav_things, or aav_things_rs)'),
+                              description='rust (aav_things_rs): which things node tracks '
+                                          'the cubes (the Python removed 20 Nov)'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
@@ -1077,17 +1066,17 @@ def generate_launch_description():
                                           'with perception:=true (aav_detector, or '
                                           'aav_detector_rs: ONNX Runtime)'),
         DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the geofence'),
         DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'stop_hold, with navigation'),
         DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
-                              description='rust (aav_safety_rs) or python (aav_safety): '
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
                                           'the goal leash'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
-                              description='python or rust: which sensor watchdog runs '
-                                          '(aav_safety, or aav_watchdog_rs)'),
+                              description='rust (aav_watchdog_rs): which sensor watchdog '
+                                          'runs (the Python removed 20 Nov)'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
                               description='python or rust: which stop_sign_watcher runs, '
                                           'with perception:=true (aav_detector, or '
@@ -1097,12 +1086,12 @@ def generate_launch_description():
                                           'run (aav_io_mux, or aav_io_mux_rs)'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL,
-                              description='python or rust: which localization_health runs '
-                                          '(aav_localization_health, or its _rs port)'),
+                              description='rust (aav_localization_health_rs): which '
+                                          'localization_health runs'),
         DeclareLaunchArgument('behaviour_impl',
                               default_value=vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL,
-                              description='python or rust: which behaviour node runs, with '
-                                          'behaviour on (aav_behaviour, or aav_behaviour_rs)'),
+                              description='rust (aav_behaviour_rs): which behaviour node '
+                                          'runs, with behaviour on'),
         DeclareLaunchArgument('ego_impl', default_value=vehicle.SIM_DEFAULT_EGO_IMPL,
                               description='python or rust: which ego runs (aav_ego, or '
                                           'aav_ego_rs: ego and look_ahead in one process)'),
@@ -1198,7 +1187,7 @@ def generate_launch_description():
                                           "Empty: the stack's choice (the lattice)"),
         DeclareLaunchArgument('behaviour', default_value=stacks.CHOSEN,
                               description='true: the behaviour states, the road ahead and '
-                                          'a speed cap (aav_behaviour); false: none. '
+                                          'a speed cap (aav_behaviour_rs); false: none. '
                                           "Empty: the stack's choice (on in ours)"),
         DeclareLaunchArgument('lane_map', default_value='',
                               description="with behaviour:=true: world (the world's lane "
@@ -1278,8 +1267,8 @@ def generate_launch_description():
                               description='AMCL beside the EKF, scored only '
                                           '(world:=test_lot nav:=true lidar:=true)'),
         DeclareLaunchArgument('amcl_impl', default_value=vehicle.DEFAULT_AMCL_IMPL,
-                              description='rust or stock: which AMCL (aav_amcl_rs, or '
-                                          "Nav2's nav2_amcl)"),
+                              description='rust: which AMCL (aav_amcl_rs; stock nav2_amcl '
+                                          'removed 20 Nov)'),
         DeclareLaunchArgument('ndt', default_value='false',
                               description='NDT on the saved lidar map, scored only '
                                           '(world:=test_lot lidar:=true, ndt_map present)'),
