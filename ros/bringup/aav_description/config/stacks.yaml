@@ -93,6 +93,10 @@ levels:
       # under Nav2's on the lot and the campus (docs/mppi-lag.md, "The sway that was left").
       mppi_lag_calm: {controller: mppi, tracker: mppi_lag, map_correction: slow,
                       mppi_lag_steer_gamma: '0.05'}
+      # mppi_lag_calm with 1000 samples a tick, not 2000 (TODO 152): half the work a tick,
+      # for the Orin. A challenger; its score is stage 2's.
+      mppi_lag_1k: {controller: mppi, tracker: mppi_lag, map_correction: slow,
+                    mppi_lag_steer_gamma: '0.05', mppi_lag_batch: '1000'}
       mpc_lag: {controller: mppi, tracker: mpc_lag}
       # mpc_lag in Rust (aav_mpc_lag), beside the Python one: a challenger (TODO 132, 199).
       mpc_lag_rs: {controller: mppi, tracker: mpc_lag_rs}

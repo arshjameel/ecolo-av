@@ -311,6 +311,33 @@ lattice-planner --example campus` (the whole map, as the sim's), interleaved, be
 **Left:** where the whole map's extra time goes (a search step 0.95 µs there, 0.82 µs on
 the tour's corner of it).
 
+### Every core? Measured, and no (19 Nov, TODO 152)
+
+Where a plan's time goes (`sample` on the campus legs): the outline traces are only about
+a quarter. The rest is the search itself (the open list, the node table, the obstacle
+estimate), one step after another.
+
+| Tried | Along the road, forward (ms) | Kept? |
+|---|---|---|
+| before (one core) | 198 | |
+| each node's moves checked on every core (rayon) | 1356-4066 | **no**: a node has ~20 moves of ~0.1 µs; rayon's hand-off costs more |
+| the next 32-512 nodes' moves checked ahead on every core | 2008-3605 | **no**: the next node is almost always a new child, so the work ahead is wasted |
+| each node's own outline check kept (`Node::fit`), no list of moves made each step, the node table sized at start | **161** | **yes**: the same paths, the same iterations |
+
+`cargo run --release -p lattice-planner --example campus` (the tour's corner), best of 5,
+an M4 Max:
+
+| Leg | Before (ms) | After (ms) |
+|---|---|---|
+| out of the lot, forward | 121.5 | 102.5 |
+| along the road, forward | 197.7 | 161.0 |
+| round the bend, forward | 33.7 | 27.8 |
+| along the road, reversing | 140.1 | 111.1 |
+| round the bend, reversing | 43.9 | 36.0 |
+
+About 18-21 % faster. The outlines turned to each heading were already made once, at
+start-up (`Checker::new`). Not yet timed on the Orin.
+
 ## The lane-centre planner (`path:=lane`, 16 Nov)
 
 TODO 148 and 169; the Fable review's change 7 ("follow the lane's centre, shift only to

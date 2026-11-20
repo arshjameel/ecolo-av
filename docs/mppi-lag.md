@@ -166,6 +166,16 @@ tests 3.10-3.12 and 4.1-4.5.
 The tick is 50 ms. **Orin, estimated, not measured:** its A78AE cores are about 3 times
 slower than an M4's, so about 10 ms on 4 threads, 40 ms on one.
 
+**1000 samples, a challenger (19 Nov, TODO 152):** `steer:=mppi_lag_1k` (`mppi_lag_calm`
+with `mppi_lag_batch:=1000`). The default stays 2000. Re-timed on the M4 Max, no lane:
+
+| Threads | 2000 x 56 | 1000 x 56 |
+|---|---|---|
+| 16 | 1.56 ms | 0.86 ms |
+| 1 | 10.4 ms | 5.1 ms |
+
+Half the work a tick. Whether it steers as well is stage 2's score.
+
 ## In Gazebo
 
 Moved to [the mppi-lag log](history/mppi-lag-log.md#in-gazebo) on 18 Nov (a dated record).

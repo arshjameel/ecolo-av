@@ -954,6 +954,14 @@ def test_mppi_lag_steer_gamma_is_a_number_0_or_more():
             vehicle.check_steer_gamma(bad)
 
 
+def test_mppi_lag_batch_is_a_whole_number_1_or_more():
+    # TODO 152: steer:=mppi_lag_1k's 1000 samples a tick.
+    assert vehicle.check_mppi_batch('1000') == 1000
+    for bad in ('x', '0', '-5', '1.5'):
+        with pytest.raises(ValueError, match='mppi_lag_batch'):
+            vehicle.check_mppi_batch(bad)
+
+
 def test_the_stop_zone_reads_the_collision_monitor_block():
     """TODO 182: our stop zone's settings from the tuned nav2.yaml and the car."""
     share = Path(__file__).resolve().parents[3] / 'drivers' / 'aav_navigation' / 'config'

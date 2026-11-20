@@ -361,6 +361,15 @@ def test_the_steering_gamma_and_the_strong_smoother_reach_their_nodes():
         nav_nodes(planner='own', plan_smoothing='soft')
 
 
+def test_mppi_lag_batch_reaches_mppi_lag():
+    # TODO 152: mppi_lag_batch:=1000 gives mppi_lag its batch_size; none: nav2.yaml's.
+    assert given(nav_nodes(tracker='mppi_lag')['mppi_lag'])['batch_size'] == 2000
+    p = given(nav_nodes(tracker='mppi_lag', mppi_lag_batch='1000')['mppi_lag'])
+    assert p['batch_size'] == 1000
+    with pytest.raises(ValueError, match='mppi_lag_batch'):
+        nav_nodes(tracker='mppi_lag', mppi_lag_batch='0')
+
+
 def test_amcl_needs_the_lidar_and_never_publishes_map_to_odom():
     with pytest.raises(ValueError, match='lidar:=true'):
         nav_nodes(amcl='true')

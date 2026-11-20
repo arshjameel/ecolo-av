@@ -79,7 +79,7 @@ Fable's clean-up (one shape, "From 36 switches to 8"): pick a level's option by 
 |---|---|---|
 | `pose:=` | `ekf`, `ndt_ekf`, `kiss_ekf`, `ekf_lane` (ours since 17 Nov: the lane finder into the EKF) | `ndt_ekf`, `kiss_ekf`, `lane_pose` |
 | `path:=` | `lattice_rs`, `lattice_rs_smooth`, `hybrid_rs`, `lattice_rs_strong`, `lane`, `lane_lanelet2`, `diffusion` | `planner`, `planner_search`, `plan_smoothing`, `lattice_moves`, `lane_route`, `lane_graph` |
-| `steer:=` | `mppi_lag`, `mppi_lag_calm`, `mpc_lag`, `mpc_lag_rs` | `controller`, `tracker`, `map_correction`, `mppi_lag_steer_gamma` |
+| `steer:=` | `mppi_lag`, `mppi_lag_calm`, `mppi_lag_1k`, `mpc_lag`, `mpc_lag_rs` | `controller`, `tracker`, `map_correction`, `mppi_lag_steer_gamma`, `mppi_lag_batch` |
 | `lanes:=` | `off`, `ramp` | `lane_costs` |
 
 ```sh

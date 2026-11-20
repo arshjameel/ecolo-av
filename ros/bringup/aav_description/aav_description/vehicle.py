@@ -1531,6 +1531,21 @@ def check_steer_gamma(gamma):
     return value
 
 
+def check_mppi_batch(batch):
+    """Return mppi_lag_batch:= as a whole number (1 or more), or raise ValueError saying why.
+
+    mppi_lag's samples a tick (its `batch_size`; nav2.yaml's 2000 when not given): 1000,
+    a challenger (TODO 152), half the work a tick on the Orin.
+    """
+    try:
+        value = int(str(batch).strip())
+    except (TypeError, ValueError):
+        raise ValueError(f'mppi_lag_batch:={batch}: a whole number, such as 1000') from None
+    if value < 1:
+        raise ValueError(f'mppi_lag_batch:={batch}: 1 or more')
+    return value
+
+
 def check_plan_smoothing(smoothing):
     """Return plan_smoothing:= checked (empty: nav2), or raise ValueError saying what to pick."""
     name = str(smoothing).strip().lower() or 'nav2'

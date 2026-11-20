@@ -61,6 +61,8 @@ refuses `diffusion` without `diffusion_trial`). More: [Controllers, Planners](co
 
 `aav_track`'s trackers drive forward only: give them `reversing:=false` (the menu does).
 `mppi_lag` reverses (14 Nov).
+`steer:=mppi_lag_1k` (or `mppi_lag_batch:=1000`): `mppi_lag` with 1000 samples a tick, not
+2000: half the work, a challenger for the Orin (TODO 152).
 In `demo --debug`, keys 1-4 swap the tracker live. More: [Controllers](controllers.md),
 [Trials](trials.md).
 
