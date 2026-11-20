@@ -222,6 +222,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 
 [[package]]
+name = "cloud-view"
+version = "0.1.0"
+
+[[package]]
 name = "clusters-node"
 version = "0.1.0"
 dependencies = [
@@ -639,6 +643,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 [[package]]
 name = "radar-clustering"
 version = "0.1.0"
+dependencies = [
+ "cloud-view",
+]
 
 [[package]]
 name = "rclrs"

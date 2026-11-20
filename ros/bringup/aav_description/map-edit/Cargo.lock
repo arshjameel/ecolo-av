@@ -24,6 +24,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797"
 
 [[package]]
+name = "cloud-view"
+version = "0.1.0"
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -158,6 +162,7 @@ dependencies = [
 name = "ndt-core"
 version = "0.1.0"
 dependencies = [
+ "cloud-view",
  "map-chunks",
  "nalgebra",
 ]

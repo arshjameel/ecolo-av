@@ -41,3 +41,4 @@ node (tf2's `lookup_transform(..., Time())` stamp).
   cases; `things_impl:=` in `navigation.launch.py`, `sim.launch.py` and `car.launch.py`.
 
 **20 Nov:** the Python (`aav_things`) was removed (Ben, 16 Nov: "lets remove python were possible"; tag `save/python-things`). `gen_vectors.py` went with it; `vectors.json` is a golden fixture now.
+- 2026-11-20 (TODO 176): `cloud.rs` now re-exports the shared `cloud-view` crate's `CloudView` and `read_columns` (`ros/bringup/aav_description/cloud-view`); the same values, all vectors pass.

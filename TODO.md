@@ -32,7 +32,7 @@ the background; each merged with a real merge (Ben's history stays).
 | 6 | ✅ Driving (merged 19 Nov) | 174, 152, 219 |
 | 7 | ✅ The last Python nodes to Rust (merged 19 Nov) | Rust first |
 | 8 | ✅ The challengers built (merged 19 Nov) | 212, 214-217 |
-| 9 | 🧪 **Clean-up** (20 Nov, on a branch): the last of Nav2 (232), Ravensim's old names (241), the leftovers checked (242); the Python twins of gps_heading, localization_health, behaviour, things and aav_safety's five nodes removed (`save/python-*` tags); `docs/codemap.md`. Left: the Python ego, io_mux, lidar, camera_stream, rc, drive_to_point, stop_sign and lane_finder nodes (their launch files, configs or tests still lean on them), and 176 | 232, 241, 242, 176 |
+| 9 | 🧪 **Clean-up** (20 Nov): the last of Nav2 (232), Ravensim's old names (241), the leftovers checked (242); the Python twins of gps_heading, localization_health, behaviour, things and aav_safety's five nodes removed (`save/python-*` tags); `docs/codemap.md`. Left: the Python ego, io_mux, lidar, camera_stream, rc, drive_to_point, stop_sign and lane_finder nodes (their launch files, configs or tests still lean on them), and 176 | 232, 241, 242, 176 |
 | test | ✅ **One full `pixi run test`** on everything: 2,185 tests, 0 failures (20 Nov); `main` pushed | |
 
 ### Stage 2: score the algorithms together
@@ -132,7 +132,7 @@ stage 2 scores them in Ravensim.
 
 | # | Task | Status |
 |---|---|---|
-| 176 | **More Rust-like**: every crate against the Rust API Guidelines | 🔧 left: a few spine-core items (a reviewed safety change), one shared `CloudView` |
+| 176 | **More Rust-like**: every crate against the Rust API Guidelines | 🔧 left: a few spine-core items (a reviewed safety change). Done 20 Nov: **one shared `CloudView`**, the crate `aav_description/cloud-view`: `voxels` (and through it `lidar-scan`, `kinematic-icp`), `ndt-core`, `radar-clustering` (and `debug-core`, the dev window) and `things-core` read clouds through it, four copies now one, every vector the same. Not on it: three nodes that read x, y inline (`costmap-node`, `behaviour-node`, `stop-zone-node`: a safety lock, so a reviewed change) |
 | 195 | **rayon**: chunks and costmaps done; the planner measured, no gain (152, 19 Nov); left: the things | 🔧 |
 | 265 | **Batch 7: the last on-car Python nodes in Rust** (Ben, 16 Nov: "lets remove python were possible") | 🔧 done (19 Nov), the Rust the default, the Python's answers to the bit: `geofence`, `stop_hold`, `goal_leash` (`aav_safety_rs`), `gps_heading` (`aav_gps_heading_rs`). Left: `lane_pose` (a trial, off by default: needs a TF buffer at the picture's stamp and the lane map's `roads_at` in Rust; first move `aav_behaviour_rs`'s `lanes` and `tf` into a shared crate), `street_router` (on demand, not on the safety path: HTTP to Valhalla or OSRM, the campus graph from OSM XML, 1,100 lines; a poor fit for now), the battery and radar drivers |
 | 197 | **Rerun** for viewing a drive: `pixi run -e rerun view-bag` | 🔧 Ben looks, keep or drop |

@@ -185,6 +185,7 @@ and one link per sensor in `vehicle.yaml`. Gazebo's `aav.gazebo.xacro` and
 | [`map-chunks/`](./map-chunks/README.md) | the map in fixed 64 m chunks |
 | [`lanelet-map/`](./lanelet-map/README.md) | Lanelet2 maps in Rust |
 | [`map-edit/`](./map-edit/README.md) | the map editor's edits, saves and layers (TODO 251) |
+| [`cloud-view/`](./cloud-view/README.md) | a `PointCloud2`'s bytes read by field name: one reader for every Rust crate (TODO 176) |
 
 ## Invariants
 

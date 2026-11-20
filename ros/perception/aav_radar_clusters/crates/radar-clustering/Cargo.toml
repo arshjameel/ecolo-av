@@ -6,3 +6,5 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+# Ours: a PointCloud2's bytes, shared by every crate that reads a cloud (TODO 176).
+cloud-view = { path = "../../../../bringup/aav_description/cloud-view" }

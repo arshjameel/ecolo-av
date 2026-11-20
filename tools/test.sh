@@ -89,6 +89,8 @@ if command -v cargo >/dev/null; then
   (cd ros/drivers/aav_drive_to_point_rs && cargo test -q --locked -p point-core)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
+  echo "== ros/bringup/aav_description/cloud-view: a PointCloud2's bytes, shared (TODO 176)"
+  (cd ros/bringup/aav_description/cloud-view && cargo test -q --locked)
   echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
   (cd ros/bringup/aav_description/map-chunks && cargo test -q --locked)
   echo "== ros/bringup/aav_description/map-edit: the map editor's edits, saves and layers (TODO 251)"
@@ -167,6 +169,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/perception/aav_stop_sign_rs -p stop-sign-core
   rust_style ros/drivers/aav_drive_to_point_rs -p point-core
   rust_style ros/bringup/aav_description/car-model
+  rust_style ros/bringup/aav_description/cloud-view
   rust_style ros/bringup/aav_description/map-chunks
   rust_style ros/bringup/aav_description/map-edit
   rust_style ros/bringup/aav_description/lanelet-map

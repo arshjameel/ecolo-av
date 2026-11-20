@@ -34,3 +34,4 @@ add to `docs/acknowledgements.md`. The Python stays, as the default.
 - 2026-11-20 (TODO 189): ours: `kerbs_only` drops the steps at the foot and up the face
   of anything taller than a kerb before the memory keeps them (a walker's foot, under
   every beam, held the car for good in `sim-check --moving`). The cubes are unchanged.
+- 2026-11-20 (TODO 176): `cloud.rs` reads through the shared `cloud-view` crate (`ros/bringup/aav_description/cloud-view`), the four copies of `CloudView` now one; the same points, all vectors pass.

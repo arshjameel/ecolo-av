@@ -1,0 +1,13 @@
+[package]
+name = "cloud-view"
+description = "A sensor_msgs/PointCloud2's bytes read by field name: any number type, either endianness, organised or not. No ROS. Shared by every Rust crate that reads a cloud."
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false
+
+# Its own workspace: a std crate beside a ROS package, shared by the voxels, NDT, the
+# radar clusters and the things (TODO 176). No dependencies.
+[workspace]
+
+[dependencies]

@@ -1,8 +1,9 @@
 //! The lidar's points from a `sensor_msgs/PointCloud2`'s bytes.
 //!
 //! The reading itself is `aav_radar_clusters`' (`radar-clustering`'s `cloud`, a path
-//! dependency): x, y and z by name, float32, either endianness, `point_step` and
-//! `row_step`, organised (Gazebo's 1800 x 16) or not (the VLP-16's). Only the positions
+//! dependency, on the shared `cloud-view` crate): x, y and z by name, float32, either
+//! endianness, `point_step` and `row_step`, organised (Gazebo's 1800 x 16) or not (the
+//! VLP-16's). Only the positions
 //! are kept; rays that hit nothing (inf, NaN) are left for [`crate::cubes::build`] to
 //! skip and count.
 
@@ -110,6 +111,6 @@ mod tests {
             is_bigendian: false,
             data: &[],
         };
-        assert_eq!(positions(&cloud), Err(CloudError::MissingField("z")));
+        assert_eq!(positions(&cloud), Err(CloudError::MissingField("z".into())));
     }
 }

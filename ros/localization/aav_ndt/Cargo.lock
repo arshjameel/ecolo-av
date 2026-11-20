@@ -316,6 +316,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 
 [[package]]
+name = "cloud-view"
+version = "0.1.0"
+
+[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -767,6 +771,7 @@ dependencies = [
 name = "ndt-core"
 version = "0.1.0"
 dependencies = [
+ "cloud-view",
  "criterion",
  "map-chunks",
  "nalgebra",

@@ -5,7 +5,7 @@
 //! Why (the design): 70-80 % of the points are flat ground, which says nothing about x, y
 //! or yaw; ~13,000 points a turn is too many to match 10 times a second.
 
-use std::{collections::BTreeMap, error::Error, fmt};
+use std::collections::BTreeMap;
 
 use crate::Point;
 
@@ -135,138 +135,19 @@ pub fn thin(points: &[Point], size: f64) -> Vec<Point> {
         .collect()
 }
 
-/// A field of every point, as `sensor_msgs/PointField` describes it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Field<'a> {
-    /// `x`, `y`, `intensity`...
-    pub name: &'a str,
-    /// Where it starts in each point, in bytes.
-    pub offset: u32,
-    /// PointField's number for its type: 7 is float32, 8 float64.
-    pub datatype: u8,
-    /// How many of that type.
-    pub count: u32,
-}
+pub use cloud_view::{CloudError, CloudView, Field};
 
-/// The parts of a `sensor_msgs/PointCloud2` needed for its x, y and z.
-#[derive(Clone, Debug)]
-pub struct CloudView<'a> {
-    /// What each point holds.
-    pub fields: Vec<Field<'a>>,
-    /// Points in a row.
-    pub width: u32,
-    /// Rows.
-    pub height: u32,
-    /// Bytes a point.
-    pub point_step: u32,
-    /// Bytes a row.
-    pub row_step: u32,
-    /// The numbers are big-endian.
-    pub is_bigendian: bool,
-    /// The points' bytes.
-    pub data: &'a [u8],
-}
-
-/// Why a cloud's points couldn't be read.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CloudError {
-    /// No field of this name: x, y and z are needed.
-    MissingField(&'static str),
-    /// The field isn't one float32 or float64.
-    NotFloat(&'static str),
-    /// The field doesn't fit inside a point.
-    OutsidePoint(&'static str),
-    /// The cloud says it has more points than its bytes hold.
-    TooShort {
-        /// Points the cloud says it has.
-        points: usize,
-        /// Bytes it has.
-        bytes: usize,
-    },
-}
-
-impl fmt::Display for CloudError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MissingField(name) => write!(f, "the cloud has no {name} field"),
-            Self::NotFloat(name) => write!(f, "the cloud's {name} field isn't one float"),
-            Self::OutsidePoint(name) => write!(f, "the cloud's {name} field is outside a point"),
-            Self::TooShort { points, bytes } => {
-                write!(f, "the cloud says {points} points, in only {bytes} bytes")
-            }
-        }
-    }
-}
-
-impl Error for CloudError {}
-
-#[derive(Clone, Copy)]
-enum Float {
-    F32(usize),
-    F64(usize),
-}
-
-/// Every point's x, y and z, row by row, in the cloud's frame. Points that hit nothing
-/// (inf, NaN) are kept: [`ScanFilter::apply`] drops them.
+/// Every point's x, y and z, row by row, in the cloud's frame (the shared `cloud-view`
+/// crate's reading, TODO 176). Points that hit nothing (inf, NaN) are kept:
+/// [`ScanFilter::apply`] drops them.
 ///
 /// # Errors
 ///
 /// [`CloudError`] if x, y or z is missing or not a float, or the bytes are too few.
 pub fn read_xyz(cloud: &CloudView<'_>) -> Result<Vec<Point>, CloudError> {
-    let field = |name: &'static str| -> Result<Float, CloudError> {
-        let f = cloud
-            .fields
-            .iter()
-            .find(|f| f.name == name)
-            .ok_or(CloudError::MissingField(name))?;
-        let offset = f.offset as usize;
-        let (float, size) = match (f.datatype, f.count) {
-            (7, 1) => (Float::F32(offset), 4),
-            (8, 1) => (Float::F64(offset), 8),
-            _ => return Err(CloudError::NotFloat(name)),
-        };
-        if offset + size > cloud.point_step as usize {
-            return Err(CloudError::OutsidePoint(name));
-        }
-        Ok(float)
-    };
-    let xyz = [field("x")?, field("y")?, field("z")?];
-    let (width, height) = (cloud.width as usize, cloud.height as usize);
-    let (step, row_step) = (cloud.point_step as usize, cloud.row_step as usize);
-    let too_short = || CloudError::TooShort {
-        points: width.saturating_mul(height),
-        bytes: cloud.data.len(),
-    };
-    let big = cloud.is_bigendian;
-    let value = |bytes: &[u8], float: Float| -> f64 {
-        // In range: field() checked that the value fits in point_step = bytes.len().
-        match float {
-            Float::F32(o) => {
-                let raw = [0, 1, 2, 3].map(|i| bytes[o + i]);
-                f64::from(if big {
-                    f32::from_be_bytes(raw)
-                } else {
-                    f32::from_le_bytes(raw)
-                })
-            }
-            Float::F64(o) => {
-                let raw = [0, 1, 2, 3, 4, 5, 6, 7].map(|i| bytes[o + i]);
-                if big {
-                    f64::from_be_bytes(raw)
-                } else {
-                    f64::from_le_bytes(raw)
-                }
-            }
-        }
-    };
-    (0..height)
-        .flat_map(|row| (0..width).map(move |column| row * row_step + column * step))
-        .map(|start| {
-            let bytes = cloud.data.get(start..start + step).ok_or_else(too_short)?;
-            let [x, y, z] = xyz.map(|f| value(bytes, f));
-            Ok(Point::new(x, y, z))
-        })
-        .collect()
+    Ok(cloud_view::xyz(cloud)?
+        .map(|[x, y, z]| Point::new(x, y, z))
+        .collect())
 }
 
 #[cfg(test)]
@@ -361,6 +242,6 @@ mod tests {
             fields: cloud.fields[..2].to_vec(),
             ..cloud
         };
-        assert_eq!(read_xyz(&no_z), Err(CloudError::MissingField("z")));
+        assert_eq!(read_xyz(&no_z), Err(CloudError::MissingField("z".into())));
     }
 }
