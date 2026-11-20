@@ -68,9 +68,8 @@ Switches:
                           each the only option since Nav2 went; kept for a challenger
   amcl:=true              AMCL, scored only: on the map and /sensors/lidar/scan
                           (lidar:=true); amcl_map:= gives it its own map (amcl_map_server).
-                          amcl_impl:=rust (the default, aav_amcl_rs: a plain node) or stock
-                          (nav2_amcl, the one Nav2 package kept, with its own lifecycle
-                          manager); the same config/amcl.yaml, topics and frames
+                          amcl_impl:=rust (aav_amcl_rs: a plain node; stock nav2_amcl went
+                          on 20 Nov, TODO 232); config/amcl.yaml
   voxels:=true            (with lidar:=true) aav_voxels' 0.25 m cubes instead of the scan,
                           for the costmap and the stop zone; voxels_impl:=rust for the
                           Rust node. screen_cubes:=true: the cubes for the screens only
@@ -608,10 +607,9 @@ def nodes(context):
             # It reads our global costmap's grid (/drivers/nav/costmap/global) itself.
             remappings=[('compute_path_to_pose_lattice', vehicle.OWN_PLANNER_ACTION)]))
     if amcl:
-        # AMCL, scored only (a pose trial; tf_broadcast false). Ours (aav_amcl_rs) by
-        # default: stock's parameters, topics and frames, a plain node. amcl_impl:=stock:
-        # Nav2's nav2_amcl, a lifecycle node with its own manager, the one part of Nav2
-        # kept (TODO 184, 231) as the fall-back.
+        # AMCL, scored only (a pose trial; tf_broadcast false). Ours (aav_amcl_rs):
+        # stock's parameters, topics and frames, a plain node. Stock nav2_amcl, the last of
+        # Nav2, went on 20 Nov (TODO 232, tag save/nav2-amcl).
         config = f'{share}/config/amcl.yaml'
         start = {'set_initial_pose': True, 'use_sim_time': use_sim_time}
         for axis in ('x', 'y', 'yaw'):
@@ -630,23 +628,12 @@ def nodes(context):
         remaps = [('amcl_pose', '/localization/amcl/pose'),
                   ('particle_cloud', '/localization/amcl/particles'),
                   ('initialpose', '/localization/amcl/initial_pose')]
-        if amcl_impl == 'rust':
-            # Not a lifecycle node: it respawns like our others. namespace='/': so the
-            # start (a launch dict) beats amcl.yaml in rclrs too (docs/languages.md).
-            actions.append(Node(
-                package=vehicle.AMCL_IMPLS['rust'], executable='amcl', name='amcl',
-                namespace='/', output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
-                parameters=[config, start], remappings=remaps))
-        else:
-            actions += [
-                Node(package='nav2_amcl', executable='amcl', name='amcl', output='screen',
-                     parameters=[config, start], remappings=remaps),
-                Node(package='nav2_lifecycle_manager', executable='lifecycle_manager',
-                     name='lifecycle_manager_localization', output='screen',
-                     parameters=[{'use_sim_time': use_sim_time,
-                                  'autostart': flag(context, 'autostart'),
-                                  'node_names': ['amcl']}]),
-            ]
+        # Not a lifecycle node: it respawns like our others. namespace='/': so the
+        # start (a launch dict) beats amcl.yaml in rclrs too (docs/languages.md).
+        actions.append(Node(
+            package=vehicle.AMCL_IMPLS[amcl_impl], executable='amcl', name='amcl',
+            namespace='/', output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
+            parameters=[config, start], remappings=remaps))
     return actions
 
 
@@ -904,8 +891,8 @@ def generate_launch_description():
                               description='true (with lidar:=true): AMCL as a trial, '
                                           'scored only: /localization/amcl/pose'),
         DeclareLaunchArgument('amcl_impl', default_value=vehicle.DEFAULT_AMCL_IMPL,
-                              description='rust or stock: which AMCL (aav_amcl_rs, or '
-                                          "Nav2's nav2_amcl with its lifecycle manager)"),
+                              description='rust: which AMCL (aav_amcl_rs; stock nav2_amcl '
+                                          'removed 20 Nov)'),
         DeclareLaunchArgument('amcl_x', default_value='0.0',
                               description="m, map frame: AMCL's start"),
         DeclareLaunchArgument('amcl_y', default_value='0.0',

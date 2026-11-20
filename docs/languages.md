@@ -29,7 +29,7 @@ programs only meet through messages.
 | The GPS heading, `aav_gps_heading_rs` | Rust (`rclrs`) | A port of `aav_gps_heading` (batch 7, 19 Nov): `course.py`'s answers to the bit on 4,000 cases. The default; the Python removed 20 Nov |
 | The lane finder, `aav_lane_finder_rs` | Rust (`rclrs`), no OpenCV | A port of `aav_lane_finder` (18 Nov): the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 %. The default; `lane_finder_impl:=python` falls back |
 | The camera stream, `aav_camera_stream_rs` | Rust (`rclrs`) | A port of `aav_camera_stream` (18 Nov), the default with no detector; with RF-DETR or YOLO the Python runs (the models stay Python). `camera_stream_impl:=python` falls back |
-| AMCL, `aav_amcl_rs` | Rust (`rclrs`) | A port of Nav2's `nav2_amcl`, its last node (18 Nov, TODO 231): a tie with stock on the lot. The default; `amcl_impl:=stock` runs `nav2_amcl` |
+| AMCL, `aav_amcl_rs` | Rust (`rclrs`) | A port of Nav2's `nav2_amcl`, its last node (18 Nov, TODO 231): a tie with stock on the lot. The only one; stock `nav2_amcl` removed 20 Nov (TODO 232) |
 | Our older ROS nodes: drivers, bridges, adapters | Python | Glue that runs 50 times a second or less. Ported to Rust where possible (Ben, 16 Nov) |
 | Launch files | Python | That's how ROS 2 launch works |
 | Stock packages: the EKFs, twist_mux (Nav2 until 17 Nov) | C++ | Not ours: we only configure them |

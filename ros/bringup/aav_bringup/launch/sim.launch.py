@@ -183,7 +183,7 @@ bench's argument names:
                       it drop
   amcl:=true          AMCL beside the global EKF, scored only (docs/trials.md): only
                       in world:=test_lot with nav:=true and the lidar, from the start pose;
-                      amcl_impl:=stock for Nav2's nav2_amcl in ours' place (aav_amcl_rs)
+                      (aav_amcl_rs; stock nav2_amcl removed 20 Nov)
   voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
@@ -1274,8 +1274,8 @@ def generate_launch_description():
                               description='AMCL beside the EKF, scored only '
                                           '(world:=test_lot nav:=true lidar:=true)'),
         DeclareLaunchArgument('amcl_impl', default_value=vehicle.DEFAULT_AMCL_IMPL,
-                              description='rust or stock: which AMCL (aav_amcl_rs, or '
-                                          "Nav2's nav2_amcl)"),
+                              description='rust: which AMCL (aav_amcl_rs; stock nav2_amcl '
+                                          'removed 20 Nov)'),
         DeclareLaunchArgument('ndt', default_value='false',
                               description='NDT on the saved lidar map, scored only '
                                           '(world:=test_lot lidar:=true, ndt_map present)'),

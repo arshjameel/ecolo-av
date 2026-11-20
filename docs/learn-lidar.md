@@ -298,7 +298,7 @@ the lidar's 2D scan.
 |---|---|---|
 | Map | 3D points | 2D grid, seen from above |
 | Reads | the full cloud | `/sensors/lidar/scan` |
-| Software | ours, in Rust (`aav_ndt`) | ours, in Rust (`aav_amcl_rs`, 18 Nov); stock `nav2_amcl` with `amcl_impl:=stock` |
+| Software | ours, in Rust (`aav_ndt`) | ours, in Rust (`aav_amcl_rs`, 18 Nov); stock `nav2_amcl` removed 20 Nov, TODO 232 |
 | Tested | Ravensim's lot and campus | Ravensim's lot: ours ties with stock |
 
 Both run **beside** `ekf_global` (`ndt:=true`, `amcl:=true`): AMCL's pose goes out on

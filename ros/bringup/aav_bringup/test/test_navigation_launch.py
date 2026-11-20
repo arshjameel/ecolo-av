@@ -447,17 +447,11 @@ def test_amcl_may_have_a_map_of_its_own():
     assert nodes['amcl_map_server']._Node__package == 'aav_costmap'
 
 
-def test_amcl_impl_stock_is_nav2s_with_its_manager_on_the_same_topics_and_config():
-    ours = nav_nodes(lidar='true', amcl='true', amcl_y='2.5')
-    stock = nav_nodes(lidar='true', amcl='true', amcl_y='2.5', amcl_impl='stock')
-    assert stock['amcl']._Node__package == 'nav2_amcl'
-    # Its own manager, the only lifecycle manager left (nav2_amcl is a lifecycle node).
-    assert list(given(stock['lifecycle_manager_localization'])['node_names']) == ['amcl']
-    # Nothing downstream can tell: the same remappings, start and parameter file.
-    assert remaps(ours['amcl']) == remaps(stock['amcl'])
-    assert given(ours['amcl']) == given(stock['amcl'])
-    with pytest.raises(ValueError, match='amcl_impl'):
-        nav_nodes(lidar='true', amcl='true', amcl_impl='python')
+def test_amcl_impl_is_ours_only():
+    # Stock nav2_amcl, the last of Nav2, went on 20 Nov (TODO 232, tag save/nav2-amcl).
+    for impl in ('stock', 'python'):
+        with pytest.raises(ValueError, match='amcl_impl'):
+            nav_nodes(lidar='true', amcl='true', amcl_impl=impl)
 
 
 def test_the_sim_passes_the_trials_on_and_checks_them():

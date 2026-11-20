@@ -98,7 +98,7 @@ page. All of these are trials or sim-only unless the row says "default".
 |---|---|---|
 | **Localization** | | |
 | NDT on a saved lidar map (29 Oct) | `aav_ndt` (Rust), `ndt:=true`; into the global EKF with `ndt_ekf:=true` | [[works]] in Gazebo: 1-3 cm off on the lot tour (29 Oct); the EKF 17 → 1.6 cm with it (30 Oct). Off: it needs the lot's map (`pixi run ndt-map drive`, not in git). [[untested]] on a real lot ([Trials](trials.md)) |
-| AMCL (29 Oct; in Rust 18 Nov) | ours, `aav_amcl_rs` (stock `nav2_amcl` with `amcl_impl:=stock`), `amcl:=true` | [[works]] in Gazebo, 29 Oct: 6-11 cm off once tuned; ours in Ravensim, 18 Nov: a tie with stock, 3 runs each. Scored only, never steers |
+| AMCL (29 Oct; in Rust 18 Nov) | ours, `aav_amcl_rs` (stock `nav2_amcl` removed 20 Nov, TODO 232), `amcl:=true` | [[works]] in Gazebo, 29 Oct: 6-11 cm off once tuned; ours in Ravensim, 18 Nov: a tie with stock, 3 runs each. Scored only, never steers |
 | KISS-ICP lidar odometry (30 Oct) | `aav_kiss_icp` (stock, MIT), `kiss_icp:=true`, `kiss_ekf:=true` | [[works]] in Gazebo, 30 Oct, one run: 0.04 m drift per 100 m. Into `ekf_local` (1 Nov): no clear win yet. Off |
 | Localization health checks (1 Nov, Betsi) | `aav_localization_health_rs` | [[works]] in its tests; `pixi run check` prints its line. It only warns. Thresholds tuned in Gazebo only |
 | **Perception** | | |
@@ -148,7 +148,7 @@ Ravensim on a Mac unless the row says so; none of it on the car yet.
 |---|---|---|
 | **Our own stack, the only one** (Nav2 deleted 17 Nov, Gazebo 16 Nov) | `stack:=ours`: our costmap, planner, navigator, `mppi_lag`, smoother, stop zone, map server | [[works]] in Ravensim: the league's final, 16 Nov, 30 of 30 legs on three tours ([League scores](league-results-2026-11-16.md)) |
 | Rust by default (16-18 Nov) | ego, behaviour, the watchdog, localization_health, the muxes, the Motor Pi's bridge and RC, `lidar_scan`, things, `joy_alive`, the stop-sign watcher, the lane finder, the point driver, `arm_when_open`, `camera_stream`, AMCL; `*_impl:=python` falls back | [[works]] against the Python's answers (shared vectors) and in Ravensim; [[untested]] on the car ([Languages](languages.md)) |
-| AMCL in Rust (18 Nov) | `aav_amcl_rs`, `amcl_impl:=rust` (stock: `amcl_impl:=stock`) | [[works]] the lot, 3 runs each: a tie with stock (5-9 cm a leg). `nav2_amcl` still in `pixi.toml` (TODO 232) |
+| AMCL in Rust (18 Nov) | `aav_amcl_rs`, `amcl_impl:=rust` (stock removed 20 Nov) | [[works]] the lot, 3 runs each: a tie with stock (5-9 cm a leg). `nav2_amcl` still in `pixi.toml` (TODO 232) |
 | The lane's centre as the path (16 Nov) | `path:=lane`, ours' default | [[works]] University Drive, 3 runs: 0 % over the centre line ([Our planner](own-planner.md)) |
 | Stop for anything moving (17 Nov) | the behaviour planner, `moving_*` parameters | [[works]] `sim-check --movers --moving`: every mover held the car, the parked box never ([Stopping](stopping.md)) |
 | Kerbs (16 Nov) | `kerbs:=true`: the Rust voxels' step finder, the costmap's `kerb_layer` | [[works]] a 0.15 m kerb, at 1 m/s; a 0.10 m one never seen ([Kerbs](kerbs.md)). [[untested]] on a real kerb |
@@ -189,7 +189,7 @@ From the top of `TODO.md` (18 Nov) and [the testing plan](testing-plan.md).
 
 | # | Next | TODO |
 |---|---|---|
-| 1 | `nav2_amcl` out of `pixi.toml` once ours has more runs and the campus; the one-option switches | 231, 232 |
+| 1 | ~~`nav2_amcl` out of `pixi.toml`~~ done 20 Nov (TODO 232); the one-option switches kept as hooks | 231, 232 |
 | 2 | The sim car's 14 % overshoot: which speed loop is the default | 163 |
 | 3 | Count CI's nightly `sim` job after the navigator's fix; then drop `continue-on-error` | 240, 23 |
 | 4 | Ours against stock, 3 runs each, the lot and the campus | 167 |

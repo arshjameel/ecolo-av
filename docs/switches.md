@@ -87,7 +87,7 @@ others offer the EKFs only first.
 |---|---|---|
 | (nothing) | the EKFs: wheels, IMU and GPS | ~17 cm |
 | `ndt:=true ndt_map:=maps/ndt/test_lot.pcd` | the lidar slid onto a saved map | **1-3 cm** |
-| `amcl:=true` | many guesses; keep the ones that match the walls (ours in Rust; `amcl_impl:=stock` for Nav2's) | 6-11 cm (5-9 cm, 18 Nov) |
+| `amcl:=true` | many guesses; keep the ones that match the walls (ours in Rust; stock removed 20 Nov) | 6-11 cm (5-9 cm, 18 Nov) |
 | `ndt_ekf:=true ndt_map:=maps/ndt/test_lot.pcd` | NDT, and the global EKF **uses** it beside the GPS (a trial) | the EKF **1.6 cm** ([trials](history/trials-log.md#ndt-into-the-global-ekf-30-oct)) |
 | `pose_source:=ndt` | NDT **leads** the global EKF; the GPS only checks it, and stands in when NDT is lost (a challenger, TODO 210; `aav_pose_check`) | the EKF **1 cm**, and the same with the GPS stopped, jumping or drifting 5 m ([Maps and position](maps-and-position.md#8-ndt-leads-the-gps-checks)) |
 | `kiss_icp:=true` | how far the car moved, from the lidar alone (no map) | 0.02-0.04 m per 100 m driven |

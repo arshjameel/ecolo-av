@@ -101,8 +101,6 @@ ros-jazzy-robot-localization = ">=3.8.3,<4"
 # Nav2 went on 17 Nov (TODO 184): only its message types, and AMCL (a trial) with its
 # lifecycle manager. Its source stays in vendor/ (pixi run get vendor) to read.
 ros-jazzy-nav2-msgs = ">=1.3.13,<2"
-ros-jazzy-nav2-amcl = ">=1.3.13,<2"
-ros-jazzy-nav2-lifecycle-manager = ">=1.3.13,<2"
 ros-jazzy-imu-filter-madgwick = ">=2.1.6,<3"
 ros-jazzy-ackermann-msgs = ">=2.0.2,<3"
 ros-jazzy-xacro = ">=2.1.1,<3"

@@ -26,8 +26,7 @@ The trials (docs/trials.md):
                     the car's lags twice what vehicle.yaml says (sim's lag_scale:=2), the
                     followers none the wiser: how each copes with a slower car
     pixi run measure controllers --amcl             (AMCL beside the EKF, amcl:=true: scored
-                    against the truth, as the EKF is; ours, aav_amcl_rs. Add
-                    --launch amcl_impl:=stock for Nav2's nav2_amcl, the fall-back)
+                    against the truth, as the EKF is; ours, aav_amcl_rs)
     pixi run measure controllers --ndt              (NDT beside the EKF, ndt:=true, on the map
                     pixi run ndt-map drive made: its errors, the share of clouds that gave
                     a pose, time over 1 m off, each match's wall-clock time; and its

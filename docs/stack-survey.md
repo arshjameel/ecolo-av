@@ -224,7 +224,7 @@ The full story: [Maps and position](maps-and-position.md), [Learn: localization]
 | **What we found** | 29 Oct, default settings: lost the car (21 m worst). Tuned, with its own 0.05 m map: 0.06-0.11 m. 18 Nov, Ravensim, 3 runs: ours 0.05-0.09 m a leg, stock 0.05-0.10 m: **a tie**. One earlier run of ours started badly (0.94 m worst) |
 | **Strengths** | needs only a 2D map; can find the car from far off |
 | **Weaknesses** | lost to NDT on 29 Oct; a wall-less open lot gives it little to match; tuning matters a lot |
-| **Status** | **Challenger** (`amcl:=true`, off by default). Ours is its default; stock stays as `amcl_impl:=stock` until `nav2_amcl` leaves (TODO 232) |
+| **Status** | **Challenger** (`amcl:=true`, off by default). Ours only: stock `nav2_amcl` left on 20 Nov (TODO 232, tag `save/nav2-amcl`) |
 
 ### KISS-ICP (lidar odometry)
 

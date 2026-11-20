@@ -14,7 +14,7 @@ goal (RViz, HUD, street_router, language_drive) -> navigator -> planner + mppi_l
 
 It starts our nodes: the map server, the costmaps, the planner, the navigator, a path
 follower, the smoother, and the stop zone where a sensor feeds it. AMCL (ours,
-`aav_amcl_rs`; stock `nav2_amcl` with `amcl_impl:=stock`) only as a trial, `amcl:=true`:
+`aav_amcl_rs`; stock `nav2_amcl` removed 20 Nov, TODO 232) only as a trial, `amcl:=true`:
 robot_localization does localization. The car's footprint, turning radius and reverse
 speed come from
 `ros/bringup/aav_description/config/vehicle.yaml`; `aav_description`'s
@@ -39,7 +39,7 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `voxels` | false | with `lidar`: a trial, `aav_voxels`' `voxels` cuts the cloud into 0.25 m cubes; the costmap's lidar_layer and the stop zone read those instead of the scan, and `lidar_scan` runs only for `amcl` ([design](../../../docs/designs/2026-10-30_voxels.md)) |
 | `voxels_impl` | `python` | with `voxels` or `screen_cubes`: `python` (`aav_voxels`) or `rust` (`aav_voxels_rs`: the same node, topics and cubes; the launch file passes it `vehicle.yaml`'s lidar mount and the car's outline) |
 | `lidar_impl` | `rust` | with `lidar`: `rust` (`aav_lidar_rs`, the default since 17 Nov: the same scan; the launch file passes it `vehicle.yaml`'s lidar mount and the car's outline) or `python` (`aav_lidar`) |
-| `things_impl` | `rust` | with `things`: `rust` (`aav_things_rs`, the default since 17 Nov: the same things) or `python` (`aav_things`) |
+| `things_impl` | `rust` | with `things`: `rust` (`aav_things_rs`; the Python removed 20 Nov) |
 | `kerbs` | false | with `lidar` (ignored without): the kerbs (TODO 119, [kerbs](../../../docs/kerbs.md)). The Rust `voxels` node (`aav_voxels_rs`, whatever `voxels_impl` says) runs with `steps:=true`, and the local costmap's `kerb_layer` marks `/perception/voxels/steps`: marks only, kept until the window rolls past; the stop zone's `steps` source stops for them |
 | `stop_zone` | empty | the stop zone (`aav_stop_zone`); empty: on wherever radar, lidar, ghost or camera guard runs |
 | `camera_obstacles` | false | the costmap's camera layer reads `/perception/camera_obstacles` (off until Q22) |
@@ -70,12 +70,12 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 | `lane_graph` | `lanes_yaml` | with `lane_route`: `lanelet2` routes on the Lanelet2 map beside the `lanes.yaml` (`maps/campus/campus.osm`, `lane_map.planner_block`): its lanes, neighbours and stop lines (`/drivers/nav/planner/route_stops`). A challenger (TODO 175, step 6) |
 | `local_chunks` | false | with `costmap_chunks`: true, the local costmap's static layer from the 3 x 3 chunks round the car too, so no costmap of ours reads `/map` (TODO 175) |
 | `amcl` | false | true (needs `lidar:=true`): AMCL, scored only, on `/localization/amcl/pose` (`config/amcl.yaml`: `tf_broadcast: false`) |
-| `amcl_impl` | `rust` | with `amcl`: `rust` (`aav_amcl_rs`, the default since 18 Nov, TODO 231: a plain node) or `stock` (`nav2_amcl` and its lifecycle manager, the fall-back). The same `config/amcl.yaml`, topics and frames |
+| `amcl_impl` | `rust` | with `amcl`: `rust` (`aav_amcl_rs`, the default since 18 Nov, TODO 231: a plain node); stock `nav2_amcl` removed 20 Nov (TODO 232). The same `config/amcl.yaml`, topics and frames |
 | `amcl_x`, `amcl_y`, `amcl_yaw` | 0 | AMCL's start pose, map frame (`sim.launch.py` gives the sim's start) |
 | `amcl_map` | empty | empty: AMCL reads `/map`; else its own map YAML, on `/localization/amcl/map` (`sim.launch.py`: `maps/example_lot_amcl.yaml`, [why](./maps/README.md#why-amcl-has-a-map-of-its-own)) |
 | `use_sim_time`, `autostart` | false, true | |
 
-Nodes started (all ours; stock AMCL only with `amcl_impl:=stock`):
+Nodes started (all ours):
 
 | Node | Does |
 |---|---|
@@ -86,13 +86,13 @@ Nodes started (all ours; stock AMCL only with `amcl_impl:=stock`):
 | `mppi_lag` (`aav_mppi_lag`), or `track` (`aav_track`), or `mpc_lag_rs` (`aav_mpc_lag`) | `follow_path` -> `cmd_vel_nav` |
 | `velocity_smoother` (`aav_smoother`'s `car_smoother`) | `cmd_vel_nav` -> `/drivers/nav/cmd_vel`, or -> `/control/cmd_vel_smoothed` |
 | `stop_zone` (`aav_stop_zone`) | `/control/cmd_vel_smoothed` -> `/drivers/nav/cmd_vel`; `/safety/stop_zone/state`, `status`, `box` |
-| `stop_hold` (`aav_safety`) | with the stop zone: holds its stops 1 s (`/safety/stop_hold/lock`) |
+| `stop_hold` (`aav_safety_rs`) | with the stop zone: holds its stops 1 s (`/safety/stop_hold/lock`) |
 | `behaviour` (`aav_behaviour_rs`) | with `behaviour:=true`: the road ahead, the speed cap |
 | `diffusion_planner` | with `planner:=diffusion` |
 | `lidar_scan` (`aav_lidar_rs`, or `aav_lidar` with `lidar_impl:=python`), `ghost_obstacle` | with `lidar:=true`, `ghost:=true` |
-| `things` (`aav_things_rs`, or `aav_things` with `things_impl:=python`) | with `lidar:=true things:=true` |
+| `things` (`aav_things_rs`) | with `lidar:=true things:=true` |
 | `voxels` (`aav_voxels`, or `aav_voxels_rs` with `voxels_impl:=rust`) | with `voxels:=true` or `screen_cubes:=true`; `aav_voxels_rs` with `kerbs:=true` |
-| `amcl` (`aav_amcl_rs`), `amcl_map_server` | with `amcl:=true`: our AMCL; with `amcl_map:=`, our map server for its map. With `amcl_impl:=stock`, `amcl` is `nav2_amcl`, with `lifecycle_manager_localization` |
+| `amcl` (`aav_amcl_rs`), `amcl_map_server` | with `amcl:=true`: our AMCL; with `amcl_map:=`, our map server for its map |
 
 Inputs: `/localization/odom/local`, `/tf`, `/goal_pose`, and the obstacle topics above.
 All commands are `geometry_msgs/TwistStamped`.

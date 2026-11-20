@@ -432,9 +432,9 @@ def check_lidar_impl(impl):
 
 
 # Which AMCL runs (amcl:=true, amcl_impl:=): rust (aav_amcl_rs, the default since 18 Nov,
-# TODO 231: stock's topics, parameters and frames, a plain node) or stock (nav2_amcl, a
-# lifecycle node with its own manager; the fall-back). Each one's package.
-AMCL_IMPLS = {'rust': 'aav_amcl_rs', 'stock': 'nav2_amcl'}
+# TODO 231: stock's topics, parameters and frames, a plain node). Stock nav2_amcl, the last
+# of Nav2, went on 20 Nov (TODO 232, tag save/nav2-amcl); the switch stays, a hook.
+AMCL_IMPLS = {'rust': 'aav_amcl_rs'}
 DEFAULT_AMCL_IMPL = 'rust'
 
 
