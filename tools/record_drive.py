@@ -44,7 +44,8 @@ Subscribes: the topics of recording.STREAMS (raw bytes, counted; /tf_static deco
 its frames). Publishes nothing. Runs: `ros2 bag record`; `image_transport republish` per
 camera without JPEG; `chronyc tracking` (here, and over ssh with BatchMode: keys only, never
 a password). With --sim: Ravensim (sim.launch.py world:=test_lot) in its own process group
-on a private ROS domain, Nav2-style goals to /navigate_to_pose, and tools/ndt_map.py build.
+on a private ROS domain, Nav2-style goals to /navigate_to_pose, and tools/ndt_map.py build;
+with --sim-box, calls /vehicle/sim/spawn_entity (simulation_interfaces/SpawnEntity).
 
 The maths, no ROS: tools/recording.py (tools/tests/test_recording.py).
 """

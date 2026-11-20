@@ -353,7 +353,7 @@ with multiple drives being merged together."
 | Rule | Why |
 |---|---|
 | **By hand**, at walking to jogging pace (under 2 m/s) | the lidar's sweep blurs less; nothing drives itself on an unmapped place |
-| **The same route each pass** | `--merge` keeps only what several passes saw |
+| **The same route each pass** | `map-area` can only judge what several passes looked at |
 | **Several passes of each area, at different times and days** | different parked cars and people each time: what stays is the building |
 | **Loops**: come back past where you started | SLAM closes the loop and removes the drift |
 | One campus area a session (about 30-60 min) | under the SSD's room; one area's maps checked before the next |
@@ -368,12 +368,12 @@ with multiple drives being merged together."
 | 1 | SLAM on each drive | `pixi run map-drive bags/<drive>` (KISS-SLAM) | the path, NDT's 3D map, a 2D map (walls, kerbs), 64 m chunks | Built 19 Nov; in Ravensim 2.3 cm off the truth's map; **untested on the car** |
 | 2 | Placed on the earth | inside `map-drive`: fitted to the good GPS fixes | the map in the site's frame, lined up with OpenStreetMap | Built; untested with a real GPS |
 | 3 | Loop closures | inside `map-drive` (MapClosures) | less drift on long drives | Built; **none found in the plain sim lot**; a real place should give features: untested |
-| 4 | Passes merged | `pixi run map-drive --merge <A> <B> --out maps/<area>` | one map; only points **both** drives saw within 25 cm | Built, **two drives only**; more than two and the 2D maps: to build (TODO 250) |
-| 5 | **Occupancy across passes** | to build | static points kept, parked cars and people removed (below) | **To build (TODO 259)** |
+| 4 | Passes merged | inside `map-area` (ICP onto the first drive); or `pixi run map-drive --merge <A> <B> <C>... --out maps/<area>` | one map; the 2D maps merged too | Built 19 Nov, 2 or more drives; 4-6 mm between Ravensim drives |
+| 5 | **Occupancy across passes** | inside `map-area` (`tools/passes.py`) | static points kept, parked cars and people removed (below) | **Built 19 Nov (TODO 259)**: a parked box in 1 of 3 sim drives: 2,550 points to 0, the walls kept; **untested on real drives** |
 | 6 | Camera labels onto the points | phase F | "car", "tree", "building" on each point: a parked car told from a wall even if it never moved | To build (TODO 252) |
 | 7 | A person's final say | the map editor, phase E | box-delete, relabel, approve, save the chunks | To build (TODO 251, next) |
 | 8 | The campus twin | phase G | Ravensim's campus from our maps | To build (TODO 253) |
-| — | All of it, one command | to build | a campus area from its drives, with one report | **To build (TODO 260)** |
+| — | All of it, one command | `pixi run map-area <area> <drives...>` | steps 1-5 and the chunks, `labels.yaml` for step 7, one `report.md` | **Built 19 Nov (TODO 260)**; Ravensim only ([Maps from drives](maps-from-drives.md#many-drives-of-one-area)) |
 
 ### Occupancy across passes
 
@@ -397,7 +397,9 @@ one pass missed because a truck hid it. Occupancy counts properly:
 | Remove | hit in some passes, **free** in others |
 | Still unsure | a car parked in the same spot every pass: occupancy can't tell; **phase F's camera labels** can |
 
-Published tools to learn from first (licences to check): Removert, ERASOR, DUFOMap.
+Built 19 Nov as `map-area`, from the ideas of Removert (CC BY-NC-SA 4.0), ERASOR (GPL-3.0)
+and DUFOMap (BSD-3-Clause): ideas only, no code. A thing seen by one pass only, never
+seen free, is kept and labelled `seen_in` for the editor.
 
 ### Phase D: the car finds itself on our map
 
@@ -586,9 +588,11 @@ Every card: **an e-stop person**, named before the start, hand on the button the
 |---|---|---|
 | anyone with a laptop (Linux x86_64 or an Apple-silicon Mac) | anywhere | hours, unattended |
 
-- [ ] `pixi run map-drive bags/<drive>` for each pass; read each `report.md`
-- [ ] `pixi run map-drive --merge <A> <B> --out maps/<area>`
-- [ ] Later: occupancy across passes (TODO 259), labels (phase F), the editor (phase E)
+- [ ] `pixi run map-area <area> bags/<drive 1> bags/<drive 2> bags/<drive 3>`: each
+      drive's map, merged, parked cars out; read `maps/<area>/report.md` and each
+      `drives/<drive>/report.md`
+- [ ] `pixi run map-edit maps/<area>`: check the `seen_in` labels, then approve
+- [ ] Later: labels (phase F)
 - **Pass:** loop closures found or drift small; NDT on the map within 0.2 m of a good GPS.
 - **Save:** `maps/<area>/`. **Feeds:** card 9; the campus twin.
 
