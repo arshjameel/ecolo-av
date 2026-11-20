@@ -16,6 +16,8 @@ cloud-view = { path = "../../../../bringup/aav_description/cloud-view" }
 ndt-core = { path = "../../../../localization/aav_ndt/crates/ndt-core" }
 # The filter's 4 x 4 matrices (ndt-core's version).
 nalgebra = { version = "0.35", default-features = false, features = ["std"] }
+# MIT/Apache-2.0 (TODO 195): measured, kept only where it pays.
+rayon = "1"
 
 [dev-dependencies]
 # float_roundtrip: read each number exactly as Python wrote it.

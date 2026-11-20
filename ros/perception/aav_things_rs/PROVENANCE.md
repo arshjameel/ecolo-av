@@ -42,3 +42,4 @@ node (tf2's `lookup_transform(..., Time())` stamp).
 
 **20 Nov:** the Python (`aav_things`) was removed (Ben, 16 Nov: "lets remove python were possible"; tag `save/python-things`). `gen_vectors.py` went with it; `vectors.json` is a golden fixture now.
 - 2026-11-20 (TODO 176): `cloud.rs` now re-exports the shared `cloud-view` crate's `CloudView` and `read_columns` (`ros/bringup/aav_description/cloud-view`); the same values, all vectors pass.
+- 2026-11-20 (TODO 195): ours: `background.rs` reads the 3 x 3 chunks and grows the walls on many cores (rayon); the walls grow row by row (each row the rows within reach), the same cells (a new cell-by-cell test). `examples/timing.rs` times it.

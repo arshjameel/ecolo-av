@@ -1048,6 +1048,7 @@ dependencies = [
  "map-chunks",
  "nalgebra",
  "ndt-core",
+ "rayon",
  "serde_json",
 ]
 

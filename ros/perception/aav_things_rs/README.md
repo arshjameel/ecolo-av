@@ -73,6 +73,21 @@ Ravensim, `things:=true`, `/clock` at 100 Hz, standing; 60 s of `ps` after 75 s
 | road | 19.4 / 10.9 | 7.6 % of a core, 78 MB | **1.5 %**, 31 MB |
 | campus (the 6400 x 6400 `/map` as background) | 19.4 / 19.2 | 7.4 %, 353 MB | **1.2 %**, 188 MB |
 
+### On many cores (TODO 195)
+
+`cargo run --release -p things-core --example timing -- maps/campus/chunks/ndt maps/campus/campus.yaml`
+(Ben's MacBook, M4 Max, idle, 20 Nov):
+
+| What | One core | rayon | Kept? |
+|---|---|---|---|
+| the campus `/map` (6400 x 6400) as the background, walls grown | 112 ms | **7.4 ms** | yes |
+| a chunk crossing: the NDT map's 3 x 3 chunks read | 2.5 ms (worst 11.9) | **1.0 ms** (worst 3.0) | yes |
+| one cloud, 700 cubes: background, groups, tracker (idle: 0.15 ms) | 0.16 ms\* | 0.20 ms\* (grouping's neighbours shared out) | no |
+| one cloud, 15 cubes | 0.006 ms\* | 0.054 ms\* | no |
+
+\* Measured while a sim league ran on the same Mac, one after the other. A cloud is too small
+to share out: rayon's start-up costs more than the work.
+
 ### In the simulator
 
 Python and Rust back to back, the same load (`ROS_DOMAIN_ID` 180-194):

@@ -25,6 +25,7 @@ use std::{
 };
 
 use map_chunks::{ChunkKey, Grid};
+use rayon::prelude::*;
 
 use crate::Pose2;
 
@@ -100,22 +101,29 @@ impl Background {
         }
         // A square of `reach` cells round each taken cell: along the rows, then the
         // columns. Two grids at a time: the campus's /map is 6400 x 6400.
+        // Each row on its own core (TODO 195): a row of `rows` from its own row of `taken`,
+        // a row of `grown` from the rows of `rows` within `reach` of it.
         let mut rows = vec![false; taken.len()];
-        for (row, out) in taken.chunks(width).zip(rows.chunks_mut(width)) {
-            for (col, _) in row.iter().enumerate().filter(|(_, &t)| t) {
-                let (a, b) = (col.saturating_sub(reach), (col + reach).min(width - 1));
-                out[a..=b].fill(true);
-            }
-        }
+        taken
+            .par_chunks(width)
+            .zip(rows.par_chunks_mut(width))
+            .for_each(|(row, out)| {
+                for (col, _) in row.iter().enumerate().filter(|(_, &t)| t) {
+                    let (a, b) = (col.saturating_sub(reach), (col + reach).min(width - 1));
+                    out[a..=b].fill(true);
+                }
+            });
         drop(taken);
         let mut grown = vec![false; rows.len()];
-        for (i, _) in rows.iter().enumerate().filter(|(_, &t)| t) {
-            let (r, c) = (i / width, i % width);
-            let (a, b) = (r.saturating_sub(reach), (r + reach).min(height - 1));
-            for rr in a..=b {
-                grown[rr * width + c] = true;
-            }
-        }
+        grown
+            .par_chunks_mut(width)
+            .enumerate()
+            .for_each(|(r, out)| {
+                let (a, b) = (r.saturating_sub(reach), (r + reach).min(height - 1));
+                for near in rows[a * width..(b + 1) * width].chunks(width) {
+                    out.iter_mut().zip(near).for_each(|(o, &n)| *o |= n);
+                }
+            });
         Self {
             origin,
             resolution,
@@ -264,25 +272,30 @@ impl ChunkBackground {
     pub fn update(&mut self, x: f64, y: f64) -> Result<&Background, ChunkError> {
         let key = self.grid.key_at(map_chunks::Point::new(x, y));
         if self.here != Some(key) || self.background.is_none() {
-            let mut xy = Vec::new();
-            for i in key.i - 1..=key.i + 1 {
-                for j in key.j - 1..=key.j + 1 {
-                    let path = self.folder.join(format!("{i}_{j}.pcd"));
-                    if !path.exists() {
-                        continue;
-                    }
-                    let file =
-                        fs::File::open(&path).map_err(|e| ChunkError::Io(path.clone(), e))?;
-                    let points =
-                        ndt_core::pcd::read(file).map_err(|e| ChunkError::Pcd(path.clone(), e))?;
-                    xy.extend(
-                        points
-                            .iter()
-                            .filter(|p| p.z >= self.min_z)
-                            .map(|p| [p.x, p.y]),
-                    );
+            // The 3 × 3 chunks, each read on its own core (TODO 195), kept in order.
+            let keys: Vec<(i32, i32)> = (key.i - 1..=key.i + 1)
+                .flat_map(|i| (key.j - 1..=key.j + 1).map(move |j| (i, j)))
+                .collect();
+            let min_z = self.min_z;
+            let read = |&(i, j): &(i32, i32)| -> Result<Vec<[f64; 2]>, ChunkError> {
+                let path = self.folder.join(format!("{i}_{j}.pcd"));
+                if !path.exists() {
+                    return Ok(Vec::new());
                 }
-            }
+                let file = fs::File::open(&path).map_err(|e| ChunkError::Io(path.clone(), e))?;
+                let points =
+                    ndt_core::pcd::read(file).map_err(|e| ChunkError::Pcd(path.clone(), e))?;
+                Ok(points
+                    .iter()
+                    .filter(|p| p.z >= min_z)
+                    .map(|p| [p.x, p.y])
+                    .collect())
+            };
+            let xy: Vec<[f64; 2]> = keys
+                .par_iter()
+                .map(read)
+                .collect::<Result<Vec<_>, _>>()?
+                .concat();
             let corner = self.grid.corner(ChunkKey::new(key.i - 1, key.j - 1));
             self.background = Some(Background::from_points(
                 &xy,

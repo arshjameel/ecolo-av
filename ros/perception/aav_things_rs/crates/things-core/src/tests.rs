@@ -491,6 +491,38 @@ fn points_make_a_background_with_slack() {
 }
 
 #[test]
+fn walls_grow_by_a_square_of_reach_cells_to_the_edges() {
+    // TODO 195: the growing goes row by row on many cores; the answer is the square
+    // round each wall cell, checked here cell by cell on a random grid.
+    let (w, h, reach) = (37, 23, 2_i64);
+    let mut seed = 12_345_u64;
+    let data: Vec<i8> = (0..w * h)
+        .map(|_| {
+            seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            if (seed >> 33).is_multiple_of(17) {
+                100
+            } else {
+                0
+            }
+        })
+        .collect();
+    let bg = Background::from_grid(&data, w, h, 0.25, [0.0, 0.0], 0.5).expect("a grid");
+    for r in 0..h as i64 {
+        for c in 0..w as i64 {
+            let want = (r - reach..=r + reach).any(|rr| {
+                (c - reach..=c + reach).any(|cc| {
+                    (0..h as i64).contains(&rr)
+                        && (0..w as i64).contains(&cc)
+                        && data[rr as usize * w + cc as usize] >= 65
+                })
+            });
+            let (x, y) = (0.25 * (c as f64 + 0.5), 0.25 * (r as f64 + 0.5));
+            assert_eq!(bg.on_map(x, y), want, "cell ({r}, {c})");
+        }
+    }
+}
+
+#[test]
 fn below_drops_only_the_low_cubes_on_the_map() {
     let points = [[5.1, 0.0, 0.4], [5.1, 0.0, 1.2], [2.0, 0.0, 0.4]];
     let kept = new_only(&points, AT_ZERO, &lot(), Some(0.7));

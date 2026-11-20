@@ -181,7 +181,7 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 | **ROS 2 Jazzy** | Apache-2.0 | runs | everything |
 | twist_mux; teleop_twist_joy and teleop_twist_keyboard | Apache-2.0; BSD | runs; ported (its rule) | the command mux and the locks; the joystick and keyboard. twist_mux's selection rule is rewritten in Rust in `aav_mux_state` (who is driving, TODO 247) |
 | **rclrs** (ros2-rust) | Apache-2.0 | runs | our Rust ROS nodes |
-| **rayon** | MIT / Apache-2.0 | runs | each map chunk loaded and built on its own core (`map-chunks` `Store::update`, TODO 195); our global costmap's 64 m tiles and chunks inflated each on its own core (`aav_costmap` `layered.rs`, TODO 175) |
+| **rayon** | MIT / Apache-2.0 | runs | each map chunk loaded and built on its own core (`map-chunks` `Store::update`, TODO 195); our global costmap's 64 m tiles and chunks inflated each on its own core (`aav_costmap` `layered.rs`, TODO 175); the things' background: the 3 x 3 chunks read and the walls grown on many cores (`aav_things_rs` `background.rs`, TODO 195) |
 | **proptest** | MIT / Apache-2.0 | tests only | the stop zone's, the map chunks' and the car model's rules checked on thousands of random inputs (`tests/props.rs`, TODO 204) |
 | **rstar** (the georust project) | MIT / Apache-2.0 | runs | an R-tree of the Lanelet2 map's centre lines, for the nearest lane (`lanelet-map`, TODO 201) |
 | **Rerun** (rerun.io) | MIT / Apache-2.0 | a trial viewer, laptops only | our MCAP recordings opened as they are (`pixi run -e rerun view-bag`, TODO 197) |
