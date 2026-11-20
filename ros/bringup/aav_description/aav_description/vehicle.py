@@ -724,9 +724,9 @@ def check_goal_leash_impl(impl):
 
 
 # Which gps_heading runs (localization.launch.py, gps_heading_impl:=): rust
-# (aav_gps_heading_rs, the default since 19 Nov: course.py's answers to the bit) or python
-# (aav_gps_heading: the same node name, topics and parameters). Each one's package.
-GPS_HEADING_IMPLS = {'python': 'aav_gps_heading', 'rust': 'aav_gps_heading_rs'}
+# (aav_gps_heading_rs, the default since 19 Nov: course.py's answers to the bit). The
+# Python went on 20 Nov (tag save/python-gps-heading); the switch stays, a challenger's hook.
+GPS_HEADING_IMPLS = {'rust': 'aav_gps_heading_rs'}
 DEFAULT_GPS_HEADING_IMPL = 'rust'
 
 

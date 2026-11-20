@@ -32,7 +32,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | Area (`ros/<area>/`) | Modules |
 |---|---|
 | [sources](#sensors) | `aav_sensors`, `aav_imu_yahboom`, `aav_battery_victron`, `aav_radar_ti`; `aav_camera_stream` ([one line](#more-packages-see-their-readmes)) |
-| [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading`; `aav_localization_health`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
+| [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading_rs`; `aav_localization_health`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
 | [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_rc_rs`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
 | [command_mux, io_mux, ego](#mux-and-ego) | `aav_command_mux`, `aav_io_mux`, `aav_ego` |
 | [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_sim_models`, `aav_carla`; `aav_spine_bridge`, `aav_legacy_rs`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
@@ -133,7 +133,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | **Test** | `pixi run check sim`; replay a bag ([Simulation](simulation.md)) |
 | **Read first** | `config/ekf_local.yaml`; why there are two: [Topic areas](naming.md#why-the-two-ekfs-dont-talk) |
 
-### aav_gps_heading
+### aav_gps_heading_rs
 
 | | |
 |---|---|
@@ -144,8 +144,8 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | **Origin** | ours: no stock package does it |
 | **Status** | [[works]] in Gazebo (`pixi run tools/ros.sh --local python3 tools/heading_check.py`: median heading error 1.6-2.1°, was 2.2-2.8). Car: needs `gps_driver:=ublox` |
 | **Run alone** | starts with `localization.launch.py` (`gps_heading:=false` leaves it out) |
-| **Test** | `test/test_course.py` (in `tools/test.sh`) |
-| **Read first** | `aav_gps_heading/course.py` |
+| **Test** | `cargo test -p gps-heading-core` (in `tools/test.sh`); the golden `vectors.json` from the Python (removed 20 Nov) |
+| **Read first** | `aav_gps_heading_rs/crates/gps-heading-core/src/lib.rs` |
 
 ## Drivers
 
@@ -536,7 +536,6 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |
 | `aav_joy_alive_rs` | `joy_alive` in Rust, the default (`joy_alive_impl:=python` falls back) | `ros/safety/aav_joy_alive_rs/README.md` |
 | `aav_safety_rs` | `geofence`, `stop_hold`, `goal_leash` in Rust, the defaults (`*_impl:=python` falls back) | `ros/safety/aav_safety_rs/README.md` |
-| `aav_gps_heading_rs` | `gps_heading` in Rust, the default (`gps_heading_impl:=python` falls back) | `ros/localization/aav_gps_heading_rs/README.md` |
 | `aav_mux_state` | `command_mux_state` (Rust): who twist_mux passes on, on `/control/command_mux/state`, for the debug screen | `ros/command_mux/aav_mux_state/README.md` |
 | `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (`stop_sign_impl:=python` falls back) | `ros/perception/aav_stop_sign_rs/README.md` |
 | `aav_lane_finder_rs` | `lane_finder` in Rust, the default (`lane_finder_impl:=python` falls back) | `ros/perception/aav_lane_finder_rs/README.md` |

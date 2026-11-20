@@ -22,8 +22,7 @@ each one's README has its topics.
 | `aav_radar_ti` | sources | the TI mmWave radar, as point clouds | [[untested]] | 2025-26 `Nav_Radar` |
 | `aav_description` | bringup | the car's model (URDF) and `vehicle.yaml` | [[works]] the numbers are guesses | new |
 | `aav_localization` | localization | the two EKFs and `navsat_transform`: configuration only | [[works]] turtle, Gazebo and the bench | new |
-| `aav_gps_heading` | localization | `gps_heading`: the heading from the GPS receiver's velocity, for `ekf_global` | [[works]] Gazebo | new |
-| `aav_gps_heading_rs` | localization | `gps_heading` in Rust, the default (19 Nov; `gps_heading_impl:=python` falls back) | [[works]] against `course.py`'s answers, to the bit; [[untested]] on the car | new: a port of `aav_gps_heading` |
+| `aav_gps_heading_rs` | localization | `gps_heading`: the heading from the GPS receiver's velocity, for `ekf_global`; Rust (the Python removed 20 Nov) | [[works]] against `course.py`'s answers, to the bit; [[untested]] on the car | new: a port of `aav_gps_heading` |
 | `aav_localization_health` | localization | warn-only checks on what the EKFs read and say, on `/localization/health` and `/diagnostics` | built 1 Nov | new (Betsi) |
 | `aav_localization_health_rs` | localization | `localization_health` in Rust (`localization_health_impl:=rust`): the same topics and answers | [[works]] against the Python's answers; Ravensim's road world | new: a port of `aav_localization_health` |
 | `aav_ndt` | localization | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | built 29 Oct; a trial, off by default ([Trials](trials.md)) | new |

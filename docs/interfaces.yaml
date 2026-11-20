@@ -807,7 +807,7 @@ topics:
     pub: [gps_heading]
     sub: [ekf_global]
     live: [sim, car, replay, bench]
-    note: The car's heading from the GPS receiver's velocity (aav_gps_heading, TODO 13) - only an orientation (yaw from east), in base_link, with its variance; turn rate and acceleration covariance -1. Only while the car moves faster than 0.3 m/s and the GPS's speed matches the wheels'; turned round when reversing. The global EKF fuses its yaw. Silent where nothing publishes /sensors/gps/fix_velocity (the bench, gps_driver:=nmea).
+    note: The car's heading from the GPS receiver's velocity (aav_gps_heading_rs, TODO 13) - only an orientation (yaw from east), in base_link, with its variance; turn rate and acceleration covariance -1. Only while the car moves faster than 0.3 m/s and the GPS's speed matches the wheels'; turned round when reversing. The global EKF fuses its yaw. Silent where nothing publishes /sensors/gps/fix_velocity (the bench, gps_driver:=nmea).
   /localization/amcl/pose:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: [amcl]

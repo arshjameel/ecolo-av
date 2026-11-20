@@ -197,7 +197,7 @@ three things can:
 ```
 
 The global EKF had only the first. **Now it has the second too**: `gps_heading`
-(`aav_gps_heading`) turns the receiver's velocity (`/sensors/gps/fix_velocity`, from
+(`aav_gps_heading_rs`) turns the receiver's velocity (`/sensors/gps/fix_velocity`, from
 `ublox_gps`) into a heading on `/localization/gps/heading`:
 
 | Step | What it does |
@@ -339,7 +339,7 @@ That's the GPS soaking up the drift.
 | GPS to metres | `ros/localization/aav_localization/config/navsat.yaml` |
 | How they start, and topic names | `ros/localization/aav_localization/launch/localization.launch.py` |
 | The IMU filter | `ros/sources/aav_sensors/config/imu_filter.yaml` |
-| The heading from the GPS velocity | `ros/localization/aav_gps_heading` (`course.py`: the sums, no ROS) |
+| The heading from the GPS velocity | `ros/localization/aav_gps_heading_rs` (`gps-heading-core`: the sums, no ROS) |
 | Measure the heading in Ravensim | `pixi run tools/ros.sh --local python3 tools/heading_check.py` (`tools/heading_check.py`) |
 | Sensor positions on the car | `ros/bringup/aav_description/config/vehicle.yaml` |
 | Wheel speed into `/vehicle/odom` | `aav_spine/spine_bridge.py`, `aav_legacy` `encoder_udp.py`, `aav_sim_models/sim_adapter.py` |

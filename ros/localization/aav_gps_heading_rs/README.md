@@ -4,7 +4,8 @@
 
 `gps_heading` in Rust (rclrs): **the default since 19 Nov** (Ben, 16 Nov: "lets remove
 python were possible"), in place of `aav_gps_heading`'s Python node. The same node name,
-topics, parameters and answers. `gps_heading_impl:=python` falls back.
+topics, parameters and answers. The Python was removed on 20 Nov (tag
+`save/python-gps-heading`).
 
 ```
 /sensors/gps/fix_velocity ─┐
@@ -25,22 +26,37 @@ maths and why are in `aav_gps_heading`'s README.
 
 ### Node `gps_heading`
 
-Topics (relative names, as the Python's) and parameters: `aav_gps_heading`'s README.
-One more: `vehicle_yaml` (`''`: `aav_description`'s, on `AMENT_PREFIX_PATH`), for the
+| In / out | Topic | Type |
+|---|---|---|
+| in | `/sensors/gps/fix_velocity` | `geometry_msgs/TwistWithCovarianceStamped`: ENU m/s (ublox_gps; the simulator's sim_gps) |
+| in | `/vehicle/odom` | `nav_msgs/Odometry`: the wheels' signed speed and turn rate |
+| out | `/localization/gps/heading` | `sensor_msgs/Imu`, `base_link`: orientation (yaw from east, counter-clockwise) and its variance only |
+
+The node uses relative names; in the root namespace they are the absolute ones above.
+
+| Parameter | Default | Means |
+|---|---|---|
+| `min_speed` | 0.3 m/s | slower than this (GPS or wheels): no heading |
+| `max_speed_gap` | 0.3 m/s | the GPS's and the wheels' speeds must agree to this |
+| `floor_deg` | 2.0° | added to every heading's standard deviation |
+
+The antenna's place comes from `vehicle.yaml`'s `gps_link` (through `aav_description`).
+
+One more parameter: `vehicle_yaml` (`''`: `aav_description`'s, on `AMENT_PREFIX_PATH`), for the
 antenna's place (`sensors.gps_link.xyz`).
 
 ### Which one runs
 
-`localization.launch.py gps_heading_impl:=rust|python` (`vehicle.GPS_HEADING_IMPLS`,
+`localization.launch.py gps_heading_impl:=rust` (the one choice, a hook for a challenger) (`vehicle.GPS_HEADING_IMPLS`,
 default `rust`), with `gps:=true` and `gps_heading:=true`.
 
 ## Invariants
 
 - The same answers as `course.py`, **to the bit**: `tests/vectors.rs` reads
-  `vectors.json`, which `gen_vectors.py` writes from it (4,000 cases forward and
+  `vectors.json`, a **golden fixture** since 20 Nov: `course.py` wrote it (4,000 cases forward and
   reversing, turning, slow, disagreeing, NaN and infinite; `wrap` and the quaternion on 508
-  angles). `aav_gps_heading`'s `test_gps_heading_rs_vectors.py` fails if the Python
-  drifts from the file.
+  angles). The Python and `gen_vectors.py` went on 20 Nov
+  (`save/python-gps-heading`): never regenerate it, edit it only with a reason.
 - To match to the bit: CPython's `hypot`, Python's `%` and `radians`, and `sin` and `cos`
   kept apart (an optimised build may join them into `sincos`, which differs in the last
   bit on macOS).
@@ -62,7 +78,6 @@ default `rust`), with `gps:=true` and `gps_heading:=true`.
 
 ```sh
 cd ros/localization/aav_gps_heading_rs && cargo test --locked -p gps-heading-core  # tools/test.sh
-pixi run python ros/localization/aav_gps_heading_rs/gen_vectors.py                 # after changing course.py
 pixi run build && colcon test --packages-select aav_gps_heading_rs && colcon test-result --verbose
 ```
 

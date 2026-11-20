@@ -13,8 +13,7 @@ map ──ekf_global (GPS, GPS heading)──▶ odom ──ekf_local (wheels, I
 | Package | What it does | Main output |
 |---|---|---|
 | [aav_localization](./aav_localization/README.md) | config and launch for `ekf_local`, `ekf_global` and `navsat_transform` | TF `map→odom→base_link`, `/localization/odom/*` |
-| [aav_gps_heading](./aav_gps_heading/README.md) | a heading from the GPS's Doppler velocity, while the car moves | `/localization/gps/heading` |
-| [aav_gps_heading_rs](./aav_gps_heading_rs/README.md) | the same in Rust, the default (19 Nov; `gps_heading_impl:=python` for the Python): `course.py`'s answers to the bit | the same as the Python's |
+| [aav_gps_heading_rs](./aav_gps_heading_rs/README.md) | a heading from the GPS's Doppler velocity, while the car moves; Rust (the Python removed 20 Nov) | `/localization/gps/heading` |
 | [aav_ndt](./aav_ndt/README.md) | a trial: NDT on a saved lidar map, in Rust; never TF; into `ekf_global` only with `ndt_ekf:=true` | `/localization/ndt/pose` |
 | [aav_pose_check](./aav_pose_check/README.md) | a challenger (TODO 210, `pose_source:=ndt`): NDT leads `ekf_global`'s pose, the GPS only checks it; says which is wrong when they disagree; seeds a lost NDT from AMCL or the GPS; HOLD (an ERROR the watchdog stops on) when neither is trusted | `/localization/pose_check/status` |
 | [aav_amcl_rs](./aav_amcl_rs/README.md) | a trial: AMCL in Rust, stock `nav2_amcl`'s place (`amcl_impl:=rust`, the default; `stock` the fall-back); never TF, scored only | `/localization/amcl/pose` |

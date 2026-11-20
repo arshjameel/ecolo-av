@@ -53,7 +53,7 @@ The main ones. Every package: [Packages](packages.md).
 | `aav_navigation` | our navigation set up for a car (each node a port of a Nav2 server), and the maps | drivers |
 | `aav_routes` | street routes (Valhalla) as GPS waypoints for the navigator | drivers |
 | `aav_localization` | the two EKFs and GPS-to-map: settings only | localization |
-| `aav_gps_heading` | the heading from the GPS receiver's velocity, for `ekf_global` | localization |
+| `aav_gps_heading_rs` | the heading from the GPS receiver's velocity, for `ekf_global` | localization |
 | `aav_description` | the car's model and `vehicle.yaml` | bringup |
 | `aav_sensors` | starts the sensor drivers, with their settings. The GPS: `ublox_gps` by default | sources |
 | `aav_imu_yahboom` | the IMU driver, in Rust (Ben's rewrite of the 2025-26 C++ one) | sources |

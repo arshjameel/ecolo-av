@@ -1108,9 +1108,11 @@ def test_rewrite_follows_rewrittenyamls_rules():
     assert cfg['a']['footprint'] == 'x'          # a copy
 
 
-def test_gps_heading_impl_is_python_or_rust():
+def test_gps_heading_impl_is_rust():
     assert vehicle.DEFAULT_GPS_HEADING_IMPL == 'rust'
-    assert vehicle.check_gps_heading_impl(' Python ') == 'python'
+    assert vehicle.check_gps_heading_impl(' Rust ') == 'rust'
+    with pytest.raises(ValueError, match='gps_heading_impl:=python'):
+        vehicle.check_gps_heading_impl('python')
     assert vehicle.GPS_HEADING_IMPLS['rust'] == 'aav_gps_heading_rs'
     with pytest.raises(ValueError, match='gps_heading_impl:=c'):
         vehicle.check_gps_heading_impl('c')

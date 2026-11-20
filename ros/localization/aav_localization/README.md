@@ -10,7 +10,7 @@ our own: a launch file and its config files.
 | `ekf_local` | TF `odom → base_link`: smooth, never jumps, slowly drifts | the path follower and local costmap |
 | `ekf_global` | TF `map → odom`: GPS-anchored, can jump | the planner, global costmap, goals |
 | `navsat_transform` | each GPS fix as a map-frame position | `ekf_global` |
-| `gps_heading` ([aav_gps_heading](../aav_gps_heading/README.md)) | the heading from the GPS velocity | `ekf_global` |
+| `gps_heading` ([aav_gps_heading_rs](../aav_gps_heading_rs/README.md)) | the heading from the GPS velocity | `ekf_global` |
 
 The two EKFs never read each other's topic. They meet only in TF.
 

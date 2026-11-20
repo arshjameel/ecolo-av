@@ -17,8 +17,7 @@ map -> odom, worked out on top of ekf_local's odom -> base_link.
       ──> ekf_global ──> /localization/odom/global, TF map -> odom
   /sensors/gps/fix, /localization/odom/global ──> navsat_transform
       ──> /localization/gps/odom, /localization/gps/fix
-  /sensors/gps/fix_velocity, /vehicle/odom ──> gps_heading (aav_gps_heading_rs;
-      gps_heading_impl:=python, aav_gps_heading)
+  /sensors/gps/fix_velocity, /vehicle/odom ──> gps_heading (aav_gps_heading_rs)
       ──> /localization/gps/heading: the heading from the receiver's velocity, while the
       car moves (TODO 13). gps_heading:=false leaves it out
 
@@ -226,8 +225,8 @@ def generate_launch_description():
         DeclareLaunchArgument('gps', default_value='true'),
         DeclareLaunchArgument('gps_heading', default_value='true'),
         DeclareLaunchArgument('gps_heading_impl', default_value=vehicle.DEFAULT_GPS_HEADING_IMPL,
-                              description='rust (aav_gps_heading_rs, the default) or python '
-                                          '(aav_gps_heading): which gps_heading runs'),
+                              description='rust (aav_gps_heading_rs): which gps_heading runs '
+                                          '(the Python removed 20 Nov)'),
         DeclareLaunchArgument('health', default_value='true'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
