@@ -10,7 +10,7 @@ you should see.
 | | |
 |---|---|
 | A laptop | a Mac (macOS 14 or newer) or a 64-bit Linux laptop |
-| Disk space | about 10 GB |
+| Disk space | about 20 GB free: the environment (`.pixi`) 5.5 GB, the build (`build/`, a compile folder for each Rust package) 9.4 GB, and room for the tests (a Mac, 20 Nov) |
 | Time | about an hour, most of it the first download |
 | Admin rights | not needed |
 | The code | a GitHub account with an SSH key, and your own fork of `AAV-2025-2026/ecolo-av` (public) |

@@ -281,12 +281,12 @@ Paste these into Claude (or a team chat), and it can usually say what to fix:
 | YOLO on the Mac's GPU (Metal) | [[works]] 7.7 ms a frame; Core ML 4.3 ms |
 | The laptop's own detector against the bench (`laptop-bench`) | [[works]] 11 Oct: Core ML on the compressed pictures, 21 ms each; it saw the stop sign from 20 m |
 | `pixi run test` on a Mac | [[works]] all green, after the `coreutils` fix above |
-| The turtle, driving it the keyboard's way, the scripted drive, the e-stop | [[works]] on Linux and the Mac. The real keyboard keys are [[untested]] on a Mac |
+| The turtle, driving it the keyboard's way, the scripted drive, the e-stop | [[works]] on Linux and the Mac. The real keyboard keys [[works]] on a Mac (Nitish, 20 Nov: `pixi run turtle` and `pixi run keyboard --local`; i, u, o and `,` drive, and it stops when the key is let go) |
 | Gazebo without its window, and a Nav2 goal (until 16 Nov; Ravensim since, [[works]]) | [[works]] on the Mac, without `GZ_IP` |
 | Gazebo's window on a Mac (until 16 Nov) | [[works]] 10 Oct: `pixi run sim` opened it; the car drives in it (pictures in [Your first day](first-day.md)) |
 | Gazebo's cameras and lidar on a Mac | [[works]] 15 Oct: headless, about 10 Hz each; with YOLO too, `-e ml sim-check --perception` passed 2 of 2 on a quiet Mac, so the lidar is on by default |
 | RViz and rqt_graph on a Mac | [[untested]] they open without errors (RViz logs one shader warning); nobody has looked at them yet |
 | Recording a drive (`tools/record.sh`) | [[works]] on the Mac, after the `tools/ros.sh` fix above |
-| Joystick on a Mac | [[untested]] An old macOS joystick bug is fixed in the version we use. |
+| Joystick on a Mac | [[untested]] An old macOS joystick bug is fixed in the version we use. No gamepad yet (20 Nov): `joy_enumerate_devices` lists none |
 | The Mac on the car's network | [[untested]] as a ROS peer: the car still runs Humble. `pixi run doctor` ran on the car's switch on 21 Oct; on 6 Nov the Mac's `ros2` checks (Cyclone) may have upset the car's Fast DDS nodes (the audits) |
 | `pixi run doctor` | [[works]] on Linux and the Mac |
