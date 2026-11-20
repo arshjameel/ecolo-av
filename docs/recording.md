@@ -9,6 +9,9 @@ pixi run record-drive --check                  # only the checks
 pixi run record-drive --name lot --note "the lot, clockwise, dry"
 pixi run record-drive --summary bags/<folder>  # the summary again
 pixi run record-drive --sim                    # the kit's own test, in Ravensim
+pixi run record-drive --sim --loop             # the whole route, back home (for SLAM)
+pixi run record-drive --sim --loop --sim-box 22 -6.5   # ... with a parked car (a box)
+                                               # for this drive only: map-area's test data
 ```
 
 `tools/record.sh --mapping` is the same command. The short `tools/record.sh` (cameras as

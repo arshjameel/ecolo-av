@@ -206,3 +206,20 @@ def test_grid_agreement_counts_cells_a_cell_apart_as_the_same():
     b[0, 0] = sm.PGM_OCCUPIED                # something only b has
     assert sm.grid_agreement(a, b) == {'found': round(6 / 7, 3), 'right': 1.0}
     assert sm.grid_agreement(a, b, reach=0) == {'found': 0.0, 'right': 0.0}
+
+
+def test_a_2d_map_written_reads_back(tmp_path):
+    grid = np.full((5, 8), sm.PGM_UNKNOWN, np.uint8)
+    grid[2:4, 3:6] = sm.PGM_FREE
+    grid[0, 7] = sm.PGM_OCCUPIED                 # row 0: the south edge
+    sm.write_map2d(tmp_path / 'map2d', grid, (-3.0, 4.0), 0.25, note='a test')
+    back, origin, cell = sm.read_map2d(tmp_path / 'map2d.yaml')
+    assert (back == grid).all() and origin == (-3.0, 4.0) and cell == 0.25
+
+
+def test_trim_cuts_on_whole_metres():
+    grid = np.full((40, 40), sm.PGM_UNKNOWN, np.uint8)
+    grid[21, 22] = sm.PGM_OCCUPIED
+    cut, origin = sm.trim(grid, (10.0, 20.0), 0.25, margin=0.5)
+    assert origin[0] % 1.0 == 0.0 and origin[1] % 1.0 == 0.0
+    assert (cut == sm.PGM_OCCUPIED).sum() == 1

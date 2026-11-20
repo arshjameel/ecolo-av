@@ -27,7 +27,7 @@ the background; each merged with a real merge (Ben's history stays).
 | 1 | ✅ **ONNX with Core ML**: `measure onnx`, the diffusion planner from Rust, FP16, TensorRT ready (merged 19 Nov) | 243 |
 | 2 | ✅ **Lanes into the costmap** (yellow vs white, the lane map's costs, `lanes:=camera`); the lane followers removed (merged 19 Nov) | 264 |
 | 3 | ✅ **Before the car** (merged 19 Nov; untested on the car): NDT in `car.launch.py`, the adaptive brake on the car, the boot self-test that refuses to arm | 261, 258, 255 |
-| 4 | **Maps offline**: occupancy across passes, the offline pipeline as one command, 3+ drives and the 2D maps merged | 259, 260, 250 |
+| 4 | ✅ **Maps offline** (merged 19 Nov): occupancy across passes, the offline pipeline as one command, 3+ drives and the 2D maps merged | 259, 260, 250 |
 | 5 | **Labels and the twin**: the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
 | 6 | **Driving**: reversing in a narrow street and in `aav_track`; the planner's checks on every core and a 1000-sample `mppi_lag` option; behaviour slows for kerbs | 174, 152, 219 |
 | 7 | **The last Python nodes to Rust**: the geofence, stop hold and goal leash (safety: shared vectors, both twins), the lane pose, the GPS heading, the street router; then the drivers (battery, radar) where worth it | Rust first |
@@ -62,7 +62,7 @@ and will do".
 | 247 | **The debug screen**: who is driving, what each asks, what ego sends, the gate and why (key D on the map) | ✅ built; ⬜ seen on a screen; ⬜ the car |
 | 248 | **Phase B, the hallway**: speed-up, coast, brake, steering; IMU blended with the wheels; each run over the model, with error bars | ✅ built; ⬜ the car. Open: 0.05 m/s wheel noise trips the runaway rule (a person decides) |
 | 249 | **Phase C, recording**: `pixi run record-drive`, every raw sensor at full rate | ✅ built; ⬜ the car. **87 GB/h**: a big SSD (tell the hardware lead) |
-| 250 | **Phase D, maps from drives**: `pixi run map-drive` (KISS-SLAM): NDT's map, a 2D map, 64 m chunks; drives merged | ✅ built, 2.3 cm off the truth in Ravensim; ⬜ the car, loop closures on a real place, 3+ drives, the 2D maps merged |
+| 250 | **Phase D, maps from drives**: `pixi run map-drive` (KISS-SLAM): NDT's map, a 2D map, 64 m chunks; drives merged | ✅ built, 2.3 cm off the truth in Ravensim; ✅ 3+ drives and the 2D maps merged (`--merge`, `map-area`, 19 Nov); ⬜ the car, loop closures on a real place |
 | 251 | **Phase E, the map editor**: [`pixi run map-edit <drive>/map`](docs/map-editor.md): layers (OpenStreetMap, our points, the 2D map, chunks, labels, the path), align, box-delete, label, undo, approve into a new folder | ✅ built 19 Nov; NDT on an edited sim map 3.6-4.9 cm; ⬜ seen on a screen; ⬜ a real drive |
 | 252 | **Phase F, labelling**: open-vocabulary models offline, camera boxes onto lidar points, fixed in the editor, our small model retrained after each drive | ⬜ |
 | 253 | **Phase G, the campus twin** in Ravensim from our maps; passes when a replayed drive scores within NDT's error of the real one | ⬜ |
@@ -70,8 +70,8 @@ and will do".
 | 256 | **NDT in the hallway, a third measure of distance**: fixed boxes and cones along the walls, the hallway mapped first (`record-drive` + `map-drive`), NDT's pose recorded by `car-test --hallway` beside the wheels and IMU; trusted across more than along (a plain corridor lets it slide) | ⬜ needs 261 |
 | 257 | **The transfer functions with and without a person aboard**: `car-test --hallway --aboard <kg>` notes the load; a fit per load into `vehicle.yaml`; the adaptive brake seeded from both | ⬜ |
 | 258 | **The adaptive brake on the car**: today it runs only in the sim's `sim_adapter` (`adaptive_brake:=true`); on the car nothing adapts. Put it on the car's brake path (`spine_bridge` or `spine-core`), never above `safe_max`, the locks never through it | 🟡 built 19 Nov; untested on the car: `legacy_uart_bridge` after its pi loop (`car adaptive_brake:=true`, off by default; needs `speed_loop.mode: pi`), the Rust crate `adaptive-brake` with the Python's vectors; not in `spine-core` yet (`actuators:=can` refuses it). docs/stopping.md, on the car |
-| 259 | **Occupancy across passes**: 3+ drives of an area, each ray traced; a cell hit in some passes and free in others (a parked car, a person) removed; never-seen-free kept; then camera labels (252) for cars parked every time. Learn from Removert, ERASOR, DUFOMap (licences to check) | ⬜ after the campus NDT maps |
-| 260 | **The offline pipeline as one command**: a campus area from its drives: `map-drive` each, merge, occupancy, chunks, one report | ⬜ after 259 |
+| 259 | **Occupancy across passes**: 3+ drives of an area, each ray traced; a cell hit in some passes and free in others (a parked car, a person) removed; never-seen-free kept; then camera labels (252) for cars parked every time. Learn from Removert, ERASOR, DUFOMap (licences to check) | ✅ built 19 Nov (`tools/passes.py`; ideas only: Removert CC BY-NC-SA, ERASOR GPL-3.0, DUFOMap BSD-3); proved on 3 Ravensim drives, a parked box in one removed, the walls kept; ⬜ real drives; ⬜ camera labels (252) |
+| 260 | **The offline pipeline as one command**: a campus area from its drives: `map-drive` each, merge, occupancy, chunks, one report | ✅ built 19 Nov: `pixi run map-area <area> <drives...>` into `maps/<area>/`, opens in `map-edit`; ⬜ a campus area |
 | 261 | **NDT on the car**: `car.launch.py` has no `ndt:=` / `ndt_map:=` (only the sim launch has); needed for the hallway (256) and `pose_source:=ndt` (210) | 🟡 built 19 Nov; untested on the car: `ndt:=true ndt_map:=` (the Orin's `ndt` part, off by default); `pose_source:=ndt` only with both, wired as the sim |
 
 ## 2. Maps and position

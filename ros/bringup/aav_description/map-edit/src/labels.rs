@@ -8,14 +8,15 @@
 //!   class: parked_car
 //!   region: {centre_m: [51.0, 15.0], size_m: [3.0, 32.0], yaw_rad: 0.0}
 //!   band: {min_m: 0.0, max_m: 2.0}      # optional: all heights if left out
-//!   source: person                       # person; camera (TODO 252) later
+//!   source: person                       # person; passes (map-area); camera later
 //! ```
 //!
 //! Room for what comes next, read now and written only when set:
 //! - `source: camera` and `confidence` (0-1): the camera's labels on the lidar points
 //!   (TODO 252) arrive as labels too, and a person keeps, fixes or drops them here;
-//! - `seen_in`: the drives that saw it. Occupancy across passes (TODO 259) merges drives
-//!   and keeps what most saw; a parked car seen in one drive of five drops out.
+//! - `seen_in`: the drives that saw it. Occupancy across passes (TODO 259, `pixi run
+//!   map-area`) removes what one drive saw and another saw through, and writes a label
+//!   with `source: passes` and `seen_in: [<drive>]` for each thing only one drive saw.
 
 use serde::{Deserialize, Serialize};
 
@@ -81,6 +82,8 @@ pub enum LabelSource {
     Person,
     /// The camera's detector on the lidar points (TODO 252; nothing makes these yet).
     Camera,
+    /// Occupancy across passes (`map-area`, TODO 259): seen by one drive only.
+    Passes,
 }
 
 /// One label.
@@ -155,6 +158,20 @@ mod tests {
         let written = serde_yaml_ng::to_string(&LabelsFile::new(vec![file.labels[0].clone()]))
             .expect("writes");
         assert!(!written.contains("confidence") && !written.contains("seen_in"));
+    }
+
+    #[test]
+    fn map_areas_labels_read() {
+        let text = "version: 1\nframe: map\nlabels:\n- id: 1\n  class: other\n  \
+                    region: {centre_m: [22.1, -5.4], size_m: [4.5, 0.5], yaw_rad: 0.0}\n  \
+                    band: {min_m: 0.3, max_m: 2.0}\n  source: passes\n  \
+                    seen_in: [2026-11-19_180523_simbox]\n";
+        let file: LabelsFile = serde_yaml_ng::from_str(text).expect("reads");
+        assert_eq!(file.labels[0].source, LabelSource::Passes);
+        assert_eq!(
+            file.labels[0].seen_in,
+            vec!["2026-11-19_180523_simbox".to_string()]
+        );
     }
 
     #[test]
