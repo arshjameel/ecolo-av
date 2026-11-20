@@ -129,12 +129,13 @@
 <div class="lead"><p>The help that <a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a> doesn't give.</p>
 <blockquote>
 <p><strong>The flow is in <a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a>:</strong> fork, branch from
-<code>upstream/main</code>, pull request, one approval, then the merge queue (it squashes).
+<code>upstream/main</code>, pull request, one approval, then the merge queue (a merge commit,
+so every commit keeps its message).
 Keep your branch current with <code>git rebase upstream/main</code>, never a merge.</p>
 </blockquote></div>
 <section class="card"><h2 id="the-picture">The picture</h2>
 <pre class="highlight"><code class="language-text">   AAV-2025-2026/ecolo-av          the team's repo: "upstream"
-      main  ◄──────────────── merge queue (approved, CI green, squashed)
+      main  ◄──────────────── merge queue (approved, CI green, merge commit)
         │                                ▲ pull request
         │ git fetch upstream             │
         ▼                                │
@@ -211,7 +212,7 @@ opposite of a merge.</p>
 </tr>
 <tr>
 <td>Delete one after its pull request says <strong>Merged</strong></td>
-<td><code>git branch -D &lt;branch&gt;</code> (capital <code>D</code>: the squash hides that it merged)</td>
+<td><code>git branch -d &lt;branch&gt;</code> (it refuses if the branch has commits <code>main</code> doesn't)</td>
 </tr>
 <tr>
 <td>See what's on a branch and not on <code>main</code></td>

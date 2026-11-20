@@ -3,14 +3,15 @@
 The help that [CONTRIBUTING.md](../CONTRIBUTING.md) doesn't give.
 
 > **The flow is in [CONTRIBUTING.md](../CONTRIBUTING.md):** fork, branch from
-> `upstream/main`, pull request, one approval, then the merge queue (it squashes).
+> `upstream/main`, pull request, one approval, then the merge queue (a merge commit,
+> so every commit keeps its message).
 > Keep your branch current with `git rebase upstream/main`, never a merge.
 
 ## The picture
 
 ```text
    AAV-2025-2026/ecolo-av          the team's repo: "upstream"
-      main  ◄──────────────── merge queue (approved, CI green, squashed)
+      main  ◄──────────────── merge queue (approved, CI green, merge commit)
         │                                ▲ pull request
         │ git fetch upstream             │
         ▼                                │
@@ -50,7 +51,7 @@ Already cloned the team's repo, not your fork? Turn it into this setup:
 | See your branches, and which you're on | `git branch` |
 | Make one from the team's latest `main` | `git switch -c <name> upstream/main` (names: CONTRIBUTING.md, section 3) |
 | Switch | `git switch <branch>` (commit or `git stash` your changes first) |
-| Delete one after its pull request says **Merged** | `git branch -D <branch>` (capital `D`: the squash hides that it merged) |
+| Delete one after its pull request says **Merged** | `git branch -d <branch>` (it refuses if the branch has commits `main` doesn't) |
 | See what's on a branch and not on `main` | `git log --oneline upstream/main..<branch>` |
 
 ## Worktrees: two branches at once

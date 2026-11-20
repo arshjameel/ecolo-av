@@ -214,8 +214,8 @@ When the pull request is approved and green, click **Merge when ready**. The que
 
 1. puts your change on top of the latest `main` and the pull requests ahead of it;
 2. runs CI on that combination;
-3. merges it if CI passes, as one squashed commit: your title as the subject, your
-   commit messages as the body;
+3. merges it if CI passes, with a merge commit: every commit of yours keeps its own
+   message on `main`;
 4. takes it out of the queue if CI fails, and tells you. Fix it, push, and add it again.
 
 So two changes that each pass alone, but break together, never reach `main`. Nobody
@@ -230,12 +230,12 @@ git switch main
 git fetch upstream
 git merge --ff-only upstream/main
 git push origin main
-git branch -D t3.6-spine-heartbeat
+git branch -d t3.6-spine-heartbeat
 git push origin --delete t3.6-spine-heartbeat
 ```
 
-`-D` (capital) is needed because the squash gave `main` a new commit, so git can't tell
-the branch was merged. Check the pull request says **Merged** first.
+Your commits are now part of `main`, so `-d` deletes the branch. If it refuses, the
+branch has commits `main` doesn't: check the pull request says **Merged** first.
 
 ## Rules on `main`
 
