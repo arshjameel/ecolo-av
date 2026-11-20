@@ -8,7 +8,8 @@ waiting to beat it.
   ┌────────────┬───────────┬──────────────────────────────┐
   │ Level      │ Champion  │ Challengers                  │
   ├────────────┼───────────┼──────────────────────────────┤
-  │ pose       │ ekf       │ ndt_ekf, kiss_ekf, ekf_lane  │
+  │ pose       │ ekf       │ ndt_ekf, kiss_ekf, ekf_lane, │
+  │            │           │ kinematic_ekf                │
   │ costmap    │ ours      │ ours_chunks, ours_all_chunks │
   │ navigator  │ ours      │                              │
   │ path       │ lattice_rs│ lattice_rs_smooth, hybrid_rs,│
@@ -79,7 +80,7 @@ Fable's clean-up (one shape, "From 36 switches to 8"): pick a level's option by 
 
 | Switch | Options | Sets |
 |---|---|---|
-| `pose:=` | `ekf`, `ndt_ekf`, `kiss_ekf`, `ekf_lane` (ours since 17 Nov: the lane finder into the EKF) | `ndt_ekf`, `kiss_ekf`, `lane_pose` |
+| `pose:=` | `ekf`, `ndt_ekf`, `kiss_ekf`, `ekf_lane` (ours since 17 Nov: the lane finder into the EKF), `kinematic_ekf` (TODO 216: Kinematic-ICP's idea in KISS-ICP's place; scored in stage 2) | `ndt_ekf`, `kiss_ekf`, `lane_pose`, `odom_lidar` |
 | `path:=` | `lattice_rs`, `lattice_rs_smooth`, `hybrid_rs`, `lattice_rs_strong`, `lane`, `lane_lanelet2`, `diffusion`, `lane_jerk` (TODO 214: a jerk-limited pass; scored in stage 2) | `planner`, `planner_search`, `plan_smoothing`, `lattice_moves`, `lane_route`, `lane_graph`, `lane_pass_shape` |
 | `steer:=` | `mppi_lag`, `mppi_lag_calm`, `mpc_lag`, `mpc_lag_rs`, `mppi_lag_smooth` (TODO 212: the steering's change sampled; scored in stage 2) | `controller`, `tracker`, `map_correction`, `mppi_lag_steer_gamma`, `mppi_lag_sampling` |
 | `lanes:=` | `off`, `ramp` | `lane_costs` |

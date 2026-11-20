@@ -64,6 +64,8 @@ if command -v cargo >/dev/null; then
   (cd ros/io_mux/aav_io_mux_rs && cargo test -q --locked -p io-mux-core)
   echo "== ros/localization/aav_localization_health_rs: localization_health in Rust, the Python's answers"
   (cd ros/localization/aav_localization_health_rs && cargo test -q --locked -p health-core)
+  echo "== ros/localization/aav_kinematic_icp: lidar odometry for a car, synthetic scans"
+  (cd ros/localization/aav_kinematic_icp && cargo test -q --locked -p kinematic-icp)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   echo "== ros/can_bridge/aav_legacy_rs: the Rust UART bridge's logic, the Python modules' answers"

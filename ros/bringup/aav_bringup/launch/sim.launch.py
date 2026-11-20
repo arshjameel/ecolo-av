@@ -239,6 +239,9 @@ bench's argument names:
                       takes its twist (vx, vyaw) beside the wheels and the IMU
                       (aav_localization config/ekf_local_kiss.yaml; docs/trials.md).
                       Default false: the local EKF on the wheels and the IMU alone
+  odom_lidar:=kinematic_icp  with kiss_icp or kiss_ekf: Kinematic-ICP's idea in Rust
+                      (aav_kinematic_icp, TODO 216, a challenger): one arc a step, the
+                      wheels its prior; the same topics as KISS-ICP
   lane_pose:=true     a trial (TODO 155): the lane finder as a pose sensor. lane_finder runs
                       (as lane:=true, without the lane follower) and lane_pose
                       (aav_lane_pose) turns its lines and the lane map (lane_map:=, else
@@ -413,10 +416,22 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'mppi_lag_sampling': '', 'lane_pass_shape': '', 'ground': '', 'lane_costs': 'false', 'lane_route': 'false',
+                  'mppi_lag_steer_gamma': '', 'mppi_lag_sampling': '', 'lane_pass_shape': '', 'ground': '', 'odom_lidar': '',
+                  'lane_costs': 'false', 'lane_route': 'false',
                   'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
                   'local_chunks': 'false', 'lane_pose': 'false'}
+
+
+ODOM_LIDARS = ('kiss_icp', 'kinematic_icp')
+
+
+def check_odom_lidar(value):
+    """Return odom_lidar:= checked: kiss_icp (empty too) or kinematic_icp (TODO 216)."""
+    value = value.strip().lower() or ODOM_LIDARS[0]
+    if value not in ODOM_LIDARS:
+        raise ValueError(f'odom_lidar:={value}: one of {", ".join(ODOM_LIDARS)}')
+    return value
 
 
 # Each level switch's options, for its help text (config/stacks.yaml).
@@ -720,8 +735,14 @@ def launch_setup(context):
     if kiss_icp:
         # Scored only (measure controllers --kiss-icp), unless kiss_ekf:=true: then
         # ekf_local reads its twist (measure controllers --kiss-ekf scores the difference).
-        actions.append(include(context, 'aav_kiss_icp', 'kiss_icp.launch.py',
-                               use_sim_time='true'))
+        # odom_lidar:=kinematic_icp: Kinematic-ICP's idea in Rust (TODO 216, a challenger),
+        # the same topics, so ekf_local can't tell; else KISS-ICP.
+        if check_odom_lidar(arg('odom_lidar')) == 'kinematic_icp':
+            actions.append(include(context, 'aav_kinematic_icp', 'kinematic_icp.launch.py',
+                                   use_sim_time='true'))
+        else:
+            actions.append(include(context, 'aav_kiss_icp', 'kiss_icp.launch.py',
+                                   use_sim_time='true'))
     if flag['watchdog']:
         # What this world has, and the camera only where something reads it: watching it
         # costs one more stream of pictures.
@@ -1235,6 +1256,11 @@ def generate_launch_description():
         DeclareLaunchArgument('kiss_icp', default_value='false',
                               description='KISS-ICP lidar odometry, scored only (a world '
                                           'with the lidar; pixi install --locked -e kiss)'),
+        DeclareLaunchArgument('odom_lidar', default_value=stacks.CHOSEN,
+                              description='with kiss_icp:=true or kiss_ekf:=true: kiss_icp (the '
+                                          'champion) or kinematic_icp, lidar odometry that '
+                                          "knows the car can't slide sideways, the wheels its "
+                                          'prior (TODO 216, a challenger: pose:=kinematic_ekf)'),
         DeclareLaunchArgument('kiss_ekf', default_value=stacks.CHOSEN,
                               description='a trial: KISS-ICP (kiss_icp:=true implied) and its '
                                           'twist into ekf_local, beside the wheels and IMU. '

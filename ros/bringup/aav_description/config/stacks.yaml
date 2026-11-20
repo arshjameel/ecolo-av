@@ -28,6 +28,11 @@ levels:
       # -> 6.9-7.8 cm RMS, its box tour 7.1-8.2 -> 1.9-2.1 cm; the campus tour no change
       # (9.1 -> 9.4, little paint on its way); sway and off the lane's centre no worse.
       ekf_lane: {ndt_ekf: 'false', kiss_ekf: 'false', lane_pose: 'true'}
+      # The local EKF with Kinematic-ICP's idea's twist (aav_kinematic_icp, TODO 216): lidar
+      # odometry that knows the car can't slide sideways, the wheels its prior, in KISS-ICP's
+      # place. A challenger (19 Nov), scored in stage 2.
+      kinematic_ekf: {ndt_ekf: 'false', kiss_ekf: 'true', lane_pose: 'false',
+                      odom_lidar: kinematic_icp}
     score: ''
   costmap:
     what: what is in the way (aav_costmap, Nav2's layers ported)

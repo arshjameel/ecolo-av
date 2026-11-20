@@ -126,7 +126,7 @@ Each has a TODO row to port its idea.
 | **grid_map** (ANYbotics, ETH); **nvblox** (NVIDIA) | BSD-3-Clause; Apache-2.0 | idea | looked at for the costmap's layers |
 | **CommonRoad route planner** (TU Munich) | BSD-3-Clause | idea | looked at for where `lane.rs` changes lane |
 | **Fast-Poly / Poly-MOT** (X. Li et al., 2023-24); **OC-SORT** (J. Cao et al., CVPR 2023); **MapMOS** (PRBonn) | MIT | idea | motion models per kind and re-found tracks for `aav_things` (TODO 217) |
-| **Kinematic-ICP** (T. Guadagnino et al., PRBonn, 2025); **small_gicp** (K. Koide); **GenZ-ICP** (D. Lee et al., 2024) | MIT | idea | the next lidar-odometry challenger (TODO 216); yardsticks for NDT |
+| **Kinematic-ICP** (T. Guadagnino et al., PRBonn, 2025); **small_gicp** (K. Koide); **GenZ-ICP** (D. Lee et al., 2024) | MIT | idea | Kinematic-ICP: `aav_kinematic_icp` (TODO 216, `odom_lidar:=kinematic_icp`): one arc a step and the wheels as a prior, rewritten in Rust, no code taken; small_gicp and GenZ-ICP: yardsticks for NDT |
 
 ## Taught in the guide (19 Nov)
 

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_kinematic_icp</name>
+  <version>0.1.0</version>
+  <description>Lidar odometry that knows it is on a car (Kinematic-ICP's idea, in Rust; TODO 216): each step one arc, the wheels a prior. A drop-in for aav_kiss_icp: /sensors/lidar/points and /vehicle/odom in; /localization/kiss_icp/odom and status out. A challenger (sim.launch.py odom_lidar:=kinematic_icp). The maths is the kinematic-icp crate, with no ROS.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>nav_msgs</depend>
+
+  <exec_depend>aav_description</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

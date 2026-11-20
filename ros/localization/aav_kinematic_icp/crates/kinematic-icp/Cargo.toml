@@ -1,0 +1,8 @@
+[package]
+name = "kinematic-icp"
+description = "Lidar odometry that knows it is on a car: one arc a step, the wheels a prior (Kinematic-ICP's idea)"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]

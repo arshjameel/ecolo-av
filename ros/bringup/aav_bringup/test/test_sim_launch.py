@@ -288,6 +288,15 @@ def test_run_info_says_which_algorithms_the_run_uses():
     assert info['kiss_icp'] and info['kiss_ekf']
 
 
+def test_odom_lidar_picks_kinematic_icp_in_kiss_icps_place():
+    # TODO 216: pose:=kinematic_ekf, Kinematic-ICP's idea in Rust; else KISS-ICP.
+    sent = included(started(SIM, world='road', pose='kinematic_ekf'))
+    assert 'kinematic_icp.launch.py' in sent and 'kiss_icp.launch.py' not in sent
+    assert sent['localization.launch.py']['kiss_ekf'] == 'true'
+    with pytest.raises(ValueError, match='odom_lidar'):
+        started(SIM, world='road', kiss_icp='true', odom_lidar='loam')
+
+
 def test_every_node_runs_on_simulated_time():
     first = started(SIM)[0]
     assert isinstance(first, SetParameter)

@@ -163,6 +163,7 @@ Each is off by default, and a drop-in: the same topics as the champion.
 | `mppi_lag_sampling:=smooth` (`steer:=mppi_lag_smooth`) | MPPI samples the steering's change, so its commands come out smooth | 212 |
 | `lane_pass_shape:=jerk` (`path:=lane_jerk`) | a parked obstacle passed within a lateral-jerk limit (a QP) | 214 |
 | `ground:=patchwork` (`kerbs:=patchwork`) | the ground found patch by patch, ring by ring: a lower kerb is an obstacle, a hill isn't | 215 |
+| `odom_lidar:=kinematic_icp` with `kiss_ekf:=true` (`pose:=kinematic_ekf`) | lidar odometry that knows the car can't slide sideways, the wheels its prior, in KISS-ICP's place | 216 |
 
 ## The defaults: what runs if you say nothing
 
