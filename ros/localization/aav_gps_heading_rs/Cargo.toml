@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+# gps-heading-core: the heading from the GPS's velocity, without ROS (aav_gps_heading's
+#   course.py, ported): cargo test -p gps-heading-core
+# gps-heading-node: the ROS node (rclrs), binary `gps_heading`. colcon builds it through
+#   CMakeLists.txt.
+members = ["crates/gps-heading-core", "crates/gps-heading-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

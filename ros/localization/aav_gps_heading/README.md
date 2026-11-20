@@ -36,6 +36,12 @@ The node uses relative names; in the root namespace they are the absolute ones a
 
 The antenna's place comes from `vehicle.yaml`'s `gps_link` (through `aav_description`).
 
+Since 19 Nov the Rust twin, [`aav_gps_heading_rs`](../aav_gps_heading_rs/README.md), runs
+by default (`localization.launch.py gps_heading_impl:=rust`); this one with
+`gps_heading_impl:=python`. `test_gps_heading_rs_vectors.py` checks `course.py` still gives
+the answers the Rust is checked against: after a change here, run
+`aav_gps_heading_rs/gen_vectors.py` (and port it).
+
 ### Modules
 
 | Module | No ROS? | Holds |

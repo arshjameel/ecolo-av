@@ -109,6 +109,7 @@ scored with Nav2's follower (177, 178) are scored again with ours.
 |---|---|---|
 | 176 | **More Rust-like**: every crate against the Rust API Guidelines | 🔧 left: a few spine-core items (a reviewed safety change), one shared `CloudView` |
 | 195 | **rayon**: chunks and costmaps done; left: the planner (152), the things | 🔧 |
+| 265 | **Batch 7: the last on-car Python nodes in Rust** (Ben, 16 Nov: "lets remove python were possible") | 🔧 done (19 Nov), the Rust the default, the Python's answers to the bit: `geofence`, `stop_hold`, `goal_leash` (`aav_safety_rs`), `gps_heading` (`aav_gps_heading_rs`). Left: `lane_pose` (a trial, off by default: needs a TF buffer at the picture's stamp and the lane map's `roads_at` in Rust; first move `aav_behaviour_rs`'s `lanes` and `tf` into a shared crate), `street_router` (on demand, not on the safety path: HTTP to Valhalla or OSRM, the campus graph from OSM XML, 1,100 lines; a poor fit for now), the battery and radar drivers |
 | 197 | **Rerun** for viewing a drive: `pixi run -e rerun view-bag` | 🔧 Ben looks, keep or drop |
 
 ## 6. Clean-up

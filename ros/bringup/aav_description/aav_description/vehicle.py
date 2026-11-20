@@ -748,6 +748,21 @@ def check_goal_leash_impl(impl):
     return _check_safety_impl('goal_leash_impl', impl)
 
 
+# Which gps_heading runs (localization.launch.py, gps_heading_impl:=): rust
+# (aav_gps_heading_rs, the default since 19 Nov: course.py's answers to the bit) or python
+# (aav_gps_heading: the same node name, topics and parameters). Each one's package.
+GPS_HEADING_IMPLS = {'python': 'aav_gps_heading', 'rust': 'aav_gps_heading_rs'}
+DEFAULT_GPS_HEADING_IMPL = 'rust'
+
+
+def check_gps_heading_impl(impl):
+    """Return gps_heading's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in GPS_HEADING_IMPLS:
+        raise ValueError(f'gps_heading_impl:={impl}: pick one of {", ".join(GPS_HEADING_IMPLS)}')
+    return name
+
+
 # Which stop_sign_watcher runs (car.launch.py's stop_signs, sim.launch.py and
 # bench.launch.py with perception; stop_sign_impl:=): rust (aav_stop_sign_rs, the default
 # since Ben, 17 Nov) or python (aav_detector's: the same node name, topics, parameters and
