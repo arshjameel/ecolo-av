@@ -441,10 +441,20 @@ def launch_setup(context):
         return picked[name] if name in picked else raw(name)
 
     world = arg('world')
-    if world not in MAPS:
-        raise ValueError(f'world:={world}: pick one of {sorted(MAPS)}')
+    maps = dict(MAPS)
     start_x, start_y, start_yaw = arg('start_x'), arg('start_y'), arg('start_yaw')
     ndt_map = arg('ndt_map')
+    if worlds.is_world_file(world):
+        # A twin (tools/twin_world.py, TODO 253): its own 2D map, NDT's points and start.
+        worlds.world_file('', world)
+        twin = worlds.twin(world)
+        maps[world] = twin['map']
+        if float(start_x) == 0.0 and float(start_y) == 0.0:
+            start_x, start_y, start_yaw = (str(v) for v in twin['start'])
+        if ndt_map == DEFAULT_NDT_MAP and twin['ndt']:
+            ndt_map = twin['ndt']
+    if world not in maps:
+        raise ValueError(f"world:={world}: pick one of {sorted(MAPS)}, or a twin's .sdf")
     if world == worlds.CAMPUS:
         # Not on the world's origin unless someone asks: it's on a station shelter.
         worlds.world_file('', world)
@@ -649,7 +659,7 @@ def launch_setup(context):
         # and the stop zone guards navigation's commands, as on a car with them.
         actions.append(include(context, 'aav_navigation', 'navigation.launch.py',
                                use_sim_time='true',
-                               map=os.path.join(nav_share, 'maps', MAPS[world]),
+                               map=os.path.join(nav_share, 'maps', maps[world]),
                                radar=radar, lidar=lidar, ghost=flag['ghost'],
                                voxels=flag['voxels'], kerbs=flag['kerbs'],
                                screen_cubes=flag['screen_cubes'],

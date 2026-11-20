@@ -67,8 +67,41 @@ OLD_NAMES = {'own': RAVENSIM}
 DEFAULT_SIMULATOR = RAVENSIM
 
 
+def is_world_file(world: str) -> bool:
+    """Return whether world:= names a world file (a twin: tools/twin_world.py), not a name."""
+    return world.endswith('.sdf')
+
+
+def twin(world: str) -> dict:
+    """
+    Return a twin world's files, from the twin.yaml tools/twin_world.py writes beside it.
+
+    {'map': its 2D map's YAML, 'ndt': NDT's points or '', 'start': (x, y, yaw)}.
+    """
+    folder = os.path.dirname(os.path.abspath(world))
+    place = os.path.join(folder, 'twin.yaml')
+    start = (0.0, 0.0, 0.0)
+    if os.path.isfile(place):
+        with open(place) as f:
+            s = (yaml.safe_load(f) or {}).get('start') or {}
+        start = (float(s.get('x', 0.0)), float(s.get('y', 0.0)), float(s.get('yaw', 0.0)))
+    ndt = os.path.join(folder, 'ndt.pcd')
+    return {'map': os.path.join(folder, 'map2d.yaml'),
+            'ndt': ndt if os.path.isfile(ndt) else '', 'start': start}
+
+
 def world_file(share: str, world: str) -> str:
-    """Return the path of a world in aav_sim_models's share folder, or say which ones exist."""
+    """
+    Return the path of a world in aav_sim_models's share folder, or say which ones exist.
+
+    A path ending .sdf (a twin from tools/twin_world.py, TODO 253) is taken as it is.
+    """
+    if is_world_file(world):
+        path = os.path.abspath(world)
+        if not os.path.isfile(path):
+            raise ValueError(f'world:={world}: no such file. Make a twin with '
+                             '`pixi run twin-world <map>`')
+        return path
     if world == CAMPUS:
         path = os.path.abspath(CAMPUS_SDF)
         if not os.path.isfile(path):
