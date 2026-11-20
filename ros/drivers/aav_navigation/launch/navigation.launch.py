@@ -79,7 +79,7 @@ Switches:
                           the states and a speed cap, in /world/road_ahead's limits; lane_map:=
                           a lanes.yaml for the road ahead's line
   lane_costs:=, costmap_chunks:=, local_chunks:=true, lane_route:=, lane_pass:=,
-  lane_corners:=,
+  lane_corners:=, lane_pass_shape:=jerk,
   lane_graph:=            our costmap's lanes and chunks, our planner's lane-centre route
                           (TODO 148, 175; docs/own-costmap.md, docs/own-planner.md)
   things:=true            (with lidar:=true) aav_things_rs: the cubes as tracked things on
@@ -136,6 +136,14 @@ LOCAL = 'local_costmap.local_costmap.ros__parameters.'
 
 def flag(context, name):
     return LaunchConfiguration(name).perform(context).lower() == 'true'
+
+
+def check_lane_pass_shape(value):
+    """Return lane_pass_shape:= checked: 'cosine' (empty too) or 'jerk' (TODO 214)."""
+    value = value.strip().lower() or 'cosine'
+    if value not in ('cosine', 'jerk'):
+        raise ValueError(f'lane_pass_shape:={value}: cosine or jerk')
+    return value
 
 
 def check_lane_corners(value):
@@ -455,6 +463,11 @@ def nodes(context):
             context).strip().lower() != 'false'
         settings['lanes']['corners'] = check_lane_corners(
             LaunchConfiguration('lane_corners').perform(context))
+        # TODO 214: the pass a jerk-limited QP at the car's top speed (a challenger).
+        if check_lane_pass_shape(LaunchConfiguration('lane_pass_shape').perform(
+                context)) == 'jerk':
+            settings['lanes']['pass_shape'] = 'jerk'
+            settings['lanes']['pass_speed'] = max_speed or 1.0
     topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS['own']
     actions.append(Node(
         package='aav_planner', executable='planner', name='planner', output='screen',
@@ -782,6 +795,11 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle on the '
                                           'lane is passed by moving only its stretch left; '
                                           "false: the whole path is the lattice's"),
+        DeclareLaunchArgument('lane_pass_shape', default_value='',
+                              description='with lane_route: a pass round a parked obstacle '
+                                          'as a half cosine (empty, cosine: the default) or '
+                                          'jerk, a QP holding the lateral jerk (TODO 214, a '
+                                          'challenger)'),
         DeclareLaunchArgument('lane_corners', default_value='arc',
                               description="with lane_route: the lane line's corners, "
                                           'arc (circle arcs, the default) or clothoid '

@@ -181,6 +181,12 @@ def test_ours_plans_the_lanes_centre_where_the_world_has_a_lane_map():
     assert lane_route(world='road', stack='best') == ''
     assert lane_route(world='road', path='lattice_rs_strong') == ''
 
+    # TODO 214: path:=lane_jerk passes with the jerk-limited QP; the others the cosine.
+    def pass_shape(**args):
+        return included(started(SIM, **args))['navigation.launch.py']['lane_pass_shape']
+    assert pass_shape(world='road', path='lane_jerk') == 'jerk'
+    assert pass_shape(world='road') == ''
+
 
 def test_the_global_costmap_is_made_of_chunks_only_where_there_are_chunks(tmp_path):
     # TODO 175: costmap_chunks:=auto is the campus's chunks (pixi run campus makes them);

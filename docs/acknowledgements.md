@@ -42,7 +42,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **Stanley**: S. Thrun et al., "Stanley: The Robot that Won the DARPA Grand Challenge", J. Field Robotics, 2006 | paper | idea | `aav_track`'s Stanley follower; `aav_lane_follower_rs`'s `lane_follower:=stanley` (heading and cross-track at the front axle, from the camera's lane centre) |
 | LQR and MPC (textbook control) | - | idea | `aav_track`'s LQR, MPC and MPC with lag; `aav_mpc_lag`, the MPC with lag in Rust |
 | **OSQP**'s ADMM: B. Stellato, G. Banjac, P. Goulart, A. Bemporad, S. Boyd, "OSQP: an operator splitting solver for quadratic programs", Math. Programming Computation, 2020 | Apache-2.0 (the solver; we took the algorithm, not its code) | idea | `aav_track`'s `qp.py` and its Rust port in `aav_mpc_lag` (`qp.rs`, 15 Nov) |
-| **Clarabel** (P. Goulart, Y. Chen; Oxford) | Apache-2.0 | idea | read and weighed for `aav_mpc_lag`'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (`aav_mpc_lag` README) |
+| **Clarabel** (P. Goulart, Y. Chen; Oxford) | Apache-2.0 | idea, runs | read and weighed for `aav_mpc_lag`'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (`aav_mpc_lag` README). Runs as a crate for the jerk-limited pass's QP (`aav_planner` `jerk_pass.rs`, TODO 214) |
 | **Flow matching** and the diffusion planner's other ideas | see `aav_diffusion_planner/PROVENANCE.md` | idea | `planner:=diffusion` |
 
 ## Where the car is
@@ -121,7 +121,7 @@ Each has a TODO row to port its idea.
 | **Smooth MPPI / KMPPI** (`pytorch_mppi`, UM ARM Lab) | MIT | idea | `mppi_lag`'s smooth sampling: the steering's noise drawn on its change and summed (`aav_mppi_lag` `optimizer.rs`, `mppi_lag_sampling:=smooth`, TODO 212) |
 | **Autoware's MPC lateral controller** (the Autoware Foundation) | Apache-2.0 | idea | a steering-rate cost and reverse for `mpc_lag_rs` (TODO 213) |
 | **Vector Pursuit** (`vector_pursuit_controller`, Black Coffee Robotics) | Apache-2.0 | idea | looked at as a follower yardstick |
-| **Apollo's piecewise-jerk path** (Baidu; Zhang et al., "Optimal Vehicle Path Planning Using Quadratic Optimization for Baidu Apollo Open Platform", IV 2020); Autoware's static obstacle avoidance | Apache-2.0; paper | idea | smooth lane corners and passes in `lane.rs` and `pass.rs` (TODO 211, 214) |
+| **Apollo's piecewise-jerk path** (Baidu; Zhang et al., "Optimal Vehicle Path Planning Using Quadratic Optimization for Baidu Apollo Open Platform", IV 2020); Autoware's static obstacle avoidance | Apache-2.0; paper | idea | smooth lane corners in `lane.rs` (TODO 211); the jerk-limited pass, a QP along the lane (`aav_planner` `jerk_pass.rs`, `lane_pass_shape:=jerk`, TODO 214) |
 | **Patchwork++** (S. Lee et al., IROS 2022; URL-KAIST) | BSD-2-Clause | idea | finding the ground so a kerb stands out (TODO 215). Read for the kerbs' step finder (`aav_voxels_rs` `steps.rs`, TODO 119): its lesson that the ground must be found locally, not one plane for all; we kept a simpler local rule (a point 0.10 m above another within 0.3 m), since its zones fit a pavement's top as ground too. No code taken |
 | **grid_map** (ANYbotics, ETH); **nvblox** (NVIDIA) | BSD-3-Clause; Apache-2.0 | idea | looked at for the costmap's layers |
 | **CommonRoad route planner** (TU Munich) | BSD-3-Clause | idea | looked at for where `lane.rs` changes lane |

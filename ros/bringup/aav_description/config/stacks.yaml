@@ -79,6 +79,11 @@ levels:
       # Rust: lanes, neighbours, one way, stop lines; TODO 175 step 6). A challenger (16 Nov).
       lane_lanelet2: {planner: own, plan_smoothing: strong, lane_route: 'true',
                       lane_graph: lanelet2}
+      # The lane-centre planner, a parked obstacle passed by a QP along the lane that holds
+      # the lateral jerk (0.5 m/s³) at the car's top speed: Apollo's piecewise-jerk path
+      # (TODO 214). A challenger (19 Nov), scored in stage 2.
+      lane_jerk: {planner: own, plan_smoothing: strong, lane_route: 'true', lane_graph: lanes_yaml,
+                  lane_pass_shape: jerk}
       diffusion: {planner: diffusion}
     score: ''
   steer:

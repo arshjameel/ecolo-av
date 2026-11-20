@@ -5,6 +5,7 @@
 use costmap::cost::LETHAL;
 use costmap::lanes::EDGE_INSET;
 use costmap::{Grid, Road};
+use lattice_planner::jerk_pass::JerkSettings;
 use lattice_planner::lane::{Fallback, How, LaneRouter, LaneSettings};
 use lattice_planner::{scenes, Pose};
 
@@ -204,6 +205,45 @@ fn a_box_parked_in_the_lane_is_passed_on_the_left_and_the_lane_kept_elsewhere() 
         .plan(&planner, &grid, &start, &goal, &never)
         .expect("a path");
     assert_eq!(got.how, How::Lattice(Fallback::Blocked));
+}
+
+#[test]
+fn a_box_parked_in_the_lane_is_passed_within_the_jerk_limit_too() {
+    // TODO 214: the same box, the pass a jerk-limited QP at 2 m/s (a challenger).
+    let planner = scenes::planner(false);
+    let mut grid = free();
+    for x in 276..284 {
+        for y in 72..76 {
+            grid.set(x, y, LETHAL);
+        }
+    }
+    scenes::inflation().apply(&mut grid);
+    let start = Pose::new(5.0, -1.5, 0.0);
+    let goal = Pose::new(90.0, -1.5, 0.0);
+    let jerky = LaneRouter::new(
+        ell().roads().to_vec(),
+        LaneSettings {
+            pass_jerk: Some((JerkSettings::default(), 2.0)),
+            ..LaneSettings::default()
+        },
+    );
+    let got = jerky
+        .plan(&planner, &grid, &start, &goal, &never)
+        .expect("a path");
+    let How::Pass(_, shift) = got.how else {
+        panic!("{:?}", got.how);
+    };
+    assert!(shift > 0.9 && shift < 2.0, "{shift}");
+    assert!(got
+        .plan
+        .poses
+        .iter()
+        .all(|p| planner.fits(&grid, p).expect("cells")));
+    for p in &got.plan.poses {
+        if p.x < 25.0 || p.x > 80.0 {
+            assert!((p.y + 1.5).abs() < 0.05, "{p:?}");
+        }
+    }
 }
 
 #[test]

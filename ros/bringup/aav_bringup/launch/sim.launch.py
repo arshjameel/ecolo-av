@@ -413,7 +413,7 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'mppi_lag_sampling': '', 'lane_costs': 'false', 'lane_route': 'false',
+                  'mppi_lag_steer_gamma': '', 'mppi_lag_sampling': '', 'lane_pass_shape': '', 'lane_costs': 'false', 'lane_route': 'false',
                   'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
                   'local_chunks': 'false', 'lane_pose': 'false'}
@@ -704,6 +704,7 @@ def launch_setup(context):
                                speed_loop=model_loop,
                                lane_route=lane_route, lane_pass=arg('lane_pass'),
                                lane_corners=arg('lane_corners'),
+                               lane_pass_shape=arg('lane_pass_shape'),
                                lane_graph=check_lane_graph(arg('lane_graph')),
                                local_chunks=arg('local_chunks')))
     if ndt:
@@ -1175,6 +1176,11 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle is '
                                           'passed by moving only its stretch left; false: '
                                           "the whole path is the lattice's (before 16 Nov)"),
+        DeclareLaunchArgument('lane_pass_shape', default_value=stacks.CHOSEN,
+                              description='with lane_route: the pass round a parked obstacle, '
+                                          'cosine (the default) or jerk, a QP holding the '
+                                          'lateral jerk (TODO 214, a challenger: '
+                                          'path:=lane_jerk)'),
         DeclareLaunchArgument('lane_corners', default_value='arc',
                               description="with lane_route: the lane line's corners, "
                                           'arc (circle arcs, the default) or clothoid '

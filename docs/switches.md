@@ -47,6 +47,10 @@ Nav2's planners (`lattice`, `hybrid`, `smac2d`, `navfn`, `theta_star`) went with
 scores stay in [Controllers, Planners](controllers.md). The real car takes only `own` (it
 refuses `diffusion` without `diffusion_trial`). More: [Controllers, Planners](controllers.md), [the runs](history/trials-log.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
 
+`path:=lane_jerk` (or `lane_pass_shape:=jerk` with `lane_route`; TODO 214, a challenger,
+scored in stage 2): a parked obstacle on the lane is passed by a QP that holds the
+**lateral jerk** at the car's top speed (Apollo's piecewise-jerk path), not the half cosine.
+
 ## Who steers along the path
 
 | Switch | In plain words | Gazebo, 29 Oct |
