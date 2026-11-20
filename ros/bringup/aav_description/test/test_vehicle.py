@@ -490,10 +490,11 @@ def test_trackers_sit_beside_the_controllers_and_mppi_lag_is_the_default():
     with pytest.raises(ValueError, match='pick one of'):
         vehicle.check_tracker('mppi')
     with pytest.raises(ValueError, match='reversing:=false'):
-        vehicle.check_tracker('stanley', reversing=True)
-    # mppi_lag reverses (Ben, 14 Nov); aav_track's trackers drive forwards only.
+        vehicle.check_tracker('mpc_lag_rs', reversing=True)
+    # mppi_lag reverses (Ben, 14 Nov); aav_track's trackers too (TODO 174); mpc_lag_rs not.
     assert vehicle.check_tracker('mppi_lag', reversing=True) == 'mppi_lag'
-    assert set(vehicle.FORWARD_ONLY_TRACKERS) == set(vehicle.TRACKERS) - {'none', 'mppi_lag'}
+    assert vehicle.check_tracker('stanley', reversing=True) == 'stanley'
+    assert set(vehicle.FORWARD_ONLY_TRACKERS) == {'mpc_lag_rs'}
 
 
 def test_track_params_are_nav2s_own_checks_and_speeds():
@@ -516,6 +517,10 @@ def test_track_params_are_nav2s_own_checks_and_speeds():
     assert p['max_steering_rate'] == min(cfg['actuators']['steer_rate'],
                                          ego['max_steering_rate'])
     assert vehicle.track_params(nav2, cfg, ego, max_speed=3.0)['cruise_speed'] == 3.0
+    # TODO 174: aav_track backs up at max_reverse_speed with reversing, never without.
+    assert p['max_reverse_speed'] == 0.0
+    back = vehicle.track_params(nav2, cfg, ego, reversing=True)['max_reverse_speed']
+    assert back == cfg['vehicle']['max_reverse_speed'] > 0
 
 
 def test_check_speed_loop_takes_spine_cores_names_and_refuses_the_rest():
@@ -952,6 +957,14 @@ def test_mppi_lag_steer_gamma_is_a_number_0_or_more():
     for bad in ('x', '-1', 'nan'):
         with pytest.raises(ValueError):
             vehicle.check_steer_gamma(bad)
+
+
+def test_mppi_lag_batch_is_a_whole_number_1_or_more():
+    # TODO 152: steer:=mppi_lag_1k's 1000 samples a tick.
+    assert vehicle.check_mppi_batch('1000') == 1000
+    for bad in ('x', '0', '-5', '1.5'):
+        with pytest.raises(ValueError, match='mppi_lag_batch'):
+            vehicle.check_mppi_batch(bad)
 
 
 def test_the_stop_zone_reads_the_collision_monitor_block():

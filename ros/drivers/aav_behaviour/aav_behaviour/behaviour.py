@@ -472,6 +472,39 @@ def lane_ahead(ranges: Sequence[float], angle_min: float, angle_increment: float
     return nearest
 
 
+def kerb_ahead(steps: Sequence[Tuple[float, float]], road: Sequence[Tuple[float, float]],
+               front: float, half_width: float, reach: float = 30.0) -> float:
+    """
+    Return the metres from base_link, along the road ahead, to the nearest kerb on it; inf.
+
+    TODO 219: the voxels node's steps (/perception/voxels/steps: kerbs, x y in base_link,
+    those under every beam remembered) slow the car as an obstacle does, so the stop zone
+    is never the first to act. A step counts within half_width of the road ahead's line
+    (base_link; fewer than 2 points: straight ahead), past the bumper (`front`) and
+    within `reach` along it. A kerb beside the road, off the line, never slows the car.
+    """
+    line = list(road) if len(road) >= 2 else [(0.0, 0.0), (reach, 0.0)]
+    start = math.hypot(line[0][0], line[0][1])
+    nearest = math.inf
+    for px, py in steps:
+        if not (math.isfinite(px) and math.isfinite(py)):
+            continue
+        done = start
+        for (ax, ay), (bx, by) in zip(line, line[1:]):
+            dx, dy = bx - ax, by - ay
+            length = math.hypot(dx, dy)
+            t = 0.0
+            if length > 0.0:
+                t = min(1.0, max(0.0, ((px - ax) * dx + (py - ay) * dy) / (length * length)))
+            along = done + t * length
+            if (math.hypot(px - (ax + t * dx), py - (ay + t * dy)) <= half_width
+                    and front < along <= reach):
+                nearest = min(nearest, along)
+                break
+            done += length
+    return nearest
+
+
 @dataclass(frozen=True)
 class Seen:
     """One thing from /world/things, in odom: centre, speed over the ground, size (m, m/s)."""

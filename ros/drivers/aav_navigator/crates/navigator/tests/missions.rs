@@ -276,6 +276,67 @@ fn the_follower_failing_clears_local_then_recoveries_in_turn_then_gives_up() {
     }
 }
 
+/// TODO 174: a narrow street blocked ahead. The car stands before the block (the stop
+/// zone holds it) and makes no progress; the navigator clears the local costmap, follows
+/// again, gives up on that path, clears both and plans again; the planner, seeing the
+/// block, backs out of the street (a path with a cusp: lattice-planner's scene "blocked
+/// narrow street"); the follower gets it as planned, cusp and all, and arrives.
+#[test]
+fn a_blocked_narrow_street_is_left_backwards_on_the_next_plan() {
+    let goal = Pose::new(40.0, 5.0, 0.0);
+    let into_street: Vec<Pose> = (0..=20)
+        .map(|i| Pose::new(19.75, 10.0 + f64::from(i), std::f64::consts::FRAC_PI_2))
+        .collect();
+    // Backwards down the street (the poses still face north), a cusp, forward east.
+    let mut out_of_it: Vec<Pose> = (0..=17)
+        .map(|i| Pose::new(19.75, 22.0 - f64::from(i), std::f64::consts::FRAC_PI_2))
+        .collect();
+    out_of_it.extend((0..=20).map(|i| Pose::new(20.0 + f64::from(i), 5.0, 0.0)));
+    let mut nav = Navigator::new(Settings {
+        retries: 3,
+        ..Settings::default()
+    });
+    nav.start(4, Mission::ToPose(goal), 0.0);
+    let (t, _) = plan_token(&nav.tick(0.0, None));
+    let f = follow_token(&nav.planned(t, Ok(into_street), 0.0));
+    // Held before the block: no progress. The local costmap cleared, the same path again.
+    let out = nav.followed(
+        f,
+        Err((FollowError::FailedToMakeProgress, "no progress".into())),
+        10.0,
+    );
+    let Command::Clear { token, .. } = out[0] else {
+        panic!("{out:?}")
+    };
+    let f = follow_token(&nav.recovered(token, true, 10.1));
+    let out = nav.followed(
+        f,
+        Err((FollowError::FailedToMakeProgress, "no progress".into())),
+        20.0,
+    );
+    let Some(Command::Clear { token, .. }) = out.get(1) else {
+        panic!("{out:?}")
+    };
+    // Planned again: the block is in the costmap now, so the path backs out.
+    let (t, _) = plan_token(&nav.recovered(*token, true, 20.5));
+    let out = nav.planned(t, Ok(out_of_it.clone()), 20.6);
+    let Some(Command::Follow { token: f, path }) = out
+        .iter()
+        .find(|c| matches!(c, Command::Follow { .. }))
+        .cloned()
+    else {
+        panic!("{out:?}")
+    };
+    assert_eq!(
+        path, out_of_it,
+        "the follower gets the reversing path as planned"
+    );
+    assert_eq!(
+        finished(&nav.followed(f, Ok(()), 60.0)),
+        Some((4, Outcome::Succeeded { missed: vec![] }))
+    );
+}
+
 #[test]
 fn back_up_is_a_recovery_only_where_the_car_may_reverse() {
     let settings = Settings {

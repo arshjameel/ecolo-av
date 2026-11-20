@@ -18,7 +18,10 @@
 //!                                         only with steps:=true: the high side of every
 //!                                         sudden step in the ground (a kerb), 0.1 m squares
 //!                                         (voxels::steps, TODO 119), and those of the last
-//!                                         step_keep s, kept in odom (voxels::StepMemory)
+//!                                         step_keep s, kept in odom (voxels::StepMemory);
+//!                                         those under every beam (nearer the lidar than
+//!                                         its height / tan 15 degrees) while they stay
+//!                                         there, however long (TODO 219)
 //!             /perception/voxels/status   diagnostic_msgs/DiagnosticStatus, every cloud: ms,
 //!                                         cubes, ground_cubes, points, fitted, roll_deg,
 //!                                         pitch_deg, clouds_dropped (and steps, with
@@ -47,7 +50,8 @@ use ros_env::sensor_msgs::msg::{PointCloud2, PointField};
 use ros_env::std_msgs::msg::Header;
 use voxels::{
     cloud::{self, CloudView, Field},
-    cubes, steps, usable, Body, CubeShape, Cubes, Mount, Point, Pose2, StepMemory, StepShape,
+    cubes, steps, usable, Blind, Body, CubeShape, Cubes, Mount, Point, Pose2, StepMemory,
+    StepShape, LOWEST_BEAM,
 };
 
 /// The lidar's period (10 Hz): to count the clouds that came while one was cut.
@@ -96,7 +100,9 @@ fn main() -> Result<()> {
         status: node.create_publisher("/perception/voxels/status".keep_last(10).reliable())?,
         kerbs: match step_shape {
             Some(shape) => Some(Kerbs {
-                memory: StepMemory::new(step_keep, shape.range_max, shape.cell),
+                // A kerb under every beam stays while it is there (TODO 219).
+                memory: StepMemory::new(step_keep, shape.range_max, shape.cell)
+                    .with_blind(Blind::under(lidar_xyz, LOWEST_BEAM)),
                 shape,
                 pose: None,
                 publisher: node

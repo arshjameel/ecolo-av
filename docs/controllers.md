@@ -9,8 +9,9 @@ bad at, what it needs, and where it would run on our car.
       is built in `spine-core` to compare (`speed_loop:=lqi`, section 2a).
     - **Steering, following a path:** MPPI that knows the lag (`aav_mppi_lag`, Rust) is
       the default (sim, bench and car); Nav2's MPPI was, until Nav2 went on 17 Nov.
-      Our trackers (pure pursuit, Stanley, LQR, MPC) are trials, forward only; MPC is
-      the leading candidate among them.
+      Our trackers (pure pursuit, Stanley, LQR, MPC) are trials; they reverse since
+      19 Nov (TODO 174: a backwards stretch is driven mirrored); MPC is the leading
+      candidate among them.
     - **The steering motor:** the Jrk G2's own position PID, underneath everything.
     - **Obstacle tours:** the State Lattice plans (since 1 Nov; ours in Rust,
       `aav_planner`, since 14 Nov), MPPI follows. Hybrid-A* and the diffusion planner

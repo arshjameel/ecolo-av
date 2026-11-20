@@ -20,6 +20,11 @@ Subscribes  /perception/stop_sign/distance  geometry_msgs/PointStamped: a sign, 
             /localization/odom/local   nav_msgs/Odometry: the speed, and its age
             /localization/odom/global  nav_msgs/Odometry: where the car is on /plan
             /sensors/lidar/scan      sensor_msgs/LaserScan (base_link, best effort): the lane
+            /perception/voxels/steps  sensor_msgs/PointCloud2 (base_link), with kerbs true:
+                                     the kerbs (the Rust voxels node's steps, those under
+                                     every beam remembered); one on the road ahead's line
+                                     is an obstacle stop, so the car slows for it before
+                                     the stop zone acts (kerb_ahead, TODO 219)
             /world/things            aav_interfaces/Things (odom), with things true: then an
                                      obstacle stop is only for a thing that moves (a parked
                                      one is the planner's to go round); the scan's rule
@@ -54,8 +59,10 @@ navigation.launch.py behaviour:=true starts it (default false: the stock path).
 
 import math
 import signal
+import struct
 
-from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagnostic, lane_ahead,
+from aav_behaviour.behaviour import (active_plan, along_until, Behaviour, diagnostic, kerb_ahead,
+                                     lane_ahead,
                                      MOVING, moving_ahead, moving_near, MOVING_REASON,
                                      MovingFor, Nearby, path_left, Seen, Settings, Stop,
                                      STOP_LINE, StopLines, World)
@@ -76,7 +83,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, PointCloud2
 from std_msgs.msg import Bool, Header, String
 from tf2_geometry_msgs import do_transform_point
 import tf2_ros
@@ -108,6 +115,9 @@ class BehaviourNode(Node):
             # /world/things (aav_things): wait only for what moves, leave a parked thing to
             # the planner. False: anything in the lane slows the car (the scan's rule).
             ('things', False), ('things_timeout', 1.0),
+            # /perception/voxels/steps (navigation.launch.py kerbs:=true): a kerb on the
+            # road ahead slows the car as an obstacle does (TODO 219). s: older is none.
+            ('kerbs', False), ('kerbs_timeout', 1.0),
             # With things: something moving near holds the car (Ben, 16 Nov: "if we see a
             # car people or stuff moving around us we should likely just stop"). m, s, m/s.
             ('moving_hold', True), ('moving_radius', 10.0), ('moving_within', 3.0),
@@ -184,6 +194,10 @@ class BehaviourNode(Node):
         if p['obstacles']:
             self.create_subscription(LaserScan, '/sensors/lidar/scan', self.on_scan,
                                      qos_profile_sensor_data)
+        self.kerb, self.kerb_time = math.inf, -math.inf   # m along the road ahead
+        if p['kerbs']:
+            self.create_subscription(PointCloud2, '/perception/voxels/steps', self.on_steps,
+                                     qos_profile_sensor_data)
         self.sign, self.sign_time = None, -math.inf   # (x, y) in odom; the camera's frame
         self.create_subscription(PointStamped, '/perception/stop_sign/distance', self.on_sign,
                                  10)
@@ -256,10 +270,24 @@ class BehaviourNode(Node):
                 and math.isfinite(self.near_moving))
 
     def obstacle_ahead(self, now):
-        """Return x (base_link) of what the car slows for: a moving thing, or the scan's."""
+        """
+        Return x (base_link) of what the car slows for: a moving thing, or the scan's.
+
+        And a kerb on the road ahead (TODO 219), whichever is nearer: a kerb counts with
+        the things too (it never moves, and the stop zone stops for it).
+        """
         if self.p['things'] and now - self.things_time <= self.p['things_timeout']:
-            return self.moving
-        return self.ahead
+            ahead = self.moving
+        else:
+            ahead = self.ahead
+        if now - self.kerb_time <= self.p['kerbs_timeout']:
+            ahead = min(ahead, self.kerb)
+        return ahead
+
+    def on_steps(self, msg: PointCloud2):
+        steps = cloud_xy(msg)
+        self.kerb = kerb_ahead(steps, self.road_here(), self.p['front'], self.p['half_width'])
+        self.kerb_time = self.now()
 
     def on_global(self, msg: Odometry):
         self.pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
@@ -391,6 +419,24 @@ class BehaviourNode(Node):
             level=level, name='behaviour',
             message=f'{d.state}{": " + d.reason if d.reason else ""}',
             values=[KeyValue(key=k, value=v) for k, v in diagnostic(d).items()]))
+
+
+def cloud_xy(msg: PointCloud2):
+    """Return a cloud's (x, y) points (float32 fields x and y), or [] without them."""
+    offsets = {f.name: f.offset for f in msg.fields if f.datatype == 7}  # FLOAT32
+    if 'x' not in offsets or 'y' not in offsets or msg.point_step <= 0:
+        return []
+    order = '>' if msg.is_bigendian else '<'
+    xy = struct.Struct(order + 'f')
+    data = bytes(msg.data)
+    out = []
+    for i in range(msg.width * msg.height):
+        base = i * msg.point_step
+        if base + msg.point_step > len(data):
+            break
+        out.append((xy.unpack_from(data, base + offsets['x'])[0],
+                    xy.unpack_from(data, base + offsets['y'])[0]))
+    return out
 
 
 def main():

@@ -9,7 +9,7 @@
 //! | Module | The Python it ports |
 //! |---|---|
 //! | [`machine`] | `behaviour.py`: `Behaviour`, `Settings`, `Stop`, `World`, `Decision`, `diagnostic` |
-//! | [`paths`] | `behaviour.py`: `active_plan`, `path_left`, `along_until`, `lane_ahead`, `moving_ahead` |
+//! | [`paths`] | `behaviour.py`: `active_plan`, `path_left`, `along_until`, `lane_ahead`, `moving_ahead`, `kerb_ahead` |
 //! | [`road`] | `aav_description/road_ahead.py`, the writer's half: `resample`, `build` |
 //! | [`lanes`] | `aav_description/lane_map.py`: `LaneMap`, `lane_line`, `with_edges` |
 //! | [`fence`] | `aav_safety/geofence.py`: `Polygon` and its depth |

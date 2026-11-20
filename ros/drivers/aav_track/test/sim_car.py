@@ -16,6 +16,7 @@ from aav_description.car_model import ActuatorConfig, Actuators
 from aav_ego.ackermann import EgoModel, Limits as EgoLimits
 from aav_ego.vehicle_model import VehicleModel
 from aav_track.checks import GoalCheck
+from aav_track.gears import Gears, mirror_state
 from aav_track.lag_model import CarParams
 from aav_track.path import Path
 from aav_track.speed import SpeedPolicy
@@ -103,6 +104,88 @@ def follow(trk, poses, start, cruise=1.0, period=0.05, max_time=120.0, physics=0
             y += speed * math.sin(yaw) * physics
             t += physics
     return run
+
+
+def follow_geared(trk, poses, start, cruise=1.0, max_reverse=0.5, period=0.05,
+                  max_time=120.0, physics=0.01):
+    """
+    Drive `poses` with its cusps as track_node.py does (TODO 174).
+
+    Each stretch in turn, a backwards one mirrored for the tracker (gears.py), backwards
+    at max_reverse at most.
+
+    Its rows also hold the stretch's index (r[8]) and the speed asked (r[9]).
+    """
+    gears = Gears.of(poses)
+    whole = Path(poses)
+    path = gears.current.path()
+    trk.reset(path)
+    if getattr(trk, 'plans_speed', False):
+        trk.cruise = cruise
+    policy = SpeedPolicy(cruise=cruise, accel=1.0, max_brake=3.0)
+    goal = GoalCheck(xy=1.0, yaw=0.75)
+    ego = EgoModel(EgoLimits(max_speed=5.0, wheelbase=LIMITS.wheelbase,
+                             max_steering_angle=LIMITS.max_steer, max_steering_rate=0.6))
+    car = Actuators(ActuatorConfig())
+    x, y, yaw = start
+    speed = asked = steer = 0.0
+    t, run, hint = 0.0, Run(), 0
+    while t < max_time:
+        foot = path.project((x, y), hint)
+        if gears.update(path.left(foot.s), speed, t):
+            path = gears.current.path()
+            trk.reset(path)
+            asked = 0.0
+            foot = path.project((x, y), 0)
+        hint = foot.index
+        if gears.last and goal.done(x, y, yaw, (*whole.end, whole.goal_yaw)):
+            run.reached = True
+            return run
+        back = gears.backwards
+        mx, my, myaw, mv, myr, msteer = mirror_state(x, y, yaw, speed, 0.0, steer, back)
+        cmd = trk.step(State(mx, my, myaw, mv, myr, msteer), period)
+        steer = -cmd.steer if back else cmd.steer
+        if cmd.speed is None:
+            ask = policy.step(path, foot.s, abs(asked), mv, period, cmd.speed_cap)
+        else:
+            ask = cmd.speed
+        asked = -min(max(ask, 0.0), max_reverse) if back else ask
+        run.asked.append(asked)
+        w = asked * math.tan(steer) / LIMITS.wheelbase
+        run.rows.append((t, x, y, yaw, speed, steer, foot.cross,
+                         math.remainder(myaw - foot.heading, 2 * math.pi), gears.index,
+                         asked))
+        for _ in range(round(period / physics)):
+            ego_v, ego_d, _ = ego.step((asked, w), physics)
+            s = car.step(ego_v, ego_d, physics)
+            speed = s.speed
+            yaw += speed * math.tan(s.steering) / LIMITS.wheelbase * physics
+            x += speed * math.cos(yaw) * physics
+            y += speed * math.sin(yaw) * physics
+            t += physics
+    return run
+
+
+def back_straight(length=8.0, step=0.1):
+    """Backing up `length` m along -x: the poses face +x (the car's way), the path runs -x."""
+    return [(-i * step, 0.0, 0.0) for i in range(int(length / step) + 1)]
+
+
+def forward_then_back(ahead=6.0, radius=5.0, step=0.1):
+    """
+    Return `ahead` m east, a cusp, then backwards round a quarter circle of `radius` to the left.
+
+    It ends `radius` m behind the cusp and `radius` m to its left, facing south.
+    """
+    pts = [(i * step, 0.0, 0.0) for i in range(int(ahead / step) + 1)]
+    cx, cy = ahead, radius
+    n = int(radius * math.pi / 2 / step)
+    for i in range(1, n + 1):
+        a = i * step / radius
+        # Backwards to the left: the rear swings toward +y while the nose turns right
+        # (yaw falls); centre at (ahead, radius) on the left of the car.
+        pts.append((cx - radius * math.sin(a), cy - radius * math.cos(a), -a))
+    return pts
 
 
 def straight(length=40.0, step=0.1, y=0.0):

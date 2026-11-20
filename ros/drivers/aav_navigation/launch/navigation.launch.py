@@ -57,6 +57,7 @@ Switches:
                           another follower serves follow_path (aav_track's; mpc_lag_rs:
                           aav_mpc_lag). aav_track's and mpc_lag_rs drive forwards only
   mppi_lag_steer_gamma:=0.05  mppi_lag's steering control cost (TODO 168)
+  mppi_lag_batch:=1000        mppi_lag's samples a tick (empty: 2000; TODO 152)
   live_swap:=true         aav_track's tracker can change while it runs
   map_correction:=slow    the follower's held map -> odom moves toward the newest slowly
                           (TODO 186)
@@ -355,6 +356,9 @@ def nodes(context):
                          # The things: wait only for what moves, a parked thing is the
                          # planner's to go round (behaviour.py moving_ahead).
                          'things': things,
+                         # The kerbs (TODO 219): one on the road ahead slows the car as
+                         # an obstacle does, before the stop zone acts.
+                         'kerbs': kerbs,
                          # Every navigator action: a goal running on any of them.
                          'goal_status_topics': [
                              vehicle.navigator_action(a) + '/_action/status'
@@ -514,6 +518,10 @@ def nodes(context):
     gamma = LaunchConfiguration('mppi_lag_steer_gamma').perform(context).strip()
     if gamma:
         slew['steer_gamma'] = vehicle.check_steer_gamma(gamma)
+    # TODO 152: mppi_lag's samples a tick (empty: nav2.yaml's batch_size, 2000).
+    batch = LaunchConfiguration('mppi_lag_batch').perform(context).strip()
+    if batch:
+        slew['batch_size'] = vehicle.check_mppi_batch(batch)
     # The behaviour planner's speed cap is in /world/road_ahead's limits (TODO 233).
     if tracker == 'mpc_lag_rs':
         # aav_mpc_lag (Rust): aav_track's mpc_lag ported, a challenger beside it.
@@ -542,7 +550,8 @@ def nodes(context):
         actions.append(Node(
             package='aav_track', executable='track', name='track', output='screen',
             respawn=True, respawn_delay=RESPAWN_DELAY,
-            parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed, speed_loop),
+            parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed, speed_loop,
+                                                  reversing=reversing),
                         {'tracker': tracker, 'use_sim_time': use_sim_time,
                          'road_ahead_topic': '/world/road_ahead' if lane else '',
                          'live_swap': IfCondition(
@@ -736,6 +745,10 @@ def generate_launch_description():
                                           'trial: curvature no faster than the steering '
                                           'turns at 1 or 2.5 m/s, the smoother off '
                                           '(config/lattice_ackermann_smooth*.json)'),
+        DeclareLaunchArgument('mppi_lag_batch', default_value='',
+                              description='with tracker:=mppi_lag: its samples a tick '
+                                          "(batch_size); empty: nav2.yaml's 2000. 1000, a "
+                                          'challenger: half the work a tick (TODO 152)'),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value='',
                               description="with tracker:=mppi_lag: its steering's control "
                                           "cost weight; empty: nav2.yaml's gamma (0.015, as "

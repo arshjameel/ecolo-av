@@ -9,7 +9,7 @@ The Rust (crates/behaviour-core, tests/vectors.rs) must give the same answers, w
 
   - the state machine: long random runs of worlds, each tick's state, reason, cap, left
     and warnings, and the state topic's text;
-  - path_left, along_until (the fence's depth), lane_ahead, moving_ahead;
+  - path_left, along_until (the fence's depth), lane_ahead, moving_ahead, kerb_ahead;
   - the stop lines on the route (StopLines, TODO 220);
   - the road ahead (resample, build), the lane map (lane_at, lane_line, with_edges);
   - the fence's depth.
@@ -195,6 +195,26 @@ def scans():
         out.append({'ranges': ranges, 'angle_min': amin, 'angle_increment': inc,
                     'front': front, 'half_width': half,
                     'ahead': bh.lane_ahead(ranges, amin, inc, front, half)})
+    return out
+
+
+def kerbs():
+    """Return kerb_ahead's cases (TODO 219): steps round the car, a road ahead or none."""
+    rng = random.Random(21)
+    out = []
+    for _ in range(200):
+        steps = [(rng.uniform(-5, 35), rng.uniform(-6, 6))
+                 for _ in range(rng.choice([0, 1, 5, 40]))]
+        road = []
+        if rng.random() < 0.8:
+            x, y, h = rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5), rng.uniform(-0.3, 0.3)
+            bend = rng.uniform(-0.08, 0.08)
+            for _ in range(rng.choice([1, 2, 20, 80])):
+                road.append((x, y))
+                x, y, h = x + 0.5 * math.cos(h), y + 0.5 * math.sin(h), h + bend
+        front, half = rng.choice([(2.0, 0.6), (1.85, 0.9)])
+        out.append({'steps': steps, 'road': road, 'front': front, 'half_width': half,
+                    'ahead': bh.kerb_ahead(steps, road, front, half)})
     return out
 
 
@@ -390,6 +410,7 @@ def main():
                                 s.odom_stale, s.sign_lost, s.passed, s.release_hold]
                             for k, s in SETTINGS.items()},
                'runs': machine_runs(), 'caps': caps(), 'paths': paths(), 'scans': scans(),
+               'kerbs': kerbs(),
                'movers': movers(), 'nears': nears(), 'settles': settles(), 'roads': roads(),
                'stop_lines': stop_line_runs()}
     OUT.write_text(json.dumps(enc(vectors), separators=(',', ':'), allow_nan=False) + '\n')

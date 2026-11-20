@@ -26,7 +26,7 @@ Every tracker drives with **one speed policy** (`speed.py`) and Nav2's **own che
 `mpc_lag`: they plan their own speed (`Command.speed`), within the policy's limits.
 
 ```sh
-pixi run sim world:=test_lot reversing:=false tracker:=lqr
+pixi run sim world:=test_lot tracker:=lqr          # reverses too (TODO 174)
 pixi run measure controllers --trackers pure_pursuit lqr --tours lot --legs 1
 ```
 
@@ -58,6 +58,7 @@ ego.yaml; nothing copied):
 | `progress_radius`, `progress_angle`, `progress_time` | `progress_checker` |
 | `wheelbase`, `max_steering_angle` | vehicle.yaml |
 | `max_steering_rate` | the lower of vehicle.yaml `steer_rate` and ego.yaml `max_steering_rate` |
+| `max_reverse_speed` | vehicle.yaml's with `reversing:=true`, else 0 (TODO 174) |
 | `mpc_lag.speed_loop` | the spine's speed loop profile `mpc_lag` predicts: the sim's `speed_loop:=` (`default`, `smooth`, `firm`; `lqi` refused at launch with `tracker:=mpc_lag`); never in `track.yaml` (TODO 163) |
 
 From `config/track.yaml`: `lateral_accel` (1.0 m/s², slow for bends), `odom_timeout`, the
@@ -82,6 +83,7 @@ Modules (all but `track_node.py` have no ROS):
 
 | Module | Holds |
 |---|---|
+| `gears.py` | `stretches`: the path cut at its cusps; `Gears`: which stretch, the next taken at the cusp (within 0.3 m and nearly still, or standing 2 s within 1.5 m); `mirror_state`: a backwards stretch as the tracker sees it (TODO 174) |
 | `lane.py` | `keep_in_lane`: each path point moved sideways inside the road ahead's soft edges (TODO 169) |
 | `path.py` | `Path` (arc length, `project` -> `Foot`, `point_at`, `curvature_at`), `moved` (map into odom), `wrap` |
 | `slow_frame.py` | `SlowFrame`: the held map -> odom, slewed toward the newest within `SlewLimits` (the same rule as `aav_mppi_lag`'s `map_correction.rs`) |
@@ -98,7 +100,10 @@ MPC); `aav_description`'s `vehicle.yaml`.
 
 ## Invariants
 
-- Forward only: `navigation.launch.py` refuses a tracker with `reversing:=true`.
+- Reverses where the plan says, with `reversing:=true` (TODO 174): the path cut at its
+  cusps (`gears.py`), a backwards stretch mirrored for the tracker (the car turned round,
+  speed and steering negated), at `max_reverse_speed` at most. Without it
+  (`max_reverse_speed` 0) a path that reverses is refused (`INVALID_PATH`).
 - Never both followers: with a tracker, `mppi_lag` doesn't start.
 - Every steering command within full lock and the steering rate; at v = 0, w = 0 (no
   steering at a standstill: ego holds the wheels).
@@ -125,6 +130,7 @@ runs it). In Ravensim: `pixi run measure controllers --trackers ...`.
 | `test_path.py` | the foot, cross track, bends, past the ends, into odom |
 | `test_slow_frame.py` | the slew at its speed and turn rate, about the car; a snap; noise held to the rate; off is the old way; the car in map gives the same foot as the path in odom |
 | `test_checks.py` | the goal and progress checks |
+| `test_gears.py` | the cuts at cusps, the mirror, the cusp's rules; every tracker backing up a straight line, and through a cusp and backwards round a bend (`sim_car.follow_geared`, TODO 174) |
 | `test_speed.py` | cruise, slow before a bend, stop at the end |
 | `test_trackers.py` | each tracker on a pretend car (`sim_car.py`: ego's model, the simulator's actuators): straight, a curve, a 1 m offset, at 1 and 3 m/s; the forward U-turn in a 14 m lane, at the planner's radius and at full lock; limits; LQR's schedule and preview; mpc_full's speed (slows to swing, stops at the end, throttle and brake); MPC's step times |
 | `test_qp.py` | the QP solver against hand answers and scipy's SLSQP |

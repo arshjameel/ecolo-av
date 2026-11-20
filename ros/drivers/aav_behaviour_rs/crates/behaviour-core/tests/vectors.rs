@@ -14,8 +14,8 @@ use behaviour_core::machine::{
     diagnostic, nav2_cap, Behaviour, Lock, Settings, Stop, StopReason, World,
 };
 use behaviour_core::paths::{
-    along_until, lane_ahead, moving_ahead, moving_near, path_left, Crossing, MovingFor, Nearby,
-    Point, Seen, MOVING, REACH,
+    along_until, kerb_ahead, lane_ahead, moving_ahead, moving_near, path_left, Crossing, MovingFor,
+    Nearby, Point, Seen, MOVING, REACH,
 };
 use behaviour_core::road::{build, capped, BuildOptions, Strip};
 use behaviour_core::stop_lines::{StopLineSettings, StopLines};
@@ -263,6 +263,24 @@ fn the_lane_ahead_and_moving_things_are_the_pythons() {
         worst.check(got, f(&m["ahead"]), || format!("movers {i}"));
     }
     worst.report("lane_ahead, moving_ahead");
+}
+
+#[test]
+fn the_kerbs_ahead_are_the_pythons() {
+    // TODO 219: the steps along the road ahead.
+    let v = vectors();
+    let mut worst = Worst::default();
+    for (i, k) in v["kerbs"].as_array().expect("kerbs").iter().enumerate() {
+        let got = kerb_ahead(
+            &points(&k["steps"]),
+            &points(&k["road"]),
+            f(&k["front"]),
+            f(&k["half_width"]),
+            REACH,
+        );
+        worst.check(got, f(&k["ahead"]), || format!("kerbs {i}"));
+    }
+    worst.report("kerb_ahead");
 }
 
 fn seen_things(v: &Value) -> Vec<Seen> {
