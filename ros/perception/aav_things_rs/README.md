@@ -38,7 +38,7 @@ reader, `behaviour-core`'s TF buffer, `voxels`' point type.
 | Module | Holds | From |
 |---|---|---|
 | `groups` | `group`, `to_frame`, `Group`, `GroupShape` | `groups.py` |
-| `tracker` | `Tracker` (`step`, `radar`, `expire`, `at`, `rename`), `Track`, `TrackerShape`, `predict` | `tracker.py` |
+| `tracker` | `Tracker` (`step`, `radar`, `expire`, `at`, `rename`), `Track`, `TrackerShape`, `predict`; with `per_kind` (TODO 217, a challenger, `things_tracker:=per_kind`): `accel_covariance` (a vehicle's noise long along its heading and narrow across, a person's round), `predict_with`, `fitted_speed` (a thing found again re-fits its speed from its last sightings); the shared vectors have a per-kind run | `tracker.py` |
 | `radar` | `clusters`: a cluster cloud's rows as speeds along rays, in odom | `things_node.py` `use_clusters` |
 | `background` | `Background`, `new_only`, `ChunkBackground` | `background.py` |
 | `tf_wait` | `Waiting`, `Step` (an enum), `decide` | `tf_wait.py` |
@@ -58,7 +58,7 @@ the radar, the tracker, the names) and writes every thing; `tests/vectors.rs` pl
 
 | Vectors | Clouds | Things listed | Largest difference |
 |---|---|---|---|
-| made up (a walker, a car, the radar, a row of posts) and recorded in Ravensim (a lidar-obstacle run) | 298 | 2,237 | 4.6e-15 m (allowed 1e-9) |
+| made up (a walker, a car, the radar, a row of posts; once with a motion model per kind, TODO 217) and recorded in Ravensim (a lidar-obstacle run) | 378 | 3,166 | 4.6e-15 m (allowed 1e-9) |
 
 The same ids, kinds, positions, speeds, sizes and confidences. Names and the saved map's
 background have their own vectors.

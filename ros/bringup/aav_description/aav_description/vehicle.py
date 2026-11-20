@@ -1520,6 +1520,17 @@ def with_global_window(cfg, metres):
 PLAN_SMOOTHINGS = {'nav2': None, 'strong': {'w_data': 0.02, 'w_smooth': 0.3}}
 
 
+THINGS_TRACKERS = ('constant_velocity', 'per_kind')
+
+
+def check_things_tracker(value):
+    """Return things_tracker:= checked: constant_velocity (empty too) or per_kind (217)."""
+    value = str(value).strip().lower() or THINGS_TRACKERS[0]
+    if value not in THINGS_TRACKERS:
+        raise ValueError(f'things_tracker:={value}: one of {", ".join(THINGS_TRACKERS)}')
+    return value
+
+
 GROUNDS = ('plane', 'patchwork')
 
 

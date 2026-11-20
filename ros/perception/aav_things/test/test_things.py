@@ -3,7 +3,8 @@
 import math
 
 from aav_things.groups import Group, group, GroupShape, to_frame
-from aav_things.tracker import (ground_radial_speed, predict, RadarCluster, Tracker,
+from aav_things.tracker import (accel_covariance, fitted_speed,  # noqa: I100
+                                ground_radial_speed, predict, RadarCluster, Tracker,
                                 TrackerShape, UNKNOWN)
 import numpy as np
 import pytest
@@ -216,3 +217,32 @@ def test_a_walker_and_a_car_still_get_their_speed():
     assert len(_held_tracks(tracker, frames)) == 2
     speeds = sorted(math.hypot(t.x[2], t.x[3]) for t in tracker.at(6.0))
     assert speeds == pytest.approx([1.4, 8.0], abs=0.3)
+
+
+# --- a motion model per kind (TODO 217) ---
+
+def test_a_cars_noise_is_long_along_its_heading_and_narrow_across():
+    sh = TrackerShape(per_kind=True)
+    assert accel_covariance('car', 5.0, 0.0, sh) == pytest.approx((4.0, 0.0, 0.25))
+    assert accel_covariance('truck', 3.0, 3.0, sh) == pytest.approx((2.125, 1.875, 2.125))
+    assert accel_covariance('person', 1.0, 0.0, sh) == pytest.approx((4.0, 0.0, 4.0))
+    assert accel_covariance('unknown', 1.0, 0.0, sh) == pytest.approx((2.25, 0.0, 2.25))
+
+
+def test_a_coasting_car_stays_in_its_lane():
+    tracker = Tracker(TrackerShape(per_kind=True), name=lambda t: 'car')
+    for k in range(30):
+        tracker.step(k * 0.1, [seen(10.0 + 5.0 * k * 0.1, 0.0)], (0, 0))
+    (car,) = tracker.at(4.0)
+    assert car.p[1, 1] < 0.5 * car.p[0, 0]
+
+
+def test_a_thing_found_again_refits_its_speed_from_its_sightings():
+    tracker = Tracker(TrackerShape(per_kind=True))
+    for k in range(10):
+        tracker.step(k * 0.1, [seen(10.0 + k * 0.1, 0.0)], (0, 0))
+    tracker.step(2.0, [seen(11.0, 0.5)], (0, 0))
+    (thing,) = tracker.tracks
+    (vx, vy), _ = fitted_speed(thing.sightings, 0.15)
+    assert thing.x[2] == pytest.approx(vx) and thing.x[3] == pytest.approx(vy)
+    assert fitted_speed(thing.sightings[:2], 0.15) is None

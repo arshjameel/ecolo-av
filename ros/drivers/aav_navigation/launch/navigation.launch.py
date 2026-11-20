@@ -438,6 +438,10 @@ def nodes(context):
                                                          'things_background_below'
                                                      ).perform(context) or 0.0),
                                                  'names': flag(context, 'things_names'),
+                                                 # TODO 217: a motion model per kind.
+                                                 'per_kind': vehicle.check_things_tracker(
+                                                     LaunchConfiguration('things_tracker')
+                                                     .perform(context)) == 'per_kind',
                                                  'use_sim_time': use_sim_time}]))
     if ghost:
         # Its own file, then use_sim_time: the file doesn't set it, so the dict adds it.
@@ -666,6 +670,11 @@ def generate_launch_description():
         DeclareLaunchArgument('global_window', default_value='0.0',
                               description='m: the global costmap a square rolling with the '
                                           'car (192: the 3 x 3 chunks; 0: the whole map)'),
+        DeclareLaunchArgument('things_tracker', default_value='',
+                              description='with things:=true: constant_velocity (empty too: '
+                                          "one model for all) or per_kind: a bicycle's noise "
+                                          "for a vehicle, a person's for a person, speeds "
+                                          're-fitted when found again (TODO 217, a challenger)'),
         DeclareLaunchArgument('things_background', default_value='true',
                               description='with things:=true: low cubes on the saved map '
                                           'are not things (TODO 175 step 5; the default '
@@ -694,7 +703,7 @@ def generate_launch_description():
         DeclareLaunchArgument('ground', default_value='',
                               description='with lidar:=true: plane (empty too: one road plane '
                                           'a cloud) or patchwork, a plane a patch ring by ring '
-                                          "in the Rust voxels node, the costmap on its cubes "
+                                          'in the Rust voxels node, the costmap on its cubes '
                                           '(TODO 215, a challenger)'),
         DeclareLaunchArgument('kerbs', default_value='false',
                               description='true (with lidar:=true): the Rust voxels node '

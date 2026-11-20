@@ -1,6 +1,7 @@
 """
-Kinematic-ICP's idea in Rust (aav_kinematic_icp): the node kinematic_icp, a challenger to
-aav_kiss_icp (TODO 216). Never TF.
+Kinematic-ICP's idea in Rust (aav_kinematic_icp): the node kinematic_icp, never TF.
+
+A challenger to aav_kiss_icp (TODO 216).
 
   ros2 launch aav_kinematic_icp kinematic_icp.launch.py [use_sim_time:=false]
 
@@ -37,6 +38,7 @@ def nodes(context):
     share = FindPackageShare('aav_kinematic_icp').perform(context)
     use_sim_time = LaunchConfiguration('use_sim_time').perform(context).lower() == 'true'
     return [Node(package='aav_kinematic_icp', executable='kinematic_icp', name='kinematic_icp',
+                 namespace='/',
                  output='screen',
                  parameters=[os.path.join(share, 'config', 'kinematic_icp.yaml'),
                              car_parameters(vehicle.load()),

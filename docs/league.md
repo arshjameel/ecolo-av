@@ -20,7 +20,8 @@ waiting to beat it.
   │            │           │ mpc_lag_rs, mppi_lag_smooth  │
   │ smoother   │ ours      │                              │
   │ lanes      │ off       │ ramp (lane costs)            │
-  │ behaviour  │ off       │ on (road ahead and things)   │
+  │ behaviour  │ off       │ on (road ahead and things),  │
+  │            │           │ on_per_kind (TODO 217)       │
   │ kerbs      │ off       │ on (the step finder),        │
   │            │           │ patchwork (ground by patch)  │
   └────────────┴───────────┴──────────────────────────────┘

@@ -354,6 +354,15 @@ def test_patchwork_ground_runs_the_rust_voxels_node_with_it():
         nav_nodes(lidar='true', ground='ransac')
 
 
+def test_the_per_kind_tracker_reaches_the_things_node():
+    # TODO 217: things_tracker:=per_kind; none: the constant-velocity champion.
+    assert given(nav_nodes(lidar='true', things='true')['things'])['per_kind'] is False
+    p = given(nav_nodes(lidar='true', things='true', things_tracker='per_kind')['things'])
+    assert p['per_kind'] is True
+    with pytest.raises(ValueError, match='things_tracker'):
+        nav_nodes(lidar='true', things='true', things_tracker='imm')
+
+
 def test_smooth_sampling_reaches_mppi_lag():
     # TODO 212: mppi_lag_sampling:=smooth, a challenger; none: the node's own (correlated).
     assert 'sampling' not in given(nav_nodes(tracker='mppi_lag')['mppi_lag'])

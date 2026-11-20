@@ -90,6 +90,10 @@ and will do".
 Each runs beside the champion until it wins on the same routes (Ben, 5 Nov). The ones
 scored with Nav2's follower (177, 178) are scored again with ours.
 
+Stage 1, batch 8 (19 Nov): 212, 214, 215, 216 and 217 built and unit-tested, each off by
+default behind its league option ([switches](docs/switches.md#stage-1-batch-8-challengers-built-19-nov-scored-in-stage-2));
+stage 2 scores them in Ravensim.
+
 | # | Challenger | Status |
 |---|---|---|
 | 178 | **Hybrid-A\*** in our planner (`planner_search:=hybrid`) | 🟡 7/8 legs vs the lattice's 8/8; score again |
@@ -99,7 +103,7 @@ scored with Nav2's follower (177, 178) are scored again with ours.
 | 214 | **Passing with a jerk limit** (Apollo, Autoware): `path:=lane_jerk` (`lane_pass_shape:=jerk`) | 🟡 built; scored in stage 2 |
 | 215 | **The ground ring by ring** (Patchwork++), for kerbs: `kerbs:=patchwork` (`ground:=patchwork`) | 🟡 built; scored in stage 2 |
 | 216 | **Kinematic-ICP**: lidar odometry that knows the car can't slide sideways: `pose:=kinematic_ekf` (`odom_lidar:=kinematic_icp`, `aav_kinematic_icp`) | 🟡 built; scored in stage 2 |
-| 217 | **A tracker with a motion model per kind** (car, person) | ⬜ |
+| 217 | **A tracker with a motion model per kind** (car, person): `behaviour:=on_per_kind` (`things_tracker:=per_kind`), both twins | 🟡 built; scored in stage 2 |
 | 243 | **Our models from Rust** (`ort`): the detector done on a Mac (8 ms); left: TensorRT on the Orin (JetPack 7.2), the diffusion planner | 🟡 |
 | 262b | **A learned lane finder**: Ultra-Fast-Lane-Detection v2 (MIT), trained by us on Ravensim's pictures (labelled from the lane map) and the car's (252), through ONNX (243), behind `/perception/lane/geometry`. Published weights are out: CULane is non-commercial, BDD100K, TuSimple and CurveLanes unclear ([survey](docs/perception.md#a-learned-lane-finder-the-survey-19-nov)) | ⬜ |
 

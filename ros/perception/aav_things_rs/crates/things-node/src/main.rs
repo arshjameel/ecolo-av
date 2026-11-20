@@ -29,7 +29,8 @@
 //!             /world/things/markers       visualization_msgs/MarkerArray, odom: a box in its
 //!                                         kind's colour, a speed arrow, and its words
 //! Parameters  aav_things' (config/things.yaml): size, gap, min_cubes, max_size; the
-//!             tracker's (gate ... small_slack); radar, rate, background, background_slack,
+//!             tracker's (gate ... small_slack; per_kind, car_along, car_across,
+//!             car_heading_speed, person_accel, refind_gap, sightings: TODO 217); radar, rate, background, background_slack,
 //!             background_chunks, background_min_z, background_below; names, name_min_iou,
 //!             name_hold, name_min_side, name_ceiling, name_min_score, camera_info_topics.
 //!
@@ -124,6 +125,14 @@ fn settings(d: &mut Declarer<'_>) -> Result<Settings> {
         small_size: d.number("small_size", t.small_size)?,
         small_speed: d.number("small_speed", t.small_speed)?,
         small_slack: d.number("small_slack", t.small_slack)?,
+        // TODO 217: a motion model per kind (the launch's things_tracker:=per_kind).
+        per_kind: d.flag("per_kind", t.per_kind)?,
+        car_along: d.number("car_along", t.car_along)?,
+        car_across: d.number("car_across", t.car_across)?,
+        car_heading_speed: d.number("car_heading_speed", t.car_heading_speed)?,
+        person_accel: d.number("person_accel", t.person_accel)?,
+        refind_gap: d.number("refind_gap", t.refind_gap)?,
+        sightings: d.count("sightings", t.sightings as u32)? as usize,
     };
     let radar = d.flag("radar", false)?;
     let rate = d.number("rate", 10.0)?;

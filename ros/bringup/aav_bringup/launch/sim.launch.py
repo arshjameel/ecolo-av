@@ -416,7 +416,8 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'mppi_lag_sampling': '', 'lane_pass_shape': '', 'ground': '', 'odom_lidar': '',
+                  'mppi_lag_steer_gamma': '', 'mppi_lag_sampling': '', 'lane_pass_shape': '',
+                  'ground': '', 'odom_lidar': '', 'things_tracker': '',
                   'lane_costs': 'false', 'lane_route': 'false',
                   'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
@@ -715,6 +716,8 @@ def launch_setup(context):
                                behaviour_impl=vehicle.check_behaviour_impl(
                                    arg('behaviour_impl')),
                                things=str(flag['things']).lower(),
+                               things_tracker=vehicle.check_things_tracker(
+                                   arg('things_tracker')),
                                lane_map=lane_map, lane_costs=lane_costs,
                                # Every model of the car: the car's loop unless told (TODO 163).
                                speed_loop=model_loop,
@@ -1109,9 +1112,9 @@ def generate_launch_description():
                               description="with planner:=diffusion: a folder for each plan's "
                                           'inputs, to replay offline (training/replay.py)'),
         DeclareLaunchArgument('mppi_lag_sampling', default_value=stacks.CHOSEN,
-                              description="with tracker:=mppi_lag: correlated (the champion) "
+                              description='with tracker:=mppi_lag: correlated (the champion) '
                                           "or smooth, noise on the steering's change (TODO "
-                                          "212, a challenger: steer:=mppi_lag_smooth)"),
+                                          '212, a challenger: steer:=mppi_lag_smooth)'),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value=stacks.CHOSEN,
                               description="with tracker:=mppi_lag: its steering's control cost "
                                           "weight (TODO 168): 0.05; nav2.yaml's gamma when "
@@ -1256,6 +1259,10 @@ def generate_launch_description():
         DeclareLaunchArgument('kiss_icp', default_value='false',
                               description='KISS-ICP lidar odometry, scored only (a world '
                                           'with the lidar; pixi install --locked -e kiss)'),
+        DeclareLaunchArgument('things_tracker', default_value=stacks.CHOSEN,
+                              description='with things:=true: constant_velocity (the champion) '
+                                          'or per_kind, a motion model per kind (TODO 217, a '
+                                          'challenger: behaviour:=on_per_kind)'),
         DeclareLaunchArgument('odom_lidar', default_value=stacks.CHOSEN,
                               description='with kiss_icp:=true or kiss_ekf:=true: kiss_icp (the '
                                           'champion) or kinematic_icp, lidar odometry that '

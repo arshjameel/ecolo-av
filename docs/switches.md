@@ -164,6 +164,7 @@ Each is off by default, and a drop-in: the same topics as the champion.
 | `lane_pass_shape:=jerk` (`path:=lane_jerk`) | a parked obstacle passed within a lateral-jerk limit (a QP) | 214 |
 | `ground:=patchwork` (`kerbs:=patchwork`) | the ground found patch by patch, ring by ring: a lower kerb is an obstacle, a hill isn't | 215 |
 | `odom_lidar:=kinematic_icp` with `kiss_ekf:=true` (`pose:=kinematic_ekf`) | lidar odometry that knows the car can't slide sideways, the wheels its prior, in KISS-ICP's place | 216 |
+| `things_tracker:=per_kind` with `things:=true` (`behaviour:=on_per_kind`) | the things tracked with a motion model per kind (a car can't slide, a person can turn on the spot); a thing found again re-fits its speed | 217 |
 
 ## The defaults: what runs if you say nothing
 

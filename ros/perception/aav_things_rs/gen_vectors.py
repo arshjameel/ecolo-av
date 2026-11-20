@@ -4,7 +4,8 @@ Write things-core's agreement vectors from aav_things' Python modules (no ROS).
 
 The Rust (crates/things-core, tests/vectors.rs) must give the same answers:
 
-  - runs: cube clouds in base_link, one a lidar turn (10 Hz), each with the car's pose
+  - runs (one with a motion model per kind, TODO 217): cube clouds in base_link, one a
+    lidar turn (10 Hz), each with the car's pose
     in odom and in map; the node's pipeline on each (the saved map's walls dropped,
     groups.py, to odom, tracker.py, the radar's clusters), then the list it would publish
     half a cloud later (expire, at). Every group and every listed thing: the same ids,
@@ -93,10 +94,26 @@ def grid_of(spec):
                                 spec['origin'][0], spec['origin'][1], spec['slack'])
 
 
+def kind_by_shape(t):
+    """
+    Return a thing's kind by its outline, for the per-kind run (TODO 217).
+
+    The cameras' stand-in: the same rule as tests/vectors.rs.
+    """
+    size = max(t.length, t.width)
+    if size > 2.5:
+        return 'car'
+    if size <= 0.8 and t.height > 1.2:
+        return 'person'
+    return 'unknown'
+
+
 def play(run):
     """Return what the Python makes of one run: each frame's groups and published list."""
     shape = TrackerShape(**run.get('tracker', {}))
     tracker = Tracker(shape)
+    if run.get('kinds'):
+        tracker.name = kind_by_shape
     bg = grid_of(run['map']) if run.get('map') else None
     below = run.get('below')
     out = []
@@ -264,6 +281,11 @@ def main():
     parser.add_argument('--recorded', help='cubes recorded in the simulator (JSON)')
     args = parser.parse_args()
     runs = [made_up_run(1, radar=True), posts_run(3)]
+    # TODO 217: a motion model per kind, the kinds by shape, re-found after 0.15 s unseen.
+    run = made_up_run(2, radar=True)
+    run.update(name=f'{run["name"]}, per kind', kinds=True,
+               tracker={'per_kind': True, 'refind_gap': 0.15})
+    runs.append(run)
     if args.recorded:
         with open(args.recorded) as f:
             runs += json.load(f)['runs']

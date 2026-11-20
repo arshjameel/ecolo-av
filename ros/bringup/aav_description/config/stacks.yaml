@@ -136,6 +136,10 @@ levels:
       # moving near (Ben, 16 Nov: "if we see a car people or stuff moving around us we
       # should likely just stop"), and passes only what is still.
       'on': {behaviour: 'true', things: 'true'}
+      # And the things tracked with a motion model per kind (TODO 217): a vehicle's noise a
+      # bicycle's, a person's round; a thing found again re-fits its speed from its
+      # sightings (Fast-Poly, OC-SORT). A challenger (19 Nov), scored in stage 2.
+      on_per_kind: {behaviour: 'true', things: 'true', things_tracker: per_kind}
     score: ''
   kerbs:
     what: kerbs the lidar sees (the Rust voxels node's step finder, the local costmap's kerb_layer)
