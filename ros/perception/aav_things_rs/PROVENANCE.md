@@ -4,7 +4,7 @@ Ported for `ecolo-av` on 2026-11-17 (TODO 185): a Rust rewrite of our own Python
 modules, `aav_things` (`ros/perception/aav_things` at commit `933cd46d`), with the pinhole
 of `aav_detector`'s `ground.py`. No outside code: nothing new for
 `docs/acknowledgements.md` but the rows for AB3DMOT (the idea) and NumPy's pairwise sum (below). The
-Python stays, selectable with `things_impl:=python`.
+Python stayed, selectable, until 20 Nov.
 
 | Part | From the Python |
 |---|---|

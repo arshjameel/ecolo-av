@@ -221,7 +221,7 @@ The locks are **never swapped out**. A latch is cleared only by a person: `pixi 
 |---|---|
 | **Why** | Ben, 16 Nov: "I trust rust more then python" |
 | **How we know they match** | each one gives the Python's answers on shared test vectors (thousands of ticks, often bit for bit) |
-| **Fall back** | one switch: `ego_impl:=python`, `watchdog_impl:=python`... ([on the car](release-0.4-rc1.md#check-first-on-the-car)) |
+| **Fall back** | one switch: `ego_impl:=python`, `lidar_impl:=python`... ([on the car](release-0.4-rc1.md#check-first-on-the-car)) |
 
 ## The detector through ONNX
 
