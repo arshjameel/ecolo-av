@@ -25,7 +25,7 @@ pub mod steps;
 
 use std::{cmp::Ordering, error::Error, fmt};
 
-pub use memory::{Pose2, StepMemory};
+pub use memory::{Blind, Pose2, StepMemory, LOWEST_BEAM};
 pub use mount::Mount;
 pub use steps::{steps, StepError, StepShape};
 

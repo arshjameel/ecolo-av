@@ -79,6 +79,7 @@ a lock or the navigator's goal check makes every final stop.
 |---|---|---|
 | A stop sign | camera range to the sign − 4.7 m | the `stop_sign` lock |
 | An obstacle in the lane | lidar: nearest point ahead − bumper − stop zone | collision_monitor, then the `stop_zone` lock |
+| A kerb on the road ahead (`kerbs:=true`, TODO 219) | along the road ahead to the kerb − bumper − stop zone (an `obstacle` stop) | the stop zone (its `steps` source), then the `stop_zone` lock |
 | A moving thing (`things:=true`) | to the thing, in the lane now **or walking into it** before the car gets there (below) | the `stop_zone` lock |
 | The fence | along the plan to where the geofence would say NEAR | the geofence's lock |
 | The goal | along the plan to its end | the navigator's goal check |

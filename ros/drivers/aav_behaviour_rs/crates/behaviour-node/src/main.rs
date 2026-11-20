@@ -20,6 +20,10 @@
 //!             /localization/odom/global  nav_msgs/Odometry: where the car is on /plan
 //!             /sensors/lidar/scan      sensor_msgs/LaserScan (base_link, best effort), with
 //!                                      obstacles true: the lane
+//!             /perception/voxels/steps  sensor_msgs/PointCloud2 (base_link), with kerbs
+//!                                      true: the kerbs; one on the road ahead's line is an
+//!                                      obstacle stop, so the car slows for it before the
+//!                                      stop zone acts (kerb_ahead, TODO 219)
 //!             /world/things            aav_interfaces/Things (odom), with things true: an
 //!                                      obstacle stop only for a thing that moves; with
 //!                                      moving_hold, a moving thing within moving_radius m
@@ -62,9 +66,10 @@ use behaviour_core::machine::{
     diagnostic, Behaviour, Decision, Lock, Settings, State, Stop, StopReason, World,
 };
 use behaviour_core::paths::{
-    active_plan, along_until, lane_ahead, moving_ahead, moving_near, path_left, Car, Crossing,
-    MovingFor, Nearby, Point, Seen, Whose, MOVING, REACH,
+    active_plan, along_until, kerb_ahead, lane_ahead, moving_ahead, moving_near, path_left, Car,
+    Crossing, MovingFor, Nearby, Point, Seen, Whose, MOVING, REACH,
 };
+use behaviour_core::py_min;
 use behaviour_core::road::{build, capped, BuildOptions, Strip};
 use behaviour_core::stop_lines::{StopLineSettings, StopLines};
 use behaviour_core::tf::Buffer;
@@ -75,7 +80,7 @@ use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
 use ros_env::geometry_msgs::msg::{PointStamped, PolygonStamped, PoseArray};
 use ros_env::nav_msgs::msg::{Odometry, Path};
-use ros_env::sensor_msgs::msg::LaserScan;
+use ros_env::sensor_msgs::msg::{LaserScan, PointCloud2, PointField};
 use ros_env::std_msgs::msg::{Bool, Header, String as Text};
 use ros_env::tf2_msgs::msg::TFMessage;
 
@@ -106,6 +111,8 @@ struct Params {
     nearby: Nearby,
     road_length: f64,
     road_spacing: f64,
+    /// s: a kerb older than this is none (TODO 219).
+    kerbs_timeout: f64,
 }
 
 struct BehaviourNode {
@@ -138,6 +145,9 @@ struct BehaviourNode {
     moving_for: MovingFor,
     /// The nearest scan point in the lane, x in base_link (m).
     ahead: f64,
+    /// The nearest kerb on the road ahead, m along it, and when (TODO 219).
+    kerb: f64,
+    kerb_time: f64,
     /// (x, y, yaw) in odom, from the local odometry.
     odom_pose: Option<Car>,
     moving: f64,
@@ -227,6 +237,10 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
     // /world/things: wait only for what moves, leave a parked thing to the planner.
     let things = d.flag("things", false)?;
     let things_timeout = d.number("things_timeout", 1.0)?;
+    // /perception/voxels/steps (kerbs:=true): a kerb on the road ahead slows the car as an
+    // obstacle does (TODO 219).
+    let kerbs = d.flag("kerbs", false)?;
+    let kerbs_timeout = d.number("kerbs_timeout", 1.0)?;
     // With things: something moving near holds the car (Ben, 16 Nov: "if we see a car
     // people or stuff moving around us we should likely just stop"). m, s, m/s.
     let moving_hold = d.flag("moving_hold", true)?;
@@ -251,6 +265,7 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         nearby,
         road_length,
         road_spacing,
+        kerbs_timeout,
     };
     let goal_topics = d.names("goal_status_topics", &["/navigate_to_pose/_action/status"])?;
     for (name, hz) in [
@@ -336,6 +351,8 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         near_moving: f64::INFINITY,
         moving_for: MovingFor::new(moving_settle, nearby.moving),
         ahead: f64::INFINITY,
+        kerb: f64::INFINITY,
+        kerb_time: f64::NEG_INFINITY,
         odom_pose: None,
         moving: f64::INFINITY,
         things_time: f64::NEG_INFINITY,
@@ -427,6 +444,12 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
         keep.push(Box::new(worker.create_subscription(
             "/world/things".keep_last(10),
             |s: &mut BehaviourNode, m: Things| s.on_things(&m),
+        )?));
+    }
+    if kerbs {
+        keep.push(Box::new(worker.create_subscription(
+            "/perception/voxels/steps".sensor_data_qos(),
+            |s: &mut BehaviourNode, m: PointCloud2| s.on_steps(&m),
         )?));
     }
     if obstacles {
@@ -615,13 +638,33 @@ impl BehaviourNode {
             && self.near_moving.is_finite()
     }
 
-    /// x (base_link) of what the car slows for: a moving thing, or the scan's.
+    /// x (base_link) of what the car slows for: a moving thing, or the scan's; and a kerb
+    /// on the road ahead (TODO 219), whichever is nearer: a kerb counts with the things
+    /// too (it never moves, and the stop zone stops for it).
     fn obstacle_ahead(&self, now: f64) -> f64 {
-        if self.p.things && now - self.things_time <= self.p.things_timeout {
+        let ahead = if self.p.things && now - self.things_time <= self.p.things_timeout {
             self.moving
         } else {
             self.ahead
+        };
+        if now - self.kerb_time <= self.p.kerbs_timeout {
+            py_min(ahead, self.kerb)
+        } else {
+            ahead
         }
+    }
+
+    /// The kerbs (base_link): the nearest on the road ahead, m along it.
+    fn on_steps(&mut self, msg: &PointCloud2) {
+        let steps = cloud_xy(msg);
+        self.kerb = kerb_ahead(
+            &steps,
+            &self.road_here(),
+            self.p.front,
+            self.p.half_width,
+            REACH,
+        );
+        self.kerb_time = self.now();
     }
 
     /// Keep the sign in odom, at the picture's stamp: a GPS jump moves map, and mustn't
@@ -863,6 +906,36 @@ impl BehaviourNode {
             log_error!(&self.logger, "behaviour/state: {e}");
         }
     }
+}
+
+/// A cloud's (x, y) points (float32 fields x and y); none without them.
+fn cloud_xy(msg: &PointCloud2) -> Vec<Point> {
+    let offset = |name: &str| {
+        msg.fields
+            .iter()
+            .find(|f| f.name == name && f.datatype == PointField::FLOAT32)
+            .map(|f| f.offset as usize)
+    };
+    let (Some(ox), Some(oy)) = (offset("x"), offset("y")) else {
+        return Vec::new();
+    };
+    let step = msg.point_step as usize;
+    if step == 0 {
+        return Vec::new();
+    }
+    let read = |at: usize| {
+        msg.data.get(at..at + 4).map(|b| {
+            let bytes = [b[0], b[1], b[2], b[3]];
+            f64::from(if msg.is_bigendian {
+                f32::from_be_bytes(bytes)
+            } else {
+                f32::from_le_bytes(bytes)
+            })
+        })
+    };
+    (0..(msg.width as usize) * (msg.height as usize))
+        .map_while(|i| Some((read(i * step + ox)?, read(i * step + oy)?)))
+        .collect()
 }
 
 /// The message for a strip (road_ahead_ros.py's `to_msg`).

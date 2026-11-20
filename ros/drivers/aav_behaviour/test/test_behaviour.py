@@ -259,6 +259,27 @@ def test_lane_ahead_finds_the_nearest_thing_in_the_lane():
     assert lane_ahead([math.inf] * n, 0.0, inc, 2.0, 0.6) == math.inf
 
 
+def test_a_kerb_on_the_road_ahead_slows_the_car_one_beside_it_doesnt():
+    # TODO 219: the steps (base_link) measured along the road ahead's line.
+    from aav_behaviour.behaviour import kerb_ahead
+    straight = [(float(i), 0.0) for i in range(0, 41)]
+    kerb = [(9.0, y / 10.0) for y in range(-20, 21)]        # across the road, 9 m out
+    assert kerb_ahead(kerb, straight, front=2.0, half_width=0.6) == pytest.approx(9.0)
+    beside = [(x / 2.0, 2.5) for x in range(0, 60)]          # along the road's edge
+    assert kerb_ahead(beside, straight, front=2.0, half_width=0.6) == math.inf
+    behind = [(1.0, 0.0), (-3.0, 0.0)]                       # under the bumper, behind
+    assert kerb_ahead(behind, straight, front=2.0, half_width=0.6) == math.inf
+    # No road ahead: straight ahead, as the scan's lane.
+    assert kerb_ahead([(6.0, 0.3)], [], front=2.0, half_width=0.6) == pytest.approx(6.0)
+    # A road bending left: a kerb straight ahead of the car is off it, one on it counts.
+    bend = [(10.0 * math.sin(a / 20.0), 10.0 * (1.0 - math.cos(a / 20.0)))
+            for a in range(0, 32)]
+    assert kerb_ahead([(10.0, 0.0)], bend, front=2.0, half_width=0.6) == math.inf
+    on = (10.0 * math.sin(1.0), 10.0 * (1.0 - math.cos(1.0)))
+    # The first stretch of line within half_width counts: never later than the kerb.
+    assert 9.4 <= kerb_ahead([on], bend, front=2.0, half_width=0.6) <= 10.0
+
+
 def test_the_state_topics_values():
     b = Behaviour(CURVE)
     values = diagnostic(b.step(world(0.0)))

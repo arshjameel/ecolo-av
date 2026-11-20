@@ -18,6 +18,7 @@ the navigator's goal check makes every final stop. The page: `docs/stopping.md`;
 |---|---|---|
 | a stop sign | camera range to the sign − the watcher's 4.7 m | the `stop_sign` lock |
 | an obstacle in the lane | lidar scan: nearest point ahead − bumper − stop zone | the stop zone, then the `stop_zone` lock |
+| a kerb on the road ahead (`kerbs`, TODO 219) | the steps: along the road ahead to the kerb − bumper − stop zone (an `obstacle` stop) | the stop zone's `steps`, then the `stop_zone` lock |
 | the fence | along `/plan` to where depth < `near_depth` | the geofence lock |
 | the goal | along `/plan` to its end | the navigator's goal check |
 
@@ -46,6 +47,7 @@ the follower read.
 | in | `/drivers/nav/planner/route_stops` | `geometry_msgs/PoseArray` (map): the route's stop lines (Lanelet2's); each on the plan is a stop (`stop_line`) in the road ahead: stand there 2 s, then go, as at a seen stop sign (`StopLines`, TODO 220) |
 | in | `/drivers/point/plan` | `nav_msgs/Path` (latched): a drive to a point's line; while it runs it is the plan (`active_plan`) |
 | in | `/sensors/lidar/scan` | `sensor_msgs/LaserScan` (not with `voxels:=true`) |
+| in | `/perception/voxels/steps` | `sensor_msgs/PointCloud2` (base_link), with `kerbs`: the kerbs (TODO 219) |
 | in | `/navigate_to_pose/_action/status` | `action_msgs/GoalStatusArray` |
 | in | `/drivers/nav/planner/status` | `diagnostic_msgs/DiagnosticStatus`: our planner's `how`; while it says `pass`, with `lane_map` the road ahead follows the pass and its left soft edge opens to the kerb there (Ben, 16 Nov) |
 | out | `/drivers/nav/behaviour/state` | `diagnostic_msgs/DiagnosticStatus`, 5 Hz: state, reason, cap, left, warnings |
@@ -66,11 +68,12 @@ Parameters (from `vehicle.behaviour_params`: nav2.yaml, vehicle.yaml, ego.yaml):
 | `road_rate_hz`, `road_length`, `road_spacing` | 10 Hz, 40 m, 0.5 m | the road ahead: how often, how far, how fine |
 | `lane_map` | empty | a `lanes.yaml` (`aav_description` `lane_map.py`): the road ahead's line on the right lane's centre, with its hard and soft edges. Empty: the line is `/plan`'s, edges NaN. `sim.launch.py lane_map:=world` gives the world's own |
 | `things`, `things_timeout` | false, 1.0 s | true (`navigation.launch.py things:=true`): read `/world/things` (`aav_things`); an obstacle stop only for a thing that moves (0.3 m/s or more), in the lane or walking into it before the car gets there (`Crossing`, TODO 194); a parked thing is the planner's to go round (TODO 162). The stop zone's lock still stops the car for anything. A list older than `things_timeout`: the scan's rule, where the scan runs |
+| `kerbs`, `kerbs_timeout` | false, 1.0 s | true (`navigation.launch.py kerbs:=true`, with the lidar): read `/perception/voxels/steps`; a kerb within `half_width` of the road ahead's line (straight ahead without one) is an obstacle stop, measured along the line (`kerb_ahead`, TODO 219), with the things too. Steps older than `kerbs_timeout`: none |
 | `moving_hold`, `moving_radius`, `moving_within`, `moving_speed`, `moving_settle` | true, 10 m, 3 s, 0.3 m/s, 1.5 s | with `things`: anything moving (`moving_speed` or more, for `moving_settle` s: `MovingFor`) within `moving_radius` of the car, or on the road ahead within `moving_within` s at its speed, holds the car: WAIT, reason `moving`, and the road ahead ends at the car (a `moving` stop at 0 m). It goes `release_hold` s after the last one has gone or stood still (Ben, 16 Nov; `docs/stopping.md`) |
 
 | Module | No ROS? | Holds |
 |---|---|---|
-| `behaviour.py` | yes | `Behaviour.step(World) -> Decision`, `Settings`, `Stop`; `active_plan`, `path_left`, `along_until`, `lane_ahead`, `moving_ahead`, `MovingFor`, `moving_near`, `Nearby`, `diagnostic` |
+| `behaviour.py` | yes | `Behaviour.step(World) -> Decision`, `Settings`, `Stop`; `active_plan`, `path_left`, `along_until`, `lane_ahead`, `kerb_ahead`, `moving_ahead`, `MovingFor`, `moving_near`, `Nearby`, `diagnostic` |
 | `behaviour_node.py` | no | the node; the road ahead's maths is `aav_description`'s `road_ahead.py`, the lane's is `lane_map.py` |
 
 ## Invariants

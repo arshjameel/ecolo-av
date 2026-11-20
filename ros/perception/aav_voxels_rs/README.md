@@ -71,6 +71,7 @@ The Python reads `vehicle.yaml` itself; the Rust gets the same numbers from the 
 | `lowest_per_cell`, `nearest_per_cube`, `cube_centres`, `square_centres`, `percentile`, `fit_plane` | the steps, each tested |
 | `cloud::read_xyz`, `cloud::write_xyz32` | `PointCloud2`'s bytes in and out |
 | `steps(points, StepShape)` (`StepShape::checked()`, `StepError`) | the kerbs: points 0.10-0.5 m above a point within 0.3 m of them, flat; 2 or more to a 0.1 m square |
+| `StepMemory` (`with_blind(Blind)`), `Blind::under(lidar_xyz, LOWEST_BEAM)` | the kerbs kept in `odom` `step_keep` s (10); one under every beam (within the lidar's height / tan 15° of it) doesn't age while it stays there, so a car standing before a kerb never forgets it (TODO 219) |
 
 ### The step finder (`steps.rs`, TODO 119)
 

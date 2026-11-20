@@ -131,6 +131,51 @@ pub fn lane_ahead(
     nearest
 }
 
+/// The metres from base_link, along the road ahead, to the nearest kerb on it; infinity
+/// if none (`kerb_ahead()`, TODO 219).
+///
+/// `steps`: the voxels node's kerbs (`/perception/voxels/steps`, x y in base_link, those
+/// under every beam remembered). One counts within `half_width` of the road ahead's line
+/// (`road`, base_link; fewer than 2 points: straight ahead), past the bumper (`front`)
+/// and within `reach` along it; the first stretch of line that near is its place. A kerb
+/// beside the road, off the line, never slows the car.
+#[must_use]
+pub fn kerb_ahead(steps: &[Point], road: &[Point], front: f64, half_width: f64, reach: f64) -> f64 {
+    let straight = [(0.0, 0.0), (reach, 0.0)];
+    let line = if road.len() >= 2 { road } else { &straight[..] };
+    let start = hypot(line[0].0, line[0].1);
+    let mut nearest = f64::INFINITY;
+    for &(px, py) in steps {
+        if !(px.is_finite() && py.is_finite()) {
+            continue;
+        }
+        let mut done = start;
+        for pair in line.windows(2) {
+            let ((ax, ay), (bx, by)) = (pair[0], pair[1]);
+            let (dx, dy) = (bx - ax, by - ay);
+            let length = hypot(dx, dy);
+            let t = if length > 0.0 {
+                py_min(
+                    1.0,
+                    py_max(0.0, ((px - ax) * dx + (py - ay) * dy) / (length * length)),
+                )
+            } else {
+                0.0
+            };
+            let along = done + t * length;
+            if hypot(px - (ax + t * dx), py - (ay + t * dy)) <= half_width
+                && front < along
+                && along <= reach
+            {
+                nearest = py_min(nearest, along);
+                break;
+            }
+            done += length;
+        }
+    }
+    nearest
+}
+
 /// One thing from `/world/things`, in odom: centre, speed over the ground, size (m, m/s).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Seen {
