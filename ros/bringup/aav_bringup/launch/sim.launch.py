@@ -413,7 +413,8 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'mppi_lag_batch': '', 'lane_costs': 'false', 'lane_route': 'false',
+                  'mppi_lag_steer_gamma': '', 'mppi_lag_batch': '',
+                  'lane_costs': 'false', 'lane_route': 'false',
                   'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
                   'local_chunks': 'false', 'lane_pose': 'false'}
@@ -1086,8 +1087,8 @@ def generate_launch_description():
                               description="with planner:=diffusion: a folder for each plan's "
                                           'inputs, to replay offline (training/replay.py)'),
         DeclareLaunchArgument('mppi_lag_batch', default_value=stacks.CHOSEN,
-                              description="with tracker:=mppi_lag: its samples a tick "
-                                          "(TODO 152): 1000 (steer:=mppi_lag_1k); "
+                              description='with tracker:=mppi_lag: its samples a tick '
+                                          '(TODO 152): 1000 (steer:=mppi_lag_1k); '
                                           "nav2.yaml's 2000 when nothing sets it"),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value=stacks.CHOSEN,
                               description="with tracker:=mppi_lag: its steering's control cost "

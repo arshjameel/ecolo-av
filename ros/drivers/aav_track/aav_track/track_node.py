@@ -33,6 +33,12 @@ Publishes   cmd_vel_nav                 geometry_msgs/TwistStamped (Twist with s
                                         and false as the node stops. Sent at start and on
                                         each live swap
 Serves      nothing else; calls nothing.
+Reversing   (TODO 174) a path is cut at its cusps (gears.py): a backwards stretch is given
+            to the tracker mirrored (the car turned round, its speed and steering
+            negated), and driven backwards at max_reverse_speed at most (vehicle.yaml's
+            with reversing:=true; 0: a path that reverses is refused, INVALID_PATH). The
+            next stretch is taken at the cusp: within 0.3 m of its end and nearly still,
+            or standing 2 s within 1.5 m. The goal is checked on the last stretch only.
 Parameters  tracker can be changed while it runs, only with live_swap:=true (sim.launch.py
             sets it; the car never): `ros2 param set /track tracker lqr`. The new tracker
             is built between ticks (one thread), takes the path and its place on it,
@@ -48,7 +54,7 @@ Nav2's own (checks.py, with nav2.yaml's numbers):
 | succeeded (zero sent) | within xy_goal_tolerance of the end, then yaw_goal_tolerance |
 | FAILED_TO_MAKE_PROGRESS | neither moved progress_radius nor turned progress_angle in time |
 | TF_ERROR | the path's frame can't be moved into odom (transform_tolerance) |
-| INVALID_PATH | an empty path, or one that isn't numbers |
+| INVALID_PATH | an empty path, or one that isn't numbers; one that reverses, max_reverse_speed 0 |
 | UNKNOWN | no odometry for odom_timeout s |
 | canceled | the navigator cancelled it (zero command sent) |
 """
@@ -62,6 +68,7 @@ from aav_ego.vehicle_model import from_config
 from aav_interfaces.msg import RoadAhead
 from aav_track import trackers
 from aav_track.checks import GoalCheck, ProgressCheck
+from aav_track.gears import Gears, mirror_state
 from aav_track.lag_model import CarParams
 from aav_track.lane import keep_in_lane, LinePoint
 from aav_track.path import Path, wrap
@@ -107,9 +114,13 @@ def yaw_of(q):
 class Job:
     """One FollowPath goal: its handle, its path, and how it ended."""
 
-    def __init__(self, handle, path, started, in_map=False):
+    def __init__(self, handle, path, started, in_map=False, gears=None, whole=None):
         self.handle = handle
-        self.path = path              # in odom, or in map (in_map) for the held map -> odom
+        # The stretch the tracker follows (mirrored if backwards, gears.py), in odom, or in
+        # map (in_map) for the held map -> odom.
+        self.path = path
+        self.gears = gears            # the path cut at its cusps (TODO 174)
+        self.whole = whole or path    # the path as planned: its end is the goal
         self.in_map = in_map
         self.started = started        # s: no odometry yet is only an error odom_timeout after
         self.done = Future()          # (outcome, error code, message)
@@ -136,6 +147,8 @@ class Track(Node):
             ('progress_radius', 0.5), ('progress_angle', 0.5), ('progress_time', 10.0),
             ('wheelbase', 1.57), ('max_steering_angle', 0.5), ('max_steering_rate', 0.6),
             ('road_ahead_topic', ''), ('lane_margin', 0.1),
+            # m/s: vehicle.yaml's max_reverse_speed with reversing:=true; 0: forward only.
+            ('max_reverse_speed', 0.0),
             ('map_correction_speed', SlewLimits.speed),
             ('map_correction_turn_rate', SlewLimits.turn_rate),
             ('map_correction_snap_distance', SlewLimits.snap_distance),
@@ -334,7 +347,7 @@ class Track(Node):
             self.slow.for_new_path(newest, driving)
             self.map_frame = frame.lstrip('/')
             self.corrected = self.seconds()
-        return Path(poses), in_map
+        return poses, in_map
 
     def car_pose(self, job, x, y, yaw, now):
         """Return the car's pose in the job's path frame: map by the held map -> odom."""
@@ -357,12 +370,17 @@ class Track(Node):
 
     async def execute(self, handle):
         try:
-            path, in_map = self.path_in_odom(handle.request.path)
+            poses, in_map = self.path_in_odom(handle.request.path)
+            gears = Gears.of(poses)
+            if gears.any_backwards and self.p['max_reverse_speed'] <= 0.0:
+                raise ValueError('the path reverses, and this car may not (reversing:=false)')
+            whole = Path(poses)
+            path = gears.current.path()
         except ValueError as e:
             return self.end(handle, 'abort', Code.INVALID_PATH, str(e))
         except tf2_ros.TransformException as e:
             return self.end(handle, 'abort', Code.TF_ERROR, f'no map -> odom: {e}')
-        job = Job(handle, path, self.seconds(), in_map)
+        job = Job(handle, path, self.seconds(), in_map, gears, whole)
         old, self.job = self.job, job
         if old is not None:
             # The planner replanned: the newest path carries on, with no stop between.
@@ -422,29 +440,45 @@ class Track(Node):
         x, y, yaw = self.car_pose(job, x, y, yaw, now)
         path = job.path
         foot = path.project((x, y), job.hint)
+        gears = job.gears
+        if gears is not None and gears.update(path.left(foot.s), v, now):
+            # At a cusp (TODO 174): the next stretch, from a stop.
+            job.path = path = gears.current.path()
+            job.hint = 0
+            self.tracker.reset(path)
+            self.asked = 0.0
+            foot = path.project((x, y), 0)
         job.hint = foot.index
-        if self.goal.done(x, y, yaw, (*path.end, path.goal_yaw)):
+        last = gears is None or gears.last
+        whole = job.whole
+        if last and self.goal.done(x, y, yaw, (*whole.end, whole.goal_yaw)):
             return self.stop(job, 'succeed')
         if self.progress.stuck(x, y, yaw, now):
             return self.stop(job, 'abort', Code.FAILED_TO_MAKE_PROGRESS,
                              f'moved under {self.p["progress_radius"]:g} m in '
                              f'{self.p["progress_time"]:g} s')
-        cmd = self.tracker.step(trackers.State(x, y, yaw, v, yaw_rate, self.steer),
-                                self.period)
-        self.steer = cmd.steer
+        # A backwards stretch: the tracker drives the car turned round (gears.py).
+        back = gears is not None and gears.backwards
+        mx, my, myaw, mv, myr, msteer = mirror_state(x, y, yaw, v, yaw_rate, self.steer, back)
+        cmd = self.tracker.step(trackers.State(mx, my, myaw, mv, myr, msteer), self.period)
+        self.steer = -cmd.steer if back else cmd.steer
         if cmd.speed is None:
-            self.asked = self.speed.step(path, foot.s, self.asked, v, self.period,
-                                         cmd.speed_cap)
+            ask = self.speed.step(path, foot.s, abs(self.asked), mv, self.period,
+                                  cmd.speed_cap)
         else:
-            self.asked = cmd.speed        # mpc_full plans its own, within the same limits
+            ask = cmd.speed               # mpc_full plans its own, within the same limits
+        if back:
+            ask = -min(max(ask, 0.0), self.p['max_reverse_speed'])
+        self.asked = ask
         self.publish(self.asked, self.asked * math.tan(self.steer) / self.limits.wheelbase)
         feedback = FollowPath.Feedback()
-        feedback.distance_to_goal = float(max(path.left(foot.s), 0.0))
+        after = gears.left_after() if gears is not None else 0.0
+        feedback.distance_to_goal = float(max(path.left(foot.s), 0.0) + after)
         feedback.speed = float(v)
         job.handle.publish_feedback(feedback)
         loop_ms = 1000.0 * (time.perf_counter() - start)
         self.loop_max = max(self.loop_max, loop_ms)
-        self.report(loop_ms, foot, wrap(yaw - foot.heading), path.left(foot.s), cmd)
+        self.report(loop_ms, foot, wrap(myaw - foot.heading), path.left(foot.s), cmd)
 
     def publish(self, v, w):
         twist = Twist()

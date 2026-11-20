@@ -150,6 +150,13 @@ docs/league-results-2026-11-16.md).
                                             --three-point-only skips the road world's;
                                             AAV_THREE_POINT_SAVE=<file> keeps the run's
                                             track, plans and commands as JSON)
+    pixi run sim-check --blocked-street   (reverse, TODO 174: a 3.5 m street of walls, too
+                                            narrow to turn in, closed 8 m ahead; the goal
+                                            25 m behind, facing back. The car must back out
+                                            of it, changing direction at least once,
+                                            without touching a wall. One more run, with the
+                                            lidar; --blocked-street-only skips the road
+                                            world's)
 
 bench_check.py tests the car's software against pretend sensors that draw a flat world;
 this tests it against Ravensim's cameras and radar stand-in, which see the road world
@@ -1411,6 +1418,65 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
                        'street': (x0, y0, h, half), 'commands': probe.commands,
                        'actuator': probe.actuator_cmds, 'asked': asked,
                        'behaviour': probe.behaviour, 'monitor': probe.monitor}, f)
+
+
+def check_blocked_street(probe, width=3.5, block=8.0, goal=25.0):
+    """
+    Leave a narrow street blocked ahead (TODO 174): walls `width` m apart, closed `block` m on.
+
+    Too narrow to turn in, even in three points: the car must back out. The goal is
+    `goal` m behind it, facing back, past the street's end (15 m behind). It must reach
+    it, change direction at least once, and keep every corner inside the walls.
+    """
+    body = vehicle.load()['vehicle']['body']
+    x0, y0 = probe.xy(probe.truth)
+    h = yaw_of(probe.truth)
+    c, s = math.cos(h), math.sin(h)
+    half = width / 2.0
+    names = place_street(x0, y0, h, half, (-10.0, 0.0, 10.0), 'blocked street')
+    if names is None:
+        return
+    wall, bx, by, byaw = street_check.block(x0, y0, h, block)
+    if not place_model(WALL, bx, by, byaw, name=wall):
+        result('blocked street', False, f'could not place {wall}: {SERVICE_SAID[0]}')
+        for name in names:
+            remove_model(name)
+        return
+    names.append(wall)
+    probe.spin_for(3.0)          # the lidar sees the walls before the planner is asked
+    start = len(probe.track)
+    plans = []
+    sub = probe.create_subscription(
+        Path, '/plan', lambda m: plans.append(
+            (seconds(m.header.stamp), [(p.pose.position.x, p.pose.position.y)
+                                       for p in m.poses])), 10)
+    gx, gy, gyaw = x0 - goal * c, y0 - goal * s, math.atan2(-s, -c)
+    done = probe.go_to(gx, gy, gyaw)
+    if done is not None:
+        probe.spin_for(300.0, done.done)
+        if not done.done():
+            probe.goal.cancel_goal_async()
+    probe.destroy_subscription(sub)
+    for name in names:
+        remove_model(name)
+    if done is None:
+        result('blocked street', False, 'no navigator, or it refused the goal')
+        return
+    drive = probe.track[start:]
+    reached = done.done() and done.result().status == 4
+    turns = street_check.turns(drive)
+    # Only the street's own stretch: past its end the car is free to turn round.
+    inside = [p for p in drive
+              if -15.0 <= (p[1] - x0) * c + (p[2] - y0) * s <= block]
+    room = street_check.clearance(inside, x0, y0, h, half, body) if inside else math.inf
+    x1, y1 = probe.xy(probe.truth)
+    ok = reached and turns >= 1 and room > 0.0
+    planned = street_check.plan_cusps([path for _, path in plans])
+    result('blocked street', ok,
+           f'{"reached" if reached else "did not reach"} the goal '
+           f'({math.hypot(gx - x1, gy - y1):.2f} m off), {turns} changes of direction '
+           f'({len(plans)} plans, their changes {planned or "-"}), {room:.2f} m from a wall '
+           f'at the closest (street {width:g} m)')
 
 
 def check_kerb(probe, sensors):
@@ -3345,7 +3411,7 @@ def main():
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
             '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
             '--things-only', '--behaviour-things-only', '--legs-only', '--movers-only',
-            '--three-point-only', '--moving-only', '--low-box-only',
+            '--three-point-only', '--blocked-street-only', '--moving-only', '--low-box-only',
             '--thing-names-only',
             '--actuator-faults-only', '--kerb-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
@@ -3512,6 +3578,11 @@ def main():
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-three-point{ext}')
         session(['lidar:=true'], [check_three_point_turn], logs[-1], 'three-point turn')
+    if {'--blocked-street', '--blocked-street-only'} & set(args):
+        # Its own run, as the three-point turn's: the lidar sees the walls (TODO 174).
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-blocked-street{ext}')
+        session(['lidar:=true'], [check_blocked_street], logs[-1], 'blocked street')
     if {'--things', '--things-only'} & set(args):
         # Its own run: the cubes and the things on, the car standing, a box placed.
         stem, ext = os.path.splitext(log)

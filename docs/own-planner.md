@@ -102,6 +102,7 @@ inflation). M4 Max, the best of 5.
 | U-turn, open ground | path, 20.9 m, 0.3 ms | path, 13.2 m (3 cusps), 0.3 ms |
 | U-turn in an 8 m road | **no path** (too narrow forward) | path, 13.3 m (a three-point turn), 1.1 ms |
 | parking-lot exit (nose in, wall ahead) | **no path** | path, 19.8 m, backs out first, 0.9 ms |
+| blocked narrow street (3.5 m, closed 5 m ahead, TODO 174) | **no path** | path, 38.8 m, backs out (1 cusp), 2.2 ms |
 | narrow gap (2.5 m in a wall) | path, 24.0 m, 0.2 ms | the same |
 | no path (1.0 m gap; the car is 1.1 m) | **no path** | **no path** |
 
@@ -139,6 +140,19 @@ In our simulator (15 Nov, all ours, reversing), 4 m against 0:
 
 **4 m is our planner's default since 15 Nov** (`nav2.yaml`'s Lattice block,
 `cusp_penalty`; Nav2's planner ignores it). Set 0 for Nav2's way.
+
+### A narrow street, blocked (19 Nov, TODO 174)
+
+Too narrow to turn in, even in three points, and closed ahead: the car must back out.
+No special mode: the lattice's backwards moves and the navigator's retry do it.
+
+| Step | Who | Tested by |
+|---|---|---|
+| the car stands before the block, no progress | the stop zone holds it | |
+| clear the local costmap, follow again; then clear both and plan again | the navigator's recoveries | `cargo test -p navigator` (`a_blocked_narrow_street_is_left_backwards_on_the_next_plan`) |
+| a path backing out of the street, one cusp | the planner (reversing on) | the scene "blocked narrow street" (`cargo test -p lattice-planner`) |
+| drive it, backwards then forwards | `mppi_lag`; `aav_track`'s trackers too since 19 Nov | `aav_track` `test_gears.py` |
+| all of it, in our simulator | | `pixi run sim-check --blocked-street-only` (stage 2) |
 
 ## In our simulator (8 Nov)
 

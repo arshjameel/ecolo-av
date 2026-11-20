@@ -82,7 +82,7 @@ e-stops.
 | `mpc_full` plans its own speed, but within the same limits: cruise, bends, planned braking | it is on trial for the speed too |
 | One goal and progress check (nav2.yaml: 1.0 m, 0.75 rad) | the same "done" for all |
 | Track in `odom`; each path moved there once | the map pose jumps with GPS |
-| Forward only (`reversing:=false`: `aav_track`'s trackers are refused otherwise; `mppi_lag` reverses since 14 Nov) | the trackers drive forwards only |
+| Forward only (`reversing:=false`) in the runs until 19 Nov | `aav_track`'s trackers drove forwards only then; since 19 Nov they reverse (TODO 174, `gears.py`), scored in stage 2 |
 | 3 runs each, mean and spread (`--runs 3`) | MPPI is random; one run names no winner |
 | Loop time and missed ticks recorded | a slow MPC mustn't look like bad maths |
 

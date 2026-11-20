@@ -72,12 +72,12 @@ and will do".
 
 | # | Task | Status |
 |---|---|---|
-| 152 | **Our planner faster**: its checks on every core (rayon), then `mppi_lag` with 1000 samples; timed on the Orin | 🔧 |
-| 174 | **Reverse everywhere**, through cusps; a narrow street; reversing in `aav_track` | 🔧 the lot's turn works |
+| 152 | **Our planner faster**: its checks on every core (rayon), then `mppi_lag` with 1000 samples; timed on the Orin | 🔧 built 19 Nov; scoring in stage 2: the planner 18-21 % faster, the same paths (rayon measured 7-20 times slower, dropped: `docs/own-planner.md`); `steer:=mppi_lag_1k`, 0.86 against 1.56 ms a tick. Left: the Orin's times |
+| 174 | **Reverse everywhere**, through cusps; a narrow street; reversing in `aav_track` | 🔧 built 19 Nov; scoring in stage 2: `aav_track`'s trackers reverse (`gears.py`); a blocked narrow street backs out (planner scene, navigator test, `sim-check --blocked-street`) |
 | 189 | **Speed hunting**: one person crossing flipped behaviour 4 times; a 1 s hold built | 🔧 left: `sim-check --moving` again |
 | 163 | **The sim car vs its command**: `speed_loop_model:=` built; the backing legs go 1 m off | 🔧 |
 | 169 | **Followers on the road ahead's line** (the lane centre, `/world/road_ahead`) | 🔧 `mppi_lag` done; left: `mpc_lag`, the campus live |
-| 219 | **Kerbs at speed**: found 4.7 m out (too late at 3 m/s), 0.10 m never; behaviour slows for them | ⬜ |
+| 219 | **Kerbs at speed**: found 4.7 m out (too late at 3 m/s), 0.10 m never; behaviour slows for them | 🔧 built 19 Nov; scoring in stage 2: both behaviour twins slow for a kerb on the road ahead; a kerb under every beam is kept while the car stands before it. 0.10 m still never seen |
 | 206 | **The pedal**: the stick as accelerator, brake and reverse in ego | 🔧 left: a joystick drive in the sim, tune `pedal_let_off`; `ai` as a challenger |
 | 171 | **No switch leaves a gap**: respawn, age checks, the nodes' own tests | 🔧 |
 | 159 | **The safety case**: one page per hazard | 🔧 left: a throttle stuck wide open; the spine in the loop |
@@ -108,7 +108,7 @@ scored with Nav2's follower (177, 178) are scored again with ours.
 | # | Task | Status |
 |---|---|---|
 | 176 | **More Rust-like**: every crate against the Rust API Guidelines | 🔧 left: a few spine-core items (a reviewed safety change), one shared `CloudView` |
-| 195 | **rayon**: chunks and costmaps done; left: the planner (152), the things | 🔧 |
+| 195 | **rayon**: chunks and costmaps done; the planner measured, no gain (152, 19 Nov); left: the things | 🔧 |
 | 197 | **Rerun** for viewing a drive: `pixi run -e rerun view-bag` | 🔧 Ben looks, keep or drop |
 
 ## 6. Clean-up

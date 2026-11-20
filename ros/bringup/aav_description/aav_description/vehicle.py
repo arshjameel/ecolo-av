@@ -334,10 +334,10 @@ TUNED_CONTROLLERS = ('rpp', 'mppi')
 TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
             'mpc_lag_rs')
 DEFAULT_TRACKER = 'mppi_lag'
-# The trackers that drive forwards only (aav_track's, and mpc_lag_rs): refused with
-# reversing:=true. mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse").
-FORWARD_ONLY_TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag',
-                         'mpc_lag_rs')
+# The trackers that drive forwards only: refused with reversing:=true. mppi_lag reverses
+# as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse"); aav_track's since 19 Nov (TODO
+# 174: each backwards stretch mirrored, aav_track gears.py). mpc_lag_rs not yet.
+FORWARD_ONLY_TRACKERS = ('mpc_lag_rs',)
 
 
 def check_tracker(tracker, reversing=False):
@@ -1028,7 +1028,8 @@ def lattice_problems(meta, v, resolution):
     return out
 
 
-def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP):
+def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP,
+                 reversing=False):
     """
     Return aav_track's parameters: the same speed and "done" as Nav2's controllers.
 
@@ -1037,6 +1038,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_L
     The cruise speed is RPP's desired_linear_vel, or `max_speed` (sim_speed:=); the goal
     and progress checks are controller_server's; speeding up and slowing down are the
     velocity smoother's. `speed_loop`: the profile mpc_lag predicts (check_speed_loop).
+    `reversing`: it may back up, at vehicle.yaml's max_reverse_speed (0: forward only).
     """
     server = nav2['controller_server']['ros__parameters']
     goal = server[server['goal_checker_plugins'][0]]
@@ -1069,6 +1071,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_L
         'max_steering_rate': rate,
         'stamped': bool(server.get('enable_stamped_cmd_vel', False)),
         'mpc_lag.speed_loop': check_speed_loop(speed_loop),
+        'max_reverse_speed': -reverse_limit(v, reversing),
     }
 
 
@@ -1532,7 +1535,8 @@ def check_steer_gamma(gamma):
 
 
 def check_mppi_batch(batch):
-    """Return mppi_lag_batch:= as a whole number (1 or more), or raise ValueError saying why.
+    """
+    Return mppi_lag_batch:= as a whole number (1 or more), or raise ValueError saying why.
 
     mppi_lag's samples a tick (its `batch_size`; nav2.yaml's 2000 when not given): 1000,
     a challenger (TODO 152), half the work a tick on the Orin.

@@ -353,6 +353,9 @@ def nodes(context):
                          # The things: wait only for what moves, a parked thing is the
                          # planner's to go round (behaviour.py moving_ahead).
                          'things': things,
+                         # The kerbs (TODO 219): one on the road ahead slows the car as
+                         # an obstacle does, before the stop zone acts.
+                         'kerbs': kerbs,
                          # Every navigator action: a goal running on any of them.
                          'goal_status_topics': [
                              vehicle.navigator_action(a) + '/_action/status'
@@ -543,7 +546,8 @@ def nodes(context):
         actions.append(Node(
             package='aav_track', executable='track', name='track', output='screen',
             respawn=True, respawn_delay=RESPAWN_DELAY,
-            parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed, speed_loop),
+            parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed, speed_loop,
+                                                  reversing=reversing),
                         {'tracker': tracker, 'use_sim_time': use_sim_time,
                          'road_ahead_topic': '/world/road_ahead' if lane else '',
                          'live_swap': IfCondition(
@@ -732,7 +736,7 @@ def generate_launch_description():
                                           'turns at 1 or 2.5 m/s, the smoother off '
                                           '(config/lattice_ackermann_smooth*.json)'),
         DeclareLaunchArgument('mppi_lag_batch', default_value='',
-                              description="with tracker:=mppi_lag: its samples a tick "
+                              description='with tracker:=mppi_lag: its samples a tick '
                                           "(batch_size); empty: nav2.yaml's 2000. 1000, a "
                                           'challenger: half the work a tick (TODO 152)'),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value='',

@@ -292,7 +292,11 @@ def test_bad_trackers_and_reversing_trackers_are_refused():
     with pytest.raises(ValueError, match='pick one of'):
         nav_nodes(tracker='none')                       # Nav2's controller_server went
     with pytest.raises(ValueError, match='reversing:=false'):
-        nav_nodes(tracker='stanley', reversing='true')
+        nav_nodes(tracker='mpc_lag_rs', reversing='true')
+    # aav_track's reverse since 19 Nov (TODO 174), at vehicle.yaml's reverse speed.
+    track = given(nav_nodes(tracker='stanley', reversing='true')['track'])
+    assert track['max_reverse_speed'] > 0
+    assert given(nav_nodes(tracker='stanley')['track'])['max_reverse_speed'] == 0.0
 
 
 def test_map_correction_newest_turns_the_followers_slew_off():
@@ -361,6 +365,15 @@ def test_the_steering_gamma_and_the_strong_smoother_reach_their_nodes():
         nav_nodes(planner='own', plan_smoothing='soft')
 
 
+def test_the_behaviour_planner_slows_for_the_kerbs_with_kerbs_on():
+    # TODO 219: kerbs:=true (with the lidar) gives the behaviour planner the steps.
+    assert given(nav_nodes(behaviour='true', lidar='true')['behaviour'])['kerbs'] is False
+    on = given(nav_nodes(behaviour='true', lidar='true', kerbs='true')['behaviour'])
+    assert on['kerbs'] is True
+    # No lidar, no steps.
+    assert given(nav_nodes(behaviour='true', kerbs='true')['behaviour'])['kerbs'] is False
+
+
 def test_mppi_lag_batch_reaches_mppi_lag():
     # TODO 152: mppi_lag_batch:=1000 gives mppi_lag its batch_size; none: nav2.yaml's.
     assert given(nav_nodes(tracker='mppi_lag')['mppi_lag'])['batch_size'] == 2000
@@ -425,8 +438,10 @@ def test_the_sim_passes_the_trials_on_and_checks_them():
     assert sent_to_navigation(SIM, stack='best')['tracker'] == 'mppi_lag'
     assert sent_to_navigation(SIM)['live_swap'] == 'true'
     assert sent_to_navigation(SIM, tracker='mpc', reversing='false')['tracker'] == 'mpc'
+    # The sim reverses by default; aav_track's trackers do too since 19 Nov (TODO 174).
+    assert sent_to_navigation(SIM, tracker='mpc')['tracker'] == 'mpc'
     with pytest.raises(ValueError, match='reversing:=false'):
-        sent_to_navigation(SIM, tracker='mpc')          # the sim reverses by default
+        sent_to_navigation(SIM, tracker='mpc_lag_rs')   # still forward only
     with pytest.raises(ValueError, match='world:=test_lot'):
         sent_to_navigation(SIM, amcl='true')            # the empty world: no real map
     with pytest.raises(ValueError, match='world:=test_lot'):

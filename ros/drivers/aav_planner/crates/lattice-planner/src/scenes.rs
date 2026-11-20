@@ -329,6 +329,22 @@ pub fn all() -> Vec<Scene> {
         reverse_ok: true,
     });
 
+    // TODO 174: a narrow street (3.5 m), blocked ahead and too narrow to turn in, even in
+    // three points. The car stands 5 m before the block; the goal is on the main road
+    // behind it. Only backing out of the street gets there.
+    let mut blocked = open(60.0, 30.0);
+    wall(&mut blocked, 0.0, 10.0, 18.0, 30.0); // the street's left side
+    wall(&mut blocked, 21.5, 10.0, 60.0, 30.0); // its right side
+    wall(&mut blocked, 18.0, 27.0, 21.5, 30.0); // the block across it
+    out.push(Scene {
+        name: "blocked narrow street",
+        grid: inflated(blocked),
+        start: Pose::new(19.75, 22.0, std::f64::consts::FRAC_PI_2),
+        goal: Pose::new(40.0, 5.0, 0.0),
+        forward_ok: false,
+        reverse_ok: true,
+    });
+
     // Parked nose-in between two cars, a wall ahead: only reversing gets out.
     let mut lot = open(30.0, 30.0);
     wall(&mut lot, 10.0, 6.0, 15.0, 8.4); // the car on the right

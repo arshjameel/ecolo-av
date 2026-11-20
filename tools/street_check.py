@@ -53,6 +53,18 @@ def clearance(track, x0, y0, heading, half_street, body):
 WALL_THICK = 0.3    # m: aav_sim_models's wall model (10 x 0.3 x 2 m)
 
 
+def block(x0, y0, heading, along, name='wall_block'):
+    """
+    Return a wall across the street (name, x, y, yaw), its near face `along` m ahead.
+
+    TODO 174: the narrow street blocked ahead (sim_check --blocked-street). The wall model
+    is 10 m long, wider than any street here, so it closes it.
+    """
+    c, s = math.cos(heading), math.sin(heading)
+    centre = along + WALL_THICK / 2.0
+    return name, x0 + centre * c, y0 + centre * s, heading + math.pi / 2.0
+
+
 def walls(x0, y0, heading, half_street, alongs):
     """
     Return where a street's walls go: (name, x, y), one a side for each centre in `alongs`.
