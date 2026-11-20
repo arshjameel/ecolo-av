@@ -867,7 +867,7 @@ def generate_launch_description():
                               description='rust (aav_ego_rs, ego and look_ahead in one '
                                           'process) or python (aav_ego)'),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
-                              description='rust (aav_behaviour_rs) or python (aav_behaviour), '
+                              description='rust (aav_behaviour_rs; the Python removed 20 Nov), '
                                           'where navigation runs with behaviour:=true'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
                               description='rust (aav_watchdog_rs) or python (aav_safety): '

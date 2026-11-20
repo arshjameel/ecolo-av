@@ -637,7 +637,7 @@ topics:
     type: geometry_msgs/msg/PointStamped
     pub: [stop_sign_watcher]
     sub: [behaviour]
-    note: Where the tallest stop sign a forward camera sees is (sign_point, aav_detector stop_sign.py) - in that camera's frame (camera_left_link, or an _optical frame) at the picture's stamp, so a reader moves it with /tf at that stamp. The range along the camera's axis from the box's height and the lens (the same rule as the lock, sign_distance_m), the bearing from the box's centre column and the CameraInfo's fx and cx (straight ahead with no CameraInfo). Published with each detections message, only while the watcher is CLEAR and only for a frame naming front, left or right and not rear (forward_words, backward_words). For aav_behaviour's slowing before the lock; the lock itself is unchanged.
+    note: Where the tallest stop sign a forward camera sees is (sign_point, aav_detector stop_sign.py) - in that camera's frame (camera_left_link, or an _optical frame) at the picture's stamp, so a reader moves it with /tf at that stamp. The range along the camera's axis from the box's height and the lens (the same rule as the lock, sign_distance_m), the bearing from the box's centre column and the CameraInfo's fx and cx (straight ahead with no CameraInfo). Published with each detections message, only while the watcher is CLEAR and only for a frame naming front, left or right and not rear (forward_words, backward_words). For aav_behaviour_rs's slowing before the lock; the lock itself is unchanged.
   /perception/camera_obstacles:
     type: sensor_msgs/msg/PointCloud2
     pub: [camera_obstacles]

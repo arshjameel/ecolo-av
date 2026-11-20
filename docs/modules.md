@@ -33,7 +33,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 |---|---|
 | [sources](#sensors) | `aav_sensors`, `aav_imu_yahboom`, `aav_battery_victron`, `aav_radar_ti`; `aav_camera_stream` ([one line](#more-packages-see-their-readmes)) |
 | [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading_rs`; `aav_localization_health_rs`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
-| [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_rc_rs`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
+| [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_rc_rs`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour_rs` ([one line](#more-packages-see-their-readmes)) |
 | [command_mux, io_mux, ego](#mux-and-ego) | `aav_command_mux`, `aav_io_mux`, `aav_ego` |
 | [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_sim_models`, `aav_carla`; `aav_spine_bridge`, `aav_legacy_rs`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
 | [perception](#perception) | `aav_detector`, `aav_radar_clusters`, `aav_lane_finder`, `aav_lane_geometry`; `aav_lidar`, `aav_voxels`, `aav_voxels_rs` ([one line](#more-packages-see-their-readmes)) |
@@ -523,12 +523,11 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_navigator` | our own navigator in Rust, the only one (`navigator:=own`), in `bt_navigator`'s old place | `ros/drivers/aav_navigator/README.md`, then [Our navigator](own-navigator.md) |
 | `aav_smoother` | our own velocity smoother in Rust, the only one (`smoother:=own`) | `ros/drivers/aav_smoother/README.md`, then [Our smoother](own-smoother.md) |
 | `aav_diffusion_planner` | a trial planner (`planner:=diffusion`): a model draws paths, a guard checks them, the lattice's path otherwise | `ros/drivers/aav_diffusion_planner/README.md`, then [the design](designs/2026-11-02_diffusion-planner.md) |
-| `aav_behaviour` | the behaviour planner (`behaviour:=true`, on in `stack:=ours`): six states and the road ahead; the Python twin of `aav_behaviour_rs` | `ros/drivers/aav_behaviour/README.md`, then [How the car stops](stopping.md) |
+| `aav_behaviour_rs` | the behaviour planner (`behaviour:=true`, on in `stack:=ours`): six states and the road ahead; the Python twin of `aav_behaviour_rs` | `ros/drivers/aav_behaviour/README.md`, then [How the car stops](stopping.md) |
 | `aav_simulator` | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | `ros/sim/aav_simulator/README.md`, then [Ravensim](own-simulator.md) |
 | `aav_sim_cameras` | Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
 | `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |
 | `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (`ego_impl:=python` falls back) | `ros/ego/aav_ego_rs/README.md` |
-| `aav_behaviour_rs` | the behaviour planner in Rust, the default (`behaviour_impl:=python` falls back) | `ros/drivers/aav_behaviour_rs/README.md`, then [How the car stops](stopping.md) |
 | `aav_watchdog_rs` | the sensor watchdog in Rust, the default (`watchdog_impl:=python` falls back) | `ros/safety/aav_watchdog_rs/README.md` |
 | `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (`io_mux_impl:=python` falls back) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |

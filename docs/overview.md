@@ -87,7 +87,7 @@ Off unless a switch turns them on; in the simulator only, except where it says
 | `aav_track`, `aav_mppi_lag` | path followers: pure pursuit, Stanley, LQR, MPC, a lag-aware MPC; Nav2's MPPI in Rust on a model with the car's lags | drivers |
 | `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother` | Nav2's costmap, State Lattice planner, navigator and velocity smoother, ported to Rust: the defaults since 17 Nov | drivers |
 | `aav_diffusion_planner` | a small model draws the path, a guard checks it, the lattice is the fallback | drivers |
-| `aav_behaviour` | the behaviour planner: a speed cap on navigation before a stop sign, an obstacle, the fence and the goal | drivers |
+| `aav_behaviour_rs` | the behaviour planner: a speed cap on navigation before a stop sign, an obstacle, the fence and the goal | drivers |
 
 ## Stock ROS packages and plugins we use
 

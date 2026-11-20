@@ -11,7 +11,7 @@ import pytest
 CURVE = from_car_model()
 BASE = 1.0
 STRAIGHT = [(0.0, 0.0), (100.0, 0.0)]      # 100 m along x
-# The writer's stops: aav_behaviour's Stop has the same two fields.
+# The writer's stops: aav_behaviour_rs's Stop has the same two fields.
 Stop = namedtuple('Stop', 'reason left')
 
 

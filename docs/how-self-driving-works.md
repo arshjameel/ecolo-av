@@ -1124,7 +1124,7 @@ ego at the road ahead's end, or the navigator's goal check makes every final sto
 | | Package | Status |
 |---|---|---|
 | Rust | `aav_behaviour_rs` | **default** in `stack:=ours`; the twin the car runs with `behaviour:=true` (the car champion runs with behaviour **off**) |
-| Python | `aav_behaviour` (`behaviour.py`) | the fall-back: `behaviour_impl:=python` |
+| Python | `aav_behaviour` (`behaviour.py`) | removed 20 Nov (`save/python-behaviour`) |
 
 The Rust gives the Python's answers bit for bit (`vectors.json`), at 1.3 % of a core
 against 9.0 % (16 Nov). Not yet run on the car.

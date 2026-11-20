@@ -513,9 +513,9 @@ def check_ego_impl(impl):
 
 # Which behaviour node runs, with behaviour:=true (navigation.launch.py, car.launch.py,
 # sim.launch.py behaviour_impl:=): rust (aav_behaviour_rs, the default on the car and in
-# the simulator, Ben, 16 Nov) or python (aav_behaviour: the same node name, topics and
-# answers; kept selectable until a car day proves the Rust). Each one's package.
-BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+# the simulator, Ben, 16 Nov). The Python went on 20 Nov (tag save/python-behaviour); the
+# switch stays, a challenger's hook.
+BEHAVIOUR_IMPLS = {'rust': 'aav_behaviour_rs'}
 DEFAULT_BEHAVIOUR_IMPL = 'rust'
 # The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
 SIM_DEFAULT_BEHAVIOUR_IMPL = DEFAULT_BEHAVIOUR_IMPL
@@ -1382,7 +1382,7 @@ def costmap_params(tuned, v, radar=False, camera=False):
 def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CONTROLLER,
                      speed_loop=DEFAULT_SPEED_LOOP):
     """
-    Return aav_behaviour's parameters: the cap's top, the lane ahead, ego's limits.
+    Return aav_behaviour_rs's parameters: the cap's top, the lane ahead, ego's limits.
 
     base_speed is the controller's own top speed (MPPI's vx_max, RPP's desired_linear_vel,
     or `max_speed`, sim_speed:=): a higher cap would raise MPPI's envelope. front and

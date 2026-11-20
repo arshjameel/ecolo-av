@@ -996,11 +996,12 @@ def test_ego_impl_is_python_or_rust():
         vehicle.check_ego_impl('c')
 
 
-def test_behaviour_impl_is_python_or_rust():
+def test_behaviour_impl_is_rust():
     assert vehicle.DEFAULT_BEHAVIOUR_IMPL == vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL == 'rust'
-    assert vehicle.check_behaviour_impl('python') == 'python'
     assert vehicle.check_behaviour_impl(' Rust ') == 'rust'
-    assert vehicle.BEHAVIOUR_IMPLS == {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+    assert vehicle.BEHAVIOUR_IMPLS == {'rust': 'aav_behaviour_rs'}
+    with pytest.raises(ValueError, match='behaviour_impl:=python'):
+        vehicle.check_behaviour_impl('python')
     with pytest.raises(ValueError, match='behaviour_impl:=c'):
         vehicle.check_behaviour_impl('c')
 

@@ -64,7 +64,7 @@ Gentler at speed, 5 cm further past B. Not yet run in the simulator.
 
 ## 2. The behaviour planner
 
-`aav_behaviour` (a trial, **off by default**): `pixi run sim world:=road behaviour:=true`.
+`aav_behaviour_rs` (a trial, **off by default**): `pixi run sim world:=road behaviour:=true`.
 It knows why the car should slow, and sends navigation a speed cap. **It can't stop the car**:
 a lock or the navigator's goal check makes every final stop.
 

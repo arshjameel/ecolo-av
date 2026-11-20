@@ -79,7 +79,7 @@ Switches:
                           ring by ring, the costmap on them (TODO 215, a challenger)
   kerbs:=true             (with lidar:=true) the Rust voxels node's step finder: the local
                           costmap's kerb_layer and the stop zone's steps source (TODO 119)
-  behaviour:=true         the behaviour planner (aav_behaviour_rs; behaviour_impl:=python):
+  behaviour:=true         the behaviour planner (aav_behaviour_rs):         
                           the states and a speed cap, in /world/road_ahead's limits; lane_map:=
                           a lanes.yaml for the road ahead's line
   lane_costs:=, lane_source:=, costmap_chunks:=, local_chunks:=true, lane_route:=,
@@ -729,9 +729,8 @@ def generate_launch_description():
                                           'finds kerbs (steps in the ground) and the local '
                                           "costmap's kerb_layer marks them (TODO 119)"),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
-                              description='rust (aav_behaviour_rs) or python (aav_behaviour, '
-                                          'the same node in Python): which behaviour node runs, '
-                                          'with behaviour:=true'),
+                              description='rust (aav_behaviour_rs; the Python removed 20 Nov): '
+                                          'which behaviour node runs, with behaviour:=true'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python (aav_voxels) or rust (aav_voxels_rs, the '
                                           'same node in Rust): which voxels node runs, with '
@@ -825,7 +824,7 @@ def generate_launch_description():
                                            "again (Hz; Nav2's trees' 1.0); 0: once a goal, a "
                                            'test (the wiggle, TODO 149)')),
         DeclareLaunchArgument('behaviour', default_value='false',
-                              description='true: aav_behaviour, the behaviour states and a '
+                              description='true: aav_behaviour_rs, the behaviour states and a '
                                           'speed cap on Nav2 (a trial, docs/stopping.md)'),
         DeclareLaunchArgument('lane_map', default_value='',
                               description="with behaviour: a lanes.yaml, so the road ahead's "

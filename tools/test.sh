@@ -20,7 +20,7 @@ for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/ca
            ros/sim/aav_sim_models ros/sim/aav_carla \
            ros/drivers/aav_scripted ros/drivers/aav_language ros/drivers/aav_navigation \
            ros/drivers/aav_actuator_tests ros/drivers/aav_drive_to_point ros/drivers/aav_routes ros/drivers/aav_rc \
-           ros/drivers/aav_track ros/drivers/aav_diffusion_planner ros/drivers/aav_behaviour \
+           ros/drivers/aav_track ros/drivers/aav_diffusion_planner \
            ros/bringup/aav_description ros/bringup/aav_run_info ros/localization/aav_kiss_icp ros/localization/aav_lane_pose \
            ros/perception/aav_detector ros/sources/aav_camera_stream \
            ros/perception/aav_lane_finder ros/perception/aav_lidar \

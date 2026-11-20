@@ -125,7 +125,7 @@ bench's argument names:
                       docs/league-results-2026-11-16.md)
   behaviour:=false    no behaviour planner (on by default with stack:=ours). On:
                       the behaviour states and a speed cap on the follower from the stopping law
-                      (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
+                      (aav_behaviour_rs, a trial: docs/stopping.md); it also sends the road ahead
                       (/world/road_ahead), and ego holds navigation to it (ego road_ahead:=true)
   kerbs:=true         the kerbs (TODO 119), where the lidar runs: the Rust voxels node finds
                       steps in the ground (aav_voxels_rs steps:=true) and the local
@@ -202,9 +202,8 @@ bench's argument names:
   ego_impl:=rust      ego and look_ahead in Rust, one process (aav_ego_rs), in the Python
                       nodes' place: the same node names, topics and answers (TODO 185);
                       the default on the car and here since 16 Nov (python: aav_ego's two nodes)
-  behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), in the Python one's
-                      place, with behaviour on: the same topics and answers (TODO 185);
-                      the default on the car and here since 16 Nov (python: aav_behaviour)
+  behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), with behaviour on
+                      (TODO 185); the only one since the Python went on 20 Nov
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs): the same topics and
                       answers as the Python's; the default on the car and here since
                       16 Nov (Ben: "watchdog in rust sure"; python: aav_safety's)
@@ -1100,8 +1099,8 @@ def generate_launch_description():
                                           'localization_health runs'),
         DeclareLaunchArgument('behaviour_impl',
                               default_value=vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL,
-                              description='python or rust: which behaviour node runs, with '
-                                          'behaviour on (aav_behaviour, or aav_behaviour_rs)'),
+                              description='rust (aav_behaviour_rs): which behaviour node '
+                                          'runs, with behaviour on'),
         DeclareLaunchArgument('ego_impl', default_value=vehicle.SIM_DEFAULT_EGO_IMPL,
                               description='python or rust: which ego runs (aav_ego, or '
                                           'aav_ego_rs: ego and look_ahead in one process)'),
@@ -1197,7 +1196,7 @@ def generate_launch_description():
                                           "Empty: the stack's choice (the lattice)"),
         DeclareLaunchArgument('behaviour', default_value=stacks.CHOSEN,
                               description='true: the behaviour states, the road ahead and '
-                                          'a speed cap (aav_behaviour); false: none. '
+                                          'a speed cap (aav_behaviour_rs); false: none. '
                                           "Empty: the stack's choice (on in ours)"),
         DeclareLaunchArgument('lane_map', default_value='',
                               description="with behaviour:=true: world (the world's lane "
