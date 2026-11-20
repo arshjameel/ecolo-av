@@ -18,13 +18,17 @@ tested in tools/tests/test_slam_map.py:
   as a map server's PGM and YAML (trinary).
 - distances(), map_error(): how far one map's points are from another's (median, 95 %).
 - agreed(): two drives' maps merged: only the points both saw (parked cars drop out).
+- trim(), write_map2d(), read_map2d(): a 2D map cut to what was seen, written and read as
+  a map server's PGM and YAML (map-area and --merge write theirs this way).
 
 Metres, radians, seconds; REP-103 and REP-105 (map: x east, y north).
 """
 
 import math
+from pathlib import Path
 
 import numpy as np
+import yaml
 
 # WGS84, for UTM.
 WGS84_A = 6378137.0
@@ -319,37 +323,59 @@ class Occupancy:
         return out
 
     def trimmed(self, min_hits=2, margin=1.0):
-        """
-        Return (grid, origin): the map cut down to what was seen, margin m round it.
-
-        The cut is in whole metres, so the origin stays on a metre (chunks, NDT's cubes).
-        """
-        out = self.grid(min_hits)
-        rows, cols = np.nonzero(out != PGM_UNKNOWN)
-        if len(rows) == 0:
-            return out, self.origin
-        step = max(1, int(round(1.0 / self.cell)))
-        pad = int(math.ceil(margin / self.cell))
-        r0 = max(0, (rows.min() - pad) // step * step)
-        c0 = max(0, (cols.min() - pad) // step * step)
-        r1, c1 = min(self.height, rows.max() + pad + 1), min(self.width, cols.max() + pad + 1)
-        origin = (self.origin[0] + c0 * self.cell, self.origin[1] + r0 * self.cell)
-        return out[r0:r1, c0:c1], origin
+        """Return (grid, origin): the map cut down to what was seen (trim())."""
+        return trim(self.grid(min_hits), self.origin, self.cell, margin)
 
     def write(self, stem, note='', min_hits=2):
         """Write <stem>.pgm and <stem>.yaml (a map server's trinary map); return the YAML."""
         grid, origin = self.trimmed(min_hits)
-        height, width = grid.shape
-        pgm = stem.with_suffix('.pgm')
-        with open(pgm, 'wb') as f:
-            f.write(f'P5\n{width} {height}\n255\n'.encode('ascii'))
-            f.write(grid[::-1].tobytes())       # PGM rows run north to south
-        text = (f'# {note}\n' if note else '') + (
-            f'image: {pgm.name}\nmode: trinary\nresolution: {self.cell}\n'
-            f'origin: [{origin[0]:.3f}, {origin[1]:.3f}, 0.0]\nnegate: 0\n'
-            'occupied_thresh: 0.65\nfree_thresh: 0.25\n')
-        stem.with_suffix('.yaml').write_text(text)
-        return text
+        return write_map2d(stem, grid, origin, self.cell, note)
+
+
+def trim(grid, origin, cell, margin=1.0):
+    """
+    Return (grid, origin): a 2D map (PGM values) cut down to what was seen, margin m round.
+
+    The cut is in whole metres, so the origin stays on a metre (chunks, NDT's cubes).
+    """
+    rows, cols = np.nonzero(grid != PGM_UNKNOWN)
+    if len(rows) == 0:
+        return grid, tuple(origin)
+    height, width = grid.shape
+    step = max(1, int(round(1.0 / cell)))
+    pad = int(math.ceil(margin / cell))
+    r0 = max(0, (rows.min() - pad) // step * step)
+    c0 = max(0, (cols.min() - pad) // step * step)
+    r1, c1 = min(height, rows.max() + pad + 1), min(width, cols.max() + pad + 1)
+    return grid[r0:r1, c0:c1], (origin[0] + c0 * cell, origin[1] + r0 * cell)
+
+
+def write_map2d(stem, grid, origin, cell, note=''):
+    """Write <stem>.pgm and <stem>.yaml from PGM values (row 0 south); return the YAML."""
+    height, width = grid.shape
+    pgm = stem.with_suffix('.pgm')
+    with open(pgm, 'wb') as f:
+        f.write(f'P5\n{width} {height}\n255\n'.encode('ascii'))
+        f.write(np.ascontiguousarray(grid[::-1]).tobytes())   # PGM rows run north to south
+    text = (f'# {note}\n' if note else '') + (
+        f'image: {pgm.name}\nmode: trinary\nresolution: {cell}\n'
+        f'origin: [{origin[0]:.3f}, {origin[1]:.3f}, 0.0]\nnegate: 0\n'
+        'occupied_thresh: 0.65\nfree_thresh: 0.25\n')
+    stem.with_suffix('.yaml').write_text(text)
+    return text
+
+
+def read_map2d(yaml_path):
+    """Return (grid PGM values row 0 south, origin (x, y), cell) of a map server's map."""
+    yaml_path = Path(yaml_path)
+    meta = yaml.safe_load(yaml_path.read_text())
+    data = (yaml_path.parent / meta['image']).read_bytes()
+    # P5, then width height, then maxval, each after whitespace (no comments: ours write none).
+    parts = data.split(maxsplit=4)
+    width, height = int(parts[1]), int(parts[2])
+    pixels = np.frombuffer(parts[4][:width * height], np.uint8).reshape(height, width)
+    return pixels[::-1].copy(), (float(meta['origin'][0]), float(meta['origin'][1])), \
+        float(meta['resolution'])
 
 
 # --- Comparing and merging maps -----------------------------------------------------------

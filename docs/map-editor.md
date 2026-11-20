@@ -130,15 +130,33 @@ labels:
   class: parked_car          # tree, building, parked_car, pole, other
   region: {centre_m: [51.0, 15.0], size_m: [3.0, 32.0], yaw_rad: 0.0}
   band: {min_m: 0.0, max_m: 2.0}   # optional: all heights if left out
-  source: person             # who made it
+  source: person             # who made it: person, passes (map-area) or camera
+  seen_in: [2026-11-19_181817_simbox]   # map-area: the drives that saw it
 ```
 
-Room is left for the next two jobs, and the editor reads both fields already:
+### `seen_in`: what only one drive saw
+
+`pixi run map-area` ([Maps from drives](maps-from-drives.md#many-drives-of-one-area))
+merges several drives of one area. What one drive hit and another saw through (a car
+that left) is already gone. What **only one drive saw**, and no other saw through, stays
+in the map, and gets a label for a person to judge:
+
+| Field | Value |
+|---|---|
+| `class` | `other`: relabel it (`parked_car`, `pole`...) or delete it |
+| `source` | `passes` |
+| `seen_in` | the one drive that saw it |
+| `band` | 0.3-2 m, the 2D map's |
+
+Open the area's folder (`pixi run map-edit maps/<area>`): the labels are drawn with the
+rest. A box-delete with its label's box takes it out; a relabel makes it `person`'s.
+
+Room is left for the camera's labels, and the editor reads their fields already:
 
 | Next | How it plugs in |
 |---|---|
 | Camera labels (TODO 252) | the detector's boxes on the lidar points arrive as labels with `source: camera` and a `confidence`; a person keeps, fixes or removes them here (a relabel makes it `person`) |
-| Occupancy across passes (TODO 259) | each label's `seen_in` lists the drives that saw it; merging drives keeps what most saw, and a parked car seen once drops out |
+| Occupancy across passes (TODO 259) | built 19 Nov: `map-area` writes `labels.yaml` with `source: passes` and `seen_in` (above) |
 
 ## Code
 

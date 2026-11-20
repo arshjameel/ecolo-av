@@ -7,7 +7,8 @@ with SLAM, not from the EKF. Phase D of the [testing plan](testing-plan.md) (TOD
 pixi install --locked -e slam                       # once (x86_64 Linux, Apple-silicon Macs)
 pixi run record-drive --name lot --note "the lot"   # the drive (Recording a mapping drive)
 pixi run map-drive bags/<drive>                     # its maps, into bags/<drive>/map/
-pixi run map-drive --merge <map A> <map B> --out maps/lot   # two drives: what both saw
+pixi run map-drive --merge <map A> <map B> [<map C>...] --out maps/lot   # quick merge
+pixi run map-area lot bags/<drive 1> bags/<drive 2> bags/<drive 3>   # the whole job
 ```
 
 !!! warning "Not yet run on the car"
@@ -111,15 +112,94 @@ from above, and drops features that look like others. The lot's plain walls and 
 it almost none. KISS-ICP alone stayed within 11 cm over 208 m there, so nothing needed
 closing. **A real place (trees, kerbs, parked cars) should give it features: untested.**
 
-## Several drives
+## Many drives of one area
 
-`--merge A B` fits B's NDT map onto A's (Open3D's point-to-plane ICP, x, y and yaw only:
-both maps are flat), then keeps only the points the other map has within 25 cm
-(`--radius`). A car parked in one drive only drops out. So does anything only one drive
-saw: drive the same route each time.
+Ben, 19 Nov: "multiple passes gives us bags of points ... then we can remove dynamic
+objects like cars that might be currently static". One command does it, offline:
 
-Next: more than two drives (keep what most saw) and the 2D maps merged the same way. A
-person checks the result in the [map editor](map-editor.md) (phase E, `pixi run map-edit`).
+```sh
+pixi run map-area <area> bags/<drive 1> bags/<drive 2> bags/<drive 3>   # into maps/<area>/
+pixi run map-edit maps/<area>                                            # then a person checks
+```
+
+```
+ drive 1 ─┐  map-drive    ┌──────────┐  ICP onto    ┌───────────────────┐
+ drive 2 ─┼─ each ───────▶│ 3 maps,  │─ drive 1 ───▶│ each drive's rays │
+ drive 3 ─┘  (KISS-SLAM)  │ 3 paths  │  (x, y, yaw) │ again, one grid   │
+                          └──────────┘              └─────────┬─────────┘
+                                                              ▼
+            cell by cell:  hit in one drive, seen through in another ─▶ gone (a parked car)
+                           hit by one drive only, never seen through ─▶ kept, seen_in
+                           hit, never seen through                    ─▶ kept
+                                                              │
+                                                              ▼
+     maps/<area>/: ndt.pcd · map2d.pgm · chunks/ · labels.yaml · passes.yaml · report.md
+```
+
+| Step | How |
+|---|---|
+| 1. Each drive | `map-drive` into `maps/<area>/drives/<drive>/` (reused next time; `--redo`) |
+| 2. Align | each drive's NDT map onto the first's: point-to-plane ICP, x, y and yaw |
+| 3. Passes | each drive's clouds again, on its fitted path, into one 0.25 m grid: per drive, the cells it hit (0.3-2 m up, 2 clouds or more) and the cells its rays crossed (3 rays or more, almost never hit) |
+| 4. Judge | **dynamic**: hit in one drive, crossed in another. **Seen once**: hit by one drive only, never crossed. Free is kept one cell off that drive's own hits (pose error at a wall's edge) |
+| 5. Remove | NDT's points over a dynamic cell, up to 3 m (`--top`: a tree over a car stays), and over the seen-once cells it touches (the car's far side, `--grow`) |
+| 6. Write | NDT's map (every drive's points, less the removed); the 2D map (removed cells free); chunks; `labels.yaml` (the seen-once clusters, `seen_in`, for the [map editor](map-editor.md#seen_in-what-only-one-drive-saw)); `passes.yaml`; `report.md` |
+
+Drive the **same route** each time, at different times: what one drive never looked at
+can't be judged.
+
+### The proof in Ravensim
+
+Three loops of the test lot (`record-drive --sim --loop`). The second had a parked car, a
+4.5 x 1.8 x 1.5 m box at (22, -6.5) beside the south side (`--sim-box 22 -6.5`). Scored
+against the truth map of the first drive (no box):
+
+| Map | NDT points | On the box | Truth's points found (0.2 m) | Points off the truth (0.3 m) |
+|---|---|---|---|---|
+| drive 1 (no box) | 131,291 | 0 | 100 % | |
+| drive 2 (**the box**) | 132,121 | **2,550** | 100 % | |
+| drive 3 (no box) | 129,648 | 0 | 100 % | |
+| all three, nothing removed | 145,951 | 2,550 | 100 % | 2,934 |
+| **`map-area`** | **143,430** | **0** | **100 %** | **413** |
+
+| 2D cells | Drive 2 alone | `map-area` |
+|---|---|---|
+| on the box | 32 occupied, 111 unknown | **all 144 free** |
+| on the south wall (behind the box) | 240 occupied | **240 occupied** |
+
+The drives fitted onto the first by 4-6 mm and 0.01°. 48 cells were dynamic, all the
+box's. 33 cells, seen by drive 3 only (the building's north face from its line), stay,
+as two labels with `seen_in`; `map-edit-batch` opens the folder and keeps them. 103 s on
+an M4 Max, with the drives' own maps already made.
+
+**Untested:** real drives (the car's lidar, real parked cars and people, trees), drives
+far apart in time (ICP from no move: a GPS-placed map must start within about 1 m), and
+an area bigger than one 45 m lidar reach round the path in memory.
+
+### `--merge`: the quick way
+
+`--merge A B C...` works on map folders alone, without the drives: each NDT map onto the
+first by ICP; NDT keeps the points at least two maps have within 25 cm (`--min-maps`,
+`--radius`); the 2D maps moved onto one grid and judged by the same rule as above (a map's
+occupied cell another map has free is gone). Coarser than `map-area`: no rays again, and a
+thing only one drive saw drops out of NDT's map.
+
+**Two drives merged** (short onto loop's): 109,000 points, 3.1 cm off the truth (median),
+11 cm at 95 %. Moved 1 m and 3° on purpose first, ICP put it back (-0.96 m, 0.56 m,
+-3.03°). Three map folders of the plain lot: no dynamic cells.
+
+Next: the camera's labels (TODO 252) tell a car parked in the same place every time from
+a wall.
+
+### Learned from
+
+| Project | Licence | What we took |
+|---|---|---|
+| Removert (Kim and Kim, IROS 2020) | CC BY-NC-SA 4.0 | the idea: a map point another scan sees through is gone |
+| ERASOR (Lim et al., RA-L 2021) | GPL-3.0 | the idea: judge the column over a cell, not single points |
+| DUFOMap (Duberg et al., RA-L 2024) | BSD-3-Clause | the idea: space seen empty is empty, with a margin for error |
+
+Ideas only, no code: our version is 2D cells (the stack is 2D), numpy, in `tools/passes.py`.
 
 ## Licences
 
@@ -143,4 +223,6 @@ wheel for 64-bit ARM Linux (the Orin): make maps on a laptop, copy the files to 
 | `tools/map_drive.py` | the command: reads the bag, runs KISS-SLAM, writes the maps (the slam env) |
 | `tools/slam_map.py` | its maths, no ROS: poses, UTM and the GPS fit, the 2D map, scores, merging (`tools/tests/test_slam_map.py`) |
 | `tools/ndt_map.py` | NDT's map rules, shared; `--poses-file` |
-| `tools/record_drive.py` | `--sim --loop`: the whole route, for a loop |
+| `tools/record_drive.py` | `--sim --loop`: the whole route, for a loop; `--sim-box`: a parked car for one drive |
+| `tools/map_area.py` | `map-area`: many drives of one area (the slam env) |
+| `tools/passes.py` | its maths, no ROS: occupancy across passes, the merged 2D map, the labels (`tools/tests/test_passes.py`) |
