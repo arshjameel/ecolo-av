@@ -34,7 +34,7 @@ The two EKFs never read each other's topic. They meet only in TF.
 | `pose_source` | gps | `ndt`: a challenger (TODO 210), NDT leads, the GPS checks. [aav_pose_check](../aav_pose_check/README.md)'s `pose_check` runs, and `ekf_global` reads NDT's pose and the GPS's only through it (`config/ekf_global_ndt.yaml`, then `config/ekf_global_ndt_leads.yaml`); `pose_trust_score` (empty: its file's) is NDT's score that wins a disagreement. `sim.launch.py pose_source:=ndt` starts NDT and changes the watchdog's and geofence's GPS too; the car refuses it |
 | `lane_pose`, `lane_map` | false, empty | a trial (TODO 155): `lane_pose` ([aav_lane_pose](../aav_lane_pose/README.md)) runs on `lane_map` (a lanes.yaml), and `ekf_global` takes its x and y, with `config/ekf_global_lane.yaml` on top (`pose1` after NDT's). `sim.launch.py lane_pose:=true` starts the lane finder too |
 | `health` | true | false leaves out `localization_health` |
-| `localization_health_impl` | rust | [aav_localization_health_rs](../aav_localization_health_rs/README.md) (Ben, 16 Nov); `python`: aav_localization_health instead, the same node name, topics and answers |
+| `localization_health_impl` | rust | [aav_localization_health_rs](../aav_localization_health_rs/README.md) (Ben, 16 Nov); the only one since the Python went on 20 Nov |
 | `start_x`, `start_y`, `start_yaw` | 0, 0, 0 | where the car starts: m east and north of the datum, rad counter-clockwise from east |
 | `use_sim_time` | false | |
 

@@ -711,7 +711,7 @@ on the right two views from above. Key **L** swaps the right side for the sensor
 | Bottom: NDT's match | 24 m round the car: NDT's 1 m cells as **ellipses** (each column's points, 2 sigma); the latest scan's cubes over them, **green** on a cell, **red** off the map; the cars | the map; the lidar's cubes, through map -> odom |
 | Under it: the score | TRACKING / WAITING / LOST, score per point, ms per match; how many scan cubes landed on the map; overlap | `/localization/ndt/status`; the scan |
 | The costmap's cubes | the road's fit (**OK** green, **WARN** amber: taken as flat), how many cubes, ms per cloud; "off (voxels:=false)" when none came; STALE when quiet | `/perception/voxels/status`, `/perception/voxels/cubes` |
-| Localization health | **OK** green, or **WARN** amber and each check that isn't OK, wrapped; "not running (health:=false)"; STALE after 3 s (it comes once a second) | `/localization/health` (Betsi's `aav_localization_health`) |
+| Localization health | **OK** green, or **WARN** amber and each check that isn't OK, wrapped; "not running (health:=false)"; STALE after 3 s (it comes once a second) | `/localization/health` (Betsi's `aav_localization_health_rs`) |
 
 No map file: both boxes say where it looked and how to make one (`pixi run ndt-map
 drive`). No map -> odom yet: only the map-frame cars are drawn.

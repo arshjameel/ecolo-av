@@ -756,11 +756,10 @@ def check_stop_sign_impl(impl):
 
 # Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
 # localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
-# in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or
-# python (aav_localization_health: the same node name, topics and answers; kept selectable
-# until a car day proves the Rust). Each one's package. Warn only, so no safety lock.
-LOCALIZATION_HEALTH_IMPLS = {'python': 'aav_localization_health',
-                             'rust': 'aav_localization_health_rs'}
+# in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %). The
+# Python went on 20 Nov (tag save/python-localization-health); the switch stays, a hook.
+# Warn only, so no safety lock.
+LOCALIZATION_HEALTH_IMPLS = {'rust': 'aav_localization_health_rs'}
 DEFAULT_LOCALIZATION_HEALTH_IMPL = 'rust'
 # The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
 SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = DEFAULT_LOCALIZATION_HEALTH_IMPL

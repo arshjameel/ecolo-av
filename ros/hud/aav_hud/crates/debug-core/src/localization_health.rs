@@ -1,4 +1,4 @@
-//! Betsi's localization health checks (aav_localization_health) on the debug screen.
+//! Betsi's localization health checks (aav_localization_health_rs) on the debug screen.
 //!
 //! `/localization/health` is a std_msgs/String, once a second: `OK`, or `WARN` and every
 //! check that isn't OK, as `WARN <check> <level>: <why>; <check> <level>: <why>`

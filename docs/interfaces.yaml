@@ -889,7 +889,7 @@ topics:
     pub: [localization_health]
     sub: [debug_hud]
     live: [turtle, sim, car, replay, bench]
-    note: localization_health (aav_localization_health) once a second - OK, or WARN and each check that isn't OK (gyro_bias parked, imu_mounting, gps_quality, timestamps, frames, tf, wheels, motion; STALE where an input it needs went quiet). Warn only - nothing drives from it, and it changes nothing in the EKFs. The same checks, with their numbers, on /diagnostics. The debug HUD shows it (green OK, amber WARN with each check). With localization_health_impl:=rust (localization.launch.py, sim.launch.py) aav_localization_health_rs publishes it instead, with the same node name, QoS and answers (TODO 185).
+    note: localization_health (aav_localization_health_rs) once a second - OK, or WARN and each check that isn't OK (gyro_bias parked, imu_mounting, gps_quality, timestamps, frames, tf, wheels, motion; STALE where an input it needs went quiet). Warn only - nothing drives from it, and it changes nothing in the EKFs. The same checks, with their numbers, on /diagnostics. The debug HUD shows it (green OK, amber WARN with each check). With localization_health_impl:=rust (localization.launch.py, sim.launch.py) aav_localization_health_rs publishes it instead, with the same node name, QoS and answers (TODO 185).
 
   # --- navigation ---
   /map:

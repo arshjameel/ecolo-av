@@ -1067,10 +1067,10 @@ def test_camera_stream_impl_is_rust_unless_a_model_runs():
 def test_localization_health_impl_is_python_or_rust():
     assert vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
     assert vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
-    assert vehicle.check_localization_health_impl('python') == 'python'
     assert vehicle.check_localization_health_impl(' Rust ') == 'rust'
-    assert vehicle.LOCALIZATION_HEALTH_IMPLS == {'python': 'aav_localization_health',
-                                                 'rust': 'aav_localization_health_rs'}
+    assert vehicle.LOCALIZATION_HEALTH_IMPLS == {'rust': 'aav_localization_health_rs'}
+    with pytest.raises(ValueError, match='localization_health_impl:=python'):
+        vehicle.check_localization_health_impl('python')
     with pytest.raises(ValueError, match='localization_health_impl:=c'):
         vehicle.check_localization_health_impl('c')
 

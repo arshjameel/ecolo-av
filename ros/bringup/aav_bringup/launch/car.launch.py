@@ -899,8 +899,8 @@ def generate_launch_description():
                                           'stop_sign_watcher, the stop_signs part'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
-                              description='rust (aav_localization_health_rs) or python '
-                                          '(aav_localization_health)'),
+                              description='rust (aav_localization_health_rs; the Python '
+                                          'removed 20 Nov)'),
         DeclareLaunchArgument('ghost', default_value='false',
                               description='true: a pretend person only navigation sees, placed '
                                           'with pixi run ghost ahead 10 (it only adds)'),

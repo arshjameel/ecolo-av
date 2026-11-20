@@ -32,7 +32,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | Area (`ros/<area>/`) | Modules |
 |---|---|
 | [sources](#sensors) | `aav_sensors`, `aav_imu_yahboom`, `aav_battery_victron`, `aav_radar_ti`; `aav_camera_stream` ([one line](#more-packages-see-their-readmes)) |
-| [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading_rs`; `aav_localization_health`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
+| [bringup, localization](#description-and-localization) | `aav_description`, `aav_localization`, `aav_gps_heading_rs`; `aav_localization_health_rs`, `aav_ndt`, `aav_kiss_icp`, `aav_run_info` ([one line](#more-packages-see-their-readmes)) |
 | [drivers](#drivers) | `aav_teleop`, `aav_actuator_tests`, `aav_scripted`, `aav_drive_to_point`, `aav_language`, `aav_navigation`; `aav_rc`, `aav_rc_rs`, `aav_routes`, `aav_track`, `aav_mppi_lag`, `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother`, `aav_diffusion_planner`, `aav_behaviour` ([one line](#more-packages-see-their-readmes)) |
 | [command_mux, io_mux, ego](#mux-and-ego) | `aav_command_mux`, `aav_io_mux`, `aav_ego` |
 | [can_bridge, sim](#backends) | `aav_spine`, `aav_legacy`, `aav_turtlesim`, `aav_sim_models`, `aav_carla`; `aav_spine_bridge`, `aav_legacy_rs`, `aav_simulator`, `aav_sim_cameras` ([one line](#more-packages-see-their-readmes)) |
@@ -512,7 +512,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_safety` | the sensor watchdog: a twist_mux lock (30) when a sensor fails | `ros/safety/aav_safety/README.md`, then [Simulation](simulation.md#the-sensor-watchdog) |
 | `aav_ghost` | ghost obstacles: a pretend person only navigation sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
 | `aav_run_info` | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | `ros/bringup/aav_run_info/README.md` |
-| `aav_localization_health` | warn-only checks on what the EKFs read and say (`/localization/health`, `/diagnostics`) | `ros/localization/aav_localization_health/README.md` |
+| `aav_localization_health_rs` | warn-only checks on what the EKFs read and say (`/localization/health`, `/diagnostics`) | `ros/localization/aav_localization_health_rs/README.md` |
 | `aav_ndt` | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | `ros/localization/aav_ndt/README.md`, then [the design](designs/2026-10-29_ndt.md) |
 | `aav_kiss_icp` | KISS-ICP lidar odometry, a trial (`kiss_icp:=true`) | `ros/localization/aav_kiss_icp/README.md`, then [the design](designs/2026-10-30_kiss-icp.md) |
 | `aav_voxels` | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for the costmap | `ros/perception/aav_voxels/README.md`, then [the design](designs/2026-10-30_voxels.md) |
@@ -530,7 +530,6 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (`ego_impl:=python` falls back) | `ros/ego/aav_ego_rs/README.md` |
 | `aav_behaviour_rs` | the behaviour planner in Rust, the default (`behaviour_impl:=python` falls back) | `ros/drivers/aav_behaviour_rs/README.md`, then [How the car stops](stopping.md) |
 | `aav_watchdog_rs` | the sensor watchdog in Rust, the default (`watchdog_impl:=python` falls back) | `ros/safety/aav_watchdog_rs/README.md` |
-| `aav_localization_health_rs` | `localization_health` in Rust, the default (`localization_health_impl:=python` falls back) | `ros/localization/aav_localization_health_rs/README.md` |
 | `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (`io_mux_impl:=python` falls back) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
 | `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |

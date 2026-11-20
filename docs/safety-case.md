@@ -264,7 +264,7 @@ measurement.
 |---|---|---|
 | Sensor watchdog | GPS lost, NaN or jumped: holds the point driver, navigation and the AI slot | `aav_safety` |
 | Geofence | `LOST` (no pose 1 s, spread over 3 m, no GPS into the EKF 2 s), `JUMP` (latched) | `aav_safety` `geofence.py` |
-| Localization health | warns only: gyro bias, GPS quality, clock skew, runaway EKFs | `aav_localization_health` (Betsi) |
+| Localization health | warns only: gyro bias, GPS quality, clock skew, runaway EKFs | `aav_localization_health_rs` (Betsi) |
 
 | Number | Where, when | Who |
 |---|---|---|

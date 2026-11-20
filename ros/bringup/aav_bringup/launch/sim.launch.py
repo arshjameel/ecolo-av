@@ -215,9 +215,8 @@ bench's argument names:
                       node names, topics and answers; the default on the car and here
                       since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
   localization_health_impl:=rust  localization_health in Rust
-                      (aav_localization_health_rs), in the Python one's place: the same
-                      topics and answers; warn only (TODO 185); the default on the car
-                      and here since 16 Nov (python: aav_localization_health)
+                      (aav_localization_health_rs): warn only (TODO 185); the only one
+                      since the Python went on 20 Nov
   ndt:=true          NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
@@ -1097,8 +1096,8 @@ def generate_launch_description():
                                           'run (aav_io_mux, or aav_io_mux_rs)'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL,
-                              description='python or rust: which localization_health runs '
-                                          '(aav_localization_health, or its _rs port)'),
+                              description='rust (aav_localization_health_rs): which '
+                                          'localization_health runs'),
         DeclareLaunchArgument('behaviour_impl',
                               default_value=vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL,
                               description='python or rust: which behaviour node runs, with '
