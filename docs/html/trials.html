@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -150,7 +152,7 @@ and followers (MPPI, RPP) went with it.</p>
 <p><strong>The short version</strong></p>
 <ul>
 <li><strong>Trackers</strong> (<code>aav_track</code>): pure pursuit, Stanley, LQR, MPC, and <code>mpc_full</code> (speed and steering together), in our chain, in <code>mppi_lag</code>'s place (in controller_server's, until 17 Nov). <code>tracker:=lqr</code>.</li>
-<li><strong>AMCL</strong> (ours in Rust, <code>aav_amcl_rs</code>, since 18 Nov; stock <code>nav2_amcl</code> with <code>amcl_impl:=stock</code>): a particle filter on the map and the lidar, scored against the EKF, never steering. <code>amcl:=true</code>. <a href="../history/trials-log.md#18-nov-amcl-in-rust-against-stock">Ours against stock</a>.</li>
+<li><strong>AMCL</strong> (ours in Rust, <code>aav_amcl_rs</code>, since 18 Nov; stock <code>nav2_amcl</code> removed 20 Nov, TODO 232): a particle filter on the map and the lidar, scored against the EKF, never steering. <code>amcl:=true</code>. <a href="../history/trials-log.md#18-nov-amcl-in-rust-against-stock">Ours against stock</a>.</li>
 <li><strong>NDT</strong> (<code>aav_ndt</code>, ours in Rust): the lidar matched to a saved lidar map, scored against the EKF, never steering. <code>ndt:=true</code>.</li>
 <li><strong>Score:</strong> <code>pixi run measure controllers --trackers pure_pursuit lqr --runs 3</code>.</li>
 <li><strong>Results (29 Oct, Gazebo, 3 runs):</strong> pure pursuit, Stanley and MPC finished every leg; MPPI, RPP and LQR lost legs on the U-turn. AMCL lost itself; the EKF wins. <a href="../history/trials-log.md#results-29-october">Results</a>.</li>
@@ -309,8 +311,8 @@ e-stops.</p>
 <td>the map pose jumps with GPS</td>
 </tr>
 <tr>
-<td>Forward only (<code>reversing:=false</code>: <code>aav_track</code>'s trackers are refused otherwise; <code>mppi_lag</code> reverses since 14 Nov)</td>
-<td>the trackers drive forwards only</td>
+<td>Forward only (<code>reversing:=false</code>) in the runs until 19 Nov</td>
+<td><code>aav_track</code>'s trackers drove forwards only then; since 19 Nov they reverse (TODO 174, <code>gears.py</code>), scored in stage 2</td>
 </tr>
 <tr>
 <td>3 runs each, mean and spread (<code>--runs 3</code>)</td>

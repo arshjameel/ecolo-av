@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -486,6 +488,30 @@ tests 3.10-3.12 and 4.1-4.5.</p>
 </table></div>
 <p>The tick is 50 ms. <strong>Orin, estimated, not measured:</strong> its A78AE cores are about 3 times
 slower than an M4's, so about 10 ms on 4 threads, 40 ms on one.</p>
+<p><strong>1000 samples, a challenger (19 Nov, TODO 152):</strong> <code>steer:=mppi_lag_1k</code> (<code>mppi_lag_calm</code>
+with <code>mppi_lag_batch:=1000</code>). The default stays 2000. Re-timed on the M4 Max, no lane:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Threads</th>
+<th>2000 x 56</th>
+<th>1000 x 56</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16</td>
+<td>1.56 ms</td>
+<td>0.86 ms</td>
+</tr>
+<tr>
+<td>1</td>
+<td>10.4 ms</td>
+<td>5.1 ms</td>
+</tr>
+</tbody>
+</table></div>
+<p>Half the work a tick. Whether it steers as well is stage 2's score.</p>
 </section>
 <section class="card"><h2 id="in-gazebo">In Gazebo</h2>
 <p>Moved to <a href="../history/mppi-lag-log.md#in-gazebo">the mppi-lag log</a> on 18 Nov (a dated record).</p>

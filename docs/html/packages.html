@@ -7,7 +7,7 @@
 <!-- Generated from docs/packages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>What each package does</h1>
-<div class="meta">28 min read · 10 sections</div></header>
+<div class="meta">27 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a class="here" href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -213,23 +215,16 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td>new</td>
 </tr>
 <tr>
-<td><code>aav_gps_heading</code></td>
+<td><code>aav_gps_heading_rs</code></td>
 <td>localization</td>
-<td><code>gps_heading</code>: the heading from the GPS receiver's velocity, for <code>ekf_global</code></td>
-<td><span class="badge b-works">works</span> Gazebo</td>
-<td>new</td>
-</tr>
-<tr>
-<td><code>aav_localization_health</code></td>
-<td>localization</td>
-<td>warn-only checks on what the EKFs read and say, on <code>/localization/health</code> and <code>/diagnostics</code></td>
-<td>built 1 Nov</td>
-<td>new (Betsi)</td>
+<td><code>gps_heading</code>: the heading from the GPS receiver's velocity, for <code>ekf_global</code>; Rust (the Python removed 20 Nov)</td>
+<td><span class="badge b-works">works</span> against <code>course.py</code>'s answers, to the bit; <span class="badge b-untested">untested</span> on the car</td>
+<td>new: a port of <code>aav_gps_heading</code></td>
 </tr>
 <tr>
 <td><code>aav_localization_health_rs</code></td>
 <td>localization</td>
-<td><code>localization_health</code> in Rust (<code>localization_health_impl:=rust</code>): the same topics and answers</td>
+<td><code>localization_health</code>: warn-only checks on what the EKFs read and say; Rust (the Python removed 20 Nov)</td>
 <td><span class="badge b-works">works</span> against the Python's answers; Ravensim's road world</td>
 <td>new: a port of <code>aav_localization_health</code></td>
 </tr>
@@ -250,7 +245,7 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_amcl_rs</code></td>
 <td>localization</td>
-<td>AMCL in Rust, the default (18 Nov; <code>amcl_impl:=stock</code> runs <code>nav2_amcl</code>): a particle filter on the 2D map and the scan, a trial (<code>amcl:=true</code>); never TF</td>
+<td>AMCL in Rust, the default (18 Nov; stock <code>nav2_amcl</code> removed 20 Nov): a particle filter on the 2D map and the scan, a trial (<code>amcl:=true</code>); never TF</td>
 <td><span class="badge b-works">works</span> Ravensim, the lot: a tie with stock, 3 runs each (<a href="../history/trials-log.md#18-nov-amcl-in-rust-against-stock">Trials</a>)</td>
 <td>new: a port of Nav2's <code>nav2_amcl</code></td>
 </tr>
@@ -381,16 +376,9 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td>new</td>
 </tr>
 <tr>
-<td><code>aav_behaviour</code></td>
-<td>drivers</td>
-<td>the behaviour planner, a trial (<code>behaviour:=true</code>): DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and a speed cap on navigation</td>
-<td>built 7 Nov; off by default (<a href="stopping.html">How the car stops</a>)</td>
-<td>new</td>
-</tr>
-<tr>
 <td><code>aav_behaviour_rs</code></td>
 <td>drivers</td>
-<td><code>behaviour</code> in Rust, the default (Ben, 16 Nov) beside <code>aav_behaviour</code>'s (<code>behaviour_impl:=python</code>): the same topics and answers</td>
+<td><code>behaviour</code> in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers</td>
 <td><span class="badge b-works">works</span> against the Python's answers, and in Ravensim</td>
 <td>new: a port of <code>aav_behaviour</code></td>
 </tr>
@@ -530,14 +518,21 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_joy_alive_rs</code></td>
 <td>safety</td>
-<td><code>joy_alive</code> in Rust, the default (17 Nov; <code>joy_alive_impl:=python</code> falls back)</td>
+<td><code>joy_alive</code> in Rust, the default (17 Nov; the Python removed 20 Nov)</td>
 <td><span class="badge b-works">works</span> against the Python's answers; <span class="badge b-untested">untested</span> on the car</td>
 <td>new: a port of <code>aav_safety</code>'s <code>joy_alive</code></td>
 </tr>
 <tr>
+<td><code>aav_safety_rs</code></td>
+<td>safety</td>
+<td><code>geofence</code>, <code>stop_hold</code> and <code>goal_leash</code> in Rust, the defaults (19 Nov; <code>*_impl:=python</code> falls back)</td>
+<td><span class="badge b-works">works</span> against the Python's answers, to the bit; <span class="badge b-untested">untested</span> on the car</td>
+<td>new: a port of <code>aav_safety</code>'s three nodes</td>
+</tr>
+<tr>
 <td><code>aav_watchdog_rs</code></td>
 <td>safety</td>
-<td><code>sensor_watchdog</code> in Rust, the default (Ben, 16 Nov) beside <code>aav_safety</code>'s (<code>watchdog_impl:=python</code>): the same topics and answers</td>
+<td><code>sensor_watchdog</code> in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers</td>
 <td><span class="badge b-works">works</span> against the Python's answers, tick by tick</td>
 <td>new: a port of <code>aav_safety</code>'s watchdog</td>
 </tr>
@@ -656,16 +651,9 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_lane_geometry</code></td>
 <td>perception</td>
-<td>lane keeping: the <code>LaneGeometry</code> message, and the 2025-26 driver on <code>/drivers/ai/cmd_vel</code> (Python: the fall-back, <code>lane_follower_impl:=python</code>)</td>
-<td><span class="badge b-works">works</span> on the bench, with <code>aav_lane_finder</code></td>
+<td>the <code>LaneGeometry</code> message (its lane follower removed 19 Nov, TODO 264)</td>
+<td><span class="badge b-works">works</span></td>
 <td>2025-26 <code>Lane_Detection_ROS2</code></td>
-</tr>
-<tr>
-<td><code>aav_lane_follower_rs</code></td>
-<td>drivers</td>
-<td><code>control_interface</code> in Rust, the default (19 Nov; <code>lane_follower_impl:=python</code> falls back); the challengers <code>lane_follower:=pure_pursuit</code>, <code>stanley</code></td>
-<td><span class="badge b-works">works</span> the Python's commands on 2,797 shared events; in Ravensim's road world and on the campus (<code>measure lane</code>)</td>
-<td>new: a port of <code>aav_lane_geometry</code>'s</td>
 </tr>
 <tr>
 <td><code>aav_hud</code></td>
@@ -911,12 +899,6 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td><code>/sensors/camera/front_left/image_raw</code>, <code>/sensors/camera/front_left/camera_info</code></td>
 <td><code>/perception/lane/geometry</code>, <code>/perception/lane/image</code></td>
 <td>a bird's-eye view, sliding windows, a curve per line; the camera's place from <code>vehicle.yaml</code></td>
-</tr>
-<tr>
-<td><code>aav_lane_follower_rs</code> (or <code>aav_lane_geometry</code>): <code>control_interface</code></td>
-<td><code>/perception/lane/geometry</code></td>
-<td><code>/drivers/ai/cmd_vel</code></td>
-<td>steers back to the lane's centre, measured 3 m ahead (the PID), or on the lane's centre line (<code>lane_follower:=</code>)</td>
 </tr>
 </tbody>
 </table></div>

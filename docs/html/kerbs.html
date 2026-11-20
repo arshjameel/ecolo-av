@@ -7,7 +7,7 @@
 <!-- Generated from docs/kerbs.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Kerbs</h1>
-<div class="meta">7 min read · 10 sections</div></header>
+<div class="meta">9 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -164,6 +166,10 @@ TODO 119.</p></div>
 <tr>
 <td>Does the car stop before it?</td>
 <td><strong>Yes</strong> in sim: the stop zone stopped it 0.80-0.82 m before a 0.3 m kerb</td>
+</tr>
+<tr>
+<td>Does the car slow for it first?</td>
+<td><strong>Yes</strong> since 19 Nov (TODO 219): the behaviour planner slows for a kerb on the road ahead as for an obstacle, so the stop zone isn't the first to act. Scored in stage 2</td>
 </tr>
 <tr>
 <td>Is it on by default?</td>
@@ -386,8 +392,41 @@ ones within 12 m with each cloud.</p>
 <td>stop zone (<code>collision_monitor</code>, source <code>steps</code>)</td>
 <td>stops the car for it</td>
 </tr>
+<tr>
+<td>behaviour planner (<code>kerbs:=true</code>, TODO 219)</td>
+<td>slows for a kerb on the road ahead, as for an obstacle (<code>kerb_ahead</code>)</td>
+</tr>
 </tbody>
 </table></div>
+<h3 id="standing-before-a-kerb-19-nov-todo-219">Standing before a kerb (19 Nov, TODO 219)</h3>
+<p>Before, a kerb was forgotten 10 s after it was last seen. A car that stood before a kerb
+longer than that, under every beam, forgot it, and the stop zone let it on.</p>
+<p>Now a point <strong>under every beam</strong> doesn't age: nearer the lidar than its height / tan 15°
+(5.7 m for the roof lidar, 1.52 m up). The lidar can't see it again there, and can't see
+it gone either. Once the car backs away and it is in view, it ages again: 10 s.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where the step point is</th>
+<th>It is forgotten</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>in the lidar's view</td>
+<td>10 s after it was last seen</td>
+</tr>
+<tr>
+<td>under every beam (within 5.7 m of the lidar)</td>
+<td>never, while it stays there</td>
+</tr>
+<tr>
+<td>further than 12 m</td>
+<td>at once</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>cargo test -p voxels memory</code> (<code>a_kerb_under_every_beam_is_kept_while_the_car_stands_before_it</code>).</p>
 </section>
 <section class="card"><h2 id="does-the-real-lidar-see-a-kerb">Does the real lidar see a kerb?</h2>
 <p>The roof VLP-16: 16 rings, 2° apart, the lidar 1.52 m up (<code>vehicle.yaml</code>), 1.31 m
@@ -462,7 +501,9 @@ behind the front bumper.</p>
 </tbody>
 </table></div>
 <p>A real 0.15 m kerb is hit by enough rings only for the last 4.7 m. At 1 m/s the car
-needs about 1 m to stop, so that's enough at our speeds. At 3 m/s it is not.</p>
+needs about 1 m to stop, so that's enough at our speeds. At 3 m/s it is not. The
+behaviour planner now slows from the first sight (TODO 219); whether that is enough at
+3 m/s is stage 2's score. A 0.10 m kerb is still never seen.</p>
 </section>
 <section class="card"><h2 id="in-the-map">In the map</h2>
 <p>The campus (<code>pixi run campus</code>, <code>tools/campus_world.py</code>) already had every kerb:</p>

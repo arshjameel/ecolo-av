@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a class="here" href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -1069,6 +1071,11 @@ answer.</p>
 <tr>
 <td><strong>One ONNX file per model</strong>: Core ML on the Mac, TensorRT on the Orin (JetPack 7.2+); moved up (TODO 243)</td>
 <td>one export for every computer; proven on the Mac before the car</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Lanes are perception; the costmap prices them; navigation drives.</strong> The separate lane-follower drivers (the 2025-26 PID and ours) are removed once the camera's lanes are in the lanes layer (TODO 264). "Every algorithm stays" now means: not too early; strip what we know won't work (Ben, 19 Nov)</td>
+<td>Ben, 19 Nov: "drop there code all together". One driver (MPPI) with its lag and the obstacles, not a second steering loop beside it</td>
 <td>Ben</td>
 </tr>
 </tbody>

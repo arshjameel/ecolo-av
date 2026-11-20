@@ -44,7 +44,7 @@ a second program. Each opens full screen on its own monitor at boot:
 | Speed | km/h, big. Grey with "OLD" when `/vehicle/status` stops |
 | GO / STOP (24 Oct) | may the car move? A colour, an icon, a word, the one main reason: [below](#may-the-car-move-the-go-stop-panel) |
 | Controls | steering (left of centre = left), throttle, brake: one row each |
-| Camera | the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange **SIMULATED** / **BENCH** / **REPLAY** band along its bottom when `/system/source` says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red **STOP: gps STALE (...)** while it holds navigation, amber for a warning, red **SENSOR WATCHDOG SILENT** if it stops talking (twist_mux then holds navigation for its silence) ([simulation](simulation.md#sensor-failures-on-purpose)) |
+| Camera | the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange **SIMULATED** / **BENCH** / **REPLAY** band along its bottom when `/system/source` says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red **STOP: gps STALE (...)** while it holds navigation, amber for a warning, red **SENSOR WATCHDOG SILENT** if it stops talking (twist_mux then holds navigation for its silence) ([simulation](simulation.md#sensor-failures-on-purpose)); the boot self-test (20 Nov, [below](#ready-the-boot-self-test)) |
 | E-STOP | the button: `/safety/estop` true 5 times, 0.1 s apart. Never false. Says whether anything heard it |
 | (nothing on screen) | the heartbeat, `/hud/heartbeat`: below |
 | Topics | every topic it listens to: OK, STALE (quiet for 1 s) or NEVER, and how long ago; a REAL / SIM / BENCH / REPLAY tag where `/system/source` names it |
@@ -266,6 +266,23 @@ In Ravensim, one command does both: `pixi run sim world:=test_lot hud:=true`.
 Checked on 15 Oct by listening to each topic while the backend drove a scripted goal
 (the window itself couldn't open from that session). NEVER on a panel is the honest answer:
 nothing publishes that topic there.
+
+
+## READY: the boot self-test
+
+The car's boot self-test (`aav_self_test_rs`, TODO 255) says whether everything that keeps
+the car safe is here. `spine_bridge` won't arm until it says READY. The HUD shows it on
+the camera panel, under the watchdog's banner (`self_test_topic`, `/safety/self_test/status`).
+
+| The self-test says | The HUD shows |
+|---|---|
+| nothing, ever (Ravensim, the bench) | nothing |
+| level OK | **READY**: a small green tag, top right |
+| any other level | a red banner: **NOT READY: sensors (STOP: gps STALE ...)** |
+| nothing for 2 s, after speaking | a red banner: **SELF-TEST SILENT** |
+
+The logic: `hud-core` `self_test` (no ROS). `--demo` pretends NOT READY for 6 s, then READY.
+Seen only in code and tests so far: untested on a real screen.
 
 ## The map window (big screen)
 

@@ -7,7 +7,7 @@
 <!-- Generated from docs/stack-survey.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The self-driving stack: a survey, and what we found</h1>
-<div class="meta">50 min read · 11 sections</div></header>
+<div class="meta">51 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -690,7 +692,7 @@ each section.</p>
 </tr>
 <tr>
 <td><strong>Status</strong></td>
-<td><strong>Challenger</strong> (<code>amcl:=true</code>, off by default). Ours is its default; stock stays as <code>amcl_impl:=stock</code> until <code>nav2_amcl</code> leaves (TODO 232)</td>
+<td><strong>Challenger</strong> (<code>amcl:=true</code>, off by default). Ours only: stock <code>nav2_amcl</code> left on 20 Nov (TODO 232, tag <code>save/nav2-amcl</code>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -1239,7 +1241,7 @@ each section.</p>
 </tr>
 <tr>
 <td><strong>What it adds</strong></td>
-<td>the lane pose; the AI driver slot's lane keeping</td>
+<td>the lane pose; the costmap's camera lanes (<code>lanes:=camera</code>); each line's paint, white or yellow (19 Nov)</td>
 </tr>
 <tr>
 <td><strong>From</strong></td>
@@ -1387,6 +1389,10 @@ and finally close up is obstical avoidance". The full story: <a href="costmaps.h
 <tr>
 <td><strong>Status</strong></td>
 <td><strong>Challenger</strong></td>
+</tr>
+<tr>
+<td><strong>From the camera</strong> (<code>lanes:=camera</code>, <code>both</code>; 19 Nov, TODO 264)</td>
+<td>the same costs from the lane finder's lines where there is no lane map: the yellow line and the oncoming lane medium, the kerb high. Built, not yet scored</td>
 </tr>
 </tbody>
 </table></div>
@@ -1839,6 +1845,37 @@ line back, as if the car could spin. The car refused them; <strong>retired</stro
 <td><strong>Why retired</strong></td>
 <td>ported as <code>mppi_lag</code>; Nav2 deleted 17 Nov</td>
 <td>swings; Nav2 deleted</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="retired-the-lane-followers-19-nov">Retired: the lane followers (19 Nov)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>the 2025-26 PID (<code>control_interface</code>, Python and Rust)</th>
+<th>pure pursuit</th>
+<th>Stanley</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>From</strong></td>
+<td>the 2025-26 team's <code>Lane_Detection_ROS2</code></td>
+<td>R. C. Coulter, 1992</td>
+<td>S. Thrun et al., 2006</td>
+</tr>
+<tr>
+<td><strong>What we found</strong> (19 Nov, 3 runs; Library Road RMS)</td>
+<td>3.9-4.1 cm, 187 flips a minute</td>
+<td><strong>2.4 cm</strong>, 1 flip a minute</td>
+<td>3.0 cm, 6 flips</td>
+</tr>
+<tr>
+<td><strong>Why retired</strong></td>
+<td>Ben, 19 Nov: "drop there code all together": lanes are perception, the costmap prices them, navigation drives (TODO 264). Git tag <code>save/lane-followers</code>; <a href="../history/lane-followers.md">their scores</a></td>
+<td>the same</td>
+<td>the same</td>
 </tr>
 </tbody>
 </table></div>

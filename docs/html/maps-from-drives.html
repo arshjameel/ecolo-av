@@ -7,7 +7,7 @@
 <!-- Generated from docs/maps-from-drives.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Maps from drives</h1>
-<div class="meta">8 min read · 9 sections</div></header>
+<div class="meta">12 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a class="here" href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -133,13 +135,14 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#why-slam">Why SLAM</a><a href="#what-it-does">What it does</a><a href="#what-it-writes">What it writes</a><a href="#the-proof-in-ravensim">The proof in Ravensim</a><a href="#ndt-on-the-slam-map">NDT on the SLAM map</a><a href="#loop-closures">Loop closures</a><a href="#several-drives">Several drives</a><a href="#licences">Licences</a><a href="#code">Code</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#why-slam">Why SLAM</a><a href="#what-it-does">What it does</a><a href="#what-it-writes">What it writes</a><a href="#the-proof-in-ravensim">The proof in Ravensim</a><a href="#ndt-on-the-slam-map">NDT on the SLAM map</a><a href="#loop-closures">Loop closures</a><a href="#many-drives-of-one-area">Many drives of one area</a><a href="#licences">Licences</a><a href="#code">Code</a></nav>
 <div class="lead"><p>A recorded drive becomes <strong>our own map</strong>: NDT's 3D map and a 2D map for the planner, made
 with SLAM, not from the EKF. Phase D of the <a href="testing-plan.html">testing plan</a> (TODO 250).</p>
 <pre class="highlight"><code class="language-sh">pixi install --locked -e slam                       # once (x86_64 Linux, Apple-silicon Macs)
 pixi run record-drive --name lot --note "the lot"   # the drive (Recording a mapping drive)
 pixi run map-drive bags/&lt;drive&gt;                     # its maps, into bags/&lt;drive&gt;/map/
-pixi run map-drive --merge &lt;map A&gt; &lt;map B&gt; --out maps/lot   # two drives: what both saw</code></pre>
+pixi run map-drive --merge &lt;map A&gt; &lt;map B&gt; [&lt;map C&gt;...] --out maps/lot   # quick merge
+pixi run map-area lot bags/&lt;drive 1&gt; bags/&lt;drive 2&gt; bags/&lt;drive 3&gt;   # the whole job</code></pre>
 <div class="admonition warning">
 <p class="admonition-title">Not yet run on the car</p>
 <p>Built and proved in Ravensim (19 Nov). A real drive, its GPS and its lidar's sweep
@@ -347,13 +350,177 @@ from above, and drops features that look like others. The lot's plain walls and 
 it almost none. KISS-ICP alone stayed within 11 cm over 208 m there, so nothing needed
 closing. <strong>A real place (trees, kerbs, parked cars) should give it features: untested.</strong></p>
 </section>
-<section class="card"><h2 id="several-drives">Several drives</h2>
-<p><code>--merge A B</code> fits B's NDT map onto A's (Open3D's point-to-plane ICP, x, y and yaw only:
-both maps are flat), then keeps only the points the other map has within 25 cm
-(<code>--radius</code>). A car parked in one drive only drops out. So does anything only one drive
-saw: drive the same route each time.</p>
-<p>Next: more than two drives (keep what most saw) and the 2D maps merged the same way. A
-person checks the result in the <a href="map-editor.html">map editor</a> (phase E, <code>pixi run map-edit</code>).</p>
+<section class="card"><h2 id="many-drives-of-one-area">Many drives of one area</h2>
+<p>Ben, 19 Nov: "multiple passes gives us bags of points ... then we can remove dynamic
+objects like cars that might be currently static". One command does it, offline:</p>
+<pre class="highlight"><code class="language-sh">pixi run map-area &lt;area&gt; bags/&lt;drive 1&gt; bags/&lt;drive 2&gt; bags/&lt;drive 3&gt;   # into maps/&lt;area&gt;/
+pixi run map-edit maps/&lt;area&gt;                                            # then a person checks</code></pre>
+<pre class="highlight"><code> drive 1 ─┐  map-drive    ┌──────────┐  ICP onto    ┌───────────────────┐
+ drive 2 ─┼─ each ───────▶│ 3 maps,  │─ drive 1 ───▶│ each drive's rays │
+ drive 3 ─┘  (KISS-SLAM)  │ 3 paths  │  (x, y, yaw) │ again, one grid   │
+                          └──────────┘              └─────────┬─────────┘
+                                                              ▼
+            cell by cell:  hit in one drive, seen through in another ─▶ gone (a parked car)
+                           hit by one drive only, never seen through ─▶ kept, seen_in
+                           hit, never seen through                    ─▶ kept
+                                                              │
+                                                              ▼
+     maps/&lt;area&gt;/: ndt.pcd · map2d.pgm · chunks/ · labels.yaml · passes.yaml · report.md</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Each drive</td>
+<td><code>map-drive</code> into <code>maps/&lt;area&gt;/drives/&lt;drive&gt;/</code> (reused next time; <code>--redo</code>)</td>
+</tr>
+<tr>
+<td>2. Align</td>
+<td>each drive's NDT map onto the first's: point-to-plane ICP, x, y and yaw</td>
+</tr>
+<tr>
+<td>3. Passes</td>
+<td>each drive's clouds again, on its fitted path, into one 0.25 m grid: per drive, the cells it hit (0.3-2 m up, 2 clouds or more) and the cells its rays crossed (3 rays or more, almost never hit)</td>
+</tr>
+<tr>
+<td>4. Judge</td>
+<td><strong>dynamic</strong>: hit in one drive, crossed in another. <strong>Seen once</strong>: hit by one drive only, never crossed. Free is kept one cell off that drive's own hits (pose error at a wall's edge)</td>
+</tr>
+<tr>
+<td>5. Remove</td>
+<td>NDT's points over a dynamic cell, up to 3 m (<code>--top</code>: a tree over a car stays), and over the seen-once cells it touches (the car's far side, <code>--grow</code>)</td>
+</tr>
+<tr>
+<td>6. Write</td>
+<td>NDT's map (every drive's points, less the removed); the 2D map (removed cells free); chunks; <code>labels.yaml</code> (the seen-once clusters, <code>seen_in</code>, for the <a href="map-editor.html#seen_in-what-only-one-drive-saw">map editor</a>); <code>passes.yaml</code>; <code>report.md</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Drive the <strong>same route</strong> each time, at different times: what one drive never looked at
+can't be judged.</p>
+<h3 id="the-proof-in-ravensim_1">The proof in Ravensim</h3>
+<p>Three loops of the test lot (<code>record-drive --sim --loop</code>). The second had a parked car, a
+4.5 x 1.8 x 1.5 m box at (22, -6.5) beside the south side (<code>--sim-box 22 -6.5</code>). Scored
+against the truth map of the first drive (no box):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Map</th>
+<th>NDT points</th>
+<th>On the box</th>
+<th>Truth's points found (0.2 m)</th>
+<th>Points off the truth (0.3 m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>drive 1 (no box)</td>
+<td>131,291</td>
+<td>0</td>
+<td>100 %</td>
+<td></td>
+</tr>
+<tr>
+<td>drive 2 (<strong>the box</strong>)</td>
+<td>132,121</td>
+<td><strong>2,550</strong></td>
+<td>100 %</td>
+<td></td>
+</tr>
+<tr>
+<td>drive 3 (no box)</td>
+<td>129,648</td>
+<td>0</td>
+<td>100 %</td>
+<td></td>
+</tr>
+<tr>
+<td>all three, nothing removed</td>
+<td>145,951</td>
+<td>2,550</td>
+<td>100 %</td>
+<td>2,934</td>
+</tr>
+<tr>
+<td><strong><code>map-area</code></strong></td>
+<td><strong>143,430</strong></td>
+<td><strong>0</strong></td>
+<td><strong>100 %</strong></td>
+<td><strong>413</strong></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>2D cells</th>
+<th>Drive 2 alone</th>
+<th><code>map-area</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>on the box</td>
+<td>32 occupied, 111 unknown</td>
+<td><strong>all 144 free</strong></td>
+</tr>
+<tr>
+<td>on the south wall (behind the box)</td>
+<td>240 occupied</td>
+<td><strong>240 occupied</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>The drives fitted onto the first by 4-6 mm and 0.01°. 48 cells were dynamic, all the
+box's. 33 cells, seen by drive 3 only (the building's north face from its line), stay,
+as two labels with <code>seen_in</code>; <code>map-edit-batch</code> opens the folder and keeps them. 103 s on
+an M4 Max, with the drives' own maps already made.</p>
+<p><strong>Untested:</strong> real drives (the car's lidar, real parked cars and people, trees), drives
+far apart in time (ICP from no move: a GPS-placed map must start within about 1 m), and
+an area bigger than one 45 m lidar reach round the path in memory.</p>
+<h3 id="-merge-the-quick-way"><code>--merge</code>: the quick way</h3>
+<p><code>--merge A B C...</code> works on map folders alone, without the drives: each NDT map onto the
+first by ICP; NDT keeps the points at least two maps have within 25 cm (<code>--min-maps</code>,
+<code>--radius</code>); the 2D maps moved onto one grid and judged by the same rule as above (a map's
+occupied cell another map has free is gone). Coarser than <code>map-area</code>: no rays again, and a
+thing only one drive saw drops out of NDT's map.</p>
+<p><strong>Two drives merged</strong> (short onto loop's): 109,000 points, 3.1 cm off the truth (median),
+11 cm at 95 %. Moved 1 m and 3° on purpose first, ICP put it back (-0.96 m, 0.56 m,
+-3.03°). Three map folders of the plain lot: no dynamic cells.</p>
+<p>Next: the camera's labels (TODO 252) tell a car parked in the same place every time from
+a wall.</p>
+<h3 id="learned-from">Learned from</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Project</th>
+<th>Licence</th>
+<th>What we took</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Removert (Kim and Kim, IROS 2020)</td>
+<td>CC BY-NC-SA 4.0</td>
+<td>the idea: a map point another scan sees through is gone</td>
+</tr>
+<tr>
+<td>ERASOR (Lim et al., RA-L 2021)</td>
+<td>GPL-3.0</td>
+<td>the idea: judge the column over a cell, not single points</td>
+</tr>
+<tr>
+<td>DUFOMap (Duberg et al., RA-L 2024)</td>
+<td>BSD-3-Clause</td>
+<td>the idea: space seen empty is empty, with a margin for error</td>
+</tr>
+</tbody>
+</table></div>
+<p>Ideas only, no code: our version is 2D cells (the stack is 2D), numpy, in <code>tools/passes.py</code>.</p>
 </section>
 <section class="card"><h2 id="licences">Licences</h2>
 <div class="table-wrap"><table>
@@ -415,7 +582,15 @@ wheel for 64-bit ARM Linux (the Orin): make maps on a laptop, copy the files to 
 </tr>
 <tr>
 <td><code>tools/record_drive.py</code></td>
-<td><code>--sim --loop</code>: the whole route, for a loop</td>
+<td><code>--sim --loop</code>: the whole route, for a loop; <code>--sim-box</code>: a parked car for one drive</td>
+</tr>
+<tr>
+<td><code>tools/map_area.py</code></td>
+<td><code>map-area</code>: many drives of one area (the slam env)</td>
+</tr>
+<tr>
+<td><code>tools/passes.py</code></td>
+<td>its maths, no ROS: occupancy across passes, the merged 2D map, the labels (<code>tools/tests/test_passes.py</code>)</td>
 </tr>
 </tbody>
 </table></div></section>

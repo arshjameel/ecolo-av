@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">68 min read · 8 sections</div></header>
+<div class="meta">69 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -133,7 +135,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a class="here" href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-hud-in-rust-raylib">The HUD in Rust (raylib)</a><a href="#the-map-window-big-screen">The map window (big screen)</a><a href="#themes-the-screens-colours">Themes: the screens&#x27; colours</a><a href="#the-debug-hud">The debug HUD</a><a href="#the-hardware-panel">The hardware panel</a><a href="#the-little-robot-easter-egg">The little robot (easter egg)</a><a href="#the-flutter-app-2025-26-archived">The Flutter app (2025-26): archived</a><a href="#the-place-database">The place database</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-hud-in-rust-raylib">The HUD in Rust (raylib)</a><a href="#ready-the-boot-self-test">READY: the boot self-test</a><a href="#the-map-window-big-screen">The map window (big screen)</a><a href="#themes-the-screens-colours">Themes: the screens&#x27; colours</a><a href="#the-debug-hud">The debug HUD</a><a href="#the-hardware-panel">The hardware panel</a><a href="#the-little-robot-easter-egg">The little robot (easter egg)</a><a href="#the-flutter-app-2025-26-archived">The Flutter app (2025-26): archived</a><a href="#the-place-database">The place database</a></nav>
 <div class="lead"><p>Four raylib programs in one package, <code>ros/hud/aav_hud</code>, each also its own ROS node:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -218,7 +220,7 @@ a second program. Each opens full screen on its own monitor at boot:
 </tr>
 <tr>
 <td>Camera</td>
-<td>the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange <strong>SIMULATED</strong> / <strong>BENCH</strong> / <strong>REPLAY</strong> band along its bottom when <code>/system/source</code> says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red <strong>STOP: gps STALE (...)</strong> while it holds navigation, amber for a warning, red <strong>SENSOR WATCHDOG SILENT</strong> if it stops talking (twist_mux then holds navigation for its silence) (<a href="simulation.html#sensor-failures-on-purpose">simulation</a>)</td>
+<td>the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange <strong>SIMULATED</strong> / <strong>BENCH</strong> / <strong>REPLAY</strong> band along its bottom when <code>/system/source</code> says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red <strong>STOP: gps STALE (...)</strong> while it holds navigation, amber for a warning, red <strong>SENSOR WATCHDOG SILENT</strong> if it stops talking (twist_mux then holds navigation for its silence) (<a href="simulation.html#sensor-failures-on-purpose">simulation</a>); the boot self-test (20 Nov, <a href="#ready-the-boot-self-test">below</a>)</td>
 </tr>
 <tr>
 <td>E-STOP</td>
@@ -674,6 +676,39 @@ In Ravensim, one command does both: <code>pixi run sim world:=test_lot hud:=true
 <p>Checked on 15 Oct by listening to each topic while the backend drove a scripted goal
 (the window itself couldn't open from that session). NEVER on a panel is the honest answer:
 nothing publishes that topic there.</p>
+</section>
+<section class="card"><h2 id="ready-the-boot-self-test">READY: the boot self-test</h2>
+<p>The car's boot self-test (<code>aav_self_test_rs</code>, TODO 255) says whether everything that keeps
+the car safe is here. <code>spine_bridge</code> won't arm until it says READY. The HUD shows it on
+the camera panel, under the watchdog's banner (<code>self_test_topic</code>, <code>/safety/self_test/status</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The self-test says</th>
+<th>The HUD shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nothing, ever (Ravensim, the bench)</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td>level OK</td>
+<td><strong>READY</strong>: a small green tag, top right</td>
+</tr>
+<tr>
+<td>any other level</td>
+<td>a red banner: <strong>NOT READY: sensors (STOP: gps STALE ...)</strong></td>
+</tr>
+<tr>
+<td>nothing for 2 s, after speaking</td>
+<td>a red banner: <strong>SELF-TEST SILENT</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>The logic: <code>hud-core</code> <code>self_test</code> (no ROS). <code>--demo</code> pretends NOT READY for 6 s, then READY.
+Seen only in code and tests so far: untested on a real screen.</p>
 </section>
 <section class="card"><h2 id="the-map-window-big-screen">The map window (big screen)</h2>
 <p><code>ros/hud/aav_hud</code>, binary <code>map</code>: its own window, which is also the ROS node <code>map</code>.
@@ -1729,7 +1764,7 @@ on the right two views from above. Key <strong>L</strong> swaps the right side f
 <tr>
 <td>Localization health</td>
 <td><strong>OK</strong> green, or <strong>WARN</strong> amber and each check that isn't OK, wrapped; "not running (health:=false)"; STALE after 3 s (it comes once a second)</td>
-<td><code>/localization/health</code> (Betsi's <code>aav_localization_health</code>)</td>
+<td><code>/localization/health</code> (Betsi's <code>aav_localization_health_rs</code>)</td>
 </tr>
 </tbody>
 </table></div>

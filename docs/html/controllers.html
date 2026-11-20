@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -144,8 +146,9 @@ bad at, what it needs, and where it would run on our car.</p>
   is built in <code>spine-core</code> to compare (<code>speed_loop:=lqi</code>, section 2a).</li>
 <li><strong>Steering, following a path:</strong> MPPI that knows the lag (<code>aav_mppi_lag</code>, Rust) is
   the default (sim, bench and car); Nav2's MPPI was, until Nav2 went on 17 Nov.
-  Our trackers (pure pursuit, Stanley, LQR, MPC) are trials, forward only; MPC is
-  the leading candidate among them.</li>
+  Our trackers (pure pursuit, Stanley, LQR, MPC) are trials; they reverse since
+  19 Nov (TODO 174: a backwards stretch is driven mirrored); MPC is the leading
+  candidate among them.</li>
 <li><strong>The steering motor:</strong> the Jrk G2's own position PID, underneath everything.</li>
 <li><strong>Obstacle tours:</strong> the State Lattice plans (since 1 Nov; ours in Rust,
   <code>aav_planner</code>, since 14 Nov), MPPI follows. Hybrid-A* and the diffusion planner
@@ -1376,7 +1379,7 @@ trials too. The basics: <a href="learn-localization.html">Learn: localization</a
 <td><strong>in use</strong></td>
 </tr>
 <tr>
-<td><strong>AMCL</strong> (ours in Rust, <code>aav_amcl_rs</code>, since 18 Nov; stock <code>nav2_amcl</code> with <code>amcl_impl:=stock</code>)</td>
+<td><strong>AMCL</strong> (ours in Rust, <code>aav_amcl_rs</code>, since 18 Nov; stock <code>nav2_amcl</code> removed 20 Nov, TODO 232)</td>
 <td>a particle filter: thousands of guesses, each lidar scan kills the unlikely ones</td>
 <td>about 5-10 cm where the lidar sees posts, curbs, walls</td>
 <td>needs a map first (<code>slam_toolbox</code>); a bare lot gives it little</td>
