@@ -101,6 +101,9 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **torchvision**'s ResNet-18 (the architecture; K. He et al., CVPR 2016) | BSD-3 | runs (random start, no pretrained weights) | the learned lane finder's backbone |
 | **Pillow**'s resampling (`precompute_coeffs`, its 8-bit fixed point) | MIT-CMU (HPND) | ported (the rules) | the learned lane finder's crop and scale in Rust, so the model gets the numbers it was trained on (`ufld-core` `preprocess.rs`) |
 | CLRNet (T. Zheng et al., CVPR 2022), CLRerNet; LaneATT (L. Tabelini et al., CVPR 2021); PolyLaneNet (L. Tabelini et al., 2020); CondLaneNet (L. Liu et al., ICCV 2021); YOLOP, YOLOPv2, TwinLiteNet | Apache-2.0; Apache-2.0; MIT; MIT; Apache-2.0; MIT | idea (looked at) | the lane detector survey (`docs/perception.md`); their published weights are trained on CULane (non-commercial), BDD100K, TuSimple or CurveLanes (not clearly open), so not used |
+| **OWLv2**: M. Minderer, A. Gritsenko, N. Houlsby, "Scaling Open-Vocabulary Object Detection", NeurIPS 2023 (`google/owlv2-base-patch16-ensemble`, from Google's `scenic`/`big_vision`) | Apache-2.0 (code and weights); trained on WebLI pseudo-labels, Objects365 and Visual Genome | runs | the labelling loop's open-vocabulary detector, offline (`tools/label_drive.py`, TODO 252; [Labelling](labelling.md)) |
+| **Hugging Face transformers** | Apache-2.0 | runs | OWLv2 on PyTorch (mps), in `label-drive` |
+| **Grounding DINO** (IDEA Research), **YOLO-World** (Tencent), **SAM 2** (Meta) | Apache-2.0; GPL-3.0; Apache-2.0 | looked at | the labelling loop's other candidates: Grounding DINO a later challenger, YOLO-World left out (copyleft), SAM 2's masks not needed yet ([Labelling](labelling.md#why-owlv2-the-licences)) |
 
 ## Maps and routes
 

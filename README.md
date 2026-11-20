@@ -156,6 +156,9 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `map-drive` | a map from a recorded drive, no ROS: KISS-SLAM's path with its loop closures, NDT's map and a 2D map for the planner, in 64 m chunks, placed by the GPS where it is good; `--merge` two or more drives' maps (NDT: what two saw; the 2D maps merged) ([docs](docs/maps-from-drives.md)) |
 | `map-area` | one area's map from several drives, offline: `map-drive` each, fitted together, then occupancy across passes (a parked car one drive saw and another saw through is removed; what only one drive saw is kept and labelled `seen_in`); NDT's map, the 2D map, chunks, `labels.yaml` and one `report.md` in `maps/<area>/`, ready for `map-edit` ([docs](docs/maps-from-drives.md#many-drives-of-one-area)) |
 | `map-edit` | the map editor (Bevy, no ROS): a `map-drive` map over the street map, to line up, delete parked cars in a box, label, then approve and save as a new folder with its edit log and chunks ([docs](docs/map-editor.md)) |
+| `label-drive` | (ml env) label what's around after a drive: OWLv2's boxes onto the lidar points, into the map folder's `labels.yaml` for `map-edit`; `--sim-drive` makes a drive from Ravensim alone, scored against its truth ([docs](docs/labelling.md)) |
+| `label-train` | (ml env) our small point segmenter from the reviewed `labels.yaml` of one or more maps: scored on held-out frames, ONNX checked on the CPU and Core ML ([docs](docs/labelling.md)) |
+| `twin-world` | a Ravensim world from a labelled map (buildings, trees, poles; parked cars left out): then `pixi run sim world:=maps/twins/<name>/twin.sdf` ([docs](docs/labelling.md#the-twin-todo-253)) |
 
 ### At the car
 

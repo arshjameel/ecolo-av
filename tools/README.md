@@ -107,6 +107,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `ndt_map.py` | NDT's map of the test lot: drive the mapping route, or build from a bag, placed by a topic or a TUM file (`--poses-file`) (its maths without ROS) | `ndt-map` |
 | `map_drive.py` | a map from a recorded drive, no ROS (the slam env): KISS-SLAM, the GPS fit, NDT's map, a 2D map, chunks, scores in Ravensim; `--merge` two drives or more, their 2D maps too (`docs/maps-from-drives.md`). The maths: `slam_map.py` | `map-drive` |
 | `map_area.py` | one area's map from several drives, no ROS (the slam env): `map-drive` each, ICP onto the first, occupancy across passes (parked cars out, what one drive saw labelled `seen_in`), chunks, one report (TODO 259, 260). The maths: `passes.py` | `map-area` |
+| `twin_world.py` | a Ravensim world from a labelled map (TODO 253): buildings, trees, poles, parked cars left out; `campus_world.py`'s meshes (its maths tested without ROS) | `twin-world` |
 | `timing_test.py` | every topic's gaps and late messages, parked and driving | `measure timing` |
 | `stream_check.py` | the camera stream end to end, without the car (`--impl rust\|python`: which node; CPU and memory of each program) | `measure stream` |
 | `sim_frames.py` | camera pictures of the sim's stop sign, for the detectors | - |
@@ -173,6 +174,8 @@ Each lands outside git, checksum pinned where the script says.
 | `onnx_measure.py` | every ONNX model in `models/` (the detector, the diffusion planner, the learned lane finder; their FP16 twins): Core ML against the CPU and PyTorch, its share of the graph, what fell back, ms; PASS/WARN/FAIL, `--json` ([ONNX](../docs/onnx.md)) | `measure onnx` |
 | `lane_data.py` | the learned lane finder's pictures (Ravensim, `sim_cameras --poses`) and labels from the lane map, into `models/lane-data/` (its maths without ROS, tested) | - (`pixi run -e ml python3 tools/lane_data.py`) |
 | `lane_train.py` | trains the learned lane finder on those (PyTorch, `mps`), scores it on held-out pictures, exports `models/lane-ufld.onnx` and its FP16 twin | - (`pixi run -e ml python3 tools/lane_train.py`) |
+| `label_drive.py` | labels after a drive (TODO 252): OWLv2's boxes onto the lidar points, into `labels.yaml`; `--sim-drive` makes a drive from Ravensim; scored against its truth. The maths: `label_core.py` (no ROS, tested) | `label-drive` (ml env) |
+| `label_train.py` | our small point segmenter from the reviewed labels: mps, held-out scores, ONNX on the CPU and Core ML | `label-train` (ml env) |
 | `onnx_check.py` | the ONNX detector's boxes against PyTorch's, and each runtime's ms a picture (`--time`); `--write-fixtures` for `detector-core`'s tests ([ONNX](../docs/onnx.md)) | - (`pixi run -e ml python3 tools/onnx_check.py`) |
 | `vehicle_model.py` | the car's linear model: poles, steps, margins | - |
 | `state_space_demo.py` | the state-space teaching example | - |
@@ -230,6 +233,7 @@ Each lands outside git, checksum pinned where the script says.
 | `make_stop_sign.py`, `make_map.py` | write the stop sign's files in `ros/sim/aav_sim_models/models/`; a map's PGM and YAML |
 | `map_drive.py` | writes `<drive>/map/` (or `--out`); runs `cargo` for the chunks |
 | `map_area.py` | writes `maps/<area>/` (or `--out`), each drive's map in its `drives/`; runs `cargo` for the chunks |
+| `label_drive.py`, `label_train.py`, `twin_world.py` | write `<drive>/labels/` and the map folder's `labels.yaml` (`--sim-drive`: a whole drive folder, running `sim_cameras` and `cargo` for `scan_poses`); `models/label-seg.*`; `maps/twins/<name>/` |
 | `record.sh`, `record_drive.py` | write `bags/`; `record_drive.py` also runs `chronyc` over ssh (keys only) and, with `--sim`, Ravensim on this computer |
 | `esp32.sh flash`, `esp32.sh walk` (once `flash` is typed), `pico.sh <board> flash`, `legacy_firmware.sh -t upload` | write a board's flash (bench only) |
 | `esp32_walk.py` | writes `bench-logs/`: the record, the first check's log, the copy of the C++ (a secret inside) |
