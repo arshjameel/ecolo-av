@@ -17,7 +17,9 @@
 //!             /perception/voxels/steps    sensor_msgs/PointCloud2, base_link, the same QoS,
 //!                                         only with steps:=true: the high side of every
 //!                                         sudden step in the ground (a kerb), 0.1 m squares
-//!                                         (voxels::steps, TODO 119), and those of the last
+//!                                         (voxels::steps, TODO 119), not the foot of
+//!                                         anything taller than a kerb (voxels::kerbs_only,
+//!                                         TODO 189), and those of the last
 //!                                         step_keep s, kept in odom (voxels::StepMemory);
 //!                                         those under every beam (nearer the lidar than
 //!                                         its height / tan 15 degrees) while they stay
@@ -54,7 +56,7 @@ use ros_env::sensor_msgs::msg::{PointCloud2, PointField};
 use ros_env::std_msgs::msg::Header;
 use voxels::{
     cloud::{self, CloudView, Field},
-    cubes,
+    cubes, kerbs_only,
     patchwork::{self, Ground, PatchSettings},
     steps, usable, Blind, Body, CubeShape, Cubes, Mount, Point, Pose2, StepMemory, StepShape,
     LOWEST_BEAM,
@@ -224,7 +226,16 @@ impl State {
         }
         let mut kerb_points = None;
         if let Some(k) = self.kerbs.as_mut() {
-            let found_steps = steps(&usable(&base, &self.shape), &k.shape);
+            // The kerbs only: the foot of a person, a post or a wall is the cubes', and it
+            // may walk away, so it must not be kept under every beam (TODO 189).
+            let good = usable(&base, &self.shape);
+            let found_steps = kerbs_only(
+                steps(&good, &k.shape),
+                &good,
+                &found.road,
+                &k.shape,
+                self.shape.max_height,
+            );
             // Kept in odom, the ones still in reach sent back; no odometry yet: these only.
             let held = match k.pose {
                 Some(pose) => k.memory.update(stamp, pose, &found_steps),

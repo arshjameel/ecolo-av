@@ -28,7 +28,7 @@ use std::{cmp::Ordering, error::Error, fmt};
 
 pub use memory::{Blind, Pose2, StepMemory, LOWEST_BEAM};
 pub use mount::Mount;
-pub use steps::{steps, StepError, StepShape};
+pub use steps::{kerbs_only, steps, StepError, StepShape};
 
 /// A point in `base_link` (m), or in the lidar's frame before [`Mount::to_base`].
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

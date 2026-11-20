@@ -100,7 +100,11 @@ Tested on clouds cast the way the roof lidar casts them (16 rings, 3 cm noise):
 | a sign hanging 2.2 m up | none |
 | the nine recorded clouds: the ramp, the crowned road | none |
 
-Walls and parked cars do give steps at their feet. That's fine: they are in the way too.
+Walls, parked cars and people give steps at their feet too, and up their faces (each
+ring hits a post 0.1-0.5 m above the one below). Since 20 Nov (TODO 189) those are
+dropped: a step within 0.3 m of a point more than 0.5 m over the road (and under 2 m)
+is the foot of something taller than any kerb (`kerbs_only`). That thing is a cube, so
+the costmap and the stop zone see it anyway; and it may walk away (below).
 
 ## The memory
 
@@ -138,6 +142,21 @@ it gone either. Once the car backs away and it is in view, it ages again: 10 s.
 | further than 12 m | at once |
 
 `cargo test -p voxels memory` (`a_kerb_under_every_beam_is_kept_while_the_car_stands_before_it`).
+
+### A walker's foot (20 Nov, TODO 189)
+
+`sim-check --moving` failed twice: the car waited for a person crossing 3 m ahead, then
+stood in APPROACH(obstacle) for good. The person's foot made steps as they crossed, under
+every beam, so the memory kept them for ever: a "kerb" across the lane. The behaviour
+planner slowed for it (`left` -0.3 m) and the stop zone held the car.
+
+| Step | Before | Since 20 Nov |
+|---|---|---|
+| a post's foot and face | steps, kept | dropped (`kerbs_only`): the cubes have it |
+| a kerb, even beside a post | kept | kept (only within 0.3 m of the post is dropped) |
+
+`cargo test -p voxels steps` (`a_walker_crossing_under_every_beam_leaves_no_kerb_behind`:
+the old way keeps the walker's trail, the new one nothing).
 
 ## Does the real lidar see a kerb?
 

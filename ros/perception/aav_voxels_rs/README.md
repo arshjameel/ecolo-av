@@ -73,6 +73,7 @@ The Python reads `vehicle.yaml` itself; the Rust gets the same numbers from the 
 | `cloud::read_xyz`, `cloud::write_xyz32` | `PointCloud2`'s bytes in and out |
 | `patchwork::cubes(points, CubeShape, PatchSettings)`, `patchwork::judge`, `PcaPlane`, `Ground` | the ground ring by ring (Patchwork++'s idea, TODO 215): concentric zones, rings and sectors; a PCA plane a patch from its lowest points; uprightness, elevation and flatness; a drop-in for `cubes`. Tests: a 0.3 m and a 0.25 m kerb are cubes (the champion misses the 0.25), a road bending up a hill is none (the champion's one plane makes cubes of it), a wall and a bumpy raised patch are not ground |
 | `steps(points, StepShape)` (`StepShape::checked()`, `StepError`) | the kerbs: points 0.10-0.5 m above a point within 0.3 m of them, flat; 2 or more to a 0.1 m square |
+| `kerbs_only(steps, points, road, StepShape, ceiling)` | the steps less the feet and faces of anything taller than a kerb (a point 0.5 m-`ceiling` over the road within 0.3 m): a person, a post, a wall are cubes, and may walk away, so the memory never keeps them (TODO 189: a walker's foot, kept under every beam, held the car for good) |
 | `StepMemory` (`with_blind(Blind)`), `Blind::under(lidar_xyz, LOWEST_BEAM)` | the kerbs kept in `odom` `step_keep` s (10); one under every beam (within the lidar's height / tan 15° of it) doesn't age while it stays there, so a car standing before a kerb never forgets it (TODO 219) |
 
 ### The step finder (`steps.rs`, TODO 119)
