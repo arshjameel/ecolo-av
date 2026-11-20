@@ -185,6 +185,53 @@ pub fn steps(points: &[Point], shape: &StepShape) -> Vec<Point> {
     kept.into_iter().map(|(_, p)| p).collect()
 }
 
+/// The steps that are kerbs: those not at the foot of something taller than any kerb.
+///
+/// A vertical face makes steps too: where the road meets it, and between its own rings
+/// (a post 4 m out is hit 0.37 m and 0.53 m up, 0.16 m apart). A person, a post, a car's
+/// side or a wall stands higher than [`StepShape::max_step`] over the road, a kerb never
+/// does. So a step within [`StepShape::radius`] (flat) of a point higher than that and no
+/// higher than `ceiling` (what the car passes under: a sign's board isn't a wall) belongs
+/// to the tall thing, not the road. The lidar sees the tall thing at any range (it is a
+/// cube: `max_step` is over the cubes' floor), and it may walk away: the step memory must
+/// not keep its foot (TODO 189: a walker crossing under every beam left a kerb across the
+/// lane that the car stood before for ever).
+///
+/// `found`: [`steps`]' answer; `points`: the same cloud's points (as [`crate::usable`] gives
+/// them); `road`: the cloud's road ([`crate::Cubes::road`]). The order of `found` is kept.
+#[must_use]
+pub fn kerbs_only(
+    found: Vec<Point>,
+    points: &[Point],
+    road: &crate::Road,
+    shape: &StepShape,
+    ceiling: f64,
+) -> Vec<Point> {
+    let plane = road.plane();
+    let mut tall: HashMap<[i64; 2], Vec<&Point>> = HashMap::new();
+    for p in points {
+        let above = p.z - plane.height(p.x, p.y);
+        if above > shape.max_step && above <= ceiling {
+            tall.entry(square(p, shape.radius)).or_default().push(p);
+        }
+    }
+    if tall.is_empty() {
+        return found;
+    }
+    let r2 = shape.radius * shape.radius;
+    found
+        .into_iter()
+        .filter(|p| {
+            let [i, j] = square(p, shape.radius);
+            !(-1..=1)
+                .flat_map(|di| (-1..=1).map(move |dj| [i + di, j + dj]))
+                .filter_map(|k| tall.get(&k))
+                .flatten()
+                .any(|q| (q.x - p.x).powi(2) + (q.y - p.y).powi(2) <= r2)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 #[path = "steps_tests.rs"]
 mod tests;

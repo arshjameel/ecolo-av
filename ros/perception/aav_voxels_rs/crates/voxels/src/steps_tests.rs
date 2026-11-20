@@ -264,3 +264,102 @@ fn steps_range() {
         );
     }
 }
+
+/// The road, flat, and a post (0.5 m square, 1.8 m: sim-check's walker) centred at
+/// (`x0`, `y0`).
+fn post_at(x0: f64, y0: f64) -> impl Fn(f64, f64) -> f64 {
+    move |x, y| {
+        if (x - x0).abs() <= 0.25 && (y - y0).abs() <= 0.25 {
+            1.8
+        } else {
+            0.0
+        }
+    }
+}
+
+/// One cloud's kerbs, as the node finds them: the steps, less the feet of tall things.
+fn kerbs_in(cloud: &[Point]) -> Vec<Point> {
+    let shape = crate::CubeShape::default();
+    let good = crate::usable(cloud, &shape);
+    let road = crate::cubes(cloud, &shape).road;
+    let s = StepShape::default();
+    kerbs_only(steps(&good, &s), &good, &road, &s, shape.max_height)
+}
+
+#[test]
+fn a_post_makes_steps_but_is_no_kerb() {
+    // TODO 189: its face is hit ring after ring, 0.1-0.5 m apart: steps. It is a cube.
+    for ahead in [3.0, 6.0] {
+        let cloud = cast(post_at(BUMPER + ahead, 0.0), 0.03);
+        assert!(
+            !steps(&cloud, &StepShape::default()).is_empty(),
+            "a post {ahead} m ahead: no steps at all, the test shows nothing"
+        );
+        let k = kerbs_in(&cloud);
+        assert!(k.is_empty(), "a post {ahead} m ahead: kerbs {k:?}");
+    }
+}
+
+#[test]
+fn a_kerb_is_still_a_kerb() {
+    for (x0, h, depth) in [
+        (BUMPER + 4.0, 0.3, 0.3),
+        (BUMPER + 3.5, 0.15, f64::INFINITY),
+        (BUMPER + 4.0, 0.15, 0.3),
+    ] {
+        let cloud = cast(kerb_across(x0, h, depth), 0.03);
+        let all = steps(&cloud, &StepShape::default());
+        assert_eq!(kerbs_in(&cloud), all, "{h} m kerb at {x0} m");
+    }
+    // A post on the pavement beside the road: the kerb away from it stays, every point.
+    let (px, py) = (BUMPER + 4.5, -2.0);
+    let kerb = kerb_across(BUMPER + 4.0, 0.3, f64::INFINITY);
+    let post = post_at(px, py);
+    let cloud = cast(|x, y| kerb(x, y).max(post(x, y)), 0.03);
+    let away: Vec<Point> = steps(&cloud, &StepShape::default())
+        .into_iter()
+        .filter(|p| (p.x - px).hypot(p.y - py) > 1.0)
+        .collect();
+    let k = kerbs_in(&cloud);
+    assert!(
+        away.len() >= 10,
+        "{} kerb points away from the post",
+        away.len()
+    );
+    assert!(away.iter().all(|p| k.contains(p)), "{k:?}");
+    assert!(k.iter().all(|p| (p.x - px).hypot(p.y - py) > 0.25), "{k:?}");
+}
+
+#[test]
+fn a_walker_crossing_under_every_beam_leaves_no_kerb_behind() {
+    // TODO 189 (sim-check --moving, 20 Nov): the car stands; a person crosses the lane
+    // 3 m past the bumper at 0.8 m/s, from 4 m right to 6 m left, and walks on. Their
+    // foot, kept under every beam, stood across the lane for ever: the behaviour planner
+    // slowed for it as a kerb (APPROACH(obstacle)) and the stop zone held the car.
+    let blind = crate::Blind::under(LIDAR, crate::LOWEST_BEAM);
+    let here = crate::Pose2::default();
+    let mut kept = crate::StepMemory::new(10.0, 12.0, 0.1).with_blind(blind);
+    let mut raw = crate::StepMemory::new(10.0, 12.0, 0.1).with_blind(blind);
+    let mut t = 0.0;
+    while t <= 12.5 {
+        let cloud = cast(post_at(BUMPER + 3.0, -4.0 + 0.8 * t), 0.03);
+        kept.update(t, here, &kerbs_in(&cloud));
+        raw.update(t, here, &steps(&cloud, &StepShape::default()));
+        t += 0.5;
+    }
+    // Gone by: the empty road for longer than the memory keeps anything.
+    let road = cast(|_, _| 0.0, 0.03);
+    let end = t + 11.0;
+    while t <= end {
+        kept.update(t, here, &kerbs_in(&road));
+        raw.update(t, here, &steps(&road, &StepShape::default()));
+        t += 0.5;
+    }
+    let left = kept.update(t, here, &[]);
+    assert!(left.is_empty(), "{} kerb points left: {left:?}", left.len());
+    // The old way, every step kept: the walker's foot under every beam never aged.
+    assert!(
+        !raw.update(t, here, &[]).is_empty(),
+        "the old way kept nothing: the test shows nothing"
+    );
+}
