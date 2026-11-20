@@ -43,6 +43,11 @@ the lanes in the costmap (`lanes:=camera`) against the old followers' numbers (`
 AMCL, the challengers of batch 8. Scores are tracked, not gates; what clearly won't work is
 stripped (tagged `save/` first, its scores kept).
 
+✅ Run 20 Nov, overnight: [the scores](docs/league-results-2026-11-20.md). `mppi_lag_1k` is
+ours' steering now; diffusion from Rust plans every time (the Python worker on Core ML
+barely); `path:=lane` keeps right 100 %. Left: `sim-check --moving` fails (being fixed),
+AMCL on the campus (no 2D map), the Orin's times.
+
 ### Waits for the car
 
 The car is being upgraded (18 Nov): phases 0, A-D of [the testing plan](docs/testing-plan.md)
@@ -89,9 +94,9 @@ and will do".
 
 | # | Task | Status |
 |---|---|---|
-| 152 | **Our planner faster**: its checks on every core (rayon), then `mppi_lag` with 1000 samples; timed on the Orin | 🔧 built 19 Nov; scoring in stage 2: the planner 18-21 % faster, the same paths (rayon measured 7-20 times slower, dropped: `docs/own-planner.md`); `steer:=mppi_lag_1k`, 0.86 against 1.56 ms a tick. Left: the Orin's times |
-| 174 | **Reverse everywhere**, through cusps; a narrow street; reversing in `aav_track` | 🔧 built 19 Nov; scoring in stage 2: `aav_track`'s trackers reverse (`gears.py`); a blocked narrow street backs out (planner scene, navigator test, `sim-check --blocked-street`) |
-| 189 | **Speed hunting**: one person crossing flipped behaviour 4 times; a 1 s hold built | 🔧 left: `sim-check --moving` again |
+| 152 | **Our planner faster**: its checks on every core (rayon), then `mppi_lag` with 1000 samples; timed on the Orin | 🔧 built 19 Nov; scoring in stage 2: the planner 18-21 % faster, the same paths (rayon measured 7-20 times slower, dropped: `docs/own-planner.md`); `steer:=mppi_lag_1k`, 0.86 against 1.56 ms a tick; **stage 2: no column worse than `mppi_lag_calm`, half the work: `stack:=ours`' steering since 20 Nov** ([20 Nov](docs/league-results-2026-11-20.md)). Left: the Orin's times, then `stack:=car` |
+| 174 | **Reverse everywhere**, through cusps; a narrow street; reversing in `aav_track` | 🔧 built 19 Nov; scoring in stage 2: `aav_track`'s trackers reverse (`gears.py`); a blocked narrow street backs out (planner scene, navigator test, `sim-check --blocked-street`); ✅ `--blocked-street` passes in stage 2 ([20 Nov](docs/league-results-2026-11-20.md)) |
+| 189 | **Speed hunting**: one person crossing flipped behaviour 4 times; a 1 s hold built | 🔧 `sim-check --moving` again (20 Nov): ❌ the car waits, sets off, then stays stopped 1.13 m behind the walker; being looked at |
 | 163 | **The sim car vs its command**: `speed_loop_model:=` built; the backing legs go 1 m off | 🔧 |
 | 169 | **Followers on the road ahead's line** (the lane centre, `/world/road_ahead`) | 🔧 `mppi_lag` done; left: `mpc_lag`, the campus live |
 | 219 | **Kerbs at speed**: found 4.7 m out (too late at 3 m/s), 0.10 m never; behaviour slows for them | 🔧 built 19 Nov; scoring in stage 2: both behaviour twins slow for a kerb on the road ahead; a kerb under every beam is kept while the car stands before it. 0.10 m still never seen |
@@ -112,14 +117,14 @@ stage 2 scores them in Ravensim.
 
 | # | Challenger | Status |
 |---|---|---|
-| 178 | **Hybrid-A\*** in our planner (`planner_search:=hybrid`) | 🟡 7/8 legs vs the lattice's 8/8; score again |
-| 177 | **Steering-rate-aware lattice moves** | 🟡 score again |
+| 178 | **Hybrid-A\*** in our planner (`planner_search:=hybrid`) | 🟡 stage 2: 15/15 legs; the calmest on the box (sway 0.044 vs 0.218), a tie on the lot; one run changed gear 6 times ([20 Nov](docs/league-results-2026-11-20.md)) |
+| 177 | **Steering-rate-aware lattice moves** | 🟡 stage 2: a tie on the lot, worse on the box; one run cut inside the turning radius (0.50 m) ([20 Nov](docs/league-results-2026-11-20.md)) |
 | 213 | **`mpc_lag_rs` that reverses and doesn't swing** (Autoware's MPC idea); was 132 | 🟡 follows closer, sways 2.5x |
-| 212 | **Smooth MPPI** (sample the steering's change): `steer:=mppi_lag_smooth` (`mppi_lag_sampling:=smooth`) | 🟡 built; scored in stage 2 |
-| 214 | **Passing with a jerk limit** (Apollo, Autoware): `path:=lane_jerk` (`lane_pass_shape:=jerk`) | 🟡 built; scored in stage 2 |
-| 215 | **The ground ring by ring** (Patchwork++), for kerbs: `kerbs:=patchwork` (`ground:=patchwork`) | 🟡 built; scored in stage 2 |
-| 216 | **Kinematic-ICP**: lidar odometry that knows the car can't slide sideways: `pose:=kinematic_ekf` (`odom_lidar:=kinematic_icp`, `aav_kinematic_icp`) | 🟡 built; scored in stage 2 |
-| 217 | **A tracker with a motion model per kind** (car, person): `behaviour:=on_per_kind` (`things_tracker:=per_kind`), both twins | 🟡 built; scored in stage 2 |
+| 212 | **Smooth MPPI** (sample the steering's change): `steer:=mppi_lag_smooth` (`mppi_lag_sampling:=smooth`) | 🟡 stage 2 against `mppi_lag_calm`: the calmest (sway 0.018 vs 0.025) but further off the path on the box (0.22 vs 0.14 m) ([20 Nov](docs/league-results-2026-11-20.md)) |
+| 214 | **Passing with a jerk limit** (Apollo, Autoware): `path:=lane_jerk` (`lane_pass_shape:=jerk`) | 🟡 stage 2 against `path:=lane`: calmer on the box (0.108 vs 0.148), further off the path (0.22 vs 0.11 m); the tours have no pass ([20 Nov](docs/league-results-2026-11-20.md)) |
+| 215 | **The ground ring by ring** (Patchwork++), for kerbs: `kerbs:=patchwork` (`ground:=patchwork`) | 🟡 stage 2 against `kerbs:=on`: better on most columns, more left-right changes on the lot (12.5 vs 10.1); real kerbs are its test ([20 Nov](docs/league-results-2026-11-20.md)) |
+| 216 | **Kinematic-ICP**: lidar odometry that knows the car can't slide sideways: `pose:=kinematic_ekf` (`odom_lidar:=kinematic_icp`, `aav_kinematic_icp`) | 🟡 stage 2: no gain in the sim, worse off the path on the lot (no wheel slip there); kept for the car ([20 Nov](docs/league-results-2026-11-20.md)) |
+| 217 | **A tracker with a motion model per kind** (car, person): `behaviour:=on_per_kind` (`things_tracker:=per_kind`), both twins | 🟡 stage 2 against `behaviour:=on`: better on the lot, worse on the box (sway 0.241 vs 0.204); nobody walks on these tours ([20 Nov](docs/league-results-2026-11-20.md)) |
 | 243 | **Our models from Rust** (`ort`): the detector (8 ms) and the diffusion planner's model (`diffusion_impl:=rust`, Core ML takes all 2,178 nodes, 9.7 ms a plan against the CPU's 87) from Rust on a Mac, both checked against PyTorch; `pixi run measure onnx` (answers, coverage, ms, FP16); `onnx-session` shared; TensorRT ready, untested ([ONNX](docs/onnx.md)). Left: the Orin (JetPack 7.2); diffusion's Ravensim scoring deferred (Ben, 19 Nov: algorithm testing after the ports) | 🟡 |
 | 262b | **A learned lane finder**: Ultra-Fast-Lane-Detection v2 (MIT), trained by us on Ravensim's pictures (labelled from the lane map) and the car's (252), through ONNX (243), behind `/perception/lane/geometry`. Published weights are out: CULane is non-commercial, BDD100K, TuSimple and CurveLanes unclear ([survey](docs/perception.md#a-learned-lane-finder-the-survey-19-nov)) | 🟡 built 19 Nov (`aav_lane_finder_learned`, `lane_finder_impl:=learned`): 7,472 Ravensim pictures; held out, the car's lines 1-4 cm median at 5-15 m; Core ML 2.4 ms, 1.2 ms FP16 on the Neural Engine; ⬜ driven and scored against the classic (stage 2); ⬜ the car's pictures (252); **merged 19 Nov**: 7,472 Ravensim pictures, ResNet-18 on mps, the car's lines 1.2-3.6 cm median, Core ML 2.4 ms, FP16 1.2 ms on the Neural Engine, `lane_finder_impl:=learned`. Its colour head (95 % right) wired into `left_paint`/`right_paint` (19 Nov, batch 5). **Left:** neighbour lines often wrong (3 m at the 90th %); driving scores (stage 2) |
 

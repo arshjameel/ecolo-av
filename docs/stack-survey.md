@@ -546,7 +546,7 @@ line back, as if the car could spin. The car refused them; **retired** with Nav2
 | **What we found** | predicts the car 70 times better (8 mm over 2.8 s, against 0.56 m). 1.7 ms a tick on an M4 Max. League: every leg of every tour. The calm version (slow map corrections, a steering cost) swayed 0.063 on University Drive; plain `mppi_lag` 0.144 |
 | **Strengths** | avoids obstacles; reverses; knows the lag |
 | **Weaknesses** | heavy: twice Nav2's MPPI's CPU; many settings; Orin timing not measured |
-| **Status** | **Default** (`mppi_lag_calm`). Car champion: `mppi_lag` |
+| **Status** | **Default** (`mppi_lag_1k` since 20 Nov: `mppi_lag_calm` with 1,000 samples, no column worse in stage 2, half the work). Car champion: `mppi_lag` |
 
 ### The lag-aware MPC (`mpc_lag`, Python; `mpc_lag_rs`, Rust)
 

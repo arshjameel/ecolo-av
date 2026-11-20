@@ -104,7 +104,10 @@ levels:
       mppi_lag_calm: {controller: mppi, tracker: mppi_lag, map_correction: slow,
                       mppi_lag_steer_gamma: '0.05'}
       # mppi_lag_calm with 1000 samples a tick, not 2000 (TODO 152): half the work a tick,
-      # for the Orin. A challenger; its score is stage 2's.
+      # for the Orin. Ours' pick since 20 Nov (stage 2, docs/league-results-2026-11-20.md):
+      # against mppi_lag_calm, 3 runs each on the lot and the box, no column worse (sway
+      # 0.025 vs 0.025 and 0.095 vs 0.100 m/s^2; off the path worst 0.64 vs 0.91 and 0.60
+      # vs 0.68 m), its tick 1.8 ms against 3.5 on Ben's Mac.
       mppi_lag_1k: {controller: mppi, tracker: mppi_lag, map_correction: slow,
                     mppi_lag_steer_gamma: '0.05', mppi_lag_batch: '1000'}
       # mppi_lag_calm's map correction, its steering's noise drawn on the change a step
@@ -181,7 +184,7 @@ stacks:
     costmap: ours_all_chunks
     navigator: ours
     path: lane
-    steer: mppi_lag_calm
+    steer: mppi_lag_1k
     smoother: ours
     behaviour: 'on'
     kerbs: 'on'

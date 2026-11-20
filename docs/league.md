@@ -42,7 +42,7 @@ waiting to beat it.
 ## The latest scores
 
 **16 Nov, every level scored** inside `stack:=ours`, then the best combination against it on
-all four tours: [the league's scores, 16 Nov](league-results-2026-11-16.md). No champion
+all four tours: [the league's scores, 16 Nov](league-results-2026-11-16.md); stage 2: [20 Nov](league-results-2026-11-20.md). No champion
 changed; `pose:=ndt_ekf` is the closest challenger (TODO 210). Nav2's last yardstick scores
 are there too: the last time it ran.
 
@@ -67,7 +67,7 @@ pixi run sim stack:=best behaviour:=true        # the champions, with the road a
 ```
 
 The launch prints what it picked, such as
-`stack:=ours - pose ekf, costmap ours_chunks, navigator ours, path lane, steer mppi_lag_calm, ...`.
+`stack:=ours - pose ekf, costmap ours_chunks, navigator ours, path lane, steer mppi_lag_1k, ...`.
 
 !!! note "How a hand-set switch is seen"
     The switches a stack sets are empty by default in `sim.launch.py`, meaning "the

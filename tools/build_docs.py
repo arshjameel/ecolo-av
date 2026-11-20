@@ -128,6 +128,8 @@ PAGES = [
     ('league.md', 'The league', "Each level's champion and challengers; stack:="),
     ('league-results-2026-11-16.md', 'League scores, 16 Nov',
      "Every level scored inside ours, the hybrids, Nav2's last scores, the survey"),
+    ('league-results-2026-11-20.md', 'League scores, 20 Nov',
+     "Stage 2: the challengers, the planners, diffusion from Rust, lanes, NDT"),
     ('mppi-lag.md', 'MPPI with lag', "Nav2's MPPI in Rust, planning with the actuators' lag"),
     ('own-costmap.md', 'Our own costmap', "Nav2's costmap layers, ported to Rust"),
     ('own-planner.md', 'Our own planner',
