@@ -30,7 +30,7 @@ a person can still look at it in RViz or Lichtblick.
 | Roof lidar | `voxels` (`aav_voxels`), only with `voxels:=true` | `/perception/voxels/cubes`, `/ground` | then the `lidar_layer` and `collision_monitor`, instead of the scan; the debug HUD and the developer window draw them |
 | Radar | the driver, or a stand-in | `/sensors/radar/points` | the local costmap's `obstacle_layer`; `collision_monitor`; the sensor watchdog (all with `radar:=true`: the bench and the simulators. Off on the car: no radar part yet) |
 | Radar | `radar_clusters` | `/perception/radar/clusters`, `/cluster_boxes` | `things` (`things:=true`, a trial: each cluster's speed); else **nobody**: for RViz only |
-| Roof lidar | `things` (`aav_things_rs`; `aav_things` with `things_impl:=python`), only with `things:=true` | `/world/things`, `/markers` | **nobody** yet: for RViz; the behaviour planner and the screens will |
+| Roof lidar | `things` (`aav_things_rs`; `aav_things_rs` with `things_impl:=python`), only with `things:=true` | `/world/things`, `/markers` | **nobody** yet: for RViz; the behaviour planner and the screens will |
 | Front cameras | `object_detector`, or `camera_stream_<camera>` on the car | `/perception/detections` | `stop_sign_watcher`; `camera_obstacles` (off by default); the sensor watchdog (streamed cameras) |
 | | `object_detector` | `/perception/detections/image` | **nobody**: for RViz or Lichtblick |
 | | `stop_sign_watcher` | `/perception/stop_sign` | twist_mux's lock (priority 30); the HUD; `behaviour` |
@@ -44,7 +44,7 @@ a person can still look at it in RViz or Lichtblick.
 - **Labels:** only "stop sign" does anything by default. People, cars and the rest reach
   navigation only through `camera_obstacles`, which is off everywhere until the cameras are
   calibrated (Q22).
-- **Objects with an ID and a speed:** a first form, 14 Nov (TODO 156, `aav_things`,
+- **Objects with an ID and a speed:** a first form, 14 Nov (TODO 156, `aav_things_rs`,
   `things:=true`): the cubes grouped, one Kalman filter each, the radar's speed, a memory
   for the blind zone. No names until Q22. `aav_track` is something else: trial path followers.
 - **Lanes as costs for the planner** are a proposal only

@@ -14,7 +14,6 @@
   <exec_depend>aav_lidar</exec_depend>
   <exec_depend>aav_lidar_rs</exec_depend>
   <exec_depend>aav_voxels</exec_depend>
-  <exec_depend>aav_things</exec_depend>
   <exec_depend>aav_things_rs</exec_depend>
   <exec_depend>aav_voxels_rs</exec_depend>
   <exec_depend>aav_ghost</exec_depend>

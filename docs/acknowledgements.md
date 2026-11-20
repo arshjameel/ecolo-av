@@ -50,7 +50,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | Source | Licence | Kind | Where we used it |
 |---|---|---|---|
 | **robot_localization** (T. Moore, D. Stouch, "A Generalized Extended Kalman Filter Implementation for the Robot Operating System", IAS-13, 2014) | Apache-2.0 | runs | the two EKFs, `navsat_transform` |
-| The Kalman filter: R. E. Kalman, 1960 | paper | idea | the EKFs; the things tracker (`aav_things`); the hallway's IMU-with-wheels filter, speed and IMU bias (`aav_actuator_tests` `fusion.py`, TODO 248) |
+| The Kalman filter: R. E. Kalman, 1960 | paper | idea | the EKFs; the things tracker (`aav_things_rs`); the hallway's IMU-with-wheels filter, speed and IMU bias (`aav_actuator_tests` `fusion.py`, TODO 248) |
 | **The bootstrap**: B. Efron, "Bootstrap Methods: Another Look at the Jackknife", Annals of Statistics, 1979 | paper | idea | the hallway fits' 90 % intervals, resampling the passes (`aav_actuator_tests` `errorbars.py`) |
 | **Complementary filter**: W. T. Higgins, "A Comparison of Complementary and Kalman Filtering", IEEE Trans. Aerospace and Electronic Systems, 1975 | paper | idea | follow in odom, correct slowly (TODO 186): the followers take the fast part of the pose from odometry and the slow part from the map, the map -> odom correction rate-limited (`aav_mppi_lag` `map_correction.rs`, `aav_track` `slow_frame.py`) |
 | **NDT**: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009 | paper | idea | `aav_ndt` (its `PROVENANCE.md` lists the rest) |
@@ -81,7 +81,7 @@ Each package's `PROVENANCE.md` says which repository and commit; `docs/older-cod
 | **RF-DETR** (Roboflow) | Apache-2.0 | runs, data | the object and stop-sign detector |
 | **Ultralytics YOLO** | AGPL-3.0 | runs | the earlier detector, compared and kept as an option |
 | **DBSCAN**: M. Ester et al., KDD 1996 | paper | idea, ported | the radar's clusters (`aav_radar_clusters`) |
-| **AB3DMOT**: X. Weng, J. Wang, D. Held, K. Kitani, "3D Multi-Object Tracking: A Baseline and New Evaluation Metrics", IROS 2020 | paper | idea | the things' tracker: a constant-velocity Kalman filter per thing, greedy association (`aav_things`, and its Rust twin `aav_things_rs`) |
+| **AB3DMOT**: X. Weng, J. Wang, D. Held, K. Kitani, "3D Multi-Object Tracking: A Baseline and New Evaluation Metrics", IROS 2020 | paper | idea | the things' tracker: a constant-velocity Kalman filter per thing, greedy association (`aav_things_rs`, and its Rust twin `aav_things_rs`) |
 | **NumPy**'s pairwise summation (`loops_utils.h.src`) | BSD-3 | ported (the algorithm) | `things-core`'s `pairwise_sum`, so a radar cluster's mean is numpy's to the last bit (`aav_things_rs`) |
 | **nalgebra** | Apache-2.0 | runs | the things' 4 × 4 Kalman matrices (`things-core`), NDT's (`ndt-core`); the Rust lane finder's least-squares fit (`lane-core`) |
 | OpenCV | Apache-2.0 | runs; ported (the formulas) | lane finding (the Python `aav_lane_finder`); its `projectPoints` lens model and its fixed-point bilinear `remap` rewritten in Rust for `aav_lane_finder_rs` (`lane-core`), so the bird's-eye view has OpenCV's grey levels exactly |
@@ -133,7 +133,7 @@ Each has a TODO row to port its idea.
 | **Patchwork++** (S. Lee et al., IROS 2022; URL-KAIST) | BSD-2-Clause | idea | finding the ground so a kerb stands out: `aav_voxels_rs` `patchwork.rs` (`ground:=patchwork`, TODO 215): its concentric zones, rings and sectors, the lowest-point seeds, a PCA plane a patch and its uprightness, elevation and flatness checks, rewritten in Rust. Read for the kerbs' step finder (`aav_voxels_rs` `steps.rs`, TODO 119): its lesson that the ground must be found locally, not one plane for all; we kept a simpler local rule (a point 0.10 m above another within 0.3 m), since its zones fit a pavement's top as ground too. No code taken |
 | **grid_map** (ANYbotics, ETH); **nvblox** (NVIDIA) | BSD-3-Clause; Apache-2.0 | idea | looked at for the costmap's layers |
 | **CommonRoad route planner** (TU Munich) | BSD-3-Clause | idea | looked at for where `lane.rs` changes lane |
-| **Fast-Poly / Poly-MOT** (X. Li et al., 2023-24); **OC-SORT** (J. Cao et al., CVPR 2023); **MapMOS** (PRBonn) | MIT | idea | motion models per kind and re-found tracks: `aav_things_rs` and `aav_things` `tracker` (`things_tracker:=per_kind`, TODO 217): a vehicle's noise a bicycle's, a person's round, and the speed re-fitted from the last sightings (OC-SORT's observation-centric re-update) |
+| **Fast-Poly / Poly-MOT** (X. Li et al., 2023-24); **OC-SORT** (J. Cao et al., CVPR 2023); **MapMOS** (PRBonn) | MIT | idea | motion models per kind and re-found tracks: `aav_things_rs` and `aav_things_rs` `tracker` (`things_tracker:=per_kind`, TODO 217): a vehicle's noise a bicycle's, a person's round, and the speed re-fitted from the last sightings (OC-SORT's observation-centric re-update) |
 | **Kinematic-ICP** (T. Guadagnino et al., PRBonn, 2025); **small_gicp** (K. Koide); **GenZ-ICP** (D. Lee et al., 2024) | MIT | idea | Kinematic-ICP: `aav_kinematic_icp` (TODO 216, `odom_lidar:=kinematic_icp`): one arc a step and the wheels as a prior, rewritten in Rust, no code taken; small_gicp and GenZ-ICP: yardsticks for NDT |
 
 ## Taught in the guide (19 Nov)

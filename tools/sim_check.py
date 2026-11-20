@@ -86,7 +86,7 @@ docs/league-results-2026-11-16.md).
                                             0.25 m with the adaptive brake. The empty
                                             world, one more run; --loaded-stop-only skips
                                             the road world's run. docs/stopping.md)
-    pixi run sim-check --things           (the things, things:=true, aav_things: a box
+    pixi run sim-check --things           (the things, things:=true, aav_things_rs: a box
                                             placed 12 m ahead must be listed on
                                             /world/things within 1 m, standing; taken away,
                                             still listed 1.5 s on, gone after 5 s. One more
@@ -233,7 +233,7 @@ this tests it against Ravensim's cameras and radar stand-in, which see the road 
    the sensor watchdog's lock). Each drive's truth goes to /tmp/aav-sim-points/ as an
    measure atob CSV (`pixi run measure atob /tmp/aav-sim-points/1-*.csv --speed 1`).
 
-14. With --things: the road world again with things:=true (aav_things), the car standing.
+14. With --things: the road world again with things:=true (aav_things_rs), the car standing.
    The bench's box 12 m past the bumper must be on /world/things within 1 m of where it
    is (relative to the car: the truth for the box, the local EKF for the thing), at under
    0.3 m/s. Then the box goes: the same id must still be listed 1.5 s later (the memory,

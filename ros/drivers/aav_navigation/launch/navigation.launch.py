@@ -87,8 +87,8 @@ Switches:
   lane_graph:=            our costmap's lanes and chunks, our planner's lane-centre route
                           (TODO 148, 175; docs/own-costmap.md, docs/own-planner.md)
   things:=true            (with lidar:=true) aav_things_rs: the cubes as tracked things on
-                          /world/things; things_background*, things_names: theirs;
-                          things_impl:=python for the Python node (aav_things)
+                          /world/things; things_background*, things_names: theirs
+                          (the Python node went on 20 Nov)
   replan_hz:=0            the navigator plans a to-pose goal once (a test: TODO 149)
 
 Obstacles, from where the sensors are:
@@ -432,9 +432,8 @@ def nodes(context):
                             name='voxels', namespace='/', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
     if things:
-        # The cubes as things, on /world/things (aav_things; things_impl:=rust: the Rust
-        # port, aav_things_rs, the same name, topics and settings file).
-        config = FindPackageShare('aav_things').perform(context) + '/config/things.yaml'
+        # The cubes as things, on /world/things (aav_things_rs).
+        config = FindPackageShare('aav_things_rs').perform(context) + '/config/things.yaml'
         actions.append(Node(package=vehicle.THINGS_IMPLS[things_impl], executable='things',
                             name='things', namespace='/',
                             output='screen',
@@ -743,9 +742,8 @@ def generate_launch_description():
                                           'node in Rust): which lidar_scan runs, with '
                                           'lidar:=true'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
-                              description='python (aav_things) or rust (aav_things_rs, the '
-                                          'same node in Rust): which things node runs, with '
-                                          'things:=true'),
+                              description='rust (aav_things_rs; the Python removed 20 Nov): '
+                                          'which things node runs, with things:=true'),
         DeclareLaunchArgument('max_speed', default_value='',
                               description="m/s: Nav2's top speed, if not nav2.yaml's 1.0 "
                                           '(sim.launch.py sim_speed:=)'),
@@ -869,7 +867,7 @@ def generate_launch_description():
                                           "'s static layer from the chunks round the car "
                                           'too, not /map (TODO 175)'),
         DeclareLaunchArgument('things', default_value='false',
-                              description='true (with lidar:=true): aav_things, the cubes as '
+                              description='true (with lidar:=true): aav_things_rs, the cubes as '
                                           'tracked things on /world/things (voxels runs too)'),
         DeclareLaunchArgument('costmap', default_value=vehicle.DEFAULT_COSTMAP,
                               description='own: aav_costmap, our costmaps, on '

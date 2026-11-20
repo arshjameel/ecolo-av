@@ -448,8 +448,9 @@ def check_amcl_impl(impl):
 
 # Which things node tracks the cubes (things:=true, things_impl:=): rust (aav_things_rs,
 # the default since 17 Nov: the same node name, topics, parameters and things, 1.5 % of a
-# core against 7.5 %) or python (aav_things, the fallback). Each one's package.
-THINGS_IMPLS = {'python': 'aav_things', 'rust': 'aav_things_rs'}
+# core against 7.5 %). The Python went on 20 Nov (tag save/python-things); the switch
+# stays, a challenger's hook.
+THINGS_IMPLS = {'rust': 'aav_things_rs'}
 DEFAULT_THINGS_IMPL = 'rust'
 
 

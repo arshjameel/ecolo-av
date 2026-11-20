@@ -857,8 +857,8 @@ def generate_launch_description():
                                           'camera Pi stream (aav_camera_stream_rs, or '
                                           'aav_camera_stream); a detector runs the Python one'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
-                              description='python or rust: which things node tracks the '
-                                          'cubes (aav_things, or aav_things_rs)'),
+                              description='rust (aav_things_rs): which things node tracks '
+                                          'the cubes (the Python removed 20 Nov)'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),

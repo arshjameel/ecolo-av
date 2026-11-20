@@ -171,7 +171,7 @@ bench's argument names:
                       clothoid, the curvature continuous (TODO 211, a challenger: a tie
                       on University Drive); arc (the default): circle arcs
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
-                      /world/things (aav_things; voxels runs for it): only with nav:=true
+                      /world/things (aav_things_rs; voxels runs for it): only with nav:=true
                       and the lidar. The behaviour planner waits for what moves (a hold
                       for anything moving near, 17 Nov). Empty: the stack's choice (on in
                       ours, where nav and the lidar run)
@@ -189,8 +189,6 @@ bench's argument names:
                       instead of the flat scan; only with the lidar
   lidar_impl:=python  the Python lidar_scan (aav_lidar) in the Rust one's place (the
                       default since 17 Nov): the same scan
-  things_impl:=python the Python things node (aav_things) in the Rust one's place (the
-                      default since 17 Nov), with things: the same topics and things
   lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
                       one's place (the default since 18 Nov), with lane:=true or
                       lane_pose:=true: the same topics and lanes
@@ -1043,7 +1041,7 @@ def generate_launch_description():
                                           'the costmap stays on the flat scan'),
         DeclareLaunchArgument('things', default_value=stacks.CHOSEN,
                               description='true: the cubes as tracked things on /world/things '
-                                          '(aav_things; with nav and the lidar). Empty: the '
+                                          '(aav_things_rs; with nav and the lidar). Empty: the '
                                           "stack's choice (on in ours since 17 Nov, where the "
                                           'lidar and nav run)'),
         DeclareLaunchArgument('voxels', default_value='false',
@@ -1065,8 +1063,8 @@ def generate_launch_description():
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
-                              description='python or rust: which things node tracks the '
-                                          'cubes (aav_things, or aav_things_rs)'),
+                              description='rust (aav_things_rs): which things node tracks '
+                                          'the cubes (the Python removed 20 Nov)'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),

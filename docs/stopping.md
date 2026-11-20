@@ -104,7 +104,7 @@ stop."
 
 ```text
  a thing moving 0.3 m/s or more  ──┬── within 10 m of the car ─────────────┐
- (/world/things, aav_things)       └── on the road ahead within 3 s ───────┤
+ (/world/things, aav_things_rs)       └── on the road ahead within 3 s ───────┤
                                                                            ▼
                         WAIT (moving): the road ahead ends at the car, ego holds it at 0
                                                                            │

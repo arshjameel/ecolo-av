@@ -334,7 +334,7 @@ stop." ([stopping](stopping.md#anything-moving-near-stop-and-wait-17-nov))
 
 | Layer | What | Where |
 |---|---|---|
-| The things | the lidar's cubes grouped and followed: each one's place and speed | `aav_things`, `things:=true` (on in `stack:=ours`) |
+| The things | the lidar's cubes grouped and followed: each one's place and speed | `aav_things_rs`, `things:=true` (on in `stack:=ours`) |
 | Behaviour planner | anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still | `aav_behaviour_rs` (`aav_behaviour_rs`) |
 | Ego | holds the automatic drivers to the road ahead's limit: 0 at its end | `aav_ego_rs` |
 | Stop zone | still stops the car for anything in front of the bumper, moving or not | `aav_navigation` |

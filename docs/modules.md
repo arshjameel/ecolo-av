@@ -507,7 +507,6 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_spine_bridge` | `spine_bridge` in Rust, the default; the same node as `aav_spine`'s Python one | `ros/can_bridge/aav_spine_bridge/README.md` |
 | `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | `ros/perception/aav_lidar/README.md` |
 | `aav_lidar_rs` | `lidar_scan` in Rust, the default (`lidar_impl:=`): the same scan | `ros/perception/aav_lidar_rs/README.md` |
-| `aav_things_rs` | `things` in Rust, the default (`things_impl:=`): the same things | `ros/perception/aav_things_rs/README.md` |
 | `aav_voxels_rs` | `voxels` in Rust: the lidar's cubes, the Python node's drop-in (`voxels_impl:=rust`) | `ros/perception/aav_voxels_rs/README.md` |
 | `aav_safety` | the sensor watchdog: a twist_mux lock (30) when a sensor fails | `ros/safety/aav_safety/README.md`, then [Simulation](simulation.md#the-sensor-watchdog) |
 | `aav_ghost` | ghost obstacles: a pretend person only navigation sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
@@ -543,7 +542,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_amcl_rs` | AMCL in Rust, the default AMCL (`amcl_impl:=stock` runs `nav2_amcl`); a trial, `amcl:=true` | `ros/localization/aav_amcl_rs/README.md`, then [Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock) |
 | `aav_lane_pose` | `lane_pose`: the lane finder's offset as a sideways pose for the global EKF (`stack:=ours`) | `ros/localization/aav_lane_pose/README.md` |
 | `aav_mpc_lag` | `mpc_lag_rs`: the lag-aware MPC in Rust, a challenger (`tracker:=mpc_lag_rs`) | `ros/drivers/aav_mpc_lag/README.md`, then [Trials](trials.md) |
-| `aav_things` | the things near the car: the cubes grouped and tracked, on `/world/things` (`things:=true`) | `ros/perception/aav_things/README.md`, then [How the car stops](stopping.md) |
+| `aav_things_rs` | the things near the car: the cubes grouped and tracked, on `/world/things` (`things:=true`) | `ros/perception/aav_things/README.md`, then [How the car stops](stopping.md) |
 | `aav_stop_zone` | the stop zone in Rust: the lock that zeroes navigation's command for points just ahead or behind | `ros/safety/aav_stop_zone/README.md`, then [The safety case](safety-case.md) |
 
 `aav_actuator_tests` has its card under [Drivers](#drivers).

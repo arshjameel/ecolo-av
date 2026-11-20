@@ -143,7 +143,7 @@ levels:
     champion: 'off'
     options:
       'off': {behaviour: 'false', things: 'false'}
-      # With the things (aav_things): the behaviour planner holds the car for anything
+      # With the things (aav_things_rs): the behaviour planner holds the car for anything
       # moving near (Ben, 16 Nov: "if we see a car people or stuff moving around us we
       # should likely just stop"), and passes only what is still.
       'on': {behaviour: 'true', things: 'true'}

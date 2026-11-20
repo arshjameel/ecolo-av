@@ -39,3 +39,5 @@ node (tf2's `lookup_transform(..., Time())` stamp).
 
 - 2026-11-17: written; the Python's answers on 180 clouds, 300 names and 20 background
   cases; `things_impl:=` in `navigation.launch.py`, `sim.launch.py` and `car.launch.py`.
+
+**20 Nov:** the Python (`aav_things`) was removed (Ben, 16 Nov: "lets remove python were possible"; tag `save/python-things`). `gen_vectors.py` went with it; `vectors.json` is a golden fixture now.

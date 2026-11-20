@@ -1,4 +1,4 @@
-//! The things near the car (`/world/things`, aav_things), named by the camera: what a
+//! The things near the car (`/world/things`, aav_things_rs), named by the camera: what a
 //! screen shows of each. TODO 192 step 3 (Ben, 15 Nov: "object deteciton and display
 //! like a stop sign").
 //!
@@ -11,7 +11,7 @@
 //! | unknown | orange | `4` (no name: the id only) |
 //! | coasting (unseen now) | grey | the same words |
 //!
-//! The colours live in `theme` (`thing_colour`), the same as the RViz markers (aav_things
+//! The colours live in `theme` (`thing_colour`), the same as the RViz markers (aav_things_rs
 //! `looks.py`). They stay the same in every theme, as the localizers' do: a person is
 //! yellow on every screen. The things are in odom; [`Thing::in_base`] moves one into
 //! base_link with the car's pose.
