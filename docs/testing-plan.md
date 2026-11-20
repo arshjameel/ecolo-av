@@ -466,10 +466,13 @@ and people** apart, and a score that shows whether it improved (TODO 252).
 
 | Part | Status |
 |---|---|
-| The detector (RF-DETR, Apache-2.0): cars, people, signs as boxes | Built |
-| Trees and buildings | To build: the detector doesn't know them |
-| Camera boxes onto lidar points (camera-to-lidar calibration, TODO 156) | To build |
-| The score after each drive | To build |
+| Open-vocabulary boxes: trees, buildings, poles, signs, cars (OWLv2, Apache-2.0) | Built 19 Nov: `pixi run label-drive` ([Labelling](labelling.md)) |
+| Camera boxes onto lidar points, fused into `labels.yaml` | Built; Ravensim only. On the car: the camera-to-lidar calibration first (TODO 156) |
+| A person fixes them | `pixi run map-edit` reads them (`source: camera`) |
+| Our small model, retrained after each drive | Built: `pixi run label-train`, a point segmenter, ONNX |
+| The score after each drive | Built: held-out frames; Ravensim's truth where it exists |
+
+In Ravensim's campus (two lots): labels 73 % right, 50-77 % of what the lidar saw found.
 
 > ⚠️ **Licences, if the work is ever commercial:** the YOLO option is AGPL-3.0; the big public
 > datasets (SemanticKITTI, nuScenes, Cityscapes) are non-commercial. Train on our own drives.
@@ -485,7 +488,13 @@ and people** apart, and a score that shows whether it improved (TODO 252).
 | Kerbs and roads | from our map |
 | Parking areas | cars parked at random, to test "not on the map" |
 
-**Passes when** a drive replayed in the twin scores within NDT's error of the real drive.
+`pixi run twin-world <map>` builds it; `pixi run sim world:=maps/twins/<name>/twin.sdf`
+drives in it ([Labelling](labelling.md#the-twin-todo-253), built 19 Nov). Today: flat ground,
+labelled boxes as buildings, trees and posts; parked cars and what moved left out. Not yet:
+OpenStreetMap's outlines, kerbs, random parked cars.
+
+**Passes when** a drive replayed in the twin scores within NDT's error of the real drive
+(stage 2: not yet tried).
 
 ## The car driving itself
 

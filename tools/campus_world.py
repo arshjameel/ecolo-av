@@ -14,6 +14,7 @@ It makes, in maps/campus/ (not in git; this tool makes it again):
     place.yaml            where the car starts, what went in, the OpenStreetMap credit
     lanes.yaml            the painted roads' centre lines and widths, to score lane keeping;
                           also the lane map (aav_description lane_map.py)
+    objects.yaml          its buildings, fences and trees: the truth label-drive scores by
 
 and maps/ndt/campus.pcd: NDT's map, **a guess** sampled from the same shapes. A real drive
 replaces it (pixi run ndt-map build); a drive suggests changes and a person accepts them.
@@ -815,6 +816,25 @@ def build(campus, box):
     return meshes, solids, grid, walls, trunks, report, by_kind['lot'], lanes
 
 
+def objects(walls, trunks):
+    """
+    Return what the world holds, as truth for labelling (TODO 252: tools/label_drive.py).
+
+    [{'class', 'ring' (m, map frame), 'height'}]. Buildings (walls at least a floor high),
+    fences and walls (class other), and each tree as its crown's eight-sided outline.
+    """
+    out = []
+    for ring, height in walls:
+        cls = 'building' if height >= FLOOR_HEIGHT else 'other'
+        out.append({'class': cls, 'ring': [[round(x, 2), round(y, 2)] for x, y in ring],
+                    'height': round(height, 2)})
+    for x, y, _, middle, crown in trunks:
+        ring = [[round(x + crown * math.cos(k * math.pi / 4), 2),
+                 round(y + crown * math.sin(k * math.pi / 4), 2)] for k in range(8)]
+        out.append({'class': 'tree', 'ring': ring, 'height': round(middle[2] + crown, 2)})
+    return out
+
+
 def on_triangles(triangles, spacing):
     """Return points evenly over triangles (T x 3 x 3), about `spacing` metres apart."""
     edge = np.linalg.norm(triangles[0, 1] - triangles[0, 0])
@@ -967,12 +987,15 @@ def visual(name):
 """)
 
 
-def world_sdf(names, datum):
+CAMPUS_NOTE = ("Carleton's campus: made by tools/campus_world.py, from OpenStreetMap.\n"
+               "  Data (c) OpenStreetMap contributors, ODbL. Don't edit this: make it again.")
+
+
+def world_sdf(names, datum, note=CAMPUS_NOTE):
     """Return the world: the same systems, name and origin as the test lot's."""
     return (f"""<?xml version="1.0"?>
 <!--
-  Carleton's campus: made by tools/campus_world.py, from OpenStreetMap.
-  Data (c) OpenStreetMap contributors, ODbL. Don't edit this: make it again.
+  {note}
   Its spherical_coordinates MUST match navsat.yaml's datum, so world = map.
 -->
 <sdf version="1.9">
@@ -1095,6 +1118,9 @@ def main():
         'datum': [lat0, lon0], 'box': list(box), 'source': str(args.osm.name),
         'credit': '(c) OpenStreetMap contributors, ODbL', 'made': report,
     }))
+    # Truth for labelling (TODO 252): what's where, as label-drive scores its labels.
+    (args.out / 'objects.yaml').write_text(yaml.safe_dump(
+        {'objects': objects(walls, trunks)}, default_flow_style=None))
     (args.out / 'lanes.yaml').write_text(
         '# The painted roads: centre line (m, map frame), width, one way or not. For scoring\n'
         '# lane keeping (tools/lane_score.py). (c) OpenStreetMap contributors, ODbL.\n'

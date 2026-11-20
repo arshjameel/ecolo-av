@@ -155,7 +155,7 @@ Room is left for the camera's labels, and the editor reads their fields already:
 
 | Next | How it plugs in |
 |---|---|
-| Camera labels (TODO 252) | the detector's boxes on the lidar points arrive as labels with `source: camera` and a `confidence`; a person keeps, fixes or removes them here (a relabel makes it `person`) |
+| Camera labels (TODO 252, built 19 Nov) | `pixi run label-drive` writes them: OWLv2's boxes on the lidar points, with `source: camera`, a `confidence` and `seen_in`; a person keeps, fixes or removes them here (a relabel makes it `person`). Then `label-train` learns from the file as the person left it ([Labelling](labelling.md)) |
 | Occupancy across passes (TODO 259) | built 19 Nov: `map-area` writes `labels.yaml` with `source: passes` and `seen_in` (above) |
 
 ## Code

@@ -219,3 +219,18 @@ def test_the_lane_map_by_world(tmp_path, monkeypatch):
     mine = tmp_path / 'mine.yaml'
     mine.write_text('roads: []\n')
     assert worlds.lane_map_file(str(PACKAGE), 'empty', 'mine.yaml') == str(mine)
+
+
+def test_a_twin_world_by_its_path(tmp_path):
+    sdf = tmp_path / 'twin.sdf'
+    with pytest.raises(ValueError, match='twin-world'):
+        worlds.world_file(str(PACKAGE), str(sdf))
+    sdf.write_text('<sdf/>')
+    assert worlds.is_world_file(str(sdf)) and not worlds.is_world_file('test_lot')
+    assert worlds.world_file(str(PACKAGE), str(sdf)) == str(sdf)
+    assert worlds.twin(str(sdf)) == {'map': str(tmp_path / 'map2d.yaml'), 'ndt': '',
+                                     'start': (0.0, 0.0, 0.0)}
+    (tmp_path / 'twin.yaml').write_text('start: {x: 49.5, y: -60.0, yaw: 1.5}\n')
+    (tmp_path / 'ndt.pcd').write_text('')
+    t = worlds.twin(str(sdf))
+    assert t['start'] == (49.5, -60.0, 1.5) and t['ndt'] == str(tmp_path / 'ndt.pcd')
