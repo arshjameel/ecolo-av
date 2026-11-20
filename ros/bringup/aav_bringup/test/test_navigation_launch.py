@@ -768,7 +768,8 @@ def test_the_sim_and_the_car_pass_lidar_impl_and_things_impl_on():
         assert sent_to_navigation(SIM)[key] == default
         assert sent_to_navigation(SIM, world='road', **{key: 'Rust'})[key] == 'rust'
         assert sent_to_navigation(CAR, machine='all')[key] == default
-        assert sent_to_navigation(CAR, machine='all', **{key: 'python'})[key] == 'python'
+        if key == 'lidar_impl':   # the Python things went on 20 Nov
+            assert sent_to_navigation(CAR, machine='all', **{key: 'python'})[key] == 'python'
         with pytest.raises(ValueError, match=key):
             sent_to_navigation(SIM, **{key: 'go'})
 

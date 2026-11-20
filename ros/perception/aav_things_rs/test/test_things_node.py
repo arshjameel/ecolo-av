@@ -101,9 +101,11 @@ def test_a_walker_is_one_thing():
         (thing,) = last.things
         assert thing.id == 1
         assert thing.kind == 'unknown' and not thing.radar
-        # 8 m ahead of a car 2 m along odom; walking from y -1.5 at 1 m/s for up to 3 s.
+        # 8 m ahead of a car 2 m along odom, walking from y -1.5 at 1 m/s: at the list's
+        # stamp (it coasts on after the last cloud) the box is at -1.5 + (stamp - start).
+        t = last.header.stamp.sec + last.header.stamp.nanosec * 1e-9
         assert thing.x == pytest.approx(10.0, abs=0.1)
-        assert -1.5 < thing.y < 1.6
+        assert thing.y == pytest.approx(-1.5 + (t - start), abs=0.3)
         assert thing.vy == pytest.approx(1.0, abs=0.3)
         assert thing.seen >= 10
         array = marks[-1].markers

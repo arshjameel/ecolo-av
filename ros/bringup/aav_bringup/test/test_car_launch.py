@@ -302,9 +302,14 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
     sent = included(started(CAR, machine='all'))
     for name, switch in switches.items():
         assert sent[name][switch] == 'rust', name
-    back = included(started(CAR, machine='all', **dict.fromkeys(switches.values(), 'python')))
+    # Still one switch away: ego and the muxes. The others' Python went on 20 Nov.
+    still = ('ego_impl', 'io_mux_impl')
+    back = included(started(CAR, machine='all', **dict.fromkeys(still, 'python')))
     for name, switch in switches.items():
-        assert back[name][switch] == 'python', name
+        assert back[name][switch] == ('python' if switch in still else 'rust'), name
+    for gone in ('behaviour_impl', 'watchdog_impl', 'localization_health_impl'):
+        with pytest.raises(ValueError, match=gone):
+            started(CAR, machine='all', **{gone: 'python'})
     for impl in legacy:
         assert included(started(CAR, machine='motor_pi'))['legacy.launch.py'][impl] == 'rust'
         assert included(started(CAR, machine='motor_pi', **{impl: 'python'}))[
