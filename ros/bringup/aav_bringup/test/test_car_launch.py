@@ -257,11 +257,29 @@ def test_the_geofence_runs_wherever_the_mux_does():
             assert sent['geofence.launch.py'] == {
                 'backend': 'uart', 'radius': '30.0', 'centre_x': '0.0', 'centre_y': '0.0',
                 'site': '', 'max_speed': '', 'gps': 'true', 'stands': 'false',
-                'fix_topic': '/localization/gps/odom'}, machine
+                'fix_topic': '/localization/gps/odom',
+                'geofence_impl': 'rust'}, machine
     lot = included(started(CAR, machine='all', geofence_site='bench_road', start_x='5',
                            actuators='can', stands='true'))['geofence.launch.py']
     assert (lot['site'], lot['centre_x'], lot['backend'], lot['stands']) == (
         'bench_road', '5', 'spine', 'true')
+
+
+def test_the_safety_nodes_are_rust_by_default_and_python_one_switch_away():
+    # Ben, 16 Nov: "lets remove python were possible". The geofence, stop_hold and the
+    # goal leash in Rust (aav_safety_rs), each one switch from the Python.
+    sent = started(CAR, machine='all')
+    assert included(sent)['geofence.launch.py']['geofence_impl'] == 'rust'
+    assert ('aav_safety_rs', 'goal_leash') in nodes(sent)
+    if 'navigation.launch.py' in included(sent):
+        assert included(sent)['navigation.launch.py']['stop_hold_impl'] == 'rust'
+    back = started(CAR, machine='all', geofence_impl='python', goal_leash_impl='python',
+                   stop_hold_impl='python')
+    assert included(back)['geofence.launch.py']['geofence_impl'] == 'python'
+    assert ('aav_safety', 'goal_leash') in nodes(back)
+    for name in ('geofence_impl', 'stop_hold_impl', 'goal_leash_impl'):
+        with pytest.raises(ValueError, match=name):
+            started(CAR, machine='all', **{name: 'c'})
 
 
 def test_the_sensor_watchdog_runs_wherever_the_mux_does():

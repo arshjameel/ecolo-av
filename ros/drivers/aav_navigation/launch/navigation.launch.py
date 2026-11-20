@@ -4,7 +4,7 @@ Navigation as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out
   ros2 launch aav_navigation navigation.launch.py [map:=<path to map yaml>]
       [radar:=false] [lidar:=false] [stop_zone:=<radar or lidar>]
       [camera_obstacles:=false] [ghost:=false] [voxels:=false] [voxels_impl:=python]
-      [kerbs:=false] [lidar_impl:=rust] [things_impl:=rust]
+      [kerbs:=false] [lidar_impl:=rust] [things_impl:=rust] [stop_hold_impl:=rust]
       [reversing:=false] [max_speed:=] [planner:=own] [planner_search:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
       [diffusion_python:=] [diffusion_smoothing:=gear] [diffusion_impl:=python]
@@ -34,8 +34,9 @@ lifecycle node: each respawns 1 s after it dies, and while one is down the car s
   stop_zone         the stop zone (aav_stop_zone, a safety lock): /control/cmd_vel_smoothed
                     -> /drivers/nav/cmd_vel, zero for points in the box ahead (behind,
                     reversing) or a silent sensor; its state on /safety/stop_zone/state
-  stop_hold         with the stop zone (aav_safety): holds its stops until the zone stays
-                    clear for 1 s, through twist_mux's stop_zone lock
+  stop_hold         with the stop zone (aav_safety_rs; stop_hold_impl:=python for
+                    aav_safety's): holds its stops until the zone stays clear for 1 s,
+                    through twist_mux's stop_zone lock
   lidar_scan        with lidar:=true (aav_lidar_rs): the roof lidar's cloud ->
                     /sensors/lidar/scan, for the costmap and the stop zone;
                     lidar_impl:=python for the Python node (aav_lidar)
@@ -383,8 +384,11 @@ def nodes(context):
         # a zone flickers between stop and go at its edge. It locks nothing until the zone
         # first says STOP.
         config = FindPackageShare('aav_safety').perform(context) + '/config/stop_hold.yaml'
-        actions.append(Node(package='aav_safety', executable='stop_hold', name='stop_hold',
-                            output='screen',
+        # stop_hold_impl: rust (aav_safety_rs, the default since 19 Nov) or python.
+        hold = vehicle.check_stop_hold_impl(
+            LaunchConfiguration('stop_hold_impl').perform(context))
+        actions.append(Node(package=vehicle.STOP_HOLD_IMPLS[hold], executable='stop_hold',
+                            name='stop_hold', namespace='/', output='screen',
                             parameters=[config, {'use_sim_time': use_sim_time}]))
     if lidar and (amcl or not voxels):
         # Not a lifecycle node: it runs from the start. With voxels:=true only AMCL still
@@ -691,6 +695,9 @@ def generate_launch_description():
                               description='python (aav_voxels) or rust (aav_voxels_rs, the '
                                           'same node in Rust): which voxels node runs, with '
                                           'voxels:=true or screen_cubes:=true'),
+        DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
+                              description='rust (aav_safety_rs, the default) or python '
+                                          '(aav_safety): which stop_hold runs'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
                               description='python (aav_lidar) or rust (aav_lidar_rs, the same '
                                           'node in Rust): which lidar_scan runs, with '

@@ -23,6 +23,7 @@ each one's README has its topics.
 | `aav_description` | bringup | the car's model (URDF) and `vehicle.yaml` | [[works]] the numbers are guesses | new |
 | `aav_localization` | localization | the two EKFs and `navsat_transform`: configuration only | [[works]] turtle, Gazebo and the bench | new |
 | `aav_gps_heading` | localization | `gps_heading`: the heading from the GPS receiver's velocity, for `ekf_global` | [[works]] Gazebo | new |
+| `aav_gps_heading_rs` | localization | `gps_heading` in Rust, the default (19 Nov; `gps_heading_impl:=python` falls back) | [[works]] against `course.py`'s answers, to the bit; [[untested]] on the car | new: a port of `aav_gps_heading` |
 | `aav_localization_health` | localization | warn-only checks on what the EKFs read and say, on `/localization/health` and `/diagnostics` | built 1 Nov | new (Betsi) |
 | `aav_localization_health_rs` | localization | `localization_health` in Rust (`localization_health_impl:=rust`): the same topics and answers | [[works]] against the Python's answers; Ravensim's road world | new: a port of `aav_localization_health` |
 | `aav_ndt` | localization | NDT in Rust, a trial (`ndt:=true`): where the car is on a saved lidar map; never TF | built 29 Oct; a trial, off by default ([Trials](trials.md)) | new |
@@ -68,6 +69,7 @@ each one's README has its topics.
 | `aav_bench` | sim | pretend sensors: IMU, GPS, battery, camera, radar, lidar | [[works]] | new |
 | `aav_safety` | safety | the sensor watchdog: a twist_mux lock (30) when a sensor is stale, NaN, frozen or jumps | [[works]] Gazebo and the bench | new |
 | `aav_joy_alive_rs` | safety | `joy_alive` in Rust, the default (17 Nov; `joy_alive_impl:=python` falls back) | [[works]] against the Python's answers; [[untested]] on the car | new: a port of `aav_safety`'s `joy_alive` |
+| `aav_safety_rs` | safety | `geofence`, `stop_hold` and `goal_leash` in Rust, the defaults (19 Nov; `*_impl:=python` falls back) | [[works]] against the Python's answers, to the bit; [[untested]] on the car | new: a port of `aav_safety`'s three nodes |
 | `aav_watchdog_rs` | safety | `sensor_watchdog` in Rust, the default (Ben, 16 Nov) beside `aav_safety`'s (`watchdog_impl:=python`): the same topics and answers | [[works]] against the Python's answers, tick by tick | new: a port of `aav_safety`'s watchdog |
 | `aav_ghost` | safety | ghost obstacles: a pretend person only navigation sees | [[works]] in Gazebo | new |
 | `aav_stop_zone` | safety | the stop zone (Rust): zeroes navigation's command when the radar or lidar sees points just ahead, or goes silent; the lock since 17 Nov | [[works]] in Ravensim: stopped every time Nav2's `collision_monitor` did, in its shadow run ([Nav2, as it was](history/nav2-as-it-was.md)) | new: a port of Nav2's `collision_monitor` |

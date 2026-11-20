@@ -30,7 +30,7 @@ the background; each merged with a real merge (Ben's history stays).
 | 4 | ✅ **Maps offline** (merged 19 Nov): occupancy across passes, the offline pipeline as one command, 3+ drives and the 2D maps merged | 259, 260, 250 |
 | 5 | ✅ **Labels and the twin** (merged 19 Nov): the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
 | 6 | ✅ **Driving** (merged 19 Nov): reversing in a narrow street and in `aav_track`; the planner's checks on every core and a 1000-sample `mppi_lag` option; behaviour slows for kerbs | 174, 152, 219 |
-| 7 | **The last Python nodes to Rust**: the geofence, stop hold and goal leash (safety: shared vectors, both twins), the lane pose, the GPS heading, the street router; then the drivers (battery, radar) where worth it | Rust first |
+| 7 | ✅ **The last Python nodes to Rust** (merged 19 Nov: geofence, stop hold, goal leash, GPS heading; lane pose and street router left, 265): the geofence, stop hold and goal leash (safety: shared vectors, both twins), the lane pose, the GPS heading, the street router; then the drivers (battery, radar) where worth it | Rust first |
 | 8 | **The challengers built**: smooth MPPI, jerk-limited passing, ground ring by ring, Kinematic-ICP, a tracker per kind | 212, 214-217 |
 | 9 | **Clean-up**: the last of Nav2, Ravensim's old names, the leftovers; a more Rust-like pass | 232, 241, 242, 176 |
 | test | **One full `pixi run test`** on everything | |
@@ -127,6 +127,7 @@ scored with Nav2's follower (177, 178) are scored again with ours.
 |---|---|---|
 | 176 | **More Rust-like**: every crate against the Rust API Guidelines | 🔧 left: a few spine-core items (a reviewed safety change), one shared `CloudView` |
 | 195 | **rayon**: chunks and costmaps done; the planner measured, no gain (152, 19 Nov); left: the things | 🔧 |
+| 265 | **Batch 7: the last on-car Python nodes in Rust** (Ben, 16 Nov: "lets remove python were possible") | 🔧 done (19 Nov), the Rust the default, the Python's answers to the bit: `geofence`, `stop_hold`, `goal_leash` (`aav_safety_rs`), `gps_heading` (`aav_gps_heading_rs`). Left: `lane_pose` (a trial, off by default: needs a TF buffer at the picture's stamp and the lane map's `roads_at` in Rust; first move `aav_behaviour_rs`'s `lanes` and `tf` into a shared crate), `street_router` (on demand, not on the safety path: HTTP to Valhalla or OSRM, the campus graph from OSM XML, 1,100 lines; a poor fit for now), the battery and radar drivers |
 | 197 | **Rerun** for viewing a drive: `pixi run -e rerun view-bag` | 🔧 Ben looks, keep or drop |
 
 ## 6. Clean-up

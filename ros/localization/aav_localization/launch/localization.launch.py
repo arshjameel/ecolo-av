@@ -5,7 +5,8 @@ Neither EKF reads the other's topic. They meet only in TF: ekf_global publishes
 map -> odom, worked out on top of ekf_local's odom -> base_link.
 
   ros2 launch aav_localization localization.launch.py [gps:=true] [gps_heading:=true]
-      [health:=true] [localization_health_impl:=rust] [ndt_ekf:=false] [kiss_ekf:=false]
+      [health:=true] [localization_health_impl:=rust] [gps_heading_impl:=rust]
+      [ndt_ekf:=false] [kiss_ekf:=false]
       [pose_source:=gps] [pose_trust_score:=]
       [lane_pose:=false] [lane_map:=]
       [start_x:=0.0] [start_y:=0.0]
@@ -16,7 +17,8 @@ map -> odom, worked out on top of ekf_local's odom -> base_link.
       ──> ekf_global ──> /localization/odom/global, TF map -> odom
   /sensors/gps/fix, /localization/odom/global ──> navsat_transform
       ──> /localization/gps/odom, /localization/gps/fix
-  /sensors/gps/fix_velocity, /vehicle/odom ──> gps_heading (aav_gps_heading)
+  /sensors/gps/fix_velocity, /vehicle/odom ──> gps_heading (aav_gps_heading_rs;
+      gps_heading_impl:=python, aav_gps_heading)
       ──> /localization/gps/heading: the heading from the receiver's velocity, while the
       car moves (TODO 13). gps_heading:=false leaves it out
 
@@ -104,6 +106,19 @@ def health_node(context):
         parameters=[os.path.join(FindPackageShare('aav_localization_health').perform(context),
                                  'config', 'localization_health.yaml'),
                     {'use_sim_time': LaunchConfiguration('use_sim_time')}])]
+
+
+def gps_heading_node(context):
+    """Start gps_heading in Rust or Python (gps_heading_impl:=), with gps and gps_heading."""
+    on = all(LaunchConfiguration(n).perform(context).lower() == 'true'
+             for n in ('gps', 'gps_heading'))
+    if not on:
+        return []
+    impl = vehicle.check_gps_heading_impl(
+        LaunchConfiguration('gps_heading_impl').perform(context))
+    return [Node(package=vehicle.GPS_HEADING_IMPLS[impl], executable='gps_heading',
+                 name='gps_heading',
+                 parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}])]
 
 
 def pose_source(context):
@@ -210,6 +225,9 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('gps', default_value='true'),
         DeclareLaunchArgument('gps_heading', default_value='true'),
+        DeclareLaunchArgument('gps_heading_impl', default_value=vehicle.DEFAULT_GPS_HEADING_IMPL,
+                              description='rust (aav_gps_heading_rs, the default) or python '
+                                          '(aav_gps_heading): which gps_heading runs'),
         DeclareLaunchArgument('health', default_value='true'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,
@@ -255,15 +273,7 @@ def generate_launch_description():
                         ('odometry/filtered', '/localization/odom/global')],
             condition=IfCondition(LaunchConfiguration('gps')),
         ),
-        Node(
-            package='aav_gps_heading',
-            executable='gps_heading',
-            name='gps_heading',
-            parameters=[use_sim_time],
-            condition=IfCondition(PythonExpression([
-                "'", LaunchConfiguration('gps'), "' == 'true' and '",
-                LaunchConfiguration('gps_heading'), "' == 'true'"])),
-        ),
+        OpaqueFunction(function=gps_heading_node),
         OpaqueFunction(function=health_node),
         Node(
             package='tf2_ros',
