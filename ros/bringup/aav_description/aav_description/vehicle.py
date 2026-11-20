@@ -1547,6 +1547,39 @@ def with_global_window(cfg, metres):
 PLAN_SMOOTHINGS = {'nav2': None, 'strong': {'w_data': 0.02, 'w_smooth': 0.3}}
 
 
+THINGS_TRACKERS = ('constant_velocity', 'per_kind')
+
+
+def check_things_tracker(value):
+    """Return things_tracker:= checked: constant_velocity (empty too) or per_kind (217)."""
+    value = str(value).strip().lower() or THINGS_TRACKERS[0]
+    if value not in THINGS_TRACKERS:
+        raise ValueError(f'things_tracker:={value}: one of {", ".join(THINGS_TRACKERS)}')
+    return value
+
+
+GROUNDS = ('plane', 'patchwork')
+
+
+def check_ground(value):
+    """Return ground:= checked: plane (empty too) or patchwork (TODO 215)."""
+    value = str(value).strip().lower() or GROUNDS[0]
+    if value not in GROUNDS:
+        raise ValueError(f'ground:={value}: one of {", ".join(GROUNDS)}')
+    return value
+
+
+MPPI_LAG_SAMPLINGS = ('correlated', 'smooth')
+
+
+def check_mppi_lag_sampling(value):
+    """Return mppi_lag_sampling:= checked: correlated or smooth (TODO 212)."""
+    value = str(value).strip() or MPPI_LAG_SAMPLINGS[0]
+    if value not in MPPI_LAG_SAMPLINGS:
+        raise ValueError(f'mppi_lag_sampling:={value}: one of {", ".join(MPPI_LAG_SAMPLINGS)}')
+    return value
+
+
 def check_steer_gamma(gamma):
     """Return mppi_lag_steer_gamma:= as a float (0 or more), or raise ValueError saying why."""
     try:

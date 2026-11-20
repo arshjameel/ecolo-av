@@ -31,7 +31,7 @@ the background; each merged with a real merge (Ben's history stays).
 | 5 | ✅ **Labels and the twin** (merged 19 Nov): the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
 | 6 | ✅ **Driving** (merged 19 Nov): reversing in a narrow street and in `aav_track`; the planner's checks on every core and a 1000-sample `mppi_lag` option; behaviour slows for kerbs | 174, 152, 219 |
 | 7 | ✅ **The last Python nodes to Rust** (merged 19 Nov: geofence, stop hold, goal leash, GPS heading; lane pose and street router left, 265): the geofence, stop hold and goal leash (safety: shared vectors, both twins), the lane pose, the GPS heading, the street router; then the drivers (battery, radar) where worth it | Rust first |
-| 8 | **The challengers built**: smooth MPPI, jerk-limited passing, ground ring by ring, Kinematic-ICP, a tracker per kind | 212, 214-217 |
+| 8 | ✅ **The challengers built** (merged 19 Nov; scored in stage 2): smooth MPPI, jerk-limited passing, ground ring by ring, Kinematic-ICP, a tracker per kind | 212, 214-217 |
 | 9 | **Clean-up**: the last of Nav2, Ravensim's old names, the leftovers; a more Rust-like pass | 232, 241, 242, 176 |
 | test | **One full `pixi run test`** on everything | |
 
@@ -108,16 +108,20 @@ and will do".
 Each runs beside the champion until it wins on the same routes (Ben, 5 Nov). The ones
 scored with Nav2's follower (177, 178) are scored again with ours.
 
+Stage 1, batch 8 (19 Nov): 212, 214, 215, 216 and 217 built and unit-tested, each off by
+default behind its league option ([switches](docs/switches.md#stage-1-batch-8-challengers-built-19-nov-scored-in-stage-2));
+stage 2 scores them in Ravensim.
+
 | # | Challenger | Status |
 |---|---|---|
 | 178 | **Hybrid-A\*** in our planner (`planner_search:=hybrid`) | 🟡 7/8 legs vs the lattice's 8/8; score again |
 | 177 | **Steering-rate-aware lattice moves** | 🟡 score again |
 | 213 | **`mpc_lag_rs` that reverses and doesn't swing** (Autoware's MPC idea); was 132 | 🟡 follows closer, sways 2.5x |
-| 212 | **Smooth MPPI** (sample the steering's change) | ⬜ |
-| 214 | **Passing with a jerk limit** (Apollo, Autoware) | ⬜ |
-| 215 | **The ground ring by ring** (Patchwork++), for kerbs | ⬜ |
-| 216 | **Kinematic-ICP**: lidar odometry that knows the car can't slide sideways | ⬜ |
-| 217 | **A tracker with a motion model per kind** (car, person) | ⬜ |
+| 212 | **Smooth MPPI** (sample the steering's change): `steer:=mppi_lag_smooth` (`mppi_lag_sampling:=smooth`) | 🟡 built; scored in stage 2 |
+| 214 | **Passing with a jerk limit** (Apollo, Autoware): `path:=lane_jerk` (`lane_pass_shape:=jerk`) | 🟡 built; scored in stage 2 |
+| 215 | **The ground ring by ring** (Patchwork++), for kerbs: `kerbs:=patchwork` (`ground:=patchwork`) | 🟡 built; scored in stage 2 |
+| 216 | **Kinematic-ICP**: lidar odometry that knows the car can't slide sideways: `pose:=kinematic_ekf` (`odom_lidar:=kinematic_icp`, `aav_kinematic_icp`) | 🟡 built; scored in stage 2 |
+| 217 | **A tracker with a motion model per kind** (car, person): `behaviour:=on_per_kind` (`things_tracker:=per_kind`), both twins | 🟡 built; scored in stage 2 |
 | 243 | **Our models from Rust** (`ort`): the detector (8 ms) and the diffusion planner's model (`diffusion_impl:=rust`, Core ML takes all 2,178 nodes, 9.7 ms a plan against the CPU's 87) from Rust on a Mac, both checked against PyTorch; `pixi run measure onnx` (answers, coverage, ms, FP16); `onnx-session` shared; TensorRT ready, untested ([ONNX](docs/onnx.md)). Left: the Orin (JetPack 7.2); diffusion's Ravensim scoring deferred (Ben, 19 Nov: algorithm testing after the ports) | 🟡 |
 | 262b | **A learned lane finder**: Ultra-Fast-Lane-Detection v2 (MIT), trained by us on Ravensim's pictures (labelled from the lane map) and the car's (252), through ONNX (243), behind `/perception/lane/geometry`. Published weights are out: CULane is non-commercial, BDD100K, TuSimple and CurveLanes unclear ([survey](docs/perception.md#a-learned-lane-finder-the-survey-19-nov)) | 🟡 built 19 Nov (`aav_lane_finder_learned`, `lane_finder_impl:=learned`): 7,472 Ravensim pictures; held out, the car's lines 1-4 cm median at 5-15 m; Core ML 2.4 ms, 1.2 ms FP16 on the Neural Engine; ⬜ driven and scored against the classic (stage 2); ⬜ the car's pictures (252); **merged 19 Nov**: 7,472 Ravensim pictures, ResNet-18 on mps, the car's lines 1.2-3.6 cm median, Core ML 2.4 ms, FP16 1.2 ms on the Neural Engine, `lane_finder_impl:=learned`. Its colour head (95 % right) wired into `left_paint`/`right_paint` (19 Nov, batch 5). **Left:** neighbour lines often wrong (3 m at the 90th %); driving scores (stage 2) |
 

@@ -69,6 +69,7 @@ use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{Arrival, Grid};
 use futures::channel::oneshot;
 use lanelet_map::{LaneletMap, Origin};
+use lattice_planner::jerk_pass::JerkSettings;
 use lattice_planner::lane::{roads_from_json, How, LaneRouter, LaneSettings, CLOTHOID_TRANSITION};
 use lattice_planner::steps;
 use lattice_planner::{cusps, length, planner_from_json, Plan, PlanError, Pose};
@@ -148,6 +149,14 @@ fn main() -> Result<()> {
                 } else {
                     None
                 },
+                // lane_pass_shape:=jerk: the pass a jerk-limited QP at the car's top speed
+                // (TODO 214, a challenger); else the half cosine.
+                pass_jerk: (block["pass_shape"].as_str() == Some("jerk")).then(|| {
+                    (
+                        JerkSettings::default(),
+                        block["pass_speed"].as_f64().unwrap_or(1.0),
+                    )
+                }),
                 // lane_corners:=clothoid: clothoid, arc, clothoid (TODO 211, a
                 // challenger); else circle arcs.
                 transition: if block["corners"].as_str() == Some("clothoid") {

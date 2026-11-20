@@ -47,6 +47,10 @@ Nav2's planners (`lattice`, `hybrid`, `smac2d`, `navfn`, `theta_star`) went with
 scores stay in [Controllers, Planners](controllers.md). The real car takes only `own` (it
 refuses `diffusion` without `diffusion_trial`). More: [Controllers, Planners](controllers.md), [the runs](history/trials-log.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32).
 
+`path:=lane_jerk` (or `lane_pass_shape:=jerk` with `lane_route`; TODO 214, a challenger,
+scored in stage 2): a parked obstacle on the lane is passed by a QP that holds the
+**lateral jerk** at the car's top speed (Apollo's piecewise-jerk path), not the half cosine.
+
 ## Who steers along the path
 
 | Switch | In plain words | Gazebo, 29 Oct |
@@ -64,6 +68,10 @@ backwards stretch of the plan mirrored, `gears.py`). Only `mpc_lag_rs` is still 
 only: give it `reversing:=false`.
 `steer:=mppi_lag_1k` (or `mppi_lag_batch:=1000`): `mppi_lag` with 1000 samples a tick, not
 2000: half the work, a challenger for the Orin (TODO 152).
+
+`tracker:=mppi_lag mppi_lag_sampling:=smooth` (or `steer:=mppi_lag_smooth`; TODO 212, a
+challenger, scored in stage 2): MPPI samples the steering's **change**, so its commands come
+out smooth without a larger control cost.
 In `demo --debug`, keys 1-4 swap the tracker live. More: [Controllers](controllers.md),
 [Trials](trials.md).
 
@@ -150,6 +158,18 @@ swap an algorithm. The rest:
 **Tried, 29 Oct 23:05:** the menu's pick (demo --debug, `mpc`, NDT, LQI) in Gazebo on Ben's
 Mac: the track node ran MPC, NDT tracked (2 ms a match), AMCL stayed off, the speed loop
 said LQI, and a Nav2 goal 15 m ahead ended SUCCEEDED.
+
+## Stage 1, batch 8: challengers built 19 Nov, scored in stage 2
+
+Each is off by default, and a drop-in: the same topics as the champion.
+
+| Switch (league option) | In plain words | TODO |
+|---|---|---|
+| `mppi_lag_sampling:=smooth` (`steer:=mppi_lag_smooth`) | MPPI samples the steering's change, so its commands come out smooth | 212 |
+| `lane_pass_shape:=jerk` (`path:=lane_jerk`) | a parked obstacle passed within a lateral-jerk limit (a QP) | 214 |
+| `ground:=patchwork` (`kerbs:=patchwork`) | the ground found patch by patch, ring by ring: a lower kerb is an obstacle, a hill isn't | 215 |
+| `odom_lidar:=kinematic_icp` with `kiss_ekf:=true` (`pose:=kinematic_ekf`) | lidar odometry that knows the car can't slide sideways, the wheels its prior, in KISS-ICP's place | 216 |
+| `things_tracker:=per_kind` with `things:=true` (`behaviour:=on_per_kind`) | the things tracked with a motion model per kind (a car can't slide, a person can turn on the spot); a thing found again re-fits its speed | 217 |
 
 ## The defaults: what runs if you say nothing
 

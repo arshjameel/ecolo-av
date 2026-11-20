@@ -14,6 +14,9 @@ serde_json = "1"
 # Our own Lanelet2 reader and its routing graph (aav_description), for lane_graph:=lanelet2
 # (TODO 175).
 lanelet-map = { path = "../../../../bringup/aav_description/lanelet-map" }
+# TODO 214: the jerk-limited pass's QP (jerk_pass.rs). Apache-2.0 (Oxford). Its default
+# feature (serde) only: without it, 0.11.1 doesn't build.
+clarabel = "0.11.1"
 
 # TODO 203: benchmarks (benches/plan.rs), never in the node's build.
 [dev-dependencies]

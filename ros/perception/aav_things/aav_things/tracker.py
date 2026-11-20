@@ -28,6 +28,13 @@ box within about 2.5 m) is still in the list. Inside `blind_range` m of the car 
 for `keep_blind` s: there the lidar can't see it, so not seeing it says nothing.
 A thing seen fewer times is dropped after `keep_tentative` s (noise).
 
+A motion model per kind (`per_kind`, TODO 217, a challenger; Fast-Poly, Poly-MOT and
+OC-SORT's ideas, MIT): the state stays [x, y, vx, vy]; a vehicle's acceleration noise is
+a bicycle's (`car_along` along its heading, `car_across` across it: it turns, it never
+slides), a person's round and wide (`person_accel`), an unknown's the champion's. A thing
+found again after `refind_gap` s unseen re-fits its speed from its last `sightings`
+places (OC-SORT's observation-centric re-update). The same as things-core's tracker.rs.
+
 Names come later: `kind` is Thing.UNKNOWN until camera-to-lidar calibration exists
 (Q22). The hook is `Tracker.name`: give it a function from a thing to a name.
 """
@@ -41,6 +48,7 @@ from typing import Callable, Iterable, Optional
 import numpy as np
 
 from .groups import Group
+from .looks import VEHICLES
 
 UNKNOWN = 'unknown'
 
@@ -67,6 +75,13 @@ class TrackerShape:
     small_size: float = 0.8       # m: a thing no wider is small (a post, a person) ...
     small_speed: float = 3.5      # m/s: ... and never moves faster than this
     small_slack: float = 0.3      # m: a small thing's middle may wander this much a look
+    per_kind: bool = False        # a motion model per kind, speeds re-fitted (TODO 217)
+    car_along: float = 2.0        # m/s²: one sigma, a vehicle's acceleration along its heading
+    car_across: float = 0.5       # m/s²: ... and across it
+    car_heading_speed: float = 1.0  # m/s: slower, a vehicle's heading isn't known
+    person_accel: float = 2.0     # m/s²: one sigma, a person's acceleration, any way
+    refind_gap: float = 0.5       # s unseen: found again after this, its speed re-fitted
+    sightings: int = 5            # places kept a thing, for the re-fit
 
 
 @dataclass
@@ -84,6 +99,7 @@ class Track:
     radar: bool = False
     coasting: bool = False
     kind: str = UNKNOWN
+    sightings: list = field(default_factory=list)   # (s, x, y), the oldest first
 
     @property
     def position_sigma(self) -> float:
@@ -106,6 +122,54 @@ def predict(x: np.ndarray, p: np.ndarray, dt: float, accel_noise: float):
     q[np.ix_([0, 2], [0, 2])] = q1
     q[np.ix_([1, 3], [1, 3])] = q1
     return f @ x, f @ p @ f.T + q
+
+
+def accel_covariance(kind: str, vx: float, vy: float, shape: TrackerShape):
+    """Return the acceleration's covariance (xx, xy, yy) for a thing of `kind` (TODO 217)."""
+    if kind in VEHICLES:
+        along = shape.car_along * shape.car_along
+        speed = math.hypot(vx, vy)
+        if speed < shape.car_heading_speed:
+            return (along, 0.0, along)
+        across = shape.car_across * shape.car_across
+        c, s = vx / speed, vy / speed
+        return (along * c * c + across * s * s, (along - across) * c * s,
+                along * s * s + across * c * c)
+    a = shape.person_accel if kind == 'person' else shape.accel_noise
+    return (a * a, 0.0, a * a)
+
+
+def predict_with(x: np.ndarray, p: np.ndarray, dt: float, a):
+    """Return predict's answer with the acceleration's covariance a (xx, xy, yy)."""
+    f = np.eye(4)
+    f[0, 2] = f[1, 3] = dt
+    k00, k01, k11 = dt * dt * dt * dt / 4.0, dt * dt * dt / 2.0, dt * dt
+    block = np.array([[a[0], a[1]], [a[1], a[2]]])
+    q = np.zeros((4, 4))
+    q[:2, :2] = block * k00
+    q[:2, 2:] = block * k01
+    q[2:, :2] = block * k01
+    q[2:, 2:] = block * k11
+    return f @ x, f @ p @ f.T + q
+
+
+def fitted_speed(sightings, position_noise: float):
+    """Return ((vx, vy), variance) through the sightings (s, x, y), or None under 3."""
+    if len(sightings) < 3:
+        return None
+    n = float(len(sightings))
+    mt = mx = my = 0.0
+    for t, x, y in sightings:
+        mt, mx, my = mt + t / n, mx + x / n, my + y / n
+    stt = stx = sty = 0.0
+    for t, x, y in sightings:
+        dt = t - mt
+        stt += dt * dt
+        stx += dt * (x - mx)
+        sty += dt * (y - my)
+    if stt <= 1e-9:
+        return None
+    return (stx / stt, sty / stt), position_noise * position_noise / stt
 
 
 def update(x: np.ndarray, p: np.ndarray, z: np.ndarray, h: np.ndarray, r: np.ndarray):
@@ -181,6 +245,20 @@ class Tracker:
             used_g.add(gi)
             t, g = self.tracks[ti], groups[gi]
             t.x, t.p = update(t.x, t.p, np.array([g.x, g.y]), h, r)
+            gap = now - t.last_seen
+            t.sightings.append((now, g.x, g.y))
+            if len(t.sightings) > sh.sightings:
+                t.sightings.pop(0)
+            # Found again: its speed from where it was seen, not where it coasted to.
+            if sh.per_kind and gap >= sh.refind_gap:
+                fit = fitted_speed(t.sightings, sh.position_noise)
+                if fit is not None:
+                    (vx, vy), var = fit
+                    t.x = np.array([t.x[0], t.x[1], vx, vy])
+                    p = np.zeros((4, 4))
+                    p[:2, :2] = t.p[:2, :2]
+                    p[2, 2] = p[3, 3] = var
+                    t.p = p
             # The outline: a little of each new look, so a half-seen side doesn't jump it.
             t.length += 0.3 * (g.length - t.length)
             t.width += 0.3 * (g.width - t.width)
@@ -272,7 +350,7 @@ class Tracker:
         for t in self.tracks:
             if t.seen < self.shape.confirm:
                 continue
-            x, p = predict(t.x, t.p, dt, self.shape.accel_noise) if dt else (t.x, t.p)
+            x, p = self._predict(t, dt) if dt else (t.x, t.p)
             out.append(Track(id=t.id, x=x, p=p, length=t.length, width=t.width,
                              height=t.height, last_seen=t.last_seen, seen=t.seen,
                              radar=t.radar, coasting=t.coasting or dt > 0.5, kind=t.kind))
@@ -283,13 +361,21 @@ class Tracker:
             dt = now - self.time
             if dt > 0:
                 for t in self.tracks:
-                    t.x, t.p = predict(t.x, t.p, dt, self.shape.accel_noise)
+                    t.x, t.p = self._predict(t, dt)
         self.time = now
+
+    def _predict(self, t: Track, dt: float):
+        """Return t moved on dt s: the champion's model, or its kind's (per_kind)."""
+        if self.shape.per_kind:
+            a = accel_covariance(t.kind, t.x[2], t.x[3], self.shape)
+            return predict_with(t.x, t.p, dt, a)
+        return predict(t.x, t.p, dt, self.shape.accel_noise)
 
     def _start(self, g: Group, now: float) -> Track:
         sh = self.shape
         p = np.diag([sh.position_noise ** 2] * 2 + [sh.start_speed_sigma ** 2] * 2)
         track = Track(id=self.next_id, x=np.array([g.x, g.y, 0.0, 0.0]), p=p,
-                      length=g.length, width=g.width, height=g.height, last_seen=now)
+                      length=g.length, width=g.width, height=g.height, last_seen=now,
+                      sightings=[(now, g.x, g.y)])
         self.next_id += 1
         return track

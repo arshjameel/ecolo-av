@@ -22,6 +22,12 @@
 //!    ours used the white form on correlated noise: its spread grew 3x (at 0.8) and
 //!    swamped the critics, so MPPI pulled the speed and steering towards 0 and the car
 //!    stood still beside a cusp (docs/mppi-lag.md, Cusps).
+//!
+//!    `sampling: smooth` (TODO 212, a challenger; SMPPI's idea, Kim et al. 2022, as in
+//!    `pytorch_mppi`, MIT): the steering's noise is drawn on its **change** a step
+//!    (`steer_rate_std` rad/s) and summed, a random walk, so each sample's steering moves
+//!    a little a step instead of jumping. The commands come out smooth without a larger
+//!    control cost; the cost uses the random walk's own Σ⁻¹ ([`control_cost`]).
 //! 4. **Weigh**: softmax of -(cost - min) / temperature; the new sequence is the
 //!    weighted mean of the samples, held to the limits again.
 //!
@@ -37,6 +43,41 @@ use crate::lane::Lane;
 use crate::model::{CarModel, Command, Pose};
 use crate::rng::Rng;
 use crate::smoothing::{savitzky_golay, History};
+
+/// How each sample's steering noise is drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Sampling {
+    /// AR(1) noise on the steering itself (`noise_correlation`): the champion.
+    #[default]
+    Correlated,
+    /// White noise on the steering's change a step, summed (a random walk): SMPPI's idea
+    /// (TODO 212), a challenger.
+    Smooth,
+}
+
+impl std::str::FromStr for Sampling {
+    type Err = UnknownSampling;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim() {
+            "" | "correlated" => Ok(Self::Correlated),
+            "smooth" => Ok(Self::Smooth),
+            other => Err(UnknownSampling(other.to_owned())),
+        }
+    }
+}
+
+/// A `sampling` that is neither `correlated` nor `smooth`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnknownSampling(pub String);
+
+impl std::fmt::Display for UnknownSampling {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "sampling {:?}: correlated or smooth", self.0)
+    }
+}
+
+impl std::error::Error for UnknownSampling {}
 
 /// MPPI's settings: Nav2's names where Nav2 has them.
 #[derive(Debug, Clone, PartialEq)]
@@ -80,6 +121,13 @@ pub struct Settings {
     /// 0..1: how much each step's noise carries the last step's (AR(1); 0: white, as
     /// Nav2). The spread stays `speed_std` and `steer_std` either way.
     pub noise_correlation: f64,
+    /// How the steering's noise is drawn: on the steering (the champion) or on its change
+    /// (`Smooth`, TODO 212).
+    pub sampling: Sampling,
+    /// rad/s: with `Smooth`, the spread of the steering's change (x `model_dt` a step;
+    /// shrunk with the speed as `steer_std` is). 0.5: 0.025 rad the first step, 0.19 at
+    /// the horizon's end (2.8 s).
+    pub steer_rate_std: f64,
     /// m/s: the fastest command.
     pub vx_max: f64,
     /// m/s: the slowest (0: forward only).
@@ -112,6 +160,8 @@ impl Default for Settings {
             steer_std_speed: 1.0,
             steer_std_min: 0.024,
             noise_correlation: 0.8,
+            sampling: Sampling::Correlated,
+            steer_rate_std: 0.5,
             vx_max: 1.0,
             vx_min: 0.0,
             max_steer: 0.5,
@@ -170,27 +220,101 @@ impl Settings {
 #[must_use]
 pub fn control_cost(settings: &Settings, sequence: &[Command], sample: &[Command]) -> f64 {
     let a = settings.noise_correlation.clamp(0.0, 0.999);
+    let steer_gamma = settings.steer_gamma.unwrap_or(settings.gamma);
+    let speed = ar1_cost(sequence, sample, |c| c.speed, a, settings.speed_std);
+    let steer = match settings.sampling {
+        Sampling::Correlated => ar1_cost(sequence, sample, |c| c.steer, a, settings.steer_std),
+        Sampling::Smooth => walk_cost(
+            sequence,
+            sample,
+            |c| c.steer,
+            settings.steer_rate_std * settings.model_dt,
+        ),
+    };
+    settings.gamma * speed + steer_gamma * steer
+}
+
+/// u' Σ⁻¹ e for AR(1) noise with correlation `a` and spread `std` (see [`control_cost`]).
+fn ar1_cost(
+    sequence: &[Command],
+    sample: &[Command],
+    part: fn(&Command) -> f64,
+    a: f64,
+    std: f64,
+) -> f64 {
     let fresh = 1.0 - a * a;
     let pairs = || sequence.iter().zip(sample);
-    let along = |part: fn(&Command) -> f64, std: f64, gamma: f64| {
-        let first = pairs()
-            .next()
-            .map_or(0.0, |(u, c)| fresh * part(u) * (part(c) - part(u)));
-        let rest: f64 = pairs()
-            .zip(pairs().skip(1))
-            .map(|((u0, c0), (u1, c1))| {
-                let (e0, e1) = (part(c0) - part(u0), part(c1) - part(u1));
-                (part(u1) - a * part(u0)) * (e1 - a * e0)
-            })
-            .sum();
-        gamma * (first + rest) / (std * std * fresh)
-    };
-    along(|c| c.speed, settings.speed_std, settings.gamma)
-        + along(
-            |c| c.steer,
-            settings.steer_std,
-            settings.steer_gamma.unwrap_or(settings.gamma),
-        )
+    let first = pairs()
+        .next()
+        .map_or(0.0, |(u, c)| fresh * part(u) * (part(c) - part(u)));
+    let rest: f64 = pairs()
+        .zip(pairs().skip(1))
+        .map(|((u0, c0), (u1, c1))| {
+            let (e0, e1) = (part(c0) - part(u0), part(c1) - part(u1));
+            (part(u1) - a * part(u0)) * (e1 - a * e0)
+        })
+        .sum();
+    (first + rest) / (std * std * fresh)
+}
+
+/// u' Σ⁻¹ e for a random walk, white steps of spread `step` (TODO 212): Σ = step² L L',
+/// L the lower triangle of ones, so Σ⁻¹ = D' D / step² with D the first difference, and
+///
+/// ```text
+/// u' Σ⁻¹ e = (u₀ e₀ + Σₜ (uₜ - uₜ₋₁)(eₜ - eₜ₋₁)) / step²
+/// ```
+///
+/// The cost sees only each step's fresh change, as the AR(1) one does.
+fn walk_cost(
+    sequence: &[Command],
+    sample: &[Command],
+    part: fn(&Command) -> f64,
+    step: f64,
+) -> f64 {
+    let pairs = || sequence.iter().zip(sample);
+    let first = pairs()
+        .next()
+        .map_or(0.0, |(u, c)| part(u) * (part(c) - part(u)));
+    let rest: f64 = pairs()
+        .zip(pairs().skip(1))
+        .map(|((u0, c0), (u1, c1))| {
+            let (e0, e1) = (part(c0) - part(u0), part(c1) - part(u1));
+            (part(u1) - part(u0)) * (e1 - e0)
+        })
+        .sum();
+    (first + rest) / (step * step)
+}
+
+/// One sample: `sequence` plus noise, into `controls` (not yet held to the limits). The
+/// speed's noise is AR(1); the steering's is AR(1) too (`Correlated`), or a random walk of
+/// white steps `steer_rate_std x model_dt` (`Smooth`). One draw a step for each, in the
+/// same order either way.
+pub(crate) fn sample_into(
+    settings: &Settings,
+    rng: &mut Rng,
+    sequence: &[Command],
+    controls: &mut [Command],
+) {
+    let a = settings.noise_correlation.clamp(0.0, 0.999);
+    let fresh = (1.0 - a * a).sqrt();
+    let step = settings.steer_rate_std * settings.model_dt;
+    let (mut nv, mut ns) = (rng.normal(), rng.normal());
+    let mut walk = 0.0;
+    for (c, base) in controls.iter_mut().zip(sequence) {
+        let steer = match settings.sampling {
+            Sampling::Correlated => settings.steer_std * ns,
+            Sampling::Smooth => {
+                walk += step * ns;
+                walk
+            }
+        };
+        *c = Command::new(base.speed + settings.speed_std * nv, base.steer + steer);
+        nv = a * nv + fresh * rng.normal();
+        ns = match settings.sampling {
+            Sampling::Correlated => a * ns + fresh * rng.normal(),
+            Sampling::Smooth => rng.normal(),
+        };
+    }
 }
 
 /// Every sample ran into something, even after a reset (Nav2's NoValidControl).
@@ -314,8 +438,14 @@ impl<M: CarModel> Optimizer<M> {
         // the samples by the same spread they were drawn with.
         // The steering's control cost weight, too, for the speed now.
         let speed = self.model.speed(state);
+        let shrink = if self.settings.steer_std > 0.0 {
+            self.settings.steer_std_at(speed) / self.settings.steer_std
+        } else {
+            1.0
+        };
         let now = Settings {
             steer_std: self.settings.steer_std_at(speed),
+            steer_rate_std: self.settings.steer_rate_std * shrink,
             steer_gamma: Some(self.settings.steer_gamma_at(speed)),
             ..self.settings.clone()
         };
@@ -328,18 +458,8 @@ impl<M: CarModel> Optimizer<M> {
                 for (part, seed) in self.rollouts.chunks_mut(chunk).zip(&seeds) {
                     scope.spawn(move || {
                         let mut rng = Rng::new(*seed);
-                        let a = settings.noise_correlation.clamp(0.0, 0.999);
-                        let fresh = (1.0 - a * a).sqrt();
                         for r in part {
-                            let (mut nv, mut ns) = (rng.normal(), rng.normal());
-                            for (c, base) in r.controls.iter_mut().zip(sequence) {
-                                *c = Command::new(
-                                    base.speed + settings.speed_std * nv,
-                                    base.steer + settings.steer_std * ns,
-                                );
-                                nv = a * nv + fresh * rng.normal();
-                                ns = a * ns + fresh * rng.normal();
-                            }
+                            sample_into(settings, &mut rng, sequence, &mut r.controls);
                             Self::constrain(settings, &mut r.controls);
                             let mut s = state.clone();
                             for (t, c) in r.controls.iter().enumerate() {
@@ -689,6 +809,152 @@ mod tests {
             batch_size: 500,
             threads: 2,
             ..Settings::default()
+        };
+        let mut opt = Optimizer::new(model, settings, critics());
+        let path: Vec<Pose> = (0..=60)
+            .map(|i| Pose::new(f64::from(i) * 0.05, 1.0, 0.0))
+            .collect();
+        let scene = Scene {
+            path: &path,
+            goal: Pose::new(30.0, 1.0, 0.0),
+            costmap: None,
+            footprint: &[],
+            tracking_unknown: false,
+            lane: None,
+        };
+        let state = model.at_rest(Pose::default(), 1.0);
+        opt.reset(Command::new(1.0, 0.0));
+        let mut steer = 0.0;
+        for _ in 0..5 {
+            steer = opt.evaluate(&state, &scene).expect("a plan").command.steer;
+        }
+        assert!(steer > 0.05, "{steer}");
+    }
+
+    /// u' Σ⁻¹ e the long way for a random walk: Σᵢⱼ = step² (min(i, j) + 1).
+    fn brute_force_walk(u: &[f64], e: &[f64], step: f64) -> f64 {
+        let n = u.len();
+        let mut m: Vec<Vec<f64>> = (0..n)
+            .map(|i| {
+                let mut row: Vec<f64> = (0..n)
+                    .map(|j| step * step * (i.min(j) + 1) as f64)
+                    .collect();
+                row.push(e[i]);
+                row
+            })
+            .collect();
+        for col in 0..n {
+            let pivot = m[col].clone();
+            for row in m.iter_mut().skip(col + 1) {
+                let f = row[col] / pivot[col];
+                for (cell, p) in row.iter_mut().zip(&pivot).skip(col) {
+                    *cell -= f * p;
+                }
+            }
+        }
+        let mut x = vec![0.0; n];
+        for row in (0..n).rev() {
+            let known: f64 = (row + 1..n).map(|k| m[row][k] * x[k]).sum();
+            x[row] = (m[row][n] - known) / m[row][row];
+        }
+        u.iter().zip(&x).map(|(a, b)| a * b).sum()
+    }
+
+    fn smooth() -> Settings {
+        Settings {
+            sampling: Sampling::Smooth,
+            ..Settings::default()
+        }
+    }
+
+    #[test]
+    fn sampling_reads_its_names() {
+        assert_eq!("smooth".parse(), Ok(Sampling::Smooth));
+        assert_eq!("correlated".parse(), Ok(Sampling::Correlated));
+        assert_eq!("".parse(), Ok(Sampling::Correlated));
+        assert!("jerky".parse::<Sampling>().is_err());
+        assert_eq!(Settings::default().sampling, Sampling::Correlated);
+    }
+
+    #[test]
+    fn smooth_samples_change_a_little_a_step() {
+        let steps = 56;
+        let sequence = vec![Command::new(1.0, 0.1); steps];
+        let mut controls = vec![Command::default(); steps];
+        // Mean |change a step| and the spread at the first and last step, over many samples.
+        let mut stats = |s: &Settings| {
+            let mut rng = Rng::new(7);
+            let (mut jump, mut first, mut last) = (0.0, 0.0, 0.0);
+            let n = 4000;
+            for _ in 0..n {
+                sample_into(s, &mut rng, &sequence, &mut controls);
+                jump += controls
+                    .windows(2)
+                    .map(|w| (w[1].steer - w[0].steer).abs())
+                    .sum::<f64>()
+                    / (steps - 1) as f64;
+                first += (controls[0].steer - 0.1).powi(2);
+                last += (controls[steps - 1].steer - 0.1).powi(2);
+            }
+            let n = f64::from(n);
+            (jump / n, (first / n).sqrt(), (last / n).sqrt())
+        };
+        let (jump_ar1, _, last_ar1) = stats(&Settings::default());
+        let s = smooth();
+        let (jump, first, last) = stats(&s);
+        let step = s.steer_rate_std * s.model_dt;
+        // Each change is one white step: E|N(0, step²)| = step x sqrt(2 / pi).
+        let want = step * (2.0 / std::f64::consts::PI).sqrt();
+        assert!((jump - want).abs() < 0.05 * want, "{jump} vs {want}");
+        assert!(jump < 0.5 * jump_ar1, "smooth {jump} vs AR(1) {jump_ar1}");
+        // The spread grows as a random walk's: step at the first, step x sqrt(56) at the end.
+        assert!((first - step).abs() < 0.05 * step, "{first}");
+        let end = step * (steps as f64).sqrt();
+        assert!((last - end).abs() < 0.05 * end, "{last} vs {end}");
+        // About as wide as the champion's at the horizon's end, so MPPI still explores.
+        assert!(last > 0.8 * last_ar1, "{last} vs {last_ar1}");
+    }
+
+    #[test]
+    fn smooth_control_cost_is_the_random_walks_precision() {
+        let u = [0.05, 0.08, 0.1, 0.06, 0.02];
+        let e = [0.01, 0.015, 0.03, 0.02, 0.025];
+        let sequence: Vec<Command> = u.iter().map(|&v| Command::new(0.0, v)).collect();
+        let sample: Vec<Command> = u
+            .iter()
+            .zip(&e)
+            .map(|(&v, &n)| Command::new(0.0, v + n))
+            .collect();
+        let s = smooth();
+        let step = s.steer_rate_std * s.model_dt;
+        let want = s.gamma * brute_force_walk(&u, &e, step);
+        let got = control_cost(&s, &sequence, &sample);
+        assert!(
+            (got - want).abs() < 1e-9 * want.abs().max(1.0),
+            "{got} vs {want}"
+        );
+        // steer_gamma weighs it, as with the champion's noise.
+        let calm = Settings {
+            steer_gamma: Some(0.05),
+            ..smooth()
+        };
+        let calm_want = 0.05 * brute_force_walk(&u, &e, step);
+        let calm_got = control_cost(&calm, &sequence, &sample);
+        assert!((calm_got - calm_want).abs() < 1e-9 * calm_want.abs().max(1.0));
+        // No noise, no cost.
+        assert_eq!(control_cost(&s, &sequence, &sequence), 0.0);
+    }
+
+    #[test]
+    fn smooth_sampling_still_turns_toward_the_path() {
+        let model = Driven {
+            ego: Ego::default(),
+            car: IdealModel::default(),
+        };
+        let settings = Settings {
+            batch_size: 500,
+            threads: 2,
+            ..smooth()
         };
         let mut opt = Optimizer::new(model, settings, critics());
         let path: Vec<Pose> = (0..=60)

@@ -181,6 +181,12 @@ def test_ours_plans_the_lanes_centre_where_the_world_has_a_lane_map():
     assert lane_route(world='road', stack='best') == ''
     assert lane_route(world='road', path='lattice_rs_strong') == ''
 
+    # TODO 214: path:=lane_jerk passes with the jerk-limited QP; the others the cosine.
+    def pass_shape(**args):
+        return included(started(SIM, **args))['navigation.launch.py']['lane_pass_shape']
+    assert pass_shape(world='road', path='lane_jerk') == 'jerk'
+    assert pass_shape(world='road') == ''
+
 
 def test_the_global_costmap_is_made_of_chunks_only_where_there_are_chunks(tmp_path):
     # TODO 175: costmap_chunks:=auto is the campus's chunks (pixi run campus makes them);
@@ -280,6 +286,15 @@ def test_run_info_says_which_algorithms_the_run_uses():
         'sim world:=road', 'lqr', True, True)
     # kiss_ekf:=true runs KISS-ICP too, and says so.
     assert info['kiss_icp'] and info['kiss_ekf']
+
+
+def test_odom_lidar_picks_kinematic_icp_in_kiss_icps_place():
+    # TODO 216: pose:=kinematic_ekf, Kinematic-ICP's idea in Rust; else KISS-ICP.
+    sent = included(started(SIM, world='road', pose='kinematic_ekf'))
+    assert 'kinematic_icp.launch.py' in sent and 'kiss_icp.launch.py' not in sent
+    assert sent['localization.launch.py']['kiss_ekf'] == 'true'
+    with pytest.raises(ValueError, match='odom_lidar'):
+        started(SIM, world='road', kiss_icp='true', odom_lidar='loam')
 
 
 def test_every_node_runs_on_simulated_time():

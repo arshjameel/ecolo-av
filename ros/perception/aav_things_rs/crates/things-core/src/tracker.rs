@@ -26,13 +26,27 @@
 //! than `still_speed`), for `keep` s after it was last seen; `keep_blind` s inside
 //! `blind_range` m of the car, where the lidar can't see it. A thing seen fewer times is
 //! dropped after `keep_tentative` s.
+//!
+//! **A motion model per kind** (`per_kind`, TODO 217, a challenger; Fast-Poly, Poly-MOT
+//! and OC-SORT's ideas, MIT): the state stays [x, y, vx, vy], but how it may change
+//! depends on what the cameras named it.
+//!
+//! | Kind | Its acceleration's noise |
+//! |---|---|
+//! | a vehicle (car, truck, bus, motorcycle) | a bicycle's: `car_along` along its heading (speed up, brake), `car_across` across it (it turns, it never slides) |
+//! | a person | `person_accel`, any way: people stop and turn on the spot |
+//! | unknown | `accel_noise`, as the champion |
+//!
+//! And a thing found again after `refind_gap` s unseen re-fits its speed from its last
+//! `sightings` places (OC-SORT's observation-centric re-update), not from where it
+//! coasted to.
 
 use std::cmp::Ordering;
 
 use ego_core::hypot;
 use nalgebra::{Matrix2, Matrix4, RowVector4, SMatrix, Vector2, Vector4};
 
-use crate::{groups::Group, UNKNOWN};
+use crate::{groups::Group, looks::VEHICLES, UNKNOWN};
 
 /// The tracker's settings.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -73,6 +87,21 @@ pub struct TrackerShape {
     pub small_speed: f64,
     /// m: a small thing's middle may wander this much a look.
     pub small_slack: f64,
+    /// A motion model per kind, and speeds re-fitted on re-finding (TODO 217); false: one
+    /// constant-velocity model for all, the champion.
+    pub per_kind: bool,
+    /// m/s²: one sigma, a vehicle's acceleration along its heading.
+    pub car_along: f64,
+    /// m/s²: ... and across it.
+    pub car_across: f64,
+    /// m/s: slower, a vehicle's heading isn't known: `car_along` every way.
+    pub car_heading_speed: f64,
+    /// m/s²: one sigma, a person's acceleration, any way.
+    pub person_accel: f64,
+    /// s unseen: found again after this, its speed is re-fitted from its sightings.
+    pub refind_gap: f64,
+    /// Places kept a thing, for the re-fit.
+    pub sightings: usize,
 }
 
 impl Default for TrackerShape {
@@ -96,6 +125,13 @@ impl Default for TrackerShape {
             small_size: 0.8,
             small_speed: 3.5,
             small_slack: 0.3,
+            per_kind: false,
+            car_along: 2.0,
+            car_across: 0.5,
+            car_heading_speed: 1.0,
+            person_accel: 2.0,
+            refind_gap: 0.5,
+            sightings: 5,
         }
     }
 }
@@ -125,6 +161,8 @@ pub struct Track {
     pub coasting: bool,
     /// Its name from the cameras, or [`UNKNOWN`].
     pub kind: String,
+    /// Its last places seen: (s, x, y), the oldest first (`TrackerShape::sightings`).
+    pub sightings: Vec<[f64; 3]>,
 }
 
 impl Track {
@@ -174,6 +212,83 @@ pub fn predict(
         q[(b, b)] = q11;
     }
     (f * x, f * p * f.transpose() + q)
+}
+
+/// The acceleration's covariance [xx, xy, yy] (m²/s⁴) for a thing of `kind` moving at
+/// (vx, vy): a vehicle's long along its heading and narrow across it, a person's round
+/// and wide, an unknown's the champion's (TODO 217).
+#[must_use]
+pub fn accel_covariance(kind: &str, vx: f64, vy: f64, shape: &TrackerShape) -> [f64; 3] {
+    if VEHICLES.contains(&kind) {
+        let along = shape.car_along * shape.car_along;
+        let speed = hypot(vx, vy);
+        if speed < shape.car_heading_speed {
+            return [along, 0.0, along];
+        }
+        let across = shape.car_across * shape.car_across;
+        let (c, s) = (vx / speed, vy / speed);
+        return [
+            along * c * c + across * s * s,
+            (along - across) * c * s,
+            along * s * s + across * c * c,
+        ];
+    }
+    let a = if kind == "person" {
+        shape.person_accel
+    } else {
+        shape.accel_noise
+    };
+    [a * a, 0.0, a * a]
+}
+
+/// As [`predict`], with the acceleration's covariance `a` ([xx, xy, yy]) for any shape of
+/// noise (TODO 217).
+#[must_use]
+pub fn predict_with(
+    x: &Vector4<f64>,
+    p: &Matrix4<f64>,
+    dt: f64,
+    a: [f64; 3],
+) -> (Vector4<f64>, Matrix4<f64>) {
+    let mut f = Matrix4::identity();
+    f[(0, 2)] = dt;
+    f[(1, 3)] = dt;
+    let (k00, k01, k11) = (dt * dt * dt * dt / 4.0, dt * dt * dt / 2.0, dt * dt);
+    let [axx, axy, ayy] = a;
+    let block = Matrix2::new(axx, axy, axy, ayy);
+    let mut q = Matrix4::zeros();
+    q.fixed_view_mut::<2, 2>(0, 0).copy_from(&(block * k00));
+    q.fixed_view_mut::<2, 2>(0, 2).copy_from(&(block * k01));
+    q.fixed_view_mut::<2, 2>(2, 0).copy_from(&(block * k01));
+    q.fixed_view_mut::<2, 2>(2, 2).copy_from(&(block * k11));
+    (f * x, f * p * f.transpose() + q)
+}
+
+/// The speed (vx, vy) through `sightings` (s, x, y) by least squares, and its variance
+/// a direction for places known to `position_noise` m; `None` under 3 or all at once.
+#[must_use]
+pub fn fitted_speed(sightings: &[[f64; 3]], position_noise: f64) -> Option<([f64; 2], f64)> {
+    if sightings.len() < 3 {
+        return None;
+    }
+    let n = sightings.len() as f64;
+    let (mt, mx, my) = sightings.iter().fold((0.0, 0.0, 0.0), |(t, x, y), s| {
+        (t + s[0] / n, x + s[1] / n, y + s[2] / n)
+    });
+    let (mut stt, mut stx, mut sty) = (0.0, 0.0, 0.0);
+    for s in sightings {
+        let dt = s[0] - mt;
+        stt += dt * dt;
+        stx += dt * (s[1] - mx);
+        sty += dt * (s[2] - my);
+    }
+    if stt <= 1e-9 {
+        return None;
+    }
+    Some((
+        [stx / stt, sty / stt],
+        position_noise * position_noise / stt,
+    ))
 }
 
 /// The state and covariance after a linear measurement `z = h x` (noise `r`); `None` if
@@ -280,6 +395,24 @@ impl Tracker {
             let (t, g) = (&mut self.tracks[ti], &groups[gi]);
             if let Some((x, p)) = update(&t.x, &t.p, &Vector2::new(g.x, g.y), &h, &r) {
                 (t.x, t.p) = (x, p);
+            }
+            let gap = now - t.last_seen;
+            t.sightings.push([now, g.x, g.y]);
+            if t.sightings.len() > sh.sightings {
+                t.sightings.remove(0);
+            }
+            // Found again: its speed from where it was seen, not where it coasted to.
+            if sh.per_kind && gap >= sh.refind_gap {
+                if let Some((v, var)) = fitted_speed(&t.sightings, sh.position_noise) {
+                    t.x[2] = v[0];
+                    t.x[3] = v[1];
+                    let mut p = Matrix4::zeros();
+                    p.fixed_view_mut::<2, 2>(0, 0)
+                        .copy_from(&t.p.fixed_view::<2, 2>(0, 0));
+                    p[(2, 2)] = var;
+                    p[(3, 3)] = var;
+                    t.p = p;
+                }
             }
             // The outline: a little of each new look, so a half-seen side doesn't jump it.
             t.length += 0.3 * (g.length - t.length);
@@ -416,7 +549,7 @@ impl Tracker {
             .filter(|t| t.seen >= self.shape.confirm)
             .map(|t| {
                 let (x, p) = if dt > 0.0 {
-                    predict(&t.x, &t.p, dt, self.shape.accel_noise)
+                    self.predict_track(t, dt)
                 } else {
                     (t.x, t.p)
                 };
@@ -434,12 +567,23 @@ impl Tracker {
         if let Some(time) = self.time {
             let dt = now - time;
             if dt > 0.0 {
-                for t in &mut self.tracks {
-                    (t.x, t.p) = predict(&t.x, &t.p, dt, self.shape.accel_noise);
+                for i in 0..self.tracks.len() {
+                    let moved = self.predict_track(&self.tracks[i], dt);
+                    (self.tracks[i].x, self.tracks[i].p) = moved;
                 }
             }
         }
         self.time = Some(now);
+    }
+
+    /// `t` moved on `dt` s: the champion's model, or its kind's (`per_kind`).
+    fn predict_track(&self, t: &Track, dt: f64) -> (Vector4<f64>, Matrix4<f64>) {
+        if self.shape.per_kind {
+            let a = accel_covariance(&t.kind, t.x[2], t.x[3], &self.shape);
+            predict_with(&t.x, &t.p, dt, a)
+        } else {
+            predict(&t.x, &t.p, dt, self.shape.accel_noise)
+        }
     }
 
     fn start(&mut self, g: &Group, now: f64) -> Track {
@@ -457,6 +601,7 @@ impl Tracker {
             radar: false,
             coasting: false,
             kind: UNKNOWN.to_string(),
+            sightings: vec![[now, g.x, g.y]],
         };
         self.next_id += 1;
         track

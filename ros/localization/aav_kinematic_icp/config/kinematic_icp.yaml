@@ -1,0 +1,19 @@
+# kinematic_icp (aav_kinematic_icp, TODO 216). The lidar's mount and the car's outline come
+# from vehicle.yaml through the launch file, never from here.
+kinematic_icp:
+  ros__parameters:
+    min_height: 0.3            # m above base_link: lower is the ground, cut out (as kiss_icp's)
+    min_range: 1.0             # m flat from base_link
+    max_range: 50.0            # m: the map forgets beyond it too
+    voxel_size: 0.5            # m: the map's voxels; the scan is thinned at half of it
+    max_points_per_voxel: 20   # KISS-ICP's default
+    lidar_period: 0.1          # s: 10 Hz, for counting the clouds dropped
+    # The twist's covariance, 1 sigma, as kiss_icp's (ekf_local reads it with kiss_ekf:=true).
+    # Refit on a bag from the car.
+    twist_linear_sd: 0.15      # m/s
+    twist_angular_sd: 0.01     # rad/s
+    # The wheels' step: the prior each scan is matched from, weighed against the points.
+    wheel_topic: /vehicle/odom # ekf_local's own wheels (odom0), never its output: no loop
+    wheel_timeout: 0.5         # s: older, the last step is held (as KISS-ICP)
+    wheel_rho_sd: 0.05         # m a step, 1 sigma
+    wheel_theta_sd: 0.02       # rad a step, 1 sigma

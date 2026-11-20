@@ -12,7 +12,10 @@ use crate::{
     pairwise_sum,
     radar::{clusters, RadarPoint},
     tf_wait::{decide, Look, Step, WaitShape, Waiting},
-    tracker::{ground_radial_speed, predict, RadarCluster, Tracker, TrackerShape},
+    tracker::{
+        accel_covariance, fitted_speed, ground_radial_speed, predict, RadarCluster, Tracker,
+        TrackerShape,
+    },
     Pose2, UNKNOWN,
 };
 use nalgebra::{Matrix4, Vector4};
@@ -805,4 +808,98 @@ fn the_pairwise_sum_adds_as_numpy_does() {
     assert_eq!(pairwise_sum(&[1.0, 2.0, 3.0]), 6.0);
     let many: Vec<f64> = (0..300).map(|i| f64::from(i) * 0.1).collect();
     assert!(close(pairwise_sum(&many), 4485.0, 1e-9));
+}
+
+// --- a motion model per kind (TODO 217) ---
+
+fn per_kind() -> TrackerShape {
+    TrackerShape {
+        per_kind: true,
+        ..TrackerShape::default()
+    }
+}
+
+#[test]
+fn a_cars_noise_is_long_along_its_heading_and_narrow_across() {
+    let sh = per_kind();
+    // Driving along x at 5 m/s: 2² along, 0.5² across.
+    let [xx, xy, yy] = accel_covariance("car", 5.0, 0.0, &sh);
+    assert!(close(xx, 4.0, 1e-12) && close(xy, 0.0, 1e-12) && close(yy, 0.25, 1e-12));
+    // Along the diagonal: the same, turned.
+    let [xx, xy, yy] = accel_covariance("truck", 3.0, 3.0, &sh);
+    assert!(close(xx, 2.125, 1e-12) && close(xy, 1.875, 1e-12) && close(yy, 2.125, 1e-12));
+    // Too slow for a heading: round. A person: round and wider; unknown: the champion's.
+    assert_eq!(accel_covariance("car", 0.5, 0.0, &sh), [4.0, 0.0, 4.0]);
+    assert_eq!(accel_covariance("person", 1.0, 0.0, &sh), [4.0, 0.0, 4.0]);
+    assert_eq!(accel_covariance(UNKNOWN, 1.0, 0.0, &sh), [2.25, 0.0, 2.25]);
+}
+
+#[test]
+fn a_coasting_car_stays_in_its_lane_and_a_person_spreads_round() {
+    let mut cars = Tracker::new(per_kind());
+    for k in 0..30 {
+        let t = f64::from(k) * 0.1;
+        cars.step(t, &[seen(10.0 + 5.0 * t, 0.0)], [0.0, 0.0]);
+        cars.rename(|_| "car".to_string());
+    }
+    let car = &cars.at(4.0)[0];
+    // Unseen for a second: sure of its place across the road, less along it.
+    assert!(car.p[(1, 1)] < 0.5 * car.p[(0, 0)], "{:?}", car.p);
+    let mut people = Tracker::new(per_kind());
+    for k in 0..30 {
+        let t = f64::from(k) * 0.1;
+        people.step(t, &[seen(10.0 + 1.2 * t, 0.0)], [0.0, 0.0]);
+        people.rename(|_| "person".to_string());
+    }
+    let person = &people.at(4.0)[0];
+    assert!(
+        close(person.p[(1, 1)] / person.p[(0, 0)], 1.0, 0.2),
+        "{:?}",
+        person.p
+    );
+}
+
+#[test]
+fn a_thing_found_again_refits_its_speed_from_its_sightings() {
+    // Seen moving at 1 m/s, then hidden 1 s while it turned: found again moving along y.
+    let mut tracker = Tracker::new(per_kind());
+    for k in 0..10 {
+        let t = f64::from(k) * 0.1;
+        tracker.step(t, &[seen(10.0 + t, 0.0)], [0.0, 0.0]);
+    }
+    for k in 0..3 {
+        let t = 2.0 + f64::from(k) * 0.1;
+        tracker.step(t, &[seen(11.0, 0.5 + (t - 2.0))], [0.0, 0.0]);
+    }
+    let thing = &tracker.tracks[0];
+    assert_eq!(thing.sightings.len(), 5);
+    // The fit runs through the last 5 places; its speed points up the y axis now.
+    let (v, var) = fitted_speed(&thing.sightings, 0.15).expect("a fit");
+    assert!(var > 0.0 && v[1] > 0.0);
+    // And without per_kind the champion keeps its Kalman speed (no re-fit).
+    let mut champion = Tracker::default();
+    for k in 0..10 {
+        let t = f64::from(k) * 0.1;
+        champion.step(t, &[seen(10.0 + t, 0.0)], [0.0, 0.0]);
+    }
+    champion.step(2.0, &[seen(11.0, 0.5)], [0.0, 0.0]);
+    let mut refit = Tracker::new(per_kind());
+    for k in 0..10 {
+        let t = f64::from(k) * 0.1;
+        refit.step(t, &[seen(10.0 + t, 0.0)], [0.0, 0.0]);
+    }
+    refit.step(2.0, &[seen(11.0, 0.5)], [0.0, 0.0]);
+    let (a, b) = (&champion.tracks[0], &refit.tracks[0]);
+    let fit = fitted_speed(&b.sightings, 0.15).expect("a fit").0;
+    assert!(close(b.x[2], fit[0], 1e-12) && close(b.x[3], fit[1], 1e-12));
+    assert!((a.x[2] - b.x[2]).abs() > 1e-6 || (a.x[3] - b.x[3]).abs() > 1e-6);
+}
+
+#[test]
+fn a_fit_needs_three_places_at_different_times() {
+    assert!(fitted_speed(&[[0.0, 0.0, 0.0], [1.0, 1.0, 0.0]], 0.15).is_none());
+    assert!(fitted_speed(&[[1.0, 0.0, 0.0]; 3], 0.15).is_none());
+    let (v, _) =
+        fitted_speed(&[[0.0, 0.0, 0.0], [1.0, 2.0, 1.0], [2.0, 4.0, 2.0]], 0.15).expect("a fit");
+    assert!(close(v[0], 2.0, 1e-12) && close(v[1], 1.0, 1e-12));
 }

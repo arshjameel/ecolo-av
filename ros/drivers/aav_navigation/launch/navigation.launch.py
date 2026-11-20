@@ -59,6 +59,7 @@ Switches:
                           aav_mpc_lag). aav_track's and mpc_lag_rs drive forwards only
   mppi_lag_steer_gamma:=0.05  mppi_lag's steering control cost (TODO 168)
   mppi_lag_batch:=1000        mppi_lag's samples a tick (empty: 2000; TODO 152)
+  mppi_lag_sampling:=smooth   mppi_lag samples the steering's change (TODO 212)
   live_swap:=true         aav_track's tracker can change while it runs
   map_correction:=slow    the follower's held map -> odom moves toward the newest slowly
                           (TODO 186)
@@ -74,13 +75,15 @@ Switches:
   voxels:=true            (with lidar:=true) aav_voxels' 0.25 m cubes instead of the scan,
                           for the costmap and the stop zone; voxels_impl:=rust for the
                           Rust node. screen_cubes:=true: the cubes for the screens only
+  ground:=patchwork       (with lidar:=true) the cubes over a ground plane a patch,
+                          ring by ring, the costmap on them (TODO 215, a challenger)
   kerbs:=true             (with lidar:=true) the Rust voxels node's step finder: the local
                           costmap's kerb_layer and the stop zone's steps source (TODO 119)
   behaviour:=true         the behaviour planner (aav_behaviour_rs; behaviour_impl:=python):
                           the states and a speed cap, in /world/road_ahead's limits; lane_map:=
                           a lanes.yaml for the road ahead's line
   lane_costs:=, lane_source:=, costmap_chunks:=, local_chunks:=true, lane_route:=,
-  lane_pass:=, lane_corners:=,
+  lane_pass:=, lane_corners:=, lane_pass_shape:=jerk,
   lane_graph:=            our costmap's lanes and chunks, our planner's lane-centre route
                           (TODO 148, 175; docs/own-costmap.md, docs/own-planner.md)
   things:=true            (with lidar:=true) aav_things_rs: the cubes as tracked things on
@@ -137,6 +140,14 @@ LOCAL = 'local_costmap.local_costmap.ros__parameters.'
 
 def flag(context, name):
     return LaunchConfiguration(name).perform(context).lower() == 'true'
+
+
+def check_lane_pass_shape(value):
+    """Return lane_pass_shape:= checked: 'cosine' (empty too) or 'jerk' (TODO 214)."""
+    value = value.strip().lower() or 'cosine'
+    if value not in ('cosine', 'jerk'):
+        raise ValueError(f'lane_pass_shape:={value}: cosine or jerk')
+    return value
 
 
 def check_lane_corners(value):
@@ -267,6 +278,11 @@ def nodes(context):
     things_impl = vehicle.check_things_impl(LaunchConfiguration('things_impl').perform(context))
     # The kerbs need the lidar; a world without one just runs without them.
     kerbs = flag(context, 'kerbs') and lidar
+    # TODO 215: ground:=patchwork, the ground a plane a patch (Patchwork++'s idea) in the
+    # Rust voxels node, so a lower kerb is a cube; the costmap then reads the cubes.
+    patchwork = vehicle.check_ground(LaunchConfiguration('ground').perform(context)) == \
+        'patchwork' and lidar
+    voxels = voxels or patchwork
     if (voxels or screen_cubes or things) and not lidar:
         raise ValueError('voxels:=true (and things:=true) needs lidar:=true: the cubes come '
                          'from the lidar')
@@ -406,10 +422,12 @@ def nodes(context):
         # voxels_impl:=rust: the Rust port, the same name and topics; it reads no
         # vehicle.yaml, so the car's numbers come with it.
         # kerbs:=true: only the Rust node finds steps, so it runs whatever voxels_impl says.
-        impl = 'rust' if kerbs else voxels_impl
+        impl = 'rust' if kerbs or patchwork else voxels_impl
         car = voxels_car(cfg) if impl == 'rust' else {}
         if kerbs:
             car['steps'] = True
+        if patchwork:
+            car['ground'] = 'patchwork'
         actions.append(Node(package=vehicle.VOXELS_IMPLS[impl], executable='voxels',
                             name='voxels', namespace='/', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
@@ -431,6 +449,10 @@ def nodes(context):
                                                          'things_background_below'
                                                      ).perform(context) or 0.0),
                                                  'names': flag(context, 'things_names'),
+                                                 # TODO 217: a motion model per kind.
+                                                 'per_kind': vehicle.check_things_tracker(
+                                                     LaunchConfiguration('things_tracker')
+                                                     .perform(context)) == 'per_kind',
                                                  'use_sim_time': use_sim_time}]))
     if ghost:
         # Its own file, then use_sim_time: the file doesn't set it, so the dict adds it.
@@ -466,6 +488,11 @@ def nodes(context):
             context).strip().lower() != 'false'
         settings['lanes']['corners'] = check_lane_corners(
             LaunchConfiguration('lane_corners').perform(context))
+        # TODO 214: the pass a jerk-limited QP at the car's top speed (a challenger).
+        if check_lane_pass_shape(LaunchConfiguration('lane_pass_shape').perform(
+                context)) == 'jerk':
+            settings['lanes']['pass_shape'] = 'jerk'
+            settings['lanes']['pass_speed'] = max_speed or 1.0
     topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS['own']
     actions.append(Node(
         package='aav_planner', executable='planner', name='planner', output='screen',
@@ -526,6 +553,10 @@ def nodes(context):
     batch = LaunchConfiguration('mppi_lag_batch').perform(context).strip()
     if batch:
         slew['batch_size'] = vehicle.check_mppi_batch(batch)
+    # TODO 212: mppi_lag samples the steering's change (smooth), a challenger.
+    sampling = LaunchConfiguration('mppi_lag_sampling').perform(context).strip()
+    if sampling:
+        slew['sampling'] = vehicle.check_mppi_lag_sampling(sampling)
     # The behaviour planner's speed cap is in /world/road_ahead's limits (TODO 233).
     if tracker == 'mpc_lag_rs':
         # aav_mpc_lag (Rust): aav_track's mpc_lag ported, a challenger beside it.
@@ -658,6 +689,11 @@ def generate_launch_description():
         DeclareLaunchArgument('global_window', default_value='0.0',
                               description='m: the global costmap a square rolling with the '
                                           'car (192: the 3 x 3 chunks; 0: the whole map)'),
+        DeclareLaunchArgument('things_tracker', default_value='',
+                              description='with things:=true: constant_velocity (empty too: '
+                                          "one model for all) or per_kind: a bicycle's noise "
+                                          "for a vehicle, a person's for a person, speeds "
+                                          're-fitted when found again (TODO 217, a challenger)'),
         DeclareLaunchArgument('things_background', default_value='true',
                               description='with things:=true: low cubes on the saved map '
                                           'are not things (TODO 175 step 5; the default '
@@ -683,6 +719,11 @@ def generate_launch_description():
                               description='true (with lidar:=true): the trial, aav_voxels: '
                                           "the costmap's lidar_layer and collision_monitor "
                                           'read 0.25 m cubes instead of the flat scan'),
+        DeclareLaunchArgument('ground', default_value='',
+                              description='with lidar:=true: plane (empty too: one road plane '
+                                          'a cloud) or patchwork, a plane a patch ring by ring '
+                                          'in the Rust voxels node, the costmap on its cubes '
+                                          '(TODO 215, a challenger)'),
         DeclareLaunchArgument('kerbs', default_value='false',
                               description='true (with lidar:=true): the Rust voxels node '
                                           'finds kerbs (steps in the ground) and the local '
@@ -756,6 +797,10 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           "(batch_size); empty: nav2.yaml's 2000. 1000, a "
                                           'challenger: half the work a tick (TODO 152)'),
+        DeclareLaunchArgument('mppi_lag_sampling', default_value='',
+                              description='with tracker:=mppi_lag: correlated (empty too: '
+                                          "the steering's noise AR(1)) or smooth (TODO 212, "
+                                          "a challenger: noise on the steering's change)"),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value='',
                               description="with tracker:=mppi_lag: its steering's control "
                                           "cost weight; empty: nav2.yaml's gamma (0.015, as "
@@ -808,6 +853,11 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle on the '
                                           'lane is passed by moving only its stretch left; '
                                           "false: the whole path is the lattice's"),
+        DeclareLaunchArgument('lane_pass_shape', default_value='',
+                              description='with lane_route: a pass round a parked obstacle '
+                                          'as a half cosine (empty, cosine: the default) or '
+                                          'jerk, a QP holding the lateral jerk (TODO 214, a '
+                                          'challenger)'),
         DeclareLaunchArgument('lane_corners', default_value='arc',
                               description="with lane_route: the lane line's corners, "
                                           'arc (circle arcs, the default) or clothoid '

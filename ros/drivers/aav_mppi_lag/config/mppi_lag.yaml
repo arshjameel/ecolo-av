@@ -22,7 +22,11 @@ mppi_lag:
                                 # 0.25 s). Nav2's is white (0): through a lagging steering
                                 # white noise averages away, every sample drives alike, and
                                 # MPPI lost the path on a slow car (docs/mppi-lag.md)
-    threads: 4                  # rollout threads: 3.1 ms a tick on an M4 Max; leaves the
+    steer_rate_std: 0.5         # rad/s: with sampling smooth (the launch's mppi_lag_sampling:=,
+                                # TODO 212) the steering's change a step is drawn, 0.5 x 0.05 s;
+                                # summed, 0.19 rad at the horizon's end. No sampling here: the
+                                # launch sets it (correlated by default)
+    threads: 4                 # rollout threads: 3.1 ms a tick on an M4 Max; leaves the
                                 # rest of the stack its cores (0: one per core)
     seed: 42
     use_costmap: true           # CostCritic and the path's clear points read the local costmap

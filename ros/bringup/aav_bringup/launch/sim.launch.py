@@ -110,6 +110,8 @@ bench's argument names:
                       jitter (TODO 168)
                       mppi_lag_batch:=1000: mppi_lag's samples a tick (empty: 2000),
                       a challenger: half the work a tick (TODO 152; steer:=mppi_lag_1k)
+                      mppi_lag_sampling:=smooth: mppi_lag samples the steering's
+                      change, so its commands come out smooth (TODO 212, a challenger)
                       lattice_moves:=smooth|smooth_fast: the lattice's trial moves,
                       curvature no faster than the steering turns (tools/lattice_smooth.py)
                       planner_search:=hybrid: ours runs Nav2's Hybrid-A* ported instead
@@ -241,6 +243,9 @@ bench's argument names:
                       takes its twist (vx, vyaw) beside the wheels and the IMU
                       (aav_localization config/ekf_local_kiss.yaml; docs/trials.md).
                       Default false: the local EKF on the wheels and the IMU alone
+  odom_lidar:=kinematic_icp  with kiss_icp or kiss_ekf: Kinematic-ICP's idea in Rust
+                      (aav_kinematic_icp, TODO 216, a challenger): one arc a step, the
+                      wheels its prior; the same topics as KISS-ICP
   lane_pose:=true     a trial (TODO 155): the lane finder as a pose sensor. lane_finder runs
                       (as lane:=true, without the lane follower) and lane_pose
                       (aav_lane_pose) turns its lines and the lane map (lane_map:=, else
@@ -416,11 +421,23 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'mppi_lag_batch': '', 'lane_costs': 'false',
-                  'lane_source': DEFAULT_LANE_SOURCE, 'lane_route': 'false',
+                  'mppi_lag_steer_gamma': '', 'mppi_lag_batch': '', 'mppi_lag_sampling': '',
+                  'lane_pass_shape': '', 'ground': '', 'odom_lidar': '', 'things_tracker': '',
+                  'lane_costs': 'false', 'lane_source': DEFAULT_LANE_SOURCE, 'lane_route': 'false',
                   'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
                   'local_chunks': 'false', 'lane_pose': 'false'}
+
+
+ODOM_LIDARS = ('kiss_icp', 'kinematic_icp')
+
+
+def check_odom_lidar(value):
+    """Return odom_lidar:= checked: kiss_icp (empty too) or kinematic_icp (TODO 216)."""
+    value = value.strip().lower() or ODOM_LIDARS[0]
+    if value not in ODOM_LIDARS:
+        raise ValueError(f'odom_lidar:={value}: one of {", ".join(ODOM_LIDARS)}')
+    return value
 
 
 # Each level switch's options, for its help text (config/stacks.yaml).
@@ -665,6 +682,7 @@ def launch_setup(context):
                                map=os.path.join(nav_share, 'maps', maps[world]),
                                radar=radar, lidar=lidar, ghost=flag['ghost'],
                                voxels=flag['voxels'], kerbs=flag['kerbs'],
+                               ground=vehicle.check_ground(arg('ground')),
                                screen_cubes=flag['screen_cubes'],
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
                                lidar_impl=vehicle.check_lidar_impl(arg('lidar_impl')),
@@ -687,6 +705,7 @@ def launch_setup(context):
                                    arg('plan_smoothing')),
                                mppi_lag_steer_gamma=arg('mppi_lag_steer_gamma'),
                                mppi_lag_batch=arg('mppi_lag_batch'),
+                               mppi_lag_sampling=arg('mppi_lag_sampling'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
@@ -723,12 +742,15 @@ def launch_setup(context):
                                behaviour_impl=vehicle.check_behaviour_impl(
                                    arg('behaviour_impl')),
                                things=str(flag['things']).lower(),
+                               things_tracker=vehicle.check_things_tracker(
+                                   arg('things_tracker')),
                                lane_map=lane_map, lane_costs=lane_costs,
                                lane_source=lane_source,
                                # Every model of the car: the car's loop unless told (TODO 163).
                                speed_loop=model_loop,
                                lane_route=lane_route, lane_pass=arg('lane_pass'),
                                lane_corners=arg('lane_corners'),
+                               lane_pass_shape=arg('lane_pass_shape'),
                                lane_graph=check_lane_graph(arg('lane_graph')),
                                local_chunks=arg('local_chunks')))
     if ndt:
@@ -743,8 +765,14 @@ def launch_setup(context):
     if kiss_icp:
         # Scored only (measure controllers --kiss-icp), unless kiss_ekf:=true: then
         # ekf_local reads its twist (measure controllers --kiss-ekf scores the difference).
-        actions.append(include(context, 'aav_kiss_icp', 'kiss_icp.launch.py',
-                               use_sim_time='true'))
+        # odom_lidar:=kinematic_icp: Kinematic-ICP's idea in Rust (TODO 216, a challenger),
+        # the same topics, so ekf_local can't tell; else KISS-ICP.
+        if check_odom_lidar(arg('odom_lidar')) == 'kinematic_icp':
+            actions.append(include(context, 'aav_kinematic_icp', 'kinematic_icp.launch.py',
+                                   use_sim_time='true'))
+        else:
+            actions.append(include(context, 'aav_kiss_icp', 'kiss_icp.launch.py',
+                                   use_sim_time='true'))
     if flag['watchdog']:
         # What this world has, and the camera only where something reads it: watching it
         # costs one more stream of pictures.
@@ -1120,6 +1148,10 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           '(TODO 152): 1000 (steer:=mppi_lag_1k); '
                                           "nav2.yaml's 2000 when nothing sets it"),
+        DeclareLaunchArgument('mppi_lag_sampling', default_value=stacks.CHOSEN,
+                              description='with tracker:=mppi_lag: correlated (the champion) '
+                                          "or smooth, noise on the steering's change (TODO "
+                                          '212, a challenger: steer:=mppi_lag_smooth)'),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value=stacks.CHOSEN,
                               description="with tracker:=mppi_lag: its steering's control cost "
                                           "weight (TODO 168): 0.05; nav2.yaml's gamma when "
@@ -1211,6 +1243,16 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle is '
                                           'passed by moving only its stretch left; false: '
                                           "the whole path is the lattice's (before 16 Nov)"),
+        DeclareLaunchArgument('ground', default_value=stacks.CHOSEN,
+                              description='plane (the champion: one road plane a cloud) or '
+                                          'patchwork: a plane a patch, ring by ring, so a lower '
+                                          'kerb is a cube, the costmap on the cubes (TODO 215, '
+                                          'a challenger: kerbs:=patchwork)'),
+        DeclareLaunchArgument('lane_pass_shape', default_value=stacks.CHOSEN,
+                              description='with lane_route: the pass round a parked obstacle, '
+                                          'cosine (the default) or jerk, a QP holding the '
+                                          'lateral jerk (TODO 214, a challenger: '
+                                          'path:=lane_jerk)'),
         DeclareLaunchArgument('lane_corners', default_value='arc',
                               description="with lane_route: the lane line's corners, "
                                           'arc (circle arcs, the default) or clothoid '
@@ -1259,6 +1301,15 @@ def generate_launch_description():
         DeclareLaunchArgument('kiss_icp', default_value='false',
                               description='KISS-ICP lidar odometry, scored only (a world '
                                           'with the lidar; pixi install --locked -e kiss)'),
+        DeclareLaunchArgument('things_tracker', default_value=stacks.CHOSEN,
+                              description='with things:=true: constant_velocity (the champion) '
+                                          'or per_kind, a motion model per kind (TODO 217, a '
+                                          'challenger: behaviour:=on_per_kind)'),
+        DeclareLaunchArgument('odom_lidar', default_value=stacks.CHOSEN,
+                              description='with kiss_icp:=true or kiss_ekf:=true: kiss_icp (the '
+                                          'champion) or kinematic_icp, lidar odometry that '
+                                          "knows the car can't slide sideways, the wheels its "
+                                          'prior (TODO 216, a challenger: pose:=kinematic_ekf)'),
         DeclareLaunchArgument('kiss_ekf', default_value=stacks.CHOSEN,
                               description='a trial: KISS-ICP (kiss_icp:=true implied) and its '
                                           'twist into ekf_local, beside the wheels and IMU. '

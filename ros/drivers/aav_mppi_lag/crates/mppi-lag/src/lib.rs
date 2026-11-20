@@ -73,7 +73,7 @@ pub use lag::{Actuators, Gear, LagModel, SpeedLoop};
 pub use lane::{Edges, Lane, LanePoint};
 pub use map_correction::{Correction, MapCorrection, Shift, SlewLimits};
 pub use model::{CarModel, Command, Observation, Pose};
-pub use optimizer::{Optimizer, Plan, Scene, Settings};
+pub use optimizer::{Optimizer, Plan, Sampling, Scene, Settings, UnknownSampling};
 pub use path::{GlobalPath, Inversion};
 #[cfg(feature = "shared")]
 pub use shared::{NotPi, SharedModel, SharedState};
