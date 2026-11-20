@@ -33,7 +33,7 @@ the background; each merged with a real merge (Ben's history stays).
 | 7 | ✅ The last Python nodes to Rust (merged 19 Nov) | Rust first |
 | 8 | ✅ The challengers built (merged 19 Nov) | 212, 214-217 |
 | 9 | 🧪 **Clean-up** (20 Nov, on a branch): the last of Nav2 (232), Ravensim's old names (241), the leftovers checked (242); the Python twins of gps_heading, localization_health, behaviour, things and aav_safety's five nodes removed (`save/python-*` tags); `docs/codemap.md`. Left: the Python ego, io_mux, lidar, camera_stream, rc, drive_to_point, stop_sign and lane_finder nodes (their launch files, configs or tests still lean on them), and 176 | 232, 241, 242, 176 |
-| test | **One full `pixi run test`** on everything | |
+| test | ✅ **One full `pixi run test`** on everything: 2,185 tests, 0 failures (20 Nov); `main` pushed | |
 
 ### Stage 2: score the algorithms together
 
