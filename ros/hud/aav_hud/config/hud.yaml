@@ -13,6 +13,7 @@ hud:
     source_topic: /system/source                          # aav_interfaces/msg/DataSource, latched: the SIMULATED banner
     watchdog_topic: /safety/sensor_watchdog/state         # std_msgs/msg/String: the sensor watchdog's verdict, a banner unless OK
     output_mux_topic: /safety/output_mux/state            # std_msgs/msg/String: the output mux's gate, OPEN / WAIT / STOP: the GO / STOP panel
+    self_test_topic: /safety/self_test/status             # diagnostic_msgs/msg/DiagnosticStatus: the boot self-test, a small READY or a NOT READY banner (none heard: nothing)
     trace_topic: /ego/trace                               # nav_msgs/msg/Path, base_link: the squiggly line's bold line (what the car WILL do)
     plan_ahead_topic: /ego/plan_ahead                     # nav_msgs/msg/Path, base_link: its faint line (what the planner WANTS)
     stop_point_topic: /ego/stop_point                     # geometry_msgs/msg/PoseStamped, base_link: where a full brake now stops the car

@@ -14,6 +14,7 @@
 //! | [`estop`] | the e-stop button: five `true`s, 0.1 s apart, never `false` |
 //! | [`heartbeat`] | `/hud/heartbeat` to the sensor watchdog: 10 Hz while the screen draws |
 //! | [`watchdog`] | the sensor watchdog's verdict, as a banner (the map window's too) |
+//! | [`self_test`] | the boot self-test's answer: a small READY, or a NOT READY / SILENT banner |
 //! | [`gate`] | may the car move? GO / WAIT / STOP and the one main reason: the e-stop, the output mux, the watchdog |
 //! | [`things`] | the things near the car (`/world/things`), named by the camera: kind, words, colour, where in base_link |
 //! | [`state`] | everything above, as one value the screen draws |
@@ -41,6 +42,7 @@ pub mod picture;
 pub mod robot;
 pub mod screen;
 pub mod segments;
+pub mod self_test;
 pub mod silhouette;
 pub mod state;
 pub mod theme;

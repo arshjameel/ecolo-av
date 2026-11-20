@@ -7,7 +7,7 @@
 <!-- Generated from docs/testing-plan.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The testing plan</h1>
-<div class="meta">36 min read · 11 sections</div></header>
+<div class="meta">39 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -150,7 +152,7 @@ the day itself in <a href="car-day.html">Car day</a>; the checks after an instal
 </li>
 <li>
 <p><strong>A boot self-test</strong> at every start: every sensor, actuator and lock answers, or the car
-   <strong>refuses to arm</strong>. Parts exist; the one check that gates arming is to build (TODO 255).</p>
+   <strong>refuses to arm</strong>. Built 19 Nov (TODO 255, <code>aav_self_test_rs</code>); untested on the car.</p>
 </li>
 <li>
 <p><strong>Stands</strong>: speed up, slow down, steering lock to lock. Numbers into <code>vehicle.yaml</code>.</p>
@@ -389,12 +391,16 @@ the day itself in <a href="car-day.html">Car day</a>; the checks after an instal
 <td>every arm</td>
 <td>Built</td>
 </tr>
+<tr>
+<td><strong>The boot self-test</strong> (<code>boot_self_test</code>, <code>aav_self_test_rs</code>)</td>
+<td>everything below, in one READY / NOT READY</td>
+<td>always, next to the mux on the car</td>
+<td>Built 19 Nov (TODO 255); <strong>untested on the car</strong></td>
+</tr>
 </tbody>
 </table></div>
-<h3 id="what-is-missing">What is missing</h3>
-<p><strong>One check, at start-up, that covers the whole car and refuses to arm until it passes.</strong>
-Today each part is checked by a different command, by hand, and nothing stops a person
-arming a car whose lidar is silent.</p>
+<h3 id="the-boot-self-test-todo-255">The boot self-test (TODO 255)</h3>
+<p><strong>One check, at start-up, that covers the whole car and refuses to arm until it passes.</strong></p>
 <pre class="highlight"><code class="language-text"> power on ─▶ every computer up ─▶ BOOT SELF-TEST ─┬─ all ✅ ─▶ READY ─▶ a person arms
                                                    └─ any ❌ ─▶ NOT READY: says which; arming refused</code></pre>
 <div class="table-wrap"><table>
@@ -402,40 +408,60 @@ arming a car whose lidar is silent.</p>
 <tr>
 <th>It checks</th>
 <th>Pass</th>
-<th>Source today</th>
+<th>Reads</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Every sensor: lidar, IMU, GPS, wheels, each camera, radar</td>
-<td>at its rate, values in range, the IMU still reads gravity</td>
-<td>the preflight's sensor lines</td>
+<td>Every sensor</td>
+<td>the sensor watchdog speaks and doesn't say STOP: every sensor it watches at its rate (lidar, IMU, GPS, wheels, EKFs, cameras, HUD)</td>
+<td><code>/safety/sensor_watchdog/state</code></td>
 </tr>
 <tr>
 <td>Every actuator answers</td>
-<td>the spine's self-test passed; steering, brake and throttle report a state</td>
-<td><code>/vehicle/status</code>, <code>/vehicle/steering</code>, <code>/vehicle/brake</code></td>
+<td><code>actuators:=can</code>: the spine's status fresh, no steering, brake, throttle or CAN fault. Today's UART: the bridge's frames go out</td>
+<td><code>/vehicle/status</code>; <code>/control/car/link_frame</code></td>
 </tr>
 <tr>
 <td>Every lock is alive</td>
-<td>the e-stop path, the sensor watchdog, the geofence, the output gate, joy_alive each publishing</td>
-<td>their <code>/safety/*/state</code> topics</td>
+<td>the sensor watchdog, the geofence, the output gate each speaking; the stop zone running where navigation is</td>
+<td>their <code>/safety/*/state</code> topics; the ROS graph</td>
 </tr>
 <tr>
 <td>The clocks</td>
-<td>every computer within the limit of the Orin</td>
-<td><code>record-drive --check</code>'s <code>chronyc</code></td>
-</tr>
-<tr>
-<td>The person's stop</td>
-<td>the e-stop pressed once and seen, then released</td>
-<td>the after-install's e-stop row</td>
+<td>the IMU's, the GPS's and the wheels' stamps within 0.5 s of the Orin's</td>
+<td>their headers</td>
 </tr>
 </tbody>
 </table></div>
-<p>Proposed: a node beside <code>spine_bridge</code> publishes READY or NOT READY (and why, for the HUD and
-the debug page); <code>spine_bridge</code> refuses <code>/spine/arm</code> until READY, as it already does for the
-gate. It moves nothing: no actuator steps (that stays on stands). <strong>To build: TODO 255.</strong></p>
+<p>All passing for 2 s: <strong>READY</strong>. Any failing: **NOT READY - ** and each one, why.
+<code>/safety/self_test/status</code> (DiagnosticStatus; <code>ros2 topic echo</code>, Foxglove). Not on the
+HUD yet.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Who</th>
+<th>How it refuses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>actuators:=can</code></td>
+<td><code>spine_bridge</code> (<code>require_ready</code>, both languages) refuses <code>/spine/arm</code> until it said READY within 2 s; silence refuses too. Disarming and the e-stop never wait</td>
+</tr>
+<tr>
+<td><code>actuators:=uart</code> (today)</td>
+<td>nothing arms on that path (the UART bridge has no arm): READY is <strong>for the person</strong>, card 1</td>
+</tr>
+<tr>
+<td>Ravensim, the bench</td>
+<td>not run; their <code>spine_bridge</code> doesn't wait for it (<code>arm_when_open</code> arms them)</td>
+</tr>
+</tbody>
+</table></div>
+<p>It moves nothing: no actuator steps (that stays on stands). <strong>Gaps:</strong> the person's e-stop
+press stays a card 1 row; the spine's own self-test passes after one tick (TODO 0b, Arsh's
+firmware), so a fault-free status says only that no driver reported a fault yet.</p>
 </section>
 <section class="card"><h2 id="phase-a-the-car-on-stands">Phase A: the car on stands</h2>
 <p><strong>Goal:</strong> before the wheels touch the ground, every part answers, every number the stands can
@@ -722,7 +748,7 @@ between passes so the floor's slope cancels.</p>
 <td>position, so distance and speed</td>
 <td>independent of wheel slip and the wheel's size</td>
 <td><strong>can slide along a plain corridor</strong> (below)</td>
-<td><strong>To build</strong> in the hallway (TODO 256)</td>
+<td>On the car: built, <strong>untested</strong> (TODO 261); its pose in <code>car-test --hallway</code>: <strong>to build</strong> (TODO 256)</td>
 </tr>
 </tbody>
 </table></div>
@@ -794,10 +820,15 @@ here:</strong> a long, plain corridor looks the same all along. Along the hallwa
 </tr>
 </tbody>
 </table></div>
+<p>NDT on the car (TODO 261, built 19 Nov; <strong>untested on the car</strong>):</p>
+<pre class="highlight"><code class="language-sh">pixi run car orin ndt:=true ndt_map:=&lt;the hallway's .pcd&gt; [start_x:= start_y:= start_yaw:=]</code></pre>
+<p>It runs on the Orin (the machine file's <code>ndt</code> part, beside the lidar), as the sim runs it:
+from the start pose, scored only. Off by default; refused without its map or the lidar.
+<code>pose_source:=ndt</code> (NDT leads, the GPS checks) is allowed only with <code>ndt:=true</code> and
+<code>ndt_map:=</code>; the default stays <code>gps</code>.</p>
 <blockquote>
-<p>⚠️ <strong>To build (TODO 256 and 261):</strong> <code>car.launch.py</code> doesn't start NDT today (only the sim
-launch has <code>ndt:=true</code>), and <code>car-test --hallway</code> doesn't record NDT's pose. With no GPS
-indoors, <code>map-drive</code> places the map from the drive's start (it says so in its YAML).</p>
+<p>⚠️ <strong>To build (TODO 256):</strong> <code>car-test --hallway</code> doesn't record NDT's pose yet. With no
+GPS indoors, <code>map-drive</code> places the map from the drive's start (it says so in its YAML).</p>
 </blockquote>
 <h3 id="with-and-without-a-person-aboard">With and without a person aboard</h3>
 <p>The same brake stops a heavier car more slowly (a = F / m). In the car model, 150 kg aboard a
@@ -834,7 +865,7 @@ indoors, <code>map-drive</code> places the map from the drive's start (it says s
 <tr>
 <td>5</td>
 <td>Feed both to the <strong>adaptive brake</strong> (<code>adaptive_brake:=true</code>): it brakes harder when the car stops slower than the model, never above <code>safe_max</code></td>
-<td>Built <strong>in the sim only</strong> (<code>sim_adapter</code>); not on the car's brake path (TODO 258)</td>
+<td>Built in the sim (<code>sim_adapter</code>) and on the car's brake path (TODO 258: <code>legacy_uart_bridge</code>, after its pi loop; <a href="stopping.html#on-the-car-todo-258-19-nov">where and why</a>); <strong>untested on the car</strong></td>
 </tr>
 </tbody>
 </table></div>
@@ -995,7 +1026,7 @@ with multiple drives being merged together."</p>
 </tr>
 <tr>
 <td><strong>The same route each pass</strong></td>
-<td><code>--merge</code> keeps only what several passes saw</td>
+<td><code>map-area</code> can only judge what several passes looked at</td>
 </tr>
 <tr>
 <td><strong>Several passes of each area, at different times and days</strong></td>
@@ -1052,16 +1083,16 @@ with multiple drives being merged together."</p>
 <tr>
 <td>4</td>
 <td>Passes merged</td>
-<td><code>pixi run map-drive --merge &lt;A&gt; &lt;B&gt; --out maps/&lt;area&gt;</code></td>
-<td>one map; only points <strong>both</strong> drives saw within 25 cm</td>
-<td>Built, <strong>two drives only</strong>; more than two and the 2D maps: to build (TODO 250)</td>
+<td>inside <code>map-area</code> (ICP onto the first drive); or <code>pixi run map-drive --merge &lt;A&gt; &lt;B&gt; &lt;C&gt;... --out maps/&lt;area&gt;</code></td>
+<td>one map; the 2D maps merged too</td>
+<td>Built 19 Nov, 2 or more drives; 4-6 mm between Ravensim drives</td>
 </tr>
 <tr>
 <td>5</td>
 <td><strong>Occupancy across passes</strong></td>
-<td>to build</td>
+<td>inside <code>map-area</code> (<code>tools/passes.py</code>)</td>
 <td>static points kept, parked cars and people removed (below)</td>
-<td><strong>To build (TODO 259)</strong></td>
+<td><strong>Built 19 Nov (TODO 259)</strong>: a parked box in 1 of 3 sim drives: 2,550 points to 0, the walls kept; <strong>untested on real drives</strong></td>
 </tr>
 <tr>
 <td>6</td>
@@ -1087,9 +1118,9 @@ with multiple drives being merged together."</p>
 <tr>
 <td>—</td>
 <td>All of it, one command</td>
-<td>to build</td>
-<td>a campus area from its drives, with one report</td>
-<td><strong>To build (TODO 260)</strong></td>
+<td><code>pixi run map-area &lt;area&gt; &lt;drives...&gt;</code></td>
+<td>steps 1-5 and the chunks, <code>labels.yaml</code> for step 7, one <code>report.md</code></td>
+<td><strong>Built 19 Nov (TODO 260)</strong>; Ravensim only (<a href="maps-from-drives.html#many-drives-of-one-area">Maps from drives</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -1135,7 +1166,9 @@ one pass missed because a truck hid it. Occupancy counts properly:</p>
 </tr>
 </tbody>
 </table></div>
-<p>Published tools to learn from first (licences to check): Removert, ERASOR, DUFOMap.</p>
+<p>Built 19 Nov as <code>map-area</code>, from the ideas of Removert (CC BY-NC-SA 4.0), ERASOR (GPL-3.0)
+and DUFOMap (BSD-3-Clause): ideas only, no code. A thing seen by one pass only, never
+seen free, is kept and labelled <code>seen_in</code> for the editor.</p>
 <h3 id="phase-d-the-car-finds-itself-on-our-map">Phase D: the car finds itself on our map</h3>
 <p><strong>Goal:</strong> a failing GPS stops mattering.</p>
 <div class="table-wrap"><table>
@@ -1221,23 +1254,28 @@ and people</strong> apart, and a score that shows whether it improved (TODO 252)
 </thead>
 <tbody>
 <tr>
-<td>The detector (RF-DETR, Apache-2.0): cars, people, signs as boxes</td>
-<td>Built</td>
+<td>Open-vocabulary boxes: trees, buildings, poles, signs, cars (OWLv2, Apache-2.0)</td>
+<td>Built 19 Nov: <code>pixi run label-drive</code> (<a href="labelling.html">Labelling</a>)</td>
 </tr>
 <tr>
-<td>Trees and buildings</td>
-<td>To build: the detector doesn't know them</td>
+<td>Camera boxes onto lidar points, fused into <code>labels.yaml</code></td>
+<td>Built; Ravensim only. On the car: the camera-to-lidar calibration first (TODO 156)</td>
 </tr>
 <tr>
-<td>Camera boxes onto lidar points (camera-to-lidar calibration, TODO 156)</td>
-<td>To build</td>
+<td>A person fixes them</td>
+<td><code>pixi run map-edit</code> reads them (<code>source: camera</code>)</td>
+</tr>
+<tr>
+<td>Our small model, retrained after each drive</td>
+<td>Built: <code>pixi run label-train</code>, a point segmenter, ONNX</td>
 </tr>
 <tr>
 <td>The score after each drive</td>
-<td>To build</td>
+<td>Built: held-out frames; Ravensim's truth where it exists</td>
 </tr>
 </tbody>
 </table></div>
+<p>In Ravensim's campus (two lots): labels 73 % right, 50-77 % of what the lidar saw found.</p>
 <blockquote>
 <p>⚠️ <strong>Licences, if the work is ever commercial:</strong> the YOLO option is AGPL-3.0; the big public
 datasets (SemanticKITTI, nuScenes, Cityscapes) are non-commercial. Train on our own drives.</p>
@@ -1270,7 +1308,12 @@ datasets (SemanticKITTI, nuScenes, Cityscapes) are non-commercial. Train on our 
 </tr>
 </tbody>
 </table></div>
-<p><strong>Passes when</strong> a drive replayed in the twin scores within NDT's error of the real drive.</p>
+<p><code>pixi run twin-world &lt;map&gt;</code> builds it; <code>pixi run sim world:=maps/twins/&lt;name&gt;/twin.sdf</code>
+drives in it (<a href="labelling.html#the-twin-todo-253">Labelling</a>, built 19 Nov). Today: flat ground,
+labelled boxes as buildings, trees and posts; parked cars and what moved left out. Not yet:
+OpenStreetMap's outlines, kerbs, random parked cars.</p>
+<p><strong>Passes when</strong> a drive replayed in the twin scores within NDT's error of the real drive
+(stage 2: not yet tried).</p>
 </section>
 <section class="card"><h2 id="the-car-driving-itself">The car driving itself</h2>
 <p>Only on an area that has passed phase D, after phases A and B.</p>
@@ -1356,7 +1399,7 @@ Every card: <strong>an e-stop person</strong>, named before the start, hand on t
 <li>[ ] <code>pixi run doctor</code>, then <code>pixi run check car</code>: every topic at its rate</li>
 <li>[ ] The HUD and the debug page (key D) up</li>
 <li>[ ] Press the e-stop, see it, release it</li>
-<li>[ ] Today: by hand, the rows above. Once built (TODO 255): READY on the HUD</li>
+<li>[ ] <code>ros2 topic echo /safety/self_test/status</code>: <strong>READY</strong> (TODO 255; untested on the car). NOT READY: fix what it names first</li>
 <li><strong>Pass:</strong> all ✅; else don't arm. <strong>Save:</strong> nothing. <strong>Feeds:</strong> every session.</li>
 </ul>
 <h3 id="card-2-stands-phase-a">Card 2: stands (phase A)</h3>
@@ -1524,9 +1567,11 @@ Every card: <strong>an e-stop person</strong>, named before the start, hand on t
 </tbody>
 </table></div>
 <ul>
-<li>[ ] <code>pixi run map-drive bags/&lt;drive&gt;</code> for each pass; read each <code>report.md</code></li>
-<li>[ ] <code>pixi run map-drive --merge &lt;A&gt; &lt;B&gt; --out maps/&lt;area&gt;</code></li>
-<li>[ ] Later: occupancy across passes (TODO 259), labels (phase F), the editor (phase E)</li>
+<li>[ ] <code>pixi run map-area &lt;area&gt; bags/&lt;drive 1&gt; bags/&lt;drive 2&gt; bags/&lt;drive 3&gt;</code>: each
+      drive's map, merged, parked cars out; read <code>maps/&lt;area&gt;/report.md</code> and each
+      <code>drives/&lt;drive&gt;/report.md</code></li>
+<li>[ ] <code>pixi run map-edit maps/&lt;area&gt;</code>: check the <code>seen_in</code> labels, then approve</li>
+<li>[ ] Later: labels (phase F)</li>
 <li><strong>Pass:</strong> loop closures found or drift small; NDT on the map within 0.2 m of a good GPS.</li>
 <li><strong>Save:</strong> <code>maps/&lt;area&gt;/</code>. <strong>Feeds:</strong> card 9; the campus twin.</li>
 </ul>

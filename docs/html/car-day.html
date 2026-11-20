@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-day.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car day: the runbook</h1>
-<div class="meta">83 min read · 33 sections</div></header>
+<div class="meta">84 min read · 33 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -1392,8 +1394,8 @@ its TensorRT version).</p>
 </table></div>
 <p><strong>Stop point:</strong> our stack built on the Orin and the Motor Pi; the engine built (or why not).</p>
 <h3 id="4f-the-rust-nodes-are-the-ones-running">4f. The Rust nodes are the ones running</h3>
-<p>Since 16 Nov (Ben) four nodes run in <strong>Rust</strong> on the car by default; since 17 Nov six. The Python twins
-stay installed, one switch away. Check this each time you start <code>car.launch.py</code>.</p>
+<p>Since 16 Nov (Ben) four nodes run in <strong>Rust</strong> on the car by default; since 17 Nov six. Since
+20 Nov some have no Python twin left (below: "none"); the rest stay one switch away. Check this each time you start <code>car.launch.py</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1411,17 +1413,17 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>behaviour (with <code>behaviour:=true</code>)</td>
 <td><code>aav_behaviour_rs</code></td>
-<td><code>behaviour_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-behaviour</code>)</td>
 </tr>
 <tr>
 <td>sensor watchdog</td>
 <td><code>aav_watchdog_rs</code></td>
-<td><code>watchdog_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-safety-nodes</code>)</td>
 </tr>
 <tr>
 <td>localization_health</td>
 <td><code>aav_localization_health_rs</code></td>
-<td><code>localization_health_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-localization-health</code>)</td>
 </tr>
 <tr>
 <td>lidar_scan (the flat scan)</td>
@@ -1431,7 +1433,7 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>things (with <code>things:=true</code>)</td>
 <td><code>aav_things_rs</code></td>
-<td><code>things_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-things</code>)</td>
 </tr>
 <tr>
 <td>sensor mux + output mux (the ESP32's heartbeat; the Motor Pi alone too)</td>
@@ -1454,14 +1456,9 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <td><code>lane_finder_impl:=python</code></td>
 </tr>
 <tr>
-<td>control_interface, lane keeping (with the <code>lane</code> part; since 19 Nov)</td>
-<td><code>aav_lane_follower_rs</code></td>
-<td><code>lane_follower_impl:=python</code></td>
-</tr>
-<tr>
 <td>joy_alive (the joystick's check, wherever teleop runs)</td>
 <td><code>aav_joy_alive_rs</code></td>
-<td><code>joy_alive_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-safety-nodes</code>)</td>
 </tr>
 <tr>
 <td>stop_sign_watcher (the stop_signs part, next to the mux)</td>
@@ -1506,8 +1503,8 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 </tbody>
 </table></div>
 <p><strong>If a Rust node misbehaves:</strong> stop the car (e-stop), stop the launch, and start it again
-with that node's switch added to the same command, such as <code>... car.launch.py machine:=orin ... watchdog_impl:=python</code>.
-With the short form, put <code>--</code> before the switch: <code>~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python</code>
+with that node's switch added to the same command, such as <code>... car.launch.py machine:=orin ... ego_impl:=python</code>.
+With the short form, put <code>--</code> before the switch: <code>~/aav-jazzy/aav.sh car orin -- ego_impl:=python</code>
 (without <code>--</code>, Pixi stops: "received more arguments than expected"). One switch
 per node; the others stay Rust. Write down what you saw: it decides whether the Rust stays.</p>
 </section>

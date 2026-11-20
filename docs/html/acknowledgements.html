@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">27 min read · 9 sections</div></header>
+<div class="meta">31 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -279,13 +281,13 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>Pure Pursuit</strong>: R. C. Coulter, CMU-RI-TR-92-01, 1992; <strong>Regulated Pure Pursuit</strong>: S. Macenski et al., Autonomous Robots, 2023</td>
 <td>paper</td>
 <td>idea</td>
-<td><code>aav_track</code>, Nav2's RPP; <code>aav_lane_follower_rs</code>'s <code>lane_follower:=pure_pursuit</code> (on the camera's lane centre, with the car's lag)</td>
+<td><code>aav_track</code>, Nav2's RPP; <code>aav_lane_follower_rs</code>'s <code>lane_follower:=pure_pursuit</code> (removed 19 Nov, <code>save/lane-followers</code>) (on the camera's lane centre, with the car's lag)</td>
 </tr>
 <tr>
 <td><strong>Stanley</strong>: S. Thrun et al., "Stanley: The Robot that Won the DARPA Grand Challenge", J. Field Robotics, 2006</td>
 <td>paper</td>
 <td>idea</td>
-<td><code>aav_track</code>'s Stanley follower; <code>aav_lane_follower_rs</code>'s <code>lane_follower:=stanley</code> (heading and cross-track at the front axle, from the camera's lane centre)</td>
+<td><code>aav_track</code>'s Stanley follower; <code>aav_lane_follower_rs</code>'s <code>lane_follower:=stanley</code> (removed 19 Nov, <code>save/lane-followers</code>) (heading and cross-track at the front axle, from the camera's lane centre)</td>
 </tr>
 <tr>
 <td>LQR and MPC (textbook control)</td>
@@ -302,8 +304,8 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <tr>
 <td><strong>Clarabel</strong> (P. Goulart, Y. Chen; Oxford)</td>
 <td>Apache-2.0</td>
-<td>idea</td>
-<td>read and weighed for <code>aav_mpc_lag</code>'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (<code>aav_mpc_lag</code> README)</td>
+<td>idea, runs</td>
+<td>read and weighed for <code>aav_mpc_lag</code>'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (<code>aav_mpc_lag</code> README). Runs as a crate for the jerk-limited pass's QP (<code>aav_planner</code> <code>jerk_pass.rs</code>, TODO 214)</td>
 </tr>
 <tr>
 <td><strong>Flow matching</strong> and the diffusion planner's other ideas</td>
@@ -335,7 +337,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>The Kalman filter: R. E. Kalman, 1960</td>
 <td>paper</td>
 <td>idea</td>
-<td>the EKFs; the things tracker (<code>aav_things</code>); the hallway's IMU-with-wheels filter, speed and IMU bias (<code>aav_actuator_tests</code> <code>fusion.py</code>, TODO 248)</td>
+<td>the EKFs; the things tracker (<code>aav_things_rs</code>); the hallway's IMU-with-wheels filter, speed and IMU bias (<code>aav_actuator_tests</code> <code>fusion.py</code>, TODO 248)</td>
 </tr>
 <tr>
 <td><strong>The bootstrap</strong>: B. Efron, "Bootstrap Methods: Another Look at the Jackknife", Annals of Statistics, 1979</td>
@@ -395,7 +397,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>Open3D</strong>: Q.-Y. Zhou, J. Park, V. Koltun, 2018</td>
 <td>MIT</td>
 <td>runs</td>
-<td>KISS-SLAM's closure check; <code>map-drive --merge</code>'s ICP between two drives' maps</td>
+<td>KISS-SLAM's closure check; <code>map-drive --merge</code>'s and <code>map-area</code>'s ICP between drives' maps</td>
 </tr>
 <tr>
 <td><strong>Least-squares fit of two point sets</strong>: S. Umeyama, IEEE TPAMI, 1991 (after W. Kabsch, 1976)</td>
@@ -408,6 +410,24 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>public domain</td>
 <td>idea</td>
 <td><code>slam_map.utm</code>, checked against GeoConvert's numbers in <code>aav_hud</code>'s <code>earth.rs</code></td>
+</tr>
+<tr>
+<td><strong>Removert</strong>: G. Kim, A. Kim, "Remove, then Revert: Static Point Cloud Map Construction using Multiresolution Range Images", IROS 2020 (<code>irapkaist/removert</code>)</td>
+<td>CC BY-NC-SA 4.0</td>
+<td>idea</td>
+<td><code>map-area</code>'s occupancy across passes (TODO 259, <code>tools/passes.py</code>): a map point another drive sees through is gone. No code read or copied</td>
+</tr>
+<tr>
+<td><strong>ERASOR</strong>: H. Lim, S. Hwang, H. Myung, "ERASOR: Egocentric Ratio of Pseudo Occupancy-Based Dynamic Object Removal for Static 3D Point Cloud Map Building", RA-L 2021 (<code>LimHyungTae/ERASOR</code>)</td>
+<td>GPL-3.0</td>
+<td>idea</td>
+<td><code>tools/passes.py</code>: judge the column over each 2D cell, not single points; a car's points go up to a height (<code>--top</code>), what is above stays. No code read or copied</td>
+</tr>
+<tr>
+<td><strong>DUFOMap</strong>: D. Duberg, Q. Zhang, M. Jia, P. Jensfelt, "DUFOMap: Efficient Dynamic Awareness Mapping", RA-L 2024 (<code>KTH-RPL/dufomap</code>)</td>
+<td>BSD-3-Clause</td>
+<td>idea</td>
+<td><code>tools/passes.py</code>: space a drive saw empty is empty, kept a margin off what that drive saw occupied (the pose's and the sensor's error: <code>--tolerance</code>)</td>
 </tr>
 <tr>
 <td><strong>Occupancy grids</strong>: A. Elfes, "Using Occupancy Grids for Mobile Robot Perception and Navigation", Computer, 1989</td>
@@ -425,7 +445,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>AMCL (Nav2's <code>nav2_amcl</code>, from Player's amcl: A. Howard, B. Gerkey, K. Stoy)</td>
 <td>LGPL-2.1-or-later</td>
 <td>runs, ported</td>
-<td><code>amcl:=true</code>, a trial: stock with <code>amcl_impl:=stock</code>; ported to Rust as <code>aav_amcl_rs</code> (the default, TODO 231; same licence; its <code>PROVENANCE.md</code> lists the files)</td>
+<td><code>amcl:=true</code>, a trial: stock until 20 Nov (TODO 232); ported to Rust as <code>aav_amcl_rs</code> (the default, TODO 231; same licence; its <code>PROVENANCE.md</code> lists the files)</td>
 </tr>
 <tr>
 <td><strong>Monte Carlo localization and KLD sampling</strong>: D. Fox, W. Burgard, F. Dellaert, S. Thrun, AAAI 1999; D. Fox, IJRR 2003; S. Thrun, W. Burgard, D. Fox, <em>Probabilistic Robotics</em>, 2005</td>
@@ -487,7 +507,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>AB3DMOT</strong>: X. Weng, J. Wang, D. Held, K. Kitani, "3D Multi-Object Tracking: A Baseline and New Evaluation Metrics", IROS 2020</td>
 <td>paper</td>
 <td>idea</td>
-<td>the things' tracker: a constant-velocity Kalman filter per thing, greedy association (<code>aav_things</code>, and its Rust twin <code>aav_things_rs</code>)</td>
+<td>the things' tracker: a constant-velocity Kalman filter per thing, greedy association (<code>aav_things_rs</code>, and its Rust twin <code>aav_things_rs</code>)</td>
 </tr>
 <tr>
 <td><strong>NumPy</strong>'s pairwise summation (<code>loops_utils.h.src</code>)</td>
@@ -559,13 +579,13 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>ONNX Runtime</strong> (Microsoft)</td>
 <td>MIT</td>
 <td>runs</td>
-<td>the Rust detector (<code>aav_detector_rs</code>), and <code>tools/onnx_check.py</code> (<a href="onnx.html">ONNX</a>)</td>
+<td>the Rust detector (<code>aav_detector_rs</code>), the Rust diffusion worker (<code>aav_diffusion_rs</code>), <code>tools/onnx_check.py</code> and <code>onnx_measure.py</code>; its float16 converter makes the FP16 detector (<code>export_model.py --fp16</code>) (<a href="onnx.html">ONNX</a>)</td>
 </tr>
 <tr>
 <td><strong><code>ort</code></strong> crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime</td>
 <td>MIT or Apache-2.0</td>
 <td>runs</td>
-<td>ONNX Runtime from Rust: <code>detector-core</code></td>
+<td>ONNX Runtime from Rust: <code>onnx-session</code>, <code>detector-core</code>, <code>diffusion-core</code>, <code>ufld-core</code></td>
 </tr>
 <tr>
 <td>ONNX; onnxscript</td>
@@ -580,16 +600,46 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><code>detector-core</code>'s decode and labels, through our <code>detr.py</code></td>
 </tr>
 <tr>
-<td><strong>Ultra-Fast-Lane-Detection v2</strong>: Z. Qin, P. Zhang, X. Li, TPAMI 2022 (<code>cfzd/Ultra-Fast-Lane-Detection-v2</code>)</td>
+<td><strong>Ultra-Fast-Lane-Detection v2</strong>: Z. Qin, P. Zhang, X. Li, "Ultra Fast Deep Lane Detection With Hybrid Anchor Driven Ordinal Classification", IEEE TPAMI 2022 (<code>cfzd/Ultra-Fast-Lane-Detection-v2</code>)</td>
 <td>MIT</td>
-<td>idea (looked at)</td>
-<td>the pick for a learned lane finder, trained by us (TODO 262b, <code>docs/perception.md</code>)</td>
+<td>idea (our own code from the paper; no code or weights copied)</td>
+<td>the learned lane finder (TODO 262b): row anchors, the column as a class with its expected value, the existence branch, the local expectation when decoding (<code>tools/lane_train.py</code>, <code>aav_lane_finder_learned</code>)</td>
+</tr>
+<tr>
+<td><strong>torchvision</strong>'s ResNet-18 (the architecture; K. He et al., CVPR 2016)</td>
+<td>BSD-3</td>
+<td>runs (random start, no pretrained weights)</td>
+<td>the learned lane finder's backbone</td>
+</tr>
+<tr>
+<td><strong>Pillow</strong>'s resampling (<code>precompute_coeffs</code>, its 8-bit fixed point)</td>
+<td>MIT-CMU (HPND)</td>
+<td>ported (the rules)</td>
+<td>the learned lane finder's crop and scale in Rust, so the model gets the numbers it was trained on (<code>ufld-core</code> <code>preprocess.rs</code>)</td>
 </tr>
 <tr>
 <td>CLRNet (T. Zheng et al., CVPR 2022), CLRerNet; LaneATT (L. Tabelini et al., CVPR 2021); PolyLaneNet (L. Tabelini et al., 2020); CondLaneNet (L. Liu et al., ICCV 2021); YOLOP, YOLOPv2, TwinLiteNet</td>
 <td>Apache-2.0; Apache-2.0; MIT; MIT; Apache-2.0; MIT</td>
 <td>idea (looked at)</td>
 <td>the lane detector survey (<code>docs/perception.md</code>); their published weights are trained on CULane (non-commercial), BDD100K, TuSimple or CurveLanes (not clearly open), so not used</td>
+</tr>
+<tr>
+<td><strong>OWLv2</strong>: M. Minderer, A. Gritsenko, N. Houlsby, "Scaling Open-Vocabulary Object Detection", NeurIPS 2023 (<code>google/owlv2-base-patch16-ensemble</code>, from Google's <code>scenic</code>/<code>big_vision</code>)</td>
+<td>Apache-2.0 (code and weights); trained on WebLI pseudo-labels, Objects365 and Visual Genome</td>
+<td>runs</td>
+<td>the labelling loop's open-vocabulary detector, offline (<code>tools/label_drive.py</code>, TODO 252; <a href="labelling.html">Labelling</a>)</td>
+</tr>
+<tr>
+<td><strong>Hugging Face transformers</strong></td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>OWLv2 on PyTorch (mps), in <code>label-drive</code></td>
+</tr>
+<tr>
+<td><strong>Grounding DINO</strong> (IDEA Research), <strong>YOLO-World</strong> (Tencent), <strong>SAM 2</strong> (Meta)</td>
+<td>Apache-2.0; GPL-3.0; Apache-2.0</td>
+<td>looked at</td>
+<td>the labelling loop's other candidates: Grounding DINO a later challenger, YOLO-World left out (copyleft), SAM 2's masks not needed yet (<a href="labelling.html#why-owlv2-the-licences">Labelling</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -679,7 +729,7 @@ Each has a TODO row to port its idea.</p>
 <td><strong>Smooth MPPI / KMPPI</strong> (<code>pytorch_mppi</code>, UM ARM Lab)</td>
 <td>MIT</td>
 <td>idea</td>
-<td>to try in <code>mppi_lag</code> (TODO 212)</td>
+<td><code>mppi_lag</code>'s smooth sampling: the steering's noise drawn on its change and summed (<code>aav_mppi_lag</code> <code>optimizer.rs</code>, <code>mppi_lag_sampling:=smooth</code>, TODO 212)</td>
 </tr>
 <tr>
 <td><strong>Autoware's MPC lateral controller</strong> (the Autoware Foundation)</td>
@@ -697,13 +747,13 @@ Each has a TODO row to port its idea.</p>
 <td><strong>Apollo's piecewise-jerk path</strong> (Baidu; Zhang et al., "Optimal Vehicle Path Planning Using Quadratic Optimization for Baidu Apollo Open Platform", IV 2020); Autoware's static obstacle avoidance</td>
 <td>Apache-2.0; paper</td>
 <td>idea</td>
-<td>smooth lane corners and passes in <code>lane.rs</code> and <code>pass.rs</code> (TODO 211, 214)</td>
+<td>smooth lane corners in <code>lane.rs</code> (TODO 211); the jerk-limited pass, a QP along the lane (<code>aav_planner</code> <code>jerk_pass.rs</code>, <code>lane_pass_shape:=jerk</code>, TODO 214)</td>
 </tr>
 <tr>
 <td><strong>Patchwork++</strong> (S. Lee et al., IROS 2022; URL-KAIST)</td>
 <td>BSD-2-Clause</td>
 <td>idea</td>
-<td>finding the ground so a kerb stands out (TODO 215). Read for the kerbs' step finder (<code>aav_voxels_rs</code> <code>steps.rs</code>, TODO 119): its lesson that the ground must be found locally, not one plane for all; we kept a simpler local rule (a point 0.10 m above another within 0.3 m), since its zones fit a pavement's top as ground too. No code taken</td>
+<td>finding the ground so a kerb stands out: <code>aav_voxels_rs</code> <code>patchwork.rs</code> (<code>ground:=patchwork</code>, TODO 215): its concentric zones, rings and sectors, the lowest-point seeds, a PCA plane a patch and its uprightness, elevation and flatness checks, rewritten in Rust. Read for the kerbs' step finder (<code>aav_voxels_rs</code> <code>steps.rs</code>, TODO 119): its lesson that the ground must be found locally, not one plane for all; we kept a simpler local rule (a point 0.10 m above another within 0.3 m), since its zones fit a pavement's top as ground too. No code taken</td>
 </tr>
 <tr>
 <td><strong>grid_map</strong> (ANYbotics, ETH); <strong>nvblox</strong> (NVIDIA)</td>
@@ -721,13 +771,13 @@ Each has a TODO row to port its idea.</p>
 <td><strong>Fast-Poly / Poly-MOT</strong> (X. Li et al., 2023-24); <strong>OC-SORT</strong> (J. Cao et al., CVPR 2023); <strong>MapMOS</strong> (PRBonn)</td>
 <td>MIT</td>
 <td>idea</td>
-<td>motion models per kind and re-found tracks for <code>aav_things</code> (TODO 217)</td>
+<td>motion models per kind and re-found tracks: <code>aav_things_rs</code> and <code>aav_things_rs</code> <code>tracker</code> (<code>things_tracker:=per_kind</code>, TODO 217): a vehicle's noise a bicycle's, a person's round, and the speed re-fitted from the last sightings (OC-SORT's observation-centric re-update)</td>
 </tr>
 <tr>
 <td><strong>Kinematic-ICP</strong> (T. Guadagnino et al., PRBonn, 2025); <strong>small_gicp</strong> (K. Koide); <strong>GenZ-ICP</strong> (D. Lee et al., 2024)</td>
 <td>MIT</td>
 <td>idea</td>
-<td>the next lidar-odometry challenger (TODO 216); yardsticks for NDT</td>
+<td>Kinematic-ICP: <code>aav_kinematic_icp</code> (TODO 216, <code>odom_lidar:=kinematic_icp</code>): one arc a step and the wheels as a prior, rewritten in Rust, no code taken; small_gicp and GenZ-ICP: yardsticks for NDT</td>
 </tr>
 </tbody>
 </table></div>
@@ -1011,7 +1061,7 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 <td>CPython's <code>math.hypot</code> (<code>vector_norm</code> in <code>Modules/mathmodule.c</code>, R. Hettinger)</td>
 <td>PSF-2.0</td>
 <td>idea</td>
-<td><code>aav_ego_rs</code>'s <code>hypot</code>: the same algorithm, so the Rust ego gives the Python's last bit (TODO 185)</td>
+<td><code>aav_ego_rs</code>'s <code>hypot</code>: the same algorithm, so the Rust ego gives the Python's last bit (TODO 185); <code>aav_safety_rs</code>'s <code>pyfmt::hypot</code>, so the Rust geofence's distances match <code>geofence.py</code>'s to the bit (batch 7)</td>
 </tr>
 <tr>
 <td><strong>RoboStack</strong>; <strong>Pixi</strong></td>

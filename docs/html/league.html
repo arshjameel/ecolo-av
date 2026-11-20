@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -140,18 +142,22 @@ waiting to beat it.</p>
   ┌────────────┬───────────┬──────────────────────────────┐
   │ Level      │ Champion  │ Challengers                  │
   ├────────────┼───────────┼──────────────────────────────┤
-  │ pose       │ ekf       │ ndt_ekf, kiss_ekf, ekf_lane  │
+  │ pose       │ ekf       │ ndt_ekf, kiss_ekf, ekf_lane, │
+  │            │           │ kinematic_ekf                │
   │ costmap    │ ours      │ ours_chunks, ours_all_chunks │
   │ navigator  │ ours      │                              │
   │ path       │ lattice_rs│ lattice_rs_smooth, hybrid_rs,│
   │            │           │ lattice_rs_strong, lane,     │
-  │            │           │ lane_lanelet2, diffusion     │
+  │            │           │ lane_lanelet2, diffusion,    │
+  │            │           │ lane_jerk                    │
   │ steer      │ mppi_lag  │ mppi_lag_calm, mpc_lag,      │
-  │            │           │ mpc_lag_rs                   │
+  │            │           │ mpc_lag_rs, mppi_lag_smooth  │
   │ smoother   │ ours      │                              │
   │ lanes      │ off       │ ramp (lane costs)            │
-  │ behaviour  │ off       │ on (road ahead and things)   │
-  │ kerbs      │ off       │ on (the step finder)         │
+  │ behaviour  │ off       │ on (road ahead and things),  │
+  │            │           │ on_per_kind (TODO 217)       │
+  │ kerbs      │ off       │ on (the step finder),        │
+  │            │           │ patchwork (ground by patch)  │
   └────────────┴───────────┴──────────────────────────────┘
           │
           ▼
@@ -228,18 +234,18 @@ stack's choice". Any value you give is yours, even one that matches the champion
 <tbody>
 <tr>
 <td><code>pose:=</code></td>
-<td><code>ekf</code>, <code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>ekf_lane</code> (ours since 17 Nov: the lane finder into the EKF)</td>
-<td><code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>lane_pose</code></td>
+<td><code>ekf</code>, <code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>ekf_lane</code> (ours since 17 Nov: the lane finder into the EKF), <code>kinematic_ekf</code> (TODO 216: Kinematic-ICP's idea in KISS-ICP's place; scored in stage 2)</td>
+<td><code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>lane_pose</code>, <code>odom_lidar</code></td>
 </tr>
 <tr>
 <td><code>path:=</code></td>
-<td><code>lattice_rs</code>, <code>lattice_rs_smooth</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>lane</code>, <code>lane_lanelet2</code>, <code>diffusion</code></td>
-<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code>, <code>lane_route</code>, <code>lane_graph</code></td>
+<td><code>lattice_rs</code>, <code>lattice_rs_smooth</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>lane</code>, <code>lane_lanelet2</code>, <code>diffusion</code>, <code>lane_jerk</code> (TODO 214: a jerk-limited pass; scored in stage 2)</td>
+<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code>, <code>lane_route</code>, <code>lane_graph</code>, <code>lane_pass_shape</code></td>
 </tr>
 <tr>
 <td><code>steer:=</code></td>
-<td><code>mppi_lag</code>, <code>mppi_lag_calm</code>, <code>mpc_lag</code>, <code>mpc_lag_rs</code></td>
-<td><code>controller</code>, <code>tracker</code>, <code>map_correction</code>, <code>mppi_lag_steer_gamma</code></td>
+<td><code>mppi_lag</code>, <code>mppi_lag_calm</code>, <code>mppi_lag_1k</code>, <code>mpc_lag</code>, <code>mpc_lag_rs</code>, <code>mppi_lag_smooth</code> (TODO 212: the steering's change sampled; scored in stage 2)</td>
+<td><code>controller</code>, <code>tracker</code>, <code>map_correction</code>, <code>mppi_lag_steer_gamma</code>, <code>mppi_lag_batch</code>, <code>mppi_lag_sampling</code></td>
 </tr>
 <tr>
 <td><code>lanes:=</code></td>

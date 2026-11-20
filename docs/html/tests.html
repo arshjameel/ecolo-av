@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -157,7 +159,7 @@ in the order to run them. Each one says what it proves, how to run it, and when 
 and on a computer with no GPU. The results dated before 8 Nov below were in Gazebo. The
 0.3 checks (<code>sim-check --stop-point</code>, <code>--behaviour</code>, <code>--loaded-stop</code>, <code>measure lane</code>) have
 no rows here yet: their results are on <a href="stopping.html">How the car stops</a> and
-<a href="perception.html#in-the-simulators-8-nov">Perception</a>.</p>
+<a href="../history/lane-followers.md#earlier-lane-drives-8-nov-the-2025-26-pid">Lane followers, as they were</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -199,7 +201,7 @@ no rows here yet: their results are on <a href="stopping.html">How the car stops
 </tr>
 <tr>
 <td>1.5</td>
-<td>Lane keeping</td>
+<td>Lane keeping (retired 19 Nov with the lane follower, TODO 264)</td>
 <td><code>pixi run sim-check --lane</code></td>
 <td>back to the lane's centre within 5 cm</td>
 <td>✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs navigation)</td>

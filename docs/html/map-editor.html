@@ -7,7 +7,7 @@
 <!-- Generated from docs/map-editor.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The map editor</h1>
-<div class="meta">6 min read · 7 sections</div></header>
+<div class="meta">7 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a class="here" href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -383,8 +385,42 @@ Results in <code>bags/proof/</code> (not in git).</p>
   class: parked_car          # tree, building, parked_car, pole, other
   region: {centre_m: [51.0, 15.0], size_m: [3.0, 32.0], yaw_rad: 0.0}
   band: {min_m: 0.0, max_m: 2.0}   # optional: all heights if left out
-  source: person             # who made it</code></pre>
-<p>Room is left for the next two jobs, and the editor reads both fields already:</p>
+  source: person             # who made it: person, passes (map-area) or camera
+  seen_in: [2026-11-19_181817_simbox]   # map-area: the drives that saw it</code></pre>
+<h3 id="seen_in-what-only-one-drive-saw"><code>seen_in</code>: what only one drive saw</h3>
+<p><code>pixi run map-area</code> (<a href="maps-from-drives.html#many-drives-of-one-area">Maps from drives</a>)
+merges several drives of one area. What one drive hit and another saw through (a car
+that left) is already gone. What <strong>only one drive saw</strong>, and no other saw through, stays
+in the map, and gets a label for a person to judge:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>class</code></td>
+<td><code>other</code>: relabel it (<code>parked_car</code>, <code>pole</code>...) or delete it</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>passes</code></td>
+</tr>
+<tr>
+<td><code>seen_in</code></td>
+<td>the one drive that saw it</td>
+</tr>
+<tr>
+<td><code>band</code></td>
+<td>0.3-2 m, the 2D map's</td>
+</tr>
+</tbody>
+</table></div>
+<p>Open the area's folder (<code>pixi run map-edit maps/&lt;area&gt;</code>): the labels are drawn with the
+rest. A box-delete with its label's box takes it out; a relabel makes it <code>person</code>'s.</p>
+<p>Room is left for the camera's labels, and the editor reads their fields already:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -394,12 +430,12 @@ Results in <code>bags/proof/</code> (not in git).</p>
 </thead>
 <tbody>
 <tr>
-<td>Camera labels (TODO 252)</td>
-<td>the detector's boxes on the lidar points arrive as labels with <code>source: camera</code> and a <code>confidence</code>; a person keeps, fixes or removes them here (a relabel makes it <code>person</code>)</td>
+<td>Camera labels (TODO 252, built 19 Nov)</td>
+<td><code>pixi run label-drive</code> writes them: OWLv2's boxes on the lidar points, with <code>source: camera</code>, a <code>confidence</code> and <code>seen_in</code>; a person keeps, fixes or removes them here (a relabel makes it <code>person</code>). Then <code>label-train</code> learns from the file as the person left it (<a href="labelling.html">Labelling</a>)</td>
 </tr>
 <tr>
 <td>Occupancy across passes (TODO 259)</td>
-<td>each label's <code>seen_in</code> lists the drives that saw it; merging drives keeps what most saw, and a parked car seen once drops out</td>
+<td>built 19 Nov: <code>map-area</code> writes <code>labels.yaml</code> with <code>source: passes</code> and <code>seen_in</code> (above)</td>
 </tr>
 </tbody>
 </table></div>
@@ -424,7 +460,7 @@ Results in <code>bags/proof/</code> (not in git).</p>
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="maps-from-drives.html"><small>Previous</small>← Maps from drives</a>
-<a class="next" href="measure-the-car.html"><small>Next</small>Measure the car →</a></nav>
+<a class="next" href="labelling.html"><small>Next</small>Labelling after a drive →</a></nav>
 </main>
 <footer>Source: <code>docs/map-editor.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

@@ -77,6 +77,7 @@ blue, global green, AMCL orange, NDT purple). docs/hud.md, "Themes".
 | sub | `source_topic`: `/system/source` (latched) | aav_interfaces/DataSource |
 | sub | `watchdog_topic`: `/safety/sensor_watchdog/state` | std_msgs/String |
 | sub | `output_mux_topic`: `/safety/output_mux/state` | std_msgs/String |
+| sub | `self_test_topic`: `/safety/self_test/status` (the boot self-test: a small green READY, or a NOT READY banner; reliable, depth 1) | diagnostic_msgs/DiagnosticStatus |
 | sub | `trace_topic`: `/ego/trace`; `plan_ahead_topic`: `/ego/plan_ahead` (base_link) | nav_msgs/Path |
 | sub | `stop_point_topic`: `/ego/stop_point` (base_link) | geometry_msgs/PoseStamped |
 | sub | `ahead_topic`: `/ego/ahead` (the gap, the room, the body) | diagnostic_msgs/DiagnosticStatus |

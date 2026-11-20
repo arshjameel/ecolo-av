@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a class="here" href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -140,7 +142,10 @@ SLAM, AMCL and a learned localizer, labelling, the transfer functions. Phase C o
 <pre class="highlight"><code class="language-sh">pixi run record-drive --check                  # only the checks
 pixi run record-drive --name lot --note "the lot, clockwise, dry"
 pixi run record-drive --summary bags/&lt;folder&gt;  # the summary again
-pixi run record-drive --sim                    # the kit's own test, in Ravensim</code></pre>
+pixi run record-drive --sim                    # the kit's own test, in Ravensim
+pixi run record-drive --sim --loop             # the whole route, back home (for SLAM)
+pixi run record-drive --sim --loop --sim-box 22 -6.5   # ... with a parked car (a box)
+                                               # for this drive only: map-area's test data</code></pre>
 <p><code>tools/record.sh --mapping</code> is the same command. The short <code>tools/record.sh</code> (cameras as
 JPEG, what the stack decided) stays for everyday drives.</p>
 <div class="admonition warning">

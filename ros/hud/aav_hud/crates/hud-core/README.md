@@ -21,6 +21,7 @@ keeps. `map-core` shares its health, origin, watchdog and formatting code.
 | `estop` | `EstopButton`: `press`, `poll`; `REPEATS` = 5, `PERIOD` = 100 ms |
 | `heartbeat` | `Heartbeat::poll(now, Frames)`: a beat every 100 ms while frames rise |
 | `watchdog` | the sensor watchdog's verdict, as a banner |
+| `self_test` | the boot self-test (`/safety/self_test/status`): `Report::from_status`, `readiness` → `Readiness` (READY, or NOT READY / SELF-TEST SILENT); `QUIET` = 2 s |
 | `gate` | `verdict(...)`: GO / WAIT / STOP and the main reason (e-stop, output mux, watchdog); `Gate::parse`, `Sensors::parse` |
 | `things` | the things near the car (`/world/things`, odom), named by the camera: `Thing` (`label`: `person 3`; `colour`; `in_base`, `corners_in_base`), `Kind` (person, vehicle, stop sign, other, unknown), `named_ahead` (nearest first). Colours in `theme::thing_colour`, the same as aav_things' markers |
 | `state` | `HudState::new`, `apply(Update, now)`, `estop_pressed`, `take_new_picture`, `things_now` (the things and the car's pose, while both are fresh) |

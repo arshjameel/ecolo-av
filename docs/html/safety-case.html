@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -349,7 +351,7 @@ installed: no recording, no numbers (<a href="status.html#on-the-car">status</a>
 <tr>
 <td>Behaviour planner</td>
 <td>slows before the stop zone (a trial, off)</td>
-<td><code>aav_behaviour</code></td>
+<td><code>aav_behaviour_rs</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1033,7 +1035,7 @@ measurement.</p>
 <tr>
 <td>Localization health</td>
 <td>warns only: gyro bias, GPS quality, clock skew, runaway EKFs</td>
-<td><code>aav_localization_health</code> (Betsi)</td>
+<td><code>aav_localization_health_rs</code> (Betsi)</td>
 </tr>
 </tbody>
 </table></div>
@@ -1266,12 +1268,12 @@ stop." (<a href="stopping.html#anything-moving-near-stop-and-wait-17-nov">stoppi
 <tr>
 <td>The things</td>
 <td>the lidar's cubes grouped and followed: each one's place and speed</td>
-<td><code>aav_things</code>, <code>things:=true</code> (on in <code>stack:=ours</code>)</td>
+<td><code>aav_things_rs</code>, <code>things:=true</code> (on in <code>stack:=ours</code>)</td>
 </tr>
 <tr>
 <td>Behaviour planner</td>
 <td>anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still</td>
-<td><code>aav_behaviour_rs</code> (<code>aav_behaviour</code>)</td>
+<td><code>aav_behaviour_rs</code> (<code>aav_behaviour_rs</code>)</td>
 </tr>
 <tr>
 <td>Ego</td>

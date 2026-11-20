@@ -7,7 +7,7 @@
 <!-- Generated from docs/bench.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Bench mode: the whole car on one computer</h1>
-<div class="meta">17 min read · 11 sections</div></header>
+<div class="meta">15 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -133,7 +135,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#run-it">Run it</a><a href="#whats-real-and-whats-a-stand-in">What&#x27;s real, and what&#x27;s a stand-in</a><a href="#the-stand-ins">The stand-ins</a><a href="#poke-it">Poke it</a><a href="#bench-check">bench-check</a><a href="#lane-keeping">Lane keeping</a><a href="#what-the-bench-has-found-already">What the bench has found already</a><a href="#replacing-a-stand-in-with-the-real-thing">Replacing a stand-in with the real thing</a><a href="#limits">Limits</a><a href="#files">Files</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#in-one-picture">In one picture</a><a href="#run-it">Run it</a><a href="#whats-real-and-whats-a-stand-in">What&#x27;s real, and what&#x27;s a stand-in</a><a href="#the-stand-ins">The stand-ins</a><a href="#poke-it">Poke it</a><a href="#bench-check">bench-check</a><a href="#the-lane-finder">The lane finder</a><a href="#what-the-bench-has-found-already">What the bench has found already</a><a href="#replacing-a-stand-in-with-the-real-thing">Replacing a stand-in with the real thing</a><a href="#limits">Limits</a><a href="#files">Files</a></nav>
 <div class="lead"><p>The real car's software, running on a laptop, with a stand-in for every piece of
 hardware. Use it to test anything between the drivers and the spine before the car, or
 the board, exists. It runs on a Mac or on Linux.</p></div>
@@ -530,12 +532,11 @@ nothing on the network sees it. Then it runs these checks. Results on Ben's Mac,
 </table></div>
 <p>Run it after changing anything between the drivers and the spine.</p>
 </section>
-<section class="card"><h2 id="lane-keeping">Lane keeping</h2>
-<p>The whole lane-keeping loop runs on the bench. <code>mock_camera</code> draws the road from where the
-car really is, <code>lane_finder</code> finds the lines, and <code>control_interface</code> steers on
-<code>/drivers/ai/cmd_vel</code>.</p>
-<pre class="highlight"><code class="language-bash">pixi run bench lane:=true nav:=false start_y:=0.3   # from 0.3 m left of the centre
-pixi run bench-check --lane                         # the same, measured: 1 more minute</code></pre>
+<section class="card"><h2 id="the-lane-finder">The lane finder</h2>
+<p><code>mock_camera</code> draws the road from where the car really is, and <code>lane_finder</code> finds its
+lines on <code>/perception/lane/geometry</code>. Nothing steers by them on the bench any more: the lane follower went on 19 Nov (TODO 264; git tag <code>save/lane-followers</code>; <a href="../history/lane-followers.md">as it was</a>).
+The costmap draws them as lane costs (<code>lanes:=camera</code>, <a href="own-costmap.html#the-lanes-from-the-camera-19-nov-todo-264">our costmap</a>).</p>
+<pre class="highlight"><code class="language-bash">pixi run bench lane:=true start_y:=0.3   # the lane finder on the pretend camera</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -548,7 +549,7 @@ pixi run bench-check --lane                         # the same, measured: 1 more
 <tr>
 <td><code>lane</code></td>
 <td><code>false</code></td>
-<td><code>true</code>: lane keeping from the camera (<code>lane_finder</code>, <code>control_interface</code>). <code>fake</code>: <code>control_interface</code> on a pretend lane, without the camera</td>
+<td><code>true</code>: the lane finder on the pretend camera</td>
 </tr>
 <tr>
 <td><code>start_y</code></td>
@@ -572,44 +573,8 @@ pixi run bench-check --lane                         # the same, measured: 1 more
   0.15 m lines and 0.5 m of tarmac outside them.</li>
 <li><strong>The picture follows the car:</strong> each pixel below the horizon is traced down to the
   ground and coloured by where it lands on the road. About 4 ms a picture.</li>
-<li><strong>Nothing else drives:</strong> <code>nav:=false</code> leaves out navigation, which outranks lane keeping.</li>
-</ul>
-<h3 id="what-bench-check-lane-checks">What <code>bench-check --lane</code> checks</h3>
-<p>After the usual checks, it starts the bench again, with lane keeping, the car 0.3 m left of
-the centre.</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Check</th>
-<th>What passes</th>
-<th>Result, Ben's Mac, 11 October: 6 runs</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Start-up, graph against the contract</td>
-<td>as above, with lane keeping running</td>
-<td><span class="badge b-works">works</span></td>
-</tr>
-<tr>
-<td>Lane keeping</td>
-<td>back within 5 cm of the centre by 25 s of driving, and still there at 30 s; under 10 cm past the centre; both lines seen in 9 pictures of 10</td>
-<td><span class="badge b-works">works</span> 0.30 m to 0.00 m: within 5 cm after 5.6-6.7 s (about 5 m of road), 2 cm past the centre at most</td>
-</tr>
-<tr>
-<td>The finder against the truth</td>
-<td>(reported)</td>
-<td>0.8-1.2 cm out on average, both lines in every picture</td>
-</tr>
-</tbody>
-</table></div>
-<ul>
-<li><strong>A busy computer:</strong> a gap of 100 ms in the commands latches the spine, and the car
-  stops. The check arms it again, as a safety driver would, and only counts the time the
-  car moves. It says how many times that happened.</li>
-<li><strong>A bend</strong> isn't in the check. By hand, with <code>bend_radius:=60</code> (left, from 30 m on): the
-  car cuts in up to 8 cm as the bend comes into view, then runs 4-5 cm inside the centre
-  round it, both lines seen in every picture.</li>
+<li><code>bench-check --lane</code> (lane keeping, back within 5 cm in 5.6-6.7 s, 11 Oct) went with the
+  follower.</li>
 </ul>
 </section>
 <section class="card"><h2 id="what-the-bench-has-found-already">What the bench has found already</h2>

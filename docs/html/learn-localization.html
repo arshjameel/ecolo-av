@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -573,7 +575,7 @@ three things can:</p>
      •  •   •  • ─▶ (0.5 m noise:     ──▶ (Doppler: 0.05 m/s,          🧭 (the motors
      slow to settle)                   so 6° at 0.5 m/s, 3° at 1 m/s)  bend it)</code></pre>
 <p>The global EKF had only the first. <strong>Now it has the second too</strong>: <code>gps_heading</code>
-(<code>aav_gps_heading</code>) turns the receiver's velocity (<code>/sensors/gps/fix_velocity</code>, from
+(<code>aav_gps_heading_rs</code>) turns the receiver's velocity (<code>/sensors/gps/fix_velocity</code>, from
 <code>ublox_gps</code>) into a heading on <code>/localization/gps/heading</code>:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -893,7 +895,7 @@ That's the GPS soaking up the drift.</p>
 </tr>
 <tr>
 <td>The heading from the GPS velocity</td>
-<td><code>ros/localization/aav_gps_heading</code> (<code>course.py</code>: the sums, no ROS)</td>
+<td><code>ros/localization/aav_gps_heading_rs</code> (<code>gps-heading-core</code>: the sums, no ROS)</td>
 </tr>
 <tr>
 <td>Measure the heading in Ravensim</td>

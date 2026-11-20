@@ -7,7 +7,7 @@
 <!-- Generated from docs/simulation.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Simulation: Ravensim, replay, and when nothing moves</h1>
-<div class="meta">51 min read · 8 sections</div></header>
+<div class="meta">52 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -235,7 +237,7 @@ tools/software_gl.sh pixi run sim world:=road   # no GPU: the cameras in softwar
 since 8 Nov and the only one since 16 Nov). Gazebo played the car until then:
 <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>. Ravensim passed every <code>sim-check</code> leg
 Gazebo passed. Its maps cut into chunks are <strong>RavenTiles</strong> (<a href="campus.html">Campus</a>).
-<code>simulator:=own</code>, its old name, still works for one release.</p>
+<code>simulator:=own</code>, its old name, went on 20 Nov (TODO 241).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1021,7 +1023,7 @@ camera views, and at grazing angles small depth errors become large range errors
 <tr>
 <td><code>lane</code></td>
 <td><code>false</code></td>
-<td><code>true</code>: lane keeping (<code>lane_finder</code>, and <code>control_interface</code> on <code>/drivers/ai/cmd_vel</code>). Add <code>nav:=false</code>: navigation outranks it. <code>fake</code>: on a pretend lane, in any world</td>
+<td><code>true</code>: the lane finder alone, on <code>/perception/lane/geometry</code> (the lane follower went on 19 Nov (TODO 264; git tag <code>save/lane-followers</code>; <a href="../history/lane-followers.md">as it was</a>)). <code>lanes:=camera</code> draws its lines into the costmap, and starts it</td>
 </tr>
 <tr>
 <td><code>camera_obstacles</code></td>
@@ -1117,7 +1119,6 @@ pixi run sim world:=road lane:=true nav:=false start_y:=0.3  # lane keeping alon
 <h3 id="sim-check">sim-check</h3>
 <pre class="highlight"><code class="language-bash">pixi run sim-check                                # start-up, contract, sensors, a drive
 pixi run -e ml sim-check --perception --obstacle  # and the stop sign, and the box
-pixi run sim-check --lane                         # and lane keeping, in a second run
 pixi run sim-check --lidar-obstacle               # and the lidar alone (radar off) stops for a post
 pixi run sim-check --plan-around                  # and the car drives round a box it sees, without stopping
 pixi run sim-check --ghost                        # and a pretend person only navigation sees, in a second run
@@ -1161,7 +1162,7 @@ on this computer only. The launch log goes to <code>/tmp/aav-sim-check.log</code
 <td>front cameras 6.9 and 9.7 Hz, rear 7.7 Hz, lidar 9.7 Hz with 2891 hits a sweep on the walls, building and cars</td>
 </tr>
 <tr>
-<td><code>pixi run sim-check --lane</code></td>
+<td><code>pixi run sim-check --lane</code> (gone with the lane follower, 19 Nov)</td>
 <td>✅ 15 Oct, after the cameras moved: back to the lane's centre within 5 cm in 5 s</td>
 </tr>
 <tr>

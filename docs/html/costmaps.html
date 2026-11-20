@@ -7,7 +7,7 @@
 <!-- Generated from docs/costmaps.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Maps and costmaps</h1>
-<div class="meta">19 min read · 7 sections</div></header>
+<div class="meta">19 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -133,7 +135,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-two-costmaps">The two costmaps</a><a href="#obstacles-from-the-sensors">Obstacles from the sensors</a><a href="#what-each-phase-uses">What each phase uses</a><a href="#map-files">Map files</a><a href="#your-first-map-in-ten-minutes">Your first map, in ten minutes</a><a href="#where-the-map-sits-on-the-earth">Where the map sits on the Earth</a><a href="#a-costmap-is-not-a-road-map">A costmap is not a road map</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-two-costmaps">The two costmaps</a><a href="#obstacles-from-the-sensors">Obstacles from the sensors</a><a href="#what-each-phase-uses">What each phase uses</a><a href="#map-files">Map files</a><a href="#your-first-map-in-ten-minutes">Your first map, in ten minutes</a><a href="#where-the-map-sits-on-the-earth">Where the map sits on the Earth</a><a href="#lanes-in-the-costmap-todo-148-264">Lanes in the costmap (TODO 148, 264)</a><a href="#a-costmap-is-not-a-road-map">A costmap is not a road map</a></nav>
 <div class="lead"><p>A <strong>costmap</strong> is a grid laid on the ground. Every cell holds a cost:</p>
 <ul>
 <li>free (0);</li>
@@ -596,6 +598,13 @@ in RViz. The datum in the file now is a placeholder near Carleton.</p>
 <li>Build the map and drive phase 3 in Ravensim first (<code>world:=test_lot</code> pairs with
    <code>example_lot</code>).</li>
 </ol>
+</section>
+<section class="card"><h2 id="lanes-in-the-costmap-todo-148-264">Lanes in the costmap (TODO 148, 264)</h2>
+<p>The lane lines are <strong>perception</strong>; the costmap <strong>prices</strong> them; navigation <strong>drives</strong>.
+The lanes layer draws the road as soft costs in the global costmap: the right lane's
+centre low, the centre line and oncoming lane medium, the kerb high, never a wall. From
+the lane map (<code>lanes:=ramp</code>) or the camera's lines (<code>lanes:=camera</code>, <code>both</code>); details in
+<a href="own-costmap.html#the-lanes-from-the-camera-19-nov-todo-264">our costmap</a>.</p>
 </section>
 <section class="card"><h2 id="a-costmap-is-not-a-road-map">A costmap is not a road map</h2>
 <p>The global costmap only says which cells may be driven on. Roads, junctions and routing

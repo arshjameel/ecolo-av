@@ -25,6 +25,7 @@
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -45,6 +46,7 @@
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
 <a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
 <a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
@@ -186,17 +188,22 @@ programs only meet through messages.</p></div>
 <tr>
 <td><code>joy_alive</code>, the stop-sign watcher, <code>aav_joy_alive_rs</code>, <code>aav_stop_sign_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>Ports (Ben, 17 Nov: "I don't think we want to do this again later"): the same answers on shared vectors. The default; <code>joy_alive_impl:=python</code>, <code>stop_sign_impl:=python</code> fall back</td>
+<td>Ports (Ben, 17 Nov: "I don't think we want to do this again later"): the same answers on shared vectors. The default; <code>stop_sign_impl:=python</code> falls back; the Python joy_alive removed 20 Nov</td>
+</tr>
+<tr>
+<td>The geofence, the stop hold, the goal leash, <code>aav_safety_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>Ports of <code>aav_safety</code>'s three nodes (batch 7, 19 Nov): the Python's answers on shared vectors, to the bit. The only ones; the Python nodes removed 20 Nov</td>
+</tr>
+<tr>
+<td>The GPS heading, <code>aav_gps_heading_rs</code></td>
+<td>Rust (<code>rclrs</code>)</td>
+<td>A port of <code>aav_gps_heading</code> (batch 7, 19 Nov): <code>course.py</code>'s answers to the bit on 4,000 cases. The default; the Python removed 20 Nov</td>
 </tr>
 <tr>
 <td>The lane finder, <code>aav_lane_finder_rs</code></td>
 <td>Rust (<code>rclrs</code>), no OpenCV</td>
 <td>A port of <code>aav_lane_finder</code> (18 Nov): the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 %. The default; <code>lane_finder_impl:=python</code> falls back</td>
-</tr>
-<tr>
-<td>The lane follower, <code>aav_lane_follower_rs</code></td>
-<td>Rust (<code>rclrs</code>)</td>
-<td>A port of the 2025-26 <code>control_interface</code> (19 Nov): the Python's commands on 2,797 shared events; the challengers pure pursuit and Stanley beside it (<code>lane_follower:=</code>). The default; <code>lane_follower_impl:=python</code> falls back</td>
 </tr>
 <tr>
 <td>The camera stream, <code>aav_camera_stream_rs</code></td>
@@ -206,7 +213,7 @@ programs only meet through messages.</p></div>
 <tr>
 <td>AMCL, <code>aav_amcl_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>A port of Nav2's <code>nav2_amcl</code>, its last node (18 Nov, TODO 231): a tie with stock on the lot. The default; <code>amcl_impl:=stock</code> runs <code>nav2_amcl</code></td>
+<td>A port of Nav2's <code>nav2_amcl</code>, its last node (18 Nov, TODO 231): a tie with stock on the lot. The only one; stock <code>nav2_amcl</code> removed 20 Nov (TODO 232)</td>
 </tr>
 <tr>
 <td>Our older ROS nodes: drivers, bridges, adapters</td>
@@ -241,7 +248,7 @@ programs only meet through messages.</p></div>
 <tr>
 <td>The flat scan and the things, <code>aav_lidar_rs</code>, <code>aav_things_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>Ports of <code>aav_lidar</code>'s and <code>aav_things</code>' Python nodes (TODO 185, 17 Nov): the same scan and things, at a third and a fifth of the CPU. The default in the simulator and on the car; <code>lidar_impl:=python</code>, <code>things_impl:=python</code> fall back</td>
+<td>Ports of <code>aav_lidar</code>'s and <code>aav_things</code>' Python nodes (TODO 185, 17 Nov): the same scan and things, at a third and a fifth of the CPU. The default in the simulator and on the car; <code>lidar_impl:=python</code> falls back; the Python things removed 20 Nov</td>
 </tr>
 <tr>
 <td>The CAN bridge, <code>aav_spine_bridge</code></td>
