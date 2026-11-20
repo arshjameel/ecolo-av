@@ -1453,3 +1453,39 @@ folder downloaded, and moves into it as a fast-forward.
 - Rotate the leaked secrets, and back up the Orin and Pis before any reflash.
 - Answer Q1–Q34 with the team.
 
+## Moved from TODO.md on 20 Nov (stage 1, batch 9)
+
+Word for word; only the place changed.
+
+### Stage 1: build everything left
+
+| Batch | What | Rows |
+|---|---|---|
+| 1 | ✅ **ONNX with Core ML**: `measure onnx`, the diffusion planner from Rust, FP16, TensorRT ready (merged 19 Nov) | 243 |
+| 2 | ✅ **Lanes into the costmap** (yellow vs white, the lane map's costs, `lanes:=camera`); the lane followers removed (merged 19 Nov) | 264 |
+| 3 | ✅ **Before the car** (merged 19 Nov; untested on the car): NDT in `car.launch.py`, the adaptive brake on the car, the boot self-test that refuses to arm | 261, 258, 255 |
+| 4 | ✅ **Maps offline** (merged 19 Nov): occupancy across passes, the offline pipeline as one command, 3+ drives and the 2D maps merged | 259, 260, 250 |
+| 5 | ✅ **Labels and the twin** (merged 19 Nov): the labelling loop (open models offline, licences checked), the campus twin in Ravensim | 252, 253 |
+| 6 | ✅ **Driving** (merged 19 Nov): reversing in a narrow street and in `aav_track`; the planner's checks on every core and a 1000-sample `mppi_lag` option; behaviour slows for kerbs | 174, 152, 219 |
+| 7 | ✅ **The last Python nodes to Rust** (merged 19 Nov: geofence, stop hold, goal leash, GPS heading; lane pose and street router left, 265): the geofence, stop hold and goal leash (safety: shared vectors, both twins), the lane pose, the GPS heading, the street router; then the drivers (battery, radar) where worth it | Rust first |
+| 8 | ✅ **The challengers built** (merged 19 Nov; scored in stage 2): smooth MPPI, jerk-limited passing, ground ring by ring, Kinematic-ICP, a tracker per kind | 212, 214-217 |
+
+### 2. Maps and position
+
+| # | Task | Status |
+|---|---|---|
+| 263 | **Unknown map cells read back as free** (found by the map editor, 19 Nov): grey 205 is p = 0.196, under every map YAML's `free_thresh: 0.25`. `make_map.py` and `map-chunks` now write unknown as 128 (p = 0.498), as `map-drive` and the map editor do; `example_lot_amcl.pgm` remade (244,730 cells inside its obstacles had read as free; `example_lot.pgm` byte for byte the same); a test pins it | ✅ 19 Nov. AMCL on the remade map, the lot, 2 runs: 0.06-0.07 m mean a leg, worst 0.09-0.14 m (18 Nov: 0.05-0.09, worst 0.15-0.20); one run's follower aborted a leg (error 107: the follower, not AMCL) |
+
+### 3. Driving
+
+| # | Task | Status |
+|---|---|---|
+| 262 | **The lane follower in Rust, and a better one** (Ben, 19 Nov: "We also need to port the lane following code.or find a better version."): `aav_lane_follower_rs`, the default (`lane_follower_impl:=python` falls back); challengers `lane_follower:=pure_pursuit`, `stanley` on the fitted lane centre, with the car's lag | ✅ ported: the Python's commands on 2,797 shared events; `measure lane`, 3 runs each: the Rust PID scores as the Python one; on Library Road pure pursuit 2.4 cm RMS against the PID's 3.9-4.1, 1 flip a minute against 187; on the straight it settles to 0.4-0.9 cm but comes back from 0.3 m off slower (8.4 cm RMS against 6.7). The PID stays the default. Left: pure pursuit's near look-ahead for a quicker return, then promote it; the car. **Removed 19 Nov** with the other followers (264): [their scores](docs/history/lane-followers.md) |
+
+### 6. Clean-up
+
+| # | Task | Status |
+|---|---|---|
+| 232 | **After Nav2**: `nav2_amcl` out of `pixi.toml`; the one-option switches (`costmap:=`, `navigator:=`, `smoother:=`, `controller:=`): keep as hooks or remove; `nav2.yaml`'s name | ✅ 20 Nov: stock `nav2_amcl` and its lifecycle manager gone (`pixi.toml`, `pixi.lock`; tag `save/nav2-amcl`), `amcl_impl:=rust` the one choice; the four switches kept as hooks (the league's `stacks.yaml` names them); `nav2.yaml` keeps its name (Nav2's layout) |
+| 241 | **Ravensim's old names out**: `simulator:=own`, `target:=gazebo`, `car:=gazebo`, ignored args | ✅ 20 Nov: all four gone, and the URDF's and `description.launch.py`'s `sim`, `lidar`, `chase_camera`, and `sim.launch.py gui:=` (the tools no longer pass it); tag `save/old-names` |
+

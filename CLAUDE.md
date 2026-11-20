@@ -2,8 +2,9 @@
 
 The workspace of the 2026-27 Carleton AAV capstone team: one git repo = one colcon
 workspace for ROS 2 **Jazzy on Ubuntu 24.04** (Python 3.12), plus the spine firmware.
-Read `README.md` first, then `docs/how-it-fits.md` (how the stack fits together) and
-`docs/status.md` (what works and what's missing).
+Read `docs/codemap.md` to find code; don't search the tree. Then `README.md`,
+`docs/how-it-fits.md` (how the stack fits together) and `docs/status.md` (what works and
+what's missing).
 
 These are the conventions decided so far. They apply to people and to Claude sessions alike.
 

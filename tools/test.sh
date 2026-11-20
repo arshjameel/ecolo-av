@@ -294,3 +294,6 @@ fi
 
 echo "== docs/interfaces.md"
 python3 tools/gen_interfaces_md.py --check && echo "in sync"
+
+echo "== docs/codemap.md"
+python3 tools/codemap.py --check && echo "in sync"
