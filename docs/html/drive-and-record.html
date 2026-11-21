@@ -7,7 +7,7 @@
 <!-- Generated from docs/drive-and-record.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Drive by hand and record everything</h1>
-<div class="meta">5 min read · 6 sections</div></header>
+<div class="meta">6 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -148,7 +148,7 @@ tests.</p></div>
 <pre class="highlight"><code class="language-text"> laptop (laptop_orin)                       Orin (orin_sensors)
    joystick ─► mux ─► ego ─► output mux       lidar, front cameras, the EKFs, /tf
    hardware screen ─┘        (the heartbeat)  records the bag
-            │ WiFi                                    ▲ WiFi / Ethernet
+            │ Ethernet cable                          ▲ Ethernet
             ▼                                         │ every topic
  Motor Pi (motor_pi): bridge ─UART─► ESP32 ◄─iBUS─ RC transmitter
  localization Pi (localization): IMU, GPS</code></pre>
@@ -190,6 +190,15 @@ tests.</p></div>
 </table></div>
 <p>No Orin, or it doesn't run our stack yet? Skip its row: the joystick and the screen still
 work, but no lidar or cameras.</p>
+<p><strong>Plug the laptop into the car's switch with the Ethernet cable</strong>, not WiFi: the heartbeat
+then goes over the wire, and the lidar's 9 MB/s fits. Give the laptop an address on the
+car's network (192.168.1.x) and run <code>pixi run doctor</code>.</p>
+<p><strong>Then turn the laptop's WiFi off.</strong> ROS (Cyclone DDS) uses one network card, and with both
+on it may pick the WiFi. If the WiFi must stay on, name the cable's card (<code>ifconfig</code>: the
+<code>en</code> with the 192.168.1.x address) in <code>~/.config/aav/cyclonedds.xml</code>:</p>
+<pre class="highlight"><code class="language-xml">&lt;CycloneDDS xmlns="https://cdds.io/config"&gt;&lt;Domain id="any"&gt;&lt;General&gt;&lt;Interfaces&gt;
+  &lt;NetworkInterface name="en7"/&gt;
+&lt;/Interfaces&gt;&lt;/General&gt;&lt;/Domain&gt;&lt;/CycloneDDS&gt;</code></pre>
 <p><strong>Never</strong> run <code>car orin</code> or <code>car motor_pi_alone</code> beside these: two muxes and two egos
 would both drive.</p>
 </section>
@@ -210,13 +219,18 @@ would both drive.</p>
 </tr>
 <tr>
 <td>joystick</td>
-<td>through the laptop's mux and ego</td>
+<td>through the laptop's mux and ego, as <strong>a pedal</strong>: push and hold to hold a speed, let go to slow at 1 m/s², pull back to brake, hold back at a stop for 1 s to reverse. The centre 10 % is let go</td>
 <td>the laptop, the Motor Pi</td>
 </tr>
 <tr>
 <td>hardware screen</td>
 <td>STOP, E-STOP, steering; <strong>speed off on the real car</strong> (TODO 49b)</td>
 <td>the same</td>
+</tr>
+<tr>
+<td>scripted drive ("3 m and stop")</td>
+<td><code>ros2 action send_goal /scripted_drive aav_interfaces/action/ScriptedDrive "{target_speed: 0.5, acceleration: 0.3, deceleration: 0.3, hold_distance: 3.0, curvature: 0.0}" --feedback</code></td>
+<td>the Orin's EKFs (the wheels come by its CAN); the geofence's good position</td>
 </tr>
 </tbody>
 </table></div>
@@ -241,7 +255,7 @@ positions is the hardware lead's question (H10).</p>
 </tr>
 <tr>
 <td>the Rust, with <code>frame_version: 2</code> on the Motor Pi</td>
-<td>100 ms without a new counter: full brake, latched. A WiFi hiccup brakes too</td>
+<td>100 ms without a new counter: full brake, latched. Over WiFi a hiccup brakes too: use the Ethernet cable</td>
 <td>the ground, at <code>max_speed:=0.3</code></td>
 </tr>
 </tbody>

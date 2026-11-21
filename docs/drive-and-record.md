@@ -13,7 +13,7 @@ tests.
  laptop (laptop_orin)                       Orin (orin_sensors)
    joystick ─► mux ─► ego ─► output mux       lidar, front cameras, the EKFs, /tf
    hardware screen ─┘        (the heartbeat)  records the bag
-            │ WiFi                                    ▲ WiFi / Ethernet
+            │ Ethernet cable                          ▲ Ethernet
             ▼                                         │ every topic
  Motor Pi (motor_pi): bridge ─UART─► ESP32 ◄─iBUS─ RC transmitter
  localization Pi (localization): IMU, GPS
@@ -30,6 +30,20 @@ tests.
 No Orin, or it doesn't run our stack yet? Skip its row: the joystick and the screen still
 work, but no lidar or cameras.
 
+**Plug the laptop into the car's switch with the Ethernet cable**, not WiFi: the heartbeat
+then goes over the wire, and the lidar's 9 MB/s fits. Give the laptop an address on the
+car's network (192.168.1.x) and run `pixi run doctor`.
+
+**Then turn the laptop's WiFi off.** ROS (Cyclone DDS) uses one network card, and with both
+on it may pick the WiFi. If the WiFi must stay on, name the cable's card (`ifconfig`: the
+`en` with the 192.168.1.x address) in `~/.config/aav/cyclonedds.xml`:
+
+```xml
+<CycloneDDS xmlns="https://cdds.io/config"><Domain id="any"><General><Interfaces>
+  <NetworkInterface name="en7"/>
+</Interfaces></General></Domain></CycloneDDS>
+```
+
 **Never** run `car orin` or `car motor_pi_alone` beside these: two muxes and two egos
 would both drive.
 
@@ -38,8 +52,9 @@ would both drive.
 | Driver | How | Needs |
 |---|---|---|
 | RC transmitter, CH6 up | the sticks, straight into the ESP32 | nothing else: no laptop, no Pi |
-| joystick | through the laptop's mux and ego | the laptop, the Motor Pi |
+| joystick | through the laptop's mux and ego, as **a pedal**: push and hold to hold a speed, let go to slow at 1 m/s², pull back to brake, hold back at a stop for 1 s to reverse. The centre 10 % is let go | the laptop, the Motor Pi |
 | hardware screen | STOP, E-STOP, steering; **speed off on the real car** (TODO 49b) | the same |
+| scripted drive ("3 m and stop") | `ros2 action send_goal /scripted_drive aav_interfaces/action/ScriptedDrive "{target_speed: 0.5, acceleration: 0.3, deceleration: 0.3, hold_distance: 3.0, curvature: 0.0}" --feedback` | the Orin's EKFs (the wheels come by its CAN); the geofence's good position |
 
 CH6 is the RC's override switch (the 2025-26 `RC_EN_CH`). Which switch sends it is set in
 the transmitter's menu: flip each and watch the hardware screen's GRAPHS page. Two or three
@@ -50,7 +65,7 @@ positions is the hardware lead's question (H10).
 | On the ESP32 | The heartbeat | Where |
 |---|---|---|
 | the C++ (on the car today) | **none**: frames stop, the last throttle stays | **stands only** |
-| the Rust, with `frame_version: 2` on the Motor Pi | 100 ms without a new counter: full brake, latched. A WiFi hiccup brakes too | the ground, at `max_speed:=0.3` |
+| the Rust, with `frame_version: 2` on the Motor Pi | 100 ms without a new counter: full brake, latched. Over WiFi a hiccup brakes too: use the Ethernet cable | the ground, at `max_speed:=0.3` |
 
 Flashing the Rust is Ben's call ([the bench](esp32-bench.md)).
 

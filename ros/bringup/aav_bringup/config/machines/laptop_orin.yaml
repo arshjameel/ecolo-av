@@ -22,3 +22,8 @@ parts:
   stop_signs: true        # one watcher per car, next to the mux: no camera here, it never
                           # holds a person
   teleop: true            # the joystick's USB receiver, plugged into this laptop
+  scripted: true          # drive a set distance and stop (aav_scripted): next to the mux.
+                          # It counts metres on /localization/odom/local, so it needs the
+                          # Orin's EKFs (car orin_sensors): the wheels come by the Orin's CAN
+  drive_to_point: true    # drive to a point and stop (aav_drive_to_point): needs the GPS
+                          # and the global EKF, the same way

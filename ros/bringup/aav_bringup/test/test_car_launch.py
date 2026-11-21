@@ -349,6 +349,8 @@ def test_the_laptop_can_take_the_orins_place():
     sent = included(started(CAR, machine='laptop_orin'))
     assert sent['io_mux.launch.py']['target'] == 'car'      # the output mux: the heartbeat
     assert 'teleop.launch.py' in sent                       # the joystick, plugged in here
+    assert 'scripted.launch.py' in sent                     # drive 3 m and stop
+    assert 'drive_to_point.launch.py' in sent               # drive to a point and stop
     found = {exe for _, exe in nodes(started(CAR, machine='laptop_orin'))}
     assert 'legacy_uart_bridge' not in found                # the Pi's, never two
     pi = CAR.load_machine('motor_pi')['parts']
