@@ -91,7 +91,7 @@ pub struct Sticks {
     pub throttle: f64,
     /// -1..1, + left.
     pub steering: f64,
-    /// The gear switch on brake.
+    /// The left stick in its brake band.
     pub brake: bool,
 }
 

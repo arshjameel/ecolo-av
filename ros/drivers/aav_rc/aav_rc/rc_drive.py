@@ -18,8 +18,9 @@ Leaving RC via ROS: one zero, then nothing (as teleop_twist_joy does on its dead
 /vehicle/rc gone quiet while on RC via ROS: zeros, a stop, until it comes back; the
 person can still take over with RC direct, which needs no computer.
 
-The sticks mean what they mean in RC direct (ibus RcMap): the throttle stick signed by
-the gear switch, the gear on brake a stop, the steering stick a fraction of full lock.
+The sticks mean what they mean in RC direct (ibus RcMap): the left stick forward or
+back, its brake band (the middle 30 % each way) a stop, the steering stick a fraction of
+full lock. Through ego the band is a stop at ego's rates, not the ESP32's full brake.
 The steering becomes a turn rate by the bicycle model, as ego expects; so the car can't
 steer while it stands still (ego holds the wheels below 0.05 m/s), unlike RC direct.
 """
@@ -50,7 +51,7 @@ class Sticks:
     switch: int        # SWITCH_*
     throttle: float    # -1..1, + forward
     steering: float    # -1..1, + left
-    brake: bool        # the gear switch on brake
+    brake: bool        # the left stick in its brake band
 
 
 def clamp1(x: float) -> float:

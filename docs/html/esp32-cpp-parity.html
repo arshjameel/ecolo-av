@@ -466,20 +466,20 @@ rose at <strong>300 codes a second</strong>, half the Rust default's 600.</p>
 <tr>
 <td>gear: forward below 1200, reverse above 1800, brake between</td>
 <td>the same</td>
-<td><code>forward_below</code>, <code>reverse_above</code></td>
-<td>Built</td>
+<td>not read: the left stick's whole travel says forward, brake band, reverse</td>
+<td>Changed on purpose (21 Nov): SwC's wiring is loose</td>
 </tr>
 <tr>
 <td>gear brake: brake full, DAC down</td>
 <td>the same</td>
-<td><code>RC_GEAR_BRAKE = FullBrake</code></td>
-<td>Built</td>
+<td>the left stick's brake band (±30 %): brake full</td>
+<td>Changed on purpose (21 Nov)</td>
 </tr>
 <tr>
 <td>throttle only past -0.05 of the stick</td>
 <td>the same</td>
-<td>the same</td>
-<td>Built (<code>ibus/src/rc.rs</code>)</td>
+<td>past the brake band, rescaled from 0 at its edge</td>
+<td>Changed on purpose (21 Nov)</td>
 </tr>
 <tr>
 <td>steering: 1950 counts right, 1550 left</td>
@@ -496,8 +496,8 @@ rose at <strong>300 codes a second</strong>, half the Rust default's 600.</p>
 <tr>
 <td>RC idle: brake released, coasting</td>
 <td>the same</td>
-<td><code>rc_stop_brake</code> 0.33 for 1 s, then released</td>
-<td>Not needed: the team's #23 rule replaced it (<code>spine-core</code>)</td>
+<td>the stick in its band: the full brake</td>
+<td>Not needed: the team's #23 rule, then the band (21 Nov), replaced it (<code>spine-core</code>)</td>
 </tr>
 <tr>
 <td>lost RC in RC mode: safe stop, <code>RC: No valid signal - SAFE STOP</code></td>

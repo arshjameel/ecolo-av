@@ -281,7 +281,7 @@ roll back.
 | 9a | While driving, stop the Orin's output mux (or unplug the Orin's network), the bridge still running | within 0.2 s: brake full, throttle 0, `faults` has 1, though `LINK frames=` still rises; `repeats=` rises instead. The heartbeat (TODO 50) |
 | 9b | Bring the Orin back | stays braked until ego stands still (a stop with a new counter), then drives |
 | 9c | `/safety/estop` true while driving | `estop=true` at once, brake full |
-| 10 | RC override switch on. **First the throttle stick at zero and the gear on brake** (RC direct waits for this after power-up and after any stop), then gear forward, a little throttle | `mode=Rc`, blue LED, wheels turn; ROS commands ignored. Without the first step: nothing moves, as it should |
+| 10 | CH6 high (manual). **First the left stick in the middle** (its brake band: RC direct waits for this after power-up, any stop and any move of CH6), then pushed away a little | `mode=Rc`, blue LED, wheels turn; ROS commands ignored. Without the first step: nothing moves, as it should |
 | 11 | RC: switch the transmitter off | within 0.1 s: brake full, `faults` has 256 (RC lost) |
 | 12 | RC override off | back to the computer, or Manual |
 | 13 | The red e-stop button | the car stops by itself, as today |
@@ -308,12 +308,12 @@ the ground; checks 1 to 14 passed first.
 | U4 | Steer by hand from ROS, left then right | `/vehicle/steering` measured follows, + left. NaN: that Jrk has no feedback set up (D6) |
 | U5 | Brake from ROS (stop) | `/vehicle/brake` measured rises to about the command (0.3 hold, 1.0 full) |
 | U6 | Stop the Orin's output mux | `/vehicle/status` faults has 1 within 0.2 s, mode 0 |
-| R1 | Transmitter on, CH6 **low** | `/vehicle/rc` mode_switch 1 (computer); the sticks move its numbers, but nothing drives |
+| R1 | Transmitter on, CH6 **low**, the left stick in the middle | `/vehicle/rc` mode_switch 1 (normal); the computer may drive. The left stick pushed would take over (normal mode's arbiter, `docs/firmware.md`) |
 | R2 | CH6 **middle** (RC via ROS), sticks centred | mode_switch 2; `rc_driver` logs `RC via ROS`; `/drivers/rc/cmd_vel` zeros at 50 Hz; twist_mux passes it (`/control/cmd_vel`) |
-| R3 | A little throttle, gear forward | the wheels turn, **through ego**: its speed and steering-rate limits; `/vehicle/status` mode 2 |
+| R3 | The left stick pushed away a little | the wheels turn, **through ego**: its speed and steering-rate limits; `/vehicle/status` mode 2 |
 | R4 | Steer with the stick while rolling | the wheels steer (standing still they don't: the bicycle model) |
 | R5 | Transmitter off while on RC via ROS | within 0.1 s: brake full, faults 256; stays braked when it comes back, until the stick is centred (a stop), then drives |
-| R6 | CH6 **high** (RC direct); stick at zero and gear on brake first | `/vehicle/status` mode 1; the ESP32 drives from the sticks, as check 10; ROS can't |
+| R6 | CH6 **high** (RC direct); the left stick in the middle first | `/vehicle/status` mode 1; the ESP32 drives from the sticks, as check 10; ROS can't |
 | R7 | Transmitter off while on RC direct | as check 11: brake full, faults 256 |
 | R8 | Stop the bridge while on RC via ROS | the heartbeat stops: brake full within 0.2 s (fault 1). RC direct still works: the fallback |
 

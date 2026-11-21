@@ -275,7 +275,7 @@ The downlink's sync byte, version and CRC-8 ([above](#the-frame-17-bytes)).
 | 14-17 | brake position, f32 | 0 released .. 1 full, from the brake Jrk; NaN when unknown |
 | 18-21 | throttle out, f32 | 0..1, what the ESP32 drives the DAC with |
 | 22-25 | brake out, f32 | 0..1, what it tells the brake Jrk |
-| 26-29 | RC throttle, f32 | -1..1, + forward: the stick, signed by the gear switch |
+| 26-29 | RC throttle, f32 | -1..1, + forward: the left stick, 0 in its brake band |
 | 30-33 | RC steering, f32 | -1..1, + left |
 | 34 | CRC-8 of bytes 1-33 | catches every 1-bit error (2-bit: all but 1 of 36,856, tried once) |
 
@@ -363,9 +363,9 @@ Every behaviour of `aav_umod_esp32`, and where it is now. ⚠️ = different: th
 | Drives on the first frame after boot | — | spine-core boots latched: a stop frame (accel < -0.05) first, then drive frames | ⚠️ new. The bridge sends stop frames whenever ego is stale, so this happens by itself |
 | After a timeout, frames drive again at once | — | latched until a stop frame | ⚠️ new |
 | RC override: CH6 (index 5) between 1500 and 2200 | `main.cpp` | `ibus::RcMap::TODAY` | same; ⚠️ with `uplink`, three positions: computer, RC via ROS, RC direct ([above](#the-rcs-three-modes-todo-48-proposed)) |
-| RC sticks: CH3 throttle, CH4 steering, CH5 gear: forward < 1200 < brake < 1800 < reverse | `rc_handler.cpp` | `RcMap::TODAY` | same channels and thresholds |
+| RC sticks: CH3 throttle, CH4 steering, CH5 gear: forward < 1200 < brake < 1800 < reverse | `rc_handler.cpp` | `RcMap::TODAY`: CH3's whole travel (forward, a ±30 % brake band, reverse), CH5 not read | ⚠️ changed on purpose, 21 Nov (`docs/firmware.md`, "The RC transmitter") |
 | RC throttle: stick × 1023, capped at 700 (the top third of the stick does nothing) | `rc_handler.cpp` | stick × 1.0 m/s (`MAX_SPEED`, since 6 Nov), open loop: at most code 233 (`throttle_cap_code`), reverse capped at 0.5 m/s (`MAX_REVERSE_SPEED`, about 117) | ⚠️ the whole stick works; slower than the C++ |
-| RC gear on brake: DAC ramps down, brake full | `rc_handler.cpp` | spine-core `RC_GEAR_BRAKE = FullBrake` (Arsh, 6 Nov, T3.6): the brake full on at once | same (`docs/firmware.md`) |
+| RC gear on brake: DAC ramps down, brake full | `rc_handler.cpp` | the left stick's brake band: the brake full on at once (Arsh, 21 Nov) | same, from the stick |
 | RC stick released in forward or reverse: coast, brake released | `rc_handler.cpp` | speed to 0, then the hold brake (0.3) | ⚠️ |
 | RC sticks out of range: safe stop, steering centred | `rc_handler.cpp` | RC drives, asks for 0 speed, straight wheels | ⚠️ |
 | RC receiver silent: the last values stay (no timeout) | `IBusBM` | 100 ms: lost; full brake | ⚠️ safer: fixes bug 2 |
@@ -749,7 +749,7 @@ Rust. The wheel encoder's Pico wasn't seen on the car's network on 21 Oct (`moto
 | `jrk-g2` (10 Oct) | the Pololu Jrk G2 over I2C: set target, stop, feedback, error flags. Checked against Pololu's guide | 15 |
 | `ad5311` (10 Oct) | the throttle DAC (an AD5311; TI's DAC101C081 takes the same bytes), capped at 700 of 1023 | 10 |
 | `pca9555` (10 Oct) | the 16-bit I/O expander: the direction output | 6 |
-| `ibus` (10 Oct) | the FlySky receiver's iBUS frames, byte by byte; a silence timeout; the map to spine-core's `RcInput`, with the gear switch's brake position | 26 |
+| `ibus` (10 Oct) | the FlySky receiver's iBUS frames, byte by byte; a silence timeout; the map to spine-core's `RcInput`: the left stick's brake band, the failsafe on CH6 | 26 |
 | `mcp2515` (11 Oct) | the CAN controller a Pico 2 needs, over SPI: bit timing from the crystal, filters for our IDs, send, receive, error state and bus-off | 34 |
 | `legacy-link` (15 Oct) | the 2025-26 UART link: the Motor-Pi's 13-byte frames, the C++'s resync, and the Jrk and DAC targets the C++ set, checked against the C++ itself. Since 24 Oct, version 2: the Orin's counter, flags, a CRC-8 (TODO 50). Since 1 Nov, version 3 (the steering calibration); since 6 Nov, version 4 (the wheel speed) | 121 |
 | `spine-board` (10 Oct) | the glue: throttle off before the brake, the direction only at zero throttle, I2C errors as fault bits. The `Board` trait. Since 11 Oct, two spoke sensors counted the 2025-26 way (moved to `wheel-encoder` on 15 Oct). Since 15 Oct, the `CommandLink` trait: `CanLink` or `LegacyLink`; since 24 Oct, `LegacyLink` reads version 2 frames and their heartbeat | 119 |

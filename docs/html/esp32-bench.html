@@ -942,7 +942,7 @@ roll back.</p>
 </tr>
 <tr>
 <td>10</td>
-<td>RC override switch on. <strong>First the throttle stick at zero and the gear on brake</strong> (RC direct waits for this after power-up and after any stop), then gear forward, a little throttle</td>
+<td>CH6 high (manual). <strong>First the left stick in the middle</strong> (its brake band: RC direct waits for this after power-up, any stop and any move of CH6), then pushed away a little</td>
 <td><code>mode=Rc</code>, blue LED, wheels turn; ROS commands ignored. Without the first step: nothing moves, as it should</td>
 </tr>
 <tr>
@@ -1032,8 +1032,8 @@ the ground; checks 1 to 14 passed first.</p>
 </tr>
 <tr>
 <td>R1</td>
-<td>Transmitter on, CH6 <strong>low</strong></td>
-<td><code>/vehicle/rc</code> mode_switch 1 (computer); the sticks move its numbers, but nothing drives</td>
+<td>Transmitter on, CH6 <strong>low</strong>, the left stick in the middle</td>
+<td><code>/vehicle/rc</code> mode_switch 1 (normal); the computer may drive. The left stick pushed would take over (normal mode's arbiter, <code>docs/firmware.md</code>)</td>
 </tr>
 <tr>
 <td>R2</td>
@@ -1042,7 +1042,7 @@ the ground; checks 1 to 14 passed first.</p>
 </tr>
 <tr>
 <td>R3</td>
-<td>A little throttle, gear forward</td>
+<td>The left stick pushed away a little</td>
 <td>the wheels turn, <strong>through ego</strong>: its speed and steering-rate limits; <code>/vehicle/status</code> mode 2</td>
 </tr>
 <tr>
@@ -1057,7 +1057,7 @@ the ground; checks 1 to 14 passed first.</p>
 </tr>
 <tr>
 <td>R6</td>
-<td>CH6 <strong>high</strong> (RC direct); stick at zero and gear on brake first</td>
+<td>CH6 <strong>high</strong> (RC direct); the left stick in the middle first</td>
 <td><code>/vehicle/status</code> mode 1; the ESP32 drives from the sticks, as check 10; ROS can't</td>
 </tr>
 <tr>
