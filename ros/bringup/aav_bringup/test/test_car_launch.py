@@ -838,8 +838,13 @@ def test_the_self_test_launch_checks_its_names():
 def test_the_dash_starts_the_two_screens_and_nothing_that_drives():
     actions = started(CAR, machine='dash')
     files = included(actions)
-    assert set(files) == {'hud.launch.py', 'map.launch.py'}
-    assert all(args['fullscreen'] == 'true' for args in files.values())
+    # aav_bringup doesn't depend on aav_hud (a car computer may skip the screens), so
+    # colcon's own test run can't see it: there the parts are skipped with a warning.
+    if CAR.installed('aav_hud'):
+        assert set(files) == {'hud.launch.py', 'map.launch.py'}
+        assert all(args['fullscreen'] == 'true' for args in files.values())
+    else:
+        assert not files
     assert not nodes(actions)
 
 
