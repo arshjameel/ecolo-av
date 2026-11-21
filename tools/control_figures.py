@@ -15,6 +15,7 @@ import os
 import matplotlib
 
 matplotlib.use('Agg')
+matplotlib.rcParams['svg.hashsalt'] = 'aav'   # the same file each run
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from scipy.linalg import solve_continuous_are  # noqa: E402
@@ -244,7 +245,6 @@ def pi_figure():
     save(fig, 'pi.png')
 
 
-
 # --- the formulas, drawn (WeasyPrint draws no maths markup, and we have no LaTeX) ---------
 
 EQ_SIZE = 15        # pt
@@ -311,7 +311,8 @@ def equation(name, rows):
                         cx += cols[c] + gap
             x += w + item_gap
         y_top -= row_h + row_gap
-    fig.savefig(os.path.join(OUT, f'eq-{name}.svg'), transparent=True)
+    fig.savefig(os.path.join(OUT, f'eq-{name}.svg'), transparent=True,
+                metadata={'Date': None})
     plt.close(fig)
 
 
@@ -320,7 +321,8 @@ EQUATIONS = {
                 [r'\dot{\theta} = \frac{v\,\tan\delta}{L}']],
     'lag': [[r'\tau\,\dot{a} + a = u']],
     'state-space': [[r'\dot{\mathbf{x}} = A\,\mathbf{x} + B\,u'], [r'y = C\,\mathbf{x}']],
-    'lateral': [[r'\mathbf{x} =', [[r'e_y'], [r'e_\theta'], [r'\delta']], r',\quad u = \delta_{cmd}'],
+    'lateral': [[r'\mathbf{x} =', [[r'e_y'], [r'e_\theta'], [r'\delta']],
+                 r',\quad u = \delta_{cmd}'],
                 [r'A =', [['0', 'v', '0'], ['0', '0', r'v/L'], ['0', '0', r'-1/\tau_s']],
                  r'\qquad B =', [['0'], ['0'], [r'1/\tau_s']]]],
     'feed-forward': [[r'\delta_{ff} = \arctan(L\,\kappa)'],
@@ -345,7 +347,8 @@ EQUATIONS = {
                  [r'\quad + \sum_{k=1}^{N} \left[ r\,(u - \delta_{ff})^2 + r_\Delta\,\Delta u^2'
                   r' + r_c\,\Delta c^2 \right] + w_s\,s^2'],
                  [r'\mathrm{within}\quad |u| \leq \delta_{max},\quad'
-                  r' |\Delta u| \leq \dot{\delta}_{max}\,\Delta t,\quad 0 \leq c \leq v_{cruise}']],
+                  r' |\Delta u| \leq \dot{\delta}_{max}\,\Delta t,\quad'
+                  r' 0 \leq c \leq v_{cruise}']],
     'qp': [[r'X = \bar{X} + M\,\Delta U'],
            [r'\min_{\Delta U}\; \frac{1}{2}\,\Delta U^T P\,\Delta U + q^T \Delta U'
             r'\quad \mathrm{within\ the\ limits}']],
@@ -360,7 +363,8 @@ EQUATIONS = {
     'ekf-predict': [[r'\hat{\mathbf{x}}^- = f(\hat{\mathbf{x}}, u)'],
                     [r'P^- = F\,P\,F^T + Q']],
     'ekf-update': [[r'K = P^- H^T \left(H P^- H^T + R\right)^{-1}'],
-                   [r'\hat{\mathbf{x}} = \hat{\mathbf{x}}^- + K\left(z - h(\hat{\mathbf{x}}^-)\right)'],
+                   [r'\hat{\mathbf{x}} = \hat{\mathbf{x}}^-'
+                    r' + K\left(z - h(\hat{\mathbf{x}}^-)\right)'],
                    [r'P = (I - K H)\,P^-']],
     'speed-car': [[r'\tau_v\,\dot{v} + v = K\,u_a', r'\qquad',
                    r'\tau_v = 1/d,\quad K = a_{max}/d']],
