@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-day-2026-11-21.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car day, 21 Nov: flash, calibrate, record</h1>
-<div class="meta">10 min read · 8 sections</div></header>
+<div class="meta">12 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -138,7 +138,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#bring">Bring</a><a href="#the-order">The order</a><a href="#the-hardware-screen">The hardware screen</a><a href="#the-lidar">The lidar</a><a href="#the-steering">The steering</a><a href="#recording">Recording</a><a href="#the-sim-baseline-what-the-car-should-do-20-nov">The sim baseline: what the car should do (20 Nov)</a><a href="#write-down">Write down</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#bring">Bring</a><a href="#the-order">The order</a><a href="#driving-three-levels-up">Driving: three levels up</a><a href="#the-hardware-screen">The hardware screen</a><a href="#the-lidar">The lidar</a><a href="#the-steering">The steering</a><a href="#recording">Recording</a><a href="#the-sim-baseline-what-the-car-should-do-20-nov">The sim baseline: what the car should do (20 Nov)</a><a href="#write-down">Write down</a></nav>
 <div class="lead"><p>Ben, 20 Nov: flash the ESP32 and the Motor Pi (CORTEX), check the IMU, the cameras and
 the lidar, measure the steering lock to lock, set the RC's channel 6, then record drives
 with a laptop as the Orin, "so we record as much data as possible", to build better maps
@@ -240,7 +240,7 @@ and find what is static.</p>
 </tr>
 <tr>
 <td>8</td>
-<td>Off the stands: the joystick at 0.3 m/s, then each stop</td>
+<td>Off the stands: <a href="#driving-three-levels-up">the three levels</a>, at 0.3 m/s, then each stop</td>
 <td><a href="drive-and-record.html">drive and record</a>, moves 4-6</td>
 <td>it stops each way</td>
 </tr>
@@ -252,6 +252,89 @@ and find what is static.</p>
 </tr>
 </tbody>
 </table></div>
+</section>
+<section class="card"><h2 id="driving-three-levels-up">Driving: three levels up</h2>
+<p>Ben, 21 Nov: "esp32 with the remote then joystick cortex to esp32 and then finally orin or
+laptop too." Each level adds one link. Go up only when the one below works.</p>
+<pre class="highlight"><code class="language-text"> 1  RC ──────────────────────────────────────────────► ESP32        no computer
+ 2  joystick ─USB─► CORTEX: ros, ego, mux, bridge ─UART─► ESP32     no Orin
+ 3  joystick ─USB─► laptop or Orin: ros, ego, mux ─Ethernet─► CORTEX: bridge ─► ESP32</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Run</th>
+<th>Done when</th>
+<th>If it doesn't move</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong> ESP32 + RC</td>
+<td>nothing: CH6 up (RC direct)</td>
+<td>it steers, drives, brakes; CH6 down stops</td>
+<td>the ESP32's log: iBUS frames? the stick at 0 first (<code>rc_hold</code>)</td>
+</tr>
+<tr>
+<td><strong>2</strong> joystick on CORTEX</td>
+<td>on CORTEX: <code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=motor_pi_alone max_speed:=0.3</code></td>
+<td>the trigger held + the stick: it moves; trigger let go: it stops</td>
+<td>below</td>
+</tr>
+<tr>
+<td><strong>3</strong> laptop (or Orin)</td>
+<td>on CORTEX: <code>car motor_pi</code>; on the laptop: <code>car.launch.py machine:=laptop_orin max_speed:=0.3</code> (<a href="drive-and-record.html">drive and record</a>)</td>
+<td>as level 2; the laptop unplugged: the ESP32 brakes in 100 ms</td>
+<td>the Ethernet, WiFi off, the same <code>ROS_DOMAIN_ID</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The joystick checks</strong> (level 2), on CORTEX, before blaming anything else:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Check</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>ROS sees the stick</td>
+<td><code>ros2 topic echo /drivers/joy/joy</code>: numbers change as you move it</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The deadman is <strong>button 0</strong></td>
+<td>press each button: which index goes to 1? If not 0: <code>enable_button</code> in <code>aav_teleop/config/teleop_twist_joy.yaml</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Speed is <strong>axis 1</strong>, steering <strong>axis 0</strong></td>
+<td>move one way at a time; else <code>axis_linear</code> / <code>axis_angular</code> there</td>
+</tr>
+<tr>
+<td>4</td>
+<td>It reaches ego</td>
+<td><code>ros2 topic echo /drivers/joy/cmd_vel</code> with the trigger held</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The Rust firmware is on the ESP32</td>
+<td>the old C++ locks every program out: the joystick then works on stands only</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The user may read it</td>
+<td>in the <code>input</code> group (<code>groups</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Later (to discuss with the team): a <strong>joystick direct</strong> mode in the firmware, as RC
+direct, so the stick works with every computer down. Our ESP32 can't read USB, so the
+stick's potentiometers and button would be wired to its analog pins (the hardware lead's
+call). Then the ESP32 picks RC, then the joystick, then the computer.</p>
 </section>
 <section class="card"><h2 id="the-hardware-screen">The hardware screen</h2>
 <p>On the car's network, not localhost:</p>
