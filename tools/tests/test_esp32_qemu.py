@@ -306,7 +306,6 @@ def test_a_lost_rc_must_say_fault_256_and_brake():
     assert any('fault 256' in p for p in r.problems)
 
 
-
 def test_the_failsafe_sends_ch6_under_the_spines_threshold():
     ch = q.rc_channels('failsafe', throttle=q.BAND)
     assert ch[5] == 900 < 950 and ch[2] == 1500
@@ -324,6 +323,7 @@ def test_the_failsafe_must_say_fault_256_and_brake_at_once():
     r = q.judge_rc(phase, ups, lines, q.ClockMap.fit(lines))
     assert r.ok, r.problems
     assert r.ms == pytest.approx(20)
+
 
 # --- A loaded computer (24 Oct): the next cycle's stop must not count as driving again ---
 
