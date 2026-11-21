@@ -31,3 +31,7 @@ add to `docs/acknowledgements.md`. The Python stays, as the default.
 - 2026-11-15 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.
 - 2026-11-16 (TODO 119): ours, not ported: the kerbs' step finder (`steps.rs`), the node's
   `steps:=true` and `/perception/voxels/steps`. The Python has none; the cubes are unchanged.
+- 2026-11-20 (TODO 189): ours: `kerbs_only` drops the steps at the foot and up the face
+  of anything taller than a kerb before the memory keeps them (a walker's foot, under
+  every beam, held the car for good in `sim-check --moving`). The cubes are unchanged.
+- 2026-11-20 (TODO 176): `cloud.rs` reads through the shared `cloud-view` crate (`ros/bringup/aav_description/cloud-view`), the four copies of `CloudView` now one; the same points, all vectors pass.

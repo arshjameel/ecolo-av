@@ -1,0 +1,11 @@
+[package]
+name = "gps-heading-core"
+description = "The car's heading from the GPS receiver's velocity, without ROS (the Rust twin of aav_gps_heading's course.py)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dev-dependencies]
+# Reads the shared vectors, tests/vectors.json (gen_vectors.py, from course.py).
+serde_json = { version = "1", features = ["float_roundtrip"] }

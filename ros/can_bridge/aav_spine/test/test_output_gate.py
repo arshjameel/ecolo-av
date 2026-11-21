@@ -65,3 +65,18 @@ def test_targets_by_source():
     assert TARGETS == {'real': 'car', 'bench': 'bench', 'sim': 'sim'}
     with pytest.raises(ValueError, match='turtle'):
         OutputGate('turtle')
+
+
+# The boot self-test (TODO 255): the same cases as spine-bridge's tests/ready.rs.
+def test_the_ready_gate_refuses_until_the_self_test_says_ready():
+    from aav_spine.output_gate import NOT_READY, ReadyGate
+    gate = ReadyGate(timeout=1.0)
+    why = gate.refusal(0.0)
+    assert why.startswith(NOT_READY) and '/safety/self_test/status' in why
+    gate.heard(False, 'NOT READY - sensors (STOP: lidar STALE)', 0.0)
+    assert gate.refusal(0.0) == f'{NOT_READY}: NOT READY - sensors (STOP: lidar STALE)'
+    gate.heard(True, 'READY', 0.0)
+    assert gate.refusal(1.0) is None
+    assert 'quiet for 1.5 s' in gate.refusal(1.5)
+    # Not the gate's words: arm_when_open never retries a self-test's refusal.
+    assert not try_again(False, gate.refusal(1.5), 0.0, 10.0)

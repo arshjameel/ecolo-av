@@ -47,7 +47,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | 2 | An obstacle behind, reversing | the rear stop zone | stopped 0.75-0.85 m before a post | sim | ❌ |
 | 3 | Runaway speed | ego's cap; the spine's overspeed rule; the watchdog's OVERSPEED | **14 % over** the command; throttle stuck: OVERSPEED 4.6 s after | sim | 🟡 |
 | 4 | The e-stop | `/safety/estop`; Kar-Tech; red button | brake within 2-12 ms (spine) | sim | ❌ |
-| 5 | A dead or frozen node | sensor watchdog; mux timeouts; respawn | 13 faults stop within 6 s | sim | ❌ |
+| 5 | A dead or frozen node | sensor watchdog; mux timeouts; respawn | 15 faults stop within 6 s (the lidar's since 19 Nov) | sim | ❌ |
 | 6 | Commands to the spine lost | the firmware's 100 ms timeout | brakes 111-120 ms after | QEMU | ❌ |
 | 7 | Steering stuck or off centre | driver-fault brake; calibration | stuck in a bend: the watchdog's STUCK after 3.6 s, stood after 5 s (was: nothing noticed, 3.1 m off) | sim | 🟡 |
 | 8 | A weak brake | the adaptive brake (a trial) | 0.87 → 0.21 m past, 150 kg; a dead brake: 9.7 m | sim | ❌ |
@@ -65,7 +65,7 @@ The locks are in `ros/command_mux/aav_command_mux/config/twist_mux.yaml`.
 | Stop zone | `aav_stop_zone` zeroes `/drivers/nav/cmd_vel` when the radar or lidar sees 3 points in front of the bumper, or a sensor goes silent. Nav2's `collision_monitor` until 17 Nov; ours took the lock after its shadow run ([the swap](#the-stop-zones-swap-17-nov)) | `aav_stop_zone` |
 | Stop hold | holds the stop until the zone stays clear 1 s, so it can't flicker (twist_mux 21) | `aav_safety` `stop_hold.py` |
 | Costmap | the follower's own collision check can stop first | `aav_costmap`, `aav_mppi_lag` |
-| Behaviour planner | slows before the stop zone (a trial, off) | `aav_behaviour` |
+| Behaviour planner | slows before the stop zone (a trial, off) | `aav_behaviour_rs` |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -125,7 +125,7 @@ command's.
 | Number | Where, when | Who |
 |---|---|---|
 | **1.145 m/s against 1.0 asked: 14 % over** (today's speed loop) | sim (ours), 14 Nov, TODO 163 | Ben |
-| 9-14 % over at 1 m/s, the spine in the loop | sim (Gazebo), 29 Oct ([controllers](controllers.md#2a-lqi-against-the-pi-results-29-oct)) | Ben |
+| 9-14 % over at 1 m/s, the spine in the loop | sim (Gazebo), 29 Oct ([controllers](history/controllers-log.md#2a-lqi-against-the-pi-results-29-oct)) | Ben |
 | `smooth` loop: 1.00 m/s, no overshoot | sim (ours), 14 Nov | Ben |
 | a 25 m drive to a point: `default` 1.14 m/s, 7 s over the road ahead's limit; `firm` 1.00 m/s, 0 s over (but more sway on the lot tour: a challenger, TODO 163) | sim (ours), 16 Nov, 2 runs each | Ben |
 | the overspeed rule | tests only (`spine-core`) | Arsh |
@@ -163,7 +163,7 @@ brake does with no power ([ESP32 safety](esp32-safety.md), row 7; tests 3.5, 3.8
 
 | Layer | What | Where |
 |---|---|---|
-| Sensor watchdog | a sensor stale, NaN, frozen or jumped: holds the point driver, navigation and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too | `aav_safety` `sensor_watchdog.py` |
+| Sensor watchdog | a sensor stale, NaN, frozen or jumped: holds the point driver, navigation and the AI slot (twist_mux 30). It sends 10 times a second: 1 s of its own silence holds them too. The roof lidar too since 19 Nov (TODO 246): STALE after 1 s, FROZEN while moving | `aav_safety` `sensor_watchdog.py` |
 | Wheels cross-check | frozen wheels caught against the IMU and GPS | `aav_safety` `wheel_check.py` |
 | twist_mux | every driver counts only for 0.5 s after its last message | `twist_mux.yaml` |
 | ego | stops on 0.3 s of quiet | `aav_ego` |
@@ -177,6 +177,7 @@ brake does with no power ([ESP32 safety](esp32-safety.md), row 7; tests 3.5, 3.8
 | frozen wheels: 25 of 25 caught | sim (Gazebo), since 24 Oct | Ben |
 | `--faults` 3 of 3 | sim (ours), 8 Nov | Ben |
 | **Fixed 17 Nov (TODO 207):** 1-6 fault cases a run failed after `odom stop`: with the wheels quiet, both EKFs kept their last speed and acceleration, `ekf_local` ran 15 m on while the car stood, and `map -> odom` jumped 9-10 m back when the wheels returned. Now the car's command may slow each EKF's speed (robot_localization's control term, never speeding it up). And the watchdog waits 10 s, not 3, after its own stall before anything latches (DDS took 7 s to bring the HUD's beats back, and the HUD latched LOST). `sim-check --faults` **14 of 14, 3 runs in a row** (the Rust watchdog, a computer at load 10-34) | sim (ours), 17 Nov | Ben |
+| **The lidar (TODO 246):** car-test's step 5e found no lidar input, so a dead lidar stopped only navigation (the stop zone's silent source), and said nothing. Now the watchdog's `lidar` input stops, as the camera. `sim-check --faults` with the lidar: **15 of 15**; `lidar stop`: "lidar STALE" 1.2 s after its last cloud, stood still 2.3 s after the fault, 1.3 m on | sim (ours), 19 Nov | Ben |
 | a 2.5 s stall of the whole Mac flagged, then let go | bench, Oct | Ben |
 | joystick alive: `bench-check` 11 of 11 | bench, 2 Nov | Ben |
 | respawn and age checks | tests only | Ben |
@@ -263,7 +264,7 @@ measurement.
 |---|---|---|
 | Sensor watchdog | GPS lost, NaN or jumped: holds the point driver, navigation and the AI slot | `aav_safety` |
 | Geofence | `LOST` (no pose 1 s, spread over 3 m, no GPS into the EKF 2 s), `JUMP` (latched) | `aav_safety` `geofence.py` |
-| Localization health | warns only: gyro bias, GPS quality, clock skew, runaway EKFs | `aav_localization_health` (Betsi) |
+| Localization health | warns only: gyro bias, GPS quality, clock skew, runaway EKFs | `aav_localization_health_rs` (Betsi) |
 
 | Number | Where, when | Who |
 |---|---|---|
@@ -333,8 +334,8 @@ stop." ([stopping](stopping.md#anything-moving-near-stop-and-wait-17-nov))
 
 | Layer | What | Where |
 |---|---|---|
-| The things | the lidar's cubes grouped and followed: each one's place and speed | `aav_things`, `things:=true` (on in `stack:=ours`) |
-| Behaviour planner | anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still | `aav_behaviour_rs` (`aav_behaviour`) |
+| The things | the lidar's cubes grouped and followed: each one's place and speed | `aav_things_rs`, `things:=true` (on in `stack:=ours`) |
+| Behaviour planner | anything moving 0.3 m/s or more within 10 m, or onto the road ahead within 3 s: WAIT (moving), the road ahead ends at the car; GO 1 s after it has gone or stood still | `aav_behaviour_rs` (`aav_behaviour_rs`) |
 | Ego | holds the automatic drivers to the road ahead's limit: 0 at its end | `aav_ego_rs` |
 | Stop zone | still stops the car for anything in front of the bumper, moving or not | `aav_navigation` |
 

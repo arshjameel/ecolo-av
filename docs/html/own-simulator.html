@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-simulator.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Ravensim</h1>
-<div class="meta">16 min read · 11 sections</div></header>
+<div class="meta">19 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#watch-it">Watch it</a><a href="#in-one-picture">In one picture</a><a href="#what-it-gives">What it gives</a><a href="#the-worlds">The worlds</a><a href="#looks-graphicspretty-17-nov">Looks: graphics:=pretty (17 Nov)</a><a href="#the-car">The car</a><a href="#plug-in-points">Plug-in points</a><a href="#head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben&#x27;s Mac, quiet: load 4-15)</a><a href="#results-7-nov-bens-mac-other-agents-running-load-30-40">Results (7 Nov, Ben&#x27;s Mac, other agents running: load 30-40)</a><a href="#no-gpu-15-nov">No GPU (15 Nov)</a><a href="#not-there-yet">Not there yet</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#watch-it">Watch it</a><a href="#in-one-picture">In one picture</a><a href="#what-it-gives">What it gives</a><a href="#the-worlds">The worlds</a><a href="#looks-graphicspretty-17-nov">Looks: graphics:=pretty (17 Nov)</a><a href="#the-car">The car</a><a href="#noisy-wheels-s4">Noisy wheels (S4)</a><a href="#the-imu-s3-18-nov">The IMU (S3, 18 Nov)</a><a href="#plug-in-points">Plug-in points</a><a href="#head-to-head-with-the-cameras-8-nov-bens-mac-quiet-load-4-15">Head to head, with the cameras (8 Nov, Ben&#x27;s Mac, quiet: load 4-15)</a><a href="#results-7-nov-bens-mac-other-agents-running-load-30-40">Results (7 Nov, Ben&#x27;s Mac, other agents running: load 30-40)</a><a href="#no-gpu-15-nov">No GPU (15 Nov)</a><a href="#not-there-yet">Not there yet</a></nav>
 <div class="lead"><p><strong>Ravensim</strong> is our own simulator, in Rust (Ben named it, 16 Nov). Ben, 7 Nov: "merge in
 everything from gazebo so its standalone in rust". This page is the simulator's <strong>core</strong>: the world, the car, the lidar, the radar, the IMU, the GPS, the wheels
 and the clock. The cameras are their own program (<a href="own-simulator-cameras.html">its page</a>),
@@ -431,6 +445,86 @@ detectors see the same red and white. The lane finder did a little better on rea
 </tr>
 </tbody>
 </table></div>
+</section>
+<section class="card"><h2 id="noisy-wheels-s4">Noisy wheels (S4)</h2>
+<p>The car's wheel odometry drifts; by default Ravensim's doesn't, as Gazebo's didn't. Turn
+it on to see whether the EKF, NDT and the watchdog cope (Ben, 14 Nov: seeded, off by
+default).</p>
+<pre class="highlight"><code class="language-sh">pixi run sim wheel_noise:=0.05 wheel_slip:=0.02 noise_seed:=7
+pixi run sim-check --with wheel_noise:=0.05 --with wheel_slip:=0.02</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Off</th>
+<th>Try</th>
+<th>Why that value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wheel_noise</code></td>
+<td>0</td>
+<td>0.05 m/s</td>
+<td>jitter on each wheel reading while the wheels turn. Well under the watchdog's wheel checks (0.3 m/s against the IMU, 0.15 m/s against the GPS), so a healthy car never trips them</td>
+</tr>
+<tr>
+<td><code>wheel_slip</code></td>
+<td>0</td>
+<td>0.02 (2 % too far)</td>
+<td>a tyre's rolling radius moves a few per cent with pressure and load; the wheels then read too far, and the odometry drifts about 2 m a 100 m</td>
+</tr>
+<tr>
+<td><code>noise_seed</code></td>
+<td>1</td>
+<td>any</td>
+<td>the same seed, the same drift: a run repeats</td>
+</tr>
+</tbody>
+</table></div>
+<p>Standing still, the wheels read nothing (no noise). The truth (<code>/vehicle/sim/truth</code>) never
+drifts. <strong>Not measured on the car yet</strong>: the values are picks; replace them with a bag's
+numbers (the wheels against the GPS on a straight).</p>
+</section>
+<section class="card"><h2 id="the-imu-s3-18-nov">The IMU (S3, 18 Nov)</h2>
+<p>What <code>/sensors/imu/data_raw</code> gives, the car against Ravensim:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>The car (<code>imu_node</code>, Yahboom)</th>
+<th>Ravensim (<code>simulator</code> → <code>sim_imu</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Turn rates</td>
+<td>x, y and z</td>
+<td>x, y and z: how the car turned since the last reading (slopes and kerbs too). Before 18 Nov: z only</td>
+</tr>
+<tr>
+<td>Acceleration</td>
+<td>what it feels: speeding up, the turn's pull, gravity</td>
+<td>the same: the mean since the last reading, the pull at the sensor's place, gravity as the tilted car feels it. Before: an instant's, which read 10 or 0 m/s² while the car model caught each command, so <code>sim_imu</code> replaced it with dv/dt of the odometry (noisy with <code>wheel_noise</code>, and no gravity on a slope)</td>
+</tr>
+<tr>
+<td>Orientation</td>
+<td>none (covariance -1)</td>
+<td>none, the same</td>
+</tr>
+<tr>
+<td>Noise</td>
+<td>0.02 rad/s, 0.2 m/s² (its covariances)</td>
+<td>the same numbers, added once (before: twice on the acceleration)</td>
+</tr>
+<tr>
+<td>Rate</td>
+<td>200 Hz (if set up, <code>aav_imu_yahboom</code>)</td>
+<td>50 Hz, as Gazebo's</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>sim_imu accel_from:=odometry</code> gives the old way back.</p>
 </section>
 <section class="card"><h2 id="plug-in-points">Plug-in points</h2>
 <div class="table-wrap"><table>

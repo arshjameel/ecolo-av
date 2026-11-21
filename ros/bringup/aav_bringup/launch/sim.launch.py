@@ -5,18 +5,22 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
       [teleop:=false] [rviz:=true]
-      [perception:=false] [lane:=false|true|fake] [camera_obstacles:=false] [hud:=false]
+      [perception:=false] [lane:=false|true] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
-      [actuator_model:=true] [speed_loop:=default|smooth|lqi|firm] [sim_speed:=]
+      [actuator_model:=true] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
+      [sim_speed:=]
       [payload:=0] [adaptive_brake:=false]
       [reversing:=true] [controller:=] [planner:=] [tracker:=] [costmap:=] [navigator:=]
       [smoother:=] [behaviour:=]
-      [amcl:=false] [voxels:=false] [voxels_impl:=python] [kerbs:=] [ego_impl:=rust]
+      [amcl:=false] [amcl_impl:=rust] [voxels:=false] [voxels_impl:=python] [kerbs:=]
+      [ego_impl:=rust]
       [lidar_impl:=rust] [things_impl:=rust] [lane_finder_impl:=rust]
       [behaviour_impl:=rust] [watchdog_impl:=rust] [localization_health_impl:=rust]
       [io_mux_impl:=rust] [stop_sign_impl:=rust]
-      [ndt:=false] [ndt_ekf:=false] [ndt_map:=maps/ndt/test_lot.pcd] [kiss_icp:=false]
+      [geofence_impl:=rust] [stop_hold_impl:=rust] [goal_leash_impl:=rust]
+      [ndt:=false] [ndt_ekf:=false] [pose_source:=gps] [ndt_map:=maps/ndt/test_lot.pcd]
+      [kiss_icp:=false]
       [kiss_ekf:=false] [lane_pose:=false]
       [plan_around:=true] [things:=false]
       [watchdog:=true] [geofence:=true] [geofence_radius:=]
@@ -58,8 +62,9 @@ bench's argument names:
                       the stop zone (navigation.launch.py radar:=true)
   perception:=true    the detector (RF-DETR; the ml environment) and stop_sign_watcher: twist_mux's
                       stop-sign lock
-  lane:=true          lane keeping: lane_finder and control_interface, on /drivers/ai/cmd_vel.
-                      lane:=fake: control_interface on a pretend lane, in any world
+  lane:=true          the lane finder alone, on /perception/lane/geometry (the lane
+                      follower went on 19 Nov, TODO 264: lanes:=camera draws its lines into
+                      the costmap, and starts it too)
   camera_obstacles    the detectors' boxes into our local costmap
   hud:=true           the HUD window (aav_hud, as pixi run hud): needs a screen
   map:=true           the map window (aav_hud, as pixi run map): the map, the
@@ -92,7 +97,9 @@ bench's argument names:
                       fails (aav_diffusion_planner, a trial: pixi install --locked -e
                       learn, pixi run diffusion train first); diffusion_model:=<.onnx>
                       another model; diffusion_record:=<folder> each plan's inputs, to
-                      replay offline; diffusion_smoothing:=average the 2 Nov smoothing.
+                      replay offline; diffusion_smoothing:=average the 2 Nov smoothing;
+                      diffusion_impl:=rust the model from Rust (aav_diffusion_rs), with
+                      diffusion_provider:=auto (Core ML on a Mac; docs/onnx.md).
                       own (the default): our planner (aav_planner: Nav2's lattice in
                       Rust; docs/own-planner.md). Nav2's planners went on 17 Nov.
                       lattice_headings:=32: the lattice's trial file, 32 headings
@@ -101,6 +108,12 @@ bench's argument names:
                       mppi_lag_steer_gamma:=0.05: mppi_lag's control cost on its steering
                       (empty: nav2.yaml's gamma, 0.015), a challenger: less sampling
                       jitter (TODO 168)
+                      mppi_lag_batch:=1000: mppi_lag's samples a tick (empty: 2000),
+                      a challenger: half the work a tick (TODO 152; steer:=mppi_lag_1k)
+                      mpc_lag_tube:=0: mpc_lag_rs's tube off (empty: 0.3 m, tuned
+                      21 Nov: it leaves the car alone that near the path, less sway)
+                      mppi_lag_sampling:=smooth: mppi_lag samples the steering's
+                      change, so its commands come out smooth (TODO 212, a challenger)
                       lattice_moves:=smooth|smooth_fast: the lattice's trial moves,
                       curvature no faster than the steering turns (tools/lattice_smooth.py)
                       planner_search:=hybrid: ours runs Nav2's Hybrid-A* ported instead
@@ -114,7 +127,7 @@ bench's argument names:
                       docs/league-results-2026-11-16.md)
   behaviour:=false    no behaviour planner (on by default with stack:=ours). On:
                       the behaviour states and a speed cap on the follower from the stopping law
-                      (aav_behaviour, a trial: docs/stopping.md); it also sends the road ahead
+                      (aav_behaviour_rs, a trial: docs/stopping.md); it also sends the road ahead
                       (/world/road_ahead), and ego holds navigation to it (ego road_ahead:=true)
   kerbs:=true         the kerbs (TODO 119), where the lidar runs: the Rust voxels node finds
                       steps in the ground (aav_voxels_rs steps:=true) and the local
@@ -128,6 +141,10 @@ bench's argument names:
                       (costmap:=own) draws the lane map (lane_map:='s, else the world's
                       own) as soft costs, lowest at the right lane's centre, so our planner
                       keeps right. A world with no lane map (the test lot): nothing drawn.
+  lane_source:=camera  with lane_costs:=true (stacks.yaml's lanes:=camera, both): the
+                      lanes layer from the lane finder's lines (it starts), the same costs:
+                      kerb high, the centre line and oncoming lane medium, the right lane's
+                      centre low (TODO 264); both: the lane map wins where it has a road.
                       Empty: the stack's choice (off)
   costmap_chunks:=auto  our global costmap (costmap:=own) from the map's 64 m chunks: the
                       3 x 3 round the car and those along the route ahead, read and
@@ -156,7 +173,7 @@ bench's argument names:
                       clothoid, the curvature continuous (TODO 211, a challenger: a tie
                       on University Drive); arc (the default): circle arcs
   things:=true        the lidar's cubes as things with an id, a speed and a memory, on
-                      /world/things (aav_things; voxels runs for it): only with nav:=true
+                      /world/things (aav_things_rs; voxels runs for it): only with nav:=true
                       and the lidar. The behaviour planner waits for what moves (a hold
                       for anything moving near, 17 Nov). Empty: the stack's choice (on in
                       ours, where nav and the lidar run)
@@ -166,15 +183,14 @@ bench's argument names:
                       chunks round the car instead of /map;
                       things_background_below:=0.7 (the default): only cubes under
                       it drop
-  amcl:=true          stock AMCL beside the global EKF, scored only (docs/trials.md): only
-                      in world:=test_lot with nav:=true and the lidar, from the start pose
+  amcl:=true          AMCL beside the global EKF, scored only (docs/trials.md): only
+                      in world:=test_lot with nav:=true and the lidar, from the start pose;
+                      (aav_amcl_rs; stock nav2_amcl removed 20 Nov)
   voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
   lidar_impl:=python  the Python lidar_scan (aav_lidar) in the Rust one's place (the
                       default since 17 Nov): the same scan
-  things_impl:=python the Python things node (aav_things) in the Rust one's place (the
-                      default since 17 Nov), with things: the same topics and things
   lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
                       one's place (the default since 18 Nov), with lane:=true or
                       lane_pose:=true: the same topics and lanes
@@ -186,12 +202,11 @@ bench's argument names:
   ego_impl:=rust      ego and look_ahead in Rust, one process (aav_ego_rs), in the Python
                       nodes' place: the same node names, topics and answers (TODO 185);
                       the default on the car and here since 16 Nov (python: aav_ego's two nodes)
-  behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), in the Python one's
-                      place, with behaviour on: the same topics and answers (TODO 185);
-                      the default on the car and here since 16 Nov (python: aav_behaviour)
+  behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), with behaviour on
+                      (TODO 185); the only one since the Python went on 20 Nov
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs): the same topics and
-                      answers as the Python's; the default on the car and here since
-                      16 Nov (Ben: "watchdog in rust sure"; python: aav_safety's)
+                      answers as the Python's had; the only one since 20 Nov (Ben, 16 Nov:
+                      "watchdog in rust sure")
   stop_sign_impl:=rust  with perception:=true, stop_sign_watcher in Rust (aav_stop_sign_rs):
                       the same node name, topics and answers; the default since 17 Nov
                       (python: aav_detector's)
@@ -199,9 +214,8 @@ bench's argument names:
                       node names, topics and answers; the default on the car and here
                       since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
   localization_health_impl:=rust  localization_health in Rust
-                      (aav_localization_health_rs), in the Python one's place: the same
-                      topics and answers; warn only (TODO 185); the default on the car
-                      and here since 16 Nov (python: aav_localization_health)
+                      (aav_localization_health_rs): warn only (TODO 185); the only one
+                      since the Python went on 20 Nov
   ndt:=true          NDT on the saved lidar map (aav_ndt, Rust), scored only, never TF
                       (docs/designs/2026-10-29_ndt.md): only in world:=test_lot with the
                       lidar, from the start pose, and only once ndt_map (pixi run ndt-map
@@ -214,6 +228,12 @@ bench's argument names:
                       its pose (x, y, yaw) beside the GPS (aav_localization
                       config/ekf_global_ndt.yaml; docs/trials.md). Default false: the
                       global EKF on GPS alone
+  pose_source:=ndt    a challenger (TODO 210): NDT leads, the GPS checks. NDT runs (as
+                      ndt:=true); pose_check (aav_pose_check) passes NDT's pose to
+                      ekf_global while NDT is trusted, the GPS's only while it isn't, and
+                      says HOLD when neither is. The watchdog watches gps_check (the GPS's
+                      checks, warn only) and pose_check (stops on HOLD) in gps's place; the
+                      geofence's fix is /localization/pose_check/fix. Default gps: today's
   kiss_icp:=true      KISS-ICP lidar odometry (aav_kiss_icp), scored only, never TF or an
                       EKF (docs/designs/2026-10-30_kiss-icp.md): any world with the lidar;
                       needs the kiss environment once (pixi install --locked -e kiss)
@@ -221,6 +241,9 @@ bench's argument names:
                       takes its twist (vx, vyaw) beside the wheels and the IMU
                       (aav_localization config/ekf_local_kiss.yaml; docs/trials.md).
                       Default false: the local EKF on the wheels and the IMU alone
+  odom_lidar:=kinematic_icp  with kiss_icp or kiss_ekf: Kinematic-ICP's idea in Rust
+                      (aav_kinematic_icp, TODO 216, a challenger): one arc a step, the
+                      wheels its prior; the same topics as KISS-ICP
   lane_pose:=true     a trial (TODO 155): the lane finder as a pose sensor. lane_finder runs
                       (as lane:=true, without the lane follower) and lane_pose
                       (aav_lane_pose) turns its lines and the lane map (lane_map:=, else
@@ -255,8 +278,9 @@ bench's argument names:
                       can't be trusted
   watch_hud:=true     the watchdog watches /hud/heartbeat without the HUD window: something
                       else beats (sim-check --faults stands in for the screen)
-  faults:=true        the front left picture through sim_camera_relay, so its fault.camera
-                      works (pixi run sim-fault camera freeze); the other faults always do
+  faults:=true        the front left picture through sim_camera_relay and the lidar through
+                      sim_lidar_relay, so fault.camera and fault.lidar work (pixi run
+                      sim-fault camera freeze, lidar stop); the other faults always do
   spine:=true         the spine in the loop: ego -> spine_bridge -> CAN frames -> spine_sim
                       (the spine's own firmware logic: arming, its 100 ms command
                       watchdog, both e-stops, faults, its speed loop) -> the actuator
@@ -276,6 +300,11 @@ bench's argument names:
                       (docs/ghost-obstacles.md)
   actuator_model:=false  the old instant car instead of the actuator model (sim_adapter;
                       vehicle.yaml's actuators:), to compare the two
+  actuators:="throttle_lag=0.3,drag=0.2"  the simulated car's own actuator numbers, over
+                      vehicle.yaml's, while every driver still reads vehicle.yaml: a known
+                      car for the hallway fits to find (car-test --hallway --sim, TODO 248)
+  wheel_noise:=0.05 wheel_slip:=0.02 noise_seed:=1  noisy, slipping wheels (Ravensim's;
+                      0: off)
   lag_scale:=2        the actuator model's throttle, brake and steering lags twice
                       vehicle.yaml's, while every driver still reads vehicle.yaml: how a
                       follower copes with a car slower than it was told (1.0: as written)
@@ -284,11 +313,13 @@ bench's argument names:
                       path follower's (mppi_lag, aav_track's mpc_lag, mpc_lag_rs; those
                       two refuse lqi), ego's trace and the behaviour planner's stopping
                       law (TODO 163). The real car's spine runs default
+  speed_loop_model:=smooth  the loop every model of the car assumes, when it is not the
+                      car's own: the car runs speed_loop:=, the models plan with this
+                      (TODO 163: car firm, models smooth). Empty (the default): speed_loop's
   simulator:=ravensim  Ravensim, our own simulator in Rust (aav_simulator,
                       docs/own-simulator.md), the only one since Gazebo was removed (16 Nov):
                       the worlds, the lidar and radar by ray casting, the cameras by Bevy
-                      (aav_sim_cameras), no window. simulator:=own, its old name, still works
-                      for one release, with a warning
+                      (aav_sim_cameras), no window.
   camera_lockstep:=auto  Ravensim's clock waits for each camera's picture: auto when
                       tools/software_gl.sh draws them (no GPU), true or false
   graphics:=auto      how much the cameras draw: pretty (grain, a sky, haze), simple (plain
@@ -301,7 +332,8 @@ camera's parts need world:=road. Every node runs on simulated time.
 import os
 
 from aav_description import stacks, vehicle
-from aav_description.lane_map import check_lane_graph, DEFAULT_LANE_GRAPH
+from aav_description.lane_map import (check_lane_graph, check_lane_source,
+                                      DEFAULT_LANE_GRAPH, DEFAULT_LANE_SOURCE)
 from aav_sim_models import worlds
 from aav_spine import bridges
 from launch import LaunchDescription
@@ -360,6 +392,14 @@ LAYOUTS = {'road': 'road.rviz', 'test_lot': 'road.rviz', worlds.CAMPUS: 'road.rv
 CAMERA_PARTS = ('perception', 'camera_obstacles')
 
 
+def check_pose_source(word):
+    """Return pose_source:= checked: gps (today's) or ndt (NDT leads, TODO 210)."""
+    word = word.strip().lower()
+    if word not in ('gps', 'ndt'):
+        raise ValueError(f'pose_source:={word}: use gps or ndt')
+    return word
+
+
 def include(context, package, launch_file, **args):
     share = FindPackageShare(package).perform(context)
     return IncludeLaunchDescription(
@@ -378,10 +418,23 @@ STACK_FALLBACK = {'controller': vehicle.DEFAULT_CONTROLLER, 'tracker': vehicle.D
                   'lattice_moves': vehicle.LATTICE_MOVES[0],
                   'planner_search': vehicle.PLANNER_SEARCHES[0],
                   'plan_smoothing': 'nav2', 'map_correction': 'newest',
-                  'mppi_lag_steer_gamma': '', 'lane_costs': 'false', 'lane_route': 'false',
+                  'mppi_lag_steer_gamma': '', 'mppi_lag_batch': '', 'mppi_lag_sampling': '',
+                  'lane_pass_shape': '', 'ground': '', 'odom_lidar': '', 'things_tracker': '',
+                  'lane_costs': 'false', 'lane_source': DEFAULT_LANE_SOURCE, 'lane_route': 'false',
                   'costmap_chunks': 'off', 'kerbs': 'false', 'things': 'false',
                   'lane_graph': DEFAULT_LANE_GRAPH,
                   'local_chunks': 'false', 'lane_pose': 'false'}
+
+
+ODOM_LIDARS = ('kiss_icp', 'kinematic_icp')
+
+
+def check_odom_lidar(value):
+    """Return odom_lidar:= checked: kiss_icp (empty too) or kinematic_icp (TODO 216)."""
+    value = value.strip().lower() or ODOM_LIDARS[0]
+    if value not in ODOM_LIDARS:
+        raise ValueError(f'odom_lidar:={value}: one of {", ".join(ODOM_LIDARS)}')
+    return value
 
 
 # Each level switch's options, for its help text (config/stacks.yaml).
@@ -405,10 +458,20 @@ def launch_setup(context):
         return picked[name] if name in picked else raw(name)
 
     world = arg('world')
-    if world not in MAPS:
-        raise ValueError(f'world:={world}: pick one of {sorted(MAPS)}')
+    maps = dict(MAPS)
     start_x, start_y, start_yaw = arg('start_x'), arg('start_y'), arg('start_yaw')
     ndt_map = arg('ndt_map')
+    if worlds.is_world_file(world):
+        # A twin (tools/twin_world.py, TODO 253): its own 2D map, NDT's points and start.
+        worlds.world_file('', world)
+        twin = worlds.twin(world)
+        maps[world] = twin['map']
+        if float(start_x) == 0.0 and float(start_y) == 0.0:
+            start_x, start_y, start_yaw = (str(v) for v in twin['start'])
+        if ndt_map == DEFAULT_NDT_MAP and twin['ndt']:
+            ndt_map = twin['ndt']
+    if world not in maps:
+        raise ValueError(f"world:={world}: pick one of {sorted(MAPS)}, or a twin's .sdf")
     if world == worlds.CAMPUS:
         # Not on the world's origin unless someone asks: it's on a station shelter.
         worlds.world_file('', world)
@@ -426,22 +489,28 @@ def launch_setup(context):
                       'ghost', 'plan_around', 'watch_hud', 'geofence', 'voxels',
                       'screen_cubes', 'behaviour', 'things', 'kerbs')}
     lane = arg('lane').lower()
-    if lane not in ('false', 'true', 'fake'):
-        raise ValueError(f'lane:={lane}: use true (the lane finder), fake or false')
+    if lane not in ('false', 'true'):
+        raise ValueError(f'lane:={lane}: use true (the lane finder) or false')
     controller = arg('controller').lower()
     if controller not in vehicle.CONTROLLERS:
         raise ValueError(f'controller:={controller}: pick one of {", ".join(vehicle.CONTROLLERS)}')
     tracker = vehicle.check_tracker(arg('tracker'), flag['reversing'])
-    # The simulated car's speed loop: the followers', ego's and behaviour's models take it.
-    speed_loop = vehicle.check_speed_loop(arg('speed_loop'), tracker if flag['nav'] else None)
+    # The simulated car's speed loop, and the one the followers', ego's and behaviour's
+    # models assume: the car's own unless speed_loop_model:= says otherwise (TODO 163).
+    speed_loop = vehicle.check_speed_loop(arg('speed_loop'))
+    model_loop = vehicle.check_speed_loop_model(arg('speed_loop_model'), speed_loop,
+                                                tracker if flag['nav'] else None)
     planner = vehicle.check_planner(arg('planner'))
     amcl = arg('amcl').lower() == 'true'
     # ndt_ekf: ekf_global takes NDT's pose, so NDT runs too.
     ndt_ekf = arg('ndt_ekf').lower() == 'true'
-    ndt = arg('ndt').lower() == 'true' or ndt_ekf
+    # pose_source:=ndt: NDT leads ekf_global's pose, the GPS checks (TODO 210).
+    pose_ndt = check_pose_source(arg('pose_source')) == 'ndt'
+    ndt = arg('ndt').lower() == 'true' or ndt_ekf or pose_ndt
     truth_pose = arg('truth_pose').lower() == 'true'
-    if truth_pose and ndt_ekf:
-        raise ValueError('truth_pose:=true has no ekf_global for ndt_ekf:=true to feed')
+    if truth_pose and (ndt_ekf or pose_ndt):
+        raise ValueError('truth_pose:=true has no ekf_global for ndt_ekf:=true or '
+                         'pose_source:=ndt to feed')
     lane_pose = arg('lane_pose').lower() == 'true'
     # Picked by the stack (ours' pose level since 17 Nov), not by hand: only where it can run
     # (an ekf_global, a camera, a lane map; below).
@@ -454,14 +523,16 @@ def launch_setup(context):
     kiss_ekf = arg('kiss_ekf').lower() == 'true'
     kiss_icp = arg('kiss_icp').lower() == 'true' or kiss_ekf
     models_share = FindPackageShare('aav_sim_models').perform(context)
-    if worlds.simulator_warning(arg('simulator')):
-        print(f'[sim.launch.py] {worlds.simulator_warning(arg("simulator"))}', flush=True)
     simulator = worlds.check_simulator(arg('simulator'))
     world_path = worlds.world_file(models_share, world)
     lane_map = worlds.lane_map_file(models_share, world, arg('lane_map').strip())
-    # lane_costs: the lane map lane_map:= names, else the world's own, if it has one.
+    # lane_costs: the lane map lane_map:= names, else the world's own, if it has one;
+    # lane_source:=camera|both: the lane finder's lines too (TODO 264).
     lane_costs = ''
-    if arg('lane_costs').lower() == 'true':
+    lanes_on = arg('lane_costs').lower() == 'true'
+    lane_source = check_lane_source(arg('lane_source')) if lanes_on else DEFAULT_LANE_SOURCE
+    lane_camera = lane_source != 'map'
+    if lanes_on and lane_source != 'camera':
         try:
             lane_costs = lane_map or worlds.lane_map_file(models_share, world, 'world')
         except ValueError as e:
@@ -493,7 +564,8 @@ def launch_setup(context):
     radar = sensors and arg('radar').lower() == 'true'
     lidar = sensors and arg('lidar').lower() == 'true'
     wanted = ([n for n in CAMERA_PARTS if flag[n]] + (['lane'] if lane == 'true' else [])
-              + (['lane_pose'] if lane_pose else []))
+              + (['lane_pose'] if lane_pose else [])
+              + ([f'lane_source:={lane_source}'] if lane_camera else []))
     if amcl and not (world == 'test_lot' and flag['nav'] and lidar):
         raise ValueError('amcl:=true needs world:=test_lot nav:=true lidar:=true: the only '
                          'world with a real map, and AMCL reads the lidar')
@@ -531,7 +603,9 @@ def launch_setup(context):
                 cameras=str(cameras).lower(),
                 actuator_model=arg('actuator_model'), speed_loop=speed_loop,
                 payload=arg('payload'), adaptive_brake=arg('adaptive_brake'),
-                lag_scale=arg('lag_scale'),
+                lag_scale=arg('lag_scale'), actuators=arg('actuators'),
+                wheel_noise=arg('wheel_noise'), wheel_slip=arg('wheel_slip'),
+                noise_seed=arg('noise_seed'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
                 arm_when_open_impl=vehicle.check_arm_when_open_impl(
@@ -548,8 +622,8 @@ def launch_setup(context):
                 sim_max_speed=sim_speed,
                 road_ahead=str(flag['behaviour'] and flag['nav']).lower(),
                 ego_impl=vehicle.check_ego_impl(arg('ego_impl')),
-                # The car's speed loop, so ego's trace predicts the car it drives (TODO 163).
-                speed_loop=speed_loop),
+                # The models' speed loop: the car's unless told (TODO 163).
+                speed_loop=model_loop),
         # ego's commands go to Ravensim (sim_adapter, or spine_bridge with spine:=true)
         # only while every source is SIM (aav_io_mux).
         include(context, 'aav_io_mux', 'io_mux.launch.py', target='sim', source='sim',
@@ -569,6 +643,9 @@ def launch_setup(context):
                          ('imu/data', '/sensors/imu/data')]),
         include(context, 'aav_localization', 'localization.launch.py', use_sim_time='true',
                 ndt_ekf=str(ndt_ekf).lower(), kiss_ekf=str(kiss_ekf).lower(),
+                pose_source='ndt' if pose_ndt else 'gps',
+                pose_trust_score=(worlds.CAMPUS_POSE_TRUST
+                                  if pose_ndt and world == worlds.CAMPUS else ''),
                 global_ekf=str(not truth_pose).lower(),
                 lane_pose=str(lane_pose).lower(), lane_map=pose_map,
                 localization_health_impl=vehicle.check_localization_health_impl(
@@ -597,13 +674,16 @@ def launch_setup(context):
         # and the stop zone guards navigation's commands, as on a car with them.
         actions.append(include(context, 'aav_navigation', 'navigation.launch.py',
                                use_sim_time='true',
-                               map=os.path.join(nav_share, 'maps', MAPS[world]),
+                               map=os.path.join(nav_share, 'maps', maps[world]),
                                radar=radar, lidar=lidar, ghost=flag['ghost'],
                                voxels=flag['voxels'], kerbs=flag['kerbs'],
+                               ground=vehicle.check_ground(arg('ground')),
                                screen_cubes=flag['screen_cubes'],
                                voxels_impl=vehicle.check_voxels_impl(arg('voxels_impl')),
                                lidar_impl=vehicle.check_lidar_impl(arg('lidar_impl')),
                                things_impl=vehicle.check_things_impl(arg('things_impl')),
+                               stop_hold_impl=vehicle.check_stop_hold_impl(
+                                   arg('stop_hold_impl')),
                                cube_floor=(worlds.CAMPUS_CUBE_FLOOR
                                            if world == worlds.CAMPUS and not flag['voxels']
                                            else ''),
@@ -619,6 +699,9 @@ def launch_setup(context):
                                plan_smoothing=vehicle.check_plan_smoothing(
                                    arg('plan_smoothing')),
                                mppi_lag_steer_gamma=arg('mppi_lag_steer_gamma'),
+                               mppi_lag_batch=arg('mppi_lag_batch'),
+                               mppi_lag_sampling=arg('mppi_lag_sampling'),
+                               mpc_lag_tube=arg('mpc_lag_tube'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
@@ -634,10 +717,14 @@ def launch_setup(context):
                                diffusion_model=arg('diffusion_model'),
                                diffusion_record=arg('diffusion_record'),
                                diffusion_smoothing=arg('diffusion_smoothing'),
+                               diffusion_impl=vehicle.check_diffusion_impl(
+                                   arg('diffusion_impl')),
+                               diffusion_provider=arg('diffusion_provider'),
                                # A trial tracker may be swapped live here (the debug
                                # HUD's panel shows which): the sim only, never the car.
                                live_swap='true',
                                amcl=amcl, amcl_x=start_x, amcl_y=start_y,
+                               amcl_impl=vehicle.check_amcl_impl(arg('amcl_impl')),
                                amcl_yaw=start_yaw,
                                # The test lot's map for AMCL: finer, outlines only
                                # (maps/README.md). AMCL runs only in the test lot.
@@ -651,11 +738,15 @@ def launch_setup(context):
                                behaviour_impl=vehicle.check_behaviour_impl(
                                    arg('behaviour_impl')),
                                things=str(flag['things']).lower(),
+                               things_tracker=vehicle.check_things_tracker(
+                                   arg('things_tracker')),
                                lane_map=lane_map, lane_costs=lane_costs,
-                               # Every model of the car predicts the loop it runs (TODO 163).
-                               speed_loop=speed_loop,
+                               lane_source=lane_source,
+                               # Every model of the car: the car's loop unless told (TODO 163).
+                               speed_loop=model_loop,
                                lane_route=lane_route, lane_pass=arg('lane_pass'),
                                lane_corners=arg('lane_corners'),
+                               lane_pass_shape=arg('lane_pass_shape'),
                                lane_graph=check_lane_graph(arg('lane_graph')),
                                local_chunks=arg('local_chunks')))
     if ndt:
@@ -670,15 +761,26 @@ def launch_setup(context):
     if kiss_icp:
         # Scored only (measure controllers --kiss-icp), unless kiss_ekf:=true: then
         # ekf_local reads its twist (measure controllers --kiss-ekf scores the difference).
-        actions.append(include(context, 'aav_kiss_icp', 'kiss_icp.launch.py',
-                               use_sim_time='true'))
+        # odom_lidar:=kinematic_icp: Kinematic-ICP's idea in Rust (TODO 216, a challenger),
+        # the same topics, so ekf_local can't tell; else KISS-ICP.
+        if check_odom_lidar(arg('odom_lidar')) == 'kinematic_icp':
+            actions.append(include(context, 'aav_kinematic_icp', 'kinematic_icp.launch.py',
+                                   use_sim_time='true'))
+        else:
+            actions.append(include(context, 'aav_kiss_icp', 'kiss_icp.launch.py',
+                                   use_sim_time='true'))
     if flag['watchdog']:
         # What this world has, and the camera only where something reads it: watching it
         # costs one more stream of pictures.
         camera = cameras and (flag['perception'] or flag['camera_obstacles'] or lane != 'false'
-                              or lane_pose or flag['faults'])
-        inputs = (['odom', 'imu', 'gps', 'local', 'global'] + (['camera'] if camera else [])
+                              or lane_pose or lane_camera or flag['faults'])
+        # NDT leading: the GPS's checks warn only, pose_check's HOLD stops (TODO 210).
+        gps = ['gps_check', 'pose_check'] if pose_ndt else ['gps']
+        inputs = (['odom', 'imu'] + gps + ['local', 'global'] + (['camera'] if camera else [])
                   + (['radar'] if radar else [])
+                  # The roof lidar, where this world has one (TODO 246's step 5e): the stop
+                  # zone and the costmap see through it, so a dead one stops, as the camera.
+                  + (['lidar'] if lidar else [])
                   # The steering asked against measured (TODO 207): the adapter or
                   # spine_bridge publishes it; not checked yet with the ESP32 in the loop.
                   + ([] if arg('esp32').lower() == 'true' else ['steering'])
@@ -699,7 +801,9 @@ def launch_setup(context):
                                    arg('watchdog_impl'))))
     # The goal leash (TODO 116): a laptop driver (aav_language) that goes quiet loses its
     # goals, as on the car. Does nothing until the language driver beats.
-    actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash',
+    actions.append(Node(package=vehicle.GOAL_LEASH_IMPLS[
+                            vehicle.check_goal_leash_impl(arg('goal_leash_impl'))],
+                        executable='goal_leash', name='goal_leash',
                         parameters=[{'use_sim_time': True}]))
     if flag['geofence']:
         actions.append(include(context, 'aav_safety', 'geofence.launch.py',
@@ -709,6 +813,10 @@ def launch_setup(context):
                                radius=fence_radius(arg('geofence_radius'), world),
                                centre_x=start_x,
                                centre_y=start_y, max_speed=sim_speed,
+                               fix_topic=('/localization/pose_check/fix' if pose_ndt
+                                          else '/localization/gps/odom'),
+                               geofence_impl=vehicle.check_geofence_impl(
+                                   arg('geofence_impl')),
                                use_sim_time='true'))
     if flag['teleop']:
         actions.append(include(context, 'aav_teleop', 'teleop.launch.py', use_sim_time='true'))
@@ -732,10 +840,7 @@ def launch_setup(context):
                                                      .perform(context), 'config',
                                                      'camera_obstacles.yaml'),
                                         {'use_sim_time': True}]))
-    if lane in ('true', 'fake'):
-        actions.append(include(context, 'aav_lane_geometry', 'lane_follower.launch.py',
-                               fake=lane == 'fake'))
-    if lane == 'true' or lane_pose:
+    if lane == 'true' or lane_pose or lane_camera:
         actions.append(include(
             context, 'aav_lane_finder', 'lane_finder.launch.py',
             lane_finder_impl=vehicle.check_lane_finder_impl(arg('lane_finder_impl'))))
@@ -779,7 +884,9 @@ def our_nodes(nav, costmap, planner, tracker, navigator, smoother, behaviour, cu
     Return the watchdog's node inputs for our own nodes this launch starts (TODO 180).
 
     Ben, 14 Nov: the watchdog warns about our nodes, warn only. The names are
-    config/sensor_watchdog.yaml's node_* inputs; ego and look_ahead always run.
+    config/sensor_watchdog.yaml's node_* inputs; ego and look_ahead always run. And
+    (Ben, 18 Nov, TODO 171) the status_* inputs: the same nodes in their own words, on
+    their status topics, warn only too.
     """
     names = ['node_ego', 'node_look_ahead']
     if nav:
@@ -787,7 +894,12 @@ def our_nodes(nav, costmap, planner, tracker, navigator, smoother, behaviour, cu
             ('node_costmap', costmap == 'own'), ('node_planner', planner == 'own'),
             ('node_navigator', navigator == 'own'), ('node_mppi_lag', tracker == 'mppi_lag'),
             ('node_smoother', smoother == 'own'), ('node_behaviour', behaviour),
-            ('node_voxels', cubes), ('node_things', things)) if on]
+            ('node_voxels', cubes), ('node_things', things),
+            ('status_costmap_local', costmap == 'own'),
+            ('status_costmap_global', costmap == 'own'),
+            ('status_planner', planner == 'own'),
+            ('status_navigator', navigator == 'own'),
+            ('status_mppi_lag', tracker == 'mppi_lag')) if on]
     return names
 
 
@@ -810,18 +922,13 @@ def generate_launch_description():
         DeclareLaunchArgument('nav', default_value='true'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer'),
-        # Gazebo's window, gone with Gazebo (16 Nov): Ravensim has none. Still taken, and
-        # ignored, so the old commands (gui:=false) run for one release.
-        DeclareLaunchArgument('gui', default_value='false',
-                              description='ignored: Ravensim has no window'),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher (the ml '
                                           'environment; world:=road)'),
         DeclareLaunchArgument('lane', default_value='false',
-                              description='true: lane keeping (lane_finder and '
-                                          'control_interface, on /drivers/ai/cmd_vel; '
-                                          'world:=road); fake: the same on a pretend lane'),
+                              description='true: the lane finder, on '
+                                          '/perception/lane/geometry (world:=road, campus)'),
         DeclareLaunchArgument('camera_obstacles', default_value='false',
                               description="the detectors' boxes into the local costmap "
                                           '(world:=road)'),
@@ -858,13 +965,28 @@ def generate_launch_description():
         DeclareLaunchArgument('actuator_model', default_value='true',
                               description="the actuators as vehicle.yaml's actuators: say; "
                                           'false: the old instant car'),
+        DeclareLaunchArgument('actuators', default_value='',
+                              description="the simulated car's own actuator numbers over "
+                                          'vehicle.yaml\'s ("throttle_lag=0.3,drag=0.2"); the '
+                                          'drivers keep vehicle.yaml (TODO 248)'),
+        DeclareLaunchArgument('wheel_noise', default_value='0',
+                              description='m/s of noise on each wheel speed (0: off)'),
+        DeclareLaunchArgument('wheel_slip', default_value='0',
+                              description='the wheels read this share too far (0: off)'),
+        DeclareLaunchArgument('noise_seed', default_value='1',
+                              description="the sensors' noise seed"),
         DeclareLaunchArgument('lag_scale', default_value='1.0',
                               description="the actuator model's lags times this (a "
                                           'robustness test; the drivers keep vehicle.yaml)'),
         DeclareLaunchArgument('speed_loop', default_value='default',
                               description="the speed loop's profile: default (today's gains)"
                                           ', smooth (TODO 27), lqi (TODO 3) or firm (TODO '
-                                          '163); every model of the car assumes it'),
+                                          '163); every model of the car assumes it, '
+                                          'unless speed_loop_model says otherwise'),
+        DeclareLaunchArgument('speed_loop_model', default_value='',
+                              description='the loop every model of the car assumes '
+                                          "(ego's trace, the follower, the behaviour "
+                                          "planner); empty: speed_loop's (TODO 163)"),
         DeclareLaunchArgument('payload', default_value='0',
                               description='kg aboard the modelled car: it speeds up and '
                                           'brakes less (ego is not told)'),
@@ -915,7 +1037,7 @@ def generate_launch_description():
                                           'the costmap stays on the flat scan'),
         DeclareLaunchArgument('things', default_value=stacks.CHOSEN,
                               description='true: the cubes as tracked things on /world/things '
-                                          '(aav_things; with nav and the lidar). Empty: the '
+                                          '(aav_things_rs; with nav and the lidar). Empty: the '
                                           "stack's choice (on in ours since 17 Nov, where the "
                                           'lidar and nav run)'),
         DeclareLaunchArgument('voxels', default_value='false',
@@ -937,8 +1059,8 @@ def generate_launch_description():
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
-                              description='python or rust: which things node tracks the '
-                                          'cubes (aav_things, or aav_things_rs)'),
+                              description='rust (aav_things_rs): which things node tracks '
+                                          'the cubes (the Python removed 20 Nov)'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
@@ -946,9 +1068,18 @@ def generate_launch_description():
                               description='python or rust: which object detector runs, '
                                           'with perception:=true (aav_detector, or '
                                           'aav_detector_rs: ONNX Runtime)'),
+        DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
+                                          'the geofence'),
+        DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
+                                          'stop_hold, with navigation'),
+        DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
+                                          'the goal leash'),
         DeclareLaunchArgument('watchdog_impl', default_value=vehicle.DEFAULT_WATCHDOG_IMPL,
-                              description='python or rust: which sensor watchdog runs '
-                                          '(aav_safety, or aav_watchdog_rs)'),
+                              description='rust (aav_watchdog_rs): which sensor watchdog '
+                                          'runs (the Python removed 20 Nov)'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
                               description='python or rust: which stop_sign_watcher runs, '
                                           'with perception:=true (aav_detector, or '
@@ -958,12 +1089,12 @@ def generate_launch_description():
                                           'run (aav_io_mux, or aav_io_mux_rs)'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL,
-                              description='python or rust: which localization_health runs '
-                                          '(aav_localization_health, or its _rs port)'),
+                              description='rust (aav_localization_health_rs): which '
+                                          'localization_health runs'),
         DeclareLaunchArgument('behaviour_impl',
                               default_value=vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL,
-                              description='python or rust: which behaviour node runs, with '
-                                          'behaviour on (aav_behaviour, or aav_behaviour_rs)'),
+                              description='rust (aav_behaviour_rs): which behaviour node '
+                                          'runs, with behaviour on'),
         DeclareLaunchArgument('ego_impl', default_value=vehicle.SIM_DEFAULT_EGO_IMPL,
                               description='python or rust: which ego runs (aav_ego, or '
                                           'aav_ego_rs: ego and look_ahead in one process)'),
@@ -997,6 +1128,26 @@ def generate_launch_description():
         DeclareLaunchArgument('diffusion_record', default_value='',
                               description="with planner:=diffusion: a folder for each plan's "
                                           'inputs, to replay offline (training/replay.py)'),
+        DeclareLaunchArgument('diffusion_impl', default_value=vehicle.DEFAULT_DIFFUSION_IMPL,
+                              description="with planner:=diffusion: the model's worker: "
+                                          'python (worker.py) or rust (aav_diffusion_rs, '
+                                          'ONNX Runtime from Rust; docs/onnx.md)'),
+        DeclareLaunchArgument('diffusion_provider', default_value='CPUExecutionProvider',
+                              description="with planner:=diffusion: ONNX Runtime's engine "
+                                          '(CPUExecutionProvider, CoreMLExecutionProvider...; '
+                                          'the Rust worker also auto, coreml, tensorrt)'),
+        DeclareLaunchArgument('mppi_lag_batch', default_value=stacks.CHOSEN,
+                              description='with tracker:=mppi_lag: its samples a tick '
+                                          '(TODO 152): 1000 (steer:=mppi_lag_1k); '
+                                          "nav2.yaml's 2000 when nothing sets it"),
+        DeclareLaunchArgument('mpc_lag_tube', default_value='',
+                              description='with tracker:=mpc_lag_rs: m each side of the '
+                                          'path where being off it costs nothing (the '
+                                          'tube, Ben 21 Nov); empty: 0.3 (tuned); 0: off'),
+        DeclareLaunchArgument('mppi_lag_sampling', default_value=stacks.CHOSEN,
+                              description='with tracker:=mppi_lag: correlated (the champion) '
+                                          "or smooth, noise on the steering's change (TODO "
+                                          '212, a challenger: steer:=mppi_lag_smooth)'),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value=stacks.CHOSEN,
                               description="with tracker:=mppi_lag: its steering's control cost "
                                           "weight (TODO 168): 0.05; nav2.yaml's gamma when "
@@ -1043,7 +1194,7 @@ def generate_launch_description():
                                           "Empty: the stack's choice (the lattice)"),
         DeclareLaunchArgument('behaviour', default_value=stacks.CHOSEN,
                               description='true: the behaviour states, the road ahead and '
-                                          'a speed cap (aav_behaviour); false: none. '
+                                          'a speed cap (aav_behaviour_rs); false: none. '
                                           "Empty: the stack's choice (on in ours)"),
         DeclareLaunchArgument('lane_map', default_value='',
                               description="with behaviour:=true: world (the world's lane "
@@ -1059,6 +1210,11 @@ def generate_launch_description():
 
                                           "lowest at the right lane's centre (TODO 148); "
                                           "false: none. Empty: the stack's choice (off)"),
+        DeclareLaunchArgument('lane_source', default_value=stacks.CHOSEN,
+                              description="with lane_costs:=true: map (the lane map's roads), "
+                                          "camera (the lane finder's lines, which it then "
+                                          'starts; TODO 264) or both (the map wins where it '
+                                          "has a road). Empty: the stack's choice (map)"),
         DeclareLaunchArgument('costmap_chunks', default_value=stacks.CHOSEN,
                               description="with costmap:=own: auto, the map's 64 m chunks "
                                           'round the car and along the route (the '
@@ -1083,6 +1239,16 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle is '
                                           'passed by moving only its stretch left; false: '
                                           "the whole path is the lattice's (before 16 Nov)"),
+        DeclareLaunchArgument('ground', default_value=stacks.CHOSEN,
+                              description='plane (the champion: one road plane a cloud) or '
+                                          'patchwork: a plane a patch, ring by ring, so a lower '
+                                          'kerb is a cube, the costmap on the cubes (TODO 215, '
+                                          'a challenger: kerbs:=patchwork)'),
+        DeclareLaunchArgument('lane_pass_shape', default_value=stacks.CHOSEN,
+                              description='with lane_route: the pass round a parked obstacle, '
+                                          'cosine (the default) or jerk, a QP holding the '
+                                          'lateral jerk (TODO 214, a challenger: '
+                                          'path:=lane_jerk)'),
         DeclareLaunchArgument('lane_corners', default_value='arc',
                               description="with lane_route: the lane line's corners, "
                                           'arc (circle arcs, the default) or clothoid '
@@ -1105,8 +1271,11 @@ def generate_launch_description():
                                           'docs/trials.md). Empty: '
                                           "the stack's choice"),
         DeclareLaunchArgument('amcl', default_value='false',
-                              description='stock AMCL beside the EKF, scored only '
+                              description='AMCL beside the EKF, scored only '
                                           '(world:=test_lot nav:=true lidar:=true)'),
+        DeclareLaunchArgument('amcl_impl', default_value=vehicle.DEFAULT_AMCL_IMPL,
+                              description='rust: which AMCL (aav_amcl_rs; stock nav2_amcl '
+                                          'removed 20 Nov)'),
         DeclareLaunchArgument('ndt', default_value='false',
                               description='NDT on the saved lidar map, scored only '
                                           '(world:=test_lot lidar:=true, ndt_map present)'),
@@ -1114,6 +1283,9 @@ def generate_launch_description():
                               description='a trial: NDT (ndt:=true implied) and its pose '
                                           "into ekf_global, beside the GPS. Empty: the stack's "
                                           'choice (false)'),
+        DeclareLaunchArgument('pose_source', default_value='gps',
+                              description="gps (today's) or ndt: NDT leads ekf_global's "
+                                          'pose, the GPS checks it (a challenger, TODO 210)'),
         DeclareLaunchArgument('ndt_chunks', default_value='',
                               description='with ndt:=true: the map in 64 m chunks from this '
                                           "folder (TODO 175). Empty: the campus's chunks "
@@ -1125,6 +1297,15 @@ def generate_launch_description():
         DeclareLaunchArgument('kiss_icp', default_value='false',
                               description='KISS-ICP lidar odometry, scored only (a world '
                                           'with the lidar; pixi install --locked -e kiss)'),
+        DeclareLaunchArgument('things_tracker', default_value=stacks.CHOSEN,
+                              description='with things:=true: constant_velocity (the champion) '
+                                          'or per_kind, a motion model per kind (TODO 217, a '
+                                          'challenger: behaviour:=on_per_kind)'),
+        DeclareLaunchArgument('odom_lidar', default_value=stacks.CHOSEN,
+                              description='with kiss_icp:=true or kiss_ekf:=true: kiss_icp (the '
+                                          'champion) or kinematic_icp, lidar odometry that '
+                                          "knows the car can't slide sideways, the wheels its "
+                                          'prior (TODO 216, a challenger: pose:=kinematic_ekf)'),
         DeclareLaunchArgument('kiss_ekf', default_value=stacks.CHOSEN,
                               description='a trial: KISS-ICP (kiss_icp:=true implied) and its '
                                           'twist into ekf_local, beside the wheels and IMU. '

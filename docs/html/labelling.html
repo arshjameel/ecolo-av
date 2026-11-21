@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Labelling after a drive · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/labelling.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Labelling after a drive</h1>
+<div class="meta">9 min read · 10 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a class="here" href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#the-loop">The loop</a><a href="#the-commands">The commands</a><a href="#step-1-the-detector">Step 1: the detector</a><a href="#step-2-boxes-onto-lidar-points">Step 2: boxes onto lidar points</a><a href="#step-3-labelsyaml">Step 3: labels.yaml</a><a href="#step-4-our-small-model">Step 4: our small model</a><a href="#the-proof-ravensim-19-nov">The proof (Ravensim, 19 Nov)</a><a href="#the-twin-todo-253">The twin (TODO 253)</a><a href="#not-done-yet">Not done yet</a><a href="#code">Code</a></nav>
+<div class="lead"><p>After each drive, the computer labels <strong>what is around</strong>: trees, buildings, poles, signs,
+fences, parked cars. A person fixes the labels in the map editor. Our small model learns
+from them. Then a <strong>twin</strong> of the place can be built for Ravensim.</p>
+<p>Phases F and G of the <a href="testing-plan.html">testing plan</a> (TODO 252, 253).</p>
+<div class="admonition warning">
+<p class="admonition-title">Ravensim only so far</p>
+<p>Built and run on Ravensim's campus, 19 Nov. Never run on a real drive's pictures.
+The camera-to-lidar calibration on the car (TODO 156) comes first.</p>
+</div></div>
+<section class="card"><h2 id="the-loop">The loop</h2>
+<pre class="highlight"><code class="language-text"> a drive ──▶ label-drive ──▶ labels.yaml ──▶ map-edit ──▶ label-train ──▶ our model (ONNX)
+ (pictures,   OWLv2 boxes      source:        a person      a point          scored on
+  lidar,      onto the lidar   camera         fixes them    segmenter        held-out frames
+  poses)      points                              │
+                                                  └──────▶ twin-world ──▶ a Ravensim world</code></pre>
+</section>
+<section class="card"><h2 id="the-commands">The commands</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi run label-drive bags/&lt;drive&gt;</code></td>
+<td>labels into <code>bags/&lt;drive&gt;/map/labels.yaml</code>; a report in <code>bags/&lt;drive&gt;/labels/</code></td>
+</tr>
+<tr>
+<td><code>pixi run label-drive --sim-drive bags/&lt;name&gt; --lot P4</code></td>
+<td>a drive from Ravensim alone, round a campus lot, then its labels</td>
+</tr>
+<tr>
+<td><code>pixi run map-edit bags/&lt;drive&gt;/map</code></td>
+<td>a person keeps, fixes or deletes them</td>
+</tr>
+<tr>
+<td><code>pixi run label-train &lt;map&gt; [&lt;map&gt;...]</code></td>
+<td>our small model: <code>models/label-seg.onnx</code> and its scores</td>
+</tr>
+<tr>
+<td><code>pixi run twin-world &lt;map&gt;</code></td>
+<td>a Ravensim world in <code>maps/twins/&lt;name&gt;/</code></td>
+</tr>
+<tr>
+<td><code>pixi run sim world:=maps/twins/&lt;name&gt;/twin.sdf</code></td>
+<td>drive in it</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>label-drive</code> and <code>label-train</code> run in the <code>ml</code> environment (PyTorch on the Mac's GPU).</p>
+</section>
+<section class="card"><h2 id="step-1-the-detector">Step 1: the detector</h2>
+<p><strong>OWLv2</strong> (Google): it finds things named in words, so it knows trees and buildings, which
+our car detector (RF-DETR, 80 everyday things) doesn't.</p>
+<p>It is asked for: tree, building, car, pole, street light, traffic sign, stop sign,
+traffic light, fence, bench, person.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Label class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tree</td>
+<td><code>tree</code></td>
+</tr>
+<tr>
+<td>building</td>
+<td><code>building</code></td>
+</tr>
+<tr>
+<td>car</td>
+<td><code>parked_car</code></td>
+</tr>
+<tr>
+<td>pole, street light, traffic sign, stop sign, traffic light</td>
+<td><code>pole</code></td>
+</tr>
+<tr>
+<td>fence, bench</td>
+<td><code>other</code></td>
+</tr>
+<tr>
+<td>person</td>
+<td>not mapped: people move</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="why-owlv2-the-licences">Why OWLv2: the licences</h3>
+<p>We checked the <strong>weights</strong> and their training data, not just the code.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Code</th>
+<th>Weights</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OWLv2</strong> (<code>google/owlv2-base-patch16-ensemble</code>)</td>
+<td>Apache-2.0</td>
+<td>Apache-2.0</td>
+<td><strong>picked</strong>: allowed, runs on <code>mps</code> through Hugging Face transformers (146 ms a picture)</td>
+</tr>
+<tr>
+<td>Grounding DINO</td>
+<td>Apache-2.0</td>
+<td>Apache-2.0</td>
+<td>allowed; a challenger later. Its deformable attention has no Metal kernel</td>
+</tr>
+<tr>
+<td>YOLO-World</td>
+<td>GPL-3.0</td>
+<td>GPL-3.0</td>
+<td><strong>not used</strong>: copyleft, and our licence isn't settled</td>
+</tr>
+<tr>
+<td>SAM 2 (masks)</td>
+<td>Apache-2.0</td>
+<td>Apache-2.0</td>
+<td>allowed; not needed yet: the box and the lidar's depth do the cutting</td>
+</tr>
+</tbody>
+</table></div>
+<p>OWLv2 learned from web pictures Google labelled itself (WebLI), then from Objects365 and
+Visual Genome. None of the three puts a non-commercial term on the weights. Recheck the
+two datasets' terms before any commercial use.</p>
+</section>
+<section class="card"><h2 id="step-2-boxes-onto-lidar-points">Step 2: boxes onto lidar points</h2>
+<pre class="highlight"><code class="language-text">   picture                                  lidar points in the box
+ ┌───────────────┐                          depth:  8 m  ●●●●      ← the tree: kept
+ │   ┌──tree──┐  │   project every point          20 m  ●●●●●●●●  ← the building behind
+ │   │   ●●   │  │   into the picture
+ │   │  ●●●   │  │   (vehicle.yaml's mounts,   the nearest group by depth takes the label
+ │   └────────┘  │    camera_info's lens)       (a break of 1.5 m, or 10 %, ends it)
+ └───────────────┘</code></pre>
+<ul>
+<li>Only points 0.5 m and more above the road (not kerbs or grass) and within 45 m.</li>
+<li>Each frame's labelled points go into <strong>0.5 m map cells</strong>, one vote per frame.</li>
+<li>A cell counts when 2 frames or more agree, with half its votes or more.</li>
+<li>Touching cells of one class become <strong>one label</strong>: the smallest turned box round them, a
+  height band, a confidence.</li>
+<li>A "building" under 2.5 m is a fence (<code>other</code>). A "tree" under 2 m is dropped (a bush).</li>
+</ul>
+</section>
+<section class="card"><h2 id="step-3-labelsyaml">Step 3: labels.yaml</h2>
+<p>The map editor's format (<a href="map-editor.html">The map editor</a>):</p>
+<pre class="highlight"><code class="language-yaml">- id: 7
+  class: tree
+  region: {centre_m: [41.25, -24.5], size_m: [2.5, 2.0], yaw_rad: 0.0}
+  band: {min_m: 5.01, max_m: 6.51}
+  source: camera
+  confidence: 0.2
+  seen_in: [sim-lot-p4]</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Already in the file</th>
+<th>What a new camera label does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a person's label, same class, same place</td>
+<td>nothing added; the person's gains the drive in <code>seen_in</code></td>
+</tr>
+<tr>
+<td>an earlier drive's camera label</td>
+<td>joined: both drives in <code>seen_in</code>, the surer confidence</td>
+</tr>
+<tr>
+<td>occupancy's box (<code>source: passes</code>, class <code>other</code>)</td>
+<td>names it: it takes the camera's class</td>
+</tr>
+<tr>
+<td>this same drive's labels (run again)</td>
+<td>taken back first: running twice changes nothing</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="step-4-our-small-model">Step 4: our small model</h2>
+<p>A <strong>point segmenter</strong>: each lidar point's class from its height, its range and its
+pillar's shape. A small network (10 numbers in, 64, 64, 6 classes out), trained on the
+Mac's GPU in about 90 s.</p>
+<ul>
+<li>Trained on the labels as a person left them.</li>
+<li>The last 20 % of each drive's frames are held out: other places.</li>
+<li>Exported to ONNX, and checked on the CPU and Core ML, as <code>measure onnx</code> checks.</li>
+</ul>
+<p>It's modest on purpose: the loop matters, not the model.</p>
+</section>
+<section class="card"><h2 id="the-proof-ravensim-19-nov">The proof (Ravensim, 19 Nov)</h2>
+<p>Two drives made from Ravensim alone: the car put every 2 m round a campus lot, 6 m in
+from its edge; three cameras drawn and the lidar cast at each pose. Scored against
+Ravensim's own trees, buildings and fences (<code>campus_world.objects</code>).</p>
+<h3 id="labels-against-ravensims-truth">Labels against Ravensim's truth</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Drive</th>
+<th>Pictures</th>
+<th>Labels</th>
+<th>Right (precision)</th>
+<th>Things seen</th>
+<th>Found (recall)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lot P4 (104 poses)</td>
+<td>312</td>
+<td>11</td>
+<td>8 (<strong>73 %</strong>)</td>
+<td>12</td>
+<td>6 (<strong>50 %</strong>)</td>
+</tr>
+<tr>
+<td>lot P5 (276 poses)</td>
+<td>828</td>
+<td>22</td>
+<td>16 (<strong>73 %</strong>)</td>
+<td>13</td>
+<td>10 (<strong>77 %</strong>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Lot P5, by class:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Labels</th>
+<th>Precision</th>
+<th>Things</th>
+<th>Recall</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tree</td>
+<td>5</td>
+<td>80 %</td>
+<td>7</td>
+<td>57 %</td>
+</tr>
+<tr>
+<td>building</td>
+<td>8</td>
+<td>75 %</td>
+<td>5</td>
+<td>100 %</td>
+</tr>
+<tr>
+<td>pole</td>
+<td>3</td>
+<td>0 %</td>
+<td>0</td>
+<td>- (the campus world has no poles: all three are wrong)</td>
+</tr>
+<tr>
+<td>other (fences)</td>
+<td>6</td>
+<td>100 %</td>
+<td>1</td>
+<td>100 %</td>
+</tr>
+</tbody>
+</table></div>
+<p>"Things seen": those with 20 lidar points or more in the pictures. The lidar sees ±15°,
+so most of what OWLv2 boxes is too high or too far: 549 of 6,382 boxes landed on points.</p>
+<h3 id="our-model-on-the-76-held-out-frames-105-million-points">Our model, on the 76 held-out frames (1.05 million points)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Class</th>
+<th>IoU against the labels</th>
+<th>Against the truth: precision / recall</th>
+<th>The labels themselves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>building</td>
+<td>0.87</td>
+<td>0.41 / 1.00</td>
+<td>0.47 / 1.00</td>
+</tr>
+<tr>
+<td>tree</td>
+<td>0.40</td>
+<td>0.97 / 0.41</td>
+<td>0.97 / 0.28</td>
+</tr>
+<tr>
+<td>other</td>
+<td>0.45</td>
+<td>0.11 / 0.53</td>
+<td>0.16 / 0.41</td>
+</tr>
+<tr>
+<td>pole</td>
+<td>0.34</td>
+<td>no poles in the world</td>
+<td></td>
+</tr>
+<tr>
+<td>every point right</td>
+<td>97.7 %</td>
+<td>94.2 %</td>
+<td>94.9 %</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>It finds more of the trees than its own labels do (41 % against 28 %).</li>
+<li>Buildings: a label's box is a rectangle, so it takes in what stands next to the wall.</li>
+<li>ONNX: the same class as PyTorch for every point, on the CPU and Core ML (largest
+  difference 5e-5); <strong>0.6 ms</strong> for a 17,000-point scan.</li>
+</ul>
+<h3 id="the-twin">The twin</h3>
+<p><code>twin-world</code> on lot P5's labels: 8 buildings, 5 trees, 3 poles, 6 blocks (334 triangles).
+<code>sim world:=…/twin.sdf</code> started: Ravensim read the world, the lidar ran at 10 Hz, the map
+server loaded the twin's 2D map, the car stood at the drive's first pose.</p>
+</section>
+<section class="card"><h2 id="the-twin-todo-253">The twin (TODO 253)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Becomes in Ravensim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>building</td>
+<td>its box, brick or stone, as tall as its NDT points, a roof</td>
+</tr>
+<tr>
+<td>tree</td>
+<td>a trunk and a low-poly crown, as tall and as wide as its points</td>
+</tr>
+<tr>
+<td>pole</td>
+<td>a 15 cm post</td>
+</tr>
+<tr>
+<td>other</td>
+<td>a block, as its band says</td>
+</tr>
+<tr>
+<td>parked car</td>
+<td><strong>left out</strong>: it may be gone (<code>--keep-parked</code> keeps them)</td>
+</tr>
+<tr>
+<td>seen in under half the drives</td>
+<td><strong>left out</strong>: it moved</td>
+</tr>
+</tbody>
+</table></div>
+<p>It reuses <code>campus_world.py</code>'s meshes, textures and world file. Beside <code>twin.sdf</code> it keeps
+the map's <code>map2d.yaml</code> and <code>ndt.pcd</code> (the sim's localisation reads them) and <code>twin.yaml</code>
+(the start, what went in, what was left out and why).</p>
+</section>
+<section class="card"><h2 id="not-done-yet">Not done yet</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A real drive</td>
+<td>no recording with pictures yet; the car's camera-to-lidar calibration (TODO 156)</td>
+</tr>
+<tr>
+<td>A recorded Ravensim drive's pictures</td>
+<td><code>--draw-sim WORLD</code> draws them at the truth poses; built, not run</td>
+</tr>
+<tr>
+<td>Kerbs, people</td>
+<td>kerbs are under the 0.5 m floor; people move and aren't mapped</td>
+</tr>
+<tr>
+<td>The twin's pass test</td>
+<td>a replayed drive within NDT's error of the real one: stage 2</td>
+</tr>
+<tr>
+<td>Poles</td>
+<td>the campus world has none, so pole labels can't be scored there</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="code">Code</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tools/label_core.py</code></td>
+<td>the maths, no ROS, no PyTorch (<code>tools/tests/test_label_core.py</code>)</td>
+</tr>
+<tr>
+<td><code>tools/label_drive.py</code></td>
+<td>the drive, OWLv2, the fusion, the report</td>
+</tr>
+<tr>
+<td><code>tools/label_train.py</code></td>
+<td>our segmenter: train, score, ONNX</td>
+</tr>
+<tr>
+<td><code>tools/twin_world.py</code></td>
+<td>the twin (<code>tools/tests/test_twin_world.py</code>)</td>
+</tr>
+<tr>
+<td><code>aav_simulator</code>'s <code>scan_poses</code> example</td>
+<td>Ravensim's lidar at a list of poses, no ROS</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="map-editor.html"><small>Previous</small>← The map editor</a>
+<a class="next" href="measure-the-car.html"><small>Next</small>Measure the car →</a></nav>
+</main>
+<footer>Source: <code>docs/labelling.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

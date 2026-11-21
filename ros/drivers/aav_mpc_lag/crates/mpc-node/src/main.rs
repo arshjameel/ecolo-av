@@ -29,11 +29,21 @@
 //! Parameters  read once at start (config/mpc_lag_rs.yaml, and navigation.launch.py's
 //!             vehicle.mpc_lag_rs_params: nav2.yaml, vehicle.yaml, ego.yaml): see the README.
 //!
-//! navigation.launch.py tracker:=mpc_lag_rs starts it in mppi_lag's place. Forward only. Everything after cmd_vel_nav is unchanged. The
-//! maths is the `mpc-lag` crate; the map correction and Nav2's goal and progress checks are
-//! `mppi-lag`'s (aav_mppi_lag); this file only moves messages.
+//! Reversing  (TODO 213) a path is cut at its cusps (mpc-lag's `gears`): a backwards
+//!             stretch is given to the MPC mirrored (the car turned round, its speed and
+//!             steering negated) and driven backwards at max_reverse_speed at most (0: a
+//!             path that reverses is refused, INVALID_PATH). The car is held at 0 within
+//!             0.3 m of a cusp; the next stretch is taken once it stands there (under
+//!             0.05 m/s), or after standing 2 s within 1.5 m. The goal is checked on the
+//!             last stretch only; the progress check starts again at each stretch.
+//!
+//! navigation.launch.py tracker:=mpc_lag_rs starts it in mppi_lag's place. Everything
+//! after cmd_vel_nav is unchanged. The maths is the `mpc-lag` crate (`Geared`); the map
+//! correction and Nav2's goal and progress checks are `mppi-lag`'s (aav_mppi_lag); this
+//! file only moves messages.
 
 use std::{
+    f64::consts::PI,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -41,7 +51,9 @@ use std::{
 use anyhow::{bail, Context as _, Result};
 use car_model::ActuatorConfig;
 use futures::channel::oneshot;
-use mpc_lag::{wrap, Command as MpcCommand, Limits, MpcLag, Observed, Path, Settings};
+use mpc_lag::{
+    wrap, Command as MpcCommand, CuspRules, Direction, Geared, Limits, MpcLag, Observed, Settings,
+};
 use mppi_lag::follower::{GoalCheck, ProgressCheck};
 use mppi_lag::map_correction::{into_map, into_odom, Correction};
 use mppi_lag::{MapCorrection, Pose, SlewLimits};
@@ -66,6 +78,7 @@ fn main() -> Result<()> {
     let (config, _params) = Config::declare(&node)?;
     let mpc = MpcLag::new(config.limits, config.car, config.settings)
         .map_err(|e| anyhow::anyhow!("mpc_lag: {e}"))?;
+    let mpc = Geared::new(mpc, config.max_reverse_speed, CuspRules::default());
 
     // Latched: true while a path runs, so ego's lead doesn't cancel the lags twice.
     let lag_pub = node.create_publisher::<Bool>(
@@ -82,13 +95,18 @@ fn main() -> Result<()> {
     log_info!(
         node.logger(),
         "the lag-aware MPC (Rust) follows Nav2's paths at {} Hz, up to {} m/s; {} ticks \
-         ahead; dead time {:?} ticks; done within {} m and {} rad",
+         ahead; dead time {:?} ticks; done within {} m and {} rad; {}",
         config.rate_hz,
         config.settings.cruise,
         config.settings.horizon,
-        mpc.dead_ticks(),
+        mpc.mpc().dead_ticks(),
         config.xy_goal_tolerance,
-        config.yaw_goal_tolerance
+        config.yaw_goal_tolerance,
+        if config.max_reverse_speed > 0.0 {
+            format!("backwards up to {} m/s", config.max_reverse_speed)
+        } else {
+            "forward only".to_string()
+        }
     );
     let core = Core {
         lag_pub,
@@ -199,7 +217,8 @@ struct Core {
     logger: Logger,
     goal: GoalCheck,
     progress: ProgressCheck,
-    mpc: MpcLag,
+    /// The MPC, forward and back.
+    mpc: Geared,
     /// rad: the last steering sent.
     steer: f64,
     /// (pose, speed, when) from odometry.
@@ -278,8 +297,13 @@ impl Core {
     ) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        let (path, in_map) = match self.path_in_odom(msg) {
-            Ok(found) => found,
+        let in_map = match self.path_in_odom(msg).and_then(|(poses, in_map)| {
+            self.mpc
+                .follow(&poses)
+                .map(|()| in_map)
+                .map_err(|e| (FollowPath_Result::INVALID_PATH, e.to_string()))
+        }) {
+            Ok(in_map) => in_map,
             Err((code, why)) => {
                 log_warn!(&self.logger, "FollowPath refused: {why}");
                 let _ = done.send(Finish::Aborted(code));
@@ -299,7 +323,6 @@ impl Core {
             self.mpc.forget();
         }
         self.corrected = Some(self.now());
-        self.mpc.reset(path);
         self.set_lag_aware(true);
         self.job = Some(Job {
             id,
@@ -311,9 +334,9 @@ impl Core {
         id
     }
 
-    /// The goal's path in odom, and whether it came in map. A map path comes by the held map
-    /// -> odom while one runs (none: the newest, which is then held).
-    fn path_in_odom(&mut self, msg: &PathMsg) -> Result<(Path, bool), (u16, String)> {
+    /// The goal's poses in odom, and whether they came in map. A map path comes by the held
+    /// map -> odom while one runs (none: the newest, which is then held).
+    fn path_in_odom(&mut self, msg: &PathMsg) -> Result<(Vec<mpc_lag::Pose>, bool), (u16, String)> {
         let mut poses: Vec<Pose> = msg
             .poses
             .iter()
@@ -348,10 +371,7 @@ impl Core {
             let frame = self.correction.for_new_path(odom_in_map, driving);
             poses = poses.iter().map(|p| into_odom(p, &frame)).collect();
         }
-        let triples: Vec<(f64, f64, f64)> = poses.iter().map(|p| (p.x, p.y, p.yaw)).collect();
-        Path::new(&triples)
-            .map(|p| (p, in_map))
-            .map_err(|e| (FollowPath_Result::INVALID_PATH, e.to_string()))
+        Ok((poses.iter().map(|p| (p.x, p.y, p.yaw)).collect(), in_map))
     }
 
     fn cancel(&mut self, id: u64) {
@@ -396,12 +416,23 @@ impl Core {
             return self.finish(Finish::Aborted(FollowPath_Result::UNKNOWN), &why);
         };
         self.correct(now);
-        let Some(path) = self.mpc.path() else {
+        if self.mpc.advance(pose.x, pose.y, speed, now) {
+            // At a cusp: the next stretch, the other way, from a stop.
+            self.progress.reset();
+            log_info!(
+                &self.logger,
+                "at a cusp: now {}",
+                match self.mpc.direction() {
+                    Direction::Forward => "forward",
+                    Direction::Backward => "backwards",
+                }
+            );
+        }
+        let Some((gx, gy, gyaw)) = self.mpc.goal() else {
             return;
         };
-        let (gx, gy) = path.end();
-        let goal = Pose::new(gx, gy, path.goal_yaw());
-        if self.goal.done(&pose, &goal) {
+        // Only on the last stretch: a three-point turn may pass near its own goal.
+        if self.mpc.on_last() && self.goal.done(&pose, &Pose::new(gx, gy, gyaw)) {
             return self.finish(Finish::Succeeded, "at the goal");
         }
         if self.progress.stuck(&pose, now) {
@@ -433,10 +464,7 @@ impl Core {
             cmd.speed,
             cmd.speed * cmd.steer.tan() / self.config.limits.wheelbase,
         );
-        let left = cmd
-            .report
-            .foot
-            .map_or(0.0, |f| self.mpc.path().map_or(0.0, |p| p.left(f.s)));
+        let left = self.mpc.left(pose.x, pose.y);
         if let Some(job) = self.job.as_ref() {
             let _ = job.feedback.publish(FollowPath_Feedback {
                 distance_to_goal: left.max(0.0) as f32,
@@ -515,9 +543,12 @@ impl Core {
     fn report(&self, loop_ms: f64, pose: &Pose, left: f64, cmd: &MpcCommand) {
         let period_ms = 1000.0 / self.config.rate_hz;
         let r = &cmd.report;
+        // The foot is on the stretch as the MPC sees it: mirrored backwards.
+        let backward = self.mpc.direction() == Direction::Backward;
+        let yaw = if backward { pose.yaw + PI } else { pose.yaw };
         let (cross, heading) = r
             .foot
-            .map_or((0.0, 0.0), |f| (f.cross, wrap(pose.yaw - f.heading)));
+            .map_or((0.0, 0.0), |f| (f.cross, wrap(yaw - f.heading)));
         let values = [
             ("tracker", TRACKER.to_string()),
             ("loop_ms", format!("{loop_ms:.3}")),
@@ -535,6 +566,7 @@ impl Core {
             ("speed_limit_mps", format!("{:.4}", r.speed_limit)),
             ("feed_forward_rad", format!("{:.4}", r.feed_forward)),
             ("map_gap_m", format!("{:.3}", self.map_gap())),
+            ("backwards", u8::from(backward).to_string()),
         ];
         let msg = DiagnosticStatus {
             level: if loop_ms > period_ms {
@@ -575,6 +607,8 @@ struct Config {
     progress_angle: f64,
     progress_time: f64,
     limits: Limits,
+    /// m/s backwards at most; 0: forward only (vehicle.yaml's, with reversing:=true).
+    max_reverse_speed: f64,
     car: ActuatorConfig,
     settings: Settings,
     /// How fast the held map -> odom follows the newest (TODO 186).
@@ -709,6 +743,7 @@ impl Config {
             period: 1.0 / rate_hz,
             horizon: d.count("mpc_lag.horizon", s.horizon)?,
             q,
+            tube: d.number("mpc_lag.tube", s.tube)?,
             r: d.number("mpc_lag.r", s.r)?,
             r_rate: d.number("mpc_lag.r_rate", s.r_rate)?,
             q_speed: d.number("mpc_lag.q_speed", s.q_speed)?,
@@ -752,6 +787,7 @@ impl Config {
             progress_angle: d.number("progress_angle", 0.5)?,
             progress_time: d.number("progress_time", 10.0)?,
             limits,
+            max_reverse_speed: d.number("max_reverse_speed", 0.0)?.max(0.0),
             car,
             settings,
             map_correction,

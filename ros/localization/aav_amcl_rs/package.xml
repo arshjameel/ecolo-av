@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_amcl_rs</name>
+  <version>0.1.0</version>
+  <description>AMCL in Rust (rclrs), in stock nav2_amcl's place (amcl_impl:=rust, the default): a particle filter on the 2D map and /sensors/lidar/scan, with the local EKF's odometry. Stock's topics, parameters (config/amcl.yaml) and frames; never TF; scored only, as a trial. The maths is the amcl-core crate, with no ROS; a port of nav2_amcl's behaviour, so its licence.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>LGPL-2.1-or-later</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>nav2_msgs</depend>
+  <depend>sensor_msgs</depend>
+
+  <!-- The test runs the node with stock's config/amcl.yaml, read from the source tree:
+       aav_navigation depends on this package, so not the other way round. -->
+  <test_depend>ament_cmake_pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

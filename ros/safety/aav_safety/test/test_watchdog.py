@@ -1,14 +1,17 @@
 import math
+import os
 
 from aav_safety import watchdog
 from aav_safety.watchdog import FROZEN, JUMP, LOST, NAN, NEVER, OK, Rule, STALE, Watchdog
 import pytest
+import yaml
 
 ODOM = Rule('odom', '/vehicle/odom', 'odom', max_age=0.5)
 IMU = Rule('imu', '/sensors/imu/data', 'imu', max_age=0.5, frozen_after=1.0)
 GPS = Rule('gps', '/sensors/gps/fix', 'gps', max_age=2.0, max_jump_speed=15.0)
 CAMERA = Rule('camera', '/sensors/camera/front_left/image_raw', 'image', max_age=1.0,
               frozen_after=1.0)
+LIDAR = Rule('lidar', '/sensors/lidar/points', 'cloud', max_age=1.0, frozen_after=1.0)
 RADAR = Rule('radar', '/sensors/radar/points', 'cloud', max_age=1.0, stop=False)
 HUD = Rule('hud', '/hud/heartbeat', 'heartbeat', max_age=1.0, frozen_after=1.0)
 LATCHED_HUD = Rule('hud', '/hud/heartbeat', 'heartbeat', max_age=1.0, frozen_after=1.0,
@@ -102,6 +105,49 @@ def test_a_still_camera_is_frozen_only_while_the_car_moves():
     for k in range(30, 45):                           # driving: the picture must change
         cam.arrived(k * 0.1, digest='street', speed=1.0)
     assert state(dog, 'camera', 4.4) == FROZEN
+
+
+def test_a_silent_lidar_goes_stale_and_stops_the_drivers():
+    dog = Watchdog([LIDAR])
+    lidar = dog.watches['lidar']
+    for k in range(10):                               # 10 Hz, a new cloud each time
+        lidar.arrived(k * 0.1, digest=k, speed=1.0)
+    assert state(dog, 'lidar', 1.8) == OK and not dog.locked(1.8)
+    assert state(dog, 'lidar', 2.0) == STALE and dog.locked(2.0)    # 1.1 s of nothing
+    lidar.arrived(2.1, digest=99, speed=1.0)           # back: drives again on its own
+    assert state(dog, 'lidar', 2.1) == OK and not dog.locked(2.1)
+
+
+def test_a_repeated_lidar_cloud_is_frozen_only_while_the_car_moves():
+    dog = Watchdog([LIDAR])
+    lidar = dog.watches['lidar']
+    for k in range(30):                               # parked: the same cloud is fine
+        lidar.arrived(k * 0.1, digest='kerb', speed=0.0)
+    assert state(dog, 'lidar', 2.9) == OK
+    for k in range(30, 45):                           # driving: the cloud must change
+        lidar.arrived(k * 0.1, digest='kerb', speed=1.0)
+    assert state(dog, 'lidar', 4.4) == FROZEN and dog.locked(4.4)
+    lidar.arrived(4.5, digest='road', speed=1.0)      # a new cloud: OK again
+    assert state(dog, 'lidar', 4.5) == OK
+
+
+def test_a_cloud_without_frozen_after_never_freezes():
+    dog = Watchdog([RADAR])
+    radar = dog.watches['radar']
+    for k in range(30):
+        radar.arrived(k * 0.1, digest='same', speed=2.0)
+    assert state(dog, 'radar', 2.9) == OK
+
+
+def test_the_lidar_input_stops_as_the_camera_does():
+    path = os.path.join(os.path.dirname(__file__), '..', 'config', 'sensor_watchdog.yaml')
+    with open(path) as f:
+        cfg = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
+    lidar, camera = cfg['lidar'], cfg['camera']
+    assert lidar['topic'] == '/sensors/lidar/points' and lidar['kind'] == 'cloud'
+    assert lidar['stop'] is True and lidar['stop'] == camera['stop']
+    assert lidar['max_age'] == camera['max_age'] == 1.0     # both 10 Hz
+    assert lidar['frozen_after'] == camera['frozen_after']
 
 
 def test_the_hud_must_beat_before_and_while_nav2_drives():
@@ -322,6 +368,90 @@ def test_a_node_input_may_not_stop_the_car():
         Rule('planner', '/planner', 'node', max_age=3.0)
     with pytest.raises(ValueError, match='full name'):
         Rule('planner', 'planner', 'node', max_age=3.0, stop=False)
+
+
+# TODO 171: our nodes in their own words, warn only by default.
+COSTMAP = Rule('costmap', '/drivers/nav/costmap/status', 'status', max_age=3.0, stop=False,
+               status_name='costmap local', min_level=1)
+PLANS = Rule('plans', '/drivers/nav/planner/status', 'status', max_age=3.0, stop=False,
+             quiet_ok=True)
+
+
+def test_a_node_that_says_it_waits_warns_in_its_own_words():
+    dog = Watchdog([COSTMAP])
+    w = dog.watches['costmap']
+    assert state(dog, 'costmap', 0.0) == NEVER
+    w.arrived(1.0, (0,), words='local costmap: 0.4 ms an update')
+    assert state(dog, 'costmap', 1.0) == OK
+    w.arrived(2.0, (1,), words='local costmap: waiting for odometry')
+    s, detail = w.state(2.0)
+    assert s == watchdog.FAULT and detail == 'says WARN: local costmap: waiting for odometry'
+    assert not dog.locked(2.0), 'warn only'
+    assert 'WARN: costmap FAULT' in dog.summary(2.0)
+    w.arrived(2.5, (0,), words='fine')
+    assert state(dog, 'costmap', 2.5) == OK
+    assert state(dog, 'costmap', 5.6) == STALE, 'a hung node says nothing'
+
+
+def test_only_its_own_name_counts_on_a_shared_topic():
+    assert COSTMAP.hears('costmap local') and not COSTMAP.hears('costmap global')
+    assert PLANS.hears('anything') and Rule('a', '/a', 'odom', 1.0).hears('x')
+
+
+def test_a_quiet_node_is_ok_and_its_old_complaint_fades():
+    dog = Watchdog([PLANS])
+    w = dog.watches['plans']
+    assert w.state(0.0) == (OK, 'quiet: nothing yet')
+    w.arrived(1.0, (2,), words='no path: the goal is in a wall')
+    assert state(dog, 'plans', 1.0) == watchdog.FAULT
+    assert state(dog, 'plans', 2.0) == watchdog.FAULT
+    assert w.state(4.5) == (OK, 'quiet for 3.5 s')
+    w.arrived(5.0, (1,), words='slow')
+    assert state(dog, 'plans', 5.0) == OK, 'WARN is under its min_level, ERROR'
+
+
+def test_a_status_input_can_be_switched_to_stop():
+    rule = Rule('nav', '/drivers/nav/navigator/status', 'status', max_age=2.0)
+    dog = Watchdog([rule])
+    dog.watches['nav'].arrived(0.0, (2,), words='broken')
+    assert dog.locked(0.0)
+
+
+def test_the_configs_status_inputs_are_good_rules_that_only_warn():
+    path = os.path.join(os.path.dirname(__file__), '..', 'config', 'sensor_watchdog.yaml')
+    with open(path) as f:
+        params = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
+    status = {k: v for k, v in params.items() if isinstance(v, dict) and v['kind'] == 'status'}
+    assert set(status) == {'status_costmap_local', 'status_costmap_global', 'status_planner',
+                           'status_navigator', 'status_mppi_lag', 'pose_check'}
+    for name, p in status.items():
+        rule = Rule(name, p['topic'], 'status', p['max_age'], stop=p['stop'],
+                    status_name=p.get('status_name', ''), min_level=p.get('min_level', 2),
+                    quiet_ok=p.get('quiet_ok', False))
+        if name == 'pose_check':
+            # Not navigation's: where the car is (TODO 210). HOLD (ERROR) and silence stop.
+            assert rule.stop and rule.min_level == 2 and not rule.quiet_ok
+        else:
+            assert rule.stop is False, f'{name}: warn only (Ben, 18 Nov)'
+
+
+def test_with_ndt_leading_the_gps_checks_only_warn():
+    path = os.path.join(os.path.dirname(__file__), '..', 'config', 'sensor_watchdog.yaml')
+    with open(path) as f:
+        params = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
+    gps, check = params['gps'], params['gps_check']
+    assert gps['stop'] is True and check['stop'] is False
+    assert {k: v for k, v in gps.items() if k != 'stop'} == {
+        k: v for k, v in check.items() if k != 'stop'}
+
+
+def test_status_settings_belong_to_status_inputs():
+    with pytest.raises(ValueError, match='status input'):
+        Rule('odom', '/vehicle/odom', 'odom', 0.5, quiet_ok=True)
+    with pytest.raises(ValueError, match='status input'):
+        Rule('odom', '/vehicle/odom', 'odom', 0.5, status_name='x')
+    with pytest.raises(ValueError, match='min_level'):
+        Rule('s', '/s', 'status', 1.0, min_level=0)
 
 
 # TODO 207: an actuator that doesn't follow its command (steering stuck in a bend).

@@ -56,7 +56,7 @@ impl Distortion {
 
     /// Where a point on the normalised picture plane (x/z, y/z) lands after the lens
     /// bends it (OpenCV's `projectPoints`, its sums in its order).
-    fn apply(&self, x: f64, y: f64) -> (f64, f64) {
+    pub fn apply(&self, x: f64, y: f64) -> (f64, f64) {
         let k = &self.0;
         let r2 = x * x + y * y;
         let r4 = r2 * r2;

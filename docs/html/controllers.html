@@ -7,7 +7,7 @@
 <!-- Generated from docs/controllers.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Controllers: which one, where, and why</h1>
-<div class="meta">45 min read · 13 sections</div></header>
+<div class="meta">38 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a class="here" href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -136,8 +150,9 @@ bad at, what it needs, and where it would run on our car.</p>
   is built in <code>spine-core</code> to compare (<code>speed_loop:=lqi</code>, section 2a).</li>
 <li><strong>Steering, following a path:</strong> MPPI that knows the lag (<code>aav_mppi_lag</code>, Rust) is
   the default (sim, bench and car); Nav2's MPPI was, until Nav2 went on 17 Nov.
-  Our trackers (pure pursuit, Stanley, LQR, MPC) are trials, forward only; MPC is
-  the leading candidate among them.</li>
+  Our trackers (pure pursuit, Stanley, LQR, MPC) are trials; they reverse since
+  19 Nov (TODO 174: a backwards stretch is driven mirrored); MPC is the leading
+  candidate among them.</li>
 <li><strong>The steering motor:</strong> the Jrk G2's own position PID, underneath everything.</li>
 <li><strong>Obstacle tours:</strong> the State Lattice plans (since 1 Nov; ours in Rust,
   <code>aav_planner</code>, since 14 Nov), MPPI follows. Hybrid-A* and the diffusion planner
@@ -336,7 +351,7 @@ with <code>hold_brake</code> once stopped.</p>
 </tr>
 <tr>
 <td>Status</td>
-<td><strong>the choice.</strong> Step 1 is written (on <code>main</code>), checked against a model car and Gazebo; the car stays on <code>mode: open</code> until it's tried on stands. The smooth stop is written (29 Oct): <a href="#2b-the-smooth-stop-results-29-oct">section 2b</a></td>
+<td><strong>the choice.</strong> Step 1 is written (on <code>main</code>), checked against a model car and Gazebo; the car stays on <code>mode: open</code> until it's tried on stands. The smooth stop is written (29 Oct): <a href="../history/controllers-log.md#2b-the-smooth-stop-results-29-oct">section 2b</a></td>
 </tr>
 </tbody>
 </table></div>
@@ -376,7 +391,7 @@ effort, and let the maths pick the gains (<code>u = −K x</code>).</p>
 </tr>
 <tr>
 <td>Status</td>
-<td><strong>built, a comparison</strong> (TODO 3, 29 Oct): on the model it matches <code>smooth</code> and beats today's PI. Results: <a href="#2a-lqi-against-the-pi-results-29-oct">section 2a</a>. "LQR picks the gains if it beats hand tuning" (the control plan, step 3)</td>
+<td><strong>built, a comparison</strong> (TODO 3, 29 Oct): on the model it matches <code>smooth</code> and beats today's PI. Results: <a href="../history/controllers-log.md#2a-lqi-against-the-pi-results-29-oct">section 2a</a>. "LQR picks the gains if it beats hand tuning" (the control plan, step 3)</td>
 </tr>
 </tbody>
 </table></div>
@@ -445,251 +460,9 @@ limits written in, send the first step, and plan again.</p>
 </tbody>
 </table></div>
 <h3 id="2a-lqi-against-the-pi-results-29-oct">2a. LQI against the PI: results, 29 Oct</h3>
-<p><code>speed_loop:=lqi</code> against today's PI (<code>default</code>) and TODO 27's <code>smooth</code>. Every number is
-on guessed car numbers (<code>vehicle.yaml</code>), so it ranks the designs; it doesn't tune the car.</p>
-<p><strong>On the model</strong> (<code>pixi run python3 tools/vehicle_model.py --speed-loop</code>: the worst of 6 runs, 0.5 to
-2 m/s, the lag doubled, up to 110 ms late):</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Plant</th>
-<th>Today's PI: overshoot / within 5 %</th>
-<th><code>smooth</code></th>
-<th><code>lqi</code></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>K (<code>vehicle.yaml</code>'s guesses)</td>
-<td>17 % / 13.7 s</td>
-<td>0 % / 5.7 s</td>
-<td><strong>0 % / 5.0 s</strong></td>
-</tr>
-<tr>
-<td>K/5 by drag</td>
-<td>0 %, 29 % short</td>
-<td>0 % / 11.1 s</td>
-<td><strong>0 % / 8.3 s</strong></td>
-</tr>
-<tr>
-<td>K/5 by a weak throttle</td>
-<td>17 %, 29 % short</td>
-<td><strong>8 %</strong> / 15.3 s</td>
-<td>15 % / 15.0 s</td>
-</tr>
-<tr>
-<td>2K by a strong throttle</td>
-<td>15 % / 9.2 s</td>
-<td>1 % / 6.9 s</td>
-<td><strong>0 % / 6.0 s</strong></td>
-</tr>
-<tr>
-<td>Phase margin, worst</td>
-<td>54-95°</td>
-<td>42-75°</td>
-<td>44-73°</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>In Gazebo</strong> (<code>sim-check --speed-steps-only --spine-steps --speed-loop &lt;profile&gt;</code>):
-the steps, ramped at 1 m/s², held 20 s. Twice each: the actuator model's Python port,
-then the spine in the loop (<code>spine:=true</code>: spine_sim runs spine-core's Rust). Both gave
-the same numbers. Load average 5-10 (other helpers' runs on the Mac).</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Step</th>
-<th>Today's PI: peak / within 5 % after</th>
-<th><code>lqi</code>: peak / within 5 % after</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>reverse 0.5 m/s</td>
-<td>0.579 (15.8 %) / 10.9 s</td>
-<td><strong>0.500 (0 %) / 3.6 s</strong></td>
-</tr>
-<tr>
-<td>forward 1 m/s</td>
-<td>1.151 (15.1 %) / 11.0 s</td>
-<td><strong>1.000 (0 %) / 4.0 s</strong></td>
-</tr>
-<tr>
-<td>forward 2 m/s</td>
-<td>2.203 (10.2 %) / 13.3 s</td>
-<td><strong>2.000 (0 %) / 4.6 s</strong></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>On the bench's model car</strong> (<code>cargo test -p bench-car scores -- --nocapture</code>: the spine
-through the encoder): 1 m/s peaks at 1.125 (today), 1.000 (<code>smooth</code>), 1.000 (<code>lqi</code>); a
-stop from 1 m/s rolls 0.65, 0.58 and 0.59 m.</p>
-<p><strong>Drive to point, the spine in the loop</strong> (<code>sim-check --spine-points-only --speed-loop
-&lt;profile&gt;</code>: 4 drives at 1 m/s and 4 at 3 m/s each, scored by <code>measure atob</code> on Gazebo's
-truth; load average 5-8):</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th></th>
-<th>Today's PI, 1 m/s</th>
-<th><code>lqi</code>, 1 m/s</th>
-<th>Today's PI, 3 m/s</th>
-<th><code>lqi</code>, 3 m/s</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Speed overshoot</td>
-<td>9-14 %</td>
-<td><strong>0-0.5 %</strong></td>
-<td>0-6 %</td>
-<td><strong>0-0.1 %</strong></td>
-</tr>
-<tr>
-<td>Holding: mean error (+ fast)</td>
-<td>+0.01 to +0.05 m/s</td>
-<td>−0.03 to 0 m/s</td>
-<td>+0.05 to +0.07</td>
-<td>−0.03 to −0.08</td>
-</tr>
-<tr>
-<td>Stop, past B</td>
-<td>−0.13 to +0.29 m</td>
-<td><strong>−0.03 to +0.16 m</strong></td>
-<td><strong>+0.02 to +0.41 m</strong></td>
-<td>+0.19 to +0.43 m</td>
-</tr>
-<tr>
-<td>The last metre took</td>
-<td>1.6-1.9 s</td>
-<td>1.7-1.8 s</td>
-<td>2.0-5.1 s</td>
-<td><strong>1.4-1.5 s</strong></td>
-</tr>
-<tr>
-<td>sim-check</td>
-<td>4/4 pass</td>
-<td>4/4 pass</td>
-<td>3/4 (one +0.57 m past B by the EKF; the limit 0.5)</td>
-<td>3/4 (one +0.53 m)</td>
-</tr>
-</tbody>
-</table></div>
-<p>At 3 m/s the LQI stops a little further past B every time (+0.2 to +0.4 m): it brakes on
-the speed error behind the spine's slowing ramp, where the PI brakes past its coast
-band at once. A feed-forward of the ramp's slope (as the bridge's loop has) is the next
-thing to try.</p>
-<p><strong>What it shows:</strong></p>
-<ul>
-<li>The LQI is as calm as <code>smooth</code> and a little faster; both beat today's PI by far.</li>
-<li>Its weak spot: a throttle 5x weaker than the model. Its gains assume <code>max_accel</code>, so a
-  weaker car turns every gain down (15 % overshoot there, <code>smooth</code> 8 %). Measure the
-  throttle (test 4.1) and redo the gains: <code>pixi run python3 tools/vehicle_model.py --set max_accel=... --lqi</code>.</li>
-<li>It brakes with the same law as it speeds up (no 0.2 m/s coast band, no P-only brake).</li>
-<li>The PI stays the default. Which one goes on the car is a car-day choice, after the
-  actuator tests.</li>
-</ul>
+<p>Moved to <a href="../history/controllers-log.md#2a-lqi-against-the-pi-results-29-oct">the controllers log</a> on 18 Nov (a dated record).</p>
 <h3 id="2b-the-smooth-stop-results-29-oct">2b. The smooth stop: results, 29 Oct</h3>
-<p>In the bridge's speed loop (<code>speed_control.py</code>), after Autoware's smooth stop. The car runs
-behind ego (the actuators' lag), so it still rolls when ego reaches 0. Before, the loop
-then dropped to <code>hold_brake</code>: a step in the slowing, a long crawl, then a jolt.</p>
-<pre class="highlight"><code class="language-text"> slowing ▲  before: plan ──┐ step down to hold_brake ── crawl ──┐ jolt (0.4-0.6 m/s²)
-         │  after:  plan ─────────── fades with the speed ────────╲ (0.2-0.4 m/s²) ─ firm hold
-         └──────────────────────────────────────────────────────────────────────► time
-                          ego reaches 0                       stopped</code></pre>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Part</th>
-<th>Value (guesses)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Keep slowing as it was when ego reaches 0</td>
-<td>no step in the brake</td>
-</tr>
-<tr>
-<td>Then fade: slowing at most <code>smooth_stop_rate</code> × speed</td>
-<td>1.5 /s</td>
-</tr>
-<tr>
-<td>Never less than <code>weak_stop_decel</code>, so it can't creep</td>
-<td>0.2 m/s²</td>
-</tr>
-<tr>
-<td>Still rolling after <code>weak_stop_time</code>: at least <code>strong_stop_decel</code></td>
-<td>2 s, 1.0 m/s²</td>
-</tr>
-<tr>
-<td>Stopped: the brake rises at 1.0 /s to <code>stopped_brake</code>, and holds</td>
-<td>0.5 (was 0.2)</td>
-</tr>
-<tr>
-<td>Off</td>
-<td><code>speed_loop.smooth_stop_speed: 0</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>In Gazebo</strong> (<code>sim-check --drive-to-point-only --esp32 pi</code>: the bridge, the C++
-firmware's logic, the actuator model; Gazebo's truth, scored by <code>measure atob</code> and the
-slowing in the last 0.2 s before standstill). 9 drives each; load average 7-13:</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th></th>
-<th>Before (<code>smooth_stop_speed: 0</code>)</th>
-<th>After</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Every check</td>
-<td>pass</td>
-<td>pass</td>
-</tr>
-<tr>
-<td>Stop, past B (truth)</td>
-<td>−0.16 to +0.24 m</td>
-<td><strong>−0.04 to +0.13 m</strong></td>
-</tr>
-<tr>
-<td>Slowing in the last 0.2 s, 1 m/s drives (the jolt)</td>
-<td>0.43-0.63 m/s²</td>
-<td><strong>0.22-0.35 m/s²</strong></td>
-</tr>
-<tr>
-<td>The last metre took</td>
-<td>2.4-7.0 s</td>
-<td><strong>1.9-4.0 s</strong></td>
-</tr>
-<tr>
-<td>Crept in the last metre (under 0.15 m/s)</td>
-<td>up to 0.30 m</td>
-<td>up to 0.20 m</td>
-</tr>
-<tr>
-<td>Hardest slowing (plan 1.5)</td>
-<td>0.83-1.64 m/s²</td>
-<td>0.86-1.61 m/s²</td>
-</tr>
-<tr>
-<td>Peak jerk in the last 1.5 s (0.5 s smoothing)</td>
-<td>0.4-2.1 m/s³</td>
-<td>0.4-2.9 m/s³: <strong>not better</strong></td>
-</tr>
-</tbody>
-</table></div>
-<ul>
-<li>The jolt at standstill halves, the stop lands closer to B, and the crawl is shorter.</li>
-<li>The peak jerk near the stop didn't fall: in 4 of 9 drives it rose to 2-2.9 m/s³,
-  probably where the stop starts from the loop's last asked slowing, which can be harder
-  than the car's. Next: start from the measured slowing (the IMU, or the wheel speed's
-  slope). On the model chain (<code>test_speed_control.py</code>) the jolt halves too.</li>
-<li>Only on the bridge (<code>aav_legacy</code>, <code>mode: pi</code>), not yet in <code>spine-core</code>.</li>
-<li>Credit: the design is Autoware's <code>pid_longitudinal_controller</code> (the Autoware
-  Foundation, Apache-2.0), read in their docs. Our own code and numbers.</li>
-</ul>
+<p>Moved to <a href="../history/controllers-log.md#2b-the-smooth-stop-results-29-oct">the controllers log</a> on 18 Nov (a dated record).</p>
 </section>
 <section class="card"><h2 id="3-steering-following-a-path">3. Steering: following a path</h2>
 <p>One job: keep the car on the path. All of these output a steering angle (or a turn rate
@@ -765,7 +538,7 @@ how far off the path you are.</p>
 </tr>
 <tr>
 <td>Status</td>
-<td><strong>trial, built</strong> (29 Oct). Gazebo, 29 Oct, 3 runs: 12 of 12 legs (<a href="trials.html#results-29-october">Trials</a>)</td>
+<td><strong>trial, built</strong> (29 Oct). Gazebo, 29 Oct, 3 runs: 12 of 12 legs (<a href="../history/trials-log.md#results-29-october">Trials</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -800,7 +573,7 @@ wheel angle]. Choose weights, solve once per speed, steer with u = −K x.</p>
 </tr>
 <tr>
 <td>Status</td>
-<td><strong>trial, built</strong> (29 Oct; rebuilt with a preview the same afternoon). Gazebo, 29 Oct: 8, then 10 of 12 legs (<a href="trials.html#results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Trials</a>). Also the yardstick for MPC: the same model, without limits</td>
+<td><strong>trial, built</strong> (29 Oct; rebuilt with a preview the same afternoon). Gazebo, 29 Oct: 8, then 10 of 12 legs (<a href="../history/trials-log.md#results-29-october-afternoon-lqr-rebuilt-and-mpc_full">Trials</a>). Also the yardstick for MPC: the same model, without limits</td>
 </tr>
 </tbody>
 </table></div>
@@ -1296,7 +1069,7 @@ reached every goal first, then the least <strong>sway</strong>.</p>
 <p>The <strong>planner</strong> draws the path; the <strong>follower</strong> (MPPI, a tracker) drives it. Ours is
 <code>aav_planner</code> (Rust, <a href="own-planner.html">Our own planner</a>): Nav2's State Lattice and
 Hybrid-A*, ported. The lattice is the default since 1 Nov (<code>docs/trials.md</code>,
-<a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">Planners, 30 Oct</a>).</p>
+<a href="../history/trials-log.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">Planners, 30 Oct</a>).</p>
 <pre class="highlight"><code class="language-text"> goal ─► navigator ─► planner ("compute_path_to_pose") ─► the path ─► follower
                           │
        planner:=own (default): planner_search:=lattice (default) | hybrid
@@ -1323,7 +1096,7 @@ Hybrid-A*, ported. The lattice is the default since 1 Nov (<code>docs/trials.md<
 </tr>
 <tr>
 <td><code>planner:=diffusion</code></td>
-<td>a model draws the path, a guard checks it, the lattice's path if it fails (<a href="trials.html#diffusion-7-8-nov-the-u-turn-the-orin-the-car">Trials</a>); on the car only behind <code>diffusion_trial:=true</code>, 0.5 m/s</td>
+<td>a model draws the path, a guard checks it, the lattice's path if it fails (<a href="../history/trials-log.md#diffusion-7-8-nov-the-u-turn-the-orin-the-car">Trials</a>); on the car only behind <code>diffusion_trial:=true</code>, 0.5 m/s</td>
 <td><strong>yes</strong> (the guard checks)</td>
 </tr>
 </tbody>
@@ -1610,18 +1383,18 @@ trials too. The basics: <a href="learn-localization.html">Learn: localization</a
 <td><strong>in use</strong></td>
 </tr>
 <tr>
-<td><strong>AMCL</strong> (stock <code>nav2_amcl</code>, kept for the trial)</td>
+<td><strong>AMCL</strong> (ours in Rust, <code>aav_amcl_rs</code>, since 18 Nov; stock <code>nav2_amcl</code> removed 20 Nov, TODO 232)</td>
 <td>a particle filter: thousands of guesses, each lidar scan kills the unlikely ones</td>
 <td>about 5-10 cm where the lidar sees posts, curbs, walls</td>
 <td>needs a map first (<code>slam_toolbox</code>); a bare lot gives it little</td>
-<td><strong>trial, built</strong> (<code>amcl:=true</code>, the test lot; scored only). 29 Oct: 6-11 cm once tuned (<a href="trials.html#29-oct-afternoon-amcl-tuned-and-why-it-was-lost">Trials</a>)</td>
+<td><strong>trial, built</strong> (<code>amcl:=true</code>, the test lot; scored only). 29 Oct: 6-11 cm once tuned (<a href="../history/trials-log.md#29-oct-afternoon-amcl-tuned-and-why-it-was-lost">Trials</a>); 18 Nov: ours ties with stock, 5-9 cm a leg (<a href="../history/trials-log.md#18-nov-amcl-in-rust-against-stock">Trials</a>)</td>
 </tr>
 <tr>
 <td><strong>NDT</strong> (<code>aav_ndt</code>, ours in Rust)</td>
 <td>slide the lidar scan onto a map of blobs (<a href="learn-localization.html#ndt-blobs">how</a>)</td>
 <td>centimetres without RTK; Autoware's way</td>
 <td>needs a lidar map of the lot (<code>pixi run ndt-map drive</code>)</td>
-<td><strong>trial, built</strong> (<code>ndt:=true</code>; <code>ndt_ekf:=true</code> feeds the global EKF). 30 Oct, Gazebo: the EKF 17 → 1.6 cm (<a href="trials.html#ndt-into-the-global-ekf-30-oct">Trials</a>)</td>
+<td><strong>trial, built</strong> (<code>ndt:=true</code>; <code>ndt_ekf:=true</code> feeds the global EKF). 30 Oct, Gazebo: the EKF 17 → 1.6 cm (<a href="../history/trials-log.md#ndt-into-the-global-ekf-30-oct">Trials</a>)</td>
 </tr>
 <tr>
 <td><strong>KISS-ICP</strong> (stock, MIT)</td>

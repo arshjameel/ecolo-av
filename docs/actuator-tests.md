@@ -39,6 +39,7 @@ slot: below every person (joystick, RC, keyboard), above navigation and every ot
 | `circles` | 4.5, 4.6 | lot | one full circle per angle, both ways, at 1 m/s | real wheel angle per command; tightest circle |
 | `straight` | 4.7 | lot | 10 m at 0.5 m/s, steering straight | sideways drift; `steer_offset` |
 | `actuator-test preflight --stands` | 3.P | stands | speed up, hold, slow, brake; steer left, right, centre; every sensor counted | PASS / FAIL per line, no `vehicle.yaml` lines ([below](#the-preflight-on-stands)) |
+| `wheel-steps` | 3.14 | stands | 0.1, 0.2, 0.3, 0.15 m/s, 4 s each: throttle on free wheels | does the wheel speed follow; no `vehicle.yaml` lines |
 
 The steering tests creep at 0.2 m/s: ego only turns the wheels while the car moves. On
 stands the wheels spin slowly; in the simulator the car crawls in arcs.
@@ -356,6 +357,289 @@ The word to type: `preflight`. If the car is still moving 5 s after the stop, it
 | Bench (`--bench`), spine armed | every sensor line PASS (IMU 50 Hz, \|a\| 9.78; GPS 5 Hz; camera 640x360 10 Hz; battery 50.9 V). The drive stopped itself: the front wheels read 0 for over 2 s of a slow start (8 Hall clicks a turn), so the "speed nobody sees" stop, then at 2 s, fired; now 4 s. The run again at 4 s: not yet done |
 | `--no-drive`, the real car | untested: no car |
 
+## car-test: the whole stands test
+
+Phase A of [the testing plan](testing-plan.md#phase-a-the-car-on-stands) in one command
+(TODO 246). It runs every step below in order and writes **one report folder**.
+
+```bash
+pixi run car-test --stands                       # the real car, wheels off the ground
+pixi run car-test --stands --sim --no-manual     # its own Ravensim (this computer only)
+pixi run car-test --stands --only faults         # some steps (or a group: steering, faults)
+```
+
+| # | Step | How | Passes when |
+|---|---|---|---|
+| 1 | the preflight | `actuator-test preflight --stands` | every line PASS |
+| 2 | every sensor | `actuator-test preflight --stands --no-drive` (15 s still) | each at its documented rate |
+| 3a-c | steering | `steer-sweep`, `steer-rate`, `steer-centre` | its `vehicle.yaml` lines printed |
+| 4 | throttle on free wheels | `wheel-steps` (new, 3.14): 0.1, 0.2, 0.3, 0.15 m/s, 4 s each | the wheel speed follows: each step up within 25 % (or 0.05 m/s), the step down slower |
+| 5a | the Orin is lost | car: a person pulls the Orin's cable to the Motor Pi. Sim: the runner pauses its own output mux | car: the ESP32 brakes, and **holds** while still asked to roll once the cable is back. Sim: still within 2 s |
+| 5b-d | GPS, IMU, camera lost | car: a person unplugs it. Sim: `fault.<sensor> stop` | the sensor watchdog names it within its `max_age` + 1 s; still 3 s later |
+| 5e | lidar lost | car: a person unplugs it. Sim: `fault.lidar stop` | the sensor watchdog names it (its `lidar` input, since 19 Nov) within 1.0 s + 1 s; still 3 s later |
+| 5f-g | a Pi's link; a cable | a person pulls it (car only) | the car stops, and something says why |
+| 5h | the e-stop | car: a person presses it. Sim: the runner publishes `/safety/estop` true | still within 2 s |
+
+**Each fault** starts from a slow roll (0.2 m/s, inside the stands' 0.3 cap) and records
+**who said why** (the sensor watchdog's line, `/vehicle/status`, `/safety/estop`, the output
+gate) and **how soon the car stood still**.
+
+!!! warning "The sensor faults: the runner stops itself"
+    The watchdog's lock (priority 30) holds navigation and the AI slot, **never the tests
+    (60)**: that is by design. So the runner rolls, waits for the watchdog to **say** the
+    sensor's name, then stops itself, as navigation would be held. The step measures how fast
+    the watchdog notices, not a lock on the tests.
+
+### The rules
+
+| Rule | Why |
+|---|---|
+| `--stands` required; `--ground` refused | phase A is on stands only |
+| Any FAIL **ends the run**: the steps after it are NOT RUN | the car stays on stands |
+| After each step: zeros until still; not still in 5 s → `/safety/estop` **true** (never false) | as the preflight does |
+| On the car: type `car-test` to start, and each test asks again | a person confirms every move |
+| A person's step prints what to do and waits for Enter; `skip` skips it | the e-stop person stays at the button |
+| `--no-manual`: every person's step is SKIPPED, and listed | for the stand-in and CI |
+| `--sim`: its own Ravensim, its own ROS domain (`AAV_SIM_DOMAIN`, or a free one), `--local` | never reaches a car |
+| The e-stop is the last step | it latches: nothing drives after it |
+
+### The report folder
+
+`~/aav-tests/<time>-stands[-sim]/`:
+
+| File | Holds |
+|---|---|
+| `report.md` | the table: PASS / FAIL / SKIPPED / NOT RUN per step, what happened, the `vehicle.yaml` lines |
+| `report.yaml` | the same, for tools |
+| `run.log` | everything printed |
+| `<step>/` | each test's own folder (`log.csv`, `summary.txt`, `meta.yaml`) and `output.log` |
+| `sim-launch.log` | `--sim`: our Ravensim's log |
+
+### No new hook for the heartbeat
+
+The output mux makes the heartbeat. Rather than add a "stop the heartbeat" switch to a
+safety lock, the runner:
+
+- **in `--sim`**, pauses **its own** Ravensim's `output_mux` (SIGSTOP, then SIGCONT),
+  found in its own launch log and checked in its own process group. Commands and heartbeat
+  stop together; Ravensim's backend brakes on its 0.2 s timeout. The ESP32 isn't in
+  Ravensim's loop: its own check is `pixi run esp qemu-check`;
+- **on the car**, asks a person to pull the Orin's cable to the Motor Pi. The Pi keeps
+  sending the last command with a **frozen counter** for 0.3 s; the ESP32 brakes after
+  100 ms on its own. Once the cable is back, the runner still asks to roll for 2 s: the
+  wheels must stay braked (the ESP32's latch), and `/vehicle/status` say disarmed or
+  `CMD_TIMEOUT`.
+
+### Tested, 19 Nov (Ravensim only)
+
+`pixi run car-test --stands --sim --no-manual`, Ben's MacBook, its own Ravensim (road world,
+domain 110), about 7 minutes:
+
+| Step | Result |
+|---|---|
+| 1-2 preflight, sensors | PASS (Ravensim has no battery: skipped, and said) |
+| 3a-c steering | PASS: lines for `max_steering_angle`, `steer_offset`, `steer_lag`, `steer_rate`, `steer_deadband` |
+| 4 wheel-steps | PASS: 0.10 → 0.09, 0.20 → 0.21, 0.30 → 0.31, 0.15 → 0.23 m/s |
+| 5a heartbeat | PASS: still 0.50 s after the output mux paused |
+| 5b-d GPS, IMU, camera | PASS: the watchdog named each 2.11, 0.57, 1.09 s after its last message; still 0.41-0.45 s after its word |
+| 5e lidar (since 19 Nov, TODO 246) | PASS: the watchdog named it 1.12 s after its last cloud (limit 2 s); still 0.45 s after its word |
+| 5f-g Pi, cable | SKIPPED: not in Ravensim |
+| 5h e-stop | PASS: still 0.67 s after it |
+
+The first runs found: Ravensim's cameras build on first use (the runner now waits for the
+camera), and the watchdog writes `STOP: gps STALE (...)`, not `STOP - ...` as the contract
+said (fixed there). **On the car: untested.**
+
+## car-test --hallway: the transfer functions
+
+Phase B of [the testing plan](testing-plan.md#phase-b-the-transfer-functions-in-the-hallway)
+in one command (TODO 248). It measures the throttle, the drag, the brake and the steering
+in a hallway, **with the IMU as well as the wheels**, and gives each number **with an error
+bar**.
+
+```bash
+pixi run car-test --hallway                      # the real car: asks the hallway's length
+pixi run car-test --hallway --length 12          # the same, length given
+pixi run car-test --hallway --sim --no-manual    # a pretend 15 m hallway in its own Ravensim
+pixi run car-test --analyse ~/aav-tests/<session>   # the report again, from the files
+```
+
+```
+ start line                                                     far wall
+ |<------------------------- length (tape) ------------------------->|
+ |  speed up -->  brake point  stop  |<------- margin (3 m) -------->|
+ |<-------------- room ------------->|   never driven into
+```
+
+### What one pass does
+
+| # | Phase | Why |
+|---|---|---|
+| 1 | wait until still, then **stand still 10 s** | the IMU's offset and noise (`fusion.still_imu`) |
+| 2 | **let go**: told 0.02 m/s for 1.5 s | the speed loop lets the hold brake go, too gently to move the car |
+| 3 | speed up to the top speed | the throttle |
+| 4 | coast, brake, or steer left, right, left | the drag, the brake, the steering |
+| 5 | stop | every pass ends still |
+
+**Every driving step is fenced**: it ends at the **brake point**, where the car, at its
+speed, needs all the room left to stop (0.3 s to react, then 0.5 m/s²). Past the room the
+test's envelope stops it at once, with the margin still ahead.
+
+| Pass | Test | Gives |
+|---|---|---|
+| B1 | `hall-speed-up` | `max_accel`, `throttle_lag`, `throttle_dead_time` |
+| B2 | `hall-coast` | `drag` (and any rolling resistance) |
+| B3 | `hall-brake` | `max_brake`, `brake_lag`, `brake_dead_time`, the stopping distance |
+| B4 | `hall-steer` | `steer_lag`, `steer_dead_time` on the ground |
+
+The session runs coast first (its drag goes into the others), then speed-up, brake, steer,
+**three times** (`--repeats`). Between passes a person **turns the car round** (`--one-way`:
+no), so the passes face both ways: the floor's slope shows up, then cancels.
+
+### The top speed
+
+From the length you type: speed up at 0.5 m/s², 0.3 s to react, stop at 0.5 m/s², plus the
+margin. **Never above 1.0 m/s.**
+
+| Hallway | Margin | Top speed |
+|---|---|---|
+| 4 m | 3 m | 0.64 m/s |
+| 5.3 m | 3 m | 1.0 m/s |
+| 12 m | 3 m | 1.0 m/s |
+| under 3.2 m | 3 m | refused (under 0.2 m/s) |
+
+### The IMU and the wheels
+
+| Step | How |
+|---|---|
+| Offset | the IMU's mean while still: its bias + the slope |
+| Slope | the offsets facing each way: bias = the mean, slope = half the difference. One way only: unknown |
+| Level enough? | under 1 % (0.1 m/s²) |
+| Blend | a Kalman filter: the IMU moves the speed on, each wheel speed pulls it back; it learns the IMU's bias drift |
+| Forces | F = m a, with `vehicle.yaml`'s mass: the hardest push, the hardest stop, the drag at 1 m/s |
+
+### Error bars and trust
+
+Each pass gives its own fit; the number is their **mean ± sd** (and a bootstrap 90 %
+interval). The bar is never under the time the data can resolve, nor under 3 % of a gain
+(the wheel's size is known to about that until the rollout test, M3).
+
+A number is **not trusted** when the data can't tell: one pass only, a fit under its
+resolution, or passes that disagree (sd over 25 % of the mean). **Only trusted numbers are
+printed to paste**; the rest are commented out, with why.
+
+!!! note "Dead time and lag trade off"
+    ego and the speed loop ramp the throttle, so a dead time and a lag look alike through
+    it. Their **sum** (`throttle_delay`) is what the data pins down. When the dead time is
+    not trusted, the line to paste is the lag = the whole delay, and no dead time (the model
+    takes 0), as the single tests already do.
+
+### The model against the car
+
+Every pass's pedal demands and steering go through the car model, once with the fitted
+numbers and once with `vehicle.yaml`'s. **Passes when** the speed is within 10 % (rms, of
+the pass's top speed) and the stop within 0.2 m.
+
+### The safety rules
+
+| Rule | Why |
+|---|---|
+| Phase A passed first | stands before the ground |
+| The hallway **measured with a tape**; the length typed, not guessed | the top speed and the room come from it |
+| **A spotter at each end**, the hallway cleared | people walk there |
+| A safety driver on the joystick (its deadman outranks the test); someone else at the e-stop, walking beside the car | the one sure stop |
+| The car started **indoors**: `pixi run car <machine> gps:=false stands:=true` | no GPS indoors, so the geofence can't fence: it says STANDS. Only the hallway tests accept that; this test's own fence (the wheels' distance) stands in. NEAR, OUTSIDE, LOST, JUMP still stop it |
+| Type `hallway` to start; each pass asks again (its test's name) | a person confirms every move |
+| Before each pass: put the car on the start line, facing the way asked; Enter (`s` skips, `q` stops) | the room counts from the start line |
+| Any pass refused or stopped by a safety rule **ends the session** | as phase A |
+| Every stop rule of the other tests still holds | Ctrl-C, the e-stop, a takeover, stale odometry, a runaway |
+
+### Step by step, on the car
+
+1. Measure the hallway with a tape: start line to the far wall. Mark the start line.
+2. Clear it; a spotter at each end.
+3. Start the car indoors: `pixi run car <machine> gps:=false stands:=true`.
+4. Put the car on the start line, pointing straight down the hallway.
+5. `pixi run car-test --hallway` (or `--length 12`); read the top speed it works out.
+6. Check the list out loud; type `hallway`; type each pass's name when asked.
+7. Between passes: turn the car round (or drive it back with the joystick) onto the line.
+8. Read `report.md`; paste the trusted lines from `vehicle-yaml.txt`, by hand.
+
+### The report folder
+
+`~/aav-tests/<time>-hallway[-sim]/`:
+
+| File | Holds |
+|---|---|
+| `report.md` | the result, the stand-still and slope, every number ± its bar and trust, the forces, the model against the car, the lines to paste, the passes |
+| `vehicle-yaml.txt` | the lines to paste (trusted only) |
+| `fits.csv` | each number: mean, sd, n, interval, resolution, trust, and each pass's own value |
+| `compare.csv` | each pass: the model's rms speed error and stop error, fitted and `vehicle.yaml`'s |
+| `overlays/` | each pass's speed, measured and both models (CSV; `overlays.png` with matplotlib) |
+| `session.yaml` | the hallway, the passes, in Ravensim the true numbers |
+| `NN-hall-<kind>-<facing>/` | each pass's own `actuator_test` folder and `output.log` |
+
+### In Ravensim
+
+`--sim` starts its own Ravensim: the empty world, no cameras, its own ROS domain, 15 m
+of pretend hallway. `--sim-actuators "throttle_lag=0.3,drag=0.2,..."` gives **the
+simulated car its own numbers** (`sim.launch.py actuators:=`), while every driver still
+reads `vehicle.yaml`; the report then adds **the recovery table**: true against fitted.
+`--wheel-noise 0.05 --wheel-slip 0.02` makes the wheels noisy and slipping.
+
+### Proven: known numbers found again
+
+The key evidence: give the car numbers we know, run the whole procedure, and check the fits
+find them. "Within" = within 2 error bars (the bar: the passes' sd, at least the
+resolution, at least 3 % of a gain). 19 Nov, Ben's MacBook, 12 passes each (3 x coast,
+speed-up, brake, steer), about 6 minutes each:
+
+| Number | Ravensim A: true | fitted ± sd | Ravensim B (wheels 0.02 m/s noise, 2 % slip): true | fitted ± sd | Car model alone (0.05 m/s noise, 2 % slip, IMU bias): true | fitted ± sd |
+|---|---|---|---|---|---|---|
+| `drag` (1/s) | 0.2 | 0.202 ± 0.001 | 0.15 | 0.150 ± 0.004 | 0.2 | 0.199 ± 0.014 |
+| `max_accel` (m/s²) | 1.2 | 1.204 ± 0.002 | 1.0 | 1.016 ± 0.002 | 1.2 | 1.214 ± 0.004 |
+| `throttle_lag` (s) | 0.3 | 0.335 ± 0.085 | 0.25 | 0.228 ± 0.024 | 0.3 | 0.320 ± 0.048 |
+| `throttle_dead_time` (s) | 0.1 | 0.085 ± 0.076 | 0.06 | 0.090 ± 0.025 | 0.1 | 0.085 ± 0.073 |
+| throttle delay, the sum (s) | 0.4 | 0.420 ± 0.025 | 0.31 | 0.318 ± 0.018 | 0.4 | 0.405 ± 0.025 |
+| `max_brake` (m/s²) | 2.5 | 2.582 ± 0.169 | 2.0 | 1.850 ± 0.133 | 2.5 | 2.537 ± 0.321 |
+| `brake_lag` (s) | 0.25 | 0.340 ± 0.127 | 0.3 | 0.275 ± 0.005 | 0.25 | 0.145 ± 0.126 |
+| `brake_dead_time` (s) | 0.06 | 0.052 ± 0.050 | 0.1 | 0.122 ± 0.052 | 0.06 | 0.148 ± 0.115 |
+| brake delay, the sum (s) | 0.31 | 0.392 ± 0.081 | 0.4 | 0.397 ± 0.056 | 0.31 | 0.293 ± 0.023 |
+| `steer_lag` (s) | 0.2 | 0.200 ± 0.000 | 0.15 | 0.150 ± 0.000 | 0.2 | 0.200 ± 0.000 |
+| `steer_dead_time` (s) | 0.08 | 0.062 ± 0.000 | 0.04 | 0.023 ± 0.000 | 0.08 | 0.062 ± 0.000 |
+
+**Every number within its error bars, in all three.** The fitted model matched all 12
+passes each time (speed within 3 %, stop within 0.1 m); `vehicle.yaml`'s guesses matched
+none (40-70 % off, stops 0.4-1.0 m off).
+
+What it shows:
+
+- The **gains** (`drag`, `max_accel`, `max_brake`) and the **sums** (delays) are pinned; a
+  dead time and a lag apart often are not, and say so (NOT TRUSTED): only the sum is then
+  pasted, as the lag.
+- With 2 % wheel slip, `max_accel` reads 2 % high: the wheel's size, not the fit (the 3 %
+  floor on the bar). The rollout test (M3) fixes it.
+- The steering's dead time reads 0.02 s short: the model's deadband (0.005 rad) starts the
+  motor a step late, which the fit counts as lag. Within its 0.04 s resolution.
+
+!!! warning "Noisy wheels trip the runaway rule"
+    With Ravensim's `wheel_noise:=0.05` **every** actuator test stops itself, even standing
+    still: `safety.runaway` compares two single speed readings 1 s apart against 0.1 m/s, and
+    0.05 m/s of noise on each crosses that. The rule is right to stop; the noise is too big
+    for it. So the 0.05 m/s proof ran on the car model alone (`test/fake_hallway.py`, in the
+    tests), and Ravensim's at 0.02 m/s. The car's Hall sensors read exactly 0 standing still,
+    so this is unlikely on the car, but **watch for it**: the rule is unchanged (a safety
+    rule; a person decides). Each pass also holds its top speed 2.5 s before it slows, so a
+    speed loop still creeping up doesn't look like a runaway.
+
+Run it again: `pixi run car-test --hallway --sim --no-manual --sim-actuators
+"max_accel=1.2,throttle_lag=0.3,throttle_dead_time=0.1,max_brake=2.5,brake_lag=0.25,brake_dead_time=0.06,drag=0.2,steer_lag=0.2,steer_dead_time=0.08"`;
+the car model alone (seconds): `pixi run python ros/drivers/aav_actuator_tests/test/fake_hallway.py`.
+
+**On the car: untested.**
+
+A hallway shorter than 15 m gives short coasts: the drag then comes out NOT TRUSTED.
+
 ## Trusting the fits
 
 Each lag fit is now a **dead time, then a lag** (FOPDT). The old fit (a lag alone)
@@ -527,3 +811,5 @@ drift over 10 m was 0.06 m; the full-lock circle was 6.8 m across, not 5.75 (6.0
 | `test/synthetic.py`, `test/test_robustness.py` | pretend data with play, Hall pulses, noise; the fits must give the numbers back or refuse |
 | `test/fake_car.py` | ego's model + Gazebo's actuator model: the tests check each test gets the numbers back |
 | `tools/actuator_test.sh` | the pixi task: `--local` only with `--sim` |
+| `car_test.py`, `car_test_node.py`, `test/test_car_test.py` | car-test: its steps and judging (no ROS, unit-tested), and its ROS runner |
+| `tools/car_test.sh` | the pixi task `car-test`: `--local` only with `--sim` |

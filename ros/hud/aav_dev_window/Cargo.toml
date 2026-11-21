@@ -10,10 +10,18 @@ description = "The developer window, as a test of Bevy: Ben's layout, with prete
 version = "0.1.0"
 edition = "2021"
 publish = false
+# Two programs since the map editor (map_edit); a plain `cargo run` (tools/dev_window.sh)
+# starts the window.
+default-run = "dev_window"
 
 [[bin]]
 name = "dev_window"
 path = "src/main.rs"
+
+# The map editor (TODO 251, docs/map-editor.md): no ROS, the same Bevy and egui.
+[[bin]]
+name = "map_edit"
+path = "src/map_edit/main.rs"
 
 [features]
 # Without ROS by default: pretend data builds on any computer, with nothing sourced.
@@ -31,6 +39,7 @@ hud-core = { path = "../aav_hud/crates/hud-core" }      # a picture message into
 map-core = { path = "../aav_hud/crates/map-core" }      # map to screen and back; grids
 lanelet-map = { path = "../../bringup/aav_description/lanelet-map" }  # the lane map (--lanes)
 map-chunks = { path = "../../bringup/aav_description/map-chunks" }    # the chunks (--chunks)
+map-edit = { path = "../../bringup/aav_description/map-edit" }        # the map editor's edits
 serde = { version = "1", features = ["derive"] }
 serde_yaml_ng = "0.10"
 rclrs = { version = "0.8", optional = true }

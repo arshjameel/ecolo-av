@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a class="here" href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -132,18 +146,22 @@ waiting to beat it.</p>
   ┌────────────┬───────────┬──────────────────────────────┐
   │ Level      │ Champion  │ Challengers                  │
   ├────────────┼───────────┼──────────────────────────────┤
-  │ pose       │ ekf       │ ndt_ekf, kiss_ekf, ekf_lane  │
+  │ pose       │ ekf       │ ndt_ekf, kiss_ekf, ekf_lane, │
+  │            │           │ kinematic_ekf                │
   │ costmap    │ ours      │ ours_chunks, ours_all_chunks │
   │ navigator  │ ours      │                              │
   │ path       │ lattice_rs│ lattice_rs_smooth, hybrid_rs,│
   │            │           │ lattice_rs_strong, lane,     │
-  │            │           │ lane_lanelet2, diffusion     │
+  │            │           │ lane_lanelet2, diffusion,    │
+  │            │           │ lane_jerk                    │
   │ steer      │ mppi_lag  │ mppi_lag_calm, mpc_lag,      │
-  │            │           │ mpc_lag_rs                   │
+  │            │           │ mpc_lag_rs, mppi_lag_smooth  │
   │ smoother   │ ours      │                              │
   │ lanes      │ off       │ ramp (lane costs)            │
-  │ behaviour  │ off       │ on (road ahead and things)   │
-  │ kerbs      │ off       │ on (the step finder)         │
+  │ behaviour  │ off       │ on (road ahead and things),  │
+  │            │           │ on_per_kind (TODO 217)       │
+  │ kerbs      │ off       │ on (the step finder),        │
+  │            │           │ patchwork (ground by patch)  │
   └────────────┴───────────┴──────────────────────────────┘
           │
           ▼
@@ -160,7 +178,7 @@ the Nav2 options went with it. What Nav2 was and its last scores:
 </div></div>
 <section class="card"><h2 id="the-latest-scores">The latest scores</h2>
 <p><strong>16 Nov, every level scored</strong> inside <code>stack:=ours</code>, then the best combination against it on
-all four tours: <a href="league-results-2026-11-16.html">the league's scores, 16 Nov</a>. No champion
+all four tours: <a href="league-results-2026-11-16.html">the league's scores, 16 Nov</a>; stage 2: <a href="league-results-2026-11-20.html">20 Nov</a>. No champion
 changed; <code>pose:=ndt_ekf</code> is the closest challenger (TODO 210). Nav2's last yardstick scores
 are there too: the last time it ran.</p>
 </section>
@@ -177,7 +195,7 @@ The champions above are what the car runs.</p>
 <tbody>
 <tr>
 <td><code>ours</code> (the default)</td>
-<td>every level we built: our costmap (<code>ours_chunks</code> since 16 Nov: only the map's 64 m chunks round the car and along the route, <a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">why</a>), navigator, planner (<code>lane</code> since 16 Nov: the right lane's centre on the lane map, <code>lattice_rs_strong</code> off it, <a href="own-planner.html#the-swap-16-nov-3-clean-runs-each">why</a>), <code>mppi_lag_calm</code> (<code>mppi_lag</code> with <code>map_correction:=slow</code> and <code>mppi_lag_steer_gamma:=0.05</code>), the road ahead (<code>behaviour:=true</code>), and the kerbs (<code>kerbs:=true</code> since 16 Nov: the lidar's step finder, <a href="kerbs.html#in-the-simulator">why</a>). The two calm picks since 15 Nov: they took ours' sway to Nav2's (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
+<td>every level we built: our costmap (<code>ours_chunks</code> since 16 Nov: only the map's 64 m chunks round the car and along the route, <a href="own-costmap.html#from-map-chunks-on-every-core-16-nov-todo-175-195">why</a>), navigator, planner (<code>lane</code> since 16 Nov: the right lane's centre on the lane map, <code>lattice_rs_strong</code> off it, <a href="own-planner.html#the-swap-16-nov-3-clean-runs-each">why</a>), <code>mppi_lag_calm</code> (<code>mppi_lag</code> with <code>map_correction:=slow</code> and <code>mppi_lag_steer_gamma:=0.05</code>), the road ahead (<code>behaviour:=true</code>), and the kerbs (<code>kerbs:=true</code> since 16 Nov: the lidar's step finder, <a href="kerbs.html#in-the-simulator">why</a>). The two calm picks since 15 Nov: they took ours' sway to Nav2's (<a href="../history/mppi-lag-log.md#the-sway-that-was-left">why</a>)</td>
 </tr>
 <tr>
 <td><code>best</code></td>
@@ -198,7 +216,7 @@ The champions above are what the car runs.</p>
 pixi run sim world:=campus tracker:=mpc_lag      # all ours, but MPC follows
 pixi run sim stack:=best behaviour:=true        # the champions, with the road ahead</code></pre>
 <p>The launch prints what it picked, such as
-<code>stack:=ours - pose ekf, costmap ours_chunks, navigator ours, path lane, steer mppi_lag_calm, ...</code>.</p>
+<code>stack:=ours - pose ekf, costmap ours_chunks, navigator ours, path lane, steer mppi_lag_1k, ...</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">How a hand-set switch is seen</p>
 <p>The switches a stack sets are empty by default in <code>sim.launch.py</code>, meaning "the
@@ -220,18 +238,18 @@ stack's choice". Any value you give is yours, even one that matches the champion
 <tbody>
 <tr>
 <td><code>pose:=</code></td>
-<td><code>ekf</code>, <code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>ekf_lane</code> (ours since 17 Nov: the lane finder into the EKF)</td>
-<td><code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>lane_pose</code></td>
+<td><code>ekf</code>, <code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>ekf_lane</code> (ours since 17 Nov: the lane finder into the EKF), <code>kinematic_ekf</code> (TODO 216: Kinematic-ICP's idea in KISS-ICP's place; scored in stage 2)</td>
+<td><code>ndt_ekf</code>, <code>kiss_ekf</code>, <code>lane_pose</code>, <code>odom_lidar</code></td>
 </tr>
 <tr>
 <td><code>path:=</code></td>
-<td><code>lattice_rs</code>, <code>lattice_rs_smooth</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>lane</code>, <code>lane_lanelet2</code>, <code>diffusion</code></td>
-<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code>, <code>lane_route</code>, <code>lane_graph</code></td>
+<td><code>lattice_rs</code>, <code>lattice_rs_smooth</code>, <code>hybrid_rs</code>, <code>lattice_rs_strong</code>, <code>lane</code>, <code>lane_lanelet2</code>, <code>diffusion</code>, <code>lane_jerk</code> (TODO 214: a jerk-limited pass; scored in stage 2)</td>
+<td><code>planner</code>, <code>planner_search</code>, <code>plan_smoothing</code>, <code>lattice_moves</code>, <code>lane_route</code>, <code>lane_graph</code>, <code>lane_pass_shape</code></td>
 </tr>
 <tr>
 <td><code>steer:=</code></td>
-<td><code>mppi_lag</code>, <code>mppi_lag_calm</code>, <code>mpc_lag</code>, <code>mpc_lag_rs</code></td>
-<td><code>controller</code>, <code>tracker</code>, <code>map_correction</code>, <code>mppi_lag_steer_gamma</code></td>
+<td><code>mppi_lag</code>, <code>mppi_lag_calm</code>, <code>mppi_lag_1k</code>, <code>mpc_lag</code>, <code>mpc_lag_rs</code>, <code>mppi_lag_smooth</code> (TODO 212: the steering's change sampled; scored in stage 2)</td>
+<td><code>controller</code>, <code>tracker</code>, <code>map_correction</code>, <code>mppi_lag_steer_gamma</code>, <code>mppi_lag_batch</code>, <code>mppi_lag_sampling</code></td>
 </tr>
 <tr>
 <td><code>lanes:=</code></td>

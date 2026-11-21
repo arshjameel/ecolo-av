@@ -1,0 +1,2411 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The self-driving stack: a survey, and what we found · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/stack-survey.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The self-driving stack: a survey, and what we found</h1>
+<div class="meta">51 min read · 11 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a class="here" href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-this-page">How to read this page</a><a href="#1-the-self-driving-field-in-one-page">1. The self-driving field in one page</a><a href="#2-our-stack-in-one-picture">2. Our stack in one picture</a><a href="#3-localization-where-am-i">3. Localization: where am I?</a><a href="#4-perception-what-is-around-me">4. Perception: what is around me?</a><a href="#5-planning-which-way-and-how-fast">5. Planning: which way, and how fast?</a><a href="#6-control-and-the-car">6. Control and the car</a><a href="#7-safety-the-locks-that-are-never-swapped">7. Safety: the locks that are never swapped</a><a href="#8-simulators">8. Simulators</a><a href="#9-learned-for-later-studied-only">9. Learned, for later (studied only)</a><a href="#10-what-we-use-today-and-why-it-won">10. What we use today, and why it won</a></nav>
+<div class="lead"><p>Ben, 19 Nov: "a document that is like a survey of the self driving car space and what we
+found testing each algo". One page to explain the full stack: each algorithm we built or
+studied, where it came from, what it adds, what testing showed, and which ones we still use.</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ul>
+<li>
+<p>Self-driving cars <strong>sense, localize, perceive, predict, plan and control</strong>. Most open
+  stacks (Autoware, Apollo) build each step as its own part. Some companies now train one
+  network for the whole job (end-to-end).</p>
+</li>
+<li>
+<p><strong>We are modular</strong>, like Autoware: each part can be tested alone, scored the same way,
+  and swapped (Ben, 5 Nov: "just swap out and test").</p>
+</li>
+<li>
+<p><strong>Today's defaults</strong> (<code>stack:=ours</code>, the simulator's default):</p>
+<ul>
+<li>the EKF on GPS, helped by the lane finder;</li>
+<li>RF-DETR for objects, the lidar's cubes for kerbs and things;</li>
+<li>our costmap in 64 m chunks; the lane's centre as the path; MPPI that knows the lag;</li>
+<li>the behaviour planner, ego, and the safety locks that are never swapped.</li>
+</ul>
+</li>
+<li><strong>Next to swap in:</strong> NDT leading, with the GPS only checking it (TODO 210).</li>
+<li><strong>Almost nothing here has run on the real car yet.</strong> The numbers come from Ravensim
+  (our simulator), Gazebo (until 16 Nov), bench mode and unit tests.</li>
+</ul>
+</blockquote></div>
+<section class="card"><h2 id="how-to-read-this-page">How to read this page</h2>
+<p>Every algorithm has the same card:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>in a sentence or two</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>the one job it does</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>why our project has it</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>the paper or project, and its licence (<a href="acknowledgements.html">Acknowledgements</a>)</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>real numbers from the repo, with where and when; or "not tested yet"</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong>, <strong>Weaknesses</strong></td>
+<td>short</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>one of the words below</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Default</strong></td>
+<td>runs in <code>stack:=ours</code>, the simulator's default: the league's best whole car (16 Nov)</td>
+</tr>
+<tr>
+<td><strong>Car champion</strong></td>
+<td><code>stacks.yaml</code>'s champion: what <code>car.launch.py</code> runs today. Named only where it differs from the default</td>
+</tr>
+<tr>
+<td><strong>In use</strong></td>
+<td>always runs; not a league level (ego, the EKFs, the safety locks)</td>
+</tr>
+<tr>
+<td><strong>Challenger</strong></td>
+<td>built, scored beside the default; swaps in only when it wins (<a href="league.html">the league</a>)</td>
+</tr>
+<tr>
+<td><strong>Retired</strong></td>
+<td>no longer runs; why is in the card</td>
+</tr>
+<tr>
+<td><strong>Studied</strong></td>
+<td>read, not built</td>
+</tr>
+</tbody>
+</table></div>
+<p>The numbers come from these pages: <a href="league-results-2026-11-16.html">the league's scores</a>,
+<a href="../history/trials-log.md">the trials</a>, <a href="features.html">Features</a>, and the area pages linked in
+each section.</p>
+</section>
+<section class="card"><h2 id="1-the-self-driving-field-in-one-page">1. The self-driving field in one page</h2>
+<h3 id="the-usual-pipeline">The usual pipeline</h3>
+<pre class="highlight"><code class="language-text">  sense ──▶ localize ──▶ perceive ──▶ predict ──▶ plan ──▶ control ──▶ the car
+  cameras,   where am I?   what is      where will   which way?  steering,
+  lidar,                   round me?    it go?                  throttle,
+  radar, GPS,                                                   brake
+  IMU, wheels</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>The question</th>
+<th>Usual tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sense</td>
+<td>what do the sensors say?</td>
+<td>drivers for cameras, lidar, radar, GPS, IMU, wheel speed</td>
+</tr>
+<tr>
+<td>Localize</td>
+<td>where am I, to the centimetre?</td>
+<td>Kalman filters, lidar matching to a map (NDT, ICP), particle filters</td>
+</tr>
+<tr>
+<td>Perceive</td>
+<td>what is around me?</td>
+<td>detectors (neural networks), lidar clustering, lane finding, trackers</td>
+</tr>
+<tr>
+<td>Predict</td>
+<td>where will each thing go?</td>
+<td>constant speed at first; learned predictors later</td>
+</tr>
+<tr>
+<td>Plan</td>
+<td>which way, and how fast?</td>
+<td>routes on a road graph, path search, sampling or optimising controllers</td>
+</tr>
+<tr>
+<td>Control</td>
+<td>how do I turn that into pedals and steering?</td>
+<td>PID loops, MPC, a model of the car</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="two-schools">Two schools</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Modular</th>
+<th>End-to-end (learned)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The idea</td>
+<td>one part per step, each with its own inputs and outputs</td>
+<td>one large network from pictures to steering</td>
+</tr>
+<tr>
+<td>Who</td>
+<td>Autoware, Apollo, most research cars, <strong>us</strong></td>
+<td>Tesla FSD v12 and later, Wayve; research networks such as UniAD</td>
+</tr>
+<tr>
+<td>Strengths</td>
+<td>each part is tested and explained alone; safety rules are written down</td>
+<td>learns what is hard to write as rules; one model to improve</td>
+</tr>
+<tr>
+<td>Weaknesses</td>
+<td>parts can disagree; hand-tuned rules miss rare cases</td>
+<td>needs huge amounts of driving data and GPUs; hard to explain or test part by part</td>
+</tr>
+<tr>
+<td>For us</td>
+<td>fits a student team: one person can own and prove one part</td>
+<td>Ben, 4 Nov: "we can't use end to end like tesla because we are a school project"</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-big-open-projects">The big open projects</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Project</th>
+<th>Who, licence</th>
+<th>What it is for</th>
+<th>What we took</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Autoware</strong></td>
+<td>the Autoware Foundation, Apache-2.0</td>
+<td>a full open stack for road cars, on ROS 2</td>
+<td>ideas only: the map levels, the lane-centre path, its MPC design, its smooth stop, its camera-lidar matching, YabLoc. Set aside as a whole on 4 Nov: too big, ROS 2 Humble, C++, needs an HD map</td>
+</tr>
+<tr>
+<td><strong>Baidu Apollo</strong></td>
+<td>Baidu, Apache-2.0</td>
+<td>a full open stack for road cars, not on ROS</td>
+<td>ideas only: routing on a lane graph, map tiles, the piecewise-jerk path (studied)</td>
+</tr>
+<tr>
+<td><strong>Nav2</strong></td>
+<td>S. Macenski and the Nav2 authors, Apache-2.0</td>
+<td>navigation for mobile robots, on ROS 2</td>
+<td>ported to Rust: the costmap, the lattice and Hybrid-A*, MPPI, the stop zone, AMCL. Nav2 itself ran until 17 Nov (<a href="../history/nav2-as-it-was.md">as it was</a>)</td>
+</tr>
+<tr>
+<td><strong>openpilot</strong></td>
+<td>comma.ai, MIT</td>
+<td>driver assistance on production cars, with a learned driving model</td>
+<td>nothing: set aside on 4 Nov (highways, its own hardware)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="where-we-sit-and-why">Where we sit, and why</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Modular</strong>, each part a drop-in</td>
+<td>every part is scored on the same routes, and the winner swaps in (<a href="league.html">the league</a>)</td>
+</tr>
+<tr>
+<td><strong>A small car at low speed</strong></td>
+<td>ego's top speed is 1.0 m/s to start; the campus tours run at 2.5 m/s. Simple models are enough at that speed</td>
+</tr>
+<tr>
+<td><strong>Our own code, mostly Rust</strong></td>
+<td>Ben, 14 Nov: "We want to run everythign ourselves in rust and/or python"; 16 Nov: "I trust rust more then python"</td>
+</tr>
+<tr>
+<td><strong>Ideas from the big projects, not their code</strong></td>
+<td>we learn their designs and credit them (<a href="acknowledgements.html">Acknowledgements</a>)</td>
+</tr>
+<tr>
+<td><strong>Learned parts only behind a guard</strong></td>
+<td>the diffusion planner's paths pass eight checks, or the lattice's path is used</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="2-our-stack-in-one-picture">2. Our stack in one picture</h2>
+<p>The <strong>default</strong> in each box (<code>stack:=ours</code>). Challengers in brackets.</p>
+<pre class="highlight"><code class="language-text"> SENSORS     wheels (CAN) · IMU · GPS · roof lidar (VLP-16) · radar · front cameras
+    │
+    ▼
+ LOCALIZATION   ekf_local (wheels + IMU) ─▶ ekf_global (+ GPS, + lane pose)
+                [NDT leads · NDT into the EKF · KISS-ICP · AMCL]
+    │
+    ▼
+ PERCEPTION     RF-DETR (objects, stop signs) · lane finder · lidar flat scan
+                kerb step finder · radar clusters · things tracker
+                [ONNX from Rust · YOLO · lidar cubes for the costmap]
+    │
+    ▼
+ WORLD MODEL    costmaps from 64 m map chunks · the road ahead · the things
+                [lanes as soft costs]
+    │
+    ▼
+ PLANNING       route: Valhalla / campus road graph ─▶ path: the lane's centre
+                (the lattice off the lane map) ─▶ motion: mppi_lag, calm
+                [Hybrid-A* · smooth moves · Lanelet2 routing · diffusion · mpc_lag]
+    │
+    ▼
+ BEHAVIOUR      the behaviour planner: slow, stop, wait, go (the stopping law)
+    │
+    ▼
+ EGO / CONTROL  twist_mux ─▶ ego (bicycle model, limits, timeout) ─▶ speed loop (PI)
+    │
+    ▼
+ SAFETY LOCKS   e-stop · watchdog · stop zone · geofence · stop sign · output gate
+    │           (never swapped)
+    ▼
+ THE CAR        ESP32 actuators today (UART); the CAN spine later</code></pre>
+<p>How each box talks to the next: <a href="how-it-fits.html">How it fits</a>.</p>
+</section>
+<section class="card"><h2 id="3-localization-where-am-i">3. Localization: where am I?</h2>
+<p>The full story: <a href="maps-and-position.html">Maps and position</a>, <a href="learn-localization.html">Learn: localization</a>,
+<a href="maps-from-drives.html">Maps from drives</a>, <a href="../history/trials-log.md">the trials</a>.</p>
+<pre class="highlight"><code class="language-text"> wheels + IMU ─────────────▶ ekf_local  ─▶ odom → base_link   (smooth, drifts)
+ wheels + IMU + GPS ───────▶ ekf_global ─▶ map → odom         (true, may hop)
+            + lane pose (default), + NDT (challenger)</code></pre>
+<h3 id="the-two-ekfs-robot_localization">The two EKFs (robot_localization)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>two extended Kalman filters. <code>ekf_local</code> blends wheels and IMU; <code>ekf_global</code> adds the GPS</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>one smooth pose to steer by, and one true pose to plan by</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>every other part reads its pose; it carries on when one sensor stops</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>T. Moore, D. Stouch, IAS-13, 2014 (robot_localization, Apache-2.0); R. E. Kalman, 1960</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Gazebo's lot: <code>ekf_global</code> 0.17 m off the truth (mean), 0.58 m worst. Ravensim's lot (19 Nov): 0.10 m mean, 0.29 m worst. GPS stopped (Gazebo): the EKF, on wheels and gyro alone, drifted to 1.2 m by the tour's end</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>small and proven; reads any sensor with a covariance; refuses a reading 5 sigma off</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>only as true as the GPS; a slow GPS drift goes unnoticed (below)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>In use</strong>. Kept stock: small and proven (<code>CLAUDE.md</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="gps-u-blox-navsat_transform">GPS (u-blox, <code>navsat_transform</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>latitude and longitude turned into map x and y, fed to <code>ekf_global</code></td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>pin the car to the earth</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>a position anywhere outdoors, with no map</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>the stock <code>ublox_gps</code> driver; <code>navsat_transform</code> in robot_localization</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Ravensim's lot, 19 Nov, GPS faults on purpose: stopped or jumped 20 m, the car <strong>held safely</strong> after 3 of 12 legs; drifting 5 m in a minute, it drove every leg <strong>3.6 m off</strong> (5.2 m worst) and nothing noticed. Ben, 18 Nov: "The gps is seeming to fail"</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>no map needed; works anywhere with sky</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>tens of centimetres of jitter; slow drift is invisible to the EKF</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> (<code>pose:=ekf</code>). Becomes the checker, not the source, once NDT leads</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="ndt-on-a-saved-lidar-map-ours-rust-aav_ndt">NDT on a saved lidar map (ours, Rust: <code>aav_ndt</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the map stored as small 3D cubes, each with a "blob" of its points; each lidar scan is lined up with the blobs</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>the car's pose to centimetres, with no RTK GPS</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>a position that doesn't drift and doesn't need the GPS</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, 2009 (papers). Autoware uses NDT the same way. Our own code</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Gazebo's lot, 29 Oct: 0.9-3.0 cm off a leg (mean), 2 ms a match on an M4 Max. On the campus, 64 m chunks: ready in 0.02 s, not 2.5 s, just as close</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>centimetres; fast; tells us how good each match is (its score)</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>needs a map of every place it drives. On a lane with only parallel walls it slipped 0.25-0.4 m along the lane (about 2 % of fits)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>the matcher behind the next two cards</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="ndt-into-the-global-ekf-posendt_ekf">NDT into the global EKF (<code>pose:=ndt_ekf</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>NDT's pose fed to <code>ekf_global</code> beside the GPS</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>keep the planning pose to centimetres, and hold it when the GPS drops</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>a calmer, truer pose for every planner and follower</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>our trial (30 Oct); NDT's covariance fitted to its errors (NEES)</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Gazebo, 3 runs each: the EKF's error <strong>17 cm → 1.6 cm</strong>. GPS off: 1.2 m drift without NDT; 1-3 cm with it. League, 16 Nov: University Drive sway 0.046 against 0.064 m/s², off the path 0.03 against 0.10 m. But a stop on the last leg in 2 of 3 runs, and one reverse at the box</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>calmer on every tour; the best combination in the league</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>not better on every column; needs an NDT map; the GPS still leads, so a drift still pulls</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong>: "close", not a swap by the rule (<a href="league-results-2026-11-16.html#final-configuration">league</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="ndt-leads-the-gps-checks-pose_sourcendt-aav_pose_check">NDT leads, the GPS checks (<code>pose_source:=ndt</code>, <code>aav_pose_check</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td><code>ekf_global</code> takes NDT's pose only; the GPS is compared, never used, while NDT is trusted. If they disagree, NDT's score says which is wrong. A lost NDT restarts from AMCL, else the GPS; with neither, the car stops</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>a failing GPS stops mattering where we have a map</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>the answer to Ben's 18 Nov problem: the GPS failing</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>our design (19 Nov, TODO 210)</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Ravensim's lot, 3 runs each, every GPS fault: <strong>12 of 12 legs</strong>, the EKF <strong>0.01 m</strong> off (mean). Clean GPS today: 0.10 m. Drift: 3.6 m today, 0.01 m with NDT leading</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>drives through a GPS that stops, jumps or drifts; names the faulty one</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>needs a lidar map of each place; <code>car.launch.py</code> refuses it until the real lot has one</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong>, being merged (TODO 210). Untested on the car</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="amcl-stock-nav2_amcl-and-ours-aav_amcl_rs">AMCL: stock (<code>nav2_amcl</code>) and ours (<code>aav_amcl_rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>a particle filter on a 2D map: thousands of guesses of the pose, kept if they match the scan</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>find the car on a flat map, and find it again when lost</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>NDT's recovery when NDT leads; a second opinion beside the EKF</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Nav2's <code>nav2_amcl</code> (from Player's amcl: A. Howard, B. Gerkey, K. Stoy), LGPL-2.1-or-later. D. Fox et al., AAAI 1999; <em>Probabilistic Robotics</em>, 2005. Ours is a Rust port, same licence</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>29 Oct, default settings: lost the car (21 m worst). Tuned, with its own 0.05 m map: 0.06-0.11 m. 18 Nov, Ravensim, 3 runs: ours 0.05-0.09 m a leg, stock 0.05-0.10 m: <strong>a tie</strong>. One earlier run of ours started badly (0.94 m worst)</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>needs only a 2D map; can find the car from far off</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>lost to NDT on 29 Oct; a wall-less open lot gives it little to match; tuning matters a lot</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong> (<code>amcl:=true</code>, off by default). Ours only: stock <code>nav2_amcl</code> left on 20 Nov (TODO 232, tag <code>save/nav2-amcl</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="kiss-icp-lidar-odometry">KISS-ICP (lidar odometry)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>lines up each lidar scan with the last few: "how far did I move", with no map</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>a third measure of motion beside the wheels and the IMU</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>catches slipping wheels; its twist (never its pose) can feed <code>ekf_local</code> (<code>pose:=kiss_ekf</code>)</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>I. Vizzo et al., RA-L 2023 (PRBonn), MIT. We run it as it is</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Gazebo's lot, 30 Oct: 0.04 m drift per 100 m, against the wheels and IMU's 0.33; about 1 ms a scan. Into <code>ekf_local</code>: <strong>no clear win</strong> (0.30-1.27 against 0.44-1.91 m per 100 m; the Mac's load moved it more)</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>cheap; no map; little drift</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>Gazebo flatters it (perfect wheels, walls everywhere); needs its own Python environment</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong> (<code>kiss_ekf</code>); skipped in the 16 Nov league</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="kiss-slam-maps-from-drives-pixi-run-map-drive">KISS-SLAM: maps from drives (<code>pixi run map-drive</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>KISS-ICP plus loop closures and a pose graph: it places every scan of a recorded drive, then builds the map</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>NDT's 3D map and a 2D map from our own drives</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>maps of real places, not guessed ones; drives can be merged</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>T. Guadagnino et al., IROS 2025 (PRBonn), MIT. Its wheel holds g2o (BSD) and CHOLMOD (LGPL-2.1+): an offline tool, never on the car</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Ravensim's lot, two drives, 19 Nov: the map <strong>2.3 cm</strong> off the truth (median), against 27-33 cm from the EKF's poses. NDT on that map: 3.5-4.7 cm a leg. No loop closure found on the plain lot</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>maps about ten times sharper; runs on a laptop with no ROS</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>no build for the Orin; loop closures need features; untested on a real drive</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>In use</strong> as an offline tool (testing plan phase D). Untested on the car</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-lane-pose-aav_lane_pose-poseekf_lane">The lane pose (<code>aav_lane_pose</code>, <code>pose:=ekf_lane</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the lane finder's painted lines plus the lane map give the car's place across the lane; <code>ekf_global</code> takes that sideways only</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>take the GPS's jitter out of the pose, across the road</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>the car keeps the lane's centre better</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>ideas: Autoware's YabLoc (Apache-2.0); LaneLoc (D. Schreiber et al., IEEE IV 2013). Much simpler: one offset, no particle filter</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Ravensim, 17 Nov: University Drive sideways error 9.2-9.9 → 6.9-7.8 cm RMS; its box tour 7.1-8.2 → 1.9-2.1 cm; the campus tour no change (little paint)</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>cheap; a camera we already have; gated so bad lines never reach the filter</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>sideways only; needs paint and a lane map</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> in <code>stack:=ours</code> since 17 Nov. Car champion: <code>ekf</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="studied-only-localization">Studied only: localization</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>What it is</th>
+<th>Licence</th>
+<th>Why not yet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IR-MCL</strong> (PRBonn, 2023)</td>
+<td>AMCL with a neural network as its scan model</td>
+<td>no licence stated: the idea only</td>
+<td>our AMCL's scan model is a swappable part, so it can be tried later</td>
+</tr>
+<tr>
+<td><strong>Transformer MCL</strong></td>
+<td>a transformer helps the particle filter</td>
+<td>not checked</td>
+<td>needs training data from real maps first</td>
+</tr>
+<tr>
+<td><strong>OverlapNet</strong></td>
+<td>"have I been here before?" from a scan</td>
+<td>MIT</td>
+<td>for loop closure and getting un-lost; after real maps</td>
+</tr>
+<tr>
+<td><strong>Scan Context</strong></td>
+<td>a place's fingerprint from one scan</td>
+<td>not checked</td>
+<td>the same</td>
+</tr>
+<tr>
+<td><strong>Kinematic-ICP</strong> (PRBonn, 2025)</td>
+<td>KISS-ICP that knows the car can't slide sideways, with the wheels</td>
+<td>MIT</td>
+<td>the next <code>kiss_ekf</code> challenger (TODO 216)</td>
+</tr>
+<tr>
+<td><strong>small_gicp</strong>; <strong>GenZ-ICP</strong></td>
+<td>fast GICP on many cores; ICP that mixes planes and points on long roads</td>
+<td>MIT</td>
+<td>yardsticks for NDT</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="4-perception-what-is-around-me">4. Perception: what is around me?</h2>
+<p>The full story: <a href="perception.html">Perception</a>, <a href="model-comparison.html">Model comparison</a>,
+<a href="onnx.html">ONNX</a>, <a href="kerbs.html">Kerbs</a>.</p>
+<h3 id="rf-detr-nano-the-object-and-stop-sign-detector">RF-DETR Nano (the object and stop-sign detector)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>a transformer-based object detector: boxes and labels for people, cars, stop signs</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>see stop signs and people in the front cameras</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>the stop-sign lock and the things' names depend on it</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Roboflow, Apache-2.0</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>16 Oct, Ben's Mac: Gazebo's stop sign seen from <strong>20 m</strong> (YOLO11n: 10 m); people in 4 of 5 photos (YOLO11n: 3); no false finds. 16-17 ms a picture on the Mac's GPU. Ravensim: the car stood still 4.3 m before the sign</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>sees further; a licence with no strings</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>12 times YOLO11n's weights (30 M); 2.5 times slower on a CPU alone; untested on the Orin and the car's cameras</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> (<code>detector:=rfdetr</code>) since 23 Oct (Ben: "I thought we were skipping yolo")</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="yolo-ultralytics">YOLO (Ultralytics)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>a fast one-stage detector; the 2024-25 team's first stop-sign detector was YOLO</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>the same as RF-DETR</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>a fast fallback</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Ultralytics, <strong>AGPL-3.0</strong></td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>YOLO11n: sign from 10 m, 3 of 5 people, 12 ms on the Mac's GPU. YOLO26n scored the same as YOLO11n, picture for picture</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>small (2.6 M weights); fast</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>sees signs later; AGPL-3.0</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong> (<code>detector:=yolo</code>). YOLO26: <strong>studied</strong>, brings nothing here</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="onnx-from-rust-aav_detector_rs">ONNX from Rust (<code>aav_detector_rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the same RF-DETR exported once to ONNX, run from Rust with ONNX Runtime: Core ML on a Mac, TensorRT on the Orin</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>one model file for every computer, in a Rust node</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>speed, and no 2 GB Python environment on the car</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>ONNX Runtime (Microsoft, MIT), the <code>ort</code> crate (MIT or Apache-2.0)</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>17 Nov: the same boxes as PyTorch on 7 pictures (IoU 0.9999); <strong>8.0 ms</strong> a picture on Core ML, against PyTorch's 14.7. Ravensim's stop sign: passes</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>faster; one file; Rust</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>TensorRT compiles but has never run; Core ML's first start takes about 30 s</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong> (<code>detector_impl:=rust</code>); the plan for every model (TODO 243)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-flat-lidar-scan-lidar_scan-rust">The flat lidar scan (<code>lidar_scan</code>, Rust)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the 3D lidar cut into a flat 2D scan, ignoring anything under 0.3 m and the car's own body</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>the costmap's and the stop zone's "something is there"</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>the simplest obstacle input</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>ours; the Rust twin of our Python node</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>stopped 0.36 m before a person-sized post (Gazebo). The Rust: the same ranges as the Python, 2.0 % of a core against 4.8 %</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>cheap; simple</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td><strong>blind to kerbs</strong> (everything under 0.3 m is "road")</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong>, Rust since 17 Nov</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="lidar-cubes-over-the-fitted-road-aav_voxels">Lidar cubes over the fitted road (<code>aav_voxels</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the lidar read as 0.25 m cubes, each measured from the road fitted to that scan</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>"This is a car not a needle" (Ben): a leaning car doesn't see the road as a wall</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>3D obstacles for the costmap; the base of the kerbs and the things</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Ben's idea; ours</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Gazebo, 30 Oct: stopped 0.44 m before the post (the flat scan: 0.36 m); the lot tour the same. The Rust: 0.53 ms a whole turn against the Python's 4.29 ms</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>sees everything behind the nearest thing; handles a pitched car</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>more work a scan; the leaning car untested (Gazebo can't lean)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong> for the costmap (<code>voxels:=true</code>); its Rust node runs the kerbs and the things</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-kerb-step-finder-aav_voxels_rs-stepsrs">The kerb step finder (<code>aav_voxels_rs</code> <code>steps.rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>a point more than 0.10 m (at most 0.5 m) above another within 0.3 m is a step; kept 10 s, since the roof lidar loses a kerb near the bumper</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>Ben, 15 Nov: "we don't want to hit a curb"</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>kerbs in the local costmap and the stop zone</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>ours. Patchwork++ was read for it (below)</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Ravensim: before, the car <strong>drove into</strong> a 0.3 m kerb; now it stops <strong>0.80-0.82 m before</strong> it. A 0.3 m kerb seen from 8.5 m; 0.15 m from 4.7 m; 0.10 m never. No phantom stops on the campus</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>simple; local, so a sloped road isn't a step</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>a 0.15 m kerb is seen too late at 3 m/s (TODO 219); not slopes or grass</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> in <code>stack:=ours</code> since 16 Nov. Car champion: off</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="radar-clustering-aav_radar_clusters-rust">Radar clustering (<code>aav_radar_clusters</code>, Rust)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>DBSCAN groups the radar's points into objects with boxes</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>objects from the radar</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>a second sensor for what is ahead; the radar's speed feeds the things</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>DBSCAN: M. Ester et al., KDD 1996. A rewrite of the 2025-26 team's C++ node</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>the same clusters as their C++, bit for bit, on 94 recorded clouds</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>simple; proven by the 2025-26 team</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>a few points per object; no tracking by itself</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>In use</strong> wherever the radar runs</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-things-tracker-aav_things_rs">The things tracker (<code>aav_things_rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the lidar's cubes grouped into things, one constant-velocity Kalman filter each, with the radar's speed and a memory. Each thing takes the detector's label it overlaps in the camera (person, car, stop sign)</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>give each thing near the car an id, a speed and a memory</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>the behaviour planner waits for what moves and passes what is still</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>AB3DMOT (X. Weng et al., IROS 2020): the simple tracker is a strong baseline. The naming: Autoware's <code>roi_cluster_fusion</code> idea</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Ravensim: the map's walls as background cut the campus's things from 9.9 to 1.7, every walker still found. A row of thin posts: 33 false holds before the gates, 0 after. The Rust: 1.5 % of a core against 7.5 %</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>the lidar says where, the camera says what; cheap</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>one motion model for everything; the camera calibration is needed on the car (Q22)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> in <code>stack:=ours</code> (with the behaviour planner). Studied for it: Fast-Poly, OC-SORT (below)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-lane-finder-aav_lane_finder_rs">The lane finder (<code>aav_lane_finder_rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>classic computer vision: a bird's-eye warp, a paint mask, sliding windows, a polynomial fit per line</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>where the lane's lines are</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>the lane pose; the costmap's camera lanes (<code>lanes:=camera</code>); each line's paint, white or yellow (19 Nov)</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>OpenCV (Apache-2.0) in the Python; ported with no OpenCV in the Rust</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>0.78 ms a picture (Python). The Rust: the same lanes on 50 pictures and 1,535 Ravensim frames, 3.7 % of a core against 17.4 %</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>no model to train; fast</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>needs clear paint; untested on the car's cameras</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong>, Rust since 18 Nov</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="studied-only-perception">Studied only: perception</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>What it is</th>
+<th>Licence</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Patchwork++</strong> (S. Lee et al., IROS 2022)</td>
+<td>finds the ground ring by ring</td>
+<td>BSD-2-Clause</td>
+<td>its lesson used (find the ground locally); a port is TODO 215</td>
+</tr>
+<tr>
+<td><strong>Fast-Poly / Poly-MOT</strong></td>
+<td>a motion model per kind (bicycle for a car)</td>
+<td>MIT</td>
+<td>for the things tracker (TODO 217)</td>
+</tr>
+<tr>
+<td><strong>OC-SORT</strong> (CVPR 2023)</td>
+<td>a thing lost then found re-fits its speed</td>
+<td>MIT</td>
+<td>the same</td>
+</tr>
+<tr>
+<td><strong>MapMOS</strong> (PRBonn)</td>
+<td>moving points against the map, a network</td>
+<td>MIT</td>
+<td>later</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="5-planning-which-way-and-how-fast">5. Planning: which way, and how fast?</h2>
+<p>Three levels (Ben, 14 Nov): "Zoomed out is routes, middle is how we get from cube to cube
+and finally close up is obstical avoidance". The full story: <a href="costmaps.html">Costmaps</a>,
+<a href="own-planner.html">Our own planner</a>, <a href="controllers.html">Controllers</a>, <a href="mppi-lag.html">MPPI with lag</a>,
+<a href="routes.html">Routes</a>, <a href="stopping.html">How the car stops</a>.</p>
+<pre class="highlight"><code class="language-text"> route (streets, lanes) ─▶ path (the line to the goal) ─▶ motion (follow it, 20 times a second)
+       Valhalla               lane centre / lattice          mppi_lag</code></pre>
+<h3 id="the-costmap-aav_costmap-rust">The costmap (<code>aav_costmap</code>, Rust)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>a grid on the ground; each cell a cost, from layers: the map, the sensors, the kerbs, inflation round things</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>"where may I go, and how risky is each spot"</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>what the planner and MPPI search</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Nav2's <code>nav2_costmap_2d</code> (Apache-2.0), from ROS 1's <code>costmap_2d</code> (BSD), ported</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>the same as Nav2's on every one of 40,000 cells (5 runs). In 64 m chunks: every leg as before, memory 474 → 145 MB, CPU 12 → 4 %. League: Nav2's costmap went over the centre line 6.5 % of University Drive; ours 0 %</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>proven layers; each costmap on its own thread; chunks keep big maps cheap</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>a grid: a lane is only what the layers draw</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> (<code>ours_all_chunks</code>). Studied: grid_map, nvblox</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="lanes-as-soft-costs-lanesramp">Lanes as soft costs (<code>lanes:=ramp</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the lane map drawn into the costmap as a ramp, lowest at the right lane's centre</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>make the planner keep right</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>the idea of Nav2's Costmap Filters (A. Merzlyakov, S. Macenski), Apache-2.0</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>over the centre line 2-27 % of a leg, against 75 % with none. Once <code>path:=lane</code> kept right: a tie</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>any planner keeps right</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>a nudge, not a rule</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong></td>
+</tr>
+<tr>
+<td><strong>From the camera</strong> (<code>lanes:=camera</code>, <code>both</code>; 19 Nov, TODO 264)</td>
+<td>the same costs from the lane finder's lines where there is no lane map: the yellow line and the oncoming lane medium, the kerb high. Built, not yet scored</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="routes-valhalla-osrm-and-the-campus-road-graph-aav_routes">Routes: Valhalla, OSRM and the campus road graph (<code>aav_routes</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the way to a destination along real streets, cut into waypoints for the navigator. On the campus, by a building's name on its own road graph (Dijkstra)</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>the zoomed-out level: "drive to the library"</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Valhalla (MIT), picked; OSRM (BSD-2), an option; OpenStreetMap (ODbL); Dijkstra, 1959</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Carleton to Lansdowne: Valhalla 1986.9 m, OSRM 1986.4 m, the same shape. Valhalla installs through Pixi everywhere, the Jetson too</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>offline; seconds to build Ottawa's graph</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>streets, not lanes; only a suggestion: the navigator still plans every step</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>In use</strong>, on request. Untested on the car</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-state-lattice-aav_planner-pathlattice_rs">The State Lattice (<code>aav_planner</code>, <code>path:=lattice_rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>joins short car moves from a ready-made list (primitives), searched with A*</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>a path the car can really drive, reversing too</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>M. Pivtoraiko, R. Knepper, A. Kelly, J. Field Robotics 2009; Nav2's Smac Lattice (Apache-2.0), ported</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Gazebo, 30 Oct, reversing on: every leg, <strong>29 s quicker</strong> a lot tour than Hybrid-A*. Ours: 12 of 12 legs, 3-5 ms a plan. League: on University Drive it leaves the lane (over the centre line 58 %)</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>fast; never tighter than full lock</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>knows no lanes; only as good as its primitives</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Car champion</strong>. In <code>stack:=ours</code> it plans off the lane map, with its smoother pulling harder (<code>lattice_rs_strong</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="hybrid-a-pathhybrid_rs">Hybrid-A* (<code>path:=hybrid_rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>A* with real car moves (straight, full left, full right), Reeds-Shepp curves to finish</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>the same as the lattice</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>D. Dolgov et al., IJRR 2010; Nav2's Smac Hybrid, ported 14 Nov</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>the default until 1 Nov (the only one to finish the U-turn forward only). League: the <strong>calmest</strong> on University Drive (sway 0.035) but over the centre line 74 %. The lot (14 Nov): 7 of 8 legs, 585 s against the lattice's 393</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>smooth paths; good in open space</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>slower; the wrong lane on roads</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong> (TODO 178)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="smooth-lattice-moves-pathlattice_rs_smooth">Smooth lattice moves (<code>path:=lattice_rs_smooth</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>lattice moves whose curvature ramps no faster than the steering turns (clothoids), straight at both ends</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>no curvature jumps for the follower to guess</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>T. Fraichard, A. Scheuer, IEEE T-RO 2004; our generator (<code>tools/lattice_smooth.py</code>)</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>offline: the worst curvature change 0.38-0.54 → 0.27-0.30 1/m². Followed by <code>mppi_lag</code>: no better (off the path 0.077 against 0.067 m mean), 20 s slower</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>paths the steering can follow exactly</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>longer paths; no gain shown yet</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong>, tried with no win (TODO 177: score again)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-lanes-centre-pathlane-with-passing">The lane's centre (<code>path:=lane</code>, with passing)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>on the lane map, the right lane's centre by the road graph; the lattice only joins the car and the goal to it. Something parked on the lane is passed</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>drive on the right side of the road</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Autoware's route-then-lane-centre idea and Apollo's lane-graph routing (Apache-2.0); our code</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>University Drive, 3 clean runs: over the centre line <strong>0 %</strong> (61 % before); sway 0.055 against 0.087 m/s²; 0.10 m off the lane's centre. A parked box: over the line 5-5.5 s, against 34-36 s for the lattice</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>the only path that keeps right</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>needs a lane map; its corners are circle arcs, so curvature jumps (TODO 211: clothoids)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> in <code>stack:=ours</code> since 16 Nov. Car champion: <code>lattice_rs</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="lanelet2-routing-pathlane_lanelet2">Lanelet2 routing (<code>path:=lane_lanelet2</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the lane-centre planner routed on a Lanelet2 map: lanes, their neighbours, one way, stop lines</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>plan by lanes like a driver; open maps made in other tools</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Lanelet2 (F. Poggenhans et al., ITSC 2018), BSD-3: its format and routing idea. Our own Rust reader (<code>lanelet-map</code>)</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>every leg of the campus and University Drive, but slower: campus 717 s against 533-562 s</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>a standard map format; lane changes and stop lines</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>slower routes today</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-diffusion-planner-plannerdiffusion">The diffusion planner (<code>planner:=diffusion</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>a small flow-matching model (3.9 M weights) draws 16 paths; a guard checks each against eight rules; the cheapest that passes is the plan, else the lattice's</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>try a learned planner safely</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>our first learned part, behind a guard</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>flow matching and diffusion planners (papers in <code>aav_diffusion_planner/PROVENANCE.md</code>); trained on our lattice's and Hybrid-A*'s paths</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Ravensim's lot, 8 Nov, 3 runs: <strong>88 %</strong> of plans from the model; 171-175 s a tour against the lattice's 180-185; never tighter than full lock. A plan on a Mac CPU: 95 ms mean, 141 ms at the 95th percentile; the Orin's budget is 100 ms, so it needs the GPU</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>quicker tours; the guard makes it safe to try</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>copies the lattice, so at best equals it; needs a GPU; not scored in the 16 Nov league</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong>. On the car only behind <code>diffusion_trial:=true</code>, at 0.5 m/s</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="retired-planners-smac-2d-navfn-theta-nav2">Retired planners: Smac 2D, NavFn, Theta* (Nav2)</h3>
+<p>They ignore the turning circle: in Gazebo (29 Oct) Smac 2D planned a U-turn as a straight
+line back, as if the car could spin. The car refused them; <strong>retired</strong> with Nav2 on 17 Nov.</p>
+<h3 id="mppi-that-knows-the-lag-aav_mppi_lag-steermppi_lag_calm">MPPI that knows the lag (<code>aav_mppi_lag</code>, <code>steer:=mppi_lag_calm</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>2000 possible futures, 2.8 s long, through a model of the car; each scored against the path, the costmap and the goal; the best blended</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>follow the path and avoid what the costmap sees</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>the car's actuator lags in its model (Ben, 7 Nov: "have the algorithms know about lag")</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>G. Williams et al., J. Guidance, Control, and Dynamics 2017; Nav2's MPPI (Apache-2.0), ported to Rust with our lag model</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>predicts the car 70 times better (8 mm over 2.8 s, against 0.56 m). 1.7 ms a tick on an M4 Max. League: every leg of every tour. The calm version (slow map corrections, a steering cost) swayed 0.063 on University Drive; plain <code>mppi_lag</code> 0.144</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>avoids obstacles; reverses; knows the lag</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>heavy: twice Nav2's MPPI's CPU; many settings; Orin timing not measured</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> (<code>mppi_lag_1k</code> since 20 Nov: <code>mppi_lag_calm</code> with 1,000 samples, no column worse in stage 2, half the work). Car champion: <code>mppi_lag</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-lag-aware-mpc-mpc_lag-python-mpc_lag_rs-rust">The lag-aware MPC (<code>mpc_lag</code>, Python; <code>mpc_lag_rs</code>, Rust)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>each tick, a quadratic program plans steering and speed through the car's lags, within its limits</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>follow the path as closely as the car allows</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Autoware's MPC lateral controller design (Apache-2.0, idea only); OSQP's ADMM algorithm (B. Stellato et al., 2020), our own code</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Rust: 0.75 ms a tick against the Python's 5.3, the same commands. League, forward only: follows <strong>2-7 times closer</strong> than MPPI, but sways (0.160 against 0.068 on University Drive). It <strong>can't reverse</strong></td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>closest to the path; fast; respects the steering's limits</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>swings; no reverse; doesn't read the costmap</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challenger</strong> (TODO 213: a steering-rate cost and reverse)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="our-trackers-pure-pursuit-stanley-lqr-mpc-aav_track">Our trackers: pure pursuit, Stanley, LQR, MPC (<code>aav_track</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tracker</th>
+<th>What it is</th>
+<th>From</th>
+<th>Gazebo, 29 Oct (legs of 12)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pure pursuit</td>
+<td>steer the arc to a point ahead</td>
+<td>R. C. Coulter, CMU, 1992</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Stanley</td>
+<td>heading error plus sideways error at the front axle</td>
+<td>S. Thrun et al., J. Field Robotics 2006</td>
+<td>12</td>
+</tr>
+<tr>
+<td>LQR with preview</td>
+<td>optimal gains from the car's model, 2 s of bends ahead</td>
+<td>textbook control</td>
+<td>6-10</td>
+</tr>
+<tr>
+<td>MPC, <code>mpc_full</code></td>
+<td>a QP each tick; <code>mpc_full</code> plans the speed too</td>
+<td>textbook; Autoware's design</td>
+<td>12; 10</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>simple followers to score MPPI against</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>light (0.2 ms a tick); easy to explain</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td><strong>forward only</strong>, so skipped in the league (reversing is a must-have); they don't read the costmap</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Challengers</strong>. Pure pursuit is <strong>in use</strong> in drive-to-point (A to B)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="retired-followers-nav2s-mppi-and-regulated-pure-pursuit">Retired followers: Nav2's MPPI and Regulated Pure Pursuit</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Nav2's MPPI</th>
+<th>Regulated Pure Pursuit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>From</strong></td>
+<td>Nav2 (Apache-2.0)</td>
+<td>S. Macenski et al., Autonomous Robots 2023</td>
+</tr>
+<tr>
+<td><strong>What we found</strong> (league, 16 Nov)</td>
+<td>University Drive 3 of 6 legs: stuck, "the car doesn't fit at the start"</td>
+<td>42 sway changes per 100 m on the lot</td>
+</tr>
+<tr>
+<td><strong>Why retired</strong></td>
+<td>ported as <code>mppi_lag</code>; Nav2 deleted 17 Nov</td>
+<td>swings; Nav2 deleted</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="retired-the-lane-followers-19-nov">Retired: the lane followers (19 Nov)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>the 2025-26 PID (<code>control_interface</code>, Python and Rust)</th>
+<th>pure pursuit</th>
+<th>Stanley</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>From</strong></td>
+<td>the 2025-26 team's <code>Lane_Detection_ROS2</code></td>
+<td>R. C. Coulter, 1992</td>
+<td>S. Thrun et al., 2006</td>
+</tr>
+<tr>
+<td><strong>What we found</strong> (19 Nov, 3 runs; Library Road RMS)</td>
+<td>3.9-4.1 cm, 187 flips a minute</td>
+<td><strong>2.4 cm</strong>, 1 flip a minute</td>
+<td>3.0 cm, 6 flips</td>
+</tr>
+<tr>
+<td><strong>Why retired</strong></td>
+<td>Ben, 19 Nov: "drop there code all together": lanes are perception, the costmap prices them, navigation drives (TODO 264). Git tag <code>save/lane-followers</code>; <a href="../history/lane-followers.md">their scores</a></td>
+<td>the same</td>
+<td>the same</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-navigator-and-the-smoother-aav_navigator-aav_smoother">The navigator and the smoother (<code>aav_navigator</code>, <code>aav_smoother</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the navigator: plan, follow, replan, recover, as one state machine under Nav2's action names. The smoother: limits the command for a car, from the steering's rate and full lock</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Nav2's <code>bt_navigator</code>, <code>waypoint_follower</code> and velocity smoother (Apache-2.0), rewritten in Rust</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>league: Nav2's <code>bt_navigator</code> drove the same (a tie); our smoother a tie</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>no goal sender had to change; the smoother knows the car can't turn on the spot</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-behaviour-planner-and-the-stopping-law-aav_behaviour_rs">The behaviour planner and the stopping law (<code>aav_behaviour_rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>states DRIVE, APPROACH, STOPPED, WAIT, GO, ASK; a speed cap from one stopping law for a stop sign, an obstacle in the lane, the fence and the goal. One message, the road ahead, always ends in a stop</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>slow before each stop, wait for what moves</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>the rules of the road above the planners (Ben, 16 Nov: "if we see a car people or stuff moving around us we should likely just stop")</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>our design; the road ahead after a railway's movement authority</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>league: without it, a little more sway on the road (0.074 against 0.063). The Rust: the Python's answers bit for bit, 1.3 % of a core against 9.0 %</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>one law for every planned stop; the locks still make every stop</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>one person crossing flipped it 4 times (a 1 s hold added, TODO 189)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Default</strong> in <code>stack:=ours</code>. Car champion: off</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="studied-only-planning">Studied only: planning</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>Licence</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Smooth MPPI / KMPPI</strong> (<code>pytorch_mppi</code>, UM ARM Lab)</td>
+<td>MIT</td>
+<td>sample the steering's change, so commands come out smooth (TODO 212)</td>
+</tr>
+<tr>
+<td><strong>Autoware's MPC lateral controller</strong></td>
+<td>Apache-2.0</td>
+<td>a steering-rate cost and reverse for <code>mpc_lag_rs</code> (TODO 213)</td>
+</tr>
+<tr>
+<td><strong>Apollo's piecewise-jerk path</strong> (Zhang et al., IV 2020)</td>
+<td>Apache-2.0</td>
+<td>a QP along the lane: smooth corners and passes (TODO 211, 214)</td>
+</tr>
+<tr>
+<td><strong>Autoware's static obstacle avoidance</strong>; <strong>path optimizer</strong></td>
+<td>Apache-2.0</td>
+<td>the pass's length from a jerk limit; a drivable path before the follower</td>
+</tr>
+<tr>
+<td><strong>Vector Pursuit</strong> (Black Coffee Robotics)</td>
+<td>Apache-2.0</td>
+<td>a follower yardstick</td>
+</tr>
+<tr>
+<td><strong>CommonRoad route planner</strong> (TU Munich)</td>
+<td>BSD-3-Clause</td>
+<td>where to change lane</td>
+</tr>
+<tr>
+<td><strong>grid_map</strong> (ANYbotics); <strong>nvblox</strong> (NVIDIA)</td>
+<td>BSD-3-Clause; Apache-2.0</td>
+<td>the costmap's layers; a GPU distance field</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="6-control-and-the-car">6. Control and the car</h2>
+<p>The full story: <a href="controllers.html">Controllers</a>, <a href="car-model.html">Car model</a>,
+<a href="learn-control.html">Learn: control</a>, <a href="vehicle-model.html">The car as a linear model</a>.</p>
+<h3 id="ego-the-virtual-car-aav_ego_rs">ego, the virtual car (<code>aav_ego_rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the only node that knows the car is a car: turns a speed and turn rate into an Ackermann command, 50 times a second</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>one place for the car's limits</td>
+</tr>
+<tr>
+<td><strong>What it adds</strong></td>
+<td>every driver (joystick, navigation, AI) is the same to the car</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>the bicycle model: steering = atan(wheelbase × turn rate ÷ speed)</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>Rust: the Python's answers to 0; 2.4 % of a core against 17 %</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>limits (1.0 m/s, ±0.5 rad, the steering rate) and a 0.3 s timeout in one place</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>every car number is a guess until the car is measured</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>In use</strong>, Rust by default</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="one-car-model-the-lag-lead-and-the-trace">One car model, the lag lead and the trace</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>one model of the actuators' lags, dead times, the steering motor and the bicycle, in Python and Rust. ego asks a little early for the lag; it publishes where the car goes in the next 2 s</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>every part predicts the car the same way</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>ours (Ben, 7 Nov); the same vectors check both languages</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>it lets MPPI predict the car 70 times better (above)</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>the dead times are 0 until measured</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>In use</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-speed-loop-speed_loopdefault-smooth-lqi-firm">The speed loop (<code>speed_loop:=default</code>, <code>smooth</code>, <code>lqi</code>, <code>firm</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>feed-forward plus PI on the wheel speed, out as throttle or brake, with a smooth stop</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>hold the speed ego asks for, and stop where it planned</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>our plan (27 Oct); the smooth stop from Autoware's <code>pid_longitudinal_controller</code> design; LQI from textbook control</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td><code>default</code> overshoots 14 % (1.14 m/s for 1.0). League: <code>smooth</code> a tie, <code>lqi</code> slower, <code>firm</code> sways twice as much. A <code>firm</code> car planned with <code>smooth</code> models stops best (0.0 s over the limit) but goes 1 m off on the backing legs</td>
+</tr>
+<tr>
+<td><strong>Strengths</strong></td>
+<td>small enough for the ESP32</td>
+</tr>
+<tr>
+<td><strong>Weaknesses</strong></td>
+<td>the overshoot; the brake is weak past its coast band</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><code>default</code>: <strong>Default</strong>. <code>smooth</code>, <code>lqi</code>, <code>firm</code>: <strong>challengers</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-pedal-pedalrs">The pedal (<code>pedal.rs</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>a person's stick as accelerator and brake: let go slows at 1.0 m/s², pulled back brakes up to 2.0 m/s², then reverses after a full stop</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>Ben, 15 Nov: the driver "had to swtich between acceleration, braking and reversing"</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>8 laptop tests; a live ego with a pretend joystick did what was asked. Not yet felt in the sim or on the car</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>In use</strong> for people only (joystick, RC, keyboard)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-transfer-functions-with-the-imu-blended-in-car-test-hallway">The transfer functions, with the IMU blended in (<code>car-test --hallway</code>)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What it is</strong></td>
+<td>the car modelled as a delay plus a lag; in a hallway it speeds up, coasts, brakes and steers, and each run is fitted. The IMU's acceleration is blended with the wheel speed (a small Kalman filter)</td>
+</tr>
+<tr>
+<td><strong>Main goal</strong></td>
+<td>measure the car's real numbers, with error bars</td>
+</tr>
+<tr>
+<td><strong>From</strong></td>
+<td>Kalman, 1960; the bootstrap (B. Efron, 1979) for the error bars</td>
+</tr>
+<tr>
+<td><strong>What we found</strong></td>
+<td>in Ravensim and the car model, it found the known numbers within its error bars (with wheel noise and IMU bias). Untested on the car</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>In use</strong> as a test tool (testing plan phase B)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-steering-motors-pid-jrk-g2">The steering motor's PID (Jrk G2)</h3>
+<p>Underneath everything: the steering actuator's own position PID, about 1 kHz. <strong>In use</strong>;
+tune it, don't replace it.</p>
+</section>
+<section class="card"><h2 id="7-safety-the-locks-that-are-never-swapped">7. Safety: the locks that are never swapped</h2>
+<p>The full story: <a href="how-it-fits.html#7-safety-layers">How it fits, section 7</a>,
+<a href="safety-case.html">The safety case</a>, <a href="geofence.html">Geofence</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Lock</th>
+<th>What it does</th>
+<th>What we found</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The e-stop chain</strong></td>
+<td>joystick deadman; <code>/safety/estop</code>; ego's 0.3 s timeout; the backend brakes when ego is quiet; the firmware's 100 ms watchdog; the hardware stop</td>
+<td>layer by layer in the <a href="safety-case.html">safety case</a>; today's 2025-26 ESP32 firmware has no timeout, so programs are locked out</td>
+<td><strong>In use</strong></td>
+</tr>
+<tr>
+<td><strong>The command mux</strong> (twist_mux)</td>
+<td>the highest priority that spoke in 0.5 s wins; locks hold every driver below them</td>
+<td>stock (Apache-2.0); <code>aav_mux_state</code> names who drives (226 of 227 checks agreed)</td>
+<td><strong>In use</strong></td>
+</tr>
+<tr>
+<td><strong>The output gate</strong> (output and sensor muxes)</td>
+<td>the real car gets commands only while every source is REAL</td>
+<td>a simulator on the network can't drive the car</td>
+<td><strong>In use</strong></td>
+</tr>
+<tr>
+<td><strong>The sensor watchdog</strong></td>
+<td>stops navigation when a sensor goes quiet, sends NaN, freezes or jumps; latches STUCK steering and OVERSPEED</td>
+<td><code>sim-check --faults</code> 15 of 15; stuck steering noticed 3.6 s after (before: never)</td>
+<td><strong>In use</strong> (Python); the Rust twin a <strong>challenger</strong>: a person's call</td>
+</tr>
+<tr>
+<td><strong>The stop zone</strong> (<code>aav_stop_zone</code>)</td>
+<td>lidar or radar points in the box ahead (or behind) stop navigation</td>
+<td>Nav2's <code>collision_monitor</code> ported; in a shadow run it stopped every time Nav2's did, no later. Nav2's stopped 0.3-0.4 m short of a box on the bench</td>
+<td><strong>In use</strong> since 17 Nov</td>
+</tr>
+<tr>
+<td><strong>The geofence</strong></td>
+<td>holds every program before its stopping path reaches the fence; never a person</td>
+<td>bench, 29 Oct: stopped 1.06 m on, where it counts on 1.56 m</td>
+<td><strong>In use</strong></td>
+</tr>
+<tr>
+<td><strong>The stop-sign lock</strong></td>
+<td>a 4 s stop for a close stop sign</td>
+<td>Ravensim: stood still 4.3 m before the sign</td>
+<td><strong>In use</strong></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="8-simulators">8. Simulators</h2>
+<p>The full story: <a href="own-simulator.html">Ravensim</a>, <a href="carla.html">CARLA</a>,
+<a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Simulator</th>
+<th>What it is</th>
+<th>From, licence</th>
+<th>What we found</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Gazebo</strong></td>
+<td>Open Robotics' 3D simulator</td>
+<td>Apache-2.0</td>
+<td>ran our trials until Ravensim took over (8 Nov); on a loaded Mac its sensors went stale</td>
+<td><strong>Retired</strong> 16 Nov; its sensor numbers live on in Ravensim</td>
+</tr>
+<tr>
+<td><strong>CARLA</strong></td>
+<td>photo-real towns on Unreal Engine</td>
+<td>MIT</td>
+<td>the adapter is built and tested without a server; never run against one (no Mac version)</td>
+<td><strong>Kept</strong>, untested: needs the NVIDIA computer</td>
+</tr>
+<tr>
+<td><strong>Ravensim</strong></td>
+<td>our own, in Rust: the worlds, the car, lidar, radar, IMU, GPS, wheels, cameras (Bevy)</td>
+<td>ours</td>
+<td>the default since 8 Nov; a seed repeats every sensor; the shared car model inside; runs on a Mac or Linux</td>
+<td><strong>Default</strong>, the only simulator</td>
+</tr>
+<tr>
+<td>Turtlesim, bench mode</td>
+<td>stand-ins for the whole command path and the hardware</td>
+<td>ROS's turtlesim; ours</td>
+<td>the first check on any laptop</td>
+<td><strong>In use</strong></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="9-learned-for-later-studied-only">9. Learned, for later (studied only)</h2>
+<p>Each needs training data and GPUs we don't have this year (Ben, 28 Oct). For the 2027-28
+team (<a href="../../TODO.md">TODO</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>One line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Learned BEV</strong> (BEVFusion, BEVFormer)</td>
+<td>all cameras and the lidar into one top-down view</td>
+</tr>
+<tr>
+<td><strong>UniAD</strong></td>
+<td>one network for perception, prediction and planning</td>
+</tr>
+<tr>
+<td><strong>World models</strong> (Wayve's GAIA-1); <strong>vision-language driving</strong> (Waymo's EMMA)</td>
+<td>a model that imagines the next seconds of driving; a language model that drives</td>
+</tr>
+<tr>
+<td><strong>MTR, Wayformer</strong></td>
+<td>predict other road users' paths; at 1 m/s, constant speed is enough today</td>
+</tr>
+<tr>
+<td><strong>Mamba</strong> (state-space models)</td>
+<td>learn what our linear car model misses, after hours of car logs</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="10-what-we-use-today-and-why-it-won">10. What we use today, and why it won</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Today (<code>stack:=ours</code>)</th>
+<th>Why it won</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Position</td>
+<td>the EKFs on GPS, with the lane pose</td>
+<td>the lane pose cut the sideways error on University Drive, no worse elsewhere. <strong>Next:</strong> NDT leads (every GPS fault driven through)</td>
+</tr>
+<tr>
+<td>Maps</td>
+<td>KISS-SLAM from our drives (offline)</td>
+<td>2.3 cm off the truth, against 27-33 cm from the EKF</td>
+</tr>
+<tr>
+<td>Objects</td>
+<td>RF-DETR Nano</td>
+<td>saw the stop sign twice as far as YOLO11n; Apache-2.0</td>
+</tr>
+<tr>
+<td>Obstacles</td>
+<td>the flat scan, the kerb step finder, the things tracker</td>
+<td>the step finder stopped before a kerb the scan drove into</td>
+</tr>
+<tr>
+<td>Lanes</td>
+<td>the classic lane finder (Rust)</td>
+<td>no training; the same lanes as the Python at a fifth of the CPU</td>
+</tr>
+<tr>
+<td>Costmap</td>
+<td>ours, in 64 m chunks</td>
+<td>the same cells as Nav2's, a third of the memory</td>
+</tr>
+<tr>
+<td>Route</td>
+<td>Valhalla; the campus road graph</td>
+<td>the only router that installs everywhere with no compiling</td>
+</tr>
+<tr>
+<td>Path</td>
+<td>the lane's centre (the lattice off the map)</td>
+<td>the only path that keeps right: 0 % over the centre line</td>
+</tr>
+<tr>
+<td>Motion</td>
+<td><code>mppi_lag</code>, calm</td>
+<td>every leg of every tour, reversing; the calmest that reverses</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>the behaviour planner</td>
+<td>slows before stops; less sway with it than without</td>
+</tr>
+<tr>
+<td>Control</td>
+<td>ego and the PI speed loop</td>
+<td>the other loops tied, swayed or were slower</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td>every lock above</td>
+<td>never swapped (<code>CLAUDE.md</code>)</td>
+</tr>
+<tr>
+<td>Simulator</td>
+<td>Ravensim</td>
+<td>ours, light, repeatable, on every laptop</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Remember:</strong> every number above is from a simulator, the bench or unit tests. The car is
+being upgraded (18 Nov); the stands, the hallway and a mapping drive come next
+(<a href="testing-plan.html">The testing plan</a>).</p></section>
+<nav class="prevnext"><a class="prev" href="how-it-fits.html"><small>Previous</small>← How it fits</a>
+<a class="next" href="how-self-driving-works.html"><small>Next</small>How self-driving works →</a></nav>
+</main>
+<footer>Source: <code>docs/stack-survey.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

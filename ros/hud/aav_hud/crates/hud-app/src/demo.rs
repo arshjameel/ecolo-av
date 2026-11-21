@@ -8,7 +8,8 @@
 //! pretend car; a pretend laptop clears it 10 s later, so the demo keeps going. The
 //! squiggly line plays hud_core::ahead::pretend's 12 s loop: it grows, bends, goes amber
 //! and shrinks to a stop. In AHEAD, the camera's named things: a person crossing, a stop
-//! sign by the road, a car further on and a box no camera has named.
+//! sign by the road, a car further on and a box no camera has named. The pretend boot
+//! self-test says NOT READY for the first 6 s (no status yet, then settling), then READY.
 
 use std::{
     f32::consts::TAU,
@@ -20,6 +21,7 @@ use hud_core::{
     estop::EstopButton,
     gps::{Fix, RawFix},
     picture::Picture,
+    self_test::Report,
     state::{Battery, EstopReport, Update},
     things::Thing,
     units::{Fraction, MetresPerSecond, Radians},
@@ -47,6 +49,7 @@ enum Stream {
     Camera,
     Watchdog,
     OutputMux,
+    SelfTest,
     Trace,
     PlanAhead,
     StopPoint,
@@ -56,7 +59,7 @@ enum Stream {
 }
 
 impl Stream {
-    const ALL: [Stream; 14] = [
+    const ALL: [Stream; 15] = [
         Stream::Vehicle,
         Stream::Gps,
         Stream::GpsFiltered,
@@ -65,6 +68,7 @@ impl Stream {
         Stream::Camera,
         Stream::Watchdog,
         Stream::OutputMux,
+        Stream::SelfTest,
         Stream::Trace,
         Stream::PlanAhead,
         Stream::StopPoint,
@@ -81,7 +85,7 @@ impl Stream {
             Self::Battery => 1000,
             Self::Camera => 100,
             Self::Watchdog => 100,
-            Self::OutputMux => 500,
+            Self::OutputMux | Self::SelfTest => 500,
             Self::Trace | Self::PlanAhead | Self::StopPoint | Self::Ahead => 100,
             Self::Things | Self::CarPose => 100,
         })
@@ -91,7 +95,7 @@ impl Stream {
 /// The demo source.
 pub struct Demo {
     start: Instant,
-    due: [Instant; 14],
+    due: [Instant; 15],
     button: EstopButton,
     estop_since: Option<Instant>,
     /// The pretend car's speed when the e-stop came, to brake from.
@@ -103,7 +107,7 @@ impl Demo {
     pub fn new(now: Instant) -> Self {
         Self {
             start: now,
-            due: [now; 14],
+            due: [now; 15],
             button: EstopButton::default(),
             estop_since: None,
             speed_at_estop: 0.0,
@@ -133,6 +137,10 @@ impl Demo {
             ),
             Stream::Watchdog => Some(Update::Watchdog(watchdog(t).into())),
             Stream::OutputMux => Some(Update::OutputMux(output_mux(t).into())),
+            Stream::SelfTest => {
+                let (level, line) = self_test(t);
+                Some(Update::SelfTest(Report::from_status(level, line)))
+            }
             Stream::Things => Some(Update::Things(things(t))),
             // The pretend car stays at odom's origin: the things move instead.
             Stream::CarPose => Some(Update::CarPose((0.0, 0.0, 0.0))),
@@ -251,6 +259,16 @@ fn watchdog(t: f32) -> &'static str {
         "STOP: gps STALE (nothing for 2.0 s (more than 2 s))"
     } else {
         "OK"
+    }
+}
+
+/// The pretend boot self-test at `t`: its level (0 OK, 2 ERROR) and line. NOT READY
+/// while the pretend car's status is missing, then while it settles (2 s), then READY.
+fn self_test(t: f32) -> (u8, &'static str) {
+    match t {
+        t if t < 4.0 => (2, "NOT READY - actuators (no /vehicle/status for 0.5 s)"),
+        t if t < 6.0 => (2, "NOT READY - all passing for 1.0 s, settling"),
+        _ => (0, "READY"),
     }
 }
 

@@ -12,6 +12,11 @@
 //!             /plan                       nav_msgs/Path (route_topic), only with a lanes
 //!                                         block: the newest route, so the lanes layer
 //!                                         knows which way each road is driven
+//!             /perception/lane/geometry   aav_lane_geometry/LaneGeometry (the lanes
+//!                                         block's camera.topic), only with a lanes
+//!                                         block whose source is camera or both: the
+//!                                         camera's lines, drawn as lane costs where the
+//!                                         lane map has no road (TODO 264)
 //!             drivers/nav/planner/route   nav_msgs/Path (ahead_topic), only with a
 //!                                         chunks block: the route level's whole way to
 //!                                         the goal; its chunks ahead are held too
@@ -39,7 +44,11 @@
 //! Parameters  local, global: each a JSON block (aav_description's
 //!             vehicle.costmap_params, from nav2.yaml); empty: that costmap doesn't run.
 //!             A global block with "lanes" (navigation.launch.py lane_costs:=) adds the
-//!             lanes layer: the roads as a soft cost (costmap::lanes, TODO 148).
+//!             lanes layer: the roads as a soft cost (costmap::lanes, TODO 148). Its
+//!             "source" (lane_source:=): "map" (the default: its "roads"), "camera"
+//!             (the lane finder's lines, costmap::camera_lanes, TODO 264; "camera":
+//!             {topic, min_confidence, max_age, behind, ahead, edge_inset}) or "both"
+//!             (the map wins where it has a road).
 //!             A global block with "chunks" ({dir, ahead, margin}; navigation.launch.py
 //!             costmap_chunks:=) builds it from the map's 64 m chunks round the car and
 //!             along the route ahead, not from /map (costmap::chunked, TODO 175).
@@ -72,10 +81,12 @@ use std::{
 use anyhow::{anyhow, bail, Context as _, Result};
 use costmap::{
     cost::{occupancy, LETHAL},
-    footprint, Arrival, Changed, ChunkSource, Costmap, Lanes, Observation, ObstacleLayer, Pose2,
-    PoseHistory, Ramp, Road, Settings, Source, StaticMap, Transform3,
+    footprint, Arrival, CameraLanes, CameraSettings, Changed, ChunkSource, Costmap, Lanes,
+    Observation, ObstacleLayer, Paint, Pose2, PoseHistory, Ramp, Road, Seen, SeenLine, Settings,
+    Source, StaticMap, Transform3,
 };
 use rclrs::*;
+use ros_env::aav_lane_geometry::msg::LaneGeometry;
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::{DiagnosticStatus, KeyValue};
 use ros_env::geometry_msgs::msg::{Point, Pose as PoseMsg, Quaternion};
@@ -141,6 +152,8 @@ fn main() -> Result<()> {
             name,
             in_map: spec.frame == "map",
             lanes: spec.costmap.lanes().is_some(),
+            camera: spec.camera.clone(),
+            camera_shown: false,
             chunks: spec.costmap.chunked(),
             inputs: spec.inputs.clone(),
             update_hz: spec.update_hz,
@@ -175,6 +188,9 @@ fn main() -> Result<()> {
     }
     let rates: Vec<f64> = maps.iter().map(|m| m.update_hz).collect();
     let lanes = maps.iter().any(|m| m.lanes);
+    let camera_topic = maps
+        .iter()
+        .find_map(|m| m.camera.as_ref().map(|c| c.topic.clone()));
     let chunks = maps.iter().any(|m| m.chunks);
     // Every costmap made of chunks: /map isn't needed (on the campus, 41 million cells).
     let wants_map = maps.iter().any(|m| !m.chunks);
@@ -192,6 +208,7 @@ fn main() -> Result<()> {
         map_odom_heard: Arrival::new(),
         map_from_odom: None,
         mounts: HashMap::new(),
+        camera_heard: Arrival::new(),
     };
     let worker = node.create_worker(core);
     // Held until exit: rclrs drops a subscription or timer with its handle.
@@ -217,6 +234,12 @@ fn main() -> Result<()> {
         keep.push(Box::new(worker.create_subscription(
             route_topic.as_str(),
             |s: &mut Core, msg: Path| s.on_route(&msg),
+        )?));
+    }
+    if let Some(topic) = camera_topic {
+        keep.push(Box::new(worker.create_subscription(
+            topic.as_str(),
+            |s: &mut Core, msg: LaneGeometry| s.on_lanes(&msg),
         )?));
     }
     if chunks {
@@ -315,6 +338,18 @@ struct Spec {
     /// updates; a scan further than this from any odometry is left out (Nav2's
     /// `transform_tolerance`, 0.3 s by default).
     transform_tolerance: f64,
+    /// The camera's lanes (a lanes block with source camera or both).
+    camera: Option<CameraInput>,
+}
+
+/// Where the camera's lines come from, and which to trust.
+#[derive(Debug, Clone)]
+struct CameraInput {
+    topic: String,
+    /// A line below this confidence (0-1) isn't drawn.
+    min_confidence: f64,
+    /// s: lines older than this (this node's clock) are forgotten.
+    max_age: f64,
 }
 
 fn num(v: &Value, key: &str) -> Result<f64> {
@@ -340,6 +375,11 @@ fn text(v: &Value, key: &str) -> Result<String> {
 /// edge_inset}], "ramp": {line, wrong_lane, kerb, off_road, off_road_band}} (the ramp and
 /// each of its keys optional: costmap::Ramp's defaults).
 fn lanes_from(v: &Value) -> Result<Lanes> {
+    Ok(Lanes::new(roads_from(v)?, ramp_from(v)?)?)
+}
+
+/// The block's roads.
+fn roads_from(v: &Value) -> Result<Vec<Road>> {
     let roads = v["roads"]
         .as_array()
         .ok_or_else(|| anyhow!("roads: a list is needed"))?
@@ -365,6 +405,11 @@ fn lanes_from(v: &Value) -> Result<Lanes> {
             })
         })
         .collect::<Result<Vec<_>>>()?;
+    Ok(roads)
+}
+
+/// The block's ramp (each key optional: costmap::Ramp's defaults).
+fn ramp_from(v: &Value) -> Result<Ramp> {
     let d = Ramp::default();
     let r = &v["ramp"];
     let cost = |key: &str, default: u8| -> Result<u8> {
@@ -380,7 +425,40 @@ fn lanes_from(v: &Value) -> Result<Lanes> {
         off_road: cost("off_road", d.off_road)?,
         off_road_band: r["off_road_band"].as_f64().unwrap_or(d.off_road_band),
     };
-    Ok(Lanes::new(roads, ramp)?)
+    Ok(ramp)
+}
+
+/// Which lanes a lanes block draws: (the map's roads, the camera's lines).
+fn lane_sources(v: &Value) -> Result<(bool, bool)> {
+    match v["source"].as_str().unwrap_or("map") {
+        "map" => Ok((true, false)),
+        "camera" => Ok((false, true)),
+        "both" => Ok((true, true)),
+        other => bail!("source {other:?}: map, camera or both"),
+    }
+}
+
+/// The block's "camera": the camera's lanes and where their lines come from (each key
+/// optional).
+fn camera_from(v: &Value) -> Result<(CameraLanes, CameraInput)> {
+    let c = &v["camera"];
+    let d = CameraSettings::default();
+    let settings = CameraSettings {
+        behind: c["behind"].as_f64().unwrap_or(d.behind),
+        ahead: c["ahead"].as_f64().unwrap_or(d.ahead),
+        edge_inset: c["edge_inset"].as_f64().unwrap_or(d.edge_inset),
+        min_width: c["min_width"].as_f64().unwrap_or(d.min_width),
+        max_width: c["max_width"].as_f64().unwrap_or(d.max_width),
+    };
+    let input = CameraInput {
+        topic: c["topic"]
+            .as_str()
+            .unwrap_or("/perception/lane/geometry")
+            .to_owned(),
+        min_confidence: c["min_confidence"].as_f64().unwrap_or(0.3),
+        max_age: c["max_age"].as_f64().unwrap_or(0.5),
+    };
+    Ok((CameraLanes::new(ramp_from(v)?, settings)?, input))
 }
 
 impl Spec {
@@ -456,9 +534,21 @@ impl Spec {
             inputs.push(ins);
         }
         let mut costmap = Costmap::new(settings, layers);
+        let mut camera = None;
         match &spec["lanes"] {
             Value::Null => {}
-            l => costmap.set_lanes(lanes_from(l).context("lanes")?),
+            l => {
+                let (map, seen) = lane_sources(l).context("lanes")?;
+                if map {
+                    costmap.set_lanes(lanes_from(l).context("lanes")?);
+                }
+                if seen {
+                    let (lanes, input) = camera_from(l).context("lanes camera")?;
+                    costmap.set_camera_lanes(lanes);
+                    // A rolling costmap draws no lanes: it needs no lines.
+                    camera = costmap.camera_lanes().map(|_| input);
+                }
+            }
         }
         match &spec["chunks"] {
             Value::Null => {}
@@ -483,6 +573,7 @@ impl Spec {
             update_hz: num(spec, "update_frequency")?,
             publish_hz: num(spec, "publish_frequency")?,
             transform_tolerance: spec["transform_tolerance"].as_f64().unwrap_or(0.3),
+            camera,
         })
     }
 
@@ -513,6 +604,13 @@ impl Spec {
             || "off".to_owned(),
             |l| format!("{} roads, {:?}", l.roads().len(), l.ramp()),
         );
+        let lanes = match &self.camera {
+            Some(c) => format!(
+                "{lanes}; from the camera ({}, confidence {} and up, {} s at most)",
+                c.topic, c.min_confidence, c.max_age
+            ),
+            None => lanes,
+        };
         format!(
             "{} costmap in {}: {size}; static map {}; obstacle layers [{}]; inflation {:?}; \
              lanes {lanes}; update {} Hz, publish {} Hz",
@@ -537,6 +635,8 @@ enum Job {
     Route(Arc<Vec<(f64, f64)>>),
     /// The route level's whole way (map frame), for the chunks ahead.
     Ahead(Arc<Vec<(f64, f64)>>),
+    /// The camera's lines and base_link in map at their stamp; None: forget them.
+    Lanes(Option<(Seen, Pose2)>),
     /// The timer: update now with these inputs, or say why it can't.
     Tick(Tick),
 }
@@ -574,6 +674,10 @@ struct Handle {
     in_map: bool,
     /// It has a lanes layer: it takes the routes.
     lanes: bool,
+    /// It draws the camera's lanes: it takes the lines.
+    camera: Option<CameraInput>,
+    /// The camera's lines are drawn (not yet forgotten).
+    camera_shown: bool,
     /// It is made of chunks: it takes the route ahead, not /map.
     chunks: bool,
     inputs: Vec<Vec<Input>>,
@@ -675,6 +779,12 @@ impl One {
                         }
                     }
                     Job::Ahead(route) => self.spec.costmap.set_ahead(&route),
+                    Job::Lanes(Some((seen, car))) => {
+                        self.spec.costmap.see_lanes(Some(&seen), &car);
+                    }
+                    Job::Lanes(None) => {
+                        self.spec.costmap.see_lanes(None, &Pose2::IDENTITY);
+                    }
                     Job::Tick(t) => {
                         if let Some(Tick::Update(_)) = tick.replace(t) {
                             self.skipped += 1;
@@ -913,6 +1023,39 @@ struct Core {
     map_odom_heard: Arrival,
     /// Each fixed frame's parent and its mount in it (/tf_static).
     mounts: HashMap<String, (String, Transform3)>,
+    /// When the camera's lines last came (this node's clock).
+    camera_heard: Arrival,
+}
+
+/// The lines a LaneGeometry trusts: detected, and at least `min_confidence` sure.
+fn seen_of(msg: &LaneGeometry, min_confidence: f64) -> Seen {
+    let line = |detected: bool, confidence: f32, a: f32, b: f32, c: f32, paint: u8| {
+        (detected && f64::from(confidence) >= min_confidence).then(|| SeenLine {
+            a: f64::from(a),
+            b: f64::from(b),
+            c: f64::from(c),
+            paint: Paint::from_code(paint),
+        })
+    };
+    Seen {
+        left: line(
+            msg.left_lane_detected,
+            msg.left_confidence,
+            msg.left_poly_a,
+            msg.left_poly_b,
+            msg.left_poly_c,
+            msg.left_paint,
+        ),
+        right: line(
+            msg.right_lane_detected,
+            msg.right_confidence,
+            msg.right_poly_a,
+            msg.right_poly_b,
+            msg.right_poly_c,
+            msg.right_paint,
+        ),
+        width: f64::from(msg.lane_width_m),
+    }
 }
 
 fn seconds(t: &Time) -> f64 {
@@ -987,6 +1130,40 @@ impl Core {
             if self.maps[k].lanes {
                 self.send(k, Job::Route(Arc::clone(&route)));
             }
+        }
+    }
+
+    /// The camera's lines: to each costmap that draws them, placed at the picture's stamp
+    /// (map -> odom, then the odometry then). Lines it can't place are left out; old
+    /// ones are forgotten in `tick`.
+    fn on_lanes(&mut self, msg: &LaneGeometry) {
+        let now = self.now();
+        let t = seconds(&msg.header.stamp);
+        let frame = bare(&msg.header.frame_id);
+        if !frame.is_empty() && frame != self.base_frame {
+            log_warn!(
+                self.logger.throttle(Duration::from_secs(10)),
+                "lane lines in {frame:?}, not {}: ignored",
+                self.base_frame
+            );
+            return;
+        }
+        for k in 0..self.maps.len() {
+            let Some(input) = self.maps[k].camera.clone() else {
+                continue;
+            };
+            let tolerance = self.maps[k].transform_tolerance;
+            let car = self
+                .odom
+                .at(t, tolerance)
+                .and_then(|p| self.map_from_odom.map(|m| m.then(&p)));
+            let seen = seen_of(msg, input.min_confidence);
+            let Some(car) = car.filter(|_| seen.left.is_some() || seen.right.is_some()) else {
+                continue;
+            };
+            self.camera_heard.mark(now);
+            self.maps[k].camera_shown = true;
+            self.send(k, Job::Lanes(Some((seen, car))));
         }
     }
 
@@ -1149,6 +1326,13 @@ impl Core {
     fn tick(&mut self, i: usize) {
         let in_map = self.maps[i].in_map;
         let now = self.now();
+        // The camera's lines too old (or none trusted since): forget them.
+        if let Some(input) = &self.maps[i].camera {
+            if self.maps[i].camera_shown && !self.camera_heard.fresh(now, input.max_age) {
+                self.maps[i].camera_shown = false;
+                self.send(i, Job::Lanes(None));
+            }
+        }
         let tolerance = self.maps[i].transform_tolerance;
         // Stale odometry (or map -> odom): no scan placed, nothing published, so a reader
         // checking the costmap's age stops too. The status says why.

@@ -10,7 +10,9 @@ node (rclrs):
   AHEAD, the squiggly line (ego's trace, the plan, the stop bar; docs/hud.md), and the
   things near the car with their names (person, car, stop sign; TODO 192);
 - `map`, the big screen's map window: the navigation map over an offline street map, the car,
-  the plan, the goal, the distance left, and a place search;
+  the plan, the goal, the distance left, and a place search. Key D swaps the map for the
+  **debug page** (TODO 247): who is driving, what it asks, what ego sends, the gate, what
+  the car did, the locks, the sensors, real or simulated;
 - `debug_hud`, the debug screen, which opens as the **seeing screen**: the lidar's cubes
   in 3D (kept and fading), where each localizer puts the car (NDT too), AMCL's particles,
   NDT's map, the plan, the costmap's cubes (the voxels trial's, red wireframes, key V);
@@ -75,6 +77,7 @@ blue, global green, AMCL orange, NDT purple). docs/hud.md, "Themes".
 | sub | `source_topic`: `/system/source` (latched) | aav_interfaces/DataSource |
 | sub | `watchdog_topic`: `/safety/sensor_watchdog/state` | std_msgs/String |
 | sub | `output_mux_topic`: `/safety/output_mux/state` | std_msgs/String |
+| sub | `self_test_topic`: `/safety/self_test/status` (the boot self-test: a small green READY, or a NOT READY banner; reliable, depth 1) | diagnostic_msgs/DiagnosticStatus |
 | sub | `trace_topic`: `/ego/trace`; `plan_ahead_topic`: `/ego/plan_ahead` (base_link) | nav_msgs/Path |
 | sub | `stop_point_topic`: `/ego/stop_point` (base_link) | geometry_msgs/PoseStamped |
 | sub | `ahead_topic`: `/ego/ahead` (the gap, the room, the body) | diagnostic_msgs/DiagnosticStatus |
@@ -95,6 +98,12 @@ Parameters `stale_after` (1.0 s): a quieter topic shows STALE; `theme` (`initial
 | sub, pub | `goal_topic`: `/goal_pose` (published after DRIVE HERE, then CONFIRM) | geometry_msgs/PoseStamped |
 | sub | `source_topic`: `/system/source` | aav_interfaces/DataSource |
 | sub | `watchdog_topic`: `/safety/sensor_watchdog/state` | std_msgs/String |
+| sub | `mux_state_topic`: `/control/command_mux/state` (the debug page: who is driving) | diagnostic_msgs/DiagnosticStatus |
+| sub | `command_topic`: `/control/cmd_vel` (the debug page: what it asks) | geometry_msgs/TwistStamped |
+| sub | `actuator_topic`: `/ego/actuator_cmd` (the debug page: what ego sends) | ackermann_msgs/AckermannDriveStamped |
+| sub | `output_mux_topic`: `/safety/output_mux/state` (the debug page: the gate) | std_msgs/String |
+| sub | `vehicle_status_topic`: `/vehicle/status` (the debug page: what the car did) | aav_interfaces/VehicleStatus |
+| sub | `algorithms_topic`: `/system/algorithms` (latched; the debug page: the navigator's path follower) | diagnostic_msgs/DiagnosticStatus |
 
 Other parameters: `stale_after` (1.0 s), `plan_stale_after` (3.0 s; `plan_kept_for`, 25 s, within
 `final_approach`, 8 m, of the plan's end: the navigator keeps its path there), `arrive_within`
@@ -165,6 +174,7 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
 | `pixi run map [fullscreen:=true] [monitor:=HDMI-1] [streets:=] [places:=]` | `map.launch.py`, with `vehicle.yaml` and `navsat.yaml` |
 | `cargo run -p hud-app --no-default-features -- --demo` | the HUD with pretend data, no ROS |
 | `cargo run -p map-app --no-default-features -- --demo [--bench 6]` | the map with pretend data; `--bench` prints the frame rate (the blur's test) |
+| `map --demo --debug-page` | the map window's debug page (key D) with pretend drivers: the navigator, a person on the keyboard, the sensors lock, on a 30 s loop |
 | `pixi run debug-hud`; `pixi run demo --debug` | `debug_hud.launch.py` (passes `--vehicle` and `--own-box`, the car's own box from `vehicle.self_box`); `demo` plus the debug HUD |
 | `cargo run --release -p debug-app --no-default-features -- --demo [--bench-cubes 20000]` | the debug HUD with pretend data; the drawing test |
 | `pixi run hw-panel [stands:=true] [fullscreen:=true]`; `pixi run hw-panel --demo` | `hw_panel.launch.py` (localhost-only); the panel with a pretend car |

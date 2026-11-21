@@ -2,15 +2,17 @@
 Bench mode: the real car's software on one computer, with stand-ins for the hardware.
 
   ros2 launch aav_bringup bench.launch.py [nav:=true] [teleop:=false|true|stand_in] [rviz:=false]
-      [perception:=false] [lane:=false|true|fake] [hud:=false] [arm:=true] [foxglove:=false]
+      [perception:=false] [lane:=false|true] [hud:=false] [arm:=true] [foxglove:=false]
       [start_y:=0.0] [start_yaw:=0.0] [bend_radius:=] [obstacle:=false]
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
-      [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [geofence_radius:=100.0]
+      [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
+      [geofence_radius:=100.0]
       [stop_sign_impl:=rust|python]
+      [geofence_impl:=rust] [stop_hold_impl:=rust] [goal_leash_impl:=rust]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
   pixi run -e ml bench perception:=true     (adds YOLO and the stop-sign watcher)
-  pixi run bench lane:=true start_y:=0.3    (lane keeping, from 0.3 m left of the centre)
+  pixi run bench lane:=true                 (the lane finder on the pretend camera)
   pixi run bench lidar:=true obstacle:=true (the roof lidar, through its real driver)
 
 Above the hardware, everything is the car's own: spine_bridge and its CAN frames, the
@@ -38,8 +40,8 @@ draws only stop signs, which never count: publish a detection by hand to see it 
 The model car starts at the map origin (the GPS datum), facing east, on the centre line
 of a straight road; start_y and start_yaw move it. A stop sign stands 25 m ahead on the
 right; obstacle:=true puts a 1 m box in the lane 15 m ahead (aav_bench/config/bench.yaml).
-lane:=true runs lane keeping: lane_finder reads the pretend camera, control_interface
-steers on /drivers/ai/cmd_vel. lane:=fake feeds control_interface a pretend straight lane instead.
+lane:=true runs the lane finder on the pretend camera: /perception/lane/geometry (the
+lane follower that steered by it went on 19 Nov, TODO 264: the costmap draws the lanes).
 lane_finder_impl:=python runs the Python lane_finder in the Rust one's place (the default).
 
 arm:=true arms the spine after 12 s, once navigation is up, the way `ros2 service call
@@ -82,8 +84,8 @@ def launch_setup(context):
             for n in ('nav', 'rviz', 'perception', 'hud', 'arm', 'foxglove',
                       'obstacle', 'camera_obstacles', 'reversing', 'lidar', 'plan_around')}
     lane = LaunchConfiguration('lane').perform(context).lower()
-    if lane not in ('false', 'true', 'fake'):
-        raise ValueError(f'lane:={lane}: use true (the lane finder), fake or false')
+    if lane not in ('false', 'true'):
+        raise ValueError(f'lane:={lane}: use true (the lane finder) or false')
     start = {n: float(LaunchConfiguration(n).perform(context)) for n in ('start_y', 'start_yaw')}
     bend = LaunchConfiguration('bend_radius').perform(context)
     road = [{'bend_radius': float(bend)}] if bend else []
@@ -93,12 +95,15 @@ def launch_setup(context):
         datum = yaml.safe_load(f)['navsat_transform']['ros__parameters']['datum']
 
     speed_loop = vehicle.check_speed_loop(LaunchConfiguration('speed_loop').perform(context))
+    # What every model of the car assumes: spine_sim's loop unless told (TODO 163).
+    model_loop = vehicle.check_speed_loop_model(
+        LaunchConfiguration('speed_loop_model').perform(context), speed_loop)
     actions = [
         # The car's own software, as car.launch.py starts it.
         include('aav_description', 'description.launch.py'),
         include('aav_command_mux', 'mux.launch.py', geofence_lock='true'),
-        # spine_sim's speed loop, so ego's trace predicts the car it drives (TODO 163).
-        include('aav_ego', 'ego.launch.py', speed_loop=speed_loop),
+        # The models' loop (spine_sim's unless told), for ego's trace (TODO 163).
+        include('aav_ego', 'ego.launch.py', speed_loop=model_loop),
         # ego's commands go to spine_bridge (source bench) only while everything is BENCH.
         include('aav_io_mux', 'io_mux.launch.py', target='bench', source='bench'),
         include('aav_scripted', 'scripted.launch.py'),
@@ -154,18 +159,25 @@ def launch_setup(context):
                                camera_obstacles=flag['camera_obstacles'],
                                reversing=str(flag['reversing']).lower(),
                                plan_around=str(flag['plan_around']).lower(),
-                               speed_loop=speed_loop))
-    # The sensor watchdog guards navigation and the AI slot (lane keeping) as on the car, always:
+                               speed_loop=model_loop,
+                               stop_hold_impl=vehicle.check_stop_hold_impl(
+                                   LaunchConfiguration('stop_hold_impl').perform(context))))
+    # The sensor watchdog guards navigation and the AI slot as on the car, always:
     # the mux's sensors lock needs its heartbeat (aav_command_mux mux.launch.py sensor_lock).
     actions.append(include('aav_safety', 'watchdog.launch.py',
-                           inputs='odom,imu,gps,local,global,radar'))
+                           inputs='odom,imu,gps,local,global,radar'
+                           + (',lidar' if flag['lidar'] else '')))
     # The goal leash (TODO 116): a laptop driver that goes quiet loses its goals, as on the car.
-    actions.append(Node(package='aav_safety', executable='goal_leash', name='goal_leash'))
+    leash = vehicle.check_goal_leash_impl(LaunchConfiguration('goal_leash_impl').perform(context))
+    actions.append(Node(package=vehicle.GOAL_LEASH_IMPLS[leash], executable='goal_leash',
+                        name='goal_leash'))
     # The geofence holds every program near its edge, as on the car, always: the mux's
     # geofence lock needs its heartbeat (mux.launch.py geofence_lock).
     actions.append(include('aav_safety', 'geofence.launch.py', backend='spine',
                            radius=LaunchConfiguration('geofence_radius').perform(context),
-                           centre_x=0.0, centre_y=start['start_y'], max_speed=''))
+                           centre_x=0.0, centre_y=start['start_y'], max_speed='',
+                           geofence_impl=vehicle.check_geofence_impl(
+                               LaunchConfiguration('geofence_impl').perform(context))))
     teleop = LaunchConfiguration('teleop').perform(context).lower()
     if teleop not in ('false', 'true', 'stand_in'):
         raise ValueError(f'teleop:={teleop}: use true (a joystick here), stand_in or false')
@@ -186,9 +198,6 @@ def launch_setup(context):
                             name='camera_obstacles',
                             parameters=[os.path.join(share('aav_detector'), 'config',
                                                      'camera_obstacles.yaml')]))
-    if lane in ('true', 'fake'):
-        actions.append(include('aav_lane_geometry', 'lane_follower.launch.py',
-                               fake=str(lane == 'fake').lower()))
     if lane == 'true':
         actions.append(include('aav_lane_finder', 'lane_finder.launch.py',
                                lane_finder_impl=vehicle.check_lane_finder_impl(
@@ -232,6 +241,15 @@ def generate_launch_description():
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher '
                                           '(the ml environment)'),
+        DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
+                                          'the geofence'),
+        DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
+                                          'stop_hold, with navigation'),
+        DeclareLaunchArgument('goal_leash_impl', default_value=vehicle.DEFAULT_GOAL_LEASH_IMPL,
+                              description='rust (aav_safety_rs; the Python removed 20 Nov): '
+                                          'the goal leash'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
                               description='rust or python: which point_driver drives to a '
@@ -245,9 +263,8 @@ def generate_launch_description():
                               description='rust or python: which lane_finder finds the lane '
                                           'lines (aav_lane_finder_rs, or aav_lane_finder)'),
         DeclareLaunchArgument('lane', default_value='false',
-                              description='true: lane keeping (lane_finder and control_interface, '
-                                          'on /drivers/ai/cmd_vel); fake: the same on a '
-                                          'pretend lane'),
+                              description='true: the lane finder, on '
+                                          '/perception/lane/geometry'),
         DeclareLaunchArgument('hud', default_value='false',
                               description='the HUD window (aav_hud, as pixi run hud); '
                                           'needs a screen'),
@@ -283,7 +300,11 @@ def generate_launch_description():
                                           '(aav_spine)'),
         DeclareLaunchArgument('speed_loop', default_value='default',
                               description="spine_sim's speed loop profile: default (today's "
-                                          'gains), smooth (TODO 27) or lqi (TODO 3)'),
+                                          'gains), smooth (TODO 27), lqi (TODO 3) or '
+                                          'firm (TODO 163)'),
+        DeclareLaunchArgument('speed_loop_model', default_value='',
+                              description='the loop every model of the car assumes; '
+                                          "empty: speed_loop's (TODO 163)"),
         DeclareLaunchArgument('geofence_radius', default_value='100.0',
                               description='m: the geofence, a circle round where the car '
                                           'first stands still (the car: 30)'),

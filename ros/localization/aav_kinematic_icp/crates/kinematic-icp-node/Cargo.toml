@@ -1,0 +1,21 @@
+[package]
+name = "kinematic-icp-node"
+description = "kinematic_icp: lidar odometry for a car as ROS 2 topics, a drop-in for aav_kiss_icp"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "kinematic_icp"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+kinematic-icp = { path = "../kinematic-icp" }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"
+# The lidar's mount and PointCloud2's bytes, as the voxels node reads them.
+voxels = { path = "../../../../perception/aav_voxels_rs/crates/voxels" }

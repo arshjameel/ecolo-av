@@ -195,7 +195,7 @@ Works with **no Pi and no Orin**. The ESP32 reads the receiver itself.
 | Question | True in the code today |
 |---|---|
 | Does hw_panel's `/hud/hw_panel/heartbeat` reach the ESP32? | **No.** The bridge reads only `/control/car/heartbeat`. The output mux reads screens only with `screens:=`, and refuses it for the car (the node won't start) |
-| Can a laptop run the output mux for the real car? | In principle: it is a ROS node. **No command or machine file does it.** `laptop.yaml` has only the joystick and the detector. Never tried |
+| Can a laptop run the output mux for the real car? | **Yes, since 20 Nov**: `pixi run car laptop_orin` (below). Never tried on the car |
 | What a laptop can do | drive (`pixi run keyboard`), watch (`pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true`; not `pixi run hw-panel`, which stays on the laptop), e-stop |
 | hw_panel's speed buttons on the real car | **off** (on stands too, until a driven-wheel speed exists, TODO 49b) |
 
@@ -212,8 +212,34 @@ Works with **no Pi and no Orin**. The ESP32 reads the receiver itself.
 The heartbeat is made on the Motor Pi, beside the ESP32. The laptop can drop off: its
 slot times out and ego stops the car.
 
-**Missing, for a laptop heartbeat:** a machine file with the mux and ego and no bridge,
-and one bench run. Not recommended: the WiFi would then be in the heartbeat's path.
+### The laptop as the Orin (20 Nov)
+
+Ben, 20 Nov: "make the joystick and the remote control drive the car and the hardware
+screen ... provide the heartbeat". [[untested]] on the car.
+
+```text
+laptop: joystick ─► mux ─► ego ─► output mux ── WiFi ──► Motor Pi: bridge ─UART─► ESP32
+        hw_panel ─► (45)          (the heartbeat)
+RC transmitter ──────────────────────────────────────────────────── iBUS ─────► ESP32
+```
+
+| Where | Run |
+|---|---|
+| the Motor Pi | `~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=motor_pi` (the bridge only) |
+| the laptop, joystick plugged in | `export ROS_DOMAIN_ID=42`, then `pixi run tools/ros.sh ros2 launch aav_bringup car.launch.py machine:=laptop_orin max_speed:=0.3` |
+| the laptop, the hardware screen | `export ROS_DOMAIN_ID=42`, then `pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true` |
+
+| If | The car |
+|---|---|
+| the laptop, the WiFi, the Pi or the wire stops for 100 ms | Rust firmware: full brake, latched. **A WiFi hiccup is a hard stop** (`motor_pi_alone` keeps the heartbeat off the WiFi) |
+| the joystick goes quiet | ego slows the car (its slot times out) |
+| the RC's CH6 goes to RC direct | the sticks drive, with no laptop and no Pi |
+| the C++ firmware is still on | no heartbeat at all: stands only |
+
+Never with `car orin` or `car motor_pi_alone` running too: two muxes and two egos would
+both drive.
+
+With the Orin reading the sensors and a recording: [drive by hand and record](drive-and-record.md).
 
 ## 8. The 2025-26 C++ and open questions
 

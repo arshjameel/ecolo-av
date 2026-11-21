@@ -37,7 +37,7 @@ Can't find a word? Search this page (Ctrl+F or ⌘F). Missing one? Add a row, in
 | checksum, CRC | a few bits worked out from a message, so a garbled one is caught | every CAN frame (CRC-8) |
 | CI | Continuous Integration: GitHub runs the tests on every pull request and push to `main` | `.github/workflows/test.yml` |
 | colcon | the tool that builds a ROS workspace | `pixi run build` |
-| `collision_monitor` | Nav2's node that sent zero speed when something entered its stop zone; ported as `aav_stop_zone`, the lock since 17 Nov. Its state topic keeps the name | `/safety/collision_monitor/state` |
+| `collision_monitor` | Nav2's node that sent zero speed when something entered its stop zone; ported as `aav_stop_zone`, the lock since 17 Nov. Its state keeps the message type, on a new name | `/safety/stop_zone/state` |
 | costmap | a grid on the ground: how bad it is to drive in each cell | [Costmaps](costmaps.md) |
 | counter | a number that goes up by one in every frame, so a frozen sender is caught | every CAN frame |
 

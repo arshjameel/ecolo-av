@@ -18,6 +18,11 @@ pixi run actuator-test steer-sweep --stands         # the real car, wheels off t
 pixi run actuator-test speed-up                     # the real car, in an empty lot
 pixi run actuator-test --analyse ~/aav-tests/<run>  # a run's report again, from its CSV
 pixi run actuator-test preflight --stands --sim                            # the preflight (actuator-test preflight --stands)
+pixi run car-test --stands                          # phase A: every stands test and fault, one report
+pixi run car-test --stands --sim --no-manual        # the same against its own Ravensim
+pixi run car-test --hallway                         # phase B: the transfer functions, in a hallway
+pixi run car-test --hallway --sim --no-manual       # the same in a pretend hallway in Ravensim
+pixi run car-test --analyse ~/aav-tests/<session>   # a hallway session's report again
 ```
 
 | Test | Stage | Measures |
@@ -32,13 +37,43 @@ pixi run actuator-test preflight --stands --sim                            # the
 | `circles` | 4.5 | the real wheel angle, both ways |
 | `straight` | 4.7 | sideways drift over 10 m |
 | `actuator-test preflight --stands` | 3.P | on stands: speed up, hold, slow, brake, steer, every sensor at once: PASS / FAIL per line |
+| `wheel-steps` | 3.14 | on stands: throttle on free wheels, 0.1, 0.2, 0.3, 0.15 m/s: does the wheel speed follow |
+| `hall-speed-up` | B1 | in a hallway (`--hallway LENGTH`): 10 s still, speed up, brake: throttle lag, dead time, `max_accel` |
+| `hall-coast` | B2 | the same, then coast: the drag |
+| `hall-brake` | B3 | the same, then brake: brake lag, dead time, `max_brake`, the stop |
+| `hall-steer` | B4 | the same, then steer left, right, left on the ground: steering lag, dead time |
+
+`car_test` (`pixi run car-test --stands`, TODO 246) runs phase A of `docs/testing-plan.md` in
+one go: the preflight, the sensors alone, the three steering tests and `wheel-steps` (each an
+`actuator_test` child), then the faults on purpose (the Orin's heartbeat, the GPS, IMU,
+camera, lidar, a Pi's link, a pulled cable, the e-stop), into one folder with `report.md`
+(`docs/actuator-tests.md`, "car-test").
+
+`car_test --hallway` (TODO 248) runs phase B: it asks the hallway's measured length, works
+out the top speed (speed up + stop + margin, within 1.0 m/s), runs every `hall-*` pass
+`--repeats` times, the car turned round between passes, then fits everything with error
+bars and lays the model over each pass (`hallway.py`; `docs/actuator-tests.md`,
+"car-test --hallway").
 
 ## Interface
 
 Executable `actuator_test` (`ros2 run aav_actuator_tests actuator_test`, wrapped by
 `tools/actuator_test.sh`). Options: `<test>`, `--list`, `--sim`, `--bench`, `--stands`,
 `--max-speed`, `--speeds`, `--angles`, `--max-distance`, `--max-time`, `--out`, `--bag`,
-`--analyse RUN_FOLDER`; for `actuator-test preflight --stands` only, `--skip SENSOR...` and `--no-drive`.
+`--analyse RUN_FOLDER`; for `actuator-test preflight --stands` only, `--skip SENSOR...` and `--no-drive`;
+for the `hall-*` tests, `--hallway LENGTH` (required), `--margin` (3 m) and `--direction there|back`.
+
+Executable `car_test` (wrapped by `tools/car_test.sh`):
+`--stands` or `--hallway` (one of them), `--ground` (refused), `--sim`, `--only STEP...`,
+`--no-manual`, `--out`; with `--hallway`: `--length`, `--margin`, `--repeats`, `--kinds`,
+`--one-way`, and with `--sim` `--sim-actuators "throttle_lag=0.3,..."`, `--wheel-noise`,
+`--wheel-slip`; `--analyse SESSION`;
+what it reads, publishes, calls and signals is in `car_test_node.py`'s docstring: the same as
+the preflight, plus `/safety/sensor_watchdog/state` and `lock`, `/vehicle/status`,
+`/safety/output_mux/state`; with `--sim` it sets
+Ravensim's `fault.<sensor>` and pauses its own Ravensim's `output_mux` (SIGSTOP, SIGCONT).
+With `--hallway --sim` its Ravensim is the empty world with no cameras, its car's own
+actuator numbers set by `--sim-actuators` (`sim.launch.py actuators:=`).
 
 | Item | What |
 |---|---|
@@ -51,20 +86,37 @@ Modules (all but the node have no ROS):
 
 | Module | Holds |
 |---|---|
-| `procedures.py` | the steps: `Step`, `Runner`, `Settings`, `Test`, `TESTS`, `plan()`, `estimate()`, `with_ego_limit()` |
-| `safety.py` | the rules: `Kind`, `source_kind`, `decide`, `confirmed`, `Envelope.breach`, `taken_over`, checklists; caps `REAL_CAP` 1.0, `STANDS_CAP` 0.3, `SIM_DEFAULT_CAP` 3.0, `SIM_MAX_CAP` 5.0 m/s |
+| `procedures.py` | the steps: `Step`, `Runner`, `Settings`, `Test`, `TESTS`, `plan()`, `estimate()`, `with_ego_limit()`; the hallway's `hall_*`, `HALL_TESTS`, `stop_room()` (the brake point, `Step.fenced`) |
+| `safety.py` | the rules: `Kind`, `source_kind`, `decide`, `confirmed`, `Envelope.breach`, `taken_over`, checklists; caps `REAL_CAP` 1.0, `STANDS_CAP` 0.3, `SIM_DEFAULT_CAP` 3.0, `SIM_MAX_CAP` 5.0 m/s; the hallway: `hallway_limits()`, `HALLWAY_CHECKLIST` |
+| `fusion.py` | the IMU with the wheels: `still_imu` (the offset), `slope_from` (the floor), `fuse` (a Kalman filter: speed, IMU bias), `forces` (F = m a) |
+| `errorbars.py` | `Value`, `Estimate` (mean ± sd, bootstrap 90 %, resolution, floor, trust), `estimate()` |
+| `hallway.py` | phase B's session: `analyse()` (fits per pass, error bars, the model replayed), `write()` (report.md, fits.csv, compare.csv, overlays/, vehicle-yaml.txt), `chosen()`, `recovery_rows()`; `main()` |
 | `analysis.py` | the maths, plain Python (no numpy): `fit_line`, `fit_throttle`, `fit_lag` (the old fit), `fit_fopdt` (dead time + lag), `fit_speed_response` (through the wheel speed), `fit_steer_lag`, `fit_steer`, `steer_play`, `LagFit`; what can be resolved: `pulse_interval`, `fresh_period`, `time_resolution`, `unresolved`; `stopping`, `time_to_speeds`, `fit_circle`, `wheel_angle`, `drift` |
 | `reports.py` | one run's rows to a `Report`: `analyse()`, `table()`, `yaml_lines()`; `PATHS` (each fit's from -> to), `signal()` (true arrival times), `shaping()` (what shaped the commands) |
 | `preflight.py` | the preflight's judging: `SENSORS` (documented rates), `sensor_line`, `motion_lines`, `stands_lines`, `ImuWatch` (live, on stands), `table` |
 | `actuator_test.py` | the ROS node and the command line |
-| `preflight_node.py` | the preflight's ROS part: a counter per sensor, its refusals, the e-stop when it won't stop, its report |
+| `preflight_node.py` | the preflight's ROS part: a counter per sensor, its refusals, the e-stop when it won't stop (`press_estop`), its report |
+| `car_test.py` | phase A's steps and judging, no ROS: `STEPS`, `plan()`, `parse()`, `tool_args()`, `tool_result()`, `named()`, `judge_fault()`, `judge_heartbeat_car()`, `table()`, `markdown()`; phase B's `hall_passes()`, `hall_args()`, `sim_overrides()`, `sim_launch_args()` |
+| `car_test_node.py` | phases A and B's ROS part: the runner, its slow roll and stops, each fault, the hallway's passes (`HallwayTest`), its own Ravensim (`--sim`), the report folder |
 
 `aav_drive_to_point` reuses `safety.py` (`source_kind`, `taken_over`, `LOT_CHECKLIST`), so both
 agree on what REAL means.
 
 ## Invariants
 
-- `procedures.py`, `safety.py`, `analysis.py`, `reports.py`, `preflight.py` have no ROS imports.
+- `procedures.py`, `safety.py`, `analysis.py`, `reports.py`, `preflight.py`, `car_test.py`,
+  `fusion.py`, `errorbars.py`, `hallway.py` have no ROS imports.
+- In the hallway (`hall-*`, `--hallway`): the top speed from the measured length, never above
+  1.0 m/s; each driving step ends at the brake point (`stop_room`: the car stands still
+  before length − margin, by the wheels); past the room the envelope stops it at once.
+  Indoors the geofence says STANDS (no GPS: `pixi run car ... gps:=false stands:=true`):
+  only the hallway tests accept that, and NEAR, OUTSIDE, LOST, JUMP still stop them.
+- It prints `vehicle.yaml` lines from trusted numbers only; an untrusted one is commented,
+  with why.
+- `car_test` stops at the first FAIL (the steps after: NOT RUN), and after each step sends
+  zeros until still, else `/safety/estop` true (never false). It signals only its own
+  Ravensim's processes (`--sim`: its launch log, its process group). Each `actuator_test`
+  child still asks the person on the real car.
 - Every rule errs towards "this is the real car": nobody announcing counts as REAL.
 - `--sim` only when `/system/source` says SIM, and SIM only with `--sim`. REPLAY refused.
 - Real car: stage 3 needs `--stands`, stage 4 refuses it. Speed cap 1.0 m/s (0.3 on
@@ -112,3 +164,6 @@ Quick, without ROS: `cd ros/drivers/aav_actuator_tests && python3 -m pytest -q`
 | `test_robustness.py` | the fits on pretend data with play, Hall pulses, noise, no brake level, a dead time (`synthetic.py`): the numbers back within a stated tolerance, or refused |
 | `test_preflight.py` | the preflight's lines on the pretend car, on the ground and as if on stands; rates, values, the IMU watch |
 | `test_reports.py` | true times, paths, `shaping`, old logs, the fallbacks (IMU-only brake, the ESP32's open-loop throttle) |
+| `test_car_test.py` | car-test's steps, `--only`, `--no-manual`, `--sim`, the command line; the tools' results; `wheel-steps` on the pretend car and judged; the watchdog's words; each fault's judgement; the report |
+| `test_node_names.py` | no attribute of the nodes hides a method (the preflight's e-stop, 19 Nov) |
+| `test_hallway.py` | the IMU with the wheels, the slope, error bars, the hallway's limits and brake point, every pass inside its room, the command line; and on `fake_hallway.py`'s pretend sessions, the known numbers found within their error bars, the fitted model matching every pass |

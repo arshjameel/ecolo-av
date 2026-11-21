@@ -75,7 +75,7 @@ def test_turned_and_distance():
 
 
 def test_every_command_stays_under_the_cap():
-    s = pr.Settings(cap=0.3, speeds=(1.0, 2.0))
+    s = pr.Settings(cap=0.3, speeds=(1.0, 2.0), room=9.0)   # room: the hallway tests
     for name in pr.TESTS:
         for st in pr.plan(name, s).steps:
             assert st.speed is pr.COAST or st.speed <= 0.3, (name, st)
@@ -84,7 +84,7 @@ def test_every_command_stays_under_the_cap():
 
 def test_every_test_ends_with_the_car_stopped():
     for name in pr.TESTS:
-        last = pr.plan(name, SETTINGS).steps[-1]
+        last = pr.plan(name, replace(SETTINGS, room=9.0)).steps[-1]
         assert last.speed == 0.0 and last.until is pr.Until.STOPPED, name
 
 

@@ -14,7 +14,7 @@ and with a saved map, **where we are** (NDT). This page takes them one at a time
 - how cubes flatten into the costmap, and what runs today;
 - joining cubes into named objects;
 - NDT, KISS-ICP and AMCL: finding the car on a map;
-- what's built, what's planned, what's only an idea.
+- what's built, what's a trial, what's only an idea (section 11, as of 18 Nov).
 
 The maths of NDT and ICP, with pictures, is in
 [Learn: localization §8](learn-localization.md#8-next-matching-the-lidar-to-a-map-ndt-and-icp).
@@ -107,16 +107,17 @@ So cube (25, −6, 3) is **filled**.
 cubes**, against 28,800 points a turn. Most cubes are free or unknown. Cubes not seen for
 a while **fade** back to unknown, so a person who walked away doesn't stay.
 
-!!! note "Planned, not built"
-    No code makes cubes yet. The plan (TODO, "Tesla-style cubes on our HUD"): a voxel grid
-    in Rust in `hud-core`, no ROS, its own tests; the simulator first.
+!!! note "Built since 30 Oct"
+    `aav_voxels` (Python) and `aav_voxels_rs` (Rust, `voxels_impl:=rust`) cut the cloud
+    into 0.25 m cubes (`voxels:=true`; on in `stack:=ours`). The debug HUD and the
+    developer window draw them. Section 5 has the trial.
 
 ## 4. Not Tesla's "occupancy network"
 
 Tesla's car has no lidar. Its **occupancy network** is a learned neural network: it looks
 at eight cameras and **guesses** which cubes are filled.
 
-| | Tesla | Ours (planned) |
+| | Tesla | Ours |
 |---|---|---|
 | Input | camera pictures | lidar points |
 | How | a trained neural network | plain geometry: a point in a cube = filled |
@@ -151,19 +152,19 @@ blocked ([Learn: navigation](learn-nav2.md)). To get there, look **down each col
 The band comes from `vehicle.yaml`: the body is 1.5 m tall, plus a 0.5 m margin
 (`aav_description` `obstacle_heights`). Both are guesses until measured.
 
-### What runs today: `lidar_scan`, no cubes
+### The plain way: `lidar_scan`, no cubes
 
-Today there are no cubes. `lidar_scan` (`ros/perception/aav_lidar`) does the same job a
-simpler way: in each of **720 directions** (every 0.5°), it keeps the **nearest point
+Without cubes (`voxels:=false`, the car's default), `lidar_scan` (`aav_lidar_rs`; Python:
+`aav_lidar`) does the same job a simpler way: in each of **720 directions** (every 0.5°), it keeps the **nearest point
 inside the band**.
 
 | | |
 |---|---|
 | In | `/sensors/lidar/points`: 28,800 points, 0.9 MB |
 | Out | `/sensors/lidar/scan`: 720 distances, about 3 kB |
-| Read by | the local costmap's `lidar_layer`, and `collision_monitor`'s stop zone |
+| Read by | the local costmap's `lidar_layer`, and the stop zone (`aav_stop_zone`) |
 
-The local costmap (`nav2.yaml`) stacks its layers:
+The local costmap (ours, `aav_costmap`, set in `nav2.yaml`) stacks its layers:
 
 | Layer | From |
 |---|---|
@@ -201,13 +202,14 @@ Ben, 30 Oct: "this is a car not a needle. We need to quickly know something is i
 | Size | 3 kB | about 10 kB, and 20 kB of road |
 
 The costmap's `lidar_layer` and the stop zone read the cubes instead of the scan. It's
-off unless asked for: `pixi run sim world:=test_lot voxels:=true`. The numbers:
-[Trials](trials.md#voxels-30-oct-the-lidar-as-cubes). The design:
+off unless asked for (`pixi run sim world:=test_lot voxels:=true`); `stack:=ours` runs the cubes for the things and the kerbs. The numbers:
+[Trials](history/trials-log.md#voxels-30-oct-the-lidar-as-cubes). The design:
 `docs/designs/2026-10-30_voxels.md`.
 
 ## 6. Cubes into objects, with names
 
-Cubes say **something** is there. Not **what**. Two steps (TODO, 29 Oct; **planned**):
+Cubes say **something** is there. Not **what**. Two steps, built since 14-15 Nov as
+`aav_things` (`/world/things`, `things:=true`; Rust: `aav_things_rs`, the default):
 
 **Step 1: join touching filled cubes into one object.** The radar already does this with
 its points (`aav_radar_clusters`, DBSCAN).
@@ -240,7 +242,8 @@ inside a box, it gets the box's name, and the cubes give its distance.
 ## 7. Where are we? NDT on a saved map
 
 GPS is good to 1-3 m. A lidar matched to a **saved map** of the lot is good to centimetres
-([research picks](designs/2026-10-28_research-picks.md), pick 2; **planned**).
+([research picks](designs/2026-10-28_research-picks.md), pick 2; built 29 Oct as `aav_ndt`,
+in Rust: `ndt:=true` scores it, `ndt_ekf:=true` feeds it to `ekf_global`, a challenger).
 
 **NDT** (Normal Distributions Transform) keeps the map as cubes too, but each cube holds a
 **bell curve**: the centre of its points, and how spread out they are.
@@ -269,7 +272,9 @@ really is from where it thought.
 
 ## 8. Making the map: KISS-ICP
 
-NDT needs a map first. **KISS-ICP** makes one (planned):
+NDT needs a map first. **KISS-ICP** can make one (`aav_kiss_icp`, built 30 Oct, a trial;
+today `pixi run ndt-map` builds NDT's map from a drive or a bag, and the testing plan's
+phase D adds SLAM):
 
 | Step | What |
 |---|---|
@@ -283,26 +288,26 @@ wheels' clicks come slowly ([Learn: speed](learn-speed.md)).
 
 **The catch:** a bare lot gives the lidar little to match. Kerbs, posts and walls help.
 
-## 9. A trial alternative: AMCL on a 2D map
+## 9. A trial beside it: AMCL on a 2D map
 
-**AMCL** (Adaptive Monte Carlo Localization) is Nav2's stock way (its `nav2_amcl`, kept for this trial) to find a robot on a 2D
+**AMCL** (Adaptive Monte Carlo Localization) is Nav2's stock way (`nav2_amcl`) to find a robot on a 2D
 map. It scatters hundreds of guesses ("particles") and keeps the ones whose view matches
 the lidar's 2D scan.
 
-| | NDT (planned) | AMCL (a trial design) |
+| | NDT | AMCL |
 |---|---|---|
 | Map | 3D points | 2D grid, seen from above |
 | Reads | the full cloud | `/sensors/lidar/scan` |
-| Software | not chosen: look at stock NDT localizers first | stock `nav2_amcl` |
-| First test | a recording of the real lot | the simulator's `test_lot` world |
+| Software | ours, in Rust (`aav_ndt`) | ours, in Rust (`aav_amcl_rs`, 18 Nov); stock `nav2_amcl` removed 20 Nov, TODO 232 |
+| Tested | Ravensim's lot and campus | Ravensim's lot: ours ties with stock |
 
-The trials design (`docs/designs/2026-10-29_trials.md`, on branch `trials`, Tentative) runs
-AMCL **beside** `ekf_global`: its pose goes out on `/localization/amcl/pose`, it never
-takes over `map → odom`, and it's scored against the EKF on the same drives. Not built yet.
+Both run **beside** `ekf_global` (`ndt:=true`, `amcl:=true`): AMCL's pose goes out on
+`/localization/amcl/pose`, it never takes over `map → odom`, and it's scored against the
+EKF on the same drives ([Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock)).
 
 ## 10. Seeing it all: the debug HUD
 
-The debug HUD (TODO, 29 Oct; **planned**) puts what the car thinks on one screen:
+The debug HUD (`pixi run debug-hud`, built 30 Oct-3 Nov) puts what the car thinks on one screen:
 
 | It draws | From |
 |---|---|
@@ -314,19 +319,20 @@ The debug HUD (TODO, 29 Oct; **planned**) puts what the car thinks on one screen
 It reads each sensor's own topic, not what comes out of the muxes, so a fault shows where
 it starts. Built on the raylib HUD (`ros/hud/aav_hud`).
 
-## 11. Today, planned, idea
+## 11. Built, trial, idea (18 Nov)
 
 | Piece | State | Where |
 |---|---|---|
 | VLP-16 → `/sensors/lidar/points` | ✅ built; the simulator and a fake lidar; never the real one | `aav_sensors` `sensors.launch.py` |
-| Points → 2D scan → costmap and the stop zone | ✅ built; the simulator | `aav_lidar` `lidar_scan`, `nav2.yaml` |
-| Cubes from the lidar | planned (TODO: cubes on the HUD) | `hud-core`, Rust |
-| Cubes drawn on the camera picture | planned; on the car, needs calibration | `picture.rs`, research pick 4 |
-| Cubes into named objects | planned (TODO 29 Oct) | |
-| A map of the lot with KISS-ICP | planned (research pick 2) | needs a recording of the lot |
-| NDT pose into `ekf_global` | planned (research pick 2) | |
-| AMCL beside the EKF | a trial design, Tentative | branch `trials` |
-| The debug HUD | planned (TODO 29 Oct) | |
+| Points → 2D scan → costmap and the stop zone | ✅ built; the simulator | `aav_lidar_rs` (`aav_lidar` in Python) `lidar_scan`, `nav2.yaml` |
+| Cubes from the lidar | ✅ built; the simulator | `aav_voxels`, `aav_voxels_rs` |
+| Cubes drawn on the camera picture | ✅ on the debug HUD; on the car, needs calibration | `hud-core` `picture.rs`, research pick 4 |
+| Cubes into named objects | ✅ built (`/world/things`); names from the camera's boxes | `aav_things`, `aav_things_rs` |
+| Kerbs from the cubes | ✅ the step finder (`kerbs:=true`); [[untested]] on a real kerb | `aav_voxels_rs`, [Kerbs](kerbs.md) |
+| A map of the lot | ✅ `pixi run ndt-map`; the campus guessed from OpenStreetMap | `tools/ndt_map.py`; KISS-ICP a trial |
+| NDT pose into `ekf_global` | a challenger (`ndt_ekf:=true`, TODO 210) | `aav_ndt` |
+| AMCL beside the EKF | ✅ a trial, ours in Rust since 18 Nov | `aav_amcl_rs` |
+| The debug HUD | ✅ built | `pixi run debug-hud` |
 | A 3D costmap layer (as Nav2's `VoxelLayer`) | an idea: only if 2D misses something | |
 | A small model that names cubes from the camera crop | an idea | |
 

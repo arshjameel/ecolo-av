@@ -234,7 +234,7 @@ For B from the point driver's feedback, also record `/drive_to_point/_action/fee
 
 The IMU's gyro measures **turning**, not **north**. We don't use the magnetometer (it
 needs calibrating, and the car's motors upset it). The start heading comes from
-`start_yaw`, typed in by hand; once the car moves, `gps_heading` (`aav_gps_heading`)
+`start_yaw`, typed in by hand; once the car moves, `gps_heading` (`aav_gps_heading_rs`)
 gives `ekf_global` the heading from the GPS receiver's velocity. The options:
 
 | Option | How | Cost |

@@ -20,6 +20,7 @@ The launch files use this so the car's measurements live in one file:
     vehicle.mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)  # aav_mppi_lag's
     vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed)  # aav_mpc_lag's (tracker:=mpc_lag_rs)
     vehicle.check_speed_loop(name, tracker)  # speed_loop:=, the profile every car model assumes
+    vehicle.check_speed_loop_model(name, car_loop, tracker)  # speed_loop_model:=, '' = car's
     vehicle.centre_of_mass(v, front, rear, front_lifted, lift)   # from the scales (M7, M7b)
     vehicle.wheel_angles(v, centre)  # each front wheel's angle for a centre (bicycle) angle
     vehicle.centre_angle(v, inner, outer)       # the reverse: from M5's two measured angles
@@ -333,10 +334,11 @@ TUNED_CONTROLLERS = ('rpp', 'mppi')
 TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
             'mpc_lag_rs')
 DEFAULT_TRACKER = 'mppi_lag'
-# The trackers that drive forwards only (aav_track's, and mpc_lag_rs): refused with
-# reversing:=true. mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse").
-FORWARD_ONLY_TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag',
-                         'mpc_lag_rs')
+# The trackers that drive forwards only: refused with reversing:=true. None since 20 Nov:
+# mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse"); aav_track's
+# since 19 Nov (TODO 174: each backwards stretch mirrored, aav_track gears.py); mpc_lag_rs
+# since 20 Nov (TODO 213, the same, in aav_mpc_lag's gears.rs). Kept for a challenger.
+FORWARD_ONLY_TRACKERS = ()
 
 
 def check_tracker(tracker, reversing=False):
@@ -430,10 +432,26 @@ def check_lidar_impl(impl):
     return name
 
 
+# Which AMCL runs (amcl:=true, amcl_impl:=): rust (aav_amcl_rs, the default since 18 Nov,
+# TODO 231: stock's topics, parameters and frames, a plain node). Stock nav2_amcl, the last
+# of Nav2, went on 20 Nov (TODO 232, tag save/nav2-amcl); the switch stays, a hook.
+AMCL_IMPLS = {'rust': 'aav_amcl_rs'}
+DEFAULT_AMCL_IMPL = 'rust'
+
+
+def check_amcl_impl(impl):
+    """Return which AMCL runs (lower case), or raise ValueError saying what to pick."""
+    name = str(impl).strip().lower()
+    if name not in AMCL_IMPLS:
+        raise ValueError(f'amcl_impl:={impl}: pick one of {", ".join(AMCL_IMPLS)}')
+    return name
+
+
 # Which things node tracks the cubes (things:=true, things_impl:=): rust (aav_things_rs,
 # the default since 17 Nov: the same node name, topics, parameters and things, 1.5 % of a
-# core against 7.5 %) or python (aav_things, the fallback). Each one's package.
-THINGS_IMPLS = {'python': 'aav_things', 'rust': 'aav_things_rs'}
+# core against 7.5 %). The Python went on 20 Nov (tag save/python-things); the switch
+# stays, a challenger's hook.
+THINGS_IMPLS = {'rust': 'aav_things_rs'}
 DEFAULT_THINGS_IMPL = 'rust'
 
 
@@ -451,6 +469,22 @@ def check_things_impl(impl):
 # topics. Each one's package.
 DETECTOR_IMPLS = {'python': 'aav_detector', 'rust': 'aav_detector_rs'}
 DEFAULT_DETECTOR_IMPL = 'python'
+
+
+# Which model worker the diffusion planner runs (navigation.launch.py, sim.launch.py
+# diffusion_impl:=): python (worker.py in the learn environment; the default) or rust
+# (aav_diffusion_rs's diffusion_worker: the same pipe, ONNX Runtime from Rust, a
+# challenger, docs/onnx.md). The node, its guard and the lattice's fallback are the same.
+DIFFUSION_IMPLS = ('python', 'rust')
+DEFAULT_DIFFUSION_IMPL = 'python'
+
+
+def check_diffusion_impl(impl):
+    """Return the diffusion worker's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in DIFFUSION_IMPLS:
+        raise ValueError(f'diffusion_impl:={impl}: pick one of {", ".join(DIFFUSION_IMPLS)}')
+    return name
 
 
 def check_detector_impl(impl):
@@ -481,9 +515,9 @@ def check_ego_impl(impl):
 
 # Which behaviour node runs, with behaviour:=true (navigation.launch.py, car.launch.py,
 # sim.launch.py behaviour_impl:=): rust (aav_behaviour_rs, the default on the car and in
-# the simulator, Ben, 16 Nov) or python (aav_behaviour: the same node name, topics and
-# answers; kept selectable until a car day proves the Rust). Each one's package.
-BEHAVIOUR_IMPLS = {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+# the simulator, Ben, 16 Nov). The Python went on 20 Nov (tag save/python-behaviour); the
+# switch stays, a challenger's hook.
+BEHAVIOUR_IMPLS = {'rust': 'aav_behaviour_rs'}
 DEFAULT_BEHAVIOUR_IMPL = 'rust'
 # The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
 SIM_DEFAULT_BEHAVIOUR_IMPL = DEFAULT_BEHAVIOUR_IMPL
@@ -491,9 +525,9 @@ SIM_DEFAULT_BEHAVIOUR_IMPL = DEFAULT_BEHAVIOUR_IMPL
 
 # Which sensor watchdog runs (watchdog.launch.py, car.launch.py, sim.launch.py
 # watchdog_impl:=): rust (aav_watchdog_rs, the default since Ben decided, 16 Nov:
-# "watchdog in rust sure") or python (aav_safety's: the same node name, topics and
-# answers; kept selectable until a car day proves the Rust). Each one's package.
-WATCHDOG_IMPLS = {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+# "watchdog in rust sure"). The Python went on 20 Nov (tag save/python-safety-nodes); the
+# switch stays, a challenger's hook.
+WATCHDOG_IMPLS = {'rust': 'aav_watchdog_rs'}
 DEFAULT_WATCHDOG_IMPL = 'rust'
 
 
@@ -589,8 +623,11 @@ def check_arm_when_open_impl(impl):
 # it: lane:=true, lane_pose:=true, the car's lane part; lane_finder_impl:=): rust
 # (aav_lane_finder_rs, the default since Ben, 18 Nov: "it helps the car stay on the correct
 # side"; the same node name, topics, parameters and lanes, no OpenCV) or python
-# (aav_lane_finder, the fallback). Each one's package.
-LANE_FINDER_IMPLS = {'python': 'aav_lane_finder', 'rust': 'aav_lane_finder_rs'}
+# (aav_lane_finder, the fallback); or learned (aav_lane_finder_learned, a challenger, TODO
+# 262b: our UFLD-v2-style model through ONNX Runtime, the same message; needs
+# models/lane-ufld.onnx). Each one's package.
+LANE_FINDER_IMPLS = {'python': 'aav_lane_finder', 'rust': 'aav_lane_finder_rs',
+                     'learned': 'aav_lane_finder_learned'}
 DEFAULT_LANE_FINDER_IMPL = 'rust'
 
 
@@ -641,8 +678,8 @@ def camera_stream_runs(impl, detector, decoder):
 
 # Which joy_alive runs (teleop.launch.py, car.launch.py; joy_alive_impl:=): rust
 # (aav_joy_alive_rs, the default since Ben, 17 Nov: "I don't think we want to do this again
-# later") or python (aav_safety's: the same node name, topics, parameters and answers).
-JOY_ALIVE_IMPLS = {'python': 'aav_safety', 'rust': 'aav_joy_alive_rs'}
+# later"). The Python went on 20 Nov (tag save/python-safety-nodes).
+JOY_ALIVE_IMPLS = {'rust': 'aav_joy_alive_rs'}
 DEFAULT_JOY_ALIVE_IMPL = 'rust'
 
 
@@ -651,6 +688,55 @@ def check_joy_alive_impl(impl):
     name = str(impl).strip().lower()
     if name not in JOY_ALIVE_IMPLS:
         raise ValueError(f'joy_alive_impl:={impl}: pick one of {", ".join(JOY_ALIVE_IMPLS)}')
+    return name
+
+
+# Which geofence, stop_hold and goal_leash run (geofence_impl:=, stop_hold_impl:=,
+# goal_leash_impl:=): rust (aav_safety_rs, the defaults since 19 Nov: Ben, 16 Nov, "lets
+# remove python were possible"; the Python's answers event by event and bit by bit). The
+# Python nodes went on 20 Nov (tag save/python-safety-nodes); the switches stay, hooks.
+# geofence.launch.py, navigation.launch.py, car, sim and bench pass them on.
+SAFETY_IMPLS = {'rust': 'aav_safety_rs'}
+GEOFENCE_IMPLS = STOP_HOLD_IMPLS = GOAL_LEASH_IMPLS = SAFETY_IMPLS
+DEFAULT_GEOFENCE_IMPL = 'rust'
+DEFAULT_STOP_HOLD_IMPL = 'rust'
+DEFAULT_GOAL_LEASH_IMPL = 'rust'
+
+
+def _check_safety_impl(argument, impl):
+    name = str(impl).strip().lower()
+    if name not in SAFETY_IMPLS:
+        raise ValueError(f'{argument}:={impl}: pick one of {", ".join(SAFETY_IMPLS)}')
+    return name
+
+
+def check_geofence_impl(impl):
+    """Return the geofence's language (lower case), or raise ValueError: what to pick."""
+    return _check_safety_impl('geofence_impl', impl)
+
+
+def check_stop_hold_impl(impl):
+    """Return stop_hold's language (lower case), or raise ValueError: what to pick."""
+    return _check_safety_impl('stop_hold_impl', impl)
+
+
+def check_goal_leash_impl(impl):
+    """Return goal_leash's language (lower case), or raise ValueError: what to pick."""
+    return _check_safety_impl('goal_leash_impl', impl)
+
+
+# Which gps_heading runs (localization.launch.py, gps_heading_impl:=): rust
+# (aav_gps_heading_rs, the default since 19 Nov: course.py's answers to the bit). The
+# Python went on 20 Nov (tag save/python-gps-heading); the switch stays, a challenger's hook.
+GPS_HEADING_IMPLS = {'rust': 'aav_gps_heading_rs'}
+DEFAULT_GPS_HEADING_IMPL = 'rust'
+
+
+def check_gps_heading_impl(impl):
+    """Return gps_heading's language (lower case), or raise ValueError: what to pick."""
+    name = str(impl).strip().lower()
+    if name not in GPS_HEADING_IMPLS:
+        raise ValueError(f'gps_heading_impl:={impl}: pick one of {", ".join(GPS_HEADING_IMPLS)}')
     return name
 
 
@@ -672,11 +758,10 @@ def check_stop_sign_impl(impl):
 
 # Which localization_health runs (localization.launch.py, car.launch.py, sim.launch.py
 # localization_health_impl:=): rust (aav_localization_health_rs, the default on the car and
-# in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %) or
-# python (aav_localization_health: the same node name, topics and answers; kept selectable
-# until a car day proves the Rust). Each one's package. Warn only, so no safety lock.
-LOCALIZATION_HEALTH_IMPLS = {'python': 'aav_localization_health',
-                             'rust': 'aav_localization_health_rs'}
+# in the simulator, Ben, 16 Nov: the same answers at 1.5 % of a core against 9.4 %). The
+# Python went on 20 Nov (tag save/python-localization-health); the switch stays, a hook.
+# Warn only, so no safety lock.
+LOCALIZATION_HEALTH_IMPLS = {'rust': 'aav_localization_health_rs'}
 DEFAULT_LOCALIZATION_HEALTH_IMPL = 'rust'
 # The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
 SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL = DEFAULT_LOCALIZATION_HEALTH_IMPL
@@ -722,6 +807,22 @@ def check_speed_loop(name, tracker=None):
         raise ValueError(f"speed_loop:={profile}: tracker:={tracker} models the PI's "
                          'profiles only (default, smooth, firm)')
     return profile
+
+
+def check_speed_loop_model(name, car_loop, tracker=None):
+    """
+    Return the profile every model of the car assumes (speed_loop_model:=), or raise ValueError.
+
+    Empty: the car's own loop (car_loop), so the models predict the car they drive. Given:
+    the models plan with it while the car runs car_loop (TODO 163: car firm, models smooth).
+    tracker: as check_speed_loop.
+    """
+    if not str(name).strip():
+        return check_speed_loop(car_loop, tracker)
+    try:
+        return check_speed_loop(name, tracker)
+    except ValueError as err:
+        raise ValueError(str(err).replace('speed_loop:=', 'speed_loop_model:=', 1)) from None
 
 
 def smoother_params(cfg, ego, vehicle_yaml):
@@ -952,7 +1053,8 @@ def lattice_problems(meta, v, resolution):
     return out
 
 
-def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP):
+def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP,
+                 reversing=False):
     """
     Return aav_track's parameters: the same speed and "done" as Nav2's controllers.
 
@@ -961,6 +1063,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_L
     The cruise speed is RPP's desired_linear_vel, or `max_speed` (sim_speed:=); the goal
     and progress checks are controller_server's; speeding up and slowing down are the
     velocity smoother's. `speed_loop`: the profile mpc_lag predicts (check_speed_loop).
+    `reversing`: it may back up, at vehicle.yaml's max_reverse_speed (0: forward only).
     """
     server = nav2['controller_server']['ros__parameters']
     goal = server[server['goal_checker_plugins'][0]]
@@ -993,6 +1096,7 @@ def track_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_L
         'max_steering_rate': rate,
         'stamped': bool(server.get('enable_stamped_cmd_vel', False)),
         'mpc_lag.speed_loop': check_speed_loop(speed_loop),
+        'max_reverse_speed': -reverse_limit(v, reversing),
     }
 
 
@@ -1006,15 +1110,18 @@ MPPI_LAG_ACTUATORS = ('max_accel', 'throttle_deadband', 'throttle_lag', 'max_bra
 MPC_LAG_RS_UNUSED = ('lookahead_min', 'lookahead_max', 'lookahead_time')
 
 
-def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP):
+def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP,
+                      reversing=False):
     """
     Return aav_mpc_lag's parameters: aav_track's (track_params), and the car's actuators.
 
     The same speed, checks and steering limits as the Python mpc_lag gets, so the two race
     on the same terms; vehicle.yaml's actuators as actuators.<key> (MPPI_LAG_ACTUATORS, the
-    dead times 0 when unset), where aav_track reads the file itself.
+    dead times 0 when unset), where aav_track reads the file itself. `reversing`: it may
+    back up, at vehicle.yaml's max_reverse_speed (0: forward only; TODO 213).
     """
-    params = {k: v for k, v in track_params(nav2, cfg, ego, max_speed, speed_loop).items()
+    params = {k: v for k, v in track_params(nav2, cfg, ego, max_speed, speed_loop,
+                                            reversing=reversing).items()
               if k not in MPC_LAG_RS_UNUSED}
     act = cfg['actuators']
     params.update({f'actuators.{k}': float(act.get(k, 0.0)) for k in MPPI_LAG_ACTUATORS})
@@ -1280,7 +1387,7 @@ def costmap_params(tuned, v, radar=False, camera=False):
 def behaviour_params(nav2, cfg, ego=None, max_speed=None, controller=DEFAULT_CONTROLLER,
                      speed_loop=DEFAULT_SPEED_LOOP):
     """
-    Return aav_behaviour's parameters: the cap's top, the lane ahead, ego's limits.
+    Return aav_behaviour_rs's parameters: the cap's top, the lane ahead, ego's limits.
 
     base_speed is the controller's own top speed (MPPI's vx_max, RPP's desired_linear_vel,
     or `max_speed`, sim_speed:=): a higher cap would raise MPPI's envelope. front and
@@ -1444,6 +1551,56 @@ def with_global_window(cfg, metres):
 PLAN_SMOOTHINGS = {'nav2': None, 'strong': {'w_data': 0.02, 'w_smooth': 0.3}}
 
 
+THINGS_TRACKERS = ('constant_velocity', 'per_kind')
+
+
+def check_things_tracker(value):
+    """Return things_tracker:= checked: constant_velocity (empty too) or per_kind (217)."""
+    value = str(value).strip().lower() or THINGS_TRACKERS[0]
+    if value not in THINGS_TRACKERS:
+        raise ValueError(f'things_tracker:={value}: one of {", ".join(THINGS_TRACKERS)}')
+    return value
+
+
+GROUNDS = ('plane', 'patchwork')
+
+
+def check_ground(value):
+    """Return ground:= checked: plane (empty too) or patchwork (TODO 215)."""
+    value = str(value).strip().lower() or GROUNDS[0]
+    if value not in GROUNDS:
+        raise ValueError(f'ground:={value}: one of {", ".join(GROUNDS)}')
+    return value
+
+
+MPPI_LAG_SAMPLINGS = ('correlated', 'smooth')
+
+
+# m each side of the path where mpc_lag_rs leaves the car alone (the tube, Ben 21 Nov).
+# Tuned 21 Nov, 3 runs each: University Drive's sway 0.251 (none), 0.197 (0.1), 0.205
+# (0.2), 0.160 (0.3), 0.185 (0.4); the lot's unchanged (0.054); every leg reached.
+MPC_LAG_TUBE = 0.3
+
+
+def check_mpc_lag_tube(value):
+    """Return mpc_lag_tube:= checked: metres each side of the path, 0 to 1."""
+    try:
+        tube = float(value)
+    except ValueError:
+        raise ValueError(f'mpc_lag_tube:={value}: metres, such as 0.2') from None
+    if not 0.0 <= tube <= 1.0:
+        raise ValueError(f'mpc_lag_tube:={value}: 0 to 1 m')
+    return tube
+
+
+def check_mppi_lag_sampling(value):
+    """Return mppi_lag_sampling:= checked: correlated or smooth (TODO 212)."""
+    value = str(value).strip() or MPPI_LAG_SAMPLINGS[0]
+    if value not in MPPI_LAG_SAMPLINGS:
+        raise ValueError(f'mppi_lag_sampling:={value}: one of {", ".join(MPPI_LAG_SAMPLINGS)}')
+    return value
+
+
 def check_steer_gamma(gamma):
     """Return mppi_lag_steer_gamma:= as a float (0 or more), or raise ValueError saying why."""
     try:
@@ -1452,6 +1609,22 @@ def check_steer_gamma(gamma):
         raise ValueError(f'mppi_lag_steer_gamma:={gamma}: a number, such as 0.05') from None
     if not (math.isfinite(value) and value >= 0.0):
         raise ValueError(f'mppi_lag_steer_gamma:={gamma}: 0 or more')
+    return value
+
+
+def check_mppi_batch(batch):
+    """
+    Return mppi_lag_batch:= as a whole number (1 or more), or raise ValueError saying why.
+
+    mppi_lag's samples a tick (its `batch_size`; nav2.yaml's 2000 when not given): 1000,
+    a challenger (TODO 152), half the work a tick on the Orin.
+    """
+    try:
+        value = int(str(batch).strip())
+    except (TypeError, ValueError):
+        raise ValueError(f'mppi_lag_batch:={batch}: a whole number, such as 1000') from None
+    if value < 1:
+        raise ValueError(f'mppi_lag_batch:={batch}: 1 or more')
     return value
 
 

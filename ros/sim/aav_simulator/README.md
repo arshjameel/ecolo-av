@@ -8,7 +8,7 @@ removed 16 Nov). It reads SDF world files, moves the car, casts the lidar's and 
 and publishes on `/vehicle/sim/*`. `aav_sim_models`'s nodes (`sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar`) and
 the whole stack above them run unchanged. The cameras are their own program,
 `aav_sim_cameras`, drawing the same world file; the launch starts both. **The default
-since 8 Nov, the only simulator since 16 Nov** (`simulator:=own` still works for a release).
+since 8 Nov, the only simulator since 16 Nov** (its old name, `simulator:=own`, went on 20 Nov).
 
 ```text
 /control/sim/actuator_cmd ─> sim_adapter ─> /vehicle/sim/cmd_vel ─> simulator (the car)
@@ -25,7 +25,8 @@ since 8 Nov, the only simulator since 16 Nov** (`simulator:=own` still works for
 |---|---|---|
 | `crates/sim-core` | the worlds (SDF, `model://`, OBJ), the car (`CarModel`), the ground under each wheel (`ground.rs`: slopes, kerbs), the lidars, the IMU and GPS, the loop, the camera plug-in point (`SensorPlugin`), camera lockstep (`lockstep.rs`: `CameraGate`) | no, no Bevy |
 | `crates/sim-core`, feature `shared` | `SharedCar`: the shared `car-model` crate (`aav_description`) behind `CarModel`, the same states as `ActuatorCar` to 1e-9 (`shared_car.rs`). The node doesn't use it yet: it runs `TwistFollower` behind `sim_adapter`'s model | no |
-| `crates/sim-node` | the node, binary `simulator` (rclrs) | yes |
+| `crates/sim-core`, `node.rs` | what the node decides, without ROS (S5, 18 Nov): parameter checks, which service requests it accepts and why not (`Refusal`), stamps, its pace against the wall (`Pace`). Tested on any laptop | no |
+| `crates/sim-node` | the node, binary `simulator` (rclrs): ROS's messages to and from `sim-core`. Not tested by itself: that needs a ROS harness (start the binary, call its services, read its topics), like `aav_navigation`'s `test_respawn.py` | yes |
 
 ### Node `simulator`
 
@@ -36,7 +37,7 @@ since 8 Nov, the only simulator since 16 Nov** (`simulator:=own` still works for
 | pub | `/clock` | 1 kHz |
 | pub | `/vehicle/sim/odom` | Odometry, 50 Hz, `odom` |
 | pub | `/vehicle/sim/truth` | Odometry, 50 Hz, `map`: height and tilt on the ground too |
-| pub | `/vehicle/sim/imu` | Imu, 50 Hz, `imu_link`, gravity +9.8 |
+| pub | `/vehicle/sim/imu` | Imu, 50 Hz, `imu_link`, gravity +9.8. Since 18 Nov (S3) it reads as a real IMU: turn rates on all three axes, from how the car turned since the last reading (slopes too); the mean acceleration since then (the car model catches each command in 1-2 ms at up to 10 m/s², so an instant's would read 10 or 0); the turn's pull at the sensor's place; gravity as the tilted car feels it. The car's IMU sends 200 Hz; this one stays at Gazebo's 50 |
 | pub | `/vehicle/sim/navsat` | NavSatFix, 5 Hz, `gps_link` |
 | pub | `/joint_states` | JointState, 100 Hz: four wheels, two steering joints |
 | pub | `/sensors/lidar/points` | PointCloud2, 10 Hz, `lidar_link`, 1800 x 16, reliable (`lidar`) |

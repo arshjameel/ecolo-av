@@ -63,12 +63,14 @@ loop and the brake, as it would sit on the car: below ego and every safety lock.
 
 Parameters  actuator_model (true), speed_loop (default: the actuator model's speed loop
             profile, 'default', 'smooth', 'lqi' or 'firm': TODO 27, 3, 163), payload (0 kg, live),
-            adaptive_brake (false, live), lag_scale (1.0: the
+            adaptive_brake (false, live), actuators ('': the car model's own numbers
+            over vehicle.yaml's, "throttle_lag=0.3,drag=0.2": a known car to measure,
+            TODO 248; only the car, the drivers keep vehicle.yaml), lag_scale (1.0: the
             throttle's, brake's and steering's lags times this, to test a follower against
             a car slower than vehicle.yaml says; only the model's), spine (false), rate_hz (50),
             cmd_timeout (0.2 s), wheelbase,
             wheel_radius, rendered (the world renders sensors), cameras (it draws the
-            cameras: rendered unless simulator:=own), radar, lidar (what
+            cameras: rendered by aav_sim_cameras), radar, lidar (what
             /system/source announces), fault.odom, fault.steer, fault.throttle,
             fault.brake (ok), speed_variance
 
@@ -91,6 +93,7 @@ from aav_interfaces.msg import WheelSpeeds
 from aav_sim_models import faults, sources, wheels
 from aav_sim_models.actuator_model import (ActuatorConfig, Actuators, Demand, Ideal,
                                            speed_loop_profile)
+from aav_sim_models.actuator_overrides import overridden
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
@@ -134,6 +137,11 @@ class SimAdapter(Node):
         rate = self.declare_parameter('rate_hz', 50.0).value
         car = vehicle.load()
         config = ActuatorConfig.from_vehicle(car)
+        own = str(self.declare_parameter('actuators', '').value)
+        if own:
+            config = overridden(config, own)
+            self.get_logger().warning(f"the car's own actuator numbers (actuators): {own}; "
+                                      'the drivers still read vehicle.yaml')
         lag_scale = float(self.declare_parameter('lag_scale', 1.0).value)
         if not 0.0 < lag_scale <= 10.0:
             raise ValueError(f'lag_scale must be in (0, 10], not {lag_scale}')
@@ -198,7 +206,7 @@ class SimAdapter(Node):
         self.create_subscription(JointState, 'joint_states', self.on_joints, 10)
         self.create_timer(1.0 / rate, self.tick)
         rendered = self.declare_parameter('rendered', False).value
-        # Our own simulator renders the lidar and radar but no cameras (simulator:=own).
+        # Our own simulator renders the lidar and radar; aav_sim_cameras draws the cameras.
         cameras = self.declare_parameter('cameras', rendered).value
         self.announce(sources.simulated(rendered=rendered, lidar=lidar,
                                         radar=self.declare_parameter('radar', False).value,

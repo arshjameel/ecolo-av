@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run every test that doesn't need ROS: our packages' Python unit tests, the Rust spine
 # library, the HUD's, the map window's, the debug HUD's and the hardware panel's logic
-# (hud-core, map-core, debug-core, panel-core), NDT (ndt-core), and the check that docs/interfaces.md matches
+# (hud-core, map-core, debug-core, panel-core), NDT (ndt-core), AMCL (amcl-core), and the check that docs/interfaces.md matches
 # docs/interfaces.yaml. Where the mcp environment is installed, also the MCP server over
 # stdio (on a private, local domain).
 # Needs Python 3 with pytest and PyYAML; Rust (cargo) for the spine. Works on any OS.
@@ -20,11 +20,10 @@ for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/ca
            ros/sim/aav_sim_models ros/sim/aav_carla \
            ros/drivers/aav_scripted ros/drivers/aav_language ros/drivers/aav_navigation \
            ros/drivers/aav_actuator_tests ros/drivers/aav_drive_to_point ros/drivers/aav_routes ros/drivers/aav_rc \
-           ros/drivers/aav_track ros/drivers/aav_diffusion_planner ros/drivers/aav_behaviour \
-           ros/bringup/aav_description ros/bringup/aav_run_info ros/localization/aav_gps_heading ros/localization/aav_kiss_icp ros/localization/aav_lane_pose \
-           ros/localization/aav_localization_health \
+           ros/drivers/aav_track ros/drivers/aav_diffusion_planner \
+           ros/bringup/aav_description ros/bringup/aav_run_info ros/localization/aav_kiss_icp ros/localization/aav_lane_pose \
            ros/perception/aav_detector ros/sources/aav_camera_stream \
-           ros/perception/aav_lane_finder ros/perception/aav_lane_geometry ros/perception/aav_lidar \
+           ros/perception/aav_lane_finder ros/perception/aav_lidar \
            ros/perception/aav_voxels \
            ros/safety/aav_safety ros/safety/aav_ghost \
            ros/sim/aav_bench; do
@@ -50,6 +49,8 @@ if command -v cargo >/dev/null; then
   (cd ros/perception/aav_things_rs && cargo test -q --locked -p things-core)
   echo "== ros/perception/aav_lane_finder_rs: the lane finder in Rust, the Python's lanes on the same pictures"
   (cd ros/perception/aav_lane_finder_rs && cargo test -q --locked -p lane-core)
+  echo "== ros/perception/aav_lane_finder_learned: the learned lane finder's maths (crop as Pillow, decode, ground, lane)"
+  (cd ros/perception/aav_lane_finder_learned && cargo test -q --locked -p ufld-core)
   echo "== ros/sources/aav_camera_stream_rs: the camera stream in Rust, the Python modules' answers"
   (cd ros/sources/aav_camera_stream_rs && cargo test -q --locked -p stream-core)
   echo "== ros/perception/aav_detector_rs: the detector's maths in Rust (resize, decode, labels)"
@@ -60,10 +61,14 @@ if command -v cargo >/dev/null; then
   (cd ros/drivers/aav_behaviour_rs && cargo test -q --locked -p behaviour-core)
   echo "== ros/safety/aav_watchdog_rs: the sensor watchdog in Rust, the Python node's answers"
   (cd ros/safety/aav_watchdog_rs && cargo test -q --locked -p watchdog-core)
+  echo "== ros/safety/aav_self_test_rs: the boot self-test's checks and verdict (TODO 255)"
+  (cd ros/safety/aav_self_test_rs && cargo test -q --locked -p self-test-core)
   echo "== ros/io_mux/aav_io_mux_rs: the sensor mux and the output mux in Rust, the Python's answers"
   (cd ros/io_mux/aav_io_mux_rs && cargo test -q --locked -p io-mux-core)
   echo "== ros/localization/aav_localization_health_rs: localization_health in Rust, the Python's answers"
   (cd ros/localization/aav_localization_health_rs && cargo test -q --locked -p health-core)
+  echo "== ros/localization/aav_kinematic_icp: lidar odometry for a car, synthetic scans"
+  (cd ros/localization/aav_kinematic_icp && cargo test -q --locked -p kinematic-icp)
   echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   echo "== ros/can_bridge/aav_legacy_rs: the Rust UART bridge's logic, the Python modules' answers"
@@ -72,20 +77,34 @@ if command -v cargo >/dev/null; then
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
   echo "== ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
   (cd ros/safety/aav_joy_alive_rs && cargo test -q --locked -p joy-alive-core)
+  echo "== ros/safety/aav_safety_rs: the geofence, stop hold and leash in Rust, the Python's answers"
+  (cd ros/safety/aav_safety_rs && cargo test -q --locked -p safety-core)
+  echo "== ros/localization/aav_gps_heading_rs: the GPS heading in Rust, course.py's answers"
+  (cd ros/localization/aav_gps_heading_rs && cargo test -q --locked -p gps-heading-core)
+  echo "== ros/command_mux/aav_mux_state: who is driving, by twist_mux's rule and files"
+  (cd ros/command_mux/aav_mux_state && cargo test -q --locked -p mux-state-core)
   echo "== ros/perception/aav_stop_sign_rs: stop_sign_watcher's rules in Rust, stop_sign.py's answers"
   (cd ros/perception/aav_stop_sign_rs && cargo test -q --locked -p stop-sign-core)
   echo "== ros/drivers/aav_drive_to_point_rs: the point driver in Rust, the Python modules' answers"
   (cd ros/drivers/aav_drive_to_point_rs && cargo test -q --locked -p point-core)
   echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
+  echo "== ros/bringup/aav_description/cloud-view: a PointCloud2's bytes, shared (TODO 176)"
+  (cd ros/bringup/aav_description/cloud-view && cargo test -q --locked)
   echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
   (cd ros/bringup/aav_description/map-chunks && cargo test -q --locked)
+  echo "== ros/bringup/aav_description/map-edit: the map editor's edits, saves and layers (TODO 251)"
+  (cd ros/bringup/aav_description/map-edit && cargo test -q --locked)
   echo "== ros/bringup/aav_description/lanelet-map: Lanelet2 maps in Rust (TODO 175)"
   (cd ros/bringup/aav_description/lanelet-map && cargo test -q --locked)
   echo "== ros/safety/aav_stop_zone: the stop zone's decision in Rust (TODO 182)"
   (cd ros/safety/aav_stop_zone && cargo test -q --locked -p stop-zone)
   echo "== ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
   (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
+  echo "== ros/localization/aav_pose_check: NDT leads, the GPS checks; who is wrong; the seed"
+  (cd ros/localization/aav_pose_check && cargo test -q --locked -p pose-check-core)
+  echo "== ros/localization/aav_amcl_rs: AMCL's filter: a near guess, a kidnap, KLD's bounds"
+  (cd ros/localization/aav_amcl_rs && cargo test -q --locked -p amcl-core)
   echo "== ros/sim/aav_simulator: Ravensim's core: the car, the rays, the worlds, the camera lockstep"
   (cd ros/sim/aav_simulator && cargo test -q --locked -p sim-core --features shared)
   echo "== ros/sim/aav_spine_sim: bench mode's car: the spine's real logic on a model car"
@@ -134,21 +153,29 @@ if command -v cargo >/dev/null; then
   rust_style ros/perception/aav_lidar_rs -p lidar-scan
   rust_style ros/perception/aav_things_rs -p things-core
   rust_style ros/perception/aav_lane_finder_rs -p lane-core
+  rust_style ros/perception/aav_lane_finder_learned -p ufld-core
   rust_style ros/sources/aav_camera_stream_rs -p stream-core
   rust_style ros/drivers/aav_behaviour_rs -p behaviour-core
   rust_style ros/safety/aav_watchdog_rs -p watchdog-core
+  rust_style ros/safety/aav_self_test_rs -p self-test-core
   rust_style ros/io_mux/aav_io_mux_rs -p io-mux-core
   rust_style ros/can_bridge/aav_spine_bridge -p spine-bridge
   rust_style ros/can_bridge/aav_legacy_rs -p legacy-bridge
   rust_style ros/drivers/aav_rc_rs -p rc-core
   rust_style ros/safety/aav_joy_alive_rs -p joy-alive-core
+  rust_style ros/safety/aav_safety_rs -p safety-core
+  rust_style ros/localization/aav_gps_heading_rs -p gps-heading-core
+  rust_style ros/command_mux/aav_mux_state -p mux-state-core
   rust_style ros/perception/aav_stop_sign_rs -p stop-sign-core
   rust_style ros/drivers/aav_drive_to_point_rs -p point-core
   rust_style ros/bringup/aav_description/car-model
+  rust_style ros/bringup/aav_description/cloud-view
   rust_style ros/bringup/aav_description/map-chunks
+  rust_style ros/bringup/aav_description/map-edit
   rust_style ros/bringup/aav_description/lanelet-map
   rust_style ros/safety/aav_stop_zone -p stop-zone
   rust_style ros/localization/aav_ndt -p ndt-core
+  rust_style ros/localization/aav_pose_check -p pose-check-core
   rust_style ros/sim/aav_simulator -p sim-core --features shared
   rust_style ros/sim/aav_spine_sim -p bench-car
   rust_style ros/drivers/aav_mppi_lag -p mppi-lag --features shared
@@ -168,7 +195,7 @@ if command -v cargo >/dev/null; then
     echo "== firmware/spine, no_std, for the Pico 2 (thumbv8m.main-none-eabihf)"
     (cd firmware/spine && cargo build -q --target thumbv8m.main-none-eabihf -p spine-core \
        -p aav-inputs -p wheel-encoder -p sentinel -p wheel-core -p legacy-link -p jrk-g2 \
-       -p ad5311 -p pca9555 -p mcp2515 -p ibus -p hd44780 -p spine-board \
+       -p ad5311 -p pca9555 -p mcp2515 -p ibus -p hd44780 -p spine-board -p adaptive-brake \
        && echo "builds")
     # The board programs: each a workspace of its own, built only for the Pico 2's chip.
     # Their UF2 files too, the ones to drag on: tools/elf2uf2.py checks the boot ROM's
@@ -203,7 +230,8 @@ bad = [t for t in ('turtle', 'sim', 'bench', 'bench-check', 'view', 'sim-check',
        if not tasks.get(t, '').startswith('tools/ros.sh --local ')]
 # The families that start Ravensim or drive it: each choice's line in its script.
 for script, choices in (('tools/screen.sh', ('hw-panel',)), ('tools/sim_cameras.sh', ('--ros',)),
-                        ('tools/measure.sh', ('controllers', 'timing', 'stream', 'atob'))):
+                        ('tools/measure.sh', ('controllers', 'timing', 'stream', 'atob')),
+                        ('tools/car_test.sh', ('sim',))):
     text = open(script).read()
     for choice in choices:
         line = re.search(rf'^ *{re.escape(choice)}\) .*$', text, re.M)
@@ -269,3 +297,6 @@ fi
 
 echo "== docs/interfaces.md"
 python3 tools/gen_interfaces_md.py --check && echo "in sync"
+
+echo "== docs/codemap.md"
+python3 tools/codemap.py --check && echo "in sync"

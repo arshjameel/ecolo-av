@@ -2,23 +2,17 @@
 <package format="3">
   <name>aav_lane_geometry</name>
   <version>1.0.0</version>
-  <description>Lane geometry message package with control interface and mock publisher for ROS2 testing.</description>
-  <maintainer email="user@example.com">OpenAI</maintainer>
+  <description>The LaneGeometry message: the lane finder's lines on /perception/lane/geometry, which the costmap draws as lane costs and the lane pose reads. From the 2025-26 team's Lane_Detection_ROS2; its lane follower was removed on 19 Nov 2026 (TODO 264).</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
 
-  <depend>rclpy</depend>
   <depend>std_msgs</depend>
-  <depend>geometry_msgs</depend>
   <depend>builtin_interfaces</depend>
 
   <exec_depend>rosidl_default_runtime</exec_depend>
-
-  <test_depend>ament_cmake_pytest</test_depend>
-  <test_depend>python3-pytest</test_depend>
-  <test_depend>python3-yaml</test_depend>
 
   <member_of_group>rosidl_interface_packages</member_of_group>
 

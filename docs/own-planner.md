@@ -102,6 +102,7 @@ inflation). M4 Max, the best of 5.
 | U-turn, open ground | path, 20.9 m, 0.3 ms | path, 13.2 m (3 cusps), 0.3 ms |
 | U-turn in an 8 m road | **no path** (too narrow forward) | path, 13.3 m (a three-point turn), 1.1 ms |
 | parking-lot exit (nose in, wall ahead) | **no path** | path, 19.8 m, backs out first, 0.9 ms |
+| blocked narrow street (3.5 m, closed 5 m ahead, TODO 174) | **no path** | path, 38.8 m, backs out (1 cusp), 2.2 ms |
 | narrow gap (2.5 m in a wall) | path, 24.0 m, 0.2 ms | the same |
 | no path (1.0 m gap; the car is 1.1 m) | **no path** | **no path** |
 
@@ -139,6 +140,19 @@ In our simulator (15 Nov, all ours, reversing), 4 m against 0:
 
 **4 m is our planner's default since 15 Nov** (`nav2.yaml`'s Lattice block,
 `cusp_penalty`; Nav2's planner ignores it). Set 0 for Nav2's way.
+
+### A narrow street, blocked (19 Nov, TODO 174)
+
+Too narrow to turn in, even in three points, and closed ahead: the car must back out.
+No special mode: the lattice's backwards moves and the navigator's retry do it.
+
+| Step | Who | Tested by |
+|---|---|---|
+| the car stands before the block, no progress | the stop zone holds it | |
+| clear the local costmap, follow again; then clear both and plan again | the navigator's recoveries | `cargo test -p navigator` (`a_blocked_narrow_street_is_left_backwards_on_the_next_plan`) |
+| a path backing out of the street, one cusp | the planner (reversing on) | the scene "blocked narrow street" (`cargo test -p lattice-planner`) |
+| drive it, backwards then forwards | `mppi_lag`; `aav_track`'s trackers too since 19 Nov | `aav_track` `test_gears.py` |
+| all of it, in our simulator | | `pixi run sim-check --blocked-street-only` (stage 2) |
 
 ## In our simulator (8 Nov)
 
@@ -278,7 +292,7 @@ W_DATA=0.02 cargo run --release -p lattice-planner --example staircase   # no RO
 The plan's own swing on a 6.5 m road at 2.2 m/s: 0.08-0.16 m with Nav2's weights,
 0.02-0.07 m strong. The lot's corners keep to the car (tightest 3.08 m; the car turns at
 2.86 m). In the sim it took a share of the campus's sway off; the rest, and the
-numbers: [mppi-lag.md, The sway that was left](mppi-lag.md#the-sway-that-was-left).
+numbers: [mppi-lag.md, The sway that was left](history/mppi-lag-log.md#the-sway-that-was-left).
 `tests/scenes.rs` checks the steps go (8°: under half the swing).
 
 ## Re-timed in the sim (16 Nov, TODO 152)
@@ -310,6 +324,33 @@ lattice-planner --example campus` (the whole map, as the sim's), interleaved, be
 
 **Left:** where the whole map's extra time goes (a search step 0.95 µs there, 0.82 µs on
 the tour's corner of it).
+
+### Every core? Measured, and no (19 Nov, TODO 152)
+
+Where a plan's time goes (`sample` on the campus legs): the outline traces are only about
+a quarter. The rest is the search itself (the open list, the node table, the obstacle
+estimate), one step after another.
+
+| Tried | Along the road, forward (ms) | Kept? |
+|---|---|---|
+| before (one core) | 198 | |
+| each node's moves checked on every core (rayon) | 1356-4066 | **no**: a node has ~20 moves of ~0.1 µs; rayon's hand-off costs more |
+| the next 32-512 nodes' moves checked ahead on every core | 2008-3605 | **no**: the next node is almost always a new child, so the work ahead is wasted |
+| each node's own outline check kept (`Node::fit`), no list of moves made each step, the node table sized at start | **161** | **yes**: the same paths, the same iterations |
+
+`cargo run --release -p lattice-planner --example campus` (the tour's corner), best of 5,
+an M4 Max:
+
+| Leg | Before (ms) | After (ms) |
+|---|---|---|
+| out of the lot, forward | 121.5 | 102.5 |
+| along the road, forward | 197.7 | 161.0 |
+| round the bend, forward | 33.7 | 27.8 |
+| along the road, reversing | 140.1 | 111.1 |
+| round the bend, reversing | 43.9 | 36.0 |
+
+About 18-21 % faster. The outlines turned to each heading were already made once, at
+start-up (`Checker::new`). Not yet timed on the Orin.
 
 ## The lane-centre planner (`path:=lane`, 16 Nov)
 

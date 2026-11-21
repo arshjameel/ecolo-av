@@ -7,7 +7,7 @@
 <!-- Generated from docs/onnx.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>ONNX models from Rust</h1>
-<div class="meta">7 min read · 9 sections</div></header>
+<div class="meta">16 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,14 +139,328 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#why">Why</a><a href="#how">How</a><a href="#same-boxes">Same boxes?</a><a href="#how-fast">How fast?</a><a href="#in-the-simulator">In the simulator</a><a href="#untested-the-orin">Untested: the Orin</a><a href="#licences">Licences</a><a href="#next">Next</a><a href="#where-the-rust-detector-is-built-17-nov">Where the Rust detector is built (17 Nov)</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#every-model-pixi-run-measure-onnx">Every model: pixi run measure onnx</a><a href="#the-diffusion-planner-from-rust">The diffusion planner from Rust</a><a href="#fp16">FP16</a><a href="#why">Why</a><a href="#how">How</a><a href="#same-boxes">Same boxes?</a><a href="#how-fast">How fast?</a><a href="#in-the-simulator">In the simulator</a><a href="#untested-the-orin">Untested: the Orin</a><a href="#licences">Licences</a><a href="#next">Next</a><a href="#where-the-rust-detector-is-built-17-nov">Where the Rust detector is built (17 Nov)</a></nav>
 <div class="lead"><p>Train in PyTorch; run the model as <strong>ONNX</strong>, from Rust, with ONNX Runtime (Ben, 16 Nov,
 TODO 243). First on a Mac through Core ML; on the Orin later through TensorRT.</p>
-<p>The first model done end to end: the <strong>RF-DETR Nano detector</strong> (the stop signs). The
-Rust node is <code>aav_detector_rs</code>, a challenger beside the Python one.</p>
+<p>Three models, end to end, each a challenger beside the default:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Model</th>
+<th>From Rust</th>
+<th>Switch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the <strong>RF-DETR Nano detector</strong> (the stop signs)</td>
+<td>the node <code>aav_detector_rs</code></td>
+<td><code>detector_impl:=rust</code></td>
+</tr>
+<tr>
+<td>the <strong>diffusion planner</strong> (its model; the guard stays)</td>
+<td>the worker <code>aav_diffusion_rs</code></td>
+<td><code>diffusion_impl:=rust</code></td>
+</tr>
+<tr>
+<td>the <strong>learned lane finder</strong> (TODO 262b, ours, trained here)</td>
+<td>the node <code>aav_lane_finder_learned</code></td>
+<td><code>lane_finder_impl:=learned</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Ben, 19 Nov: "if it works on a mac it should work there correct?" Mostly: <strong>one <code>.onnx</code>
+per model</strong>; what Core ML runs whole is the best guess of what TensorRT will. So every
+model is checked here first: <code>pixi run measure onnx</code>.</p></div>
+<section class="card"><h2 id="every-model-pixi-run-measure-onnx">Every model: <code>pixi run measure onnx</code></h2>
+<p>Ben's MacBook (M4 Max), 19 Nov, ONNX Runtime 1.31; median of 30 runs, after 5 warm-up
+runs; the model alone. "Answers" against the CPU's float32 file.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Model, file</th>
+<th>Provider</th>
+<th>Answers</th>
+<th>Nodes on the provider</th>
+<th>Fell back to the CPU</th>
+<th>ms</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>detector, FP32</td>
+<td>CPU</td>
+<td>the reference</td>
+<td>all</td>
+<td>-</td>
+<td>25.9</td>
+</tr>
+<tr>
+<td>detector, FP32</td>
+<td>Core ML</td>
+<td>same (IoU 1.0000)</td>
+<td>802 of 808 (99.3 %), 2 pieces</td>
+<td>Expand 2, GatherElements 2, TopK 1, Unsqueeze 1</td>
+<td>9.6</td>
+</tr>
+<tr>
+<td>detector, FP32</td>
+<td>PyTorch (<code>mps</code>)</td>
+<td>same (IoU 1.0000)</td>
+<td></td>
+<td></td>
+<td>15.8</td>
+</tr>
+<tr>
+<td>detector, FP16</td>
+<td>CPU</td>
+<td>within (IoU 0.978)</td>
+<td>all</td>
+<td>-</td>
+<td>52.6</td>
+</tr>
+<tr>
+<td>detector, FP16</td>
+<td>Core ML</td>
+<td><strong>out</strong>: 7 boxes lost</td>
+<td>860 of 871, 5 pieces</td>
+<td>Cast, Greater, Less, Not...</td>
+<td>9.6</td>
+</tr>
+<tr>
+<td>diffusion, FP32</td>
+<td>CPU</td>
+<td>the reference</td>
+<td>all</td>
+<td>-</td>
+<td>63.5</td>
+</tr>
+<tr>
+<td>diffusion, FP32</td>
+<td>Core ML</td>
+<td>same (0.000 m)</td>
+<td><strong>2,178 of 2,178, 1 piece</strong></td>
+<td>nothing</td>
+<td><strong>9.7</strong></td>
+</tr>
+<tr>
+<td>diffusion, FP32</td>
+<td>PyTorch (<code>mps</code>)</td>
+<td>same (0.000 m)</td>
+<td></td>
+<td></td>
+<td>22.9</td>
+</tr>
+<tr>
+<td>diffusion, FP16</td>
+<td>CPU</td>
+<td>within (0.080 m, 0.004 rad)</td>
+<td>all</td>
+<td>-</td>
+<td>66.0</td>
+</tr>
+<tr>
+<td>diffusion, FP16</td>
+<td>Core ML</td>
+<td>within (0.036 m, 0.002 rad)</td>
+<td>2,204 of 2,204, 1 piece</td>
+<td>nothing</td>
+<td>9.4</td>
+</tr>
+<tr>
+<td>lanes, FP32</td>
+<td>CPU</td>
+<td>the reference</td>
+<td>all</td>
+<td>-</td>
+<td>11.4</td>
+</tr>
+<tr>
+<td>lanes, FP32</td>
+<td>Core ML</td>
+<td>same (0.00 px)</td>
+<td><strong>59 of 59, 1 piece</strong></td>
+<td>nothing</td>
+<td><strong>2.4</strong></td>
+</tr>
+<tr>
+<td>lanes, FP32</td>
+<td>PyTorch (<code>mps</code>)</td>
+<td>same (0.00 px)</td>
+<td></td>
+<td></td>
+<td>5.5</td>
+</tr>
+<tr>
+<td>lanes, FP16</td>
+<td>CPU</td>
+<td>within (0.06 px)</td>
+<td>all</td>
+<td>-</td>
+<td>10.8</td>
+</tr>
+<tr>
+<td>lanes, FP16</td>
+<td>Core ML</td>
+<td>within (0.04 px)</td>
+<td><strong>63 of 63, 1 piece</strong></td>
+<td>nothing</td>
+<td><strong>1.3</strong></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Verdict</th>
+<th>Detector</th>
+<th>Diffusion</th>
+<th>Lanes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>measure onnx</code></td>
+<td><strong>FAIL</strong> (its FP16 on Core ML); FP32 alone: WARN (6 nodes on the CPU)</td>
+<td><strong>WARN</strong> only for the log; every file whole on Core ML, in tolerance</td>
+<td><strong>PASS</strong>: both files whole on Core ML, in tolerance</td>
+</tr>
+<tr>
+<td>TensorRT's chance (a guess, untested)</td>
+<td>good: 6 shape steps on the CPU</td>
+<td>good: whole graph, plain ops</td>
+<td>good: a ResNet-18 and two dense layers</td>
+</tr>
+</tbody>
+</table></div>
+<p>The rules (the same for FP16): the detector, every box over 0.5 has a twin, IoU ≥ 0.95,
+score within 0.02 (7 test pictures); the diffusion planner, 16 paths on 10 made-up plans,
+each point within 0.10 m, each heading within 0.05 rad, 99 % in the same gear; the lanes,
+5 Ravensim frames and 30 held-out pictures, 98 % of the rows' "a line here?" the same and
+every column within 3 px. PASS: in
+tolerance and whole on the provider; WARN: in tolerance, some nodes on the CPU; FAIL: out
+of tolerance, or it can't run. <code>--json FILE</code> keeps it all.</p>
+<p>The same from Rust, any model: <code>cargo run --release -p onnx-session --features coreml
+--example measure -- &lt;model.onnx&gt;</code> (in <code>ros/perception/aav_detector_rs</code>).</p>
+</section>
+<section class="card"><h2 id="the-diffusion-planner-from-rust">The diffusion planner from Rust</h2>
+<p>Only the model moved: <code>aav_diffusion_rs</code>'s <code>diffusion_worker</code> speaks the Python worker's
+pipe, so the node, its window, its guard (G1-G8) and the lattice's fallback are unchanged.
+<code>diffusion_impl:=rust diffusion_provider:=auto</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>ms a plan (16 paths, 10 steps)</th>
+<th>Paths against the CPU's</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python worker, ONNX Runtime, CPU (today's default)</td>
+<td>63-87</td>
+<td>the reference</td>
+</tr>
+<tr>
+<td>PyTorch (<code>mps</code>)</td>
+<td>22.9</td>
+<td>same (0.000 m)</td>
+</tr>
+<tr>
+<td><strong>Rust, Core ML</strong> (all 2,178 nodes, one piece)</td>
+<td><strong>9.7</strong></td>
+<td>same (6e-7 in the window's units)</td>
+</tr>
+<tr>
+<td>Rust, CPU</td>
+<td>87</td>
+<td>the same session</td>
+</tr>
+</tbody>
+</table></div>
+<p>To get there the export changed (19 Nov), the same numbers: 16 samples fixed (Core ML
+can't build an open number; another number runs in batches), and no ScatterND, Expand,
+Flatten, 1D AveragePool or Resize (the 0.3 export went to Core ML in 376 pieces, slower
+than the CPU). The model was trained again on this Mac (<code>pixi run diffusion data</code>,
+<code>train --epochs 40</code>, 57 min): 58.6 % of samples pass the guard, 84.7 % of plans have one
+(0.3's: 63 %, 87 %).</p>
+<p><strong>Found on the way</strong>: the node asked for the global costmap as "transient local"; ours
+(Rust, since 16 Nov) sends it "volatile", so it never arrived and every plan was the
+lattice's. Fixed: the node reads it volatile. A first look after the fix (one tour, cut
+short): 2 of 4 plans a leg from the model. <strong>Ravensim scoring deferred</strong> (Ben, 19 Nov:
+algorithm testing comes after the ports): <code>pixi run measure controllers --planners
+diffusion diffusion_rs --reversing --tours lot --runs 2</code>.</p>
+</section>
+<section class="card"><h2 id="fp16">FP16</h2>
+<p><code>tools/export_model.py --format onnx --fp16</code> (the detector; ONNX Runtime's converter) and
+<code>pixi run diffusion export --fp16</code> (the diffusion planner) write <code>*_fp16.onnx</code>: half
+precision inside, float32 in and out.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Core ML's units</th>
+<th>detector FP32</th>
+<th>detector FP16</th>
+<th>diffusion FP32</th>
+<th>diffusion FP16</th>
+<th>lanes FP32</th>
+<th>lanes FP16</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>all (what we ask)</td>
+<td>9.7</td>
+<td>9.7</td>
+<td>9.7</td>
+<td>9.5</td>
+<td>2.5</td>
+<td><strong>1.2</strong></td>
+</tr>
+<tr>
+<td>CPU and GPU</td>
+<td>9.8</td>
+<td>8.9</td>
+<td>9.7</td>
+<td>9.4</td>
+<td>2.4</td>
+<td>2.1</td>
+</tr>
+<tr>
+<td>CPU and <strong>Neural Engine</strong></td>
+<td>28.8</td>
+<td><strong>9.6</strong></td>
+<td>21.7</td>
+<td>27.2</td>
+<td>4.8</td>
+<td><strong>1.2</strong></td>
+</tr>
+<tr>
+<td>CPU only</td>
+<td>28.8</td>
+<td>19.8</td>
+<td>21.6</td>
+<td>18.2</td>
+<td>4.7</td>
+<td>3.0</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>The Neural Engine runs the FP16 detector</strong> (9.6 ms against the CPU's 19.8) but not the
+  FP32 one, nor the diffusion planner (no faster than the CPU).</li>
+<li><strong>The Neural Engine runs the FP16 lane finder</strong> too, whole: 1.2 ms, half the GPU's FP32
+  time, within 0.04 px; with all units Core ML picks it itself.</li>
+<li><strong>On this Mac FP16 buys nothing</strong> for the detector and the planner: with all units Core ML
+  picks the GPU, 9-10 ms either way.</li>
+<li><strong>The detector's FP16 loses boxes on Core ML</strong> (fine on the CPU): keep FP32 on the Mac.
+  On the Orin, TensorRT makes its own FP16 from the FP32 file (<code>trt_fp16_enable</code>), so the
+  FP16 files are only for checking.</li>
+</ul>
 <pre class="highlight"><code>PyTorch (.pth) ──export──► ONNX (.onnx) ──► ONNX Runtime ──► Core ML    (a Mac: GPU)
    training                 one file          (ort crate)  ├► CPU        (anywhere)
-                                                           └► TensorRT  (the Orin: untested)</code></pre></div>
+                                                           └► TensorRT  (the Orin: untested)</code></pre>
+</section>
 <section class="card"><h2 id="why">Why</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -382,12 +710,24 @@ with boxes out), while Ravensim draws its cameras on the same GPU:</p>
 </thead>
 <tbody>
 <tr>
-<td>The Rust with <code>--features tensorrt</code> (and <code>cuda</code>)</td>
+<td>The Rust with <code>--features tensorrt</code> (and <code>cuda</code>): <code>onnx-session</code>, the detector, the diffusion worker</td>
 <td><span class="badge b-untested">untested</span> compiles (<code>cargo clippy</code>) on the Mac; never linked or run</td>
 </tr>
 <tr>
 <td>An ONNX Runtime with TensorRT for the Orin</td>
-<td><span class="badge b-untested">untested</span> <code>ort</code> downloads pyke's ARM Linux build with CUDA 13 and TensorRT: it may fit JetPack 7 (CUDA 13, Q24), not JetPack 6 (CUDA 12)</td>
+<td><span class="badge b-untested">untested</span> <code>ort</code> downloads pyke's ARM Linux build with CUDA 13 and TensorRT: it may fit JetPack 7.2 (CUDA 13, Q24), not JetPack 6 (CUDA 12)</td>
+</tr>
+<tr>
+<td>The same code picks TensorRT</td>
+<td><span class="badge b-untested">untested</span> ready: <code>device:=tensorrt</code> (detector), <code>diffusion_provider:=tensorrt</code> (Rust worker); <code>auto</code> picks it when the build has it and no Core ML</td>
+</tr>
+<tr>
+<td>Its engine cache</td>
+<td><span class="badge b-untested">untested</span> ready: FP16 on, the engine and the timing cache kept beside the model: <code>models/&lt;model&gt;.cache/tensorrt/</code>. The first start builds them (minutes); a new TensorRT (a JetPack upgrade) builds them again: delete the folder</td>
+</tr>
+<tr>
+<td>What TensorRT will take</td>
+<td>a guess from Core ML: the diffusion model whole (one piece, plain ops), the detector all but 6 shape steps</td>
 </tr>
 </tbody>
 </table></div>
@@ -420,6 +760,21 @@ with boxes out), while Ravensim draws its cameras on the same GPU:</p>
 <td>4</td>
 <td>write down the log's "frames in 10 s, ms each"</td>
 <td>against the Python's TensorRT (<a href="car-day.html">car day</a>)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>copy <code>models/diffusion/planner.onnx</code>; <code>colcon build --packages-select aav_diffusion_rs --cmake-args -DDIFFUSION_RS=ON -DDIFFUSION_FEATURES=tensorrt</code></td>
+<td>builds <code>diffusion_worker</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>cargo run --release -p diffusion-core --features tensorrt --example bench -- &lt;repo&gt;/models/diffusion/planner.onnx</code> (in <code>ros/drivers/aav_diffusion_rs</code>)</td>
+<td>the CPU and TensorRT rows; the budget is 50 ms for the model</td>
+</tr>
+<tr>
+<td>7</td>
+<td>the trial, as <a href="car-day.html#a12-the-diffusion-planners-trial">car day A12</a>, with <code>diffusion_impl:=rust diffusion_provider:=tensorrt</code></td>
+<td>the status's ms a plan</td>
 </tr>
 </tbody>
 </table></div>
@@ -463,8 +818,12 @@ with boxes out), while Ravensim draws its cameras on the same GPU:</p>
 </thead>
 <tbody>
 <tr>
-<td>the diffusion planner</td>
-<td>after the detector wins on the car</td>
+<td>the diffusion planner's node itself (the window and the guard) in Rust</td>
+<td>once the Rust worker wins in the sim and on the car</td>
+</tr>
+<tr>
+<td>the detector's FP16 on Core ML (boxes lost)</td>
+<td>if the Neural Engine is wanted on a Mac</td>
 </tr>
 <tr>
 <td>the lane finder (once it is a model)</td>

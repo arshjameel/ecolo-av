@@ -2,7 +2,7 @@
 The real car's CAN bus: ros2_socketcan + spine_bridge.
 
   ros2 launch aav_spine spine.launch.py [interface:=can0] [bridge:=rust|python]
-      [role:=spine|sensors]
+      [role:=spine|sensors] [require_ready:=false]
 
 role:=spine (the default): the CAN spine drives the car.
   /control/car/actuator_cmd (the output mux), /safety/estop ──> spine_bridge ──> /can/tx
@@ -17,6 +17,10 @@ Pi), and this bus has only sensors on it: the wheel nodes (docs/can-plan.md). No
 starts, and spine_bridge never sends:
   can0 ──> socket_can_receiver ──> /can/rx ──> spine_bridge ──> /vehicle/odom,
                                                                     /vehicle/wheels
+
+require_ready (false): /spine/arm also waits for the boot self-test's READY
+(/safety/self_test/status, aav_self_test_rs; TODO 255). car.launch.py sets it true; the
+bench and Ravensim's spine leave it false (arm_when_open arms them once the gate opens).
 
 bridge picks spine_bridge's language: rust (aav_spine_bridge, the default) or python (this
 package's). The same node either way, with this package's config/spine.yaml.
@@ -46,7 +50,9 @@ def bridge(context):
         parameters=[
             PathJoinSubstitution([FindPackageShare('aav_spine'), 'config', 'spine.yaml']),
             vehicle.spine_params(v),
-            {'use_sim_time': LaunchConfiguration('use_sim_time'), 'role': role},
+            {'use_sim_time': LaunchConfiguration('use_sim_time'), 'role': role,
+             'require_ready': LaunchConfiguration('require_ready').perform(context)
+             .strip().lower() == 'true'},
         ],
     )]
 
@@ -80,6 +86,9 @@ def generate_launch_description():
         DeclareLaunchArgument('role', default_value=bridges.ROLES[0],
                               description='spine: the CAN spine drives the car; sensors: '
                                           'read the wheel nodes only, send nothing'),
+        DeclareLaunchArgument('require_ready', default_value='false',
+                              description='true: /spine/arm waits for the boot self-test '
+                                          'to say READY (the car)'),
         OpaqueFunction(function=bus),
         OpaqueFunction(function=bridge),
     ])

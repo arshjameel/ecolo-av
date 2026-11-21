@@ -388,6 +388,7 @@ impl Feed for PretendFeed {
             )));
             updates.push(Update::Gate("OPEN - sim: every source SIM".to_owned()));
             updates.push(Update::Watchdog("OK".to_owned()));
+            updates.push(Update::Driving("nav (20)".to_owned()));
             updates.push(Update::Vehicle(VehicleStatus {
                 mode: Mode::from(0),
                 armed: true,

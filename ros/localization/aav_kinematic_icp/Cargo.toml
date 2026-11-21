@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+# kinematic-icp: lidar odometry for a car (TODO 216), no ROS:  cargo test -p kinematic-icp
+# kinematic-icp-node: the ROS node (rclrs), binary kinematic_icp. colcon builds it through
+# CMakeLists.txt.
+members = ["crates/kinematic-icp", "crates/kinematic-icp-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# The tests register whole scans: build them optimised.
+[profile.test]
+opt-level = 3

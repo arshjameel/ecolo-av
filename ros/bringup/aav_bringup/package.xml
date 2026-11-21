@@ -11,6 +11,7 @@
 
   <exec_depend>aav_description</exec_depend>
   <exec_depend>aav_command_mux</exec_depend>
+  <exec_depend>aav_self_test_rs</exec_depend>
   <exec_depend>aav_io_mux</exec_depend>
   <exec_depend>aav_ego</exec_depend>
   <exec_depend>aav_teleop</exec_depend>
@@ -21,6 +22,7 @@
   <exec_depend>aav_navigation</exec_depend>
   <exec_depend>aav_ndt</exec_depend>
   <exec_depend>aav_kiss_icp</exec_depend>
+  <exec_depend>aav_kinematic_icp</exec_depend>
   <exec_depend>aav_spine</exec_depend>
   <exec_depend>aav_legacy</exec_depend>
   <exec_depend>aav_turtlesim</exec_depend>

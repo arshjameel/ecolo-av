@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_lane_finder</name>
   <version>0.1.0</version>
-  <description>The lane finder: classic OpenCV finds the lane lines in the front camera's pictures (a bird's-eye warp of a flat road, a mask for the paint, sliding windows, a second-order fit per line) and publishes /perception/lane/geometry, which lane keeping (aav_lane_geometry's control_interface) steers by.</description>
+  <description>The lane finder: classic OpenCV finds the lane lines in the front camera's pictures (a bird's-eye warp of a flat road, a mask for the paint, sliding windows, a second-order fit per line) and publishes /perception/lane/geometry, which our costmap draws as lane costs (lane_source:=camera) and aav_lane_pose reads.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
@@ -14,6 +14,9 @@
   <exec_depend>aav_description</exec_depend>
   <!-- lane_finder_impl:=rust, the default: the Rust node. -->
   <exec_depend>aav_lane_finder_rs</exec_depend>
+  <!-- lane_finder_impl:=learned, a challenger (TODO 262b): the node is built on a Mac, and
+       on Linux only with -DLANE_LEARNED=ON. -->
+  <exec_depend>aav_lane_finder_learned</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
   <exec_depend>launch</exec_depend>

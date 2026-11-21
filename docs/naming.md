@@ -48,7 +48,7 @@ actions and `/cmd_vel_nav`. Our costmaps are in the area: `/drivers/nav/costmap/
 | scripted | `scripted_driver` publishes `drivers/scripted/cmd_vel` | `/drivers/scripted/cmd_vel` |
 | drive to point | `point_driver` (`aav_drive_to_point`) | `/drivers/point/cmd_vel` |
 | navigation | `velocity_smoother` (`aav_smoother`) or the stop zone (`aav_stop_zone`) | `/drivers/nav/cmd_vel` |
-| AI | `control_interface` (lane keeping) | `/drivers/ai/cmd_vel` |
+| AI | none since 19 Nov (lane keeping's `control_interface` removed, TODO 264) | `/drivers/ai/cmd_vel` |
 | replay | `tools/replay_commands.sh` | `/drivers/replay/cmd_vel` |
 
 A namespace makes the relative names fall into place, with no remaps. The joystick's
@@ -91,8 +91,8 @@ config files name their nodes `/**/joy_node` and so on, so they match in any nam
 | `/cmd_vel_smoothed` | `/control/cmd_vel_smoothed` |
 | `/ego/actuator_cmd` | unchanged; since 23 Oct the backends read `/control/<target>/actuator_cmd`, from the output mux ([Sources and targets](sources-and-targets.md)) |
 | `/estop` | `/safety/estop` |
-| `/collision_monitor_state` | `/safety/collision_monitor/state` |
-| `/collision_monitor/stop_zone`, `.../collision_points_marker` | `/safety/collision_monitor/stop_zone`, `.../collision_points_marker` |
+| `/collision_monitor_state` | `/safety/collision_monitor/state` (since 17 Nov `/safety/stop_zone/state`) |
+| `/collision_monitor/stop_zone`, `.../collision_points_marker` | `/safety/collision_monitor/stop_zone`, `.../collision_points_marker` (since 17 Nov `/safety/stop_zone/box`) |
 
 Changed from the proposal, once the code showed it:
 

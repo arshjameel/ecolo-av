@@ -198,3 +198,54 @@ def test_calibration_ends_when_the_panel_stops_asking():
     assert f.cal_mode == CAL_MODE_OFF and (f.speed, f.accel) == (0.0, -1.0)
     r.calibrate(CAL_MODE_OFF, 0, now=10.7)
     assert not r.cal_wanted(10.7)
+
+
+# The adaptive brake on the car (TODO 258): the sim's adaptive_brake.py, after the pi loop.
+def pi_relay(adaptive):
+    from aav_description.adaptive_brake import AdaptiveBrake
+    from aav_legacy.speed_control import SpeedControl
+    return Relay(M, cmd_timeout=0.3, version=1, speed_loop=SpeedControl(),
+                 adaptive_brake=AdaptiveBrake() if adaptive else None)
+
+
+def test_the_adaptive_brake_brakes_harder_on_a_weak_car_never_past_the_safe_max():
+    # ego slows from 1.5 m/s to a stop; the car slows at half what the model says.
+    from aav_description.adaptive_brake import BrakeLimits
+    safe = BrakeLimits().safe_max_fraction
+    plain, adaptive = pi_relay(False), pi_relay(True)
+    v, harder = 1.5, 0
+    for k in range(250):
+        now = k * 0.02
+        target = max(0.0, 1.5 - now * 0.5)
+        for r in (plain, adaptive):
+            r.command(target, 0.0, now)
+            r.wheel_speed(v, now)
+        a = unpack_frame(plain.frame(now))[2]
+        b = unpack_frame(adaptive.frame(now))[2]
+        assert b <= a + 1e-6, f'never weaker than the plain loop: tick {k}'
+        harder += b < a - 1e-4
+        out = adaptive.brake_out
+        if out is not None:
+            assert out.brake <= max(safe, out.asked) + 1e-12
+        v = max(0.0, v - 0.02 * 0.5 * 0.5)
+    assert harder > 10
+    assert adaptive.brake_out.effectiveness < 0.9
+
+
+def test_the_stops_never_pass_through_the_adaptive_brake():
+    plain, adaptive = pi_relay(False), pi_relay(True)
+    for r in (plain, adaptive):
+        r.command(1.0, 0.0, 0.0)
+        r.wheel_speed(1.0, 0.0)
+        r.frame(0.0)
+        r.set_estop(True)
+    assert plain.frame(0.02) == adaptive.frame(0.02)   # the e-stop: full stop brake
+    assert adaptive.brake_out is None
+    for r in (plain, adaptive):
+        r.set_estop(False)
+    assert plain.frame(1.0) == adaptive.frame(1.0)     # stale: the same
+
+
+def test_the_adaptive_brake_never_runs_without_the_pi_loop():
+    from aav_description.adaptive_brake import AdaptiveBrake
+    assert Relay(M, cmd_timeout=0.3, adaptive_brake=AdaptiveBrake()).adaptive is None

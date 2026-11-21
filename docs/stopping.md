@@ -64,7 +64,7 @@ Gentler at speed, 5 cm further past B. Not yet run in the simulator.
 
 ## 2. The behaviour planner
 
-`aav_behaviour` (a trial, **off by default**): `pixi run sim world:=road behaviour:=true`.
+`aav_behaviour_rs` (a trial, **off by default**): `pixi run sim world:=road behaviour:=true`.
 It knows why the car should slow, and sends navigation a speed cap. **It can't stop the car**:
 a lock or the navigator's goal check makes every final stop.
 
@@ -79,6 +79,7 @@ a lock or the navigator's goal check makes every final stop.
 |---|---|---|
 | A stop sign | camera range to the sign − 4.7 m | the `stop_sign` lock |
 | An obstacle in the lane | lidar: nearest point ahead − bumper − stop zone | collision_monitor, then the `stop_zone` lock |
+| A kerb on the road ahead (`kerbs:=true`, TODO 219) | along the road ahead to the kerb − bumper − stop zone (an `obstacle` stop) | the stop zone (its `steps` source), then the `stop_zone` lock |
 | A moving thing (`things:=true`) | to the thing, in the lane now **or walking into it** before the car gets there (below) | the `stop_zone` lock |
 | The fence | along the plan to where the geofence would say NEAR | the geofence's lock |
 | The goal | along the plan to its end | the navigator's goal check |
@@ -103,7 +104,7 @@ stop."
 
 ```text
  a thing moving 0.3 m/s or more  ──┬── within 10 m of the car ─────────────┐
- (/world/things, aav_things)       └── on the road ahead within 3 s ───────┤
+ (/world/things, aav_things_rs)       └── on the road ahead within 3 s ───────┤
                                                                            ▼
                         WAIT (moving): the road ahead ends at the car, ego holds it at 0
                                                                            │
@@ -318,6 +319,29 @@ Like the steering's ends. **Placeholders** until car day A7, rows 6-8
 | `pixi run sim-check --loaded-stop-only` | the check below |
 
 Not with `spine:=true` or `esp32:=true`: there the firmware decides the brake.
+
+### On the car (TODO 258, 19 Nov)
+
+**Built; untested on the car.** Off by default.
+
+| Command | What |
+|---|---|
+| `pixi run car motor_pi adaptive_brake:=true` | the adaptive brake in `legacy_uart_bridge`, after its pi speed loop |
+
+```text
+ ego ─▶ output mux ─▶ legacy_uart_bridge: pi loop ─▶ adaptive brake ─▶ frame ─▶ ESP32 ─▶ brake
+                                                         ▲
+                                               /vehicle/odom (wheels)
+ e-stop, stale command ─▶ legacy_uart_bridge: full stop brake       (never through it)
+```
+
+| | |
+|---|---|
+| Where | `legacy_uart_bridge` (Rust, and the Python twin): the last place a brake level exists before today's ESP32 |
+| The same maths | `firmware/spine/crates/adaptive-brake` is `adaptive_brake.py` in Rust; both pass `firmware/spine/adaptive_brake_vectors.txt` |
+| Needs | `actuators:=uart` and `legacy.yaml`'s `speed_loop.mode: pi` (open asks for no brake): refused otherwise, saying why |
+| Not yet | `actuators:=can`: the spine's firmware runs its own speed loop; refused there |
+| Its numbers | the car model from `vehicle.yaml` `actuators:`, the limits from `brake:` (placeholders until car day A7) |
 
 ### The check: `--loaded-stop`
 

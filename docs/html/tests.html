@@ -7,7 +7,7 @@
 <!-- Generated from docs/tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every test we&#x27;ve talked about</h1>
-<div class="meta">26 min read · 8 sections</div></header>
+<div class="meta">27 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a class="here" href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -149,7 +163,7 @@ in the order to run them. Each one says what it proves, how to run it, and when 
 and on a computer with no GPU. The results dated before 8 Nov below were in Gazebo. The
 0.3 checks (<code>sim-check --stop-point</code>, <code>--behaviour</code>, <code>--loaded-stop</code>, <code>measure lane</code>) have
 no rows here yet: their results are on <a href="stopping.html">How the car stops</a> and
-<a href="perception.html#in-the-simulators-8-nov">Perception</a>.</p>
+<a href="../history/lane-followers.md#earlier-lane-drives-8-nov-the-2025-26-pid">Lane followers, as they were</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -191,7 +205,7 @@ no rows here yet: their results are on <a href="stopping.html">How the car stops
 </tr>
 <tr>
 <td>1.5</td>
-<td>Lane keeping</td>
+<td>Lane keeping (retired 19 Nov with the lane follower, TODO 264)</td>
 <td><code>pixi run sim-check --lane</code></td>
 <td>back to the lane's centre within 5 cm</td>
 <td>✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs navigation)</td>
@@ -283,7 +297,7 @@ no rows here yet: their results are on <a href="stopping.html">How the car stops
 <tr>
 <td>1.18</td>
 <td><strong>The diffusion planner's lot tour</strong></td>
-<td><code>pixi run measure controllers --planners own diffusion --reversing --tours lot</code> (<a href="trials.html#diffusion-2-nov-a-model-draws-the-lattice-guards">trials</a>)</td>
+<td><code>pixi run measure controllers --planners own diffusion --reversing --tours lot</code> (<a href="../history/trials-log.md#diffusion-2-nov-a-model-draws-the-lattice-guards">trials</a>)</td>
 <td>every leg, as the lattice; no plan tighter than full lock; the share of plans from the model (<code>/drivers/nav/diffusion/status</code>)</td>
 <td>✅ 2 Nov, 2 runs: 8 of 8 legs, 63 % from the model; 3 Nov, 3 runs: 12 of 12 legs, 73 % from the model, never tighter than full lock</td>
 </tr>
@@ -297,7 +311,7 @@ no rows here yet: their results are on <a href="stopping.html">How the car stops
 <tr>
 <td>1.20</td>
 <td><strong>Every switch starts and drives a leg</strong></td>
-<td><code>pixi run measure controllers --tours lot --legs 1</code> with each switch (<a href="switches.html">switches</a>, <a href="trials.html#3-nov-everything-for-02">the runs</a>)</td>
+<td><code>pixi run measure controllers --tours lot --legs 1</code> with each switch (<a href="switches.html">switches</a>, <a href="../history/trials-log.md#3-nov-everything-for-02">the runs</a>)</td>
 <td>each planner, follower, localizer and <code>voxels</code> starts, and the car finishes the first leg</td>
 <td>✅ 3 Nov: 23 of 23 (lattice32 and smac2d on a second try: the first, on a busy Mac, stalled)</td>
 </tr>
@@ -497,6 +511,13 @@ trigger, a little throttle, wheels turning, then:</p>
 <td>within 10%</td>
 <td>⬜</td>
 </tr>
+<tr>
+<td>3.14</td>
+<td><strong>Throttle on free wheels</strong></td>
+<td><code>pixi run actuator-test wheel-steps --stands</code>: 0.1, 0.2, 0.3, 0.15 m/s, 4 s each (step 4 of <code>pixi run car-test --stands</code>)</td>
+<td>each step up within 25 % (or 0.05 m/s), the step down slower</td>
+<td>⬜ the car</td>
+</tr>
 </tbody>
 </table></div>
 </section>
@@ -505,6 +526,10 @@ trigger, a little throttle, wheels turning, then:</p>
 The test script (<code>pixi run actuator-test &lt;test&gt;</code>, <a href="actuator-tests.html">docs</a>) logs the IMU (g),
 the wheel speed, the pose and the GPS for every test.
 Which test fits which number, and when to stop repeating it: <a href="know-the-car.html">Know the car</a>.</p>
+<p><strong>First, in a hallway (phase B, this winter):</strong> speed up, coast, brake and steer on the
+ground, with the IMU blended with the wheels and error bars on every number, in one command:
+<code>pixi run car-test --hallway</code> (<a href="actuator-tests.html#car-test-hallway-the-transfer-functions">docs</a>).
+Built; <strong>untested on the car</strong>.</p>
 <h3 id="4a-speed-up-coast-brake">4a. Speed up, coast, brake</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -965,7 +990,7 @@ trials wait for 4.22. The simulator runs our stack by default since 14 Nov (<cod
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="rollout.html"><small>Previous</small>← Rolling out on the car</a>
-<a class="next" href="know-the-car.html"><small>Next</small>Know the car →</a></nav>
+<a class="next" href="after-install.html"><small>Next</small>After the install →</a></nav>
 </main>
 <footer>Source: <code>docs/tests.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

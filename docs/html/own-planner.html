@@ -7,7 +7,7 @@
 <!-- Generated from docs/own-planner.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Our own planner</h1>
-<div class="meta">37 min read · 13 sections</div></header>
+<div class="meta">40 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a class="here" href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -350,6 +364,11 @@ inflation). M4 Max, the best of 5.</p>
 <td>path, 19.8 m, backs out first, 0.9 ms</td>
 </tr>
 <tr>
+<td>blocked narrow street (3.5 m, closed 5 m ahead, TODO 174)</td>
+<td><strong>no path</strong></td>
+<td>path, 38.8 m, backs out (1 cusp), 2.2 ms</td>
+</tr>
+<tr>
 <td>narrow gap (2.5 m in a wall)</td>
 <td>path, 24.0 m, 0.2 ms</td>
 <td>the same</td>
@@ -450,6 +469,45 @@ In a narrow street that gave turns with 5 or 6 cusps, and the car drove them all
 </table></div>
 <p><strong>4 m is our planner's default since 15 Nov</strong> (<code>nav2.yaml</code>'s Lattice block,
 <code>cusp_penalty</code>; Nav2's planner ignores it). Set 0 for Nav2's way.</p>
+<h3 id="a-narrow-street-blocked-19-nov-todo-174">A narrow street, blocked (19 Nov, TODO 174)</h3>
+<p>Too narrow to turn in, even in three points, and closed ahead: the car must back out.
+No special mode: the lattice's backwards moves and the navigator's retry do it.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Who</th>
+<th>Tested by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the car stands before the block, no progress</td>
+<td>the stop zone holds it</td>
+<td></td>
+</tr>
+<tr>
+<td>clear the local costmap, follow again; then clear both and plan again</td>
+<td>the navigator's recoveries</td>
+<td><code>cargo test -p navigator</code> (<code>a_blocked_narrow_street_is_left_backwards_on_the_next_plan</code>)</td>
+</tr>
+<tr>
+<td>a path backing out of the street, one cusp</td>
+<td>the planner (reversing on)</td>
+<td>the scene "blocked narrow street" (<code>cargo test -p lattice-planner</code>)</td>
+</tr>
+<tr>
+<td>drive it, backwards then forwards</td>
+<td><code>mppi_lag</code>; <code>aav_track</code>'s trackers too since 19 Nov</td>
+<td><code>aav_track</code> <code>test_gears.py</code></td>
+</tr>
+<tr>
+<td>all of it, in our simulator</td>
+<td></td>
+<td><code>pixi run sim-check --blocked-street-only</code> (stage 2)</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="in-our-simulator-8-nov">In our simulator (8 Nov)</h2>
 <p><code>measure controllers --planners lattice own --reversing</code>, MPPI follows, 3 runs each.
@@ -740,7 +798,7 @@ take out wiggles shorter than ~2 m, so the steps stay, and the follower drives t
 <p>The plan's own swing on a 6.5 m road at 2.2 m/s: 0.08-0.16 m with Nav2's weights,
 0.02-0.07 m strong. The lot's corners keep to the car (tightest 3.08 m; the car turns at
 2.86 m). In the sim it took a share of the campus's sway off; the rest, and the
-numbers: <a href="mppi-lag.html#the-sway-that-was-left">mppi-lag.md, The sway that was left</a>.
+numbers: <a href="../history/mppi-lag-log.md#the-sway-that-was-left">mppi-lag.md, The sway that was left</a>.
 <code>tests/scenes.rs</code> checks the steps go (8°: under half the swing).</p>
 </section>
 <section class="card"><h2 id="re-timed-in-the-sim-16-nov-todo-152">Re-timed in the sim (16 Nov, TODO 152)</h2>
@@ -816,6 +874,81 @@ lattice-planner --example campus</code> (the whole map, as the sim's), interleav
 </table></div>
 <p><strong>Left:</strong> where the whole map's extra time goes (a search step 0.95 µs there, 0.82 µs on
 the tour's corner of it).</p>
+<h3 id="every-core-measured-and-no-19-nov-todo-152">Every core? Measured, and no (19 Nov, TODO 152)</h3>
+<p>Where a plan's time goes (<code>sample</code> on the campus legs): the outline traces are only about
+a quarter. The rest is the search itself (the open list, the node table, the obstacle
+estimate), one step after another.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tried</th>
+<th>Along the road, forward (ms)</th>
+<th>Kept?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>before (one core)</td>
+<td>198</td>
+<td></td>
+</tr>
+<tr>
+<td>each node's moves checked on every core (rayon)</td>
+<td>1356-4066</td>
+<td><strong>no</strong>: a node has ~20 moves of ~0.1 µs; rayon's hand-off costs more</td>
+</tr>
+<tr>
+<td>the next 32-512 nodes' moves checked ahead on every core</td>
+<td>2008-3605</td>
+<td><strong>no</strong>: the next node is almost always a new child, so the work ahead is wasted</td>
+</tr>
+<tr>
+<td>each node's own outline check kept (<code>Node::fit</code>), no list of moves made each step, the node table sized at start</td>
+<td><strong>161</strong></td>
+<td><strong>yes</strong>: the same paths, the same iterations</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>cargo run --release -p lattice-planner --example campus</code> (the tour's corner), best of 5,
+an M4 Max:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>Before (ms)</th>
+<th>After (ms)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>out of the lot, forward</td>
+<td>121.5</td>
+<td>102.5</td>
+</tr>
+<tr>
+<td>along the road, forward</td>
+<td>197.7</td>
+<td>161.0</td>
+</tr>
+<tr>
+<td>round the bend, forward</td>
+<td>33.7</td>
+<td>27.8</td>
+</tr>
+<tr>
+<td>along the road, reversing</td>
+<td>140.1</td>
+<td>111.1</td>
+</tr>
+<tr>
+<td>round the bend, reversing</td>
+<td>43.9</td>
+<td>36.0</td>
+</tr>
+</tbody>
+</table></div>
+<p>About 18-21 % faster. The outlines turned to each heading were already made once, at
+start-up (<code>Checker::new</code>). Not yet timed on the Orin.</p>
 </section>
 <section class="card"><h2 id="the-lane-centre-planner-pathlane-16-nov">The lane-centre planner (<code>path:=lane</code>, 16 Nov)</h2>
 <p>TODO 148 and 169; the Fable review's change 7 ("follow the lane's centre, shift only to

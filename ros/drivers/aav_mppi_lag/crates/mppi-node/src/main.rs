@@ -1117,6 +1117,13 @@ impl Config {
             steer_std_speed: d.number("steer_std_speed", s.steer_std_speed)?,
             steer_std_min: d.number("steer_std_min", s.steer_std_min)?,
             noise_correlation: d.number("noise_correlation", s.noise_correlation)?,
+            // TODO 212: smooth samples the steering's change (the launch's
+            // mppi_lag_sampling:=smooth); correlated, the champion, by default.
+            sampling: d
+                .text("sampling", "correlated")?
+                .parse()
+                .map_err(|e| anyhow::anyhow!("{e}"))?,
+            steer_rate_std: d.number("steer_rate_std", s.steer_rate_std)?,
             vx_max: d.number("vx_max", s.vx_max)?,
             vx_min: d.number("vx_min", s.vx_min)?,
             max_steer: max_steering_angle,

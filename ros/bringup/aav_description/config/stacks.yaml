@@ -28,6 +28,11 @@ levels:
       # -> 6.9-7.8 cm RMS, its box tour 7.1-8.2 -> 1.9-2.1 cm; the campus tour no change
       # (9.1 -> 9.4, little paint on its way); sway and off the lane's centre no worse.
       ekf_lane: {ndt_ekf: 'false', kiss_ekf: 'false', lane_pose: 'true'}
+      # The local EKF with Kinematic-ICP's idea's twist (aav_kinematic_icp, TODO 216): lidar
+      # odometry that knows the car can't slide sideways, the wheels its prior, in KISS-ICP's
+      # place. A challenger (19 Nov), scored in stage 2.
+      kinematic_ekf: {ndt_ekf: 'false', kiss_ekf: 'true', lane_pose: 'false',
+                      odom_lidar: kinematic_icp}
     score: ''
   costmap:
     what: what is in the way (aav_costmap, Nav2's layers ported)
@@ -79,6 +84,11 @@ levels:
       # Rust: lanes, neighbours, one way, stop lines; TODO 175 step 6). A challenger (16 Nov).
       lane_lanelet2: {planner: own, plan_smoothing: strong, lane_route: 'true',
                       lane_graph: lanelet2}
+      # The lane-centre planner, a parked obstacle passed by a QP along the lane that holds
+      # the lateral jerk (0.5 m/s³) at the car's top speed: Apollo's piecewise-jerk path
+      # (TODO 214). A challenger (19 Nov), scored in stage 2.
+      lane_jerk: {planner: own, plan_smoothing: strong, lane_route: 'true', lane_graph: lanes_yaml,
+                  lane_pass_shape: jerk}
       diffusion: {planner: diffusion}
     score: ''
   steer:
@@ -93,6 +103,18 @@ levels:
       # under Nav2's on the lot and the campus (docs/mppi-lag.md, "The sway that was left").
       mppi_lag_calm: {controller: mppi, tracker: mppi_lag, map_correction: slow,
                       mppi_lag_steer_gamma: '0.05'}
+      # mppi_lag_calm with 1000 samples a tick, not 2000 (TODO 152): half the work a tick,
+      # for the Orin. Ours' pick since 20 Nov (stage 2, docs/league-results-2026-11-20.md):
+      # against mppi_lag_calm, 3 runs each on the lot and the box, no column worse (sway
+      # 0.025 vs 0.025 and 0.095 vs 0.100 m/s^2; off the path worst 0.64 vs 0.91 and 0.60
+      # vs 0.68 m), its tick 1.8 ms against 3.5 on Ben's Mac.
+      mppi_lag_1k: {controller: mppi, tracker: mppi_lag, map_correction: slow,
+                    mppi_lag_steer_gamma: '0.05', mppi_lag_batch: '1000'}
+      # mppi_lag_calm's map correction, its steering's noise drawn on the change a step
+      # (SMPPI's idea, TODO 212): smooth commands without the larger control cost. A
+      # challenger (19 Nov), scored in stage 2.
+      mppi_lag_smooth: {controller: mppi, tracker: mppi_lag, map_correction: slow,
+                        mppi_lag_sampling: smooth}
       mpc_lag: {controller: mppi, tracker: mpc_lag}
       # mpc_lag in Rust (aav_mpc_lag), beside the Python one: a challenger (TODO 132, 199).
       mpc_lag_rs: {controller: mppi, tracker: mpc_lag_rs}
@@ -107,20 +129,31 @@ levels:
     what: the lanes as soft costs in our global costmap (TODO 148, D2; needs costmap ours)
     champion: 'off'
     options:
-      'off': {lane_costs: 'false'}
+      'off': {lane_costs: 'false', lane_source: map}
       # The lane map's roads drawn as a ramp, lowest at the right lane's centre: a
       # challenger (15 Nov), beside the road ahead's lane line (behaviour, lane_map:=).
-      ramp: {lane_costs: 'true'}
+      ramp: {lane_costs: 'true', lane_source: map}
+      # The same costs from the camera's lines (TODO 264, Ben, 19 Nov: "We use the
+      # perception system to identify the lines and then we bake it into the cost map"):
+      # the lane finder's left and right line, yellow or white; no lane map needed. A
+      # challenger, not yet scored.
+      camera: {lane_costs: 'true', lane_source: camera}
+      # Both: the lane map where it has a road, the camera's lines elsewhere.
+      both: {lane_costs: 'true', lane_source: both}
     score: ''
   behaviour:
     what: the behaviour planner and the road ahead (stop sign, obstacle, fence, goal)
     champion: 'off'
     options:
       'off': {behaviour: 'false', things: 'false'}
-      # With the things (aav_things): the behaviour planner holds the car for anything
+      # With the things (aav_things_rs): the behaviour planner holds the car for anything
       # moving near (Ben, 16 Nov: "if we see a car people or stuff moving around us we
       # should likely just stop"), and passes only what is still.
       'on': {behaviour: 'true', things: 'true'}
+      # And the things tracked with a motion model per kind (TODO 217): a vehicle's noise a
+      # bicycle's, a person's round; a thing found again re-fits its speed from its
+      # sightings (Fast-Poly, OC-SORT). A challenger (19 Nov), scored in stage 2.
+      on_per_kind: {behaviour: 'true', things: 'true', things_tracker: per_kind}
     score: ''
   kerbs:
     what: kerbs the lidar sees (the Rust voxels node's step finder, the local costmap's kerb_layer)
@@ -132,6 +165,11 @@ levels:
       # sim-check --kerb stopped 0.80-0.82 m before a 0.3 m kerb (it drove into it
       # before), and no worse on the lot and University Drive (2 runs each, no new stops).
       'on': {kerbs: 'true'}
+      # And the ground a plane a patch, ring by ring (Patchwork++'s idea, TODO 215): the
+      # cubes start 0.15 m over the ground right under them, not 0.3 m over one plane, so a
+      # kerb is a cube too; the costmap reads the cubes. A challenger (19 Nov), scored in
+      # stage 2.
+      patchwork: {kerbs: 'true', ground: patchwork}
     score: ''
 
 # Each stack names an option per level; a level left out takes its champion.
@@ -146,7 +184,7 @@ stacks:
     costmap: ours_all_chunks
     navigator: ours
     path: lane
-    steer: mppi_lag_calm
+    steer: mppi_lag_1k
     smoother: ours
     behaviour: 'on'
     kerbs: 'on'

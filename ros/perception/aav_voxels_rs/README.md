@@ -56,6 +56,7 @@ binary is installed as `lib/aav_voxels_rs/voxels`.
 | `lidar_xyz` (m), `lidar_rpy` (rad) | `vehicle.yaml`'s `lidar_link`, by `navigation.launch.py` | where the lidar sits |
 | `body` (m: x from, x to, half width) | `aav_lidar` `scan.body_box`, by `navigation.launch.py` | the car's own outline: its points never count |
 | `steps` (false), `step_min` (0.10 m), `step_radius` (0.3 m), `step_range` (12 m) | `navigation.launch.py kerbs:=true` | the kerbs' step finder (TODO 119, [kerbs](../../../docs/kerbs.md)) |
+| `ground` (`plane`), `patch_min_height` (0.15 m) | `navigation.launch.py ground:=patchwork` | `patchwork`: the ground a plane a patch, ring by ring (TODO 215, a challenger): the cubes from 0.15 m over each patch's own ground |
 
 The three mount ones have no default: without them the node stops and says which is missing.
 The Python reads `vehicle.yaml` itself; the Rust gets the same numbers from the launch file.
@@ -70,7 +71,10 @@ The Python reads `vehicle.yaml` itself; the Rust gets the same numbers from the 
 | `cubes`, `cubes_on(road)` → `Cubes` | obstacles, ground squares, the road, the points that counted |
 | `lowest_per_cell`, `nearest_per_cube`, `cube_centres`, `square_centres`, `percentile`, `fit_plane` | the steps, each tested |
 | `cloud::read_xyz`, `cloud::write_xyz32` | `PointCloud2`'s bytes in and out |
+| `patchwork::cubes(points, CubeShape, PatchSettings)`, `patchwork::judge`, `PcaPlane`, `Ground` | the ground ring by ring (Patchwork++'s idea, TODO 215): concentric zones, rings and sectors; a PCA plane a patch from its lowest points; uprightness, elevation and flatness; a drop-in for `cubes`. Tests: a 0.3 m and a 0.25 m kerb are cubes (the champion misses the 0.25), a road bending up a hill is none (the champion's one plane makes cubes of it), a wall and a bumpy raised patch are not ground |
 | `steps(points, StepShape)` (`StepShape::checked()`, `StepError`) | the kerbs: points 0.10-0.5 m above a point within 0.3 m of them, flat; 2 or more to a 0.1 m square |
+| `kerbs_only(steps, points, road, StepShape, ceiling)` | the steps less the feet and faces of anything taller than a kerb (a point 0.5 m-`ceiling` over the road within 0.3 m): a person, a post, a wall are cubes, and may walk away, so the memory never keeps them (TODO 189: a walker's foot, kept under every beam, held the car for good) |
+| `StepMemory` (`with_blind(Blind)`), `Blind::under(lidar_xyz, LOWEST_BEAM)` | the kerbs kept in `odom` `step_keep` s (10); one under every beam (within the lidar's height / tan 15° of it) doesn't age while it stays there, so a car standing before a kerb never forgets it (TODO 219) |
 
 ### The step finder (`steps.rs`, TODO 119)
 

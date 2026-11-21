@@ -39,12 +39,15 @@ actuator tests, and only people (and the tests they run) drive.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 
 from aav_legacy.legacy_protocol import (CAL_MODE_JOG, CAL_MODE_LIMP, CAL_MODE_OFF,
                                         from_pedals, LegacyMapping, pack_frame, pack_frame_v2,
                                         pack_frame_v3, stop_command, to_legacy)
 from aav_legacy.speed_control import Pedals, SpeedControl
+
+if TYPE_CHECKING:   # the bridge passes one in; the relay only calls it
+    from aav_description.adaptive_brake import AdaptiveBrake, BrakeOut
 
 VERSIONS = (1, 2, 3)
 # Which frame versions go to a firmware that brakes by itself when the frames or the
@@ -55,6 +58,9 @@ WITH_TIMEOUT = (2, 3)
 CAL_WHERE = ('none', 'stands', 'bench')   # 'none', not 'off': YAML reads off as false
 CAL_REQUEST_TIMEOUT = 0.5   # s: the panel asks again at 10 Hz while its person holds
 STANDSTILL = 0.05           # m/s: a faster wheel speed is a moving car
+# The adaptive brake's car model: these of vehicle.yaml's actuators: (TODO 258).
+ADAPTIVE_CAR = ('max_brake', 'brake_lag', 'brake_dead_time', 'drag', 'throttle_dead_time',
+                'throttle_lag')
 
 
 def programs_locked(version: int, allow_programs_without_timeout: bool = False) -> bool:
@@ -76,7 +82,8 @@ class Relay:
 
     def __init__(self, mapping: LegacyMapping, cmd_timeout: float, version: int = 2,
                  speed_loop: Optional[SpeedControl] = None, odom_timeout: float = 0.3,
-                 calibration: str = 'none'):
+                 calibration: str = 'none',
+                 adaptive_brake: Optional['AdaptiveBrake'] = None):
         if version not in VERSIONS:
             raise ValueError(f'frame_version {version}: use 1 (the C++ firmware), 2 or 3')
         if calibration not in CAL_WHERE:
@@ -99,6 +106,9 @@ class Relay:
         self.measured: Optional[Tuple[float, float]] = None   # (speed m/s, time s)
         self.last_tick: Optional[float] = None
         self.pedals: Optional[Pedals] = None   # the speed loop's last output, to log
+        # The adaptive brake (TODO 258): after the pi loop, before the brake; never the stops.
+        self.adaptive = adaptive_brake if speed_loop else None
+        self.brake_out: Optional['BrakeOut'] = None
 
     def wheel_speed(self, speed: float, now: float) -> None:
         """Note the measured forward speed (m/s, /vehicle/odom) at `now` (s)."""
@@ -118,6 +128,9 @@ class Relay:
         """Note /safety/estop; return True if it changed."""
         changed = on != self.estop
         self.estop = on
+        if on and self.adaptive:
+            self.adaptive.reset()   # an e-stop: forget what it learnt (adaptive_brake.py)
+            self.brake_out = None
         return changed
 
     def calibrate(self, mode: int, target: int, now: float) -> None:
@@ -164,10 +177,7 @@ class Relay:
     def frame(self, now: float) -> bytes:
         """Return this tick's frame."""
         if self.cal_active(now):
-            if self.loop:
-                self.loop.reset()
-                self.last_tick = None
-                self.pedals = None
+            self.forget_loop()
             mode, target, _ = self.cal_request
             values = stop_command(self.mapping, self.last_steering)
             return pack_frame_v3(*values, counter=self.counter, armed=False,
@@ -177,12 +187,19 @@ class Relay:
             values = self.drive(now) if self.loop else to_legacy(*self.cmd, self.mapping)
             self.last_steering = values[0]
         else:
-            if self.loop:
-                self.loop.reset()
-                self.last_tick = None
-                self.pedals = None
+            self.forget_loop()
             values = stop_command(self.mapping, self.last_steering)
         return self.pack(values, armed)
+
+    def forget_loop(self) -> None:
+        """Forget the loop, and this stop's adaptive brake: a stop the loop didn't make."""
+        if self.loop:
+            self.loop.reset()
+            self.last_tick = None
+            self.pedals = None
+        if self.adaptive:
+            self.adaptive.reset_stop()   # the effectiveness stays: a load stays aboard
+            self.brake_out = None
 
     def drive(self, now: float) -> Tuple[float, float, float]:
         """Run the speed loop one tick; return the frame's values."""
@@ -190,9 +207,16 @@ class Relay:
         self.last_tick = now
         fresh = self.measured is not None and now - self.measured[1] <= self.odom_timeout
         speed, steering = self.cmd
-        self.pedals = self.loop.update(speed, self.measured[0] if fresh else None,
-                                       max(dt, 1e-3))
-        return from_pedals(steering, self.pedals.throttle, self.pedals.brake, self.mapping)
+        measured = self.measured[0] if fresh else None
+        self.pedals = self.loop.update(speed, measured, max(dt, 1e-3))
+        brake = self.pedals.brake
+        if self.adaptive:
+            # Never weaker than asked, never above the safe max. If it can't run this tick
+            # (a dead time too long for dt, the Rust's only error), the asked brake.
+            self.brake_out = self.adaptive.update(self.pedals.throttle, brake, measured,
+                                                  max(dt, 1e-3))
+            brake = self.brake_out.brake
+        return from_pedals(steering, self.pedals.throttle, brake, self.mapping)
 
     def stop_frame(self) -> bytes:
         """Return a stale-stop frame, for leaving the car braked."""

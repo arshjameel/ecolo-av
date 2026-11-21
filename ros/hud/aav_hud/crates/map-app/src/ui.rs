@@ -21,6 +21,21 @@
 //! The map part uses the window's pixels; the panel's sizes grow with the window, so a
 //! 15" monitor and a laptop look alike.
 //!
+//! Key D swaps the map for the **debug page** (map-core's `debug`, TODO 247): two columns
+//! of cards over the map, the command's path (WHO DRIVES, IT ASKS, EGO SENDS, GATE, THE
+//! CAR DID) and what may stop it (LOCKS, SENSORS, DATA), each a big word in its colour.
+//!
+//! ```text
+//! +-------------------------------+--------------------+-----------------+
+//! | THE COMMAND                   | WHAT MAY STOP IT   | TRIP ...        |
+//! | WHO DRIVES   NAVIGATOR (AI)   | LOCKS    NONE      |                 |
+//! | IT ASKS      0.80 m/s         | SENSORS  OK        |                 |
+//! | EGO SENDS    0.80 m/s         | DATA     SIMULATED |                 |
+//! | GATE         OPEN             |                    |                 |
+//! | THE CAR DID  0.78 m/s         |                    |                 |
+//! +-------------------------------+--------------------+-----------------+
+//! ```
+//!
 //! A tap (a click) on the search box also opens the on-screen keyboard along the bottom
 //! (map-core's `keyboard`): the car's screen has no real keyboard.
 //!
@@ -43,6 +58,7 @@ use hud_core::{
 use map_core::{
     car::CarShape,
     config::Topic,
+    debug::{self, Card},
     destination::{Finder, Step},
     geom::{Metres, Point},
     grid::{Grid, Palette},
@@ -286,6 +302,7 @@ impl Ui {
 
     /// Draws one frame. `tiles`: the street map's, from [`StreetMap::frame`].
     /// `keyboard`: the on-screen keyboard when it's open, and the key held down.
+    /// `debug_page`: the debug page over the map (key D), in place of the search.
     #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &mut self,
@@ -300,6 +317,7 @@ impl Ui {
         tiles: &[Arc<TileShapes>],
         search: &Search,
         keyboard: Option<(&Keyboard, Option<KeyCap>)>,
+        debug_page: bool,
     ) {
         let banner = state.origins.banner();
         let layout = Layout::new(
@@ -357,10 +375,14 @@ impl Ui {
             p.centred(cx, band.y + 8.0 * p.u, 40.0, words, t.not_real_ink);
         }
         panel(&mut p, &layout, state, now, source);
-        let boxes = SearchLayout::new(&layout, &search.finder, keyboard.map(|(kb, _)| kb));
-        draw_search(&mut p, &boxes, search, state, now);
-        if let Some((kb, held)) = keyboard {
-            draw_keyboard(&mut p, kb, held);
+        if debug_page {
+            draw_debug_page(&mut p, &vp, state, now);
+        } else {
+            let boxes = SearchLayout::new(&layout, &search.finder, keyboard.map(|(kb, _)| kb));
+            draw_search(&mut p, &boxes, search, state, now);
+            if let Some((kb, held)) = keyboard {
+                draw_keyboard(&mut p, kb, held);
+            }
         }
         self.frost = frost;
     }
@@ -1102,6 +1124,91 @@ fn scale_bar(p: &mut Painter<impl RaylibDraw>, view: &View, vp: &Viewport) {
 /// The panel: the trip, the distance and time left, the speed, the topics, the keys.
 /// The arcade style's faint car, across the foot of the panel's column, behind its
 /// cards: TOPICS and the keys, where the words are smallest and the cards hide it most.
+/// The debug page (key D): frosted glass over the whole map, then two columns of cards,
+/// the command's path on the left (arrows between: each feeds the next), what may stop
+/// it on the right. Big words, each in its colour, few small ones.
+fn draw_debug_page(
+    p: &mut Painter<impl RaylibDraw>,
+    vp: &Viewport,
+    state: &MapState,
+    now: Instant,
+) {
+    let u = p.u;
+    let t = p.t;
+    let whole = Rectangle::new(vp.x as f32, vp.y as f32, vp.width as f32, vp.height as f32);
+    p.frosted(whole, 0.0, t.overlay_strong);
+    let (path, safety) = debug::cards(state, now);
+    let m = 16.0 * u;
+    let top = whole.y + m;
+    let heading = 34.0 * u;
+    let left_w = (whole.width - 3.0 * m) * 0.58;
+    let right_w = whole.width - 3.0 * m - left_w;
+    let (lx, rx) = (whole.x + m, whole.x + 2.0 * m + left_w);
+    p.text(lx, top, 22.0, "THE COMMAND, STEP BY STEP", t.text);
+    p.text(rx, top, 22.0, "WHAT MAY STOP IT", t.text);
+    p.right(
+        whole.x + whole.width - m,
+        whole.y + whole.height - 28.0 * u,
+        15.0,
+        "D: back to the map",
+        t.caption,
+    );
+    let y0 = top + heading;
+    let room = whole.height - heading - 3.0 * m - 28.0 * u;
+    // The path's five cards, with a small gap for the arrow between each.
+    let gap = 22.0 * u;
+    let n = path.len().max(1) as f32;
+    let h = ((room - gap * (n - 1.0)) / n).clamp(60.0 * u, 140.0 * u);
+    let mut y = y0;
+    for (i, card) in path.iter().enumerate() {
+        debug_card(p, lx, y, left_w, h, card);
+        y += h;
+        if i + 1 < path.len() {
+            let cx = lx + 60.0 * u;
+            let a = Vector2::new(cx - 9.0 * u, y + 4.0 * u);
+            let b = Vector2::new(cx + 9.0 * u, y + 4.0 * u);
+            let c = Vector2::new(cx, y + gap - 4.0 * u);
+            p.d.draw_triangle(a, c, b, t.caption.rl());
+            y += gap;
+        }
+    }
+    let mut y = y0;
+    for card in &safety {
+        debug_card(p, rx, y, right_w, h, card);
+        y += h + gap;
+    }
+}
+
+/// One card: its label, its big word in its colour (and a stripe of it down the left
+/// edge, so the colour reads at a glance), one small line.
+fn debug_card(p: &mut Painter<impl RaylibDraw>, x: f32, y: f32, w: f32, h: f32, card: &Card) {
+    let u = p.u;
+    let t = p.t;
+    let colour = match card.tone {
+        Tone::Quiet => t.dim,
+        Tone::Good => t.good,
+        Tone::Warn => t.warn,
+        Tone::Bad => t.bad,
+    };
+    p.card(x, y, w, h, card.label);
+    let stripe = Rectangle::new(x, y + 8.0 * u, 8.0 * u, h - 16.0 * u);
+    paint::rounded(p.d, stripe, t.style.corner(4.0 * u), colour);
+    let inner = x + 20.0 * u;
+    let inner_w = w - 36.0 * u;
+    let big = (h * 0.34 / u).clamp(22.0, 44.0);
+    p.fitted(inner, y + 32.0 * u, big, inner_w, &card.big, colour);
+    if !card.small.is_empty() {
+        p.fitted(
+            inner,
+            y + h - 30.0 * u,
+            18.0,
+            inner_w,
+            &card.small,
+            t.caption,
+        );
+    }
+}
+
 fn faint_car(d: &mut impl RaylibDraw, layout: &Layout, t: &Theme) {
     let r = layout.panel;
     let m = 12.0 * layout.u;

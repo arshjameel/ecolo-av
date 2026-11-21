@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The code map · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/codemap.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The code map</h1>
+<div class="meta">17 min read · 15 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a class="here" href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#rossources">ros/sources</a><a href="#roslocalization">ros/localization</a><a href="#rosperception">ros/perception</a><a href="#rosdrivers">ros/drivers</a><a href="#roscommand_mux">ros/command_mux</a><a href="#rosego">ros/ego</a><a href="#rosio_mux">ros/io_mux</a><a href="#roscan_bridge">ros/can_bridge</a><a href="#rossafety">ros/safety</a><a href="#rossim">ros/sim</a><a href="#roshud">ros/hud</a><a href="#rosbringup">ros/bringup</a><a href="#rosecolo_msgs">ros/ecolo_msgs</a><a href="#firmwarespinecrates-rust-no_std-where-it-runs-on-a-board">firmware/spine/crates (Rust, no_std where it runs on a board)</a><a href="#elsewhere">Elsewhere</a></nav>
+<div class="lead"><p>Where the code is: <strong>read this to find code; don't search the tree.</strong> One line
+per package, by area. Written by <code>tools/codemap.py</code> (<code>tools/test.sh</code> checks it is
+current): after adding, moving or removing a package, run
+<code>python3 tools/codemap.py &gt; docs/codemap.md</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Logic</td>
+<td>the maths, no ROS: a Rust crate, or the Python modules</td>
+</tr>
+<tr>
+<td>Node</td>
+<td>the ROS process: a <code>*-node</code> crate, or a Python file with <code>main()</code></td>
+</tr>
+<tr>
+<td>Tests, Config</td>
+<td>the folders, in the package</td>
+</tr>
+</tbody>
+</table></div></div>
+<section class="card"><h2 id="rossources">ros/sources</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/sources/aav_battery_victron/README.md">aav_battery_victron</a></td>
+<td>Python</td>
+<td>Reads the Victron battery monitor's VE.Direct serial text and publishes it as sensor_msgs/BatteryState on /...</td>
+<td><code>aav_battery_victron/(3 modules)</code></td>
+<td><code>aav_battery_victron/battery_monitor.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/sources/aav_camera_stream/README.md">aav_camera_stream</a></td>
+<td>Python</td>
+<td>One node per camera</td>
+<td><code>aav_camera_stream/(7 modules)</code></td>
+<td><code>aav_camera_stream/camera_stream.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/sources/aav_camera_stream_rs/README.md">aav_camera_stream_rs</a></td>
+<td>Rust</td>
+<td>camera_stream in Rust (rclrs)</td>
+<td><code>crates/stream-core</code></td>
+<td><code>crates/stream-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/sources/aav_imu_yahboom/README.md">aav_imu_yahboom</a></td>
+<td>Rust</td>
+<td>imu_node in Rust (rclrs)</td>
+<td><code>crates/yahboom-protocol</code></td>
+<td><code>crates/imu-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/sources/aav_radar_ti/README.md">aav_radar_ti</a></td>
+<td>Python</td>
+<td>Read uart data from ti iwr6843aopevm mmwave sensor and publish the data in ros2 env</td>
+<td><code>aav_radar_ti/(3 modules)</code></td>
+<td><code>aav_radar_ti/mock_radar_publisher.py</code>, <code>aav_radar_ti/pc_publisher.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/sources/aav_sensors/README.md">aav_sensors</a></td>
+<td>launch, config</td>
+<td>Sensor configuration and launch</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="roslocalization">ros/localization</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/localization/aav_amcl_rs/README.md">aav_amcl_rs</a></td>
+<td>Rust</td>
+<td>AMCL in Rust (rclrs), in stock nav2_amcl's place (amcl_impl:=rust, the default)</td>
+<td><code>crates/amcl-core</code></td>
+<td><code>crates/amcl-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_gps_heading_rs/README.md">aav_gps_heading_rs</a></td>
+<td>Rust</td>
+<td>gps_heading in Rust (rclrs)</td>
+<td><code>crates/gps-heading-core</code></td>
+<td><code>crates/gps-heading-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_kinematic_icp/README.md">aav_kinematic_icp</a></td>
+<td>Rust</td>
+<td>Lidar odometry that knows it is on a car (Kinematic-ICP's idea, in Rust</td>
+<td><code>crates/kinematic-icp</code></td>
+<td><code>crates/kinematic-icp-node</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_kiss_icp/README.md">aav_kiss_icp</a></td>
+<td>Python</td>
+<td>kiss_icp</td>
+<td><code>aav_kiss_icp/(2 modules)</code></td>
+<td><code>aav_kiss_icp/kiss_icp_node.py</code>, <code>aav_kiss_icp/worker.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_lane_pose/README.md">aav_lane_pose</a></td>
+<td>Python</td>
+<td>lane_pose</td>
+<td><code>aav_lane_pose/lane_fix.py</code></td>
+<td><code>aav_lane_pose/lane_pose.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_localization/README.md">aav_localization</a></td>
+<td>launch, config</td>
+<td>robot_localization configuration</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_localization_health_rs/README.md">aav_localization_health_rs</a></td>
+<td>Rust</td>
+<td>localization_health in Rust (rclrs)</td>
+<td><code>crates/health-core</code></td>
+<td><code>crates/health-node</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_ndt/README.md">aav_ndt</a></td>
+<td>Rust</td>
+<td>NDT in Rust (rclrs), a trial</td>
+<td><code>crates/ndt-core</code></td>
+<td><code>crates/ndt-node</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/localization/aav_pose_check/README.md">aav_pose_check</a></td>
+<td>Rust</td>
+<td>pose_check (Rust, rclrs), a challenger (TODO 210, pose_source:=ndt)</td>
+<td><code>crates/pose-check-core</code></td>
+<td><code>crates/pose-check-node</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rosperception">ros/perception</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/perception/aav_detector/README.md">aav_detector</a></td>
+<td>Python</td>
+<td>The object detector</td>
+<td><code>aav_detector/(6 modules)</code></td>
+<td><code>aav_detector/camera_obstacles.py</code>, <code>aav_detector/detector.py</code>, <code>aav_detector/stop_sign_watcher.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_detector_rs/README.md">aav_detector_rs</a></td>
+<td>Rust</td>
+<td>The object detector in Rust (rclrs)</td>
+<td><code>crates/detector-core</code>, <code>crates/onnx-session</code></td>
+<td><code>crates/detector-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_lane_finder/README.md">aav_lane_finder</a></td>
+<td>Python</td>
+<td>The lane finder</td>
+<td><code>aav_lane_finder/(2 modules)</code></td>
+<td><code>aav_lane_finder/lane_finder.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_lane_finder_learned/README.md">aav_lane_finder_learned</a></td>
+<td>Rust</td>
+<td>The learned lane_finder (TODO 262b), a challenger (lane_finder_impl:=learned)</td>
+<td><code>crates/ufld-core</code></td>
+<td><code>crates/ufld-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_lane_finder_rs/README.md">aav_lane_finder_rs</a></td>
+<td>Rust</td>
+<td>lane_finder in Rust (rclrs)</td>
+<td><code>crates/lane-core</code></td>
+<td><code>crates/lane-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_lane_geometry/README.md">aav_lane_geometry</a></td>
+<td>messages</td>
+<td>The LaneGeometry message</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_lidar/README.md">aav_lidar</a></td>
+<td>Python</td>
+<td>The roof lidar for Nav2</td>
+<td><code>aav_lidar/(2 modules)</code></td>
+<td><code>aav_lidar/lidar_scan.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_lidar_rs/README.md">aav_lidar_rs</a></td>
+<td>Rust</td>
+<td>lidar_scan in Rust (rclrs)</td>
+<td><code>crates/lidar-scan</code></td>
+<td><code>crates/lidar-scan-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_radar_clusters/README.md">aav_radar_clusters</a></td>
+<td>Rust</td>
+<td>radar_clusters in Rust (rclrs)</td>
+<td><code>crates/radar-clustering</code></td>
+<td><code>crates/clusters-node</code></td>
+<td><code>test/</code></td>
+<td><code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_stop_sign_rs/README.md">aav_stop_sign_rs</a></td>
+<td>Rust</td>
+<td>stop_sign_watcher in Rust (rclrs)</td>
+<td><code>crates/stop-sign-core</code></td>
+<td><code>crates/stop-sign-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_things_rs/README.md">aav_things_rs</a></td>
+<td>Rust</td>
+<td>things in Rust (rclrs)</td>
+<td><code>crates/things-core</code></td>
+<td><code>crates/things-node</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_voxels/README.md">aav_voxels</a></td>
+<td>Python</td>
+<td>A trial beside aav_lidar's flat scan</td>
+<td><code>aav_voxels/cubes.py</code></td>
+<td><code>aav_voxels/voxels_node.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/perception/aav_voxels_rs/README.md">aav_voxels_rs</a></td>
+<td>Rust</td>
+<td>voxels in Rust (rclrs)</td>
+<td><code>crates/voxels</code></td>
+<td><code>crates/voxels-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rosdrivers">ros/drivers</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/drivers/aav_actuator_tests/README.md">aav_actuator_tests</a></td>
+<td>Python</td>
+<td>The actuator tests (docs/tests.md stages 3 and 4)</td>
+<td><code>aav_actuator_tests/(9 modules)</code></td>
+<td><code>aav_actuator_tests/actuator_test.py</code>, <code>aav_actuator_tests/car_test_node.py</code>, <code>aav_actuator_tests/hallway.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_behaviour_rs/README.md">aav_behaviour_rs</a></td>
+<td>Rust</td>
+<td>The behaviour planner in Rust (rclrs)</td>
+<td><code>crates/behaviour-core</code></td>
+<td><code>crates/behaviour-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_costmap/README.md">aav_costmap</a></td>
+<td>Rust</td>
+<td>Our own costmap in Rust (rclrs)</td>
+<td><code>crates/costmap</code></td>
+<td><code>crates/costmap-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_diffusion_planner/README.md">aav_diffusion_planner</a></td>
+<td>Python</td>
+<td>diffusion_planner</td>
+<td><code>aav_diffusion_planner/(4 modules)</code></td>
+<td><code>aav_diffusion_planner/planner_node.py</code>, <code>aav_diffusion_planner/worker.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_diffusion_rs/README.md">aav_diffusion_rs</a></td>
+<td>Rust</td>
+<td>The diffusion planner's model worker in Rust</td>
+<td><code>crates/diffusion-core</code></td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_drive_to_point/README.md">aav_drive_to_point</a></td>
+<td>Python</td>
+<td>Drive-to-point driver</td>
+<td><code>aav_drive_to_point/(5 modules)</code></td>
+<td><code>aav_drive_to_point/point_cli.py</code>, <code>aav_drive_to_point/point_driver.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_drive_to_point_rs/README.md">aav_drive_to_point_rs</a></td>
+<td>Rust</td>
+<td>point_driver and drive_to_point in Rust (rclrs)</td>
+<td><code>crates/point-core</code></td>
+<td><code>crates/point-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_language/README.md">aav_language</a></td>
+<td>Python</td>
+<td>Plain-English driving</td>
+<td><code>aav_language/(9 modules)</code></td>
+<td><code>aav_language/agent.py</code>, <code>aav_language/drive_server.py</code>, <code>aav_language/run_eval.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_mpc_lag/README.md">aav_mpc_lag</a></td>
+<td>Rust</td>
+<td>mpc_lag_rs in Rust (rclrs)</td>
+<td><code>crates/mpc-lag</code></td>
+<td><code>crates/mpc-node</code></td>
+<td>-</td>
+<td><code>config/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_mppi_lag/README.md">aav_mppi_lag</a></td>
+<td>Rust</td>
+<td>mppi_lag in Rust (rclrs)</td>
+<td><code>crates/mppi-lag</code></td>
+<td><code>crates/mppi-node</code></td>
+<td>-</td>
+<td><code>config/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_navigation/README.md">aav_navigation</a></td>
+<td>launch, config</td>
+<td>Navigation as a driver</td>
+<td>-</td>
+<td>-</td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_navigator/README.md">aav_navigator</a></td>
+<td>Rust</td>
+<td>Our own navigator in Rust (rclrs)</td>
+<td><code>crates/navigator</code></td>
+<td><code>crates/navigator-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_planner/README.md">aav_planner</a></td>
+<td>Rust</td>
+<td>Our own path planner in Rust (rclrs)</td>
+<td><code>crates/lattice-planner</code></td>
+<td><code>crates/planner-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_rc/README.md">aav_rc</a></td>
+<td>Python</td>
+<td>The RC transmitter as a ROS driver (TODO 48)</td>
+<td><code>aav_rc/rc_drive.py</code></td>
+<td><code>aav_rc/rc_driver.py</code></td>
+<td><code>test/</code></td>
+<td><code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_rc_rs/README.md">aav_rc_rs</a></td>
+<td>Rust</td>
+<td>rc_driver in Rust (rclrs)</td>
+<td><code>crates/rc-core</code></td>
+<td><code>crates/rc-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_routes/README.md">aav_routes</a></td>
+<td>Python</td>
+<td>Street routes, for real streets later (the lot first)</td>
+<td><code>aav_routes/(3 modules)</code></td>
+<td><code>aav_routes/street_router.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_scripted/README.md">aav_scripted</a></td>
+<td>Python</td>
+<td>Scripted driver</td>
+<td><code>aav_scripted/speed_profile.py</code></td>
+<td><code>aav_scripted/scripted_driver.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_smoother/README.md">aav_smoother</a></td>
+<td>Rust</td>
+<td>Our own velocity smoother in Rust (rclrs), for a car</td>
+<td><code>crates/car-smoother</code></td>
+<td><code>crates/smoother-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_teleop/README.md">aav_teleop</a></td>
+<td>launch, config</td>
+<td>Human drivers</td>
+<td>-</td>
+<td>-</td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/drivers/aav_track/README.md">aav_track</a></td>
+<td>Python</td>
+<td>Trial path followers (pure pursuit, Stanley, LQR, MPC) that stand in for mppi_lag</td>
+<td><code>aav_track/(8 modules)</code></td>
+<td><code>aav_track/track_node.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="roscommand_mux">ros/command_mux</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/command_mux/aav_command_mux/README.md">aav_command_mux</a></td>
+<td>launch, config</td>
+<td>Configuration and launch for twist_mux</td>
+<td>-</td>
+<td>-</td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/command_mux/aav_mux_state/README.md">aav_mux_state</a></td>
+<td>Rust</td>
+<td>command_mux_state (Rust, rclrs)</td>
+<td><code>crates/mux-state-core</code></td>
+<td><code>crates/mux-state-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rosego">ros/ego</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/ego/aav_ego/README.md">aav_ego</a></td>
+<td>Python</td>
+<td>ego</td>
+<td><code>aav_ego/(9 modules)</code></td>
+<td><code>aav_ego/ego_node.py</code>, <code>aav_ego/look_ahead_node.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/ego/aav_ego_rs/README.md">aav_ego_rs</a></td>
+<td>Rust</td>
+<td>ego and look_ahead in Rust (rclrs), one process with both nodes</td>
+<td><code>crates/ego-core</code></td>
+<td><code>crates/ego-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rosio_mux">ros/io_mux</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/io_mux/aav_io_mux/README.md">aav_io_mux</a></td>
+<td>Python</td>
+<td>The muxes at the two edges of the stack</td>
+<td><code>aav_io_mux/(4 modules)</code></td>
+<td><code>aav_io_mux/output_mux.py</code>, <code>aav_io_mux/sensor_mux.py</code></td>
+<td><code>test/</code></td>
+<td><code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/io_mux/aav_io_mux_rs/README.md">aav_io_mux_rs</a></td>
+<td>Rust</td>
+<td>The sensor mux and the output mux in Rust (rclrs)</td>
+<td><code>crates/io-mux-core</code></td>
+<td><code>crates/io-mux-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="roscan_bridge">ros/can_bridge</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/can_bridge/aav_legacy/README.md">aav_legacy</a></td>
+<td>Python</td>
+<td>Interim backend for the 2025-26 hardware</td>
+<td><code>aav_legacy/(5 modules)</code></td>
+<td><code>aav_legacy/encoder_udp.py</code>, <code>aav_legacy/legacy_uart_bridge.py</code>, <code>aav_legacy/steering_limits.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/can_bridge/aav_legacy_rs/README.md">aav_legacy_rs</a></td>
+<td>Rust</td>
+<td>legacy_uart_bridge in Rust (rclrs)</td>
+<td><code>crates/legacy-bridge</code></td>
+<td><code>crates/legacy-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/can_bridge/aav_spine/README.md">aav_spine</a></td>
+<td>Python</td>
+<td>Backend for the real car on the CAN spine</td>
+<td><code>aav_spine/(4 modules)</code></td>
+<td><code>aav_spine/arm_when_open.py</code>, <code>aav_spine/spine_bridge.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/can_bridge/aav_spine_bridge/README.md">aav_spine_bridge</a></td>
+<td>Rust</td>
+<td>spine_bridge in Rust (rclrs)</td>
+<td><code>crates/spine-bridge</code></td>
+<td><code>crates/bridge-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rossafety">ros/safety</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/safety/aav_ghost/README.md">aav_ghost</a></td>
+<td>Python</td>
+<td>Ghost obstacles</td>
+<td><code>aav_ghost/ghost.py</code></td>
+<td><code>aav_ghost/ghost_cli.py</code>, <code>aav_ghost/ghost_obstacle.py</code></td>
+<td><code>test/</code></td>
+<td><code>config/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_joy_alive_rs/README.md">aav_joy_alive_rs</a></td>
+<td>Rust</td>
+<td>joy_alive in Rust (rclrs)</td>
+<td><code>crates/joy-alive-core</code></td>
+<td><code>crates/joy-alive-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_safety/README.md">aav_safety</a></td>
+<td>Python</td>
+<td>The sensor watchdog</td>
+<td><code>aav_safety/(6 modules)</code></td>
+<td>-</td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_safety_rs/README.md">aav_safety_rs</a></td>
+<td>Rust</td>
+<td>The geofence, the stop hold and the goal leash in Rust (rclrs)</td>
+<td><code>crates/safety-core</code></td>
+<td><code>crates/safety-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_self_test_rs/README.md">aav_self_test_rs</a></td>
+<td>Rust</td>
+<td>The boot self-test in Rust (rclrs), TODO 255</td>
+<td><code>crates/self-test-core</code></td>
+<td><code>crates/self-test-node</code></td>
+<td><code>test/</code></td>
+<td><code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_stop_zone/README.md">aav_stop_zone</a></td>
+<td>Rust</td>
+<td>The stop zone in Rust (rclrs)</td>
+<td><code>crates/stop-zone</code></td>
+<td><code>crates/stop-zone-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_watchdog_rs/README.md">aav_watchdog_rs</a></td>
+<td>Rust</td>
+<td>The sensor watchdog in Rust (rclrs)</td>
+<td><code>crates/watchdog-core</code></td>
+<td><code>crates/watchdog-node</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rossim">ros/sim</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/sim/aav_bench/README.md">aav_bench</a></td>
+<td>Python</td>
+<td>Bench mode's pretend sensors</td>
+<td><code>aav_bench/(4 modules)</code></td>
+<td>-</td>
+<td><code>test/</code></td>
+<td><code>config/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/sim/aav_carla/README.md">aav_carla</a></td>
+<td>Python</td>
+<td>CARLA (0.10 on Unreal Engine 5, or 0.9.16) as the car, behind the same topics as the real one, through CARL...</td>
+<td><code>aav_carla/(5 modules)</code></td>
+<td><code>aav_carla/carla_adapter.py</code>, <code>aav_carla/georef.py</code></td>
+<td><code>test/</code></td>
+<td><code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/sim/aav_sim_cameras/README.md">aav_sim_cameras</a></td>
+<td>Rust</td>
+<td>The simulator's cameras</td>
+<td><code>crates/camera-core</code></td>
+<td>-</td>
+<td><code>tests/</code></td>
+<td><code>config/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/sim/aav_sim_models/README.md">aav_sim_models</a></td>
+<td>Python</td>
+<td>Ravensim's Python side (Ravensim</td>
+<td><code>aav_sim_models/(12 modules)</code></td>
+<td><code>aav_sim_models/sim_adapter.py</code>, <code>aav_sim_models/sim_camera_relay.py</code>, <code>aav_sim_models/sim_esp32.py</code>, <code>aav_sim_models/sim_gps.py</code>, <code>aav_sim_models/sim_imu.py</code>, <code>aav_sim_models/sim_lidar_relay.py</code>, <code>aav_sim_models/sim_radar.py</code>, <code>aav_sim_models/truth_localizer.py</code></td>
+<td><code>test/</code></td>
+<td><code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/sim/aav_simulator/README.md">aav_simulator</a></td>
+<td>Rust</td>
+<td>Ravensim, our own simulator, in Rust (rclrs)</td>
+<td><code>crates/sim-core</code></td>
+<td><code>crates/sim-node</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/sim/aav_spine_sim/README.md">aav_spine_sim</a></td>
+<td>Rust</td>
+<td>spine_sim, for bench mode</td>
+<td><code>crates/bench-car</code>, <code>crates/spine-sim</code></td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><a href="../../ros/sim/aav_turtlesim/README.md">aav_turtlesim</a></td>
+<td>Python</td>
+<td>Backend that drives turtlesim like a car (bicycle model) and reports its speed as /vehicle/odom</td>
+<td>-</td>
+<td><code>aav_turtlesim/turtlesim_adapter.py</code></td>
+<td>-</td>
+<td><code>launch/</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="roshud">ros/hud</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/hud/aav_dev_window/README.md">aav_dev_window</a></td>
+<td>Rust</td>
+<td>The developer window, as a test of Bevy</td>
+<td><code>src</code></td>
+<td>-</td>
+<td>-</td>
+<td><code>config/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/hud/aav_hud/README.md">aav_hud</a></td>
+<td>Rust</td>
+<td>hud</td>
+<td><code>crates/debug-app</code>, <code>crates/debug-core</code>, <code>crates/hud-app</code>, <code>crates/hud-core</code>, <code>crates/map-app</code>, <code>crates/map-core</code>, <code>crates/panel-app</code>, <code>crates/panel-core</code></td>
+<td>-</td>
+<td>-</td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rosbringup">ros/bringup</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/bringup/aav_bringup/README.md">aav_bringup</a></td>
+<td>launch, config</td>
+<td>Start the whole stack</td>
+<td>-</td>
+<td>-</td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/bringup/aav_description/README.md">aav_description</a></td>
+<td>launch, config</td>
+<td>The car's measurements (config/vehicle.yaml), its URDF, launch files to publish and view its frames, and a...</td>
+<td><code>aav_description/(8 modules)</code></td>
+<td>-</td>
+<td><code>test/</code></td>
+<td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/bringup/aav_run_info/README.md">aav_run_info</a></td>
+<td>Python</td>
+<td>run_info</td>
+<td><code>aav_run_info/algorithms.py</code></td>
+<td><code>aav_run_info/run_info.py</code></td>
+<td><code>test/</code></td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="rosecolo_msgs">ros/ecolo_msgs</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Language</th>
+<th>What</th>
+<th>Logic</th>
+<th>Node</th>
+<th>Tests</th>
+<th>Config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../ros/ecolo_msgs/aav_interfaces/README.md">aav_interfaces</a></td>
+<td>messages</td>
+<td>AAV message and action definitions</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="firmwarespinecrates-rust-no_std-where-it-runs-on-a-board">firmware/spine/crates (Rust, <code>no_std</code> where it runs on a board)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Crate</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aav-inputs</code></td>
+<td>Clean digital inputs for every board</td>
+</tr>
+<tr>
+<td><code>ad5311</code></td>
+<td>The throttle DAC</td>
+</tr>
+<tr>
+<td><code>adaptive-brake</code></td>
+<td>The adaptive brake</td>
+</tr>
+<tr>
+<td><code>app-update</code></td>
+<td>The checks around a firmware update over WiFi (the ESP32's wifi-update)</td>
+</tr>
+<tr>
+<td><code>hd44780</code></td>
+<td>A character LCD with an HD44780 controller (16x2, 20x4), on six GPIO pins in 4-bit mode, write only</td>
+</tr>
+<tr>
+<td><code>ibus</code></td>
+<td>The FlySky iBUS protocol from the RC receiver</td>
+</tr>
+<tr>
+<td><code>jrk-g2</code></td>
+<td>Pololu Jrk G2 motor controller over I2C</td>
+</tr>
+<tr>
+<td><code>legacy-link</code></td>
+<td>The 2025-26 UART link from the Motor-Pi to the ESP32</td>
+</tr>
+<tr>
+<td><code>mcp2515</code></td>
+<td>The Microchip MCP2515 CAN controller over SPI</td>
+</tr>
+<tr>
+<td><code>pca9555</code></td>
+<td>The PCA9555 16-bit I/O expander on I2C</td>
+</tr>
+<tr>
+<td><code>sentinel</code></td>
+<td>The status display's logic (the 2025-26 AAV_sentinel Pico 2)</td>
+</tr>
+<tr>
+<td><code>spine-board</code></td>
+<td>The glue between spine-core and the car's devices, for any board</td>
+</tr>
+<tr>
+<td><code>spine-core</code></td>
+<td>Hardware-independent spine logic</td>
+</tr>
+<tr>
+<td><code>status-lines</code></td>
+<td>The ESP32's JSON status lines (firmware/status)</td>
+</tr>
+<tr>
+<td><code>wheel-core</code></td>
+<td>The wheel nodes' logic, for any board</td>
+</tr>
+<tr>
+<td><code>wheel-encoder</code></td>
+<td>The wheel's two spoke sensors, counted the 2025-26 way, and the wheel encoder's UDP packet to the Motor Pi</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="elsewhere">Elsewhere</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Folder</th>
+<th>Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>firmware/can/</code></td>
+<td><code>aav.dbc</code>, the CAN contract, and its shared test vectors</td>
+</tr>
+<tr>
+<td><code>firmware/legacy/</code></td>
+<td>the 2025-26 ESP32 firmware, kept until the Rust one is flashed</td>
+</tr>
+<tr>
+<td><code>firmware/status/</code>, <code>firmware/udp/</code></td>
+<td>the boards' status lines; the wheel encoder's UDP vectors</td>
+</tr>
+<tr>
+<td><code>tools/</code></td>
+<td>scripts and checks (<code>pixi run ...</code>); their tests in <code>tools/tests/</code></td>
+</tr>
+<tr>
+<td><code>docs/</code></td>
+<td>the guide; <code>interfaces.yaml</code> is the topic contract</td>
+</tr>
+<tr>
+<td><code>maps/</code>, <code>models/</code></td>
+<td>maps and trained models (most made, not kept in git)</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="modules.html"><small>Previous</small>← Every module</a>
+<a class="next" href="work.html"><small>Next</small>Work →</a></nav>
+</main>
+<footer>Source: <code>docs/codemap.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

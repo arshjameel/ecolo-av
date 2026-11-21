@@ -23,7 +23,7 @@ What it adds to Nav2's MPPI:
 |---|---|---|
 | Model of the car | speed and turn rate obey at once (within ax, az limits) | ego's ramps, the spine's speed loop, throttle and brake lag, steering motor rate, linkage lag, deadbands, dead times |
 | State it starts from | pose and speed | pose, speed, ego's output, the actuators' levels, the commands still in their dead time |
-| Noise | white, on (v, w) | on (v, steering), correlated step to step (AR(1), 0.8); the control cost weighs it by its own covariance |
+| Noise | white, on (v, w) | on (v, steering), correlated step to step (AR(1), 0.8); the control cost weighs it by its own covariance. `sampling: smooth` (TODO 212, a challenger): the steering's noise on its change a step, summed (SMPPI's idea) |
 | Cusps | reached within the inversion tolerances | the same, or stopped within the goal's tolerances, or held 3 s within 2 m (`cusp_reach`, `cusp_wait`: a stop zone short of a wall) |
 | The lane | no critic for it | `LaneCritic`, with a lane map: the outline kept inside the road ahead's lines and kerbs |
 | Language | C++ plugin | Rust |
@@ -81,15 +81,15 @@ From `navigation.launch.py` (`vehicle.mppi_lag_params`; nothing copied):
 
 From `config/mppi_lag.yaml`: `model` (lag or ideal), `steer_std`, `steer_std_speed` (above it
 the steering noise shrinks as 1 / speed², TODO 168), `steer_std_min` (never under it: 0.024 rad),
-`steer_gamma_speed` (1 m/s: with a `steer_gamma`, it holds from here up and eases to gamma at a stop), `noise_correlation`,
+`steer_gamma_speed` (1 m/s: with a `steer_gamma`, it holds from here up and eases to gamma at a stop), `noise_correlation`, `steer_rate_std` (0.5 rad/s: the steering's change a step with smooth sampling),
 `threads`, `seed`, `use_costmap`, the topics and timeouts (`road_ahead_timeout` 0.5 s),
 and the map correction (TODO 186): `map_correction_speed` (0.1 m/s; 0: off, each new path by
 the newest map -> odom, as before), `map_correction_turn_rate` (1°/s),
 `map_correction_snap_distance` (2 m) and `map_correction_snap_angle` (10°: a bigger gap is a
 relocalisation, taken at once and logged). From the launch: `map_correction` (bool, false by default; `map_correction:=slow` gives true, as the sim's `ours` stack does since 15 Nov (it won there, TODO 168);
 `navigation.launch.py map_correction:=newest` gives false, the old way; never in the yaml,
-which would win); `steer_gamma` (the launch's `mppi_lag_steer_gamma:=`; below 0 or unset:
-gamma's, as Nav2: the steering's control cost weight, TODO 168, [the sway that was left](../../../docs/mppi-lag.md#the-sway-that-was-left)).
+which would win); `sampling` (the launch's `mppi_lag_sampling:=`: `correlated`, the default, or `smooth`, TODO 212); `steer_gamma` (the launch's `mppi_lag_steer_gamma:=`; below 0 or unset:
+gamma's, as Nav2: the steering's control cost weight, TODO 168, [the sway that was left](../../../docs/history/mppi-lag-log.md#the-sway-that-was-left)).
 All read once at start.
 
 ### Crate `mppi-lag`
@@ -158,7 +158,7 @@ pixi run build --packages-select aav_mppi_lag --cmake-args -DMPPI_LAG_FEATURES= 
 |---|---|
 | `lag.rs`, `ego.rs`, `ideal.rs` | each stage of the model: lags, rate, deadbands, dead times, offset; reversing, the gear changing only at a stop |
 | `critics.rs`, `path.rs` | each critic on hand-made samples, PathAngle's modes on a reversing path, `LaneCritic` inside, over a line, over a kerb, without a lane; the cusps; `lane.rs`: the side, the search, NaN edges |
-| `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan; the control cost against a brute-force covariance inverse, the steering's own weight (`steer_gamma`) and its ease by speed; the steering noise's spread by speed |
+| `optimizer.rs`, `smoothing.rs` | the limits, the filter, a straight path, a turn, the same seed the same plan; the control cost against a brute-force covariance inverse, the steering's own weight (`steer_gamma`) and its ease by speed; the steering noise's spread by speed; smooth sampling (TODO 212): each step's change as drawn, the spread a random walk's, its control cost against a brute-force inverse, still turning to a path |
 | `tests/closed_loop.rs` | a pretend car (ego + the lag model at 100 Hz): the model predicts it; circle and S-curve at vehicle.yaml's lags; a corner and an S on very slow actuators: the lag-aware one closer on the corner, the only one to keep the S; 8 m straight back; 6 m ahead, a stop at the cusp, a quarter circle (r 5 m and the planner's 3.6 m) back; the test lot's turn back (back, cusp, forward), from a stop and arriving rolling 0.5 m off; the campus's "round the bend" junction, on the planner's own path from the sim (`campus_junction_round_the_bend`); a path drawn 1 m off a lane's centre, kept within 0.1 m of the line by `LaneCritic` (0.41 m over without); the wiggle (TODO 168), set up as the launch file sets it (2000 samples, 8.4 m of path): no side to side on a straight and a bend at 2.5 m/s, less with a sim-like pose, none backing up; the calm steering (`steer_gamma` 0.05): less sway at 1 and 2.5 m/s with a sim-like pose, and the turn back and cusp still pass |
 | `tests/bag.rs` | `follow_plan`'s recording reader: a path through CDR and back; a cut message is an error; plans written into an MCAP come back in order, other topics left out |
 | `tests/map_correction.rs` | the node's frames rebuilt (odometry in odom, the path in map again every 1 or 10 s, a global EKF jumping 5 times a second): the held map -> odom sways the car less than the newest, on a straight and a bend; a real 0.5 m offset is still taken out within 8 s; a 3 m relocalisation snaps. `explore` (ignored) prints every case |

@@ -1,0 +1,2398 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a self-driving car works: every algorithm, explained · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/how-self-driving-works.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>How a self-driving car works: every algorithm, explained</h1>
+<div class="meta">74 min read · 12 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a class="here" href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#every-algorithm-on-one-page">Every algorithm on one page</a><a href="#1-the-big-picture">1. The big picture</a><a href="#2-sensors-what-the-car-can-measure">2. Sensors: what the car can measure</a><a href="#3-localization-where-am-i">3. Localization: &quot;where am I?&quot;</a><a href="#4-perception-whats-around-me">4. Perception: &quot;what&#x27;s around me?&quot;</a><a href="#5-maps-what-the-car-remembers">5. Maps: what the car remembers</a><a href="#6-planning">6. Planning</a><a href="#7-behaviour-deciding-what-to-do">7. Behaviour: deciding what to do</a><a href="#8-control-and-the-car">8. Control and the car</a><a href="#9-safety-the-locks-under-everything">9. Safety: the locks under everything</a><a href="#10-end-to-end-learning-one-big-network">10. End-to-end learning: one big network</a><a href="#where-to-go-next">Where to go next</a></nav>
+<div class="lead"><p>Ben, 19 Nov: "if I was going to teach everything about the car and all the known algos
+related to building a self driving car." This page is that lesson. It goes <strong>top to
+bottom</strong>, from the sensors to the wheels. Each algorithm gets the same short card: the
+idea, how it works, a picture, good at, bad at, and where it is in our car.</p>
+<p>Our own scores are not repeated here. They live in <a href="stack-survey.html">The stack, surveyed</a>:
+each card below links to it.</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ul>
+<li>
+<p>A self-driving car does six jobs, many times a second: <strong>sense, localize, perceive,
+  plan, control, and keep safe</strong>.</p>
+</li>
+<li>
+<p><strong>Localize</strong> = "where am I?" Blend wheels, IMU and GPS (the <strong>EKF</strong>), then match the
+  lidar to a saved map (<strong>NDT</strong>, <strong>ICP</strong>, <strong>AMCL</strong>). <strong>SLAM</strong> makes that map.</p>
+</li>
+<li>
+<p><strong>Perceive</strong> = "what's around me?" Find the ground, group the rest into things, name
+  them with a camera network (<strong>RF-DETR</strong>, <strong>YOLO</strong>), and follow them (<strong>Kalman</strong>, <strong>SORT</strong>).</p>
+</li>
+<li>
+<p><strong>Plan</strong> has three levels:</p>
+<ul>
+<li><strong>route</strong>: which streets (<strong>Dijkstra</strong>, <strong>A*</strong>);</li>
+<li><strong>path</strong>: a line the car can really drive (<strong>Hybrid-A*</strong>, the <strong>lattice</strong>, <strong>RRT</strong>);</li>
+<li><strong>motion</strong>: the next few seconds (<strong>Pure Pursuit</strong>, <strong>MPC</strong>, <strong>MPPI</strong>, <strong>diffusion</strong>).</li>
+</ul>
+</li>
+<li>
+<p><strong>Behaviour</strong> = "what should I do now?" Keep going, slow, stop, wait, go: a <strong>state
+  machine</strong> (ours), a <strong>behaviour tree</strong> (Nav2's), or traffic-rule modules (Apollo,
+  Autoware). Ours caps the speed and puts stops in the road ahead; it never steers.</p>
+</li>
+<li>
+<p><strong>Control</strong> turns a speed and a curve into throttle, brake and steering
+  (<strong>Ackermann</strong>, the <strong>bicycle model</strong>, <strong>PID</strong>).</p>
+</li>
+<li>
+<p><strong>Safety locks</strong> sit under everything and are never swapped out.</p>
+</li>
+<li><strong>We stay modular</strong> (one part per job) rather than end-to-end (one big network).</li>
+</ul>
+</blockquote></div>
+<section class="card"><h2 id="every-algorithm-on-one-page">Every algorithm on one page</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>The question</th>
+<th>Algorithms on this page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#2-sensors-what-the-car-can-measure">Sensors</a></td>
+<td>what can I measure?</td>
+<td>lidar, cameras, radar, GPS and RTK, IMU, wheel encoders</td>
+</tr>
+<tr>
+<td><a href="#3-localization-where-am-i">Localization</a></td>
+<td>where am I?</td>
+<td>dead reckoning, Kalman filter and EKF, ICP, <strong>NDT</strong>, <strong>AMCL</strong>, SLAM, KISS-ICP and KISS-SLAM, place recognition, learned MCL</td>
+</tr>
+<tr>
+<td><a href="#4-perception-whats-around-me">Perception</a></td>
+<td>what is around me?</td>
+<td>ground removal, voxels, clustering, YOLO, DETR, Kalman tracking, SORT, lane finding, camera-lidar fusion</td>
+</tr>
+<tr>
+<td><a href="#5-maps-what-the-car-remembers">Maps</a></td>
+<td>what do I remember?</td>
+<td>occupancy grids, NDT maps, Lanelet2, costmaps, chunks, multi-drive merging</td>
+</tr>
+<tr>
+<td><a href="#61-route-planning-which-streets">Route</a></td>
+<td>which streets?</td>
+<td>Dijkstra, <strong>A*</strong>, OpenStreetMap, Valhalla</td>
+</tr>
+<tr>
+<td><a href="#62-path-planning-a-line-the-car-can-drive">Path</a></td>
+<td>which line?</td>
+<td>A* on a grid, <strong>Hybrid-A*</strong>, state lattice, RRT and RRT*, Dubins and Reeds-Shepp, smoothing</td>
+</tr>
+<tr>
+<td><a href="#63-motion-planning-and-control-the-next-few-seconds">Motion</a></td>
+<td>the next few seconds?</td>
+<td>Pure Pursuit, Stanley, PID, <strong>MPC</strong>, <strong>MPPI</strong>, <strong>diffusion</strong></td>
+</tr>
+<tr>
+<td><a href="#7-behaviour-deciding-what-to-do">Behaviour</a></td>
+<td>what should I do now?</td>
+<td><strong>state machines</strong>, hierarchical state machines, behaviour trees, traffic-rule modules (Apollo, Autoware), speed round obstacles and <strong>hysteresis</strong>, gap acceptance and yielding, POMDPs and games, imitation and reinforcement learning, <strong>our behaviour planner</strong></td>
+</tr>
+<tr>
+<td><a href="#8-control-and-the-car">Control</a></td>
+<td>how do I move the wheels?</td>
+<td>Ackermann, bicycle model, transfer functions, feed-forward plus PID, braking with a load</td>
+</tr>
+<tr>
+<td><a href="#9-safety-the-locks-under-everything">Safety</a></td>
+<td>what if it goes wrong?</td>
+<td>watchdogs, e-stops, geofences, stop zones, simplex fallback</td>
+</tr>
+<tr>
+<td><a href="#10-end-to-end-learning-one-big-network">End-to-end</a></td>
+<td>why not one network?</td>
+<td>UniAD, world models, Tesla, Wayve</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-status-words">The status words</h3>
+<p>Every "In our car" line uses the survey's words (<a href="stack-survey.html#how-to-read-this-page">how to read them</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Default</strong></td>
+<td>runs in <code>stack:=ours</code>, the simulator's default</td>
+</tr>
+<tr>
+<td><strong>Car champion</strong></td>
+<td>what <code>car.launch.py</code> runs today, where it differs</td>
+</tr>
+<tr>
+<td><strong>In use</strong></td>
+<td>always runs (the EKFs, ego, the safety locks)</td>
+</tr>
+<tr>
+<td><strong>Challenger</strong></td>
+<td>built, scored beside the default; swaps in when it wins</td>
+</tr>
+<tr>
+<td><strong>Retired</strong></td>
+<td>no longer runs</td>
+</tr>
+<tr>
+<td><strong>Studied</strong></td>
+<td>read, not built</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="1-the-big-picture">1. The big picture</h2>
+<p><img alt="The pipeline: sense, localize, perceive, plan, control, the car; and plan's three levels: route, path, motion" src="../img/teach/pipeline.svg" /></p>
+<h3 id="the-pipeline">The pipeline</h3>
+<ol>
+<li><strong>Sense</strong>: the sensors measure the world and the car.</li>
+<li><strong>Localize</strong>: work out where the car is, to centimetres.</li>
+<li><strong>Perceive</strong>: find the road, the kerbs, the people and the cars.</li>
+<li><strong>Plan</strong>: choose a way to the goal, then the next few seconds.</li>
+<li><strong>Control</strong>: turn that plan into steering, throttle and brake.</li>
+<li><strong>Safety</strong> watches all of it, and can stop the car at any step.</li>
+</ol>
+<h3 id="plannings-three-levels">Planning's three levels</h3>
+<p>Ben, 14 Nov: "Zoomed out is routes, middle is how we get from cube to cube and finally
+close up is obstical avoidance".</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Size</th>
+<th>How often</th>
+<th>Question</th>
+<th>Example answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Route</strong></td>
+<td>kilometres</td>
+<td>once a trip</td>
+<td>which streets?</td>
+<td>"University Drive, then left at the library"</td>
+</tr>
+<tr>
+<td><strong>Path</strong></td>
+<td>tens of metres</td>
+<td>about once a second</td>
+<td>which line, round what's parked?</td>
+<td>a smooth curve along the right lane</td>
+</tr>
+<tr>
+<td><strong>Motion</strong></td>
+<td>a few metres</td>
+<td>20 times a second</td>
+<td>which steering and speed now?</td>
+<td>"0.12 rad left, 1.4 m/s"</td>
+</tr>
+</tbody>
+</table></div>
+<p>How our nodes join up: <a href="how-it-fits.html">How it fits</a>.</p>
+</section>
+<section class="card"><h2 id="2-sensors-what-the-car-can-measure">2. Sensors: what the car can measure</h2>
+<p>No one sensor is enough: each fails in its own way, so the car carries several.
+Ours, with rates and topics: <a href="learn-sensors.html">Learn: sensors</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Sensor</th>
+<th>Measures</th>
+<th>Good at</th>
+<th>Weakness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lidar</strong></td>
+<td>a <strong>point cloud</strong>: thousands of 3D dots, by timing laser pulses</td>
+<td>exact distances, day or night</td>
+<td>rain, snow and dust; costly; sparse far away (our VLP-16 has 16 rings)</td>
+</tr>
+<tr>
+<td><strong>Cameras</strong></td>
+<td>pictures</td>
+<td>colour: paint, signs, lights; cheap</td>
+<td>no direct distance; glare, dark</td>
+</tr>
+<tr>
+<td><strong>Radar</strong></td>
+<td>points, and <strong>each point's speed</strong> (Doppler)</td>
+<td>speed of other cars; works in rain and fog</td>
+<td>few points; blurry shapes</td>
+</tr>
+<tr>
+<td><strong>GPS / GNSS</strong></td>
+<td>latitude and longitude from satellites</td>
+<td>anywhere with sky; no map needed</td>
+<td>2-5 m alone; trees and buildings block it; it can drift slowly</td>
+</tr>
+<tr>
+<td><strong>RTK GPS</strong></td>
+<td>the same, corrected by a base station nearby</td>
+<td>1-2 cm when "fixed"</td>
+<td>needs a corrections service; drops to float near buildings</td>
+</tr>
+<tr>
+<td><strong>IMU</strong></td>
+<td>turn rate (gyro) and acceleration</td>
+<td>fast (hundreds a second); never blocked</td>
+<td>drifts when integrated; bias</td>
+</tr>
+<tr>
+<td><strong>Wheel encoders</strong></td>
+<td>how far each wheel turned</td>
+<td>smooth, exact over short distances</td>
+<td>slip; a tyre's size changes; drifts over long ones</td>
+</tr>
+</tbody>
+</table></div>
+<p>More: <a href="learn-lidar.html">Learn: lidar</a>, <a href="learn-gps.html">Learn: GPS</a> (fix types and RTK),
+<a href="learn-speed.html">How the car knows how fast it's going</a>.</p>
+</section>
+<section class="card"><h2 id="3-localization-where-am-i">3. Localization: "where am I?"</h2>
+<p>Localization answers three things: <strong>where</strong> the car is, <strong>which way</strong> it faces, and
+<strong>how fast</strong> it moves. Our frames follow REP-105: <code>map → odom → base_link</code>
+(<a href="learn-localization.html#6-frames-map-odom-base_link-rep-105">the frames</a>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Example</th>
+<th>Drifts?</th>
+<th>Needs a map?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Counting motion</td>
+<td>dead reckoning, KISS-ICP</td>
+<td>yes, slowly</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Pinned to the earth</td>
+<td>GPS</td>
+<td>no, but jumpy</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Pinned to a map</td>
+<td>NDT, ICP, AMCL</td>
+<td>no</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Blending them</td>
+<td>the EKF</td>
+<td>no, if one input is pinned</td>
+<td>no</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="31-dead-reckoning-odometry">3.1 Dead reckoning (odometry)</h3>
+<p><strong>The idea:</strong> count your steps. Add up how far the wheels turned and how much the IMU
+says you turned.</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Read the wheel speed: "1.0 m/s".</li>
+<li>Read the gyro: "turning 0.1 rad/s".</li>
+<li>Every tick, move the pose forward by speed × time, turned by turn rate × time.</li>
+<li>Repeat. Small errors add up.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>smooth, never jumps</td>
+<td>drifts: in Gazebo, wheels and gyro alone drifted to 1.2 m by a tour's end</td>
+</tr>
+<tr>
+<td>works anywhere, no map, no sky</td>
+<td>wheel slip, a wrong tyre size</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>ekf_local</code> (wheels + IMU), <strong>in use</strong>. More: <a href="learn-localization.html#1-odometry-counting-your-steps">Learn: localization</a>.</p>
+<h3 id="32-the-kalman-filter-and-the-ekf">3.2 The Kalman filter and the EKF</h3>
+<p><strong>The idea:</strong> two unsure answers make one surer answer, if you weigh each by how sure it is.</p>
+<p><img alt="A Kalman filter's step: predict from the wheels, measure with the GPS, and blend; and over many steps, the EKF smooth and true between drifting odometry and jumpy GPS" src="../img/teach/kalman.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Start</strong> with a guess and how unsure you are (a bell curve).</li>
+<li><strong>Predict:</strong> move the guess by the wheels and IMU. The curve gets wider: less sure.</li>
+<li><strong>Measure:</strong> a GPS fix arrives, with its own bell curve.</li>
+<li><strong>Update:</strong> the new guess lies between the two, nearer the surer one. The curve gets
+   narrower: surer than either alone.</li>
+<li>Repeat for every reading. The <strong>EKF</strong> (extended Kalman filter) does the same for a
+   car that turns, by straightening the maths a little around the current guess.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>any sensor with a stated uncertainty</td>
+<td>only as true as its pinned input (the GPS)</td>
+</tr>
+<tr>
+<td>carries on when one sensor stops</td>
+<td>a slow drift in the GPS goes unnoticed</td>
+</tr>
+<tr>
+<td>refuses readings far off (ours: 5 sigma)</td>
+<td>wrong uncertainties give wrong blends</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> two EKFs (robot_localization): <code>ekf_local</code> and <code>ekf_global</code>, <strong>in use</strong>.</p>
+<p><img alt="Our two EKFs: ekf_local on wheels and IMU, ekf_global adding the GPS" src="../img/ekf.svg" /></p>
+<p>Numbers: <a href="stack-survey.html#3-localization-where-am-i">survey</a>. A worked example in
+numbers: <a href="learn-localization.html#4-the-kalman-filter-in-one-tiny-example">Learn: localization</a>.</p>
+<p>From: R. E. Kalman, 1960; T. Moore, D. Stouch, IAS-13, 2014 (robot_localization).</p>
+<h3 id="33-icp-iterative-closest-point">3.3 ICP: Iterative Closest Point</h3>
+<p><strong>The idea:</strong> line up two point clouds by pairing each point with its nearest partner,
+moving to close the gaps, and repeating.</p>
+<p><img alt="ICP: pair each scan point with its nearest map point, move to close the pairs, repeat until lined up" src="../img/teach/icp.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Take the new scan (orange) and the map, or the last scan (grey).</li>
+<li>Pair each scan point with the <strong>nearest</strong> map point.</li>
+<li>Find the one slide and turn that closes the pairs best.</li>
+<li>Move the scan. The pairs get better.</li>
+<li>Repeat until it stops moving. The total slide = how the car moved.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>exact when it starts close</td>
+<td>starts far off: it locks onto the wrong wall</td>
+</tr>
+<tr>
+<td>simple; no map needed (scan to scan)</td>
+<td>slower as the map grows (every point kept)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> inside KISS-ICP (below), and to merge two drives' maps. More: <a href="learn-localization.html#8-next-matching-the-lidar-to-a-map-ndt-and-icp">Learn: localization</a>.</p>
+<p>From: P. J. Besl, N. D. McKay, "A Method for Registration of 3-D Shapes", IEEE T-PAMI, 1992.</p>
+<h3 id="34-ndt-the-normal-distributions-transform">3.4 NDT: the Normal Distributions Transform</h3>
+<p>Ben wrote "normilziation". The real name is <strong>Normal Distributions Transform</strong>: each
+cube of the map keeps a <strong>normal distribution</strong> (a bell curve, a "blob") of its points.</p>
+<p><strong>The idea:</strong> turn the map's point cloud into <strong>voxels</strong> (cubes), keep one blob per cube,
+then slide each new lidar scan until its points sit inside the blobs.</p>
+<p><img alt="NDT in four steps: the map's points, cut into cubes, one blob per cube, and a scan slid into the blobs" src="../img/teach/ndt.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Map once:</strong> drive the place and keep the lidar's points.</li>
+<li><strong>Cut into cubes</strong> (voxels). Big cubes first, then smaller: big ones see far, small
+   ones are precise.</li>
+<li><strong>One blob per cube:</strong> keep only the points' centre and spread (an ellipse in 2D, an
+   ellipsoid in 3D). The map gets small and smooth.</li>
+<li><strong>A new scan arrives.</strong> The EKF's guess puts it slightly wrong.</li>
+<li><strong>Slide and turn the scan</strong> until its points land where the blobs are thickest. Each
+   step uses the blobs' slope, so it knows which way to move.</li>
+<li>The slide = the car's error. The match <strong>score</strong> says how good the fit is.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>centimetres, with no RTK GPS</td>
+<td>needs a map of every place it drives</td>
+</tr>
+<tr>
+<td><strong>GPS dropouts</strong>: it doesn't need the sky</td>
+<td><strong>it can find the wrong place</strong>: a confident match in the wrong spot (below)</td>
+</tr>
+<tr>
+<td>fast, the same for any map size</td>
+<td>places that change (parked cars, snow, building works)</td>
+</tr>
+<tr>
+<td>its score says how good the match is</td>
+<td>a scan that starts far off</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="ndts-weakness-the-right-shape-the-wrong-place">NDT's weakness: the right shape, the wrong place</h4>
+<p>Ben's point: NDT can be <strong>sure and wrong</strong>. If two places look alike to the lidar, a
+scan fits both equally well.</p>
+<p><img alt="Two ways NDT finds the wrong place: a long corridor where the scan fits anywhere along it, and two buildings alike" src="../img/teach/ndt-wrong-place.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Why it slips</th>
+<th>Our fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a long corridor or a road between parallel walls</td>
+<td>nothing tells "here" from "2 m on"</td>
+<td>the GPS and the wheels check it; ours slipped 0.25-0.4 m along a lane (about 2 % of fits)</td>
+</tr>
+<tr>
+<td>repeated buildings, rows of trees</td>
+<td>two places look the same</td>
+<td>start near the right place (GPS); place recognition (3.8)</td>
+</tr>
+<tr>
+<td>a car parked where the map had none</td>
+<td>the scan doesn't match the map</td>
+<td>maps from several drives (5.6)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>aav_ndt</code> (Rust). NDT into the EKF: <strong>challenger</strong>. NDT leads, the GPS
+checks (TODO 210): <strong>challenger</strong>: it drove every GPS fault in Ravensim, 12 of 12 legs.
+Numbers: <a href="stack-survey.html#3-localization-where-am-i">survey</a>,
+<a href="decisions-2026-11-19.html#4-where-am-i-ndt-leads-the-gps-checks">what we decided</a>.</p>
+<p>From: P. Biber, W. Straßer, IROS 2003; M. Magnusson, PhD thesis, Örebro, 2009.</p>
+<h3 id="35-amcl-monte-carlo-localization">3.5 AMCL: Monte Carlo localization</h3>
+<p>"Monte Carlo" means: <strong>use many random guesses</strong>. AMCL is Adaptive Monte Carlo Localization.</p>
+<p><strong>The idea:</strong> scatter thousands of guesses of the car's pose (<strong>particles</strong>) over a 2D
+map, keep the ones that explain what the lidar sees, and let them gather on the truth.</p>
+<p><img alt="AMCL in three steps: guesses everywhere, a few places fit the scan, then one place fits every scan" src="../img/teach/amcl.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Spread particles:</strong> each is one guess: "I'm at x, y, facing this way".</li>
+<li><strong>Move them all</strong> with the wheels and IMU, plus a little random noise.</li>
+<li><strong>Weigh them:</strong> for each particle, imagine the scan from its pose. Does it line up
+   with the map's walls? Good fit = heavy, bad fit = light.</li>
+<li><strong>Resample:</strong> draw a new set, picking heavy particles more often. Bad guesses die out;
+   good ones get copied.</li>
+<li><strong>Repeat.</strong> After a few moves, only the places that fit <strong>every</strong> scan survive.</li>
+<li><strong>KLD sampling</strong> (the "adaptive" part): use many particles while lost, few once found.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>finds the car from far off, even when lost ("kidnapped")</td>
+<td>wide open spaces give it little to match</td>
+</tr>
+<tr>
+<td>needs only a 2D map</td>
+<td>tuning matters a lot: default settings lost the car (21 m worst)</td>
+</tr>
+<tr>
+<td>holds several guesses at once</td>
+<td>less exact than NDT</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>aav_amcl_rs</code> (our Rust port of Nav2's <code>nav2_amcl</code>), <strong>challenger</strong>
+(<code>amcl:=true</code>): NDT's restart when it is lost. Tuned: 0.05-0.09 m a leg in Ravensim.
+Numbers: <a href="stack-survey.html#3-localization-where-am-i">survey</a>.</p>
+<p>From: D. Fox, W. Burgard, F. Dellaert, S. Thrun, AAAI 1999; D. Fox, IJRR 2003 (KLD);
+S. Thrun, W. Burgard, D. Fox, <em>Probabilistic Robotics</em>, 2005.</p>
+<h3 id="36-slam-making-the-map-while-you-drive">3.6 SLAM: making the map while you drive</h3>
+<p>SLAM = <strong>Simultaneous Localization And Mapping</strong>. NDT and AMCL need a map; SLAM makes it.</p>
+<p><strong>The idea:</strong> chain the scans together into a map, and when you come back somewhere you
+have been, use that to pull out the drift.</p>
+<p><img alt="SLAM's loop closure: drive a loop and the errors add up; recognise the start; the pose graph pulls the loop true" src="../img/teach/slam-loop.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Odometry:</strong> line up each scan with the last few (ICP). Each pose is a dot.</li>
+<li><strong>The pose graph:</strong> the dots, joined by lines: "pose 7 is 1.2 m ahead of pose 6".</li>
+<li><strong>Loop closure:</strong> the car is back at the start. The scans match: "pose 25 is at pose 0".
+   That adds one more line.</li>
+<li><strong>Optimise:</strong> bend every line a little, so all of them agree as well as they can. The
+   drift spreads out and the loop closes.</li>
+<li><strong>Build the map</strong> from every scan at its corrected pose.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>maps of real places, from our own drives</td>
+<td>loop closure needs features (trees, kerbs); plain walls give few</td>
+</tr>
+<tr>
+<td>about ten times sharper than maps from the EKF's poses</td>
+<td>a false loop closure bends the whole map</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>pixi run map-drive</code> (KISS-SLAM, offline, on a laptop), <strong>in use</strong> as a
+tool. In Ravensim its map was <strong>2.3 cm</strong> off the truth, against 27-33 cm from the EKF's
+poses. See <a href="maps-from-drives.html">Maps from drives</a>.</p>
+<h3 id="37-kiss-icp-and-kiss-slam">3.7 KISS-ICP and KISS-SLAM</h3>
+<p><strong>The idea:</strong> "Keep It Small and Simple": ICP done carefully, scan after scan, with few
+settings to tune.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>KISS-ICP</th>
+<th>KISS-SLAM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What</td>
+<td>lidar odometry: "how far did I move?"</td>
+<td>KISS-ICP + loop closure + a pose graph</td>
+</tr>
+<tr>
+<td>Map needed?</td>
+<td>no</td>
+<td>makes one</td>
+</tr>
+<tr>
+<td>Drift</td>
+<td>slow (0.04 m per 100 m on Gazebo's lot)</td>
+<td>pulled out by loop closures</td>
+</tr>
+<tr>
+<td>Ours</td>
+<td><code>kiss_ekf</code>, <strong>challenger</strong></td>
+<td><code>map-drive</code>, <strong>in use</strong> offline</td>
+</tr>
+</tbody>
+</table></div>
+<p>From: I. Vizzo et al., RA-L 2023; T. Guadagnino et al., IROS 2025 (both PRBonn, MIT).</p>
+<h3 id="38-place-recognition-have-i-been-here-before">3.8 Place recognition: "have I been here before?"</h3>
+<p><strong>The idea:</strong> turn one scan into a short <strong>fingerprint</strong>, so two visits to one place can
+be matched quickly, even after a long drift.</p>
+<ol>
+<li>Take a lidar scan.</li>
+<li>Squash it into a small picture or vector (the fingerprint).</li>
+<li>Compare it with the fingerprints of every place seen so far.</li>
+<li>A close match = a loop closure for SLAM, or a restart for NDT when lost.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Fingerprint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scan Context</strong> (G. Kim, A. Kim, IROS 2018)</td>
+<td>the scan as rings and wedges round the car: the highest point in each</td>
+</tr>
+<tr>
+<td><strong>OverlapNet</strong> (X. Chen et al., RSS 2020)</td>
+<td>a network that guesses how much two scans overlap</td>
+</tr>
+</tbody>
+</table></div>
+<p>Good at: finding the place after big drift. Bad at: places that look alike (the same
+weakness as NDT). <strong>In our car:</strong> <strong>studied</strong> (<a href="stack-survey.html#studied-only-localization">survey</a>).</p>
+<h3 id="39-learned-mcl">3.9 Learned MCL</h3>
+<p><strong>The idea:</strong> keep AMCL's particles, but let a <strong>neural network</strong> judge how well a scan
+fits each guess.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>What</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IR-MCL</strong> (PRBonn, 2023)</td>
+<td>AMCL with a network as its scan model</td>
+<td><strong>studied</strong>: no licence stated, so the idea only</td>
+</tr>
+<tr>
+<td><strong>Transformer MCL</strong></td>
+<td>a transformer helps the particle filter</td>
+<td><strong>studied</strong>: needs real maps to train on</td>
+</tr>
+</tbody>
+</table></div>
+<p>Our AMCL's scan model is a swappable part, so one can be tried later
+(<a href="decisions-2026-11-19.html#learned-localization-studied-not-built">what we decided</a>).</p>
+</section>
+<section class="card"><h2 id="4-perception-whats-around-me">4. Perception: "what's around me?"</h2>
+<p>The full story: <a href="perception.html">Perception</a>, <a href="learn-lidar.html">Learn: lidar</a>, <a href="kerbs.html">Kerbs</a>.</p>
+<pre class="highlight"><code class="language-text"> lidar points ─▶ remove the ground ─▶ cubes (voxels) ─▶ groups (clusters) ─▶ tracked things
+ camera picture ─▶ detector (boxes + names) ──────────────────────▲ names them (fusion)
+ camera picture ─▶ lane finder ─▶ the lane's lines</code></pre>
+<h3 id="41-ground-removal-voxels-and-clustering">4.1 Ground removal, voxels and clustering</h3>
+<p><strong>The idea:</strong> throw away the road, chop what's left into cubes, and group touching cubes
+into things.</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Find the ground:</strong> fit the road's surface near the car (it may tilt or slope).</li>
+<li><strong>Remove it:</strong> what is more than a few centimetres above is "something".</li>
+<li><strong>Voxels:</strong> cut the rest into small cubes (ours: 0.25 m) and keep which are full.</li>
+<li><strong>Cluster:</strong> join full cubes that touch. Each group is one thing. <strong>DBSCAN</strong> does the
+   same for scattered points: a point with enough neighbours close by starts a group.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>finds anything solid, trained on nothing</td>
+<td>doesn't know <strong>what</strong> a thing is</td>
+</tr>
+<tr>
+<td>exact distances</td>
+<td>two things touching become one; kerbs hide near the ground</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>aav_voxels</code> (cubes), the kerb step finder (<strong>default</strong>), radar DBSCAN
+(<strong>in use</strong>). Ground finding was learned from Patchwork++ (S. Lee et al., IROS 2022).
+Numbers: <a href="stack-survey.html#4-perception-what-is-around-me">survey</a>.</p>
+<h3 id="42-object-detection-yolo-and-detr">4.2 Object detection: YOLO and DETR</h3>
+<p><strong>The idea:</strong> a neural network looks at a picture and draws a box round each thing it
+knows, with a name: "person, 92 %".</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>The picture goes into a network trained on many labelled pictures.</li>
+<li><strong>YOLO</strong> ("You Only Look Once"): one pass predicts boxes on a grid, then removes
+   duplicates.</li>
+<li><strong>DETR</strong> (DEtection TRansformer): a transformer predicts a short list of boxes
+   directly, with no duplicate-removal step. <strong>RF-DETR</strong> is a fast, small DETR.</li>
+<li>Out come boxes, names and scores.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>names things: person, car, stop sign</td>
+<td>needs training data; misses what it never saw</td>
+</tr>
+<tr>
+<td>cheap cameras</td>
+<td>guesses distance badly from one picture</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> RF-DETR Nano, <strong>default</strong>: saw the stop sign from 20 m, YOLO11n from
+10 m. YOLO: <strong>challenger</strong>.</p>
+<p>From: J. Redmon et al., CVPR 2016 (YOLO); N. Carion et al., ECCV 2020 (DETR); RF-DETR (Roboflow).</p>
+<h3 id="43-tracking-kalman-per-thing-and-sort">4.3 Tracking: Kalman per thing, and SORT</h3>
+<p><strong>The idea:</strong> give each thing an id, and guess where it goes next, so one frame's person
+is the next frame's same person.</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Each tracked thing has its own small <strong>Kalman filter</strong>: position and speed.</li>
+<li><strong>Predict</strong> where each one will be in the next frame.</li>
+<li><strong>Match</strong> the new detections to the predictions (nearest, or the most overlap).</li>
+<li><strong>Update</strong> the matched ones; start new tracks; drop tracks unseen for a while.</li>
+</ol>
+<p><strong>SORT</strong> (Simple Online and Realtime Tracking) is exactly this, with boxes: a Kalman
+filter each, matched by overlap (A. Bewley et al., ICIP 2016).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>speeds and ids: "that person is walking left"</td>
+<td>two people crossing can swap ids</td>
+</tr>
+<tr>
+<td>simple and cheap</td>
+<td>one motion model for everything</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> the things tracker (<code>aav_things_rs</code>), <strong>default</strong>, after AB3DMOT
+(X. Weng et al., IROS 2020).</p>
+<h3 id="44-lane-finding">4.4 Lane finding</h3>
+<p><strong>The idea:</strong> find the painted lines in the picture and fit a curve to each.</p>
+<ol>
+<li><strong>Bird's-eye warp:</strong> stretch the picture as if seen from above.</li>
+<li><strong>Paint mask:</strong> keep the white and yellow pixels.</li>
+<li><strong>Sliding windows:</strong> climb up the picture, following each line.</li>
+<li><strong>Fit a curve</strong> (a polynomial) to each line's pixels.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no training; fast</td>
+<td>worn paint, snow, shadows, glare</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>aav_lane_finder_rs</code>, <strong>default</strong>. The lane pose uses it to cut the
+sideways error.</p>
+<h3 id="45-camera-lidar-fusion">4.5 Camera-lidar fusion</h3>
+<p><strong>The idea:</strong> the <strong>lidar says where</strong>, the <strong>camera says what</strong>.</p>
+<ol>
+<li>Calibrate where the camera sits on the car.</li>
+<li>Project each lidar thing's box into the picture.</li>
+<li>Where it overlaps a detector box, give the thing that name.</li>
+</ol>
+<p>Good at: exact distances with names. Bad at: needs exact calibration; one sensor late.
+<strong>In our car:</strong> in the things tracker, after Autoware's <code>roi_cluster_fusion</code> idea,
+<strong>default</strong>. Learned all-in-one fusion (BEVFusion): <strong>studied</strong>.</p>
+</section>
+<section class="card"><h2 id="5-maps-what-the-car-remembers">5. Maps: what the car remembers</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Map</th>
+<th>What each piece holds</th>
+<th>Made by</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Occupancy grid</strong></td>
+<td>a square: free, full or unknown</td>
+<td>SLAM, or drawn</td>
+<td>AMCL, planners</td>
+</tr>
+<tr>
+<td><strong>NDT map</strong></td>
+<td>a cube's blob</td>
+<td>SLAM from drives</td>
+<td>NDT</td>
+</tr>
+<tr>
+<td><strong>Lane map</strong> (Lanelet2)</td>
+<td>lanes, their edges, neighbours, stop lines</td>
+<td>drawn or imported</td>
+<td>the lane path, the lane pose</td>
+</tr>
+<tr>
+<td><strong>Street map</strong></td>
+<td>roads and names</td>
+<td>OpenStreetMap</td>
+<td>routes</td>
+</tr>
+<tr>
+<td><strong>Costmap</strong></td>
+<td>a square's cost, 0 to 254</td>
+<td>the sensors, live</td>
+<td>the planners, MPPI</td>
+</tr>
+</tbody>
+</table></div>
+<p>More: <a href="maps-and-position.html">Maps and position</a>, <a href="costmaps.html">Costmaps</a>.</p>
+<h3 id="51-occupancy-grids">5.1 Occupancy grids</h3>
+<p><strong>The idea:</strong> chop the ground into squares (our AMCL's map: 5 cm) and mark each free,
+full or unknown. Each lidar beam marks the squares it passed through as free and the one
+it hit as full. Good at: simple, fast to search. Bad at: flat (no height); big for big places.</p>
+<h3 id="52-ndt-maps">5.2 NDT maps</h3>
+<p>The blobs of 3.4, saved. Small and smooth. Ours are built by KISS-SLAM from our own
+drives (<a href="maps-from-drives.html">Maps from drives</a>).</p>
+<h3 id="53-lane-maps-lanelet2">5.3 Lane maps: Lanelet2</h3>
+<p><strong>The idea:</strong> the road as small lane pieces (<strong>lanelets</strong>), each with a left edge, a
+right edge, the pieces it leads to, and its rules (one way, a stop line).</p>
+<p>Good at: planning by lanes, like a driver. Bad at: someone must draw it.
+<strong>In our car:</strong> our own Rust reader (<code>lanelet-map</code>); <code>path:=lane_lanelet2</code>, <strong>challenger</strong>.
+From: F. Poggenhans et al., ITSC 2018.</p>
+<h3 id="54-costmaps-layers-and-inflation">5.4 Costmaps: layers and inflation</h3>
+<p><strong>The idea:</strong> a grid where each square's number says <strong>how bad it is to drive there</strong>.</p>
+<p><img alt="A costmap: lethal squares where things are, an orange ring the car would touch, and inflation fading away; and the cost against distance" src="../img/teach/costmap.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Layers</strong>, each drawing into the grid:<ul>
+<li>the <strong>static</strong> layer: the saved map's walls;</li>
+<li>the <strong>obstacle</strong> layer: what the lidar sees now;</li>
+<li>our extra layers: kerbs, lanes.</li>
+</ul>
+</li>
+<li><strong>Lethal</strong> (254): something is there.</li>
+<li><strong>Inscribed</strong> (253): the car's centre here means its body touches it.</li>
+<li><strong>Inflation:</strong> the cost fades with distance: "close is risky, far is fine". So paths
+   keep a margin.</li>
+<li>The planners and MPPI add up the costs along each path and pick low ones.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>any sensor can draw into it</td>
+<td>a grid: a lane is only what the layers draw</td>
+</tr>
+<tr>
+<td>the margin comes for free</td>
+<td>too much inflation closes narrow gaps</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>aav_costmap</code> (Rust, from Nav2), <strong>default</strong>, in 64 m chunks.
+Numbers: <a href="stack-survey.html#5-planning-which-way-and-how-fast">survey</a>.</p>
+<h3 id="55-map-chunks">5.5 Map chunks</h3>
+<p><strong>The idea:</strong> keep only the map near the car in memory, in tiles (ours: 64 m), and load
+the next ones as it drives. Good at: big maps on a small computer (memory 474 → 145 MB).
+Bad at: a seam between tiles must match. From: Autoware's map loading idea.</p>
+<h3 id="56-removing-moving-things-across-several-drives">5.6 Removing moving things across several drives</h3>
+<p><strong>The idea:</strong> a parked car or a walker is in <strong>one</strong> drive, not in all. Keep only what
+every drive saw.</p>
+<p><img alt="Merging two drives: a parked car in drive 1, a person in drive 2; the merged map keeps only what both saw" src="../img/teach/multi-drive.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Drive the same route twice or more, on different days.</li>
+<li>Build a map from each drive (SLAM).</li>
+<li>Line the maps up (ICP).</li>
+<li>Keep each point only if the other drive has a point near it (ours: within 25 cm).</li>
+<li>A person checks the result in the map editor (TODO 251).</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no network needed; parked cars and walkers drop out</td>
+<td>anything only one drive saw drops out too: drive the same route</td>
+</tr>
+<tr>
+<td></td>
+<td>a car parked in the same spot every time stays</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>pixi run map-drive --merge</code>, <strong>in use</strong> for two drives; more than two
+is next. Learned methods (MapMOS, PRBonn): <strong>studied</strong>.</p>
+</section>
+<section class="card"><h2 id="6-planning">6. Planning</h2>
+<h3 id="61-route-planning-which-streets">6.1 Route planning: which streets?</h3>
+<p>The road network is a <strong>graph</strong>: crossings are dots, roads are lines, each line has a
+cost (length, or time).</p>
+<h4 id="dijkstra-and-a">Dijkstra and A*</h4>
+<p><strong>The idea:</strong> grow outwards from the start, always from the cheapest place found so far,
+until you reach the goal. <strong>A*</strong> adds a guess of the distance left, so it leans toward
+the goal and looks at far fewer places.</p>
+<p><img alt="Dijkstra spreads evenly and looks at 315 squares; A* leans toward the goal and looks at 145, with a path of the same length" src="../img/teach/astar.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Put the start in a list, with cost 0.</li>
+<li>Take the place with the lowest <strong>score</strong> from the list.<ul>
+<li>Dijkstra: score = cost so far.</li>
+<li>A*: score = cost so far + a guess of the cost left (straight-line distance).</li>
+</ul>
+</li>
+<li>Look at its neighbours. If this way to one is cheaper, note it and add it to the list.</li>
+<li>Repeat until the goal comes out of the list.</li>
+<li>Walk back from the goal to read the path.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>always finds the shortest way</td>
+<td>a grid ignores the car's turning circle</td>
+</tr>
+<tr>
+<td>A*: fast, if the guess never overestimates</td>
+<td>big maps need many squares</td>
+</tr>
+</tbody>
+</table></div>
+<p>The same search works on a road graph (route), on a grid (path), and on car moves
+(Hybrid-A*, the lattice).</p>
+<p><strong>In our car:</strong> Dijkstra on the campus road graph (<code>aav_routes</code>), <strong>in use</strong>. From:
+E. W. Dijkstra, 1959; P. Hart, N. Nilsson, B. Raphael, 1968.</p>
+<h4 id="openstreetmap-and-valhalla">OpenStreetMap and Valhalla</h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OpenStreetMap</strong></td>
+<td>the world's free street map, drawn by volunteers (ODbL)</td>
+</tr>
+<tr>
+<td><strong>Valhalla</strong></td>
+<td>a router: A* style search on OpenStreetMap's roads, offline</td>
+</tr>
+</tbody>
+</table></div>
+<p>Ask "drive to Lansdowne", get waypoints every 10-30 m. Good at: real streets, offline.
+Bad at: streets, not lanes. <strong>In our car:</strong> Valhalla, <strong>in use</strong>, on request
+(<a href="routes.html">Routes</a>).</p>
+<h3 id="62-path-planning-a-line-the-car-can-drive">6.2 Path planning: a line the car can drive</h3>
+<p>A car can't turn on the spot. Our tightest turn is about <strong>2.9 m</strong> radius
+(wheelbase 1.56 m, steering at most 0.5 rad). A path planner must respect that.</p>
+<h4 id="a-on-a-grid">A* on a grid</h4>
+<p>As in 6.1, on the costmap's squares. Good at: fast, simple. Bad at: <strong>ignores the
+turning circle</strong>: in Gazebo, Smac 2D planned a U-turn as a straight line back.
+<strong>In our car:</strong> Smac 2D, NavFn, Theta*: <strong>retired</strong> with Nav2 on 17 Nov.</p>
+<h4 id="hybrid-a">Hybrid-A*</h4>
+<p><strong>The idea:</strong> A*, but each step is a <strong>real car move</strong> (full left, straight, full right),
+so every path can be driven.</p>
+<p><img alt="Hybrid-A*: from the start, three car moves at each step; faint arcs are every move tried, orange is the path found to the goal" src="../img/teach/hybrid-astar.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>From the car's pose, try three short arcs: full left, straight, full right (and the
+   same in reverse, if allowed).</li>
+<li>Throw away arcs that hit something on the costmap.</li>
+<li>Score each end as A* does: cost so far + a guess of the cost left.</li>
+<li>Keep one pose per small cell and heading, so it doesn't explode.</li>
+<li>Near the goal, try a <strong>Reeds-Shepp</strong> curve straight to it (below); if it's free, done.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>smooth paths in open space, parking lots</td>
+<td>slower than a grid</td>
+</tr>
+<tr>
+<td>reversing</td>
+<td>knows no lanes: on roads it took the wrong side (74 % over the centre line)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>path:=hybrid_rs</code> (ported from Nav2's Smac Hybrid), <strong>challenger</strong>.
+From: D. Dolgov, S. Thrun, M. Montemerlo, J. Diebel, IJRR 2010.</p>
+<h4 id="state-lattices">State lattices</h4>
+<p><strong>The idea:</strong> work out a <strong>list of car moves</strong> once, each ending on a grid dot and
+heading, then join them with A*.</p>
+<p><img alt="A state lattice: a ready-made list of car moves from one pose, and A* joining them dot to dot round a box" src="../img/teach/lattice.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Offline:</strong> for each heading (ours: 16), make short moves that end exactly on a grid
+   dot and heading: straight, gentle curves, sharp ones, reverse.</li>
+<li>Check each is drivable: never tighter than full lock.</li>
+<li><strong>Online:</strong> A* joins moves, end to start, round the costmap's obstacles.</li>
+<li>A smoother rounds off the joins.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fast (3-5 ms a plan in ours)</td>
+<td>only as good as its list of moves</td>
+</tr>
+<tr>
+<td>every path drivable, reversing too</td>
+<td>knows no lanes on its own</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>aav_planner</code>, <code>path:=lattice_rs</code>, <strong>car champion</strong>; the default joins
+it to the lane's centre. Our moves: <a href="controllers.html">Controllers</a>.
+From: M. Pivtoraiko, R. Knepper, A. Kelly, J. Field Robotics 2009.</p>
+<h4 id="rrt-and-rrt">RRT and RRT*</h4>
+<p><strong>The idea:</strong> grow a tree of random steps from the start until a branch reaches the goal.</p>
+<p><img alt="RRT: a tree of random steps grows from the start, round two walls, until a branch reaches the goal" src="../img/teach/rrt.svg" /></p>
+<ol>
+<li>Pick a random spot on the map (sometimes the goal itself).</li>
+<li>Find the tree's nearest point to it.</li>
+<li>Step a little toward the spot. If the step is free, add it to the tree.</li>
+<li>Repeat until a branch is near the goal.</li>
+<li><strong>RRT*</strong> also rewires nearby branches when a shorter way appears, so the path
+   improves the longer it runs.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>big, many-dimension spaces (robot arms)</td>
+<td>wiggly paths that need smoothing</td>
+</tr>
+<tr>
+<td>no grid needed</td>
+<td>random: a different path each time</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> not built; on roads a lattice suits better. From: S. M. LaValle, 1998
+(RRT); S. Karaman, E. Frazzoli, IJRR 2011 (RRT*).</p>
+<h4 id="dubins-and-reeds-shepp-curves">Dubins and Reeds-Shepp curves</h4>
+<p><strong>The idea:</strong> the shortest way between two poses for a car with a fixed turning circle
+is always a few simple pieces: <strong>turn, straight, turn</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Dubins (1957)</th>
+<th>Reeds-Shepp (1990)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Moves</td>
+<td>forward only</td>
+<td>forward <strong>and</strong> reverse</td>
+</tr>
+<tr>
+<td>Pieces</td>
+<td>3: such as left-straight-left</td>
+<td>up to 5, with cusps (stop, change direction)</td>
+</tr>
+<tr>
+<td>Used for</td>
+<td>joining poses quickly</td>
+<td>finishing Hybrid-A*, parking</td>
+</tr>
+</tbody>
+</table></div>
+<pre class="highlight"><code class="language-text"> Dubins:       ◯──────────◯         Reeds-Shepp:   forward ──▶ ╮
+             turn  straight  turn                    reverse ◀──╯ (a cusp)</code></pre>
+<p>Good at: exact and instant. Bad at: ignore obstacles (check them after); the curvature
+jumps where pieces meet. <strong>In our car:</strong> inside Hybrid-A*.</p>
+<h4 id="smoothing">Smoothing</h4>
+<p><strong>The idea:</strong> a searched path is jagged; bend it gently, keeping clear of obstacles and
+within the steering's limits.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Way</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>move each point toward its neighbours, away from obstacles</td>
+<td>Nav2's smoother; ours</td>
+</tr>
+<tr>
+<td><strong>clothoids</strong>: curvature that ramps, not jumps</td>
+<td>our smooth lattice moves (T. Fraichard, A. Scheuer, 2004)</td>
+</tr>
+<tr>
+<td>an optimisation along the lane (piecewise-jerk)</td>
+<td>Apollo's; <strong>studied</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="63-motion-planning-and-control-the-next-few-seconds">6.3 Motion planning and control: the next few seconds</h3>
+<p>These run 20 times a second. They take the path and decide <strong>the steering and the speed
+now</strong>.</p>
+<h4 id="pure-pursuit">Pure Pursuit</h4>
+<p><strong>The idea:</strong> pick a point on the path a little ahead, and steer the circle arc that
+reaches it.</p>
+<p><img alt="Pure Pursuit: a lookahead circle round the rear axle meets the path at the point ahead; the car steers the arc to it" src="../img/teach/pure-pursuit.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Draw a circle of radius <strong>lookahead</strong> (for example 2-3 m) round the rear axle.</li>
+<li>Where it meets the path: the <strong>point ahead</strong>.</li>
+<li>Measure α, the angle from the car's heading to that point.</li>
+<li>Steer: δ = atan(2 × wheelbase × sin α ÷ lookahead).</li>
+<li>Next tick, do it again.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>very simple, very stable</td>
+<td>cuts corners; a short lookahead wobbles, a long one cuts more</td>
+</tr>
+<tr>
+<td>easy to explain</td>
+<td>knows nothing of obstacles or the car's lag</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>aav_track</code>, <strong>challenger</strong>; <strong>in use</strong> in drive-to-point (A to B).
+From: R. C. Coulter, CMU, 1992.</p>
+<h4 id="stanley">Stanley</h4>
+<p><strong>The idea:</strong> steer by the heading error, plus a correction for the sideways error at the
+front axle that is strong at low speed and gentle at high speed.</p>
+<p>δ = heading error + atan(k × sideways error ÷ speed).</p>
+<p>Good at: close tracking, no lookahead to tune. Bad at: noisy at very low speed; forward only.
+<strong>In our car:</strong> <code>aav_track</code>, <strong>challenger</strong>. From: S. Thrun et al., J. Field Robotics 2006
+(the DARPA Grand Challenge winner).</p>
+<h4 id="pid">PID</h4>
+<p><strong>The idea:</strong> push in proportion to the error (<strong>P</strong>), to the error that has built up
+(<strong>I</strong>), and to how fast the error changes (<strong>D</strong>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Term</th>
+<th>By feel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P</td>
+<td>"I'm 0.5 m/s too slow: press harder"</td>
+</tr>
+<tr>
+<td>I</td>
+<td>"I've been slow for a while: press harder still" (beats a hill)</td>
+</tr>
+<tr>
+<td>D</td>
+<td>"I'm catching up fast: ease off" (stops overshoot)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Good at: everywhere, cheap, no model. Bad at: no look ahead; tuning by hand.
+<strong>In our car:</strong> the speed loop (PI), the steering motor's own PID.
+<a href="learn-control.html#2-pid-by-feel">Learn: control</a> teaches it with our numbers.</p>
+<h4 id="mpc-model-predictive-control">MPC: Model Predictive Control</h4>
+<p><strong>The idea:</strong> with a model of the car, plan the best steering for the next few seconds,
+<strong>send only the first step</strong>, then plan again.</p>
+<p><img alt="MPC: the plan over a 2.4 s horizon, step by step, toward the path; only the first step is sent, then the window slides on" src="../img/teach/mpc.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Look at where the car is, and the path for the next N steps (the <strong>horizon</strong>).</li>
+<li>Use the car's model to predict where each choice of steering takes it.</li>
+<li>Solve a small optimisation (a <strong>QP</strong>): stay close to the path, steer gently, respect
+   the limits.</li>
+<li>Send only the <strong>first</strong> step.</li>
+<li>Next tick, slide the window on and solve again (<strong>receding horizon</strong>).</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>closest to the path; knows the limits and the lag</td>
+<td>needs a good model</td>
+</tr>
+<tr>
+<td>plans ahead for bends</td>
+<td>ours sways and can't reverse yet (TODO 213)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>mpc_lag_rs</code>, <strong>challenger</strong>: followed 2-7 times closer than MPPI, but
+swayed more. Numbers: <a href="stack-survey.html#5-planning-which-way-and-how-fast">survey</a>.</p>
+<h4 id="mppi-model-predictive-path-integral">MPPI: Model Predictive Path Integral</h4>
+<p><strong>The idea:</strong> try <strong>thousands of random futures</strong> through a model of the car, score each,
+and send the <strong>weighted average</strong> of the good ones.</p>
+<p><img alt="MPPI: hundreds of sampled futures coloured by cost, darker cheaper; their weighted average follows the path round something in the way" src="../img/teach/mppi.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Start from last tick's plan of steering and speed.</li>
+<li>Add random wobbles to it: thousands of slightly different plans (ours: 2000, 2.8 s long).</li>
+<li>Run each through the car's model, lag included: a possible future.</li>
+<li><strong>Score</strong> each: far from the path, near obstacles on the costmap, jerky steering = costly.</li>
+<li><strong>Weigh:</strong> cheap futures count a lot, costly ones almost nothing.</li>
+<li>The <strong>weighted average</strong> is the new plan. Send its first step; repeat.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>avoids obstacles and reverses, with no special case</td>
+<td>heavy: thousands of futures each tick</td>
+</tr>
+<tr>
+<td>any cost, any model, no derivatives</td>
+<td>many settings; random, so a little noisy</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>aav_mppi_lag</code> (ported from Nav2, with our lag model),
+<code>steer:=mppi_lag_calm</code>: <strong>default</strong>. Every leg of every tour in the league; it predicts
+the car 70 times better with the lag. Numbers:
+<a href="stack-survey.html#5-planning-which-way-and-how-fast">survey</a>, <a href="mppi-lag.html">MPPI with lag</a>.
+From: G. Williams, A. Aldrich, E. Theodorou, J. Guidance, Control, and Dynamics 2017.</p>
+<h4 id="the-diffusion-planner-learned">The diffusion planner (learned)</h4>
+<p><strong>The idea:</strong> a small network, trained on our planners' paths, <strong>draws</strong> paths from noise;
+a guard checks every one before use.</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Train:</strong> show it thousands of good paths (from our lattice and Hybrid-A*) on many maps.</li>
+<li><strong>Run:</strong> start from random noise; the network removes the noise, step by step, into
+   a path (diffusion; ours uses <strong>flow matching</strong>, a faster cousin).</li>
+<li>Draw 16 paths at once.</li>
+<li><strong>The guard:</strong> each path must pass eight checks (no collision, never tighter than full lock...).</li>
+<li>Use the cheapest that passes; if none, use the lattice's path.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>quick tours (171-175 s against 180-185 s, 8 Nov)</td>
+<td>copies its teachers: at best it equals them</td>
+</tr>
+<tr>
+<td>learns what is hard to write as rules</td>
+<td>needs a GPU on the car</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <code>planner:=diffusion</code>, <strong>challenger</strong>, a <strong>path</strong> planner, not a rival to
+MPPI (<a href="decisions-2026-11-19.html#mppi-and-diffusion-are-not-rivals">what we decided</a>).</p>
+<h4 id="which-follower-at-a-glance">Which follower, at a glance</h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Pure Pursuit</th>
+<th>Stanley</th>
+<th>MPC</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Needs a car model</td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Avoids obstacles itself</td>
+<td>no</td>
+<td>no</td>
+<td>not ours</td>
+<td><strong>yes</strong></td>
+</tr>
+<tr>
+<td>Reverses</td>
+<td>no (ours)</td>
+<td>no</td>
+<td>not yet</td>
+<td><strong>yes</strong></td>
+</tr>
+<tr>
+<td>CPU</td>
+<td>tiny</td>
+<td>tiny</td>
+<td>small</td>
+<td>big</td>
+</tr>
+<tr>
+<td>Ours</td>
+<td>challenger</td>
+<td>challenger</td>
+<td>challenger</td>
+<td><strong>default</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Behaviour, the rules of the road above these planners, has its own section next:
+<a href="#7-behaviour-deciding-what-to-do">7. Behaviour</a>.</p>
+</section>
+<section class="card"><h2 id="7-behaviour-deciding-what-to-do">7. Behaviour: deciding what to do</h2>
+<p>Ben, 19 Nov: "Behaviour might be good too."</p>
+<p>The planners answer "<strong>how</strong> do I get there?". Behaviour answers "<strong>what</strong> should I do
+now?": keep going, slow for a stop sign, wait for a person, go again.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>The question</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#71-where-behaviour-sits">7.1 Where it sits</a></td>
+<td>between which parts?</td>
+</tr>
+<tr>
+<td><a href="#72-finite-state-machines">7.2 State machines</a></td>
+<td>which mode am I in?</td>
+</tr>
+<tr>
+<td><a href="#73-hierarchical-state-machines">7.3 Hierarchical state machines</a></td>
+<td>modes inside modes?</td>
+</tr>
+<tr>
+<td><a href="#74-behaviour-trees">7.4 Behaviour trees</a></td>
+<td>which small task now?</td>
+</tr>
+<tr>
+<td><a href="#75-rule-based-traffic-logic">7.5 Traffic rules</a></td>
+<td>stop lines, signs, crosswalks, right of way</td>
+</tr>
+<tr>
+<td><a href="#76-speed-planning-round-obstacles-approach-follow-stop">7.6 Speed round obstacles</a></td>
+<td>approach, follow, stop; no flip-flopping</td>
+</tr>
+<tr>
+<td><a href="#77-prediction-aware-decisions-gaps-and-yielding">7.7 Prediction-aware decisions</a></td>
+<td>is that gap big enough?</td>
+</tr>
+<tr>
+<td><a href="#78-decisions-under-uncertainty-pomdps-and-games">7.8 Under uncertainty</a></td>
+<td>what if I'm not sure what they'll do?</td>
+</tr>
+<tr>
+<td><a href="#79-learned-behaviour-imitation-and-reinforcement">7.9 Learned behaviour</a></td>
+<td>can a network learn the rules?</td>
+</tr>
+<tr>
+<td><a href="#710-our-behaviour-planner-aav_behaviour_rs">7.10 Ours</a></td>
+<td>what our car really does</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="71-where-behaviour-sits">7.1 Where behaviour sits</h3>
+<p><strong>The idea:</strong> behaviour sits <strong>between the route and the motion planner</strong>. The route says
+which streets; behaviour picks the manoeuvre; the motion planner draws the line and the speed.</p>
+<p><img alt="Where behaviour sits: route, behaviour, motion planner, control; in our car, the path, then behaviour writes the road ahead, and ego holds every follower under it" src="../img/teach/behaviour-place.svg" /></p>
+<ol>
+<li>The <strong>route</strong> gives the streets and lanes to the goal.</li>
+<li><strong>Behaviour</strong> looks at what perception sees (people, cars, signs, stop lines).</li>
+<li>It picks <strong>what to do</strong>: follow the lane, slow, stop, yield, wait, go.</li>
+<li>It hands the <strong>motion planner</strong> a goal for the next seconds: a stop point, a speed limit.</li>
+<li>The motion planner and control do the rest.</li>
+</ol>
+<p><strong>In our car</strong> the order is slightly different: our path planner draws <code>/plan</code> first;
+the behaviour planner reads it and writes <strong>the road ahead</strong> (<code>/world/road_ahead</code>): the
+plan's next 40 m, its stops and its speed limits. Ego holds every follower under it
+(<a href="../designs/2026-11-14_the-whole-car.md#the-road-ahead">the whole car</a>). <strong>It caps the
+speed; it never steers.</strong></p>
+<h3 id="72-finite-state-machines">7.2 Finite state machines</h3>
+<p><strong>The idea:</strong> a short list of <strong>states</strong> (modes), and the <strong>events</strong> that move the car from
+one to the next.</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Write down the states: for example DRIVE, APPROACH, STOPPED, WAIT, GO.</li>
+<li>For each state, write what the car does in it (its speed cap, say).</li>
+<li>For each state, write the events that leave it, and where they go ("stop sign ahead": APPROACH).</li>
+<li>Each tick, check the current state's events; take the first that is true.</li>
+<li>Nothing else can happen: every path through the machine is on paper.</li>
+</ol>
+<p>Our states and every arrow between them are in <a href="#710-our-behaviour-planner-aav_behaviour_rs">7.10</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>simple; every state and arrow can be tested</td>
+<td>grows messy with many rules: arrows everywhere</td>
+</tr>
+<tr>
+<td>easy to explain and to show on a screen</td>
+<td>every new rule touches many states</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> the behaviour planner (<code>aav_behaviour_rs</code>), <strong>default</strong> in <code>stack:=ours</code>;
+the navigator (<code>aav_navigator</code>: plan, follow, replan, recover), <strong>default</strong>. Both are
+state machines. The DARPA Urban Challenge cars (2007) drove on state machines too.</p>
+<h3 id="73-hierarchical-state-machines">7.3 Hierarchical state machines</h3>
+<p><strong>The idea:</strong> states <strong>inside</strong> states, so a big mode (ON THE ROAD) holds small ones
+(FOLLOW LANE, STOP AT LINE), and a rule written once on the big one holds for all of them.</p>
+<pre class="highlight"><code class="language-text"> ┌ ON THE ROAD ───────────────────────────────┐        ┌ PARKING ──────────┐
+ │  FOLLOW LANE ─▶ APPROACH LINE ─▶ STOP ─▶ GO │ ─────▶ │  FIND ─▶ PARK     │
+ └──────────────── e-stop: from any inner state ─▶ SAFE STOP ◀──────────────┘</code></pre>
+<ol>
+<li>Group states that belong together into a <strong>parent</strong> state.</li>
+<li>Rules that apply to the whole group go on the parent, once ("e-stop: SAFE STOP").</li>
+<li>Inside, the small machine runs as before.</li>
+<li>Leaving the parent leaves whichever inner state was running.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>far fewer arrows than one flat machine</td>
+<td>more to learn; tools help (statecharts, D. Harel, 1987)</td>
+</tr>
+<tr>
+<td>each level can be tested alone</td>
+<td>deep nests hide where the car really is</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <strong>studied</strong>. Ours is flat, but each state carries a <strong>reason</strong>
+(<code>APPROACH(obstacle)</code>, <code>WAIT(moving)</code>), and "from any state" rules (the e-stop, an aborted
+goal, something moving near) sit above it: a small step toward a hierarchy.</p>
+<h3 id="74-behaviour-trees">7.4 Behaviour trees</h3>
+<p><strong>The idea:</strong> a tree of small tasks, <strong>ticked</strong> from the top many times a second; each
+returns <em>success</em>, <em>failure</em> or <em>running</em>.</p>
+<p><img alt="A behaviour tree: Nav2's navigate-to-pose tree as we ran it for a car: a recovery node over plan-and-follow and the fixes; plan at most once a second, keep a good path; fixes in turn: clear costmaps, wait 5 s, back up 1 m" src="../img/teach/behaviour-tree.svg" /></p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Leaves</strong> do the work: an <strong>action</strong> ("ComputePathToPose") or a <strong>condition</strong> ("is the path still valid?").</li>
+<li><strong>Sequence</strong> (→): do the children in order; stop at the first failure.</li>
+<li><strong>Fallback</strong> (?): try the children in order; stop at the first success.</li>
+<li><strong>Decorators</strong> wrap one child: "at most once a second", "retry 6 times".</li>
+<li>Each tick starts at the root and walks down to what is running.</li>
+</ol>
+<p><strong>Nav2's <code>bt_navigator</code>, as it was:</strong> our trees were Nav2's
+<code>navigate_to_pose_w_replanning_and_recovery.xml</code> (Jazzy 1.3.13), changed for a car:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What it did</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Recovery, 6 tries</td>
+<td>if plan-and-follow fails, run one fix, try again</td>
+</tr>
+<tr>
+<td>plan at most 1 Hz, but keep a good path</td>
+<td>keep the path while it still ends at the goal, is valid and under 10 s old (20 s within 8 m of the goal); else plan again (TODO 149, TODO 17)</td>
+</tr>
+<tr>
+<td>FollowPath</td>
+<td>the controller (MPPI)</td>
+</tr>
+<tr>
+<td>the fixes, in turn</td>
+<td>clear both costmaps; wait 5 s; back up 1 m at 0.25 m/s (only with reversing)</td>
+</tr>
+<tr>
+<td><strong>no Spin</strong></td>
+<td>a car can't turn on the spot</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>big behaviours from small, reusable parts</td>
+<td>harder to follow than a short state machine</td>
+</tr>
+<tr>
+<td>easy to add a new fix or check</td>
+<td>"what state is it in?" has no one answer</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <strong>retired</strong> with Nav2 (17 Nov). Our navigator (<code>aav_navigator</code>) is one
+state machine that does the same steps, and drove the same in the league
+(<a href="own-navigator.html">our navigator</a>). From: Nav2 (Apache-2.0), BehaviorTree.CPP.</p>
+<h3 id="75-rule-based-traffic-logic">7.5 Rule-based traffic logic</h3>
+<p><strong>The idea:</strong> each traffic rule (a stop line, a stop sign, a crosswalk, who goes first)
+is its own small module. Each one asks for a stop or a slower speed; the <strong>lowest wins</strong>.</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>The map and perception say what is ahead: a stop line in 20 m, a crosswalk, a junction.</li>
+<li>Each rule's module looks at its own thing: "a stop sign: stop at the line, stand, then go".</li>
+<li>Each module adds a <strong>stop point</strong> or a <strong>speed limit</strong> to the path ahead.</li>
+<li>The strictest one wins: the car stops at the nearest stop that applies.</li>
+<li>When a rule is satisfied (stood 2 s, the crosswalk is clear), its module lets go.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>What it asks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Stop line, stop sign</strong></td>
+<td>stop with the bumper at the line, stand, then go</td>
+</tr>
+<tr>
+<td><strong>Crosswalk</strong></td>
+<td>slow; stop if a person is on it or walking to it</td>
+</tr>
+<tr>
+<td><strong>Right of way</strong></td>
+<td>at a junction, who came first, or who is on the main road, goes first</td>
+</tr>
+<tr>
+<td><strong>Traffic light</strong></td>
+<td>stop on red or amber if there's room; go on green</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>How the big stacks do it</strong> (in general terms):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stack</th>
+<th>Behaviour is built as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Apollo</strong> (Baidu, Apache-2.0)</td>
+<td><strong>scenarios</strong> (lane follow, stop sign, traffic light, pull over...), each split into <strong>stages</strong> (approach, stop, creep, cross). A scenario manager picks one; its stages run in turn</td>
+</tr>
+<tr>
+<td><strong>Autoware</strong> (Apache-2.0)</td>
+<td>the <strong>behaviour path planner</strong> (modules that change the <em>line</em>: lane change, going round, pulling over) and the <strong>behaviour velocity planner</strong> (modules that change the <em>speed</em>: stop line, crosswalk, intersection, traffic light). Each module adds its own stop or slow-down</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>each rule alone, tested alone; matches the highway code</td>
+<td>a module per rule: many modules</td>
+</tr>
+<tr>
+<td>easy to say why the car stopped</td>
+<td>rules that clash need an order</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> stop signs, <strong>in use</strong> (a safety lock: the camera sees the sign, and the
+watcher's lock holds the car 4 s at 4.7 m, then ignores signs 10 s); stop lines from the
+route's Lanelet2 map (stand 2 s, then go; TODO 220), <strong>challenger</strong> with Lanelet2 routing.
+Crosswalks, traffic lights and right of way: <strong>not built</strong>. Ours is Autoware's shape in
+small: each rule adds a stop to the road ahead, and the lowest cap binds.</p>
+<h3 id="76-speed-planning-round-obstacles-approach-follow-stop">7.6 Speed planning round obstacles: approach, follow, stop</h3>
+<p><strong>The idea:</strong> for each thing ahead, pick the <strong>speed</strong> that lets the car stop (or keep a
+safe gap) in the room left, and <strong>don't flip-flop</strong> when the thing flickers in and out.</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Approach:</strong> find the room left to the thing (or the stop line), less a margin.</li>
+<li><strong>Stop:</strong> the speed cap is the fastest speed that can still stop in that room (our
+   stopping law, <code>v_cap(left)</code>).</li>
+<li><strong>Follow:</strong> if the thing moves the same way, keep a gap that grows with speed instead of
+   stopping (the car-following idea; for example the <strong>IDM</strong>, M. Treiber et al., 2000).</li>
+<li><strong>Hysteresis:</strong> slow down <strong>at once</strong>, but speed up again only once the thing has
+   <strong>stayed gone</strong> a while.</li>
+</ol>
+<h4 id="hysteresis-why-the-hold">Hysteresis: why the hold</h4>
+<p>A person at the lane's edge drops <strong>in and out</strong> of the lane, tick by tick. Without a
+hold, each drop out lets the cap rise, and each drop in brings it down: the car speeds up
+and slows again, over and over.</p>
+<p><img alt="Hysteresis, a sketch: a person flickering in and out of the lane. Without the hold the cap goes APPROACH &gt; GO &gt; DRIVE four times; with release_hold 1 s it stays in APPROACH until the person has really gone" src="../img/teach/behaviour-hysteresis.svg" /></p>
+<p>What we found (TODO 189, 15 Nov, <code>sim-check --moving</code>): <strong>one person crossing flipped the
+behaviour <code>APPROACH(obstacle) &gt; GO &gt; DRIVE</code> four times</strong>. The fix is a <strong>1 s
+<code>release_hold</code></strong>: an obstacle must stay gone 1 s before APPROACH lets go of it, keeping its
+cap meanwhile. <strong>Slowing is never held.</strong> Tested (a flickering obstacle stays in
+APPROACH); the simulator re-run of <code>--moving</code> is still to do.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a stop the car can really make, at any speed</td>
+<td>the stopping law's numbers are guesses until the car tests</td>
+</tr>
+<tr>
+<td>the hold stops the speed hunting</td>
+<td>the hold makes the car a little slower to go again</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> approach and stop with the stopping law, and the 1 s hold: <strong>default</strong>
+in <code>stack:=ours</code>. Following a moving car at a gap: <strong>not built</strong>; ours waits for anything
+moving (below). <a href="stopping.html">How the car stops</a>.</p>
+<h3 id="77-prediction-aware-decisions-gaps-and-yielding">7.7 Prediction-aware decisions: gaps and yielding</h3>
+<p><strong>The idea:</strong> decide from where things <strong>will be</strong>, not only where they are: "will that
+person be in my lane when I get there?", "is that gap in the traffic big enough?".</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Predict</strong> each thing a few seconds ahead (simplest: it keeps its speed and heading).</li>
+<li><strong>Predict</strong> the car along its own path, at its speed.</li>
+<li>Do the two <strong>meet</strong>, in space and time, with some slack?</li>
+<li><strong>Gap acceptance:</strong> at a junction, go only if the gap before the next car is longer than
+   the time you need to cross, plus a margin.</li>
+<li><strong>Yield</strong> if not: slow or wait, and look again next tick.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sees a person walking in before they're in the lane</td>
+<td>a prediction's error grows with time</td>
+</tr>
+<tr>
+<td>smooth: slows early instead of braking late</td>
+<td>people change their minds</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> two simple, straight-line predictions, both <strong>default</strong> with the things
+(<code>things:=true</code>, on in <code>stack:=ours</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Walking into the lane</strong> (TODO 194, <code>Crossing</code>)</td>
+<td>a thing 0.2 m/s or more toward the lane counts if, at its speed, it is in the lane before the car gets there, plus 2 s, within 6 s. Before, a person crossing was seen about 1 m from the bumper</td>
+</tr>
+<tr>
+<td><strong>Anything moving near</strong> (17 Nov)</td>
+<td>a thing moving 0.3 m/s or more within 10 m, or on the road ahead within 3 s: WAIT (moving); go 1 s after it has gone (Ben, 16 Nov: "we should likely just stop")</td>
+</tr>
+</tbody>
+</table></div>
+<p>Gap acceptance at junctions: <strong>not built</strong> (we wait for anything moving instead).</p>
+<h3 id="78-decisions-under-uncertainty-pomdps-and-games">7.8 Decisions under uncertainty: POMDPs and games</h3>
+<p><strong>The idea:</strong> the car can't see what others <strong>intend</strong>, so keep a <strong>belief</strong> (odds) over
+what they might do, and pick the action that is best on average over that belief.</p>
+<p><strong>How it works (a POMDP, in general terms)</strong></p>
+<ol>
+<li>List what you can't see: "the person will cross" or "the person will wait".</li>
+<li>Keep a <strong>belief</strong>: the odds of each, say 30 % and 70 %.</li>
+<li>After each new look, <strong>update</strong> the odds (a Bayes filter, as in localization).</li>
+<li>For each action (go, creep, wait), add up its reward over the odds, a few steps ahead.</li>
+<li>Take the best; plan again next tick.</li>
+</ol>
+<p><strong>Game-theoretic ideas:</strong> other drivers react to us too. Treat a merge or a four-way stop
+as a <strong>game</strong>: each driver picks a move knowing the other will answer. A car that creeps
+forward can make the other driver yield (D. Sadigh et al., RSS 2016).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>honest about what it doesn't know; creeps, then commits</td>
+<td>heavy: the number of futures explodes</td>
+</tr>
+<tr>
+<td>handles the polite dance at a four-way stop</td>
+<td>the odds and rewards need data to set</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <strong>studied</strong>. A POMDP: L. P. Kaelbling, M. L. Littman, A. R. Cassandra, 1998.</p>
+<h3 id="79-learned-behaviour-imitation-and-reinforcement">7.9 Learned behaviour: imitation and reinforcement</h3>
+<p><strong>The idea:</strong> instead of writing the rules, <strong>learn</strong> them: copy good drivers (imitation),
+or try, get a score, and improve (reinforcement).</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li><strong>Imitation learning:</strong> record people driving; train a network from what the car saw to
+   what the driver did (behaviour cloning; ALVINN, D. Pomerleau, 1989; ChauffeurNet,
+   M. Bansal et al., RSS 2019).</li>
+<li>Its weak spot: it never saw its own mistakes, so it doesn't know how to recover;
+   <strong>DAgger</strong> (S. Ross et al., 2011) asks the expert what to do in the states the network reaches.</li>
+<li><strong>Reinforcement learning:</strong> in a simulator, the network tries actions and gets a
+   <strong>reward</strong> (progress, comfort; a crash costs a lot).</li>
+<li>Over millions of tries, it learns which actions pay.</li>
+<li>Behind a guard: the safety locks still stop the car whatever it decides.</li>
+</ol>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>rules that are hard to write down (a polite merge)</td>
+<td>hard to explain why it did something</td>
+</tr>
+<tr>
+<td>improves with more data</td>
+<td>needs a lot of data or simulation; rewards are easy to get wrong</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <strong>studied only</strong>. Our learned part is a <strong>path</strong> planner (diffusion,
+6.3), behind a guard; behaviour stays rules we can read.</p>
+<h3 id="710-our-behaviour-planner-aav_behaviour_rs">7.10 Our behaviour planner (<code>aav_behaviour_rs</code>)</h3>
+<p><strong>The idea:</strong> six states and one stopping law: know <strong>why</strong> the car should slow, and put
+a <strong>speed cap</strong> and a <strong>stop</strong> in the road ahead. It <strong>can't stop the car</strong> itself: a lock,
+ego at the road ahead's end, or the navigator's goal check makes every final stop.</p>
+<p><img alt="Our behaviour planner's six states: DRIVE, APPROACH, STOPPED, WAIT, GO, ASK, and what moves between them" src="../img/teach/behaviour-states.svg" /></p>
+<p><strong>The two twins</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Package</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rust</td>
+<td><code>aav_behaviour_rs</code></td>
+<td><strong>default</strong> in <code>stack:=ours</code>; the twin the car runs with <code>behaviour:=true</code> (the car champion runs with behaviour <strong>off</strong>)</td>
+</tr>
+<tr>
+<td>Python</td>
+<td><code>aav_behaviour</code> (<code>behaviour.py</code>)</td>
+<td>removed 20 Nov (<code>save/python-behaviour</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The Rust gives the Python's answers bit for bit (<code>vectors.json</code>), at 1.3 % of a core
+against 9.0 % (16 Nov). Not yet run on the car.</p>
+<p><strong>The states</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>State</th>
+<th>Its cap</th>
+<th>Enters when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DRIVE</strong></td>
+<td>no cap (0.0 = no limit)</td>
+<td>the start; GO's cap reaches the top speed; a sign passed by over 1 m or lost 5 s; the goal ended</td>
+</tr>
+<tr>
+<td><strong>APPROACH</strong></td>
+<td><code>v_cap(left)</code>, never below the floor 0.3 m/s; falls no faster than 2 m/s²; the sign's never rises</td>
+<td>a stop <strong>binds</strong>: its <code>v_cap</code> is below the top speed</td>
+</tr>
+<tr>
+<td><strong>STOPPED</strong></td>
+<td>the floor</td>
+<td>in APPROACH, its own lock is on and the car stands (under 0.05 m/s)</td>
+</tr>
+<tr>
+<td><strong>WAIT</strong></td>
+<td>the floor</td>
+<td>the next tick after STOPPED; any lock on with the car standing; the e-stop; something moving near</td>
+</tr>
+<tr>
+<td><strong>GO</strong></td>
+<td>rises at 0.5 m/s² from the floor</td>
+<td>no lock left (and nothing moving near); or what APPROACH slowed for has gone (an obstacle: for 1 s)</td>
+</tr>
+<tr>
+<td><strong>ASK</strong></td>
+<td>the floor; a person is told</td>
+<td>the fence says NEAR with the car standing; a lock (not the sign's) over 30 s; the goal aborted</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What it stops for</strong> (each a <code>Stop</code>: a reason and the metres <code>left</code>)</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Reason</th>
+<th><code>left</code> is</th>
+<th>The final stop</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sign</code></td>
+<td>camera range to the sign − 4.7 m</td>
+<td>the <code>stop_sign</code> lock</td>
+</tr>
+<tr>
+<td><code>obstacle</code></td>
+<td>to a moving thing in the lane (or the scan's nearest point), less bumper and gap</td>
+<td>the stop zone, then the <code>stop_zone</code> lock</td>
+</tr>
+<tr>
+<td><code>moving</code></td>
+<td>0 m: the road ahead ends at the car</td>
+<td>ego holds the car at 0</td>
+</tr>
+<tr>
+<td><code>stop_line</code></td>
+<td>to the route's stop line, the front bumper on it</td>
+<td>the road ahead ends there; served after 2 s standing</td>
+</tr>
+<tr>
+<td><code>fence</code></td>
+<td>along the plan to where the geofence would say NEAR</td>
+<td>the geofence lock</td>
+</tr>
+<tr>
+<td><code>goal</code></td>
+<td>along the plan to its end</td>
+<td>the navigator's goal check</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The stopping law</strong> (<code>aav_description</code> <code>stop_law.py</code>, and Rust <code>ego-core</code> <code>stop_law.rs</code>):</p>
+<pre class="highlight"><code class="language-text">   v_cap(d) = a·( √(τ² + 2d/a) − τ )      the fastest speed that can still stop in d metres
+   a = 1.0 m/s² (planned braking)   τ = 1.47 s (every delay, plus easing in the brake)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Distance left</th>
+<th>0.5 m</th>
+<th>1 m</th>
+<th>2 m</th>
+<th>5 m</th>
+<th>10 m</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>v_cap</code></td>
+<td>0.31 m/s</td>
+<td>0.57 m/s</td>
+<td>1.01 m/s</td>
+<td>2.02 m/s</td>
+<td>3.24 m/s</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every number is a <strong>guess</strong> until the car tests (<a href="stopping.html#1-the-stopping-law">How the car stops</a>).</p>
+<p><strong>How it works, each tick</strong></p>
+<ol>
+<li>Gather the stops in view: the sign, the lane ahead, the fence, the goal, stop lines.</li>
+<li>The stop with the <strong>lowest</strong> cap <strong>binds</strong>.</li>
+<li>Step the machine (the table above); "from any state" rules first.</li>
+<li>Work out the state's cap, falling no faster than 2 m/s².</li>
+<li>Write <strong>the road ahead</strong> (10 Hz): the plan's next 40 m, <strong>its stops</strong>, and its limits
+   under the cap. Ego holds every follower (MPPI, the trackers, the point driver) to it.</li>
+<li>Say the state on <code>/drivers/nav/behaviour/state</code> (5 Hz) for the screens.</li>
+</ol>
+<p><strong>Why it caps and doesn't steer:</strong> a parked thing is the <strong>path planner's</strong> to go round
+(the lane pass); behaviour only waits for what <strong>moves</strong>. So one part owns the line, one
+owns "how fast, and where to stop", and the locks own the final stop. The cap is always
+0.0 (no limit) or between the floor and the top speed: it <strong>only ever slows</strong> the car, and
+never clears a lock.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>one law for every planned stop; the reason is on screen</td>
+<td>holds for anyone walking beside the car within 10 m</td>
+</tr>
+<tr>
+<td>the locks still make every final stop</td>
+<td>no traffic lights, crosswalks or right of way yet</td>
+</tr>
+<tr>
+<td>league: a little less sway with it (0.063 against 0.074 without)</td>
+<td>ASK's reply from the HUD not built; not yet on the car</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>In our car:</strong> <strong>default</strong> in <code>stack:=ours</code>; the car champion: off. Numbers:
+<a href="stack-survey.html#the-behaviour-planner-and-the-stopping-law-aav_behaviour_rs">survey</a>.
+Designs: <a href="../designs/2026-11-05_behaviour-and-speed.md">behaviour and speed</a>,
+<a href="../designs/2026-11-14_the-whole-car.md">the whole car</a>.</p>
+<h3 id="behaviour-at-a-glance">Behaviour, at a glance</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>Decides by</th>
+<th>Ours</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Finite state machine</td>
+<td>the current state's events</td>
+<td><strong>default</strong> (behaviour planner, navigator)</td>
+</tr>
+<tr>
+<td>Hierarchical state machine</td>
+<td>states inside states</td>
+<td>studied</td>
+</tr>
+<tr>
+<td>Behaviour tree</td>
+<td>ticking small tasks</td>
+<td><strong>retired</strong> (Nav2's <code>bt_navigator</code>)</td>
+</tr>
+<tr>
+<td>Traffic-rule modules</td>
+<td>one module per rule, lowest stop wins</td>
+<td>stop signs <strong>in use</strong> (a lock); stop lines <strong>challenger</strong></td>
+</tr>
+<tr>
+<td>Speed round obstacles, with a hold</td>
+<td>the stopping law; hysteresis</td>
+<td><strong>default</strong></td>
+</tr>
+<tr>
+<td>Prediction-aware</td>
+<td>where things will be</td>
+<td><strong>default</strong> (crossing, moving near)</td>
+</tr>
+<tr>
+<td>POMDP, games</td>
+<td>odds over intentions</td>
+<td>studied</td>
+</tr>
+<tr>
+<td>Imitation, reinforcement</td>
+<td>learned from data</td>
+<td>studied</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="8-control-and-the-car">8. Control and the car</h2>
+<p>The full story: <a href="learn-control.html">Learn: control</a>, <a href="car-model.html">Car model</a>,
+<a href="vehicle-model.html">The car as a linear model</a>, <a href="learn-state-space.html">Learn: state space</a>.</p>
+<p><img alt="Where each loop closes on our car: the path at 20 Hz, the speed loop, the steering motor" src="../img/control-loops.svg" /></p>
+<h3 id="81-ackermann-steering">8.1 Ackermann steering</h3>
+<p><strong>The idea:</strong> in a turn, the inner front wheel turns more than the outer one, so both
+roll round the same centre, on the line of the rear axle. The steering linkage does this
+by itself; our software sends <strong>one</strong> angle. <a href="learn-control.html#4-ackermann-and-the-bicycle-model">Learn: control</a>
+has the picture and our numbers.</p>
+<h3 id="82-the-bicycle-model">8.2 The bicycle model</h3>
+<p><strong>The idea:</strong> merge the two front wheels into one in the middle, and the two rear wheels
+likewise. Then:</p>
+<pre class="highlight"><code class="language-text"> turn rate  ω = v × tan(δ) ÷ L          steering  δ = atan(L × ω ÷ v)</code></pre>
+<p>v = speed, δ = steering angle, L = wheelbase (1.56 m, <code>vehicle.yaml</code>). Good at: right at
+our low speeds. Bad at: no tyre slip (fine below a few m/s). <strong>In our car:</strong> ego
+(<code>aav_ego_rs</code>), <strong>in use</strong>, and inside MPPI, MPC and Ravensim.</p>
+<h3 id="83-transfer-functions-dead-time-plus-a-lag">8.3 Transfer functions: dead time plus a lag</h3>
+<p><strong>The idea:</strong> each actuator is modelled as <strong>wait, then ease toward the command</strong>.</p>
+<pre class="highlight"><code class="language-text"> command ─▶ dead time (nothing happens) ─▶ first-order lag (eases in) ─▶ what the car does
+            e.g. 0.1 s                      time constant T: 63 % there after T</code></pre>
+<ol>
+<li>Send a step: "throttle to 30 %".</li>
+<li>For the <strong>dead time</strong>, nothing happens.</li>
+<li>Then the speed rises toward its new value, 63 % of the way after one <strong>time constant</strong>.</li>
+<li>Fit both numbers to a recorded run. Every planner that knows them predicts the car better.</li>
+</ol>
+<p><strong>In our car:</strong> the shared car model (Python and Rust); <code>car-test --hallway</code> measures
+them, with error bars. <strong>Untested on the car</strong>: the numbers in <code>vehicle.yaml</code> are guesses
+until then (<a href="testing-plan.html#phase-b-the-transfer-functions-in-the-hallway">testing plan, phase B</a>).</p>
+<h3 id="84-feed-forward-plus-pid">8.4 Feed-forward plus PID</h3>
+<p><strong>The idea:</strong> <strong>feed-forward</strong> gives the push you expect to need, from the car's model
+("this speed on the flat needs this much throttle"); <strong>PID</strong> fixes what's left.</p>
+<ol>
+<li>Feed-forward from the model: speed wanted → throttle.</li>
+<li>PI on the error: wanted speed − measured speed.</li>
+<li>Add them; a negative answer becomes brake.</li>
+</ol>
+<p>Good at: fast and calm, since PID only fixes the small error. Bad at: a wrong model
+makes PID work harder. <strong>In our car:</strong> the speed loop, <strong>default</strong>; it overshoots 14 %
+today (<a href="stack-survey.html#6-control-and-the-car">survey</a>).</p>
+<h3 id="85-braking-with-a-heavier-load">8.5 Braking with a heavier load</h3>
+<p><strong>The idea:</strong> the same brake slows a heavier car less (a = F ÷ m). Measure how well the
+brake works, and press harder.</p>
+<ol>
+<li>Measure the slowing from the wheel speed.</li>
+<li>Compare with what the <strong>empty</strong> car would do: the brake's <strong>effectiveness</strong>.</li>
+<li>Brake harder by 1 ÷ effectiveness, never above the safe limit.</li>
+<li>Remember it from stop to stop: a person aboard stays aboard.</li>
+</ol>
+<p>With 150 kg aboard our 181 kg car brakes at 55 % of its empty strength. In the simulator
+this cut a 0.87 m overrun to 0.21 m, then 0.05 m on the next stop.
+<strong>In our car:</strong> the adaptive brake, a switch (<a href="stopping.html#4-a-heavier-car-the-adaptive-brake">How the car stops</a>).</p>
+<h3 id="86-the-look-ahead-where-the-car-will-actually-go">8.6 The look-ahead: where the car will actually go</h3>
+<p><strong>The idea:</strong> run the car model a couple of seconds into the future, from how the car is
+<strong>now</strong>, to draw where it <strong>will</strong> go. The general name is a <strong>predicted trajectory</strong> (or
+a forward prediction, a rollout). It is not the pose: the pose is where the car is now.</p>
+<ol>
+<li>Start from the car as it is: its speed, and where the steering and pedals are.</li>
+<li>Hold what the driver (or the planner) is asking for.</li>
+<li>Push it through the car model: the speed loop, <strong>the dead times and lags</strong> (8.3), the
+   steering motor, the bicycle model (8.2).</li>
+<li>Keep a pose every 0.1 s, for 2 s: 21 poses, ten times a second.</li>
+</ol>
+<pre class="highlight"><code class="language-text">   plan (what the planner wants)   ─ ─ ─ ─ ─ ─ ─ ─ ─ ─▶
+   look-ahead (where the car goes) ━━━━━━━━━━━┓          the gap = the lag
+   the car ▶                                  ┗━━━━━━━▶  the model knows about</code></pre>
+<p><img alt="The squiggly line in the developer window: the bold line is the look-ahead" src="../img/dev-window-squiggly.png" /></p>
+<p>Good at: shows the lag before it matters; a planner can check its plan against it; it gets
+shorter when braking and longer when speeding up, like a Tesla's squiggly line. Bad at: only
+as right as the car model, and every number in it is a guess until the stands and hallway
+tests measure the transfer functions (<a href="testing-plan.html">the testing plan</a>).
+<strong>In our car:</strong> ego's look-ahead, <code>/ego/trace</code> (<code>aav_ego_rs</code>, the <strong>default</strong>), drawn by
+the HUD and the developer window (<a href="hud.html#the-squiggly-line-ahead">the squiggly line</a>).</p>
+</section>
+<section class="card"><h2 id="9-safety-the-locks-under-everything">9. Safety: the locks under everything</h2>
+<p><strong>The idea:</strong> no planner is trusted alone. Simple, separate checks can always stop the car.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Lock</th>
+<th>The idea</th>
+<th>Ours</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Watchdog</strong></td>
+<td>if a sensor or a command goes quiet, frozen or wild: stop</td>
+<td>the sensor watchdog; ego's 0.3 s timeout; the firmware's 100 ms</td>
+</tr>
+<tr>
+<td><strong>E-stop</strong></td>
+<td>a person, a button or a program stops everything, at once</td>
+<td>the joystick deadman, <code>/safety/estop</code>, the hardware stop</td>
+</tr>
+<tr>
+<td><strong>Geofence</strong></td>
+<td>a fence on the map: stop before the stopping path reaches it</td>
+<td><code>geofence</code>: stops every program, never a person</td>
+</tr>
+<tr>
+<td><strong>Stop zone</strong></td>
+<td>anything in the box just ahead: stop</td>
+<td><code>aav_stop_zone</code> (from Nav2's collision monitor)</td>
+</tr>
+<tr>
+<td><strong>Simplex fallback</strong></td>
+<td>a clever controller runs, but a simple, proven one takes over if it misbehaves</td>
+<td>the diffusion planner's guard falls back to the lattice; the locks override every driver</td>
+</tr>
+</tbody>
+</table></div>
+<p>All <strong>in use</strong>; never swapped (<code>CLAUDE.md</code>). Layer by layer: <a href="safety-case.html">The safety case</a>,
+<a href="stack-survey.html#7-safety-the-locks-that-are-never-swapped">survey</a>.</p>
+</section>
+<section class="card"><h2 id="10-end-to-end-learning-one-big-network">10. End-to-end learning: one big network</h2>
+<p><strong>The idea:</strong> skip the separate parts; train one large network from <strong>pictures to steering</strong>,
+on huge amounts of human driving.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>In general terms</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>UniAD</strong> (Y. Hu et al., CVPR 2023)</td>
+<td>one network whose parts (perceive, predict, plan) are trained together, for the plan</td>
+</tr>
+<tr>
+<td><strong>World models</strong> (such as Wayve's GAIA-1)</td>
+<td>a network that imagines the next seconds of video, to learn and test in</td>
+</tr>
+<tr>
+<td><strong>Tesla</strong> (FSD v12 and later)</td>
+<td>cameras only; a network trained on its fleet's driving</td>
+</tr>
+<tr>
+<td><strong>Wayve</strong></td>
+<td>end-to-end learned driving, tested on city streets</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="why-we-stay-modular">Why we stay modular</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Modular (us)</th>
+<th>End-to-end</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Testing</td>
+<td>each part alone, scored the same way</td>
+<td>the whole car at once</td>
+</tr>
+<tr>
+<td>Explaining a mistake</td>
+<td>look at the part</td>
+<td>hard</td>
+</tr>
+<tr>
+<td>Data needed</td>
+<td>little</td>
+<td>fleets of cars, many GPUs</td>
+</tr>
+<tr>
+<td>Safety rules</td>
+<td>written down, never swapped</td>
+<td>learned</td>
+</tr>
+</tbody>
+</table></div>
+<p>Ben, 4 Nov: "we can't use end to end like tesla because we are a school project". We use
+learning in parts, behind a guard (the detector, the diffusion planner).
+More: <a href="stack-survey.html#two-schools">survey</a>.</p>
+</section>
+<section class="card"><h2 id="where-to-go-next">Where to go next</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>To</th>
+<th>Read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>see our scores for each algorithm</td>
+<td><a href="stack-survey.html">The stack, surveyed</a></td>
+</tr>
+<tr>
+<td>see how the parts join up</td>
+<td><a href="how-it-fits.html">How it fits</a></td>
+</tr>
+<tr>
+<td>learn one area slowly</td>
+<td><a href="learn-localization.html">Learn: localization</a>, <a href="learn-lidar.html">Learn: lidar</a>, <a href="learn-control.html">Learn: control</a>, <a href="learn-nav2.html">Learn: navigation</a></td>
+</tr>
+<tr>
+<td>know where each idea came from</td>
+<td><a href="acknowledgements.html">Acknowledgements</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>The pictures on this page are drawn by <code>tools/teach_figures.py</code>, from small made-up
+worlds: <code>pixi run python3 tools/teach_figures.py</code> rebuilds them.</p></section>
+<nav class="prevnext"><a class="prev" href="stack-survey.html"><small>Previous</small>← The stack, surveyed</a>
+<a class="next" href="start-up.html"><small>Next</small>Bottom-up →</a></nav>
+</main>
+<footer>Source: <code>docs/how-self-driving-works.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

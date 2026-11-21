@@ -245,9 +245,39 @@ impl Feed {
         );
     }
 
-    /// A cloud (only its arrival counts).
-    pub fn cloud(&mut self, now: f64, name: &str) {
-        self.arrive(now, name, Arrival::default());
+    /// A status message from one of our nodes: its name, its level byte, its words. Only
+    /// the input's own name counts (`Rule::hears`).
+    pub fn status(&mut self, now: f64, name: &str, status_name: &str, level: u8, words: &str) {
+        let hears = self
+            .dog
+            .watches()
+            .iter()
+            .any(|w| w.rule().name == name && w.rule().hears(status_name));
+        if hears {
+            self.arrive(
+                now,
+                name,
+                Arrival {
+                    status: Some((level, words.to_string())),
+                    ..Arrival::default()
+                },
+            );
+        }
+    }
+
+    /// A cloud (a lidar's, a radar's): its digest (`picture_digest` of its data), for the
+    /// frozen check where its rule has one (only while the car moves).
+    pub fn cloud(&mut self, now: f64, name: &str, digest: u32) {
+        let speed = self.speed.map(|(v, _)| v);
+        self.arrive(
+            now,
+            name,
+            Arrival {
+                digest: Some(Digest::Crc(digest)),
+                speed,
+                ..Arrival::default()
+            },
+        );
     }
 
     /// `/vehicle/odom`, where no input watches it: only the speed.

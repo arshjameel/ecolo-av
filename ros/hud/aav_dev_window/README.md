@@ -8,7 +8,7 @@ simulator; the other choices are made at launch. The plan:
 [our own simulator](../../../docs/designs/2026-11-05_own-simulator.md).
 
 ```text
-┌─ GO / STOP and why · e-stop · source ─────────────┐
+┌─ GO / STOP and why · DRIVING: who · e-stop · source ┐
 ├────────────────────────────┬──────────────────────┤
 │ the scene: the car driving │ debug: what the      │
 │                            │ lidar sees, and NDT  │
@@ -32,6 +32,9 @@ simulator; the other choices are made at launch. The plan:
 | `src/lanes.rs` | the lane map's lines and their looks (`lanelet-map`) |
 | `src/ros.rs` | the node `dev_window`, as a `Feed` (the `ros` feature). Its docstring lists its topics |
 | `config/dev_window.yaml` | every topic's name |
+| `src/map_edit/main.rs` | the map editor (`pixi run map-edit`, TODO 251): its own binary, `map_edit`; no ROS. The edits are the `map-edit` crate's ([docs/map-editor.md](../../../docs/map-editor.md)) |
+| `src/map_edit/tool.rs` | its tools: a drag into a box, an align drag or key: no Bevy, no egui, tested |
+| `src/map_edit/streets.rs` | its street map: the tiles round the map, read once (`map-core`) |
 
 It shares logic with the raylib screens: `debug-core` (the cubes' bands, the camera),
 `map-core` (map to screen and back), `hud-core` (a picture message into RGBA).
@@ -48,7 +51,12 @@ pixi run dev-window --live --map-whole             # the map panel starts on the
 pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
 pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
 pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, their saved map
+pixi run map-edit bags/<drive>/map                         # the map editor: no ROS (docs/map-editor.md)
 ```
+
+The status strip says who is driving (19 Nov, TODO 247): **DRIVING: keyboard (90)**, from
+`/control/command_mux/state` (`aav_mux_state`), grey `DRIVING: ?` when it is quiet. The
+map window's debug page (key D) shows the whole command path.
 
 | Key | Does | Key | Does |
 |---|---|---|---|

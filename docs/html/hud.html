@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">76 min read · 8 sections</div></header>
+<div class="meta">69 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a class="here" href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-hud-in-rust-raylib">The HUD in Rust (raylib)</a><a href="#the-map-window-big-screen">The map window (big screen)</a><a href="#themes-the-screens-colours">Themes: the screens&#x27; colours</a><a href="#the-debug-hud">The debug HUD</a><a href="#the-hardware-panel">The hardware panel</a><a href="#the-little-robot-easter-egg">The little robot (easter egg)</a><a href="#the-flutter-app-2025-26-archived">The Flutter app (2025-26): archived</a><a href="#the-place-database">The place database</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-hud-in-rust-raylib">The HUD in Rust (raylib)</a><a href="#ready-the-boot-self-test">READY: the boot self-test</a><a href="#the-map-window-big-screen">The map window (big screen)</a><a href="#themes-the-screens-colours">Themes: the screens&#x27; colours</a><a href="#the-debug-hud">The debug HUD</a><a href="#the-hardware-panel">The hardware panel</a><a href="#the-little-robot-easter-egg">The little robot (easter egg)</a><a href="#the-flutter-app-2025-26-archived">The Flutter app (2025-26): archived</a><a href="#the-place-database">The place database</a></nav>
 <div class="lead"><p>Four raylib programs in one package, <code>ros/hud/aav_hud</code>, each also its own ROS node:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -210,7 +224,7 @@ a second program. Each opens full screen on its own monitor at boot:
 </tr>
 <tr>
 <td>Camera</td>
-<td>the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange <strong>SIMULATED</strong> / <strong>BENCH</strong> / <strong>REPLAY</strong> band along its bottom when <code>/system/source</code> says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red <strong>STOP: gps STALE (...)</strong> while it holds navigation, amber for a warning, red <strong>SENSOR WATCHDOG SILENT</strong> if it stops talking (twist_mux then holds navigation for its silence) (<a href="simulation.html#sensor-failures-on-purpose">simulation</a>)</td>
+<td>the picture (rgb8, bgr8, rgba8, bgra8, mono8); a STOP SIGN banner over it; a big orange <strong>SIMULATED</strong> / <strong>BENCH</strong> / <strong>REPLAY</strong> band along its bottom when <code>/system/source</code> says any data isn't the real car's; the sensor watchdog's banner (15 Oct): red <strong>STOP: gps STALE (...)</strong> while it holds navigation, amber for a warning, red <strong>SENSOR WATCHDOG SILENT</strong> if it stops talking (twist_mux then holds navigation for its silence) (<a href="simulation.html#sensor-failures-on-purpose">simulation</a>); the boot self-test (20 Nov, <a href="#ready-the-boot-self-test">below</a>)</td>
 </tr>
 <tr>
 <td>E-STOP</td>
@@ -603,80 +617,7 @@ in <code>aav_safety</code> <code>watchdog.py</code>, with tests. The HUD shows i
   <code>aav_safety</code>'s <code>sensor_watchdog.yaml</code>.</li>
 </ul>
 <h3 id="tested-15-october-a-mac">Tested (15 October, a Mac)</h3>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>What</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--demo</code>, in a window and full screen</td>
-<td>draws; screenshots checked</td>
-</tr>
-<tr>
-<td>The node, with <code>ros2 topic pub</code> and <code>image_publisher</code> (private domain)</td>
-<td>speed, faults, RTK FIXED, 2D FIX, STOP SIGN and the camera picture shown</td>
-</tr>
-<tr>
-<td>Next to bench mode (<code>bench.launch.py nav:=false</code>, private domain)</td>
-<td>every bench topic OK: status, GPS 3D fix, battery 100 %, the bench camera. <code>/perception/stop_sign</code> NEVER (perception is off there)</td>
-</tr>
-<tr>
-<td>One press, through the real node, to another node (<code>cargo test</code>)</td>
-<td>exactly 5 trues, no false, each "sent to 1 node"</td>
-</tr>
-<tr>
-<td>Ctrl-C to <code>ros2 launch</code></td>
-<td>the window closes, "finished cleanly"</td>
-</tr>
-<tr>
-<td>A click on the window's button</td>
-<td>not tested: macOS blocks clicks from scripts</td>
-</tr>
-<tr>
-<td>The sensor watchdog's banner (15 Oct)</td>
-<td>its logic: <code>cargo test</code> (hud-core <code>watchdog</code>, <code>state</code>), shared with the map window. Not seen on screen yet</td>
-</tr>
-<tr>
-<td>The SIMULATED / BENCH / REPLAY banner (15 Oct)</td>
-<td>its logic: <code>cargo test</code> (hud-core <code>origin</code>, and the message's numbers in hud-app). Not seen on screen yet: the window couldn't open from that session</td>
-</tr>
-<tr>
-<td>The heartbeat, through the real node (23 Oct, <code>cargo test</code>)</td>
-<td>none before the first frame; 15-21 beats in 2 s of drawing, each count higher; none once drawing stops, and the e-stop's 5 trues still go out</td>
-</tr>
-<tr>
-<td>The heartbeat, the real window and the watchdog (23 Oct, private domain)</td>
-<td>9.3 beats a second; <code>hud NEVER</code> before it opened, <code>OK</code> while it ran; frozen (SIGSTOP) or closed: <code>hud STALE</code> and the lock on within about 1 s; thawed: <code>OK</code> again</td>
-</tr>
-<tr>
-<td>The heartbeat in Gazebo (23 Oct, <code>sim-check --faults</code>, <code>hud stop</code>, twice)</td>
-<td>the check beats in the window's place; when it stops, Nav2's car stands still 2.5 s later</td>
-</tr>
-<tr>
-<td>The GO / STOP panel's logic (24 Oct, <code>cargo test</code>, hud-core <code>gate</code>, <code>state</code>)</td>
-<td>every state and reason above; the output mux's lines as its own tests have them, and one from the live output mux next to the turtle (latched by a node announcing a REAL GPS: "GPS is REAL"; cleared by the service)</td>
-</tr>
-<tr>
-<td>The output mux's line through the real node (24 Oct, <code>cargo test</code>, hud-app)</td>
-<td>published by another node, it reaches the screen</td>
-</tr>
-<tr>
-<td>The GO / STOP panel on screen (24 Oct)</td>
-<td>✅ seen: Ben ran <code>pixi run hud --demo --screenshot docs/img/hud-gate.png</code> (GO, green, "all REAL"; the picture above). STOP and AUTO STOP seen too (24 Oct, the pictures above)</td>
-</tr>
-<tr>
-<td>The HUD latch (24 Oct, <code>aav_safety</code> tests)</td>
-<td>a start-up dropout forgiven; any later one latched until cleared; a crash loop latches the second time; a stalled watchdog latches nothing</td>
-</tr>
-<tr>
-<td>The HUD latch in Gazebo (24 Oct, <code>sim-check --faults</code>, <code>hud stop</code>)</td>
-<td>stood still 2.4 s after the beats stopped: "hud LOST"; beating again, still held 5 s later; cleared, Nav2 drove again. 25 of 25 faults pass</td>
-</tr>
-</tbody>
-</table></div>
+<p>Moved to <a href="../history/hud-log.md#tested-15-october-a-mac">the hud log</a> on 18 Nov (a dated record).</p>
 <h3 id="what-it-shows-with-each-backend">What it shows with each backend</h3>
 <p>The HUD reads topics, so it works next to anything that publishes them. Start the backend,
 then <code>pixi run hud</code> in another terminal (the same <code>ROS_DOMAIN_ID</code>).
@@ -739,6 +680,39 @@ In Ravensim, one command does both: <code>pixi run sim world:=test_lot hud:=true
 <p>Checked on 15 Oct by listening to each topic while the backend drove a scripted goal
 (the window itself couldn't open from that session). NEVER on a panel is the honest answer:
 nothing publishes that topic there.</p>
+</section>
+<section class="card"><h2 id="ready-the-boot-self-test">READY: the boot self-test</h2>
+<p>The car's boot self-test (<code>aav_self_test_rs</code>, TODO 255) says whether everything that keeps
+the car safe is here. <code>spine_bridge</code> won't arm until it says READY. The HUD shows it on
+the camera panel, under the watchdog's banner (<code>self_test_topic</code>, <code>/safety/self_test/status</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The self-test says</th>
+<th>The HUD shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nothing, ever (Ravensim, the bench)</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td>level OK</td>
+<td><strong>READY</strong>: a small green tag, top right</td>
+</tr>
+<tr>
+<td>any other level</td>
+<td>a red banner: <strong>NOT READY: sensors (STOP: gps STALE ...)</strong></td>
+</tr>
+<tr>
+<td>nothing for 2 s, after speaking</td>
+<td>a red banner: <strong>SELF-TEST SILENT</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>The logic: <code>hud-core</code> <code>self_test</code> (no ROS). <code>--demo</code> pretends NOT READY for 6 s, then READY.
+Seen only in code and tests so far: untested on a real screen.</p>
 </section>
 <section class="card"><h2 id="the-map-window-big-screen">The map window (big screen)</h2>
 <p><code>ros/hud/aav_hud</code>, binary <code>map</code>: its own window, which is also the ROS node <code>map</code>.
@@ -831,8 +805,122 @@ navigation.</p>
 <td>move the map (a free view; F goes back to the car)</td>
 </tr>
 <tr>
+<td>D</td>
+<td>the <a href="#the-debug-page-who-is-driving">debug page</a> over the map, and back</td>
+</tr>
+<tr>
 <td>F11</td>
 <td>full screen</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-debug-page-who-is-driving">The debug page (who is driving)</h3>
+<p>Our professor's idea (TODO 247): the map screen doubles as a debug screen, like the
+hardware panel. <strong>Press D.</strong> The map goes behind frosted glass and two columns of cards
+show who drives the car and what may stop it. Press D again for the map.</p>
+<pre class="highlight"><code class="language-text"> THE COMMAND, STEP BY STEP          WHAT MAY STOP IT
+ ┌ WHO DRIVES   NAVIGATOR (AI) ┐    ┌ LOCKS    NONE         ┐
+ ▼ IT ASKS      0.80 m/s       │    ├ SENSORS  OK           │
+ ▼ EGO SENDS    0.80 m/s       │    └ DATA     SIMULATED    ┘
+ ▼ GATE         OPEN           │
+ └ THE CAR DID  0.78 m/s       ┘</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Card</th>
+<th>Says</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WHO DRIVES</td>
+<td>JOYSTICK, RC REMOTE, KEYBOARD, PANEL BUTTONS (a person); ACTUATOR TEST, SCRIPT, REPLAY, DRIVE TO POINT, NAVIGATOR (AI), AI SLOT (a program); NOBODY. The navigator's line names its path follower (<code>mppi_lag</code>...)</td>
+<td><code>/control/command_mux/state</code> (<a href="../../ros/command_mux/aav_mux_state/README.md"><code>aav_mux_state</code></a>); <code>/system/algorithms</code></td>
+</tr>
+<tr>
+<td>IT ASKS</td>
+<td>its speed (m/s) and turn (rad/s, left or right)</td>
+<td><code>/control/cmd_vel</code></td>
+</tr>
+<tr>
+<td>EGO SENDS</td>
+<td>speed, steering angle, braking or speeding up</td>
+<td><code>/ego/actuator_cmd</code></td>
+</tr>
+<tr>
+<td>GATE</td>
+<td>OPEN, WAIT or STOP, and why</td>
+<td><code>/safety/output_mux/state</code></td>
+</tr>
+<tr>
+<td>THE CAR DID</td>
+<td>its speed; steering, throttle %, brake %, mode; E-STOP or FAULT</td>
+<td><code>/vehicle/status</code></td>
+</tr>
+<tr>
+<td>LOCKS</td>
+<td>NONE, or each lock on (E-STOP, SENSORS, GEOFENCE, STOP SIGN...) and whom it holds</td>
+<td><code>/control/command_mux/state</code></td>
+</tr>
+<tr>
+<td>SENSORS</td>
+<td>OK, WARN, or STOP and the sensor</td>
+<td><code>/safety/sensor_watchdog/state</code></td>
+</tr>
+<tr>
+<td>DATA</td>
+<td>REAL, or SIMULATED / BENCH / REPLAY</td>
+<td><code>/system/source</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Each card has one colour, on its big word and down its left edge:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Colour</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>green</td>
+<td>all is well</td>
+</tr>
+<tr>
+<td>amber</td>
+<td>held, waiting, or not real</td>
+</tr>
+<tr>
+<td>red</td>
+<td>stopped, silent, a fault, the e-stop</td>
+</tr>
+<tr>
+<td>grey</td>
+<td>nothing to say: nobody sending, never heard</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Who is driving</strong> is new: twist_mux passes on one driver but never says which.
+<code>command_mux_state</code> reads twist_mux's own files and applies its rule beside it
+(<a href="../../ros/command_mux/aav_mux_state/README.md">its README</a>). The developer window shows
+the same line in its status strip: <strong>DRIVING: keyboard (90)</strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run it</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi run map --demo --debug-page</code></td>
+<td>pretend data, a 30 s loop: the navigator, a person on the keyboard, the sensors lock holding the navigator, the navigator again</td>
+</tr>
+<tr>
+<td><code>pixi run sim map:=true</code>, then D</td>
+<td>live, beside Ravensim</td>
 </tr>
 </tbody>
 </table></div>
@@ -852,7 +940,7 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor</c
 <tbody>
 <tr>
 <td><code>crates/map-core</code></td>
-<td>the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status. <code>cargo test -p map-core</code> (in <code>tools/test.sh</code>)</td>
+<td>the maths, no ROS, no raylib: map to screen and back, zoom, the grid's pixels, the nearest point and the distance left, the trip's status, the debug page's cards (<code>debug</code>). <code>cargo test -p map-core</code> (in <code>tools/test.sh</code>)</td>
 </tr>
 <tr>
 <td><code>crates/map-app</code></td>
@@ -870,47 +958,7 @@ pixi run map fullscreen:=true monitor:=HDMI-1   # full screen on that monitor</c
 <li>The car's size: <code>vehicle.yaml</code>, built in, and the installed one at launch (<code>--vehicle</code>).</li>
 </ul>
 <h3 id="tested-15-october-a-mac_1">Tested (15 October, a Mac)</h3>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>What</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cargo test</code> (map-core 33, map-app 6: the grid message, the demo, the options)</td>
-<td>all pass</td>
-</tr>
-<tr>
-<td><code>--demo</code>, with <code>--screenshot</code></td>
-<td>the picture above</td>
-</tr>
-<tr>
-<td>Gazebo, <code>world:=test_lot sim_speed:=3</code>, headless, private domain, two Nav2 goals</td>
-<td>the lot, the car, the plan and the goal; SIMULATED; DRIVING, the distance and the time left counting down; both goals SUCCEEDED</td>
-</tr>
-<tr>
-<td>ARRIVED on screen</td>
-<td>only in <code>--demo</code> and the unit tests: each live window closed (screenshot) before the car got there</td>
-</tr>
-<tr>
-<td>The watchdog banner (15 Oct)</td>
-<td>its logic: <code>cargo test</code> (map-core <code>state</code>, hud-core <code>watchdog</code>), and <code>cargo clippy</code>. Not seen on screen: the window couldn't open from that session</td>
-</tr>
-<tr>
-<td>Clicks, the wheel, dragging</td>
-<td>not tested: macOS blocks input from scripts</td>
-</tr>
-</tbody>
-</table></div>
-<p><img alt="The map window next to Gazebo, whole map (--whole-map), driving to a goal" src="../img/map-raylib-sim.png" /></p>
-<ul>
-<li><code>/plan</code> isn't latched: a window opened after the navigator finished shows NO GOAL until the
-  next goal.</li>
-<li>Near the goal, the planner may plan a loop to arrive facing the right way; the distance left
-  follows the loop.</li>
-</ul>
+<p>Moved to <a href="../history/hud-log.md#tested-15-october-a-mac-1">the hud log</a> on 18 Nov (a dated record).</p>
 <h3 id="the-street-map-under-it">The street map under it</h3>
 <p>OpenStreetMap's streets, water, parks and buildings, drawn under the navigation map, so the car
 and its path sit on real streets. It works with no internet: the map is a file.</p>
@@ -1095,37 +1143,7 @@ campus streets that aren't really there: the streets only match the world on the
 </ul>
 <p><img alt="The live window in Gazebo, zoomed out: about 10 km of Ottawa around the car (--zoom 0.12)" src="../img/map-streets-ottawa.png" /></p>
 <h4 id="tested-15-october-a-mac_2">Tested (15 October, a Mac)</h4>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>What</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cargo test</code> (map-core 54, map-app 8)</td>
-<td>all pass; two tests read the real file when it's there</td>
-</tr>
-<tr>
-<td><code>--demo</code>, near and far</td>
-<td>the pictures above</td>
-</tr>
-<tr>
-<td>Gazebo, <code>test_lot</code>, headless, private domain, a Nav2 goal</td>
-<td>the lot over the campus streets, the plan and the car; the goal SUCCEEDED</td>
-</tr>
-<tr>
-<td>S, the wheel, dragging</td>
-<td>not tested: macOS blocks input from scripts</td>
-</tr>
-<tr>
-<td>On the car with a real GPS</td>
-<td>untested</td>
-</tr>
-</tbody>
-</table></div>
-<p><img alt="The live window in Gazebo, whole map: the test lot, see-through, over the street map" src="../img/map-streets-sim.png" /></p>
+<p>Moved to <a href="../history/hud-log.md#tested-15-october-a-mac-2">the hud log</a> on 18 Nov (a dated record).</p>
 <h3 id="search-for-a-place-and-drive-there">Search for a place, and drive there</h3>
 <p>Type a name or an address, pick a result, and send it to the navigator as the goal. Two presses
 (DRIVE HERE, then CONFIRM), so a stray tap never moves the car.</p>
@@ -1344,46 +1362,14 @@ a bug.</p>
 <td><code>--send-goal TEXT</code></td>
 <td>once <code>/map</code> and the car are known: sends the first result inside the navigation map, and says so on the terminal</td>
 </tr>
+<tr>
+<td><code>--debug-page</code></td>
+<td>starts on the <a href="#the-debug-page-who-is-driving">debug page</a> (D switches)</td>
+</tr>
 </tbody>
 </table></div>
 <h4 id="tested-15-october-a-mac_3">Tested (15 October, a Mac)</h4>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>What</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cargo test</code> (map-core 74 with the real file, map-app 11)</td>
-<td>all pass</td>
-</tr>
-<tr>
-<td>Gazebo <code>test_lot</code>, headless, private domain: <code>--send-goal "university drive"</code></td>
-<td>sent x 59.27, y 11.90 m; <code>bt_navigator</code>: "Begin navigating from current location (0.06, 0.09) to (59.27, 11.90)"; then "Goal succeeded"</td>
-</tr>
-<tr>
-<td>The same, <code>--send-goal "carleton university"</code></td>
-<td>nothing sent: every result "Outside the map" (109 m to 700 m away)</td>
-</tr>
-<tr>
-<td>Typing, clicks, Up/Down, DRIVE HERE and CONFIRM by hand</td>
-<td>not tested: macOS blocks input from scripts. The steps are unit-tested in <code>destination.rs</code></td>
-</tr>
-<tr>
-<td>On the car's touchscreen</td>
-<td>untested: the on-screen keyboard (16 Oct) is ready; taps by hand not tried yet</td>
-</tr>
-<tr>
-<td>The on-screen keyboard (16 Oct)</td>
-<td><code>cargo test</code> (map-core <code>keyboard</code>: key at a point, scaling, editing, Back on é); <code>--demo --keyboard</code> screenshot above. Taps by hand: not tested (macOS blocks input from scripts)</td>
-</tr>
-</tbody>
-</table></div>
-<p><img alt="Gazebo: University Drive, sent by --send-goal, and Nav2 driving there" src="../img/map-search-sim.png" /></p>
-<p>The sim's datum is the placeholder near Carleton, so in the simulator "University Drive" lands
-inside the test lot. On the car, the datum is the real test site.</p>
+<p>Moved to <a href="../history/hud-log.md#tested-15-october-a-mac-3">the hud log</a> on 18 Nov (a dated record).</p>
 </section>
 <section class="card"><h2 id="themes-the-screens-colours">Themes: the screens' colours</h2>
 <p>All four screens share one set of colours, a <strong>theme</strong>: the HUD, the map window, the
@@ -1782,7 +1768,7 @@ on the right two views from above. Key <strong>L</strong> swaps the right side f
 <tr>
 <td>Localization health</td>
 <td><strong>OK</strong> green, or <strong>WARN</strong> amber and each check that isn't OK, wrapped; "not running (health:=false)"; STALE after 3 s (it comes once a second)</td>
-<td><code>/localization/health</code> (Betsi's <code>aav_localization_health</code>)</td>
+<td><code>/localization/health</code> (Betsi's <code>aav_localization_health_rs</code>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -1996,85 +1982,11 @@ tracker live, start it with one of <code>aav_track</code>'s, forward only:
 <p>On the car: not yet from a Mac over WiFi (about 9 MB/s of reliable lidar): a laptop on
 the car's cable. Not the Orin's own screen: it runs no graphics (Ben, 5 Nov).</p>
 <h3 id="tested-29-october-a-mac">Tested (29 October, a Mac)</h3>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>What</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cargo test</code>: debug-core 38, debug-app 11 (with ROS: a cloud placed by the pose at its stamp, map -&gt; odom, a swap's answer, through the real node)</td>
-<td>all pass</td>
-</tr>
-<tr>
-<td><code>live_sim</code> against headless Gazebo, test lot, <code>amcl:=true tracker:=pure_pursuit</code>, driving a Nav2 goal</td>
-<td>10 scans a second, ~6,000-7,000 cubes from ~16,000-19,000 points, none cut; every panel row OK; EKF global 0.02 m, truth 0.24 m, AMCL 0.70 m from EKF local; key 3's swap to lqr accepted mid-path, which then drove 9 mm off the path</td>
-</tr>
-<tr>
-<td>The window itself, <code>pixi run demo --debug</code>, the 20,000-cube drawing test</td>
-<td><strong>untested</strong> that night: the Mac's screen was locked</td>
-</tr>
-</tbody>
-</table></div>
+<p>Moved to <a href="../history/hud-log.md#tested-29-october-a-mac">the hud log</a> on 18 Nov (a dated record).</p>
 <h3 id="tested-29-october-later-step-5-bens-mac-screen-unlocked">Tested (29 October, later: step 5, Ben's Mac, screen unlocked)</h3>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>What</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cargo test</code>: debug-core 52, debug-app 14 (with ROS)</td>
-<td>all pass</td>
-</tr>
-<tr>
-<td><code>--demo</code> window, screenshot</td>
-<td>kept cubes fading, NDT's purple car and section, particles, the lot as NDT's map, the key legend: all drawn</td>
-</tr>
-<tr>
-<td><code>--demo --bench-cubes 20000</code>, release</td>
-<td><strong>358 fps</strong> (pass mark 30)</td>
-</tr>
-<tr>
-<td>The node's window against headless Gazebo, test lot, <code>amcl:=true tracker:=pure_pursuit ndt:=true</code> (<code>maps/ndt/test_lot.pcd</code>), a Nav2 goal at (40, -4)</td>
-<td>58 fps; NDT TRACKING, 3.1-3.2 per point, 1.7-1.8 ms per match, overlap 100%, 0.11-0.12 m from EKF local; AMCL 0.7-1.1 m off with its particles round it; the map's 2,502 cubes sit on the walls; every panel row OK while driving</td>
-</tr>
-<tr>
-<td>Kept cubes while driving</td>
-<td>they hit <code>max_cubes</code> (20,000; 11,000 cut): mostly old ground rings</td>
-</tr>
-</tbody>
-</table></div>
+<p>Moved to <a href="../history/hud-log.md#tested-29-october-later-step-5-bens-mac-screen-unlocked">the hud log</a> on 18 Nov (a dated record).</p>
 <h3 id="tested-1-november-bens-mac-the-costmaps-cubes-and-localization-health">Tested (1 November, Ben's Mac): the costmap's cubes and localization health</h3>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>What</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cargo test</code>: debug-core (<code>voxels</code>, <code>localization_health</code>, state, keys), debug-app with ROS (a Nav2 cube cloud placed by the pose at its stamp; a WARN health string read)</td>
-<td>all pass</td>
-</tr>
-<tr>
-<td><code>--demo</code> window, screenshots, seeing screen and panel</td>
-<td>red wireframes on the walls and boxes over the teal cubes; both sections drawn, OK and WARN (two checks wrapped); the panel's two new rows fit at 1600 x 900</td>
-</tr>
-<tr>
-<td>Against Gazebo with <code>voxels:=true</code> and <code>health:=true</code></td>
-<td><strong>untested</strong></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Not yet seen:</strong> NDT's LOST and WAITING on the live window (only in <code>--demo</code>); <code>pixi run
-demo --debug</code> itself (RViz, the HUD and the map window as well: run here piece by piece);
-the keys pressed by hand (K, M, A, H: their logic is tested, the window wasn't clicked).</p>
+<p>Moved to <a href="../history/hud-log.md#tested-1-november-bens-mac-the-costmaps-cubes-and-localization-health">the hud log</a> on 18 Nov (a dated record).</p>
 </section>
 <section class="card"><h2 id="the-hardware-panel">The hardware panel</h2>
 <p><code>ros/hud/aav_hud</code>, binary <code>hw_panel</code>: one screen to <strong>test every sensor</strong> and <strong>work
@@ -2514,56 +2426,7 @@ hw_panel --demo --page graphs                     # a pretend path, every hop OK
 </tbody>
 </table></div>
 <h3 id="tested-29-october-bens-mac">Tested (29 October, Ben's Mac)</h3>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>What</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cargo test</code>: panel-core 30 (the buttons, the gate, safety.py's vectors, the readings), debug-core 58 (the footprint, the top-down, key L)</td>
-<td>all pass</td>
-</tr>
-<tr>
-<td><code>cargo test</code> with ROS: panel-app 7 (the real node: no command before the first frame, 15-21 in 2 s of drawing, none once drawing stops with GO still held; the E-STOP is five trues, no false), debug-app 14</td>
-<td>all pass</td>
-</tr>
-<tr>
-<td><code>--demo</code> windows, screenshots (above)</td>
-<td>the seeing screen: the lot's map from above, NDT's ellipses, the scan green on the map; the panel: SIM, buttons on, 0.3 m/s asked and seen, every sensor OK</td>
-</tr>
-<tr>
-<td>Gazebo, test lot, headless, the real node and the same buttons driven by <code>gazebo_self_test</code> (Speed + three times, GO held)</td>
-<td>twist_mux passed 0.300; the car reached <strong>0.31-0.35 m/s</strong> in about 2 s; let go: 0 within 1 s</td>
-</tr>
-<tr>
-<td>Gazebo: the keyboard's zeros through twist_mux (a takeover) while GO is held</td>
-<td>zeroed ("someone else drove"); the car stopped and <strong>stayed at 0</strong> after the keyboard let go, GO still held</td>
-</tr>
-<tr>
-<td>Gazebo: <code>/safety/estop</code> true, then cleared, GO held</td>
-<td>zeroed ("the e-stop"); <strong>stayed at 0</strong> after the clear</td>
-</tr>
-<tr>
-<td>Gazebo: the geofence's lock true (its node stopped)</td>
-<td>twist_mux passed nothing; the car <strong>never moved</strong></td>
-</tr>
-<tr>
-<td>Gazebo: the panel frozen (SIGSTOP) while driving</td>
-<td><code>/drivers/buttons/cmd_vel</code> went silent; the car read <strong>0.0 m/s</strong> 2-6 s into the freeze (161 samples). Thawed with GO still held, it drove again</td>
-</tr>
-</tbody>
-</table></div>
-<p>| Gazebo (<code>pixi run demo --debug</code>), <strong>both windows on screen</strong>, 29 Oct 22:50: <code>hw_panel --self-test 0.3:8</code> | asked 0.30, twist_mux 0.300, seen 0.30-0.35 m/s; GO let go: 0.00 about 0.5 s later. Pictures below |
-| The same run, the seeing screen | NDT TRACKING, 3.3 per point, 3.3 ms a match; the lot's map, every localizer's car and the scan on NDT's cells all drawn, 58 fps |</p>
-<p><img alt="The seeing screen against Gazebo, NDT tracking" src="../img/debug-hud-seeing-gazebo.png" /></p>
-<p><img alt="The hardware panel against Gazebo: every sensor OK (Gazebo has no battery)" src="../img/hw-panel-gazebo.png" /></p>
-<p><strong>Not yet seen:</strong> the keys and the mouse pressed by hand (macOS blocks scripted keys); the bench
-check (a person's joystick beats the buttons); key L on the live window. Gazebo's output
-mux latched STOP once at start-up (an announcement race) and opened by itself the next
-runs; <code>pixi run clear gate</code> reopens it.</p>
+<p>Moved to <a href="../history/hud-log.md#tested-29-october-bens-mac">the hud log</a> on 18 Nov (a dated record).</p>
 </section>
 <section class="card"><h2 id="the-little-robot-easter-egg">The little robot (easter egg)</h2>
 <p>A small robot hides in three of the screens: a boxy body on two tank treads, a neck,

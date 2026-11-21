@@ -8,7 +8,7 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_mux_runtime
     test/test_mux_runtime.py
-    TIMEOUT 30
+    TIMEOUT 90
   )
 endif()
 

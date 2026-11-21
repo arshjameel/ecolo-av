@@ -8,6 +8,8 @@
 //!                                   every source REAL reaches this node
 //!             safety/estop          std_msgs/Bool
 //!             safety/output_mux/state  std_msgs/String: the safety gate, for /spine/arm
+//!             safety/self_test/status  diagnostic_msgs/DiagnosticStatus: the boot
+//!                                   self-test, for /spine/arm (only with require_ready)
 //!             can/rx               can_msgs/Frame  (ros2_socketcan's receiver on the car;
 //!                                   spine_sim on the bench and in Ravensim)
 //! Publishes   can/tx                can_msgs/Frame  (ros2_socketcan's sender)
@@ -28,8 +30,11 @@
 //! Service     spine/arm             std_srvs/SetBool: refused during an e-stop, and while
 //!                                   the safety gate is shut: the output mux not OPEN for
 //!                                   this bridge's target, or quiet for gate_timeout s
-//!                                   (Ben, 24 Oct). Disarming always works
+//!                                   (Ben, 24 Oct); with require_ready, also until the
+//!                                   boot self-test says READY within ready_timeout s
+//!                                   (TODO 255). Disarming always works
 //! Parameters  wheelbase, track (m), cmd_timeout, wheel_timeout, gate_timeout (s),
+//!             require_ready (false; the car: true), ready_timeout (2.0 s),
 //!             drive_rate_hz, estop_rate_hz, speed_variance, yaw_rate_variance,
 //!             steering_joints, source, role; aav_spine's config/spine.yaml
 //!
@@ -67,6 +72,7 @@ use ros_env::aav_interfaces::msg::{
 use ros_env::ackermann_msgs::msg::AckermannDriveStamped;
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::can_msgs::msg::Frame;
+use ros_env::diagnostic_msgs::msg::DiagnosticStatus;
 use ros_env::nav_msgs::msg::Odometry;
 use ros_env::sensor_msgs::msg::JointState;
 use ros_env::std_msgs::msg::{Bool, Header, String as StringMsg};
@@ -117,8 +123,17 @@ fn main() -> Result<()> {
     let drive_period = period("drive_rate_hz", params.drive_rate_hz.get())?;
     let estop_period = period("estop_rate_hz", params.estop_rate_hz.get())?;
 
+    let bridge = if params.require_ready.get() {
+        log_info!(
+            node.logger(),
+            "require_ready: /spine/arm waits for the boot self-test's READY"
+        );
+        Bridge::new(settings).with_ready_gate(seconds("ready_timeout", params.ready_timeout.get())?)
+    } else {
+        Bridge::new(settings)
+    };
     let state = State {
-        bridge: Bridge::new(settings),
+        bridge,
         clock: node.get_clock(),
         logger: node.logger().clone(),
         variances: [params.speed_variance.get(), params.yaw_rate_variance.get()],
@@ -216,6 +231,7 @@ fn main() -> Result<()> {
 struct DriveSide {
     _estop: WorkerSubscription<Bool, State>,
     _gate: WorkerSubscription<StringMsg, State>,
+    _ready: WorkerSubscription<DiagnosticStatus, State>,
     _arm: WorkerService<SetBool, State>,
     _drive: WorkerTimer<State>,
     _heartbeat: WorkerTimer<State>,
@@ -238,6 +254,18 @@ impl DriveSide {
         let _gate = worker.create_subscription(
             "safety/output_mux/state",
             |s: &mut State, msg: StringMsg| s.bridge.output_mux_state(&msg.data, Instant::now()),
+        )?;
+        // The boot self-test (TODO 255), on the same steady clock. Heard always; it counts
+        // only with require_ready (Bridge::with_ready_gate).
+        let _ready = worker.create_subscription(
+            "safety/self_test/status",
+            |s: &mut State, msg: DiagnosticStatus| {
+                s.bridge.self_test(
+                    msg.level == DiagnosticStatus::OK,
+                    &msg.message,
+                    Instant::now(),
+                );
+            },
         )?;
         let _arm = worker.create_service::<SetBool, _>(
             "spine/arm",
@@ -274,6 +302,7 @@ impl DriveSide {
         Ok(Self {
             _estop,
             _gate,
+            _ready,
             _arm,
             _drive,
             _heartbeat,
@@ -292,6 +321,8 @@ struct Params {
     cmd_timeout: ReadOnlyParameter<f64>,
     wheel_timeout: ReadOnlyParameter<f64>,
     gate_timeout: ReadOnlyParameter<f64>,
+    require_ready: ReadOnlyParameter<bool>,
+    ready_timeout: ReadOnlyParameter<f64>,
     drive_rate_hz: ReadOnlyParameter<f64>,
     estop_rate_hz: ReadOnlyParameter<f64>,
     speed_variance: ReadOnlyParameter<f64>,
@@ -311,14 +342,19 @@ impl Params {
             "front_right_steering_joint".into(),
         ]);
         Ok(Self {
-            wheelbase: number("wheelbase", 1.57)?,                 // m
-            track: number("track", 0.77)?,                         // m
-            cmd_timeout: number("cmd_timeout", 0.1)?,              // s
-            wheel_timeout: number("wheel_timeout", 0.1)?,          // s
-            gate_timeout: number("gate_timeout", 1.5)?,            // s
-            drive_rate_hz: number("drive_rate_hz", 50.0)?,         // Hz
-            estop_rate_hz: number("estop_rate_hz", 10.0)?,         // Hz
-            speed_variance: number("speed_variance", 0.01)?,       // (m/s)²
+            wheelbase: number("wheelbase", 1.57)?,        // m
+            track: number("track", 0.77)?,                // m
+            cmd_timeout: number("cmd_timeout", 0.1)?,     // s
+            wheel_timeout: number("wheel_timeout", 0.1)?, // s
+            gate_timeout: number("gate_timeout", 1.5)?,   // s
+            require_ready: node
+                .declare_parameter("require_ready")
+                .default(false)
+                .read_only()?,
+            ready_timeout: number("ready_timeout", 2.0)?, // s
+            drive_rate_hz: number("drive_rate_hz", 50.0)?, // Hz
+            estop_rate_hz: number("estop_rate_hz", 10.0)?, // Hz
+            speed_variance: number("speed_variance", 0.01)?, // (m/s)²
             yaw_rate_variance: number("yaw_rate_variance", 0.02)?, // (rad/s)²
             steering_joints: node
                 .declare_parameter("steering_joints")

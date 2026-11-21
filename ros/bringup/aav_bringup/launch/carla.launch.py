@@ -85,7 +85,8 @@ def launch_setup(context):
                                max_speed=arg('sim_speed'),
                                reversing=str(flag['reversing']).lower()))
     if flag['watchdog']:
-        inputs = ['odom', 'imu', 'gps', 'local', 'global'] + (['radar'] if radar else [])
+        inputs = (['odom', 'imu', 'gps', 'local', 'global'] + (['radar'] if radar else [])
+                  + (['lidar'] if lidar else []))
         actions.append(include(context, 'aav_safety', 'watchdog.launch.py',
                                inputs=','.join(inputs), use_sim_time='true'))
     if flag['teleop']:

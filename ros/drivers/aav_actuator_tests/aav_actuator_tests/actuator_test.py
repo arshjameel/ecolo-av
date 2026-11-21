@@ -6,13 +6,19 @@ actuator_test: docs/tests.md's stage-3 and stage-4 tests, run as a twist_mux dri
     pixi run actuator-test steer-sweep --stands         the real car, wheels off the ground
     pixi run actuator-test speed-up                     the real car, in an empty lot
     pixi run actuator-test --analyse ~/aav-tests/<run>  a run's report again, from its CSV
+    pixi run actuator-test hall-brake --hallway 12      phase B in a 12 m hallway (car-test
+                                                        --hallway runs them all)
 
 It drives through twist_mux's `tests` slot (priority 60): the joystick (100) and the
 keyboard (90) always win, and /safety/estop locks it out. It stops the car (zero commands)
 on Ctrl-C, on any error, on /safety/estop, when someone else takes over, when the speed,
 distance or time leave the test's envelope, and when the speed reading goes stale. On the
 real car it asks the person to type the test's name first, and caps the speed at 1 m/s
-(0.3 m/s on stands). Each run goes to its own folder: log.csv, summary.txt, meta.yaml,
+(0.3 m/s on stands). In a hallway (--hallway LENGTH, the hall-* tests) the top speed comes
+from its length (safety.hallway_limits), each driving step ends where the car must start
+to stop (procedures.stop_room), and past the room (length - margin) it stops at once; the
+geofence may say STANDS there (indoors, no GPS). Each run goes to its own folder:
+log.csv, summary.txt, meta.yaml,
 and with --bag a rosbag. It prints vehicle.yaml lines to paste; it never writes them.
 log.csv keeps each value's arrival time (the t_* columns); meta.yaml's shaping says what
 shaped the commands: the backend and its firmware, the speed loop's profile, ego's limits.
@@ -99,9 +105,9 @@ def yaw_of(q):
 
 class ActuatorTest(Node):
 
-    def __init__(self, sim):
-        super().__init__('actuator_test',
-                         parameter_overrides=[Parameter('use_sim_time', value=sim)])
+    def __init__(self, sim, name='actuator_test'):
+        # name: car_test runs its own node beside an actuator_test it starts.
+        super().__init__(name, parameter_overrides=[Parameter('use_sim_time', value=sim)])
         self.v = dict.fromkeys(reports.COLUMNS, NAN)   # the latest of everything
         self.arrived = {}                              # t_* column -> arrival (s, clock)
         self.odom_time = None
@@ -316,9 +322,23 @@ class Run:
                  f"{self.shaping['speed_loop']}")
         wheelbase = float(self.ego.get('wheelbase', self.ctx.wheelbase))
         max_steer = float(self.ego.get('max_steering_angle', self.ctx.max_steering))
-        settings = pr.Settings(cap=d.cap, max_steering=max_steer, wheelbase=wheelbase,
-                               creep=min(0.2, d.cap), speeds=tuple(a.speeds or ()),
-                               angles=tuple(a.angles or ()))
+        cap, room = d.cap, None
+        self.hallway = None
+        if self.test.hallway:
+            hall, why = safety.hallway_limits(a.hallway, a.margin)
+            if hall is None:
+                self.say(f'REFUSED: {why}')
+                return 1
+            self.hallway = hall
+            cap, room = min(cap, hall.top), hall.room
+            self.checklist = safety.HALLWAY_CHECKLIST
+            self.say(f'Hallway: {hall.length:g} m, margin {hall.margin:g} m: room '
+                     f'{hall.room:.1f} m, top speed {hall.top:g} m/s (needs '
+                     f'{hall.needed(hall.top):.1f} m); facing {a.direction}')
+        settings = pr.Settings(cap=cap, max_steering=max_steer, wheelbase=wheelbase,
+                               creep=min(0.2, cap), speeds=tuple(a.speeds or ()),
+                               angles=tuple(a.angles or ()), room=room,
+                               stop_decel=safety.HALL_DECEL, reaction=safety.HALL_REACTION)
         settings, note = pr.with_ego_limit(settings, self.ego.get('max_speed'))
         if note:
             self.say(f'NOTE: {note}')
@@ -360,7 +380,7 @@ class Run:
             self.say('REFUSED: /safety/estop is true. Clear it first (pixi run clear estop)')
             return 1
         why = safety.geofence_stop(*node.geofence_says(), self.args.stands, self.decision.real,
-                                   starting=True)
+                                   starting=True, hallway=self.test.hallway)
         if why:
             self.say(f'REFUSED: {why}')
             return 1
@@ -397,7 +417,9 @@ class Run:
         self.folder = run_folder(a.out, self.test.name, self.kind)
         if a.bag:
             self.bag = start_bag(os.path.join(self.folder, 'bag'), a.sim)
-        self.runner = pr.Runner(list(self.plan.steps))
+        st = self.settings
+        self.runner = pr.Runner(list(self.plan.steps), room=st.room, stop_decel=st.stop_decel,
+                                reaction=st.reaction)
         self.t0 = node.seconds()
         self.last = {'t': self.t0, 'wall': time.monotonic(), 'heading': 0.0, 'distance': 0.0,
                      'done': 0, 'grace': time.monotonic() + 1.0, 'other': None,
@@ -428,7 +450,8 @@ class Run:
         grace = time.monotonic() < last['grace']
         if node.estop:
             raise Aborted('/safety/estop is true')
-        why = safety.geofence_stop(*node.geofence_says(), self.args.stands, self.decision.real)
+        why = safety.geofence_stop(*node.geofence_says(), self.args.stands, self.decision.real,
+                                   hallway=self.test.hallway)
         if why:
             raise Aborted(why)
         if not grace and not self.fresh_odom():
@@ -604,8 +627,13 @@ def write_files(run, text, lines):
         'wheelbase': run.ctx.wheelbase, 'max_steering': run.ctx.max_steering,
         'gps_x': run.ctx.gps_x,
         'steps': [{'phase': d.step.phase, 'start': d.start, 'end': d.end,
-                   'timed_out': d.timed_out} for d in run.runner.done],
+                   'timed_out': d.timed_out, 'cut': d.cut} for d in run.runner.done],
     }
+    hall = getattr(run, 'hallway', None)
+    if hall is not None:
+        meta['hallway'] = {'length': hall.length, 'margin': hall.margin, 'room': hall.room,
+                           'top': hall.top, 'direction': run.args.direction}
+        meta['mass'] = float(run.cfg.get('vehicle', {}).get('mass', NAN))
     with open(os.path.join(run.folder, 'meta.yaml'), 'w') as f:
         yaml.safe_dump(meta, f, sort_keys=False)
 
@@ -651,7 +679,7 @@ def analyse_folder(folder):
 def list_tests():
     print('Test          #     Where      What')
     for t in pr.TESTS.values():
-        where = 'on stands' if t.stage == 3 else 'in a lot'
+        where = 'on stands' if t.stage == 3 else ('a hallway' if t.hallway else 'in a lot')
         print(f'{t.name:<13} {t.number:<5} {where:<10} {t.title}')
 
 
@@ -680,6 +708,12 @@ def parse(argv):
     p.add_argument('--speeds', type=float, nargs='+',
                    help='m/s for speed-up, coast, brake, throttle-map')
     p.add_argument('--angles', type=float, nargs='+', help='rad for circles (each both ways)')
+    p.add_argument('--hallway', type=float, metavar='LENGTH',
+                   help='m: the hallway, measured, start line to the far wall (hall-* tests)')
+    p.add_argument('--margin', type=float, default=safety.HALL_MARGIN,
+                   help=f'm left over at the far end (default {safety.HALL_MARGIN:g})')
+    p.add_argument('--direction', choices=('there', 'back'), default='there',
+                   help="which way down the hallway the car faces (the slope's sign)")
     p.add_argument('--max-distance', type=float, help='m: stop beyond this (default: per test)')
     p.add_argument('--max-time', type=float, help='s: stop after this (default: per test)')
     p.add_argument('--out', help='folder for the runs (default ~/aav-tests, or $AAV_TESTS_DIR)')
@@ -691,6 +725,13 @@ def parse(argv):
         p.error('name a test (--list shows them)')
     if args.test != 'preflight' and (args.skip or args.no_drive):
         p.error('--skip and --no-drive are for the preflight only')
+    hall = args.test in pr.HALL_TESTS
+    if hall and args.hallway is None:
+        p.error(f'{args.test} runs in a hallway: add --hallway LENGTH (m, measured)')
+    if args.hallway is not None and not hall:
+        p.error(f'--hallway is for the hallway tests only ({", ".join(pr.HALL_TESTS)})')
+    if hall and args.stands:
+        p.error('the hallway tests drive on the ground: no --stands')
     if args.test == 'preflight':
         from aav_actuator_tests.preflight import NAMES
         unknown = sorted(set(args.skip) - set(NAMES))

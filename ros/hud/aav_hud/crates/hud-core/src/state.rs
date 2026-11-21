@@ -16,6 +16,7 @@ use crate::{
     health::{Health, LastSeen},
     origin::{Announcement, Origins},
     picture::Picture,
+    self_test::{self, Readiness, Report},
     things::{CarPose, Thing},
     vehicle::VehicleStatus,
     watchdog,
@@ -82,6 +83,8 @@ pub enum Update {
     Watchdog(String),
     /// The output mux's gate: "OPEN - ...", "WAIT - ..." or "STOP - ...".
     OutputMux(String),
+    /// The boot self-test's answer: READY, or NOT READY and why.
+    SelfTest(Report),
     /// The squiggly line's bold line: ego's trace, base_link.
     Trace(Vec<ahead::Point>),
     /// Its faint line: the plan ahead, base_link (empty: no plan).
@@ -109,6 +112,7 @@ impl Update {
             Self::Picture(_) | Self::BadPicture(_) => Some(Topic::Camera),
             Self::Watchdog(_) => Some(Topic::Watchdog),
             Self::OutputMux(_) => Some(Topic::OutputMux),
+            Self::SelfTest(_) => Some(Topic::SelfTest),
             Self::Trace(_) => Some(Topic::Trace),
             Self::PlanAhead(_) => Some(Topic::PlanAhead),
             Self::StopPoint(_) => Some(Topic::StopPoint),
@@ -146,6 +150,8 @@ pub struct HudState {
     pub watchdog: Option<String>,
     /// The output mux's last state.
     pub output_mux: Option<String>,
+    /// The boot self-test's last answer.
+    pub self_test: Option<Report>,
     /// The squiggly line, as last heard (hud_core::ahead).
     pub ahead: ahead::Ahead,
     /// The things near the car, as last heard (odom).
@@ -186,6 +192,7 @@ impl HudState {
             Update::Source(a) => self.origins.apply(a),
             Update::Watchdog(w) => self.watchdog = Some(w),
             Update::OutputMux(g) => self.output_mux = Some(g),
+            Update::SelfTest(r) => self.self_test = Some(r),
             Update::Trace(t) => self.ahead.trace = t,
             Update::PlanAhead(p) => self.ahead.plan = p,
             Update::StopPoint(s) => self.ahead.stop = Some(s),
@@ -231,6 +238,20 @@ impl HudState {
     #[must_use]
     pub fn sensor_alarm(&self, now: Instant) -> Option<Alarm> {
         watchdog::alarm(self.health(Topic::Watchdog, now), self.watchdog.as_deref())
+    }
+
+    /// The boot self-test: READY, NOT READY and why, or silent; None when never heard
+    /// ([`self_test::readiness`]). It speaks at 2 Hz: quiet only after [`self_test::QUIET`].
+    #[must_use]
+    pub fn readiness(&self, now: Instant) -> Option<Readiness> {
+        let limit = self.config.stale_after().max(self_test::QUIET);
+        let health = self
+            .last_seen
+            .get(&Topic::SelfTest)
+            .copied()
+            .unwrap_or_default()
+            .health(now, limit);
+        self_test::readiness(health, self.self_test.as_ref())
     }
 
     /// May the car move? GO / WAIT / STOP and the one main reason ([`gate::verdict`]).
@@ -324,6 +345,30 @@ mod tests {
         assert_eq!(
             s.sensor_alarm(later),
             Some(Alarm::Stop("SENSOR WATCHDOG SILENT".into()))
+        );
+    }
+
+    #[test]
+    fn the_self_test_shows_ready_or_why_not() {
+        let start = Instant::now();
+        let mut s = HudState::new(HudConfig::default());
+        assert_eq!(s.readiness(start), None); // no self-test in this run
+        let why = "NOT READY - actuators (no /vehicle/status)";
+        s.apply(Update::SelfTest(Report::from_status(2, why)), start);
+        assert_eq!(
+            s.readiness(start),
+            Some(Readiness::NotReady(
+                "NOT READY: actuators (no /vehicle/status)".into()
+            ))
+        );
+        s.apply(Update::SelfTest(Report::from_status(0, "READY")), start);
+        // 1.5 s: past stale_after (1 s), not yet the self-test's own 2 s.
+        let later = start + Duration::from_millis(1500);
+        assert_eq!(s.readiness(later), Some(Readiness::Ready));
+        let silent = start + Duration::from_secs(3);
+        assert_eq!(
+            s.readiness(silent),
+            Some(Readiness::NotReady("SELF-TEST SILENT".into()))
         );
     }
 

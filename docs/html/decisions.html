@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">61 min read · 17 sections</div></header>
+<div class="meta">62 min read · 18 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a class="here" href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#decided-from-26-october-to-14-november">Decided from 26 October to 14 November</a><a href="#decided-on-17-november">Decided on 17 November</a><a href="#proposed-in-november-bens-to-decide">Proposed in November: Ben&#x27;s to decide</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#decided-from-26-october-to-14-november">Decided from 26 October to 14 November</a><a href="#decided-on-17-november">Decided on 17 November</a><a href="#decided-on-18-19-november">Decided on 18-19 November</a><a href="#proposed-in-november-bens-to-decide">Proposed in November: Ben&#x27;s to decide</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
 <div class="lead"><p>What the team has decided, what's still open, and the 34 numbered questions. The source
 is the team design doc, <em>AAV 2026–27 Autonomy Stack — Architecture &amp; Plan</em> (a Claude Doc,
 revision 61 on 10 October 2026). This page is a short copy, so you don't have to hunt.
@@ -958,7 +972,7 @@ answer.</p>
 </tr>
 <tr>
 <td>15 Nov</td>
-<td><strong>The sim's <code>ours</code> stack takes the three sway fixes</strong> (TODO 168): <code>plan_smoothing:=strong</code> (path <code>lattice_rs_strong</code>), and <code>map_correction:=slow</code> with <code>mppi_lag_steer_gamma:=0.05</code> (steer <code>mppi_lag_calm</code>). Scored in the sim, 2 runs each: sway at Nav2's on the lot (0.021 against 0.018 m/s²) and under it on the campus (0.099 against 0.131), every leg, closer to the path. The champions, the car and <code>stack:=stock</code> are unchanged; each old setting stays a switch (<a href="mppi-lag.html#the-sway-that-was-left">why</a>)</td>
+<td><strong>The sim's <code>ours</code> stack takes the three sway fixes</strong> (TODO 168): <code>plan_smoothing:=strong</code> (path <code>lattice_rs_strong</code>), and <code>map_correction:=slow</code> with <code>mppi_lag_steer_gamma:=0.05</code> (steer <code>mppi_lag_calm</code>). Scored in the sim, 2 runs each: sway at Nav2's on the lot (0.021 against 0.018 m/s²) and under it on the campus (0.099 against 0.131), every leg, closer to the path. The champions, the car and <code>stack:=stock</code> are unchanged; each old setting stays a switch (<a href="../history/mppi-lag-log.md#the-sway-that-was-left">why</a>)</td>
 <td>Ben's rule (5 Nov): a challenger that wins on the same routes</td>
 </tr>
 <tr>
@@ -1017,6 +1031,55 @@ answer.</p>
 <tr>
 <td><strong>The EKFs take the car's command, to slow only</strong> (robot_localization's control term, TODO 207)</td>
 <td>With the wheels quiet the EKFs ran on at their last speed, and <code>map -&gt; odom</code> jumped 9-10 m when the wheels came back; <code>sim-check --faults</code> 14 of 14, three runs in a row</td>
+<td>Ben</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="decided-on-18-19-november">Decided on 18-19 November</h2>
+<p>The whole story, to explain to someone else: <a href="decisions-2026-11-19.html">What we decided, 18-19 Nov</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+<th>By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Keep every commit</strong>: the fork is never reset, rebased or force-pushed; protection rules and save tags; real merges only</td>
+<td>the team's queue squashed 1,062 of Ben's commits; the fork holds the full history</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>The testing plan</strong>, phases 0 and A to G, each automated (<a href="testing-plan.html">plan</a>)</td>
+<td>Ben's prof: "a full automated testing system"</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>NDT leads, the GPS checks</strong> (<code>pose_source:=ndt</code>, a challenger, TODO 210)</td>
+<td>the GPS was failing; with NDT leading the car held its route with the GPS stopped, jumped or drifting</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Maps from our own drives</strong> (KISS-SLAM, offline), cleaned in a map editor</td>
+<td>2.3 cm against the EKF's 33 cm; a person has the last word</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>No Nav2 yardstick; scores tracked, not gates</strong> (TODO 167)</td>
+<td>"We can get worse if we think there is room to improve"; safety checks stay pass/fail</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>One ONNX file per model</strong>: Core ML on the Mac, TensorRT on the Orin (JetPack 7.2+); moved up (TODO 243)</td>
+<td>one export for every computer; proven on the Mac before the car</td>
+<td>Ben</td>
+</tr>
+<tr>
+<td><strong>Lanes are perception; the costmap prices them; navigation drives.</strong> The separate lane-follower drivers (the 2025-26 PID and ours) are removed once the camera's lanes are in the lanes layer (TODO 264). "Every algorithm stays" now means: not too early; strip what we know won't work (Ben, 19 Nov)</td>
+<td>Ben, 19 Nov: "drop there code all together". One driver (MPPI) with its lag and the obstacles, not a second steering loop beside it</td>
 <td>Ben</td>
 </tr>
 </tbody>
@@ -1336,7 +1399,7 @@ The design doc's next steps take Q1–Q9, Q18, Q20 and Q22 to the car with a tap
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="measure-the-car.html"><small>Previous</small>← Measure the car</a>
-<a class="next" href="infrastructure.html"><small>Next</small>Infrastructure →</a></nav>
+<a class="next" href="decisions-2026-11-19.html"><small>Next</small>Decided 18-19 Nov →</a></nav>
 </main>
 <footer>Source: <code>docs/decisions.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

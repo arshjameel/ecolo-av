@@ -7,12 +7,14 @@ The lane finder, on the front camera's pictures.
   /sensors/camera/front_left/image_raw, /sensors/camera/front_left/camera_info
       -> lane_finder -> /perception/lane/geometry
 
-Lane keeping is two launch files: this one finds the lane, and aav_lane_geometry's
-lane_follower.launch.py steers by it (control_interface, on /drivers/ai/cmd_vel).
-bench.launch.py lane:=true starts both.
+It finds the lane; the costmap draws its lines as lane costs (lane_source:=camera, TODO
+264) and aav_lane_pose reads them. sim.launch.py and bench.launch.py lane:=true start it
+(sim's lanes:=camera too). The lane follower that steered by it went on 19 Nov.
 
 lane_finder_impl: rust (aav_lane_finder_rs, the default since 18 Nov: the same node name,
-topics, parameters and lanes, no OpenCV) or python (this package's own node).
+topics, parameters and lanes, no OpenCV), python (this package's own node), or learned
+(aav_lane_finder_learned, a challenger: our model through ONNX Runtime, the same message;
+it needs models/lane-ufld.onnx, made by tools/lane_train.py).
 
 The camera's place on the car (camera_left_link) and the wheelbase come from
 aav_description's vehicle.yaml; the rest from config/lane_finder.yaml (both languages).
@@ -55,6 +57,7 @@ def generate_launch_description():
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='lane_finder in rust (aav_lane_finder_rs, the '
-                                          'default) or python (aav_lane_finder)'),
+                                          'default), python (aav_lane_finder) or learned '
+                                          '(aav_lane_finder_learned, a challenger)'),
         OpaqueFunction(function=finder),
     ])

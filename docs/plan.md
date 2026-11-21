@@ -90,7 +90,7 @@ the next concrete step.
 |---|---|---|---|---:|---|
 | T2.1 | TurtleSim target | 6 Nov | ✅ | 100 | |
 | T2.2 | Ecolo URDF | 20 Nov | 🔧 | 60 | built from `vehicle.yaml`; needs the measurements (T3.2) |
-| T2.3 | Gazebo car | 4 Dec | ✅ | 100 | checked 22 Oct: a 10° steer gives 9.05-9.14 m for the predicted 8.90 m (+2-3%); 20° and full lock also within 3% ([simulation](simulation.md#what-gazebo-simulates)) |
+| T2.3 | Gazebo car | 4 Dec | ✅ | 100 | checked 22 Oct: a 10° steer gives 9.05-9.14 m for the predicted 8.90 m (+2-3%); 20° and full lock also within 3% ([simulation](simulation.md#what-ravensim-simulates)) |
 | T2.4 | Noise matched to the real sensors | Jan | 🔧 | 20 | needs recordings from the car |
 | T2.5 | Replay driver and comparison | 18 Dec | 🔧 | 60 | the replay driver exists; write the drive-comparison script (`tools/drive_metrics.py` is a start) |
 | T2.6 | Integration tests in CI, nightly | mid-Jan | 🔧 | 70 | the nightly job `sim` runs `sim-check --obstacle` headless (22 Oct), on trial: passed 21, 22 and 24 Oct; a Gazebo crash at start is now retried once (TODO 26). Once it passes a few nights in a row, let a failure count |

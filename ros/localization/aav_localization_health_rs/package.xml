@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_localization_health_rs</name>
   <version>0.1.0</version>
-  <description>localization_health in Rust (rclrs): the default since 16 Nov (Ben), beside aav_localization_health's Python node (localization.launch.py localization_health_impl:=rust). The same node name, topics, QoS, parameters and answers: the IMU, the wheels, the GPS, both EKFs and TF in; /localization/health and /diagnostics out. Warn only. The checks are the health-core crate, with no ROS, checked against the Python module's answers.</description>
+  <description>localization_health in Rust (rclrs): the default since 16 Nov (Ben), in place of aav_localization_health's Python node (removed 20 Nov). The same node name, topics, QoS, parameters and answers: the IMU, the wheels, the GPS, both EKFs and TF in; /localization/health and /diagnostics out. Warn only. The checks are the health-core crate, with no ROS, checked against the Python module's answers.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
@@ -21,8 +21,6 @@
   <depend>aav_interfaces</depend>
   <!-- vehicle.yaml (wheelbase, track), found on AMENT_PREFIX_PATH. -->
   <exec_depend>aav_description</exec_depend>
-  <!-- config/localization_health.yaml: the launch file passes it. -->
-  <exec_depend>aav_localization_health</exec_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_cmake_test</test_depend>

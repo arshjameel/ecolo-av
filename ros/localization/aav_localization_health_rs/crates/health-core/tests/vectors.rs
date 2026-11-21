@@ -33,8 +33,13 @@ fn text(v: &Value) -> &str {
     v.as_str().expect("text")
 }
 
+/// The same number: bit for bit on the computer that wrote the vectors, within 1e-9 on any
+/// other (any NaN matches a NaN): Linux's maths library rounds atan2, sin, cos and acos
+/// apart from macOS's in the last bit (20 Nov, CI).
 fn same(a: f64, b: f64) -> bool {
-    a.to_bits() == b.to_bits() || (a.is_nan() && b.is_nan())
+    a.to_bits() == b.to_bits()
+        || (a.is_nan() && b.is_nan())
+        || (a - b).abs() <= 1e-9 * a.abs().max(b.abs()).max(1.0)
 }
 
 #[test]

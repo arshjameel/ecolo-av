@@ -10,7 +10,8 @@
 //!             heartbeat std_msgs/UInt64, detections vision_msgs/Detection2DArray (only
 //!             its own frame_id's count), actuator aav_interfaces/ActuatorState, speed
 //!             ackermann_msgs/AckermannDriveStamped (against /vehicle/odom's speed); node:
-//!             our own nodes, looked for in the ROS graph each tick
+//!             our own nodes, looked for in the ROS graph each tick; status
+//!             diagnostic_msgs/DiagnosticStatus: our nodes in their own words (FAULT)
 //!             /vehicle/odom (the wheel speed) and /sensors/imu/data (the odom input's
 //!             cross check), where no input watches them
 //! Publishes   safety/sensor_watchdog/lock   std_msgs/Bool, at rate_hz: true while an input
@@ -42,7 +43,7 @@ use ros_env::std_msgs::msg::{Bool, Header, String as Text, UInt64};
 use ros_env::std_srvs::srv::{Trigger, Trigger_Request, Trigger_Response};
 use ros_env::vision_msgs::msg::Detection2DArray;
 use watchdog_core::feed::{Feed, Said, IMU_TOPIC, VEHICLE_ODOM};
-use watchdog_core::watch::{Kind, Rule, Watchdog};
+use watchdog_core::watch::{Kind, Rule, Severity, Watchdog};
 use watchdog_core::wheels::CrossCheck;
 use watchdog_core::{fmt_g, picture_digest};
 
@@ -122,6 +123,16 @@ fn read_rule(d: &mut Declarer<'_>, name: &str) -> Result<Rule> {
         over_warn: d.number(&key("over_warn"), 1.0)?,
         over_persist: d.number(&key("over_persist"), 2.0)?,
         over_slowing: d.number(&key("over_slowing"), 0.3)?,
+        status_name: d.text(&key("status_name"), "")?,
+        min_level: {
+            let level = d.number(&key("min_level"), 2.0)?;
+            Severity::from_min_level(level as i64)
+                .filter(|_| level.fract() == 0.0)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("{name}: min_level is 1 (WARN), 2 (ERROR) or 3 (STALE)")
+                })?
+        },
+        quiet_ok: d.flag(&key("quiet_ok"), false)?,
     };
     Ok(rule.checked()?)
 }
@@ -215,9 +226,10 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
             )?)),
             Kind::Cloud => keep.push(Box::new(worker.create_subscription(
                 topic.sensor_data_qos(),
-                move |s: &mut Dog, _: PointCloud2| {
+                move |s: &mut Dog, m: PointCloud2| {
+                    // A frozen lidar repeats its whole cloud: a sample, as for a picture.
                     let now = s.now();
-                    s.feed.cloud(now, &name);
+                    s.feed.cloud(now, &name, picture_digest(&m.data));
                 },
             )?)),
             Kind::Heartbeat => keep.push(Box::new(worker.create_subscription(
@@ -259,6 +271,14 @@ fn start(node: &Node) -> Result<Vec<Box<dyn Any>>> {
                 move |s: &mut Dog, m: AckermannDriveStamped| {
                     let now = s.now();
                     s.feed.speed(now, &name, f64::from(m.drive.speed));
+                },
+            )?)),
+            Kind::Status => keep.push(Box::new(worker.create_subscription(
+                topic.keep_last(10),
+                move |s: &mut Dog, m: DiagnosticStatus| {
+                    // One of our nodes in its own words (FAULT, TODO 171).
+                    let now = s.now();
+                    s.feed.status(now, &name, &m.name, m.level, &m.message);
                 },
             )?)),
         }

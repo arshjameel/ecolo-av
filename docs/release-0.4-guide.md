@@ -221,7 +221,7 @@ The locks are **never swapped out**. A latch is cleared only by a person: `pixi 
 |---|---|
 | **Why** | Ben, 16 Nov: "I trust rust more then python" |
 | **How we know they match** | each one gives the Python's answers on shared test vectors (thousands of ticks, often bit for bit) |
-| **Fall back** | one switch: `ego_impl:=python`, `watchdog_impl:=python`... ([on the car](release-0.4-rc1.md#check-first-on-the-car)) |
+| **Fall back** | one switch: `ego_impl:=python`, `lidar_impl:=python`... ([on the car](release-0.4-rc1.md#check-first-on-the-car)) |
 
 ## The detector through ONNX
 
@@ -283,15 +283,18 @@ lead decides each ([the list](release-0.4-rc1.md#the-seven-hardware-blockers)).
 
 ## What's next
 
-Tonight's queue (17 Nov), one helper at a time:
+The queue of 17 Nov night, as it stands on 18 Nov:
 
-| # | Next | Why |
-|---|---|---|
-| 1 | **Six more ports to Rust** | the rest of the heavy Python (TODO 185) |
-| 2 | **NDT in the EKF** (`ndt_ekf`) | find its one stop, add a fall back where a world has no NDT map, score again, swap (TODO 210) |
-| 3 | **Slow down for still obstacles** | today the behaviour slows only for things that move; a still wall is stopped by the stop zone alone |
-| 4 | **AMCL out** | the last Nav2 node; NDT with a start-up search replaces it (TODO 231) |
-| 5 | **The survey's picks** | smooth MPPI (212), an MPC that reverses (213), passing with a jerk limit (214), the ground ring by ring (215), Kinematic-ICP (216), a motion model per thing (217) |
+| # | Next | Why | 18 Nov |
+|---|---|---|---|
+| 1 | **Six more ports to Rust** | the rest of the heavy Python (TODO 185) | ✅ the lane finder, `joy_alive`, the stop-sign watcher, the point driver, `arm_when_open`, `camera_stream` |
+| 2 | **NDT in the EKF** (`ndt_ekf`) | find its one stop, add a fall back where a world has no NDT map, score again, swap (TODO 210) | ⬜ |
+| 3 | **Slow down for still obstacles** | today the behaviour slows only for things that move; a still wall is stopped by the stop zone alone | ⬜ |
+| 4 | **AMCL in Rust** | the last Nav2 node (TODO 231) | 🟡 `aav_amcl_rs` is the default, a tie with stock on the lot; `nav2_amcl` leaves `pixi.toml` after more runs (232) |
+| 5 | **The survey's picks** | smooth MPPI (212), an MPC that reverses (213), passing with a jerk limit (214), the ground ring by ring (215), Kinematic-ICP (216), a motion model per thing (217) | ⬜ |
+
+The newest order is at the top of `TODO.md` ("What is next"), and the testing plan
+([The testing plan](testing-plan.md)) is what the car does next.
 
 Then the car: the blockers, car day, one drive recorded and scored ([Car day](car-day.md)).
 

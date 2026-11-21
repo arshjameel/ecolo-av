@@ -124,7 +124,7 @@ A frozen screen stops the car: each screen sends a heartbeat, STALE within 1 s
 | Objects in the cameras | ✅ RF-DETR Nano; YOLO as an option; Core ML on a Mac | Python (ONNX) | sim | saw a stop sign from 20 m (YOLO11n: 10 m) |
 | Lane lines | ✅ the lane finder | Python | sim | lane keeping on a 171 m campus road, mean error 4 cm |
 | Radar | ✅ radar clusters | Rust | sim | ported from the 2025-26 team's C++ |
-| Things that move | ✅ **the things tracker** (`aav_things`), cubes on the map's walls dropped | Python | sim | 9.9 things to 1.7; every walker found within 0.2 s |
+| Things that move | ✅ **the things tracker** (`aav_things_rs`), cubes on the map's walls dropped | Rust | sim | 9.9 things to 1.7; every walker found within 0.2 s |
 
 ### Maps: three levels on fixed chunks
 
@@ -161,7 +161,7 @@ A frozen screen stops the car: each screen sends a heartbeat, STALE within 1 s
 | What it does | Algorithms we built | Language | Status | Key number |
 |---|---|---|---|---|
 | Follow the path, knowing the actuators lag | ✅ **`mppi_lag_calm`** (MPPI with the car's lag) | Rust | sim | the calmest that reverses; a tick 3.4-5.3 ms |
-| The same, as an optimiser | ⚔️ lag-aware MPC (`mpc_lag_rs`) | Rust | sim | 2-7 times closer to the path, a tick 0.7-0.9 ms; sways, can't reverse yet |
+| The same, as an optimiser | ⚔️ lag-aware MPC (`mpc_lag_rs`) | Rust | sim | 2-7 times closer to the path, a tick 0.7-0.9 ms; reverses since 20 Nov (lot tour 4/4, 7.8 m backwards); sways |
 | Turn a wish into what the car can do | ✅ **ego**: Ackermann, jerk limit, body model, lag lead, the 2 s trace (Python twin kept) | Rust | sim | 2.4 % of a core against 17 % |
 | The pedal and the speed loop | ✅ `default` loop; ⚔️ `smooth`, `firm`, `lqi` | Rust (`spine-core`) | sim | `default` overshoots its command by 14 %; `firm` doesn't, but sways more |
 

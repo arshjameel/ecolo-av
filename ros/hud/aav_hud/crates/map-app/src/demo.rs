@@ -7,11 +7,20 @@
 //!
 //! A goal sent from the place search: the demo has no Nav2, so it only shows the goal
 //! (WAITING FOR A PLAN, the distance in a straight line) and the car stops.
+//!
+//! The debug page (D) gets pretend news too, on a 30 s loop: the navigator drives (12 s),
+//! a person takes over on the keyboard (6 s), the sensors lock holds the navigator while
+//! the GPS is stale (6 s), then the navigator again. Only the page's words change: the
+//! car on the map keeps its drive.
 
 use std::time::{Duration, Instant};
 
-use hud_core::units::MetresPerSecond;
+use hud_core::{
+    units::{Fraction, MetresPerSecond, Radians},
+    vehicle::{Mode, VehicleStatus},
+};
 use map_core::{
+    debug::{Ask, MuxReport, Sent},
     geom::{Point, Pose},
     grid::{Grid, GridInfo},
     route::Route,
@@ -43,6 +52,12 @@ const TOP_SPEED: f64 = 3.0;
 const WAIT_AT_GOAL: Duration = Duration::from_secs(5);
 const CAR_PERIOD: Duration = Duration::from_millis(50);
 const PLAN_PERIOD: Duration = Duration::from_secs(1);
+/// The debug page's news: 10 a second, as the command mux's state.
+const DEBUG_PERIOD: Duration = Duration::from_millis(100);
+/// The debug page's loop.
+const DEBUG_LOOP: f64 = 30.0;
+/// The car's wheelbase, for the pretend steering angle (m).
+const WHEELBASE: f64 = 1.9;
 /// Nav2's plans have a point about every 5 cm; every 25 cm is plenty here.
 const PLAN_SPACING: f64 = 0.25;
 
@@ -67,6 +82,11 @@ pub struct Demo {
     sent_goal: Option<(Pose, String)>,
     /// A goal came: the car stops and no more plans come.
     held: bool,
+    /// When the demo started, and when the debug page's news is next due.
+    started: Instant,
+    debug_due: Instant,
+    /// The car's last heading, for its turn rate.
+    last_yaw: Option<f64>,
 }
 
 impl Demo {
@@ -84,6 +104,9 @@ impl Demo {
             plan_due: now,
             sent_goal: None,
             held: false,
+            started: now,
+            debug_due: now,
+            last_yaw: None,
         };
         demo.set_path(corners(true));
         // Start part of the way along, so a screenshot shows a car on the move.
@@ -166,6 +189,83 @@ impl Demo {
         }
     }
 
+    /// The debug page's news at `now`: who drives (the 30 s loop), what it asks, what ego
+    /// sends, the gate, the car, the watchdog.
+    fn debug_news(&mut self, now: Instant) -> Vec<Update> {
+        let yaw = self.pose().yaw;
+        let dt = DEBUG_PERIOD.as_secs_f64();
+        let turn = self.last_yaw.map_or(0.0, |y| {
+            let d = (yaw - y + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU)
+                - std::f64::consts::PI;
+            d / dt
+        });
+        self.last_yaw = Some(yaw);
+        let t = now.duration_since(self.started).as_secs_f64() % DEBUG_LOOP;
+        let row = |driver: &str, priority: &str, locks: &str, held: &str| {
+            MuxReport::from_values(
+                "",
+                [
+                    ("driver", driver),
+                    ("priority", priority),
+                    ("age_s", "0.04"),
+                    ("locks", locks),
+                    ("held", held),
+                ],
+            )
+        };
+        let mut out = Vec::new();
+        let (ask, watchdog) = if (12.0..18.0).contains(&t) {
+            out.push(Update::MuxState(row("keyboard", "90", "none", "none")));
+            (
+                Some(Ask {
+                    speed: 0.5,
+                    turn: 0.0,
+                }),
+                "OK",
+            )
+        } else if (18.0..24.0).contains(&t) {
+            out.push(Update::MuxState(row("none", "0", "sensors 30", "nav")));
+            (None, "STOP: gps STALE (nothing for 2.3 s (more than 2 s))")
+        } else {
+            out.push(Update::MuxState(row("nav", "20", "none", "none")));
+            (
+                Some(Ask {
+                    speed: self.speed,
+                    turn,
+                }),
+                "OK",
+            )
+        };
+        out.push(Update::Watchdog(watchdog.into()));
+        let asked = ask.unwrap_or_default();
+        if let Some(a) = ask {
+            out.push(Update::Command(a));
+        }
+        // Ego turns the turn rate into a steering angle (the bicycle model).
+        let steering = if asked.speed.abs() > 0.05 {
+            (WHEELBASE * asked.turn / asked.speed).atan()
+        } else {
+            0.0
+        };
+        let accel = if ask.is_none() { -1.5 } else { 0.2 };
+        out.push(Update::Actuator(Sent {
+            speed: asked.speed,
+            steering,
+            accel,
+        }));
+        out.push(Update::Gate("OPEN - sim: every source SIM".into()));
+        out.push(Update::Vehicle(VehicleStatus {
+            mode: Mode::Computer,
+            armed: true,
+            speed: MetresPerSecond((asked.speed * 0.97) as f32),
+            steering_angle: Radians((steering * 0.9) as f32),
+            throttle: Fraction::new(if accel > 0.0 { 0.3 } else { 0.0 }),
+            brake: Fraction::new(if accel < 0.0 { 0.6 } else { 0.0 }),
+            ..VehicleStatus::default()
+        }));
+        out
+    }
+
     fn plan(&self) -> Route {
         let start = self.along.partition_point(|&a| a <= self.s);
         Route::new(
@@ -197,6 +297,13 @@ impl DataSource for Demo {
         }
         if let Some((pose, frame)) = self.sent_goal.take() {
             out.push(Update::Goal { pose, frame });
+        }
+        if now >= self.debug_due {
+            if self.debug_due == self.started {
+                out.push(Update::Follower("mppi_lag (aav_mppi_lag)".into()));
+            }
+            self.debug_due = now + DEBUG_PERIOD;
+            out.extend(self.debug_news(now));
         }
         // Nav2 stops planning at the goal.
         if now >= self.plan_due && self.arrived_at.is_none() && !self.held {
@@ -314,6 +421,27 @@ mod tests {
         assert!(first.iter().any(|u| matches!(u, Update::Map(_))));
         assert!(first.iter().any(|u| matches!(u, Update::Car(_))));
         assert!(first.iter().any(|u| matches!(u, Update::Plan { .. })));
+    }
+
+    /// The debug page's loop: the navigator, then a person, then the sensors lock.
+    #[test]
+    fn the_debug_page_sees_the_navigator_a_person_then_a_lock() {
+        use map_core::{config::MapConfig, debug::cards, state::MapState};
+        let t0 = Instant::now();
+        let mut demo = Demo::new(t0);
+        let mut state = MapState::new(MapConfig::default());
+        let mut who_at = |secs: u64| {
+            let now = t0 + Duration::from_secs(secs);
+            for u in demo.drain(now) {
+                state.apply(u, now);
+            }
+            let (path, safety) = cards(&state, now);
+            (path[0].big.clone(), safety[0].big.clone())
+        };
+        assert_eq!(who_at(1).0, "NAVIGATOR (AI)");
+        assert_eq!(who_at(13).0, "KEYBOARD");
+        assert_eq!(who_at(19), ("NOBODY".into(), "SENSORS".into()));
+        assert_eq!(who_at(25).0, "NAVIGATOR (AI)");
     }
 
     #[test]

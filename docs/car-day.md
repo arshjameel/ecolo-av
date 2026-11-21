@@ -221,48 +221,7 @@ Step 4 puts the ESP32 firmware here, out of git:
 
 ### `pixi run car-day-check` on Ben's Mac, 24 Oct
 
-After step 4, before steps 1, 5 and 6: so the repo, the build and the kit are its 3
-missing, and Cyclone a reminder. (The repo line's advice is today's wording.) No secrets: the Keychain is only asked whether each
-entry exists (on a laptop without them, the vault holds them).
-
-```text
-Car day: is /Users/ben/Code/ecolo-av ready? (car-day.md)
-
-  MISSING  repo         main at 54304074 has commits GitHub hasn't
-                        -> pixi run test, then move them to a branch and open a pull request (CONTRIBUTING.md)
-  MISSING  build        ros/ changed since the last build (24 Oct 15:06)
-                        -> pixi run build
-  MISSING  car kit      made 2026-10-20 13:54; its code is 37a7b549, main is 54304074
-                        -> pixi run car-kit
-  REMIND   USB stick    no stick with car-kit/ plugged in
-                        -> cp -R car-kit /Volumes/<stick>/
-  OK       model        models/rf-detr-nano.pth (366 MB): the detector (RF-DETR Nano): the Orin builds its engine from it
-  OK       model        models/yolo11n.pt (6 MB): the YOLO fallback (detector:=yolo)
-  OK       model        models/rf-detr-nano.onnx (108 MB): the Orin's engine needs only TensorRT from it (trtexec)
-  OK       MediaMTX     vendor/mediamtx (to test a stream on the laptop)
-  OK       ESP32 tools  Xtensa Rust, espflash (vendor/esp, vendor/cargo-tools)
-  OK       ESP32 Rust   v2 and v1 built 24 Oct 2026 15:47, in car-day/esp32/
-  OK       ESP32 QEMU   esp qemu-check passed 24 Oct 2026 15:47: brakes when the heartbeat stops
-  OK       ESP32 C++    the 2025-26 C++ builds (the way back), 24 Oct 2026 15:47
-  REMIND   ESP32 C++    secrets.h has the placeholders: a C++ built again can't join the WiFi; the backup (session 6) restores it all
-                        -> firmware/legacy/aav_umod_esp32/src/secrets.h: the WiFi from the team, typed in, never committed
-  OK       layouts      driving (20 topics), map (3 topics), sensors-health (6 topics); checked live at the car (session 8)
-  OK       Lichtblick   /Applications/Lichtblick.app
-  OK       docs PDF     docs/html/aav-docs.pdf, built 24 Oct 15:48
-  REMIND   Cyclone      Cyclone DDS uses one network card: name the car's (the dongle) in ~/.config/aav/cyclonedds-car.xml
-                        -> car-day.md, session 0
-  OK       logins       7 of 7 in the Keychain: aav-cam2, aav-cortex, aav-jetson, aav-desktop, aav-localization, aav-cam1, aav-qnxpi
-  OK       SSH key      ~/.ssh/id_ed25519.pub
-  OK       disk         275 GB free for bags
-  REMIND   sheet        print measure-the-car.md (2 copies) and a pen
-                        -> session 2
-  REMIND   kit bag      stands, the RC transmitter, the e-stop, tape, plumb line, 4 scales, blocks, multimeter, dongle, cable
-                        -> car-day.md, "What to bring"
-  REMIND   questions    the hardware lead is coming? H1-H8 need them
-                        -> session 3
-
-14 OK, 3 missing, 6 to tick by hand.
-```
+Moved to [the car-day log](history/car-day-log.md#pixi-run-car-day-check-on-bens-mac-24-oct) on 18 Nov (a dated record).
 
 ## The clocks, before any recording {#the-clocks}
 
@@ -494,34 +453,34 @@ The same venv also runs the engine once on the test stop sign, with the score an
 
 ### 4f. The Rust nodes are the ones running
 
-Since 16 Nov (Ben) four nodes run in **Rust** on the car by default; since 17 Nov six. The Python twins
-stay installed, one switch away. Check this each time you start `car.launch.py`.
+Since 16 Nov (Ben) four nodes run in **Rust** on the car by default; since 17 Nov six. Since
+20 Nov some have no Python twin left (below: "none"); the rest stay one switch away. Check this each time you start `car.launch.py`.
 
 | Node | Rust package (default) | Fall back to Python |
 |---|---|---|
 | ego + look_ahead | `aav_ego_rs` | `ego_impl:=python` |
-| behaviour (with `behaviour:=true`) | `aav_behaviour_rs` | `behaviour_impl:=python` |
-| sensor watchdog | `aav_watchdog_rs` | `watchdog_impl:=python` |
-| localization_health | `aav_localization_health_rs` | `localization_health_impl:=python` |
+| behaviour (with `behaviour:=true`) | `aav_behaviour_rs` | none: the Python removed 20 Nov (`save/python-behaviour`) |
+| sensor watchdog | `aav_watchdog_rs` | none: the Python removed 20 Nov (`save/python-safety-nodes`) |
+| localization_health | `aav_localization_health_rs` | none: the Python removed 20 Nov (`save/python-localization-health`) |
 | lidar_scan (the flat scan) | `aav_lidar_rs` | `lidar_impl:=python` |
-| things (with `things:=true`) | `aav_things_rs` | `things_impl:=python` |
+| things (with `things:=true`) | `aav_things_rs` | none: the Python removed 20 Nov (`save/python-things`) |
 | sensor mux + output mux (the ESP32's heartbeat; the Motor Pi alone too) | `aav_io_mux_rs` | `io_mux_impl:=python` |
 | legacy_uart_bridge (the ESP32's UART, on the Motor Pi) | `aav_legacy_rs` | `legacy_impl:=python` |
 | rc_driver (beside the bridge) | `aav_rc_rs` | `rc_impl:=python` |
 | lane_finder (with the `lane` part; since 18 Nov) | `aav_lane_finder_rs` | `lane_finder_impl:=python` |
-| joy_alive (the joystick's check, wherever teleop runs) | `aav_joy_alive_rs` | `joy_alive_impl:=python` |
+| joy_alive (the joystick's check, wherever teleop runs) | `aav_joy_alive_rs` | none: the Python removed 20 Nov (`save/python-safety-nodes`) |
 | stop_sign_watcher (the stop_signs part, next to the mux) | `aav_stop_sign_rs` | `stop_sign_impl:=python` |
 | camera_stream (the camera_stream part, only with `detector: none` in `orin.yaml`: RF-DETR runs in the Python one; since 18 Nov) | `aav_camera_stream_rs` | `camera_stream_impl:=python` |
 
 | # | Do | You should see | If not |
 |---|---|---|---|
-| 1 | read the first lines of `car.launch.py` (`~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...`) | `languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust joy_alive_impl:=rust stop_sign_impl:=rust camera_stream_impl:=rust` | a word other than `rust`: someone passed `:=python` |
+| 1 | read the first lines of `car.launch.py` (`~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...`) | `languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust lane_follower_impl:=rust joy_alive_impl:=rust stop_sign_impl:=rust camera_stream_impl:=rust` | a word other than `rust`: someone passed `:=python` |
 | 2 | on the Orin: `ps -eo args \| grep '_rs/lib/' \| grep -v grep` | `aav_ego_rs/lib/...`, `aav_watchdog_rs/lib/...`, `aav_localization_health_rs/lib/...`, `aav_lidar_rs/lib/...`, `aav_io_mux_rs/lib/...`, `aav_stop_sign_rs/lib/...` (and `aav_lane_finder_rs/lib/...` with the lane part); on the Motor Pi `aav_legacy_rs/lib/...`, `aav_rc_rs/lib/...` (and `aav_joy_alive_rs/lib/...` with teleop there) (and `aav_behaviour_rs`, `aav_things_rs` with behaviour and things on) | a package missing: its build failed, see `~/aav-jazzy/build.log` |
 | 3 | `ros2 node list` | `/ego`, `/look_ahead`, `/sensor_watchdog`, `/localization_health`, `/lidar_scan`, `/sensor_mux`, `/output_mux` (and `/things`): the same names as the Python's | |
 
 **If a Rust node misbehaves:** stop the car (e-stop), stop the launch, and start it again
-with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... watchdog_impl:=python`.
-With the short form, put `--` before the switch: `~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python`
+with that node's switch added to the same command, such as `... car.launch.py machine:=orin ... ego_impl:=python`.
+With the short form, put `--` before the switch: `~/aav-jazzy/aav.sh car orin -- ego_impl:=python`
 (without `--`, Pixi stops: "received more arguments than expected"). One switch
 per node; the others stay Rust. Write down what you saw: it decides whether the Rust stays.
 
@@ -1029,6 +988,7 @@ the sensors' real noise (T2.4) and the replay (T2.5). Bags stay out of git.
 | 1 | **Parked, 5 min**: the IMU and the GPS, with their drivers (Humble, so on their Pi; it only writes `~/aav-bags`) | on LOCALIZATION: `source /opt/ros/humble/setup.bash; ros2 bag record -o ~/aav-bags/parked /imu/data_raw /imu/mag /aav/gps/fix` | the IMU's bias, the GPS's noise over 10 s (TODO 40) |
 | 2 | **The lidar, 1 min**, parked and with someone walking past | on the Orin, theirs: `source /opt/ros/humble/setup.bash; ros2 bag record -o ~/aav-bags/lidar /velodyne_points /scan` | the lidar layer, ghost obstacles |
 | 3 | **Every session of ours**, stands too (A6-A11) | on the Orin: `~/aav-jazzy/aav.sh tools/record.sh --lidar <session>` | ego and the actuator model against real; the lot's map |
+| 3b | **A mapping drive**, by hand, round the lot | on the Orin: `~/aav-jazzy/aav.sh tools/record.sh --mapping --name lot` ([Recording a mapping drive](recording.md)): checks first, a summary after; up to 87 GB an hour | the lot's NDT and SLAM maps, labels, the transfer functions |
 | 4 | The actuator tests | they save themselves: `~/aav-tests/` on the laptop | `vehicle.yaml`'s steering numbers |
 | 5 | **Every topic's size and rate**, our stack running | on the Orin: `~/aav-jazzy/aav.sh bandwidth --markdown` | the bandwidth budget (T1.7) |
 | 6 | The camera delay photos, the calibration pictures, the sheet | the phones; `~/aav-calib/` | session 5; Gate 1 |

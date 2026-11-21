@@ -10,6 +10,7 @@ is logged, and /diagnostics' statuses once a second.
 
 Each run is 40 s of a simulated car with every kind of input, and faults on purpose: a
 frozen wheel speed, NaN, silence, a GPS with no fix and a GPS jump, a frozen camera, a
+lidar that goes silent and one that freezes (the same cloud again while moving), a
 HUD that drops out, steering that sticks, a throttle that runs away, a node that dies,
 the watchdog itself stalled, and a person clearing the latches.
 
@@ -95,8 +96,12 @@ class Harness:
     def heartbeat(self, now, name, count):
         self.dog.watches[name].arrived(now, digest=count)
 
-    def cloud(self, now, name):
-        self.dog.watches[name].arrived(now)
+    def cloud(self, now, name, digest):
+        self.dog.watches[name].arrived(now, digest=digest, speed=self.speed)
+
+    def status(self, now, name, status_name, level, words):
+        if self.dog.watches[name].rule.hears(status_name):
+            self.dog.watches[name].arrived(now, (level,), words=words)
 
     def tick(self, now, steady, running):
         for rule in (w.rule for w in self.dog.watches.values()):
@@ -162,8 +167,13 @@ def rules(variant):
              follow_persist=1.0),
         Rule('speed', '/ego/actuator_cmd', 'speed', 1.0, over_margin=0.2, over_warn=1.0,
              over_persist=2.0, over_slowing=0.3),
+        Rule('lidar', '/sensors/lidar/points', 'cloud', 1.0, frozen_after=1.0),
         Rule('radar', '/sensors/radar/points', 'cloud', 1.0, stop=False),
         Rule('node_planner', '/planner', 'node', 3.0, stop=False),
+        Rule('status_costmap', '/drivers/nav/costmap/status', 'status', 3.0, stop=False,
+             status_name='costmap local', min_level=1),
+        Rule('status_planner', '/drivers/nav/planner/status', 'status', 3.0,
+             stop=variant == 1, quiet_ok=True),
     ]
 
 
@@ -201,6 +211,9 @@ def run(seed, variant):
         'det_silent': window(24, 27, 1.5), 'stuck': window(6, 10, 2.5),
         'overspeed': window(26, 30, 3.0), 'radar_silent': window(3, 8, 2.0),
         'node_gone': window(10, 20, 4.0), 'stall': window(16, 20, 0.0),
+        'costmap_waits': window(5, 15, 2.0), 'costmap_hangs': window(22, 30, 4.0),
+        'planning': window(3, 12, 8.0), 'no_path': window(14, 20, 1.5),
+        'lidar_silent': window(3, 8, 1.5), 'lidar_frozen': window(10, 14, 2.0),
         'clear': (rng.uniform(34, 37), 0.0),
     }
 
@@ -210,7 +223,7 @@ def run(seed, variant):
 
     v, h_yaw, x, y = 0.0, 0.0, 0.0, 0.0
     held, imu_last = None, None
-    count, cam_digest, steer = 0, 0, 0.0
+    count, cam_digest, lidar_digest, steer = 0, 0, 0, 0.0
     steady, stalled, cleared = 0.0, False, False
     dt = 0.02
     for k in range(int(40.0 / dt)):
@@ -287,9 +300,28 @@ def run(seed, variant):
         events.append(['actuator', t, 'steering', steer_cmd, measured])
         # Ego's command, 50 Hz.
         events.append(['speed', t, 'speed', cmd])
+        # The lidar, 10 Hz: a new cloud each time, the same one while frozen.
+        if k % 5 == 2 and not on('lidar_silent', t):
+            if not on('lidar_frozen', t):
+                lidar_digest = zlib.crc32(rng.randbytes(64))
+            events.append(['cloud', t, 'lidar', lidar_digest])
         # Radar, 10 Hz.
         if k % 5 == 0 and not on('radar_silent', t):
-            events.append(['cloud', t, 'radar'])
+            events.append(['cloud', t, 'radar', zlib.crc32(rng.randbytes(16))])
+        # Our nodes' status (TODO 171): both costmaps on one topic, 2 Hz; the local one
+        # waits for odometry a while, then hangs. The planner speaks only while it plans
+        # (1 Hz), and one plan in a while finds no path.
+        if k % 25 == 0 and not on('costmap_hangs', t):
+            waits = on('costmap_waits', t)
+            events.append(['status', t, 'status_costmap', 'costmap local', 1 if waits else 0,
+                           'local costmap: waiting for odometry' if waits
+                           else 'local costmap: 0.40 ms an update'])
+            events.append(['status', t, 'status_costmap', 'costmap global', 1,
+                           'global costmap: waiting for the map'])
+        if k % 50 == 7 and (on('planning', t) or on('no_path', t)):
+            failed = on('no_path', t)
+            events.append(['status', t, 'status_planner', 'planner', 2 if failed else 0,
+                           'no path: the goal is blocked' if failed else 'a path, 12 poses'])
         # A tick, 10 Hz.
         if k % 5 == 4:
             steady = r4(steady + 0.1)
@@ -321,7 +353,9 @@ def run(seed, variant):
         elif what == 'speed':
             h.speed_cmd(t, e[2], e[3])
         elif what == 'cloud':
-            h.cloud(t, e[2])
+            h.cloud(t, e[2], e[3])
+        elif what == 'status':
+            h.status(t, e[2], e[3], e[4], e[5])
         elif what == 'clear':
             h.dog.clear()
         elif what == 'tick':

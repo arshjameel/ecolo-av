@@ -574,7 +574,7 @@ A **planner** draws the path; a **path follower** steers along it.
 The lattice's moves: short arcs our car can really drive, forwards and backwards.
 {: .caption }
 
-More: [Switches](switches.md#who-draws-the-route), [Trials](trials.md#diffusion-2-nov-a-model-draws-the-lattice-guards).
+More: [Switches](switches.md#who-draws-the-route), [Trials](history/trials-log.md#diffusion-2-nov-a-model-draws-the-lattice-guards).
 
 ## Following: steering along the path
 

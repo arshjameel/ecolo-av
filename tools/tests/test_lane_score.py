@@ -53,6 +53,23 @@ def test_a_drive_down_the_road_scores_its_error_time_and_lost_pictures():
     assert 'lateral error mean' in got.line()
 
 
+def test_lost_seconds_count_until_the_next_message():
+    lanes = [(0.0, True, True), (1.0, False, False), (1.5, False, False), (3.0, True, True)]
+    assert s.lost_seconds(lanes) == pytest.approx(2.0)
+    assert s.lost_seconds([]) == 0.0
+
+
+def test_steer_score_counts_each_change_of_side_past_the_deadband():
+    turns = [0.1, 0.05, 0.01, -0.01, 0.015, -0.1, -0.2, 0.0, 0.3, 0.3]
+    got = s.steer_score([(6.0 * k, w) for k, w in enumerate(turns)])
+    # left, (straight), right, (straight), left: two flips in 54 s.
+    assert got.flips == 2 and got.commands == 10
+    assert got.flips_per_minute == pytest.approx(2 / 0.9)
+    assert got.rms_turn == pytest.approx(math.sqrt(sum(w * w for w in turns) / 10))
+    assert 'flips' in got.line()
+    assert s.steer_score([(0.0, 0.1)]) is None
+
+
 def test_lanes_yaml_reads(tmp_path):
     path = tmp_path / 'lanes.yaml'
     path.write_text('roads:\n- {name: Library Road, kind: tertiary, width: 7.0, oneway: false,'

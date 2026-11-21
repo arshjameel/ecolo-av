@@ -20,6 +20,7 @@ pub mod relay;
 pub mod speed;
 pub mod uplink;
 
+pub use adaptive_brake::{AdaptiveBrake, BrakeLimits, BrakeOut, CarModel, Tuning};
 pub use link::{frame_fields, LinkError, LinkFields, LinkReport};
 pub use mapping::{Mapping, Values};
 pub use relay::{

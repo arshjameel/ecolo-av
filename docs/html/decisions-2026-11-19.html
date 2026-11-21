@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What we decided, 18-19 November, and why · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/decisions-2026-11-19.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>What we decided, 18-19 November, and why</h1>
+<div class="meta">12 min read · 10 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a class="here" href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#1-git-keep-every-commit">1. Git: keep every commit</a><a href="#2-ci-the-linux-timeout-fixed">2. CI: the Linux timeout fixed</a><a href="#3-the-testing-plan">3. The testing plan</a><a href="#4-where-am-i-ndt-leads-the-gps-checks">4. Where am I? NDT leads, the GPS checks</a><a href="#5-maps-from-drives-and-the-map-editor">5. Maps from drives, and the map editor</a><a href="#6-planning-what-we-keep-from-nav2-and-lanelet2">6. Planning: what we keep from Nav2 and Lanelet2</a><a href="#7-scores-not-gates">7. Scores, not gates</a><a href="#8-machine-learning-one-onnx-file">8. Machine learning: one ONNX file</a><a href="#9-housekeeping">9. Housekeeping</a><a href="#still-open-bens-or-the-teams-to-decide">Still open: Ben&#x27;s or the team&#x27;s to decide</a></nav>
+<div class="lead"><p>A page to explain the last two days to someone else: what we chose, why, and what is
+still open. Ben's own words are in <code>docs/history/messages-2026-11-18.md</code> and
+<code>messages-2026-11-19.md</code>. The short version of each decision is also in
+<a href="decisions.html#decided-on-18-19-november">Decisions</a>.</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ol>
+<li><strong>Keep every commit.</strong> The team's merge queue squashed Ben's work; the fork now protects the full history.</li>
+<li><strong>Test in phases</strong>, from the install to the campus twin, each one automated.</li>
+<li><strong>NDT leads, the GPS checks</strong>: a failing GPS stops mattering where we have a map.</li>
+<li><strong>Maps come from our own drives</strong> (KISS-SLAM), then a person cleans them in a <strong>map editor</strong>.</li>
+<li><strong>Scores are tracked, not gates</strong>: no Nav2 yardstick; a change may score worse for a while.</li>
+<li><strong>One ONNX file per model</strong>: Core ML on the Mac to test, TensorRT on the Orin.</li>
+<li><strong>The TODO list regrouped by topic</strong>; a checklist for after the install.</li>
+</ol>
+</blockquote></div>
+<section class="card"><h2 id="1-git-keep-every-commit">1. Git: keep every commit</h2>
+<h3 id="what-happened">What happened</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The team's merge queue</td>
+<td><strong>squashes</strong> each pull request into one commit (the "Protect main" rule, since 25 Oct)</td>
+</tr>
+<tr>
+<td>So</td>
+<td>Ben's 1,062 commits from 27 Oct to 18 Nov became a handful on the team's <code>main</code></td>
+</tr>
+<tr>
+<td>GitHub counted</td>
+<td>616 of Ben's commits; the real number was <strong>1,853</strong></td>
+</tr>
+<tr>
+<td>Why it matters</td>
+<td>the history shows how the work was done: for the report, and for a job</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="what-we-decided">What we decided</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Never reset, rebase or force-push</strong> Ben's fork</td>
+<td>the fork's <code>main</code> is the only place the full history lives</td>
+</tr>
+<tr>
+<td><strong>Protection rules on the fork</strong>: no force-push and no delete, on every branch and on the save tags</td>
+<td>a mistake can't wipe it</td>
+</tr>
+<tr>
+<td><strong>Save tags</strong> (<code>history-&lt;date&gt;</code>, <code>save/&lt;branch&gt;</code>) after every merge</td>
+<td>a fixed point to come back to</td>
+</tr>
+<tr>
+<td>Merge with <strong>real merges</strong> (<code>git merge --no-ff</code>), never squash</td>
+<td>every commit stays</td>
+</tr>
+<tr>
+<td>After each team PR: <code>git merge upstream/main</code></td>
+<td>stays in step without losing anything</td>
+</tr>
+<tr>
+<td><strong>Arsh switches the queue to merge commits</strong></td>
+<td>then one PR brings the ~1,130 original commits into the team's repo</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="2-ci-the-linux-timeout-fixed">2. CI: the Linux timeout fixed</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Linux job timed out at 60 min: the Rust cache missed, so the build alone took 27 min</td>
+<td>the build is its own step (45 min), then the tests get their full 60</td>
+</tr>
+<tr>
+<td>The cache was saved only when the whole job passed, so one failure meant a cold build next time</td>
+<td>the cache is saved <strong>right after the build</strong>, whatever happens later</td>
+</tr>
+<tr>
+<td>A failed build was hard to read</td>
+<td>GitHub annotations from <code>build.log</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="3-the-testing-plan">3. The testing plan</h2>
+<p>Ben's prof wanted "a full automated testing system". The plan:
+<a href="testing-plan.html">The testing plan</a> (<code>aav-testing-plan.pdf</code>).</p>
+<pre class="highlight"><code class="language-text"> 0 after the install ─▶ A stands ─▶ B hallway ─▶ C recording ─▶ D maps ─▶ E editor ─▶ F labels ─▶ G campus twin</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>What</th>
+<th>Built?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0</strong></td>
+<td><a href="after-install.html">After the install</a>: every laptop, each car computer, the car together</td>
+<td>✅ the checklist</td>
+</tr>
+<tr>
+<td><strong>A</strong></td>
+<td>On stands, one command (<code>car-test --stands</code>): every sensor, steering, throttle, <strong>faults on purpose</strong>, losing the Orin too</td>
+<td>✅ passes in Ravensim</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td><strong>The transfer functions</strong> in the winter hallway: speed up, coast, brake, steer</td>
+<td>✅ in Ravensim</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>Record a drive: every raw sensor at full rate (<code>record-drive</code>)</td>
+<td>✅ (needs ~<strong>87 GB an hour</strong>: a big SSD)</td>
+</tr>
+<tr>
+<td><strong>D</strong></td>
+<td>Maps from those drives (<code>map-drive</code>, KISS-SLAM)</td>
+<td>✅ 2.3 cm off the truth in Ravensim</td>
+</tr>
+<tr>
+<td><strong>E</strong></td>
+<td>The map editor</td>
+<td>⬜ next</td>
+</tr>
+<tr>
+<td><strong>F</strong></td>
+<td>Labels: trees, buildings, parked cars; a better model after each drive</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><strong>G</strong></td>
+<td>The campus twin in Ravensim, from our maps</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td>beside A, B</td>
+<td><strong>The debug screen</strong> (the prof's idea): who is driving, what each sends, the gate and why (key D on the map)</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-transfer-functions-and-the-imu">The transfer functions, and the IMU</h3>
+<p>The car is modelled as a <strong>delay plus a lag</strong> for speeding up, braking and steering. In the
+hallway the car does each one; the measured run is laid over the model's, with error bars.
+The <strong>IMU's acceleration is blended with the wheel speed</strong> (a small Kalman filter): the
+wheels say how fast, the IMU says how quickly that changes, so braking and acceleration
+forces (F = m·a) come out cleaner than from either alone.</p>
+</section>
+<section class="card"><h2 id="4-where-am-i-ndt-leads-the-gps-checks">4. Where am I? NDT leads, the GPS checks</h2>
+<h3 id="the-words">The words</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ICP</strong> (Iterative Closest Point)</td>
+<td>line up two lidar scans: each point finds its nearest partner, shift, repeat</td>
+</tr>
+<tr>
+<td><strong>NDT</strong> (Normal Distributions Transform)</td>
+<td>the map stored as small 3D cubes, each with a "blob" of its points; a scan is lined up with the blobs. Smaller and smoother than ICP's raw points</td>
+</tr>
+<tr>
+<td><strong>KISS-ICP</strong></td>
+<td>ICP scan after scan: "how far did I move", no map needed, drifts slowly</td>
+</tr>
+<tr>
+<td><strong>KISS-SLAM</strong></td>
+<td>KISS-ICP plus "I've been here before" (loop closure): <strong>builds the map</strong>, after the drive</td>
+</tr>
+<tr>
+<td><strong>AMCL</strong></td>
+<td>a particle filter on a 2D map: thousands of guesses, kept if they match the scan. Our backup</td>
+</tr>
+<tr>
+<td><strong>EKF</strong></td>
+<td>blends wheels, IMU and a position source into one smooth pose</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-maps">The maps</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Map</th>
+<th>Made from</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>NDT map</strong> (3D)</td>
+<td>our drives, by KISS-SLAM</td>
+<td>NDT: "where am I", to centimetres</td>
+</tr>
+<tr>
+<td><strong>2D map</strong> (from above)</td>
+<td>the same drives</td>
+<td>AMCL and the route planner</td>
+</tr>
+<tr>
+<td><strong>Lane map</strong></td>
+<td>drawn or imported (Lanelet2's format)</td>
+<td>the lane pose; driving in lane</td>
+</tr>
+<tr>
+<td><strong>Street map</strong></td>
+<td>OpenStreetMap</td>
+<td>routes ("drive to the library"); the map window</td>
+</tr>
+<tr>
+<td><strong>Costmap</strong></td>
+<td>live lidar, <strong>never saved</strong></td>
+<td>the local planner: avoiding cars and people</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-decision-ndt-leads-todo-210">The decision: NDT leads (TODO 210)</h3>
+<p>The GPS was failing. Before, the GPS gave the position and NDT only helped. Now, with
+<code>pose_source:=ndt</code>, <strong>NDT gives the position and the GPS only checks it</strong>. If they
+disagree, NDT's match score says which is wrong; a lost NDT restarts from AMCL, else the
+GPS; with neither, the car stops.</p>
+<p>Ravensim's lot, 3 runs each, legs reached and how far the EKF was off:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>GPS</th>
+<th>Today (GPS leads)</th>
+<th>NDT leads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>clean</td>
+<td>12/12, 0.10 m</td>
+<td>12/12, <strong>0.01 m</strong></td>
+</tr>
+<tr>
+<td>stops</td>
+<td>held after 3/12 (safe)</td>
+<td><strong>12/12</strong></td>
+</tr>
+<tr>
+<td>jumps 20 m</td>
+<td>held after 3/12 (safe)</td>
+<td><strong>12/12</strong></td>
+</tr>
+<tr>
+<td>drifts slowly</td>
+<td><strong>3.6 m off</strong>, not noticed</td>
+<td>12/12, 0.01 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>A challenger for now: it needs a saved map of wherever the car drives.</p>
+<h3 id="learned-localization-studied-not-built">Learned localization: studied, not built</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>What</th>
+<th>Why not now</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IR-MCL (PRBonn, 2023)</td>
+<td>AMCL with a neural network as the scan model</td>
+<td>no licence stated: the idea only. Our AMCL's scan model is swappable, so it can be tried later</td>
+</tr>
+<tr>
+<td>Transformer MCL</td>
+<td>a transformer helps the particle filter</td>
+<td>needs training data from real maps first</td>
+</tr>
+<tr>
+<td>OverlapNet (MIT), Scan Context</td>
+<td>"have I been here before?" from a scan</td>
+<td>for loop closure and getting un-lost; after real maps</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="5-maps-from-drives-and-the-map-editor">5. Maps from drives, and the map editor</h2>
+<pre class="highlight"><code class="language-text"> drive + record ─▶ KISS-SLAM (laptop) ─▶ NDT map + 2D map + 64 m chunks ─▶ map editor ─▶ the car</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Build maps from our own drives</strong>, placed by the good GPS fixes</td>
+<td>the EKF's poses smeared the map (33 cm); SLAM's are 2.3 cm</td>
+</tr>
+<tr>
+<td>KISS-SLAM runs <strong>on a laptop</strong>, after the drive</td>
+<td>offline is enough; no Orin build exists</td>
+</tr>
+<tr>
+<td>Several drives <strong>merged</strong>; keep what every drive saw</td>
+<td>a parked car seen once doesn't become a wall</td>
+</tr>
+<tr>
+<td><strong>A map editor</strong> (TODO 251): our map over OpenStreetMap; align, delete parked cars, label, approve, save</td>
+<td>a person always has the last word on a map</td>
+</tr>
+<tr>
+<td>The costmap stays <strong>live only</strong></td>
+<td>it is what the car sees right now, never a saved map</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="6-planning-what-we-keep-from-nav2-and-lanelet2">6. Planning: what we keep from Nav2 and Lanelet2</h2>
+<p>Nav2 was deleted on 17 Nov, but its best parts live on, <strong>ported to Rust</strong>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>From</th>
+<th>Became</th>
+<th>Its advantage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nav2's costmap</td>
+<td><code>aav_costmap</code></td>
+<td>sensors into "how risky is each spot", in layers</td>
+</tr>
+<tr>
+<td>Smac Lattice</td>
+<td><code>aav_planner</code> (<strong>champion</strong>)</td>
+<td>only moves the car can really make, reversing too</td>
+</tr>
+<tr>
+<td>Smac Hybrid-A*</td>
+<td><code>planner_search:=hybrid</code> (challenger)</td>
+<td>quick in open space</td>
+</tr>
+<tr>
+<td>MPPI</td>
+<td><code>aav_mppi_lag</code> (<strong>champion follower</strong>)</td>
+<td>thousands of futures a tick; we added the car's lag</td>
+</tr>
+<tr>
+<td>Collision monitor</td>
+<td><code>aav_stop_zone</code></td>
+<td>a last-chance stop box</td>
+</tr>
+<tr>
+<td>AMCL</td>
+<td><code>aav_amcl_rs</code></td>
+<td>the backup position finder</td>
+</tr>
+<tr>
+<td>Lanelet2's map format and routing idea</td>
+<td><code>lanelet-map</code>, <code>path:=lane_lanelet2</code></td>
+<td>plans by lanes, like a driver; maps from other tools open in ours</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="mppi-and-diffusion-are-not-rivals">MPPI and diffusion are not rivals</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Job</th>
+<th>Champion</th>
+<th>Challengers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Path</strong></td>
+<td>the line from here to the goal</td>
+<td>the lattice</td>
+<td>Hybrid-A*, lane, <strong>diffusion</strong></td>
+</tr>
+<tr>
+<td><strong>Motion</strong></td>
+<td>follow that line, 20 times a second</td>
+<td><code>mppi_lag</code></td>
+<td><code>mpc_lag</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>"1000 MPPI samples" (TODO 152) is about <strong>speed</strong>: half today's 2000 futures, so the
+follower runs faster on the Orin. The diffusion planner is still a path challenger; it
+must be scored again with today's stack (last scored on 8 Nov in our own simulator, the
+lot: 12 of 12 legs; skipped in the 16 Nov league for time).</p>
+</section>
+<section class="card"><h2 id="7-scores-not-gates">7. Scores, not gates</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>No Nav2 yardstick</strong> (TODO 167 closed)</td>
+<td>Nav2 is gone; comparing with its old numbers holds us back</td>
+</tr>
+<tr>
+<td>A change <strong>may score worse for a while</strong></td>
+<td>Ben: "We can get worse if we think there is room to improve"</td>
+</tr>
+<tr>
+<td>Scores are still <strong>tracked and reported honestly</strong></td>
+<td>so we know where we are</td>
+</tr>
+<tr>
+<td><strong>Safety checks stay pass/fail</strong></td>
+<td><code>sim-check --faults</code>, the stop zone, the watchdog: never traded away</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="8-machine-learning-one-onnx-file">8. Machine learning: one ONNX file</h2>
+<pre class="highlight"><code class="language-text"> PyTorch (train) ─▶ model.onnx ─▶ ONNX Runtime (Rust) ─┬▶ Core ML  (Mac: test here)
+                                                       └▶ TensorRT (Orin, JetPack 7.2)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The Orin runs JetPack 7.2 or newer</strong> (Ubuntu 24.04)</td>
+<td>the same Ubuntu and ROS as everything else</td>
+</tr>
+<tr>
+<td><strong>One <code>.onnx</code> per model</strong>, run from Rust</td>
+<td>one file for every computer; no separate Mac and Orin exports</td>
+</tr>
+<tr>
+<td><strong>Test with Core ML on the Mac now</strong> (moved up, TODO 243)</td>
+<td>the export, the node and the answers are proven before the car</td>
+</tr>
+<tr>
+<td><strong>CPU as the reference</strong>; report any layer that falls back to the CPU</td>
+<td>if Core ML runs every layer, TensorRT very likely can too</td>
+</tr>
+<tr>
+<td>Timing and the first TensorRT build are measured <strong>on the Orin</strong></td>
+<td>speed is the one thing a Mac can't tell us</td>
+</tr>
+</tbody>
+</table></div>
+<p>Done so far: the stop-sign detector (RF-DETR) as ONNX from Rust, <strong>8 ms</strong> a picture on
+Core ML against PyTorch's 14.7. Next: the diffusion planner and the lane finder.</p>
+</section>
+<section class="card"><h2 id="9-housekeeping">9. Housekeeping</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The TODO list regrouped by topic</strong>, one line a row; the old one kept word for word in <code>docs/history/todo-done.md</code></td>
+<td>it had drifted from the stack we run</td>
+</tr>
+<tr>
+<td><strong>One helper at a time</strong> (two at most), each on its own branch, merged with the full test before each push</td>
+<td>keeps the cost down and <code>main</code> always green</td>
+</tr>
+<tr>
+<td><strong>A page for every algorithm</strong> (<code>stack-algorithms.md</code>, being written): where it came from, strengths, weaknesses, still used?</td>
+<td>to explain the full stack</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="still-open-bens-or-the-teams-to-decide">Still open: Ben's or the team's to decide</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The runaway rule trips on 0.05 m/s wheel noise</td>
+<td>unchanged: a safety lock, a person decides</td>
+</tr>
+<tr>
+<td>The indoor geofence with <code>stands:=true</code> in the hallway</td>
+<td>the hallway tests use their own distance fence</td>
+</tr>
+<tr>
+<td>Close PRs #28 and #29</td>
+<td>comments drafted; Ben closes them</td>
+</tr>
+<tr>
+<td>A big SSD for recording (~87 GB/h)</td>
+<td>the hardware lead</td>
+</tr>
+<tr>
+<td>Arsh's merge-queue switch</td>
+<td>then the history PR</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="decisions.html"><small>Previous</small>← Decisions</a>
+<a class="next" href="infrastructure.html"><small>Next</small>Infrastructure →</a></nav>
+</main>
+<footer>Source: <code>docs/decisions-2026-11-19.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

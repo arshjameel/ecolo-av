@@ -1696,6 +1696,23 @@ maps RavenTiles. Remove Gazebo (CARLA stays).
 | Deleted | the Gazebo launch, nodes, xacro files, world plugins, `ros_gz` in `pixi.toml`, CI's Gazebo step |
 | Kept | its last scores: [Gazebo, as it was](gazebo-as-it-was.md); `vendor/gazebo/`, to read |
 
+## 19 November: lanes into the costmap
+
+**Q: Do we keep the lane followers?** Ben: "put lanes in the cost map and then behaviour
+keep to the right side. then the motion planner can just cross the line when its go no
+other choice", then "drop there code all together ... curb, high cost, yllow line med
+cost, lright side low cost, car in the way high cost, person in the way high cost".
+
+**A (19 Nov, TODO 264):**
+
+| Done | How |
+|---|---|
+| The paint | both lane finders say each line white or yellow (`left_paint`, `right_paint`) |
+| The costs | `lanes:=camera`: the camera's lines drawn with the lane map's own costs; `both`: the map wins where it has a road |
+| Which side | the car's lane is the one it is in; a yellow right line puts it in the oncoming lane |
+| Deleted | the 2025-26 PID, its Rust port, pure pursuit, Stanley, the fake lane, their switches and checks |
+| Kept | git tag `save/lane-followers`; [their scores](lane-followers.md) |
+
 ## Open threads
 
 Checked 13 Nov against the code, `TODO.md`, the audits and the pull requests. **Closed**, **Folded** and **Dead** threads keep their old text, with what ended them.

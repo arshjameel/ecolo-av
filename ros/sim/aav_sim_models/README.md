@@ -67,6 +67,7 @@ under `tools/software_gl.sh`), `graphics` (auto, simple, pretty; auto = pretty o
 | `sim_radar` | `/vehicle/sim/radar/points` (best effort), `/vehicle/sim/odom` | `/sensors/radar/points` (best effort, `radar_link`, the TI driver's fields); only with `radar:=true` (the default) in a world that renders sensors |
 | `sim_esp32` | TCP 127.0.0.1:47000 + the ROS domain: `legacy_uart_bridge`'s frames; only with `esp32:=true` | `/vehicle/sim/esp32_outputs` (SpineOutputs, 50 Hz) |
 | `sim_camera_relay` | `/vehicle/sim/camera/front_left/image_raw` | `/sensors/camera/front_left/image_raw`; only with `faults:=true` in a world that renders sensors |
+| `sim_lidar_relay` | `/vehicle/sim/lidar/points` (the simulator's lidar, remapped there) | `/sensors/lidar/points`, as it came; only with `faults:=true` and the lidar (TODO 246) |
 | `truth_localizer` | `/vehicle/sim/truth`, TF `odom → base_link`; only with `sim.launch.py truth_pose:=true` (a test: the wiggle, TODO 149) | `/localization/odom/global` (the truth), TF `map → odom` so that `map → base_link` is the truth; `ekf_global` doesn't run |
 | `simulator` (`aav_simulator`, Rust) | `/vehicle/sim/cmd_vel`, `/vehicle/sim/cameras/free_until` | `/clock`, `/joint_states`, `/vehicle/sim/truth`, `odom`, `imu`, `navsat`, `radar/points`, `/sensors/lidar/points` |
 | `sim_cameras` (`aav_sim_cameras`, Rust, a process) | `/vehicle/sim/truth` | the cameras, `/vehicle/sim/cameras/free_until` |
@@ -76,12 +77,14 @@ under `tools/software_gl.sh`), `graphics` (auto, simple, pretty; auto = pretty o
 | Node | Parameters |
 |---|---|
 | `sim_adapter` | `actuator_model` (true), `speed_loop` (default, smooth, lqi or firm), `payload` (0 kg aboard, live), `adaptive_brake` (false, live; not with spine or esp32: `docs/stopping.md`), `spine` (false), `esp32` (false), `rate_hz` (50), `cmd_timeout` (0.2 s), `wheelbase`, `wheel_radius` (m, from `vehicle.yaml` via the launch file), `rendered`, `radar`, `lidar`, `speed_variance`, `fault.odom`; the actuators' `fault.steer` (ok, stuck), `fault.throttle` (ok, stuck), `fault.brake` (ok, weak, dead) |
-| `sim_imu` | `gyro_stddev` (0.02 rad/s), `accel_stddev` (0.2 m/s²), `imu_x` (m), `gyro_bias` (rad/s), `fault.imu`, `seed` (3) |
+| `sim_imu` | `gyro_stddev` (0.02 rad/s), `accel_stddev` (0.2 m/s²), `imu_x` (m), `gyro_bias` (rad/s), `fault.imu`, `accel_from` (simulator: Ravensim's own reading, the default since 18 Nov; odometry: the way before, `imu.py`), `seed` (3) |
 | `sim_gps` | `gps_stddev` (0.5 m), `gps_speed_stddev` (0.05 m/s), `antenna_x`, `antenna_y` (m), `every` (1), `fault.gps`, `seed` (5: the velocity noise) |
 | `sim_radar` | `radar_range` (8.4 m), `fault.radar` |
 | `sim_camera_relay` | `fault.camera` |
+| `sim_lidar_relay` | `fault.lidar` (ok, stop, freeze) |
 
-`fault.<sensor>` is one of ok, stop, freeze, nan, jump (GPS only). Set it live:
+`fault.<sensor>` is one of ok, stop, freeze, nan, jump and drift (GPS only: 5 m north
+over a minute, then held; TODO 210). Set it live:
 `pixi run sim-fault gps stop`.
 
 The actuators' faults (TODO 159, the actuator model only) sit between the speed loop and
@@ -97,15 +100,15 @@ and `brake` still carry what was asked as `command`, and what the car did as `me
 | `actuator_model.py` | re-exports `aav_description.car_model` (moved there 7 Nov: one car model for ego and the sims): `SpeedLoop` (spine-core's gains), `Actuators`, `Ideal`, `ActuatorConfig`, `speed_loop_profile` | no |
 | `esp32_firmware.py` | `Esp32Firmware`: the 2025-26 C++ ESP32's frame handling, throttle ramp and brake | no |
 | `faults.py` | the sensors' fault modes, `Fault`; the actuators', `ActuatorFaults` | no |
-| `imu.py` | the car's own acceleration, which the simulator's IMU leaves out | no |
+| `imu.py` | the car's own acceleration from the odometry (`accel_from odometry`: Gazebo's IMU left it out; Ravensim's reads it since 18 Nov) | no |
 | `gps.py` | the receiver's velocity from the truth | no |
 | `radar.py` | the simulator's radar cloud as the TI radar's; with its `speed` field, a moving thing's own Doppler speed (TODO 194) | no |
 | `wheels.py` | each wheel's speed from joint states | no |
 | `sources.py` | what `/system/source` announces | no |
-| `worlds.py` | which world renders which sensors (`has_sensors`); each world's lane map (`lane_map_file`); the simulator's name (`check_simulator`: `own` still works for a release) and `camera_lockstep` | no |
+| `worlds.py` | which world renders which sensors (`has_sensors`); each world's lane map (`lane_map_file`); the simulator's name (`check_simulator`; the old name `own` went on 20 Nov) and `camera_lockstep` | no |
 | `pose_frames.py` | `map_to_odom`: the `map → odom` that puts the car on the truth (`truth_localizer`) | no |
 | `relay.py` | what the sensor nodes share: fault parameter, clean start and stop | yes |
-| `sim_*.py` | the six nodes (`sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar`, `sim_camera_relay`, `sim_esp32`) | yes |
+| `sim_*.py` | the seven nodes (`sim_adapter`, `sim_imu`, `sim_gps`, `sim_radar`, `sim_camera_relay`, `sim_lidar_relay`, `sim_esp32`) | yes |
 
 Models (`models/`): `obstacle` (the bench's 1 m box), `post` (person-sized, for the
 lidar's obstacle check in `tools/sim_check.py`), `kerb` (0.3 m high, `sim-check --kerb`), `stop_sign`.

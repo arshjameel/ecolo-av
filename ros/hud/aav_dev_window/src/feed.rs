@@ -69,6 +69,8 @@ pub enum Update {
     Vehicle(VehicleStatus),
     Gate(String),
     Watchdog(String),
+    /// Who is driving: the command mux's state's line (aav_mux_state), "keyboard (90)".
+    Driving(String),
     /// The squiggly line (`hud_core::ahead`), all in base_link: ego's trace, the bold line.
     Trace(Vec<(f64, f64)>),
     /// What the planner wants: the faint line.
@@ -433,6 +435,14 @@ impl Heard {
     pub fn set(&mut self, text: String, now: Instant) {
         self.text = Some(text);
         self.at = Some(now);
+    }
+
+    /// The text, while it is fresh.
+    pub fn fresh(&self, now: Instant) -> Option<&str> {
+        self.health(now)
+            .is_ok()
+            .then_some(self.text.as_deref())
+            .flatten()
     }
 
     fn health(&self, now: Instant) -> Health {

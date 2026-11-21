@@ -7,3 +7,5 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+# One FollowPath call as a future (call.rs): no ROS, tested with futures' own executor.
+futures = "0.3"

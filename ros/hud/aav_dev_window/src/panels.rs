@@ -285,6 +285,8 @@ pub struct WorldNews {
     vehicle: Option<VehicleStatus>,
     gate: Heard,
     watchdog: Heard,
+    /// Who is driving (the command mux's state).
+    driving: Heard,
     console: Vec<(Level, String)>,
 }
 
@@ -375,6 +377,7 @@ impl WorldNews {
             Update::Vehicle(status) => self.vehicle = Some(status),
             Update::Gate(text) => self.gate.set(text, now),
             Update::Watchdog(text) => self.watchdog.set(text, now),
+            Update::Driving(text) => self.driving.set(text, now),
             Update::Trace(points) => {
                 self.ahead.trace = points;
                 self.trace_heard = Some(now);
@@ -736,6 +739,14 @@ fn status_strip(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Fee
         pill(ui, verdict.headline, light, egui::Color32::BLACK);
         ui.label(&verdict.reason);
         ui.label(egui::RichText::new(verdict.hint).color(egui::Color32::from_gray(150)));
+        ui.separator();
+        // Who is driving, as the map window's debug page says (TODO 247).
+        match world.driving.fresh(Instant::now()) {
+            Some(who) => ui.label(egui::RichText::new(format!("DRIVING: {who}")).strong()),
+            None => {
+                ui.label(egui::RichText::new("DRIVING: ?").color(egui::Color32::from_gray(150)))
+            }
+        };
         ui.separator();
         ui.label(if estop_on { "e-stop ON" } else { "e-stop off" });
         ui.separator();

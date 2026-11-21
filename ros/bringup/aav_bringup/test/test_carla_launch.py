@@ -28,7 +28,7 @@ def test_the_defaults_start_the_same_stack_as_gazebo():
     nav = sent['navigation.launch.py']
     assert (nav['radar'], nav['lidar'], nav['stop_zone']) == ('true', 'true', 'true')
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
-    assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,gps,local,global,radar'
+    assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,gps,local,global,radar,lidar'
     # No geofence in CARLA yet, so its fail-safe lock must be off, or nothing could drive.
     assert sent['mux.launch.py']['geofence_lock'] == 'false'
     assert names(actions) == {'imu_filter_madgwick'}     # no RViz: the CARLA box may be headless

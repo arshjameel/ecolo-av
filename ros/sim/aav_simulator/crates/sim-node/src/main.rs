@@ -14,8 +14,9 @@
 //!             vehicle/sim/truth       nav_msgs/Odometry, 50 Hz, map -> base_link: where the
 //!                                     car really is (for checks only)
 //!             vehicle/sim/imu              sensor_msgs/Imu, 50 Hz, imu_link: orientation, turn
-//!                                     rate and specific force (gravity +9.8 up), with
-//!                                     Gazebo's old noise
+//!                                     rates and specific force (gravity +9.8 up), each
+//!                                     averaged since the last reading as a real IMU's
+//!                                     (sim-core sim.rs), with Gazebo's old noise
 //!             vehicle/sim/navsat           sensor_msgs/NavSatFix, 5 Hz, gps_link: the antenna on
 //!                                     the world's datum, with its noise
 //!             joint_states            sensor_msgs/JointState, 100 Hz: the four wheels' spin
@@ -64,7 +65,7 @@
 
 use std::{
     collections::BTreeMap,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -72,7 +73,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{anyhow, bail, Context as _, Result};
+use anyhow::{anyhow, Context as _, Result};
 use rclrs::*;
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::geometry_msgs::msg::{
@@ -94,7 +95,8 @@ use ros_env::visualization_msgs::msg::{Marker, MarkerArray};
 use sim_core::car::{Command, TwistFollower};
 use sim_core::lidar::{LidarSpec, Scan, FIELDS, POINT_STEP};
 use sim_core::lockstep::{CameraGate, Waited};
-use sim_core::math::{Pose, Rot3, Vec3};
+use sim_core::math::{Pose, Rot3};
+use sim_core::node::{self, Pace, Placement, Refusal, SetState, Wait, CAR};
 use sim_core::scene::Mesh;
 use sim_core::sim::{
     Body, Geometry, ImuReading, Joints, Mounts, Odometry, Output, Rates, SensorNoise, Settings,
@@ -140,29 +142,21 @@ fn main() -> Result<()> {
         started.elapsed().as_secs_f64()
     );
 
-    let (wheel_noise, wheel_slip) = (params.wheel_noise.get(), params.wheel_slip.get());
-    if !(0.0..=1.0).contains(&wheel_noise) {
-        bail!("wheel_noise:={wheel_noise}: between 0 and 1 m/s");
-    }
-    if !(-0.5..=0.5).contains(&wheel_slip) {
-        bail!("wheel_slip:={wheel_slip}: between -0.5 and 0.5 (a fraction)");
-    }
-    let step = params.step.get();
-    if !(step > 0.0 && step <= 0.01) {
-        bail!("step:={step}: between 0 and 0.01 s");
-    }
+    let wheel_noise = node::wheel_noise(params.wheel_noise.get())?;
+    let wheel_slip = node::wheel_slip(params.wheel_slip.get())?;
+    let rtf = node::real_time_factor(params.real_time_factor.get())?;
     let settings = Settings {
-        step_ns: (step * 1e9).round() as u64,
+        step_ns: node::step_ns(params.step.get())?,
         geometry: Geometry {
             wheelbase: params.wheelbase.get(),
             track: params.track.get(),
             wheel_radius: params.wheel_radius.get(),
         },
         mounts: Mounts {
-            imu: mount(&params.imu_xyz.get(), &params.imu_rpy.get())?,
-            gps: mount(&params.gps_xyz.get(), &[0.0; 3])?,
-            lidar: mount(&params.lidar_xyz.get(), &params.lidar_rpy.get())?,
-            radar: mount(&params.radar_xyz.get(), &params.radar_rpy.get())?,
+            imu: node::mount(&params.imu_xyz.get(), &params.imu_rpy.get())?,
+            gps: node::mount(&params.gps_xyz.get(), &[0.0; 3])?,
+            lidar: node::mount(&params.lidar_xyz.get(), &params.lidar_rpy.get())?,
+            radar: node::mount(&params.radar_xyz.get(), &params.radar_rpy.get())?,
         },
         rates: Rates {
             clock: params.clock_hz.get(),
@@ -288,10 +282,7 @@ fn main() -> Result<()> {
             Some(node.create_subscription(
                 "vehicle/sim/cameras/free_until",
                 move |msg: Clock| {
-                    let t = &msg.clock;
-                    gate.free_until(
-                        u64::try_from(t.sec).unwrap_or(0) * 1_000_000_000 + u64::from(t.nanosec),
-                    );
+                    gate.free_until(node::nanoseconds(msg.clock.sec, msg.clock.nanosec));
                 },
             )?)
         }
@@ -299,10 +290,6 @@ fn main() -> Result<()> {
     };
 
     let stop = Arc::new(AtomicBool::new(false));
-    let rtf = params.real_time_factor.get();
-    if rtf < 0.0 {
-        bail!("real_time_factor:={rtf}: 0 (as fast as it can) or more");
-    }
     let logger = node.logger().clone();
     let running = Arc::clone(&stop);
     let looping = std::thread::Builder::new()
@@ -334,8 +321,8 @@ fn run(
 ) -> Result<()> {
     let first = sim.start();
     out.publish(&sim, first)?;
-    let mut origin = Instant::now();
-    let mut origin_ns = 0u64;
+    let wall = Instant::now();
+    let mut pace = Pace::new(rtf, wall.elapsed(), sim.time_ns());
     let mut report = Instant::now();
     let mut report_ns = 0u64;
     let mut held = (0u32, Duration::ZERO); // lockstep: waits, and their wall time
@@ -374,18 +361,9 @@ fn run(
                 ),
             }
         }
-        if rtf > 0.0 {
-            let due =
-                origin + Duration::from_secs_f64((sim.time_ns() - origin_ns) as f64 * 1e-9 / rtf);
-            let now = Instant::now();
-            if due > now {
-                std::thread::sleep(due - now);
-            } else if now - due > Duration::from_millis(100) {
-                // Too far behind to catch up: run on from here, slower than asked, as
-                // Gazebo does, rather than rush a burst of steps.
-                origin = now;
-                origin_ns = sim.time_ns();
-            }
+        // Too far behind, the pace runs on from here, slower than asked (sim-core node.rs).
+        if let Wait::Sleep(ahead) = pace.after_step(sim.time_ns(), wall.elapsed()) {
+            std::thread::sleep(ahead);
         }
         if report.elapsed() >= Duration::from_secs(30) {
             let simulated = (sim.time_ns() - report_ns) as f64 * 1e-9;
@@ -494,45 +472,22 @@ fn spawn(
         result: sim_result(code, why),
         entity_name: String::new(),
     };
-    if request.uri.is_empty() {
-        return refuse(
-            SpawnEntity_Response::NO_RESOURCE,
-            "no uri: give an SDF model file".into(),
-        );
-    }
-    let file = match request.uri.strip_prefix("model://") {
-        Some(name) => {
-            let found = models
-                .iter()
-                .map(|m| m.join(name).join("model.sdf"))
-                .find(|p| p.is_file());
-            match found {
-                Some(p) => p,
-                None => {
-                    let why = format!("no {} in {models:?}", request.uri);
-                    return refuse(SpawnEntity_Response::MISSING_ASSETS, why);
-                }
-            }
+    let file = match node::model_file(&request.uri, models) {
+        Ok(file) => file,
+        Err(why) => {
+            let code = match why {
+                Refusal::NoUri => SpawnEntity_Response::NO_RESOURCE,
+                _ => SpawnEntity_Response::MISSING_ASSETS,
+            };
+            return refuse(code, why.to_string());
         }
-        None => PathBuf::from(request.uri.strip_prefix("file://").unwrap_or(&request.uri)),
     };
     let mesh = match World::model_mesh(&file, models, Surfaces::Visual) {
         Ok(mesh) => mesh,
         Err(e) => return refuse(SpawnEntity_Response::RESOURCE_PARSE_ERROR, e.to_string()),
     };
-    let name = if request.name.is_empty() {
-        file.parent()
-            .and_then(Path::file_name)
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "model".into())
-    } else {
-        request.name.clone()
-    };
-    let p = &request.initial_pose.pose;
-    let q = &p.orientation;
-    let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
-    let at = Vec3::new(p.position.x, p.position.y, p.position.z);
-    let pose = Pose::new(at, Rot3::from_yaw(yaw));
+    let name = node::model_name(&request.name, &file);
+    let pose = node::spawn_pose(&placement(&request.initial_pose.pose));
     let Ok(mut s) = shared.lock() else {
         let why = "the simulator's lock is poisoned".to_string();
         return refuse(SimResult::RESULT_OPERATION_FAILED, why);
@@ -555,143 +510,6 @@ fn spawn(
         result: sim_result(SimResult::RESULT_OK, ""),
         entity_name: name,
     }
-}
-
-/// The car's name, as Gazebo's spawn gives it (`-name aav`).
-const CAR: &str = "aav";
-
-/// SetEntityState: put the car at a pose next step, standing still (Gazebo's set_pose).
-fn set_state(
-    shared: &Mutex<Shared>,
-    models: &[PathBuf],
-    request: &SetEntityState_Request,
-) -> SetEntityState_Response {
-    let answer = |code: u8, why: String| SetEntityState_Response {
-        result: sim_result(code, why),
-    };
-    let frame = request.state.header.frame_id.trim_start_matches('/');
-    if !matches!(frame, "" | "world" | "map") {
-        return answer(
-            SimResult::RESULT_OPERATION_FAILED,
-            format!("the pose must be in the map (the world), not {frame}"),
-        );
-    }
-    let t = &request.state.twist;
-    if request.entity != CAR {
-        return move_model(shared, models, request);
-    }
-    let moving = [
-        t.linear.x,
-        t.linear.y,
-        t.linear.z,
-        t.angular.x,
-        t.angular.y,
-        t.angular.z,
-    ]
-    .iter()
-    .any(|v| *v != 0.0);
-    if moving {
-        return answer(
-            SimResult::RESULT_OPERATION_FAILED,
-            "the car is placed standing still: give a zero twist".into(),
-        );
-    }
-    let p = &request.state.pose;
-    let q = &p.orientation;
-    let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
-    let norm = (q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z).sqrt();
-    if !(p.position.x.is_finite() && p.position.y.is_finite() && (norm - 1.0).abs() < 0.01) {
-        return answer(
-            SetEntityState_Response::INVALID_POSE,
-            "the position must be finite and the quaternion a unit one".into(),
-        );
-    }
-    match shared.lock() {
-        Ok(mut s) => {
-            s.changes
-                .push(Change::PlaceCar(p.position.x, p.position.y, yaw));
-            answer(SimResult::RESULT_OK, String::new())
-        }
-        Err(_) => answer(
-            SimResult::RESULT_OPERATION_FAILED,
-            "the simulator's lock is poisoned".into(),
-        ),
-    }
-}
-
-/// SetEntityState for a placed model: put it at state.pose (map frame; x, y, z, yaw), then
-/// moving at state.twist (map frame: linear x and y, angular z; zero: it stands), as
-/// Gazebo's. A person crossing the road (TODO 170). The cameras see where it was put.
-fn move_model(
-    shared: &Mutex<Shared>,
-    models: &[PathBuf],
-    request: &SetEntityState_Request,
-) -> SetEntityState_Response {
-    let answer = |code: u8, why: String| SetEntityState_Response {
-        result: sim_result(code, why),
-    };
-    let t = &request.state.twist;
-    if [t.linear.z, t.angular.x, t.angular.y]
-        .iter()
-        .any(|v| *v != 0.0)
-    {
-        return answer(
-            SimResult::RESULT_OPERATION_FAILED,
-            "a model moves on the ground: linear x, y and angular z only".into(),
-        );
-    }
-    let velocity = Velocity {
-        x: t.linear.x,
-        y: t.linear.y,
-        yaw_rate: t.angular.z,
-    };
-    let p = &request.state.pose;
-    let q = &p.orientation;
-    let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
-    let finite = [
-        p.position.x,
-        p.position.y,
-        p.position.z,
-        velocity.x,
-        velocity.y,
-    ]
-    .iter()
-    .chain([velocity.yaw_rate].iter())
-    .all(|v| v.is_finite());
-    if !finite {
-        return answer(
-            SetEntityState_Response::INVALID_POSE,
-            "the pose and the twist must be finite".into(),
-        );
-    }
-    let Ok(mut s) = shared.lock() else {
-        let why = "the simulator's lock is poisoned".to_string();
-        return answer(SimResult::RESULT_OPERATION_FAILED, why);
-    };
-    let Some((file, _)) = s.placed.get(&request.entity).cloned() else {
-        let why = format!(
-            "nothing called {} was placed (the car is {CAR})",
-            request.entity
-        );
-        return answer(SimResult::RESULT_NOT_FOUND, why);
-    };
-    let mesh = match World::model_mesh(&file, models, Surfaces::Visual) {
-        Ok(mesh) => mesh,
-        Err(e) => return answer(SimResult::RESULT_OPERATION_FAILED, e.to_string()),
-    };
-    let pose = Pose::new(
-        Vec3::new(p.position.x, p.position.y, p.position.z),
-        Rot3::from_yaw(yaw),
-    );
-    s.placed.insert(request.entity.clone(), (file, pose));
-    s.announce();
-    s.changes.push(Change::Place {
-        name: request.entity.clone(),
-        mesh,
-        pose,
-        velocity,
-    });
-    answer(SimResult::RESULT_OK, String::new())
 }
 
 /// DeleteEntity: take a placed object away next step.
@@ -717,19 +535,87 @@ fn delete(shared: &Mutex<Shared>, request: &DeleteEntity_Request) -> DeleteEntit
     DeleteEntity_Response { result }
 }
 
-fn mount(xyz: &[f64], rpy: &[f64]) -> Result<Pose> {
-    let three = |v: &[f64], what| -> Result<[f64; 3]> {
-        v.try_into()
-            .map_err(|_| anyhow!("{what}: three numbers, not {}", v.len()))
+/// A ROS pose as sim-core's plain one.
+fn placement(p: &PoseMsg) -> Placement {
+    let q = &p.orientation;
+    Placement {
+        position: [p.position.x, p.position.y, p.position.z],
+        orientation: [q.x, q.y, q.z, q.w],
+    }
+}
+
+/// SetEntityState: the car at a pose next step, standing still (Gazebo's set_pose); or a
+/// placed model at a pose, then moving at the twist (map frame: linear x, y, angular z),
+/// as a person walking (TODO 170). The cameras see where it was put. What is accepted:
+/// sim-core node.rs `set_state`.
+fn set_state(
+    shared: &Mutex<Shared>,
+    models: &[PathBuf],
+    request: &SetEntityState_Request,
+) -> SetEntityState_Response {
+    let answer = |code: u8, why: String| SetEntityState_Response {
+        result: sim_result(code, why),
     };
-    Ok(Pose::from_xyz_rpy(three(xyz, "xyz")?, three(rpy, "rpy")?))
+    let t = &request.state.twist;
+    let twist = [
+        t.linear.x,
+        t.linear.y,
+        t.linear.z,
+        t.angular.x,
+        t.angular.y,
+        t.angular.z,
+    ];
+    let asked = node::set_state(
+        &request.entity,
+        &request.state.header.frame_id,
+        &placement(&request.state.pose),
+        &twist,
+    );
+    let change = match asked {
+        Ok(change) => change,
+        Err(why) => {
+            let code = match why {
+                Refusal::BadPose | Refusal::NotFinite => SetEntityState_Response::INVALID_POSE,
+                _ => SimResult::RESULT_OPERATION_FAILED,
+            };
+            return answer(code, why.to_string());
+        }
+    };
+    let Ok(mut s) = shared.lock() else {
+        let why = "the simulator's lock is poisoned".to_string();
+        return answer(SimResult::RESULT_OPERATION_FAILED, why);
+    };
+    match change {
+        SetState::Car { x, y, yaw } => s.changes.push(Change::PlaceCar(x, y, yaw)),
+        SetState::Model {
+            name,
+            pose,
+            velocity,
+        } => {
+            let Some((file, _)) = s.placed.get(&name).cloned() else {
+                let why = format!("nothing called {name} was placed (the car is {CAR})");
+                return answer(SimResult::RESULT_NOT_FOUND, why);
+            };
+            let mesh = match World::model_mesh(&file, models, Surfaces::Visual) {
+                Ok(mesh) => mesh,
+                Err(e) => return answer(SimResult::RESULT_OPERATION_FAILED, e.to_string()),
+            };
+            s.placed.insert(name.clone(), (file, pose));
+            s.announce();
+            s.changes.push(Change::Place {
+                name,
+                mesh,
+                pose,
+                velocity,
+            });
+        }
+    }
+    answer(SimResult::RESULT_OK, String::new())
 }
 
 fn stamp(ns: u64) -> Time {
-    Time {
-        sec: (ns / 1_000_000_000) as i32,
-        nanosec: (ns % 1_000_000_000) as u32,
-    }
+    let (sec, nanosec) = node::stamp(ns);
+    Time { sec, nanosec }
 }
 
 fn header(ns: u64, frame: &str) -> Header {

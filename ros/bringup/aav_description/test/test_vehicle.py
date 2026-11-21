@@ -489,11 +489,12 @@ def test_trackers_sit_beside_the_controllers_and_mppi_lag_is_the_default():
         vehicle.check_tracker('none')
     with pytest.raises(ValueError, match='pick one of'):
         vehicle.check_tracker('mppi')
-    with pytest.raises(ValueError, match='reversing:=false'):
-        vehicle.check_tracker('stanley', reversing=True)
-    # mppi_lag reverses (Ben, 14 Nov); aav_track's trackers drive forwards only.
+    # mppi_lag reverses (Ben, 14 Nov); aav_track's trackers too (TODO 174); mpc_lag_rs
+    # since 20 Nov (TODO 213).
     assert vehicle.check_tracker('mppi_lag', reversing=True) == 'mppi_lag'
-    assert set(vehicle.FORWARD_ONLY_TRACKERS) == set(vehicle.TRACKERS) - {'none', 'mppi_lag'}
+    assert vehicle.check_tracker('stanley', reversing=True) == 'stanley'
+    assert vehicle.check_tracker('mpc_lag_rs', reversing=True) == 'mpc_lag_rs'
+    assert set(vehicle.FORWARD_ONLY_TRACKERS) == set()
 
 
 def test_track_params_are_nav2s_own_checks_and_speeds():
@@ -516,6 +517,14 @@ def test_track_params_are_nav2s_own_checks_and_speeds():
     assert p['max_steering_rate'] == min(cfg['actuators']['steer_rate'],
                                          ego['max_steering_rate'])
     assert vehicle.track_params(nav2, cfg, ego, max_speed=3.0)['cruise_speed'] == 3.0
+    # TODO 174: aav_track backs up at max_reverse_speed with reversing, never without.
+    assert p['max_reverse_speed'] == 0.0
+    back = vehicle.track_params(nav2, cfg, ego, reversing=True)['max_reverse_speed']
+    assert back == cfg['vehicle']['max_reverse_speed'] > 0
+    # TODO 213: mpc_lag_rs the same.
+    assert vehicle.mpc_lag_rs_params(nav2, cfg, ego)['max_reverse_speed'] == 0.0
+    back = vehicle.mpc_lag_rs_params(nav2, cfg, ego, reversing=True)['max_reverse_speed']
+    assert back == cfg['vehicle']['max_reverse_speed']
 
 
 def test_check_speed_loop_takes_spine_cores_names_and_refuses_the_rest():
@@ -532,6 +541,21 @@ def test_check_speed_loop_takes_spine_cores_names_and_refuses_the_rest():
             vehicle.check_speed_loop('lqi', tracker)
         assert vehicle.check_speed_loop('firm', tracker) == 'firm'
     assert vehicle.check_speed_loop('lqi', 'mppi_lag') == 'lqi'
+
+
+def test_the_models_loop_is_the_cars_unless_given():
+    # speed_loop_model:= (TODO 163): empty follows the car's loop; given, it wins.
+    assert vehicle.check_speed_loop_model('', 'firm') == 'firm'
+    assert vehicle.check_speed_loop_model('  ', 'default') == 'default'
+    assert vehicle.check_speed_loop_model('Smooth', 'firm') == 'smooth'
+    with pytest.raises(ValueError, match='speed_loop_model:=fast'):
+        vehicle.check_speed_loop_model('fast', 'firm')
+    with pytest.raises(ValueError, match='speed_loop:=fast'):
+        vehicle.check_speed_loop_model('', 'fast')
+    # The MPCs refuse the LQI as a model, even when the car runs it.
+    with pytest.raises(ValueError, match='PI'):
+        vehicle.check_speed_loop_model('lqi', 'firm', 'mpc_lag')
+    assert vehicle.check_speed_loop_model('smooth', 'lqi', 'mpc_lag') == 'smooth'
 
 
 def test_every_model_of_the_car_gets_the_speed_loop_asked_for():
@@ -939,6 +963,14 @@ def test_mppi_lag_steer_gamma_is_a_number_0_or_more():
             vehicle.check_steer_gamma(bad)
 
 
+def test_mppi_lag_batch_is_a_whole_number_1_or_more():
+    # TODO 152: steer:=mppi_lag_1k's 1000 samples a tick.
+    assert vehicle.check_mppi_batch('1000') == 1000
+    for bad in ('x', '0', '-5', '1.5'):
+        with pytest.raises(ValueError, match='mppi_lag_batch'):
+            vehicle.check_mppi_batch(bad)
+
+
 def test_the_stop_zone_reads_the_collision_monitor_block():
     """TODO 182: our stop zone's settings from the tuned nav2.yaml and the car."""
     share = Path(__file__).resolve().parents[3] / 'drivers' / 'aav_navigation' / 'config'
@@ -968,20 +1000,22 @@ def test_ego_impl_is_python_or_rust():
         vehicle.check_ego_impl('c')
 
 
-def test_behaviour_impl_is_python_or_rust():
+def test_behaviour_impl_is_rust():
     assert vehicle.DEFAULT_BEHAVIOUR_IMPL == vehicle.SIM_DEFAULT_BEHAVIOUR_IMPL == 'rust'
-    assert vehicle.check_behaviour_impl('python') == 'python'
     assert vehicle.check_behaviour_impl(' Rust ') == 'rust'
-    assert vehicle.BEHAVIOUR_IMPLS == {'python': 'aav_behaviour', 'rust': 'aav_behaviour_rs'}
+    assert vehicle.BEHAVIOUR_IMPLS == {'rust': 'aav_behaviour_rs'}
+    with pytest.raises(ValueError, match='behaviour_impl:=python'):
+        vehicle.check_behaviour_impl('python')
     with pytest.raises(ValueError, match='behaviour_impl:=c'):
         vehicle.check_behaviour_impl('c')
 
 
-def test_watchdog_impl_is_python_or_rust():
+def test_watchdog_impl_is_rust():
     assert vehicle.DEFAULT_WATCHDOG_IMPL == 'rust'
-    assert vehicle.check_watchdog_impl('python') == 'python'
     assert vehicle.check_watchdog_impl(' Rust ') == 'rust'
-    assert vehicle.WATCHDOG_IMPLS == {'python': 'aav_safety', 'rust': 'aav_watchdog_rs'}
+    assert vehicle.WATCHDOG_IMPLS == {'rust': 'aav_watchdog_rs'}
+    with pytest.raises(ValueError, match='watchdog_impl:=python'):
+        vehicle.check_watchdog_impl('python')
     with pytest.raises(ValueError, match='watchdog_impl:=c'):
         vehicle.check_watchdog_impl('c')
 
@@ -1012,7 +1046,9 @@ def test_lane_finder_impl_is_rust_or_python():
     # Ben, 18 Nov: the lane finder in Rust, the default; lane_finder_impl:=python falls back.
     assert vehicle.DEFAULT_LANE_FINDER_IMPL == 'rust'
     assert vehicle.LANE_FINDER_IMPLS == {'python': 'aav_lane_finder',
-                                         'rust': 'aav_lane_finder_rs'}
+                                         'rust': 'aav_lane_finder_rs',
+                                         'learned': 'aav_lane_finder_learned'}
+    assert vehicle.check_lane_finder_impl('learned') == 'learned'
     assert vehicle.check_lane_finder_impl(' Python ') == 'python'
     with pytest.raises(ValueError, match='lane_finder_impl:=c'):
         vehicle.check_lane_finder_impl('c')
@@ -1037,10 +1073,10 @@ def test_camera_stream_impl_is_rust_unless_a_model_runs():
 def test_localization_health_impl_is_python_or_rust():
     assert vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
     assert vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL == 'rust'
-    assert vehicle.check_localization_health_impl('python') == 'python'
     assert vehicle.check_localization_health_impl(' Rust ') == 'rust'
-    assert vehicle.LOCALIZATION_HEALTH_IMPLS == {'python': 'aav_localization_health',
-                                                 'rust': 'aav_localization_health_rs'}
+    assert vehicle.LOCALIZATION_HEALTH_IMPLS == {'rust': 'aav_localization_health_rs'}
+    with pytest.raises(ValueError, match='localization_health_impl:=python'):
+        vehicle.check_localization_health_impl('python')
     with pytest.raises(ValueError, match='localization_health_impl:=c'):
         vehicle.check_localization_health_impl('c')
 
@@ -1078,10 +1114,35 @@ def test_rewrite_follows_rewrittenyamls_rules():
     assert cfg['a']['footprint'] == 'x'          # a copy
 
 
-def test_joy_alive_impl_is_python_or_rust():
+def test_gps_heading_impl_is_rust():
+    assert vehicle.DEFAULT_GPS_HEADING_IMPL == 'rust'
+    assert vehicle.check_gps_heading_impl(' Rust ') == 'rust'
+    with pytest.raises(ValueError, match='gps_heading_impl:=python'):
+        vehicle.check_gps_heading_impl('python')
+    assert vehicle.GPS_HEADING_IMPLS['rust'] == 'aav_gps_heading_rs'
+    with pytest.raises(ValueError, match='gps_heading_impl:=c'):
+        vehicle.check_gps_heading_impl('c')
+
+
+def test_safety_impls_are_rust():
+    for name, check, default in (
+            ('geofence_impl', vehicle.check_geofence_impl, vehicle.DEFAULT_GEOFENCE_IMPL),
+            ('stop_hold_impl', vehicle.check_stop_hold_impl, vehicle.DEFAULT_STOP_HOLD_IMPL),
+            ('goal_leash_impl', vehicle.check_goal_leash_impl,
+             vehicle.DEFAULT_GOAL_LEASH_IMPL)):
+        assert default == 'rust'
+        assert check(' Rust ') == 'rust'
+        with pytest.raises(ValueError, match=f'{name}:=python'):
+            check('python')
+    assert vehicle.GEOFENCE_IMPLS == {'rust': 'aav_safety_rs'}
+
+
+def test_joy_alive_impl_is_rust():
     assert vehicle.DEFAULT_JOY_ALIVE_IMPL == 'rust'
-    assert vehicle.check_joy_alive_impl(' Python ') == 'python'
-    assert vehicle.JOY_ALIVE_IMPLS['rust'] == 'aav_joy_alive_rs'
+    assert vehicle.check_joy_alive_impl(' Rust ') == 'rust'
+    assert vehicle.JOY_ALIVE_IMPLS == {'rust': 'aav_joy_alive_rs'}
+    with pytest.raises(ValueError, match='joy_alive_impl:=python'):
+        vehicle.check_joy_alive_impl('python')
     with pytest.raises(ValueError, match='joy_alive_impl:=c'):
         vehicle.check_joy_alive_impl('c')
 

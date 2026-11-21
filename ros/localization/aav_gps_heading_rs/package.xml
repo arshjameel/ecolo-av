@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_gps_heading_rs</name>
+  <version>0.1.0</version>
+  <description>gps_heading in Rust (rclrs): the default since 19 Nov (Ben, 16 Nov: "lets remove python were possible"), in place of aav_gps_heading's Python node (removed 20 Nov). The same node name, topics and parameters: the GPS receiver's velocity and the wheels in, the car's heading out on /localization/gps/heading for the global EKF. The maths is the gps-heading-core crate, with no ROS, checked to the bit against course.py's answers.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <!-- vehicle.yaml: where the antenna sits. -->
+  <exec_depend>aav_description</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

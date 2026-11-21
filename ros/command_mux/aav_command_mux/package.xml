@@ -10,12 +10,14 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <exec_depend>twist_mux</exec_depend>
+  <exec_depend>aav_mux_state</exec_depend>   <!-- command_mux_state: who is driving -->
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>rclpy</test_depend>
   <test_depend>geometry_msgs</test_depend>
+  <test_depend>diagnostic_msgs</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

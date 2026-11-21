@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The league, scored: 20 Nov (stage 2) · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/league-results-2026-11-20.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The league, scored: 20 Nov (stage 2)</h1>
+<div class="meta">9 min read · 7 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a class="here" href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#what-changed">What changed</a><a href="#each-challenger-against-what-it-would-replace">Each challenger against what it would replace</a><a href="#the-planners-behind-plain-mppi_lag">The planners (behind plain mppi_lag)</a><a href="#lanes-university-drive-toolslane_scorepy">Lanes: University Drive (tools/lane_score.py)</a><a href="#mpc-against-mppi-21-nov-todo-213">MPC against MPPI (21 Nov, TODO 213)</a><a href="#position-and-the-checks">Position and the checks</a><a href="#what-next">What next</a></nav>
+<div class="lead"><p>Ben, 20 Nov: "Please work on phase 2". Stage 2 scores what stage 1 built, in Ravensim,
+reversing on, <strong>3 runs each</strong>, on Ben's Mac (M4 Max), one job at a time, overnight.
+Scores are tracked, not gates (<a href="league.html#how-a-challenger-wins">the league</a>).</p>
+<p><strong>How each was run.</strong> <code>measure controllers</code> starts <code>stack:=best</code> (the champions) and changes
+one thing. So each challenger is compared with <strong>the option it would replace</strong>, run the
+same way. The raw results: <code>log/stage2/&lt;job&gt;/results.md</code> (not in git).</p></div>
+<section class="card"><h2 id="what-changed">What changed</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Was</th>
+<th>Now</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>steer (<code>stack:=ours</code>)</td>
+<td><code>mppi_lag_calm</code></td>
+<td><strong><code>mppi_lag_1k</code></strong></td>
+<td>no column worse on either tour, the worst off-path smaller, half the work a tick</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nothing else changed. <code>stack:=car</code> is untouched: <code>mppi_lag_1k</code> still needs timing on the
+Orin (TODO 152).</p>
+</section>
+<section class="card"><h2 id="each-challenger-against-what-it-would-replace">Each challenger against what it would replace</h2>
+<p>Lot: 4 legs, 12 a job. University box: 1 leg, 3 a job. Every job reached every leg.
+Sway in m/s²; off the path in m, mean / worst.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Challenger</th>
+<th>Baseline</th>
+<th style="text-align: right;">Lot sway</th>
+<th style="text-align: right;">Lot off the path</th>
+<th style="text-align: right;">Box sway</th>
+<th style="text-align: right;">Box off the path</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>steer:=mppi_lag_1k</code> (152)</td>
+<td><code>mppi_lag_calm</code></td>
+<td style="text-align: right;">0.025 / 0.025</td>
+<td style="text-align: right;">0.14 / 0.64 vs 0.15 / 0.91</td>
+<td style="text-align: right;">0.095 / 0.100</td>
+<td style="text-align: right;">0.12 / 0.60 vs 0.14 / 0.68</td>
+<td>✅ <strong>wins</strong>: now ours'</td>
+</tr>
+<tr>
+<td><code>steer:=mppi_lag_smooth</code> (212)</td>
+<td><code>mppi_lag_calm</code></td>
+<td style="text-align: right;"><strong>0.018</strong> / 0.025</td>
+<td style="text-align: right;">0.19 / 0.82 vs 0.15 / 0.91</td>
+<td style="text-align: right;">0.095 / 0.100</td>
+<td style="text-align: right;"><strong>0.22</strong> / 0.87 vs 0.14 / 0.68</td>
+<td>🟡 the calmest, but further off the path</td>
+</tr>
+<tr>
+<td><code>path:=lane_jerk</code> (214)</td>
+<td><code>path:=lane</code></td>
+<td style="text-align: right;">0.029 / 0.032</td>
+<td style="text-align: right;">0.19 / 1.01 vs 0.19 / 0.96</td>
+<td style="text-align: right;"><strong>0.108</strong> / 0.148</td>
+<td style="text-align: right;"><strong>0.22</strong> / 0.92 vs 0.11 / 0.75</td>
+<td>🟡 calmer, further off the path; the tours have no pass</td>
+</tr>
+<tr>
+<td><code>kerbs:=patchwork</code> (215)</td>
+<td><code>kerbs:=on</code></td>
+<td style="text-align: right;">0.031 / 0.030</td>
+<td style="text-align: right;">0.17 / 0.64 vs 0.20 / 0.98</td>
+<td style="text-align: right;">0.191 / 0.232</td>
+<td style="text-align: right;">0.14 / 0.60 vs 0.23 / 0.73</td>
+<td>🟡 better on most, but more left-right changes on the lot (12.5 vs 10.1); real kerbs are its test</td>
+</tr>
+<tr>
+<td><code>behaviour:=on_per_kind</code> (217)</td>
+<td><code>behaviour:=on</code></td>
+<td style="text-align: right;">0.031 / 0.035</td>
+<td style="text-align: right;">0.19 / 0.99 vs 0.21 / 1.57</td>
+<td style="text-align: right;"><strong>0.241</strong> / 0.204</td>
+<td style="text-align: right;">0.18 / 0.70 vs 0.11 / 0.69</td>
+<td>🟡 better on the lot, worse on the box; nobody walks on these tours</td>
+</tr>
+<tr>
+<td><code>pose:=kinematic_ekf</code> (216)</td>
+<td><code>pose:=ekf</code></td>
+<td style="text-align: right;">0.034 / 0.032</td>
+<td style="text-align: right;">0.19 / 1.28 vs 0.18 / 0.90</td>
+<td style="text-align: right;">0.216 / 0.218</td>
+<td style="text-align: right;">0.21 / 0.89 vs 0.14 / 0.86</td>
+<td>❌ no gain in the sim (no wheel slip); kept for the car</td>
+</tr>
+</tbody>
+</table></div>
+<p>MPPI's tick: <code>mppi_lag_1k</code> 1.8 ms mean (9.0 worst), the 2,000-sample ones 3.5 ms; none missed.</p>
+</section>
+<section class="card"><h2 id="the-planners-behind-plain-mppi_lag">The planners (behind plain <code>mppi_lag</code>)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Planner</th>
+<th style="text-align: right;">Lot sway</th>
+<th style="text-align: right;">Lot off the path (m)</th>
+<th style="text-align: right;">Box sway</th>
+<th style="text-align: right;">Plan time, mean (ms)</th>
+<th style="text-align: right;">Plans from the model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>own</code> (the lattice)</td>
+<td style="text-align: right;">0.032</td>
+<td style="text-align: right;">0.18</td>
+<td style="text-align: right;">0.218</td>
+<td style="text-align: right;">8-20</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><code>diffusion_rs</code> (Rust, Core ML)</td>
+<td style="text-align: right;"><strong>0.022</strong></td>
+<td style="text-align: right;">0.18</td>
+<td style="text-align: right;">0.211</td>
+<td style="text-align: right;">50-72</td>
+<td style="text-align: right;"><strong>100 %</strong></td>
+</tr>
+<tr>
+<td><code>diffusion_coreml</code> (Python, Core ML)</td>
+<td style="text-align: right;">0.030</td>
+<td style="text-align: right;">0.18</td>
+<td style="text-align: right;">0.226</td>
+<td style="text-align: right;">117</td>
+<td style="text-align: right;"><strong>20-50 %</strong></td>
+</tr>
+<tr>
+<td><code>own_hybrid</code> (Hybrid-A*, 178)</td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;"><strong>0.044</strong></td>
+<td style="text-align: right;">1-14</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><code>own_smooth</code> (177)</td>
+<td style="text-align: right;">0.028</td>
+<td style="text-align: right;">0.19</td>
+<td style="text-align: right;">0.247</td>
+<td style="text-align: right;">15-18</td>
+<td style="text-align: right;">—</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Diffusion from Rust works</strong>: every plan was the model's; the calmest on the lot. Its first fair score.</li>
+<li><strong>The Python worker on Core ML barely works</strong>: the lattice drew most of its plans.</li>
+<li><strong>Hybrid-A*</strong> reached 15 of 15 legs (7 of 8 before), by far the calmest on the box; one run changed gear 6 times.</li>
+<li><strong><code>own_smooth</code></strong> cut inside the turning radius once (0.50 m): not kept to the car.</li>
+</ul>
+</section>
+<section class="card"><h2 id="lanes-university-drive-toolslane_scorepy">Lanes: University Drive (<code>tools/lane_score.py</code>)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th style="text-align: right;">Off the lane's centre (m)</th>
+<th style="text-align: right;">In the lane</th>
+<th style="text-align: right;">Over the centre line</th>
+<th style="text-align: right;">Crossings a leg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>path:=lane</code></strong> (the lane map, ours')</td>
+<td style="text-align: right;"><strong>0.24</strong></td>
+<td style="text-align: right;"><strong>100 %</strong></td>
+<td style="text-align: right;"><strong>0 %</strong></td>
+<td style="text-align: right;"><strong>0</strong></td>
+</tr>
+<tr>
+<td>the lattice + <code>lanes:=camera</code> (264)</td>
+<td style="text-align: right;">1.35</td>
+<td style="text-align: right;">59 %</td>
+<td style="text-align: right;">41 %</td>
+<td style="text-align: right;">2.4</td>
+</tr>
+<tr>
+<td>the lattice, no lanes</td>
+<td style="text-align: right;">1.41</td>
+<td style="text-align: right;">48 %</td>
+<td style="text-align: right;">52 %</td>
+<td style="text-align: right;">4.7</td>
+</tr>
+</tbody>
+</table></div>
+<p>The lane map wins where we have one. The camera's lanes help the lattice keep right, but
+only a little: they are for roads with no lane map. Seen live (20 Nov): the learned finder
+misses lines on some stretches.</p>
+</section>
+<section class="card"><h2 id="mpc-against-mppi-21-nov-todo-213">MPC against MPPI (21 Nov, TODO 213)</h2>
+<p>Ben, 20 Nov: "fix mpc to have reverse". Once <code>mpc_lag_rs</code> reversed, all three followers
+raced with reversing on, 3 runs each: the lot, and University Drive with <code>path:=lane</code>.
+Raw: <code>log/stage2/mpc_lot/</code>, <code>log/stage2/mpc_univ/</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;"><code>mppi_lag</code> (ours)</th>
+<th style="text-align: right;"><code>mpc_lag</code> (Python)</th>
+<th style="text-align: right;"><code>mpc_lag_rs</code> (Rust)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lot: legs</td>
+<td style="text-align: right;">12/12</td>
+<td style="text-align: right;">12/12</td>
+<td style="text-align: right;">12/12</td>
+</tr>
+<tr>
+<td>Lot: sway (m/s²)</td>
+<td style="text-align: right;"><strong>0.032</strong></td>
+<td style="text-align: right;">0.052</td>
+<td style="text-align: right;">0.055</td>
+</tr>
+<tr>
+<td>Lot: off the path, mean / worst (m)</td>
+<td style="text-align: right;">0.21 / 0.99</td>
+<td style="text-align: right;">0.18 / 1.07</td>
+<td style="text-align: right;"><strong>0.17 / 0.88</strong></td>
+</tr>
+<tr>
+<td>University: legs</td>
+<td style="text-align: right;">6/9 *</td>
+<td style="text-align: right;">8/9</td>
+<td style="text-align: right;"><strong>9/9</strong></td>
+</tr>
+<tr>
+<td>University: sway (m/s²)</td>
+<td style="text-align: right;"><strong>0.132</strong></td>
+<td style="text-align: right;">0.224</td>
+<td style="text-align: right;">0.251</td>
+</tr>
+<tr>
+<td>University: off the lane's centre (m)</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: right;">0.22</td>
+<td style="text-align: right;">0.24</td>
+</tr>
+<tr>
+<td>University: in the lane, over the centre line</td>
+<td style="text-align: right;">100 %, 0 %</td>
+<td style="text-align: right;">100 %, 0 %</td>
+<td style="text-align: right;">100 %, 0 %</td>
+</tr>
+<tr>
+<td>The tick, mean (ms)</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">6.8</td>
+<td style="text-align: right;"><strong>1.6</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>* One run lost all 3 legs at the start: the sensor watchdog stopped the car (the wheels and
+the IMU disagreed), not the follower.</p>
+<ul>
+<li><strong><code>mpc_lag_rs</code> reaches every leg and reverses</strong> (6.6 m backwards on the lot's turn back,
+  as MPPI), the closest to the path and the cheapest.</li>
+<li><strong>But it sways about twice as much as MPPI.</strong> So MPPI stays ours'.</li>
+<li><strong>So: the tube</strong> (Ben, 21 Nov: "It doesn't need to be super aggressive sticking to the
+  line"): no cost within w m of the path, so it stops chasing the centre.</li>
+</ul>
+<h3 id="the-tube-tuned-21-nov">The tube, tuned (21 Nov)</h3>
+<p><code>mpc_lag_rs</code> alone, 3 runs each, the same tours. Raw: <code>log/stage2/tube*/</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tube w</th>
+<th style="text-align: right;">University sway</th>
+<th style="text-align: right;">Lot sway</th>
+<th>Legs (lot, University)</th>
+<th style="text-align: right;">Off the lane's centre (m)</th>
+<th style="text-align: right;">University worst off the path (m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>none</td>
+<td style="text-align: right;">0.251</td>
+<td style="text-align: right;">0.055</td>
+<td>12/12, 9/9</td>
+<td style="text-align: right;">0.24</td>
+<td style="text-align: right;">0.95</td>
+</tr>
+<tr>
+<td>0.1 m</td>
+<td style="text-align: right;">0.197</td>
+<td style="text-align: right;">0.058</td>
+<td>12/12, 9/9</td>
+<td style="text-align: right;">0.21</td>
+<td style="text-align: right;">0.90</td>
+</tr>
+<tr>
+<td>0.2 m</td>
+<td style="text-align: right;">0.205</td>
+<td style="text-align: right;">0.054</td>
+<td>12/12, 9/9</td>
+<td style="text-align: right;">0.28</td>
+<td style="text-align: right;">1.33</td>
+</tr>
+<tr>
+<td><strong>0.3 m</strong></td>
+<td style="text-align: right;"><strong>0.160</strong></td>
+<td style="text-align: right;"><strong>0.054</strong></td>
+<td><strong>12/12, 9/9</strong></td>
+<td style="text-align: right;">0.24</td>
+<td style="text-align: right;">1.39</td>
+</tr>
+<tr>
+<td>0.4 m</td>
+<td style="text-align: right;">0.185</td>
+<td style="text-align: right;">—</td>
+<td>—, 9/9</td>
+<td style="text-align: right;">0.26</td>
+<td style="text-align: right;">1.57</td>
+</tr>
+<tr>
+<td><em><code>mppi_lag</code></em></td>
+<td style="text-align: right;"><em>0.132</em></td>
+<td style="text-align: right;"><em>0.032</em></td>
+<td><em>12/12, 6/9</em></td>
+<td style="text-align: right;"><em>0.23</em></td>
+<td style="text-align: right;"><em>0.81</em></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>0.3 m is the default now</strong> (<code>vehicle.MPC_LAG_TUBE</code>; <code>mpc_lag_tube:=0</code> turns it off):
+  University Drive's sway down 36 %, every leg, as near the lane's centre.</li>
+<li><strong>The lot is unchanged</strong>: its sway is the tight turns, not wobble about the line.</li>
+<li><strong>Still behind MPPI on sway</strong> (0.160 against 0.132), ahead on legs and the tick. Next:
+  more cost on the steering's change (<code>r_rate</code>), and the costmap in its cost.</li>
+</ul>
+</section>
+<section class="card"><h2 id="position-and-the-checks">Position and the checks</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NDT leading (<code>--ndt-leads</code>), campus</td>
+<td>every leg; 92 % of clouds gave a pose, heading off 0.1° at worst, 1.7 ms a match</td>
+</tr>
+<tr>
+<td>AMCL (<code>--amcl</code>), campus</td>
+<td><strong>not run</strong>: AMCL runs only on the test lot, the only world with a 2D map</td>
+</tr>
+<tr>
+<td><code>sim-check --blocked-street</code> (174)</td>
+<td>✅ the car backs out</td>
+</tr>
+<tr>
+<td><code>sim-check --moving</code> (189)</td>
+<td>❌ twice, then fixed: the walker's feet were kept as a kerb for ever. Since the fix in the voxels' step memory: ✅ the car waits, sets off and reaches the goal</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="what-next">What next</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Diffusion: the Rust worker the default; score it on the campus</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>mppi_lag_1k</code> timed on the Orin, then into <code>stack:=car</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>A 2D map for the campus (<code>map-drive</code> makes one), so AMCL can be scored there</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The camera's lanes where they miss lines; then <code>path:=lane</code> with the camera's lanes</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="league-results-2026-11-16.html"><small>Previous</small>← League scores, 16 Nov</a>
+<a class="next" href="mppi-lag.html"><small>Next</small>MPPI with lag →</a></nav>
+</main>
+<footer>Source: <code>docs/league-results-2026-11-20.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

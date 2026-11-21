@@ -215,7 +215,12 @@ def test_the_rear_camera_sees_behind_only_when_its_detector_reads_it_for_people(
 
 def test_the_watchdog_guards_navigation():
     sent = included(started(CAR, machine='all'))
-    assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,local,global,gps,hud'
+    assert sent['watchdog.launch.py']['inputs'] == 'odom,imu,local,global,gps,hud,lidar'
+    # The lidar where this machine runs it (TODO 246's step 5e); lidar:=false, none.
+    no_lidar = included(started(CAR, machine='all', lidar='false'))
+    assert 'lidar' not in no_lidar['watchdog.launch.py']['inputs'].split(',')
+    alone = included(started(CAR, machine='motor_pi_alone'))     # no lidar on that Pi
+    assert 'lidar' not in alone['watchdog.launch.py']['inputs'].split(',')
     no_gps = included(started(CAR, machine='all', gps='false'))
     assert 'gps' not in no_gps['watchdog.launch.py']['inputs']
     # The safety drivers rely on the HUD: watched unless the session has no screen.
@@ -251,11 +256,26 @@ def test_the_geofence_runs_wherever_the_mux_does():
             # today's backend (the 2025-26 ESP32, which coasts: geofence.py coasts).
             assert sent['geofence.launch.py'] == {
                 'backend': 'uart', 'radius': '30.0', 'centre_x': '0.0', 'centre_y': '0.0',
-                'site': '', 'max_speed': '', 'gps': 'true', 'stands': 'false'}, machine
+                'site': '', 'max_speed': '', 'gps': 'true', 'stands': 'false',
+                'fix_topic': '/localization/gps/odom',
+                'geofence_impl': 'rust'}, machine
     lot = included(started(CAR, machine='all', geofence_site='bench_road', start_x='5',
                            actuators='can', stands='true'))['geofence.launch.py']
     assert (lot['site'], lot['centre_x'], lot['backend'], lot['stands']) == (
         'bench_road', '5', 'spine', 'true')
+
+
+def test_the_safety_nodes_are_rust():
+    # Ben, 16 Nov: "lets remove python were possible". The geofence, stop_hold and the
+    # goal leash in Rust (aav_safety_rs); the Python nodes went on 20 Nov.
+    sent = started(CAR, machine='all')
+    assert included(sent)['geofence.launch.py']['geofence_impl'] == 'rust'
+    assert ('aav_safety_rs', 'goal_leash') in nodes(sent)
+    if 'navigation.launch.py' in included(sent):
+        assert included(sent)['navigation.launch.py']['stop_hold_impl'] == 'rust'
+    for name in ('geofence_impl', 'stop_hold_impl', 'goal_leash_impl'):
+        with pytest.raises(ValueError, match=name):
+            started(CAR, machine='all', **{name: 'python'})
 
 
 def test_the_sensor_watchdog_runs_wherever_the_mux_does():
@@ -282,9 +302,14 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
     sent = included(started(CAR, machine='all'))
     for name, switch in switches.items():
         assert sent[name][switch] == 'rust', name
-    back = included(started(CAR, machine='all', **dict.fromkeys(switches.values(), 'python')))
+    # Still one switch away: ego and the muxes. The others' Python went on 20 Nov.
+    still = ('ego_impl', 'io_mux_impl')
+    back = included(started(CAR, machine='all', **dict.fromkeys(still, 'python')))
     for name, switch in switches.items():
-        assert back[name][switch] == 'python', name
+        assert back[name][switch] == ('python' if switch in still else 'rust'), name
+    for gone in ('behaviour_impl', 'watchdog_impl', 'localization_health_impl'):
+        with pytest.raises(ValueError, match=gone):
+            started(CAR, machine='all', **{gone: 'python'})
     for impl in legacy:
         assert included(started(CAR, machine='motor_pi'))['legacy.launch.py'][impl] == 'rust'
         assert included(started(CAR, machine='motor_pi', **{impl: 'python'}))[
@@ -300,10 +325,8 @@ def test_joy_alive_is_rust_by_default_and_python_one_switch_away():
     for machine in ('motor_pi_alone', 'all'):
         assert included(started(CAR, machine=machine))['teleop.launch.py'][
             'joy_alive_impl'] == 'rust', machine
-    assert included(started(CAR, machine='motor_pi_alone', joy_alive_impl='python'))[
-        'teleop.launch.py']['joy_alive_impl'] == 'python'
     with pytest.raises(ValueError, match='joy_alive_impl'):
-        started(CAR, machine='motor_pi_alone', joy_alive_impl='c')
+        started(CAR, machine='motor_pi_alone', joy_alive_impl='python')
 
 
 def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
@@ -320,6 +343,31 @@ def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
         started(CAR, machine='motor_pi_alone', stop_sign_impl='c')
 
 
+def test_the_laptop_can_take_the_orins_place():
+    # Ben, 20 Nov: the joystick and the hardware screen on a laptop, the heartbeat made
+    # there; the Motor Pi runs only its bridge (car motor_pi).
+    sent = included(started(CAR, machine='laptop_orin'))
+    assert sent['io_mux.launch.py']['target'] == 'car'      # the output mux: the heartbeat
+    assert 'teleop.launch.py' in sent                       # the joystick, plugged in here
+    assert 'scripted.launch.py' in sent                     # drive 3 m and stop
+    assert 'drive_to_point.launch.py' in sent               # drive to a point and stop
+    found = {exe for _, exe in nodes(started(CAR, machine='laptop_orin'))}
+    assert 'legacy_uart_bridge' not in found                # the Pi's, never two
+    pi = CAR.load_machine('motor_pi')['parts']
+    assert pi.get('legacy_uart') and not pi.get('mux') and not pi.get('ego')
+
+
+def test_the_orin_can_watch_while_the_laptop_drives():
+    # Ben, 20 Nov: record everything while the laptop drives (laptop_orin): the Orin reads
+    # its sensors and works out where the car is, and decides nothing.
+    parts = CAR.load_machine('orin_sensors')['parts']
+    for part in ('mux', 'ego', 'navigation', 'scripted', 'drive_to_point', 'teleop',
+                 'legacy_uart', 'spine', 'stop_signs'):
+        assert not parts.get(part), part
+    sent = included(started(CAR, machine='orin_sensors'))
+    assert 'io_mux.launch.py' not in sent
+
+
 def test_the_output_mux_runs_next_to_ego_for_the_real_car():
     # The real backends read only /control/car/actuator_cmd: the output mux, target car,
     # must run wherever ego does, and nowhere else (two would both judge the same ego).
@@ -333,10 +381,10 @@ def test_the_output_mux_runs_next_to_ego_for_the_real_car():
 
 
 def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
-    # control_interface drives whenever it sees a lane, so no machine file has it on yet.
+    # The lane part is the lane finder alone (the follower went on 19 Nov, TODO 264).
     for machine in MACHINES:
         assert not CAR.load_machine(machine)['parts'].get('lane'), machine
-        assert 'lane_follower.launch.py' not in included(started(CAR, machine=machine))
+        assert 'lane_finder.launch.py' not in included(started(CAR, machine=machine))
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {'lane': True}})
     sent = included(started(CAR, machine='orin'))
     # The Rust lane_finder by default (Ben, 18 Nov); lane_finder_impl:=python falls back.
@@ -346,7 +394,7 @@ def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
     assert back['lane_finder.launch.py']['lane_finder_impl'] == 'python'
     with pytest.raises(ValueError, match='lane_finder_impl'):
         started(CAR, machine='orin', lane_finder_impl='c')
-    assert sent['lane_follower.launch.py'] == {'fake': 'false'}
+    assert 'lane_follower.launch.py' not in sent
 
 
 def test_the_detector_is_named_after_its_machine(monkeypatch, tmp_path):
@@ -417,7 +465,7 @@ def test_the_car_passes_its_bridge_choice_to_the_spine(monkeypatch, socketcan):
 # Orin, with the wheel sensors on it (docs/can-plan.md).
 
 # legacy.launch.py's languages, by default: Rust since 17 Nov (Ben, "Rust tomorrow").
-RUST_LEGACY = {'legacy_impl': 'rust', 'rc_impl': 'rust'}
+RUST_LEGACY = {'legacy_impl': 'rust', 'rc_impl': 'rust', 'adaptive_brake': 'false'}
 
 
 def test_the_car_as_wired_today(socketcan):
@@ -653,6 +701,65 @@ def test_the_car_day_stack_is_the_defaults():
     assert nav.get('amcl', 'false') == 'false'
     loc = included(started(CAR, machine='orin'))['localization.launch.py']
     assert loc.get('ndt_ekf', 'false') == 'false' and loc.get('kiss_ekf', 'false') == 'false'
+    # NDT leading (TODO 210) is the sim's challenger: the car refuses it without NDT and
+    # the lot's map (TODO 261), and NDT is off.
+    assert loc['pose_source'] == 'gps'
+    assert 'ndt.launch.py' not in included(started(CAR, machine='orin'))
+    with pytest.raises(ValueError, match='pose_source'):
+        started(CAR, machine='orin', pose_source='ndt')
+
+
+@pytest.fixture
+def lot_map(tmp_path):
+    path = tmp_path / 'lot.pcd'
+    path.write_text('')
+    return str(path)
+
+
+def test_ndt_runs_on_the_orin_only_when_asked_with_its_map(lot_map):
+    # TODO 261: as sim.launch.py runs it, from the start pose; the machine file's ndt part.
+    sent = included(started(CAR, machine='orin', ndt='true', ndt_map=lot_map, start_x='4',
+                            start_y='-2', start_yaw='0.5'))
+    assert sent['ndt.launch.py'] == {
+        'use_sim_time': 'false', 'ndt_map': lot_map, 'ndt_chunks': '', 'ndt_x': '4',
+        'ndt_y': '-2', 'ndt_yaw': '0.5', 'ndt_from_global': 'false', 'ndt_min_score': '',
+        'ndt_min_height': ''}
+    # Scored only: localization, the watchdog and the geofence as with the GPS leading.
+    assert sent['localization.launch.py']['pose_source'] == 'gps'
+    assert sent['geofence.launch.py']['fix_topic'] == '/localization/gps/odom'
+    for machine in MACHINES:
+        parts = CAR.load_machine(machine)['parts']
+        found = 'ndt.launch.py' in included(started(CAR, machine=machine, ndt='true',
+                                                    ndt_map=lot_map))
+        assert found == bool(parts.get('ndt')), machine
+    assert CAR.load_machine('orin')['parts']['ndt']
+
+
+def test_ndt_needs_its_map_and_the_lidar(lot_map):
+    with pytest.raises(ValueError, match='ndt_map'):
+        started(CAR, machine='orin', ndt='true')
+    with pytest.raises(ValueError, match='lidar'):
+        started(CAR, machine='orin', ndt='true', ndt_map=lot_map, lidar='false')
+
+
+def test_ndt_leads_only_with_ndt_and_its_map(lot_map):
+    # TODO 210 on the car: refused without ndt:=true and ndt_map, with a clear message.
+    for args in ({}, {'ndt': 'true'}, {'ndt_map': lot_map}):
+        with pytest.raises(ValueError, match='ndt:=true and ndt_map'):
+            started(CAR, machine='orin', pose_source='ndt', **args)
+    with pytest.raises(ValueError, match='use gps or ndt'):
+        started(CAR, machine='orin', pose_source='amcl')
+    # With both: wired as sim.launch.py wires it.
+    sent = included(started(CAR, machine='orin', pose_source='ndt', ndt='true',
+                            ndt_map=lot_map))
+    assert sent['localization.launch.py']['pose_source'] == 'ndt'
+    assert sent['geofence.launch.py']['fix_topic'] == '/localization/pose_check/fix'
+    inputs = sent['watchdog.launch.py']['inputs'].split(',')
+    assert 'gps' not in inputs and {'gps_check', 'pose_check'} <= set(inputs)
+    assert 'ndt.launch.py' in sent
+    # The default stays the GPS's.
+    inputs = included(started(CAR, machine='orin'))['watchdog.launch.py']['inputs'].split(',')
+    assert 'gps' in inputs and 'pose_check' not in inputs
 
 
 def test_the_diffusion_trial_speed_is_below_egos_own_cap():
@@ -660,3 +767,69 @@ def test_the_diffusion_trial_speed_is_below_egos_own_cap():
     with open(ego) as f:
         cap = float(yaml.safe_load(f)['ego']['ros__parameters']['max_speed'])
     assert 0.0 < vehicle.DIFFUSION_TRIAL_SPEED <= cap
+
+
+LEGACY = load('aav_legacy', 'legacy.launch.py')
+
+
+def test_the_adaptive_brake_is_off_on_the_car_unless_asked():
+    # TODO 258: legacy_uart_bridge's, after its pi loop; off by default.
+    assert included(started(CAR, machine='motor_pi'))['legacy.launch.py'][
+        'adaptive_brake'] == 'false'
+    assert included(started(CAR, machine='motor_pi', adaptive_brake='true'))[
+        'legacy.launch.py']['adaptive_brake'] == 'true'
+    # The CAN spine runs its speed loop in its firmware: no adaptive brake there yet.
+    with pytest.raises(ValueError, match='adaptive_brake'):
+        started(CAR, machine='orin', actuators='can', adaptive_brake='true')
+
+
+def test_the_adaptive_brake_needs_the_pi_loop_and_takes_vehicle_yaml(monkeypatch):
+    car = vehicle.load()
+    off = context_for(LEGACY)
+    assert LEGACY.adaptive_brake(off, car) == {'adaptive_brake': False}
+    asked = context_for(LEGACY, adaptive_brake='true')
+    # legacy.yaml's open loop asks for no brake to adapt: refused, saying why.
+    with pytest.raises(ValueError, match='speed_loop.mode open'):
+        LEGACY.adaptive_brake(asked, car)
+    monkeypatch.setattr(LEGACY.yaml, 'safe_load', lambda f: {
+        'legacy_uart_bridge': {'ros__parameters': {'speed_loop.mode': 'pi'}}})
+    params = LEGACY.adaptive_brake(asked, car)
+    assert params['adaptive_brake'] is True
+    assert params['brake.safe_max'] == float(car['brake']['safe_max'])
+    assert params['adaptive_brake.max_brake'] == float(car['actuators']['max_brake'])
+    assert params['adaptive_brake.brake_dead_time'] == float(
+        car['actuators'].get('brake_dead_time', 0.0))
+
+
+def test_the_boot_self_test_runs_wherever_the_mux_does(socketcan):
+    # TODO 255: READY or NOT READY next to the mux; never in the sim or the bench.
+    for machine in MACHINES:
+        parts = CAR.load_machine(machine)['parts']
+        sent = included(started(CAR, machine=machine))
+        assert ('self_test.launch.py' in sent) == bool(parts.get('mux')), machine
+    orin = included(started(CAR, machine='orin'))
+    test = orin['self_test.launch.py']
+    # Today's car: the UART bridge's frames (no uplink); the orin's lidar: its stop zone.
+    assert test['self_test_actuators'] == 'link'
+    assert test['self_test_locks'].split(',') == ['watchdog', 'geofence', 'output_gate',
+                                                  'stop_zone']
+    assert set(test['self_test_clocks'].split(',')) == {'imu', 'odom', 'gps'}
+    assert 'gps' not in included(started(CAR, machine='orin', gps='false', stands='true'))[
+        'self_test.launch.py']['self_test_clocks']
+    # The CAN spine: its status, and spine_bridge refuses to arm until READY.
+    can = included(started(CAR, machine='orin', actuators='can'))
+    assert can['self_test.launch.py']['self_test_actuators'] == 'status'
+    assert can['spine.launch.py']['require_ready'] == 'true'
+    # No navigation here: no stop zone to watch.
+    alone = included(started(CAR, machine='motor_pi_alone'))['self_test.launch.py']
+    assert 'stop_zone' not in alone['self_test_locks']
+
+
+def test_the_self_test_launch_checks_its_names():
+    test = load('aav_self_test_rs', 'self_test.launch.py')
+    node = test.node(context_for(test, self_test_clocks='imu,gps'))[0]
+    assert (node.node_package, node.node_executable) == ('aav_self_test_rs', 'boot_self_test')
+    with pytest.raises(ValueError, match='self_test_locks'):
+        test.node(context_for(test, self_test_locks='watchdog,fence'))
+    with pytest.raises(ValueError, match='self_test_actuators'):
+        test.node(context_for(test, self_test_actuators='both'))

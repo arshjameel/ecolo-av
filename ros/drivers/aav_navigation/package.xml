@@ -14,11 +14,11 @@
   <exec_depend>aav_lidar</exec_depend>
   <exec_depend>aav_lidar_rs</exec_depend>
   <exec_depend>aav_voxels</exec_depend>
-  <exec_depend>aav_things</exec_depend>
   <exec_depend>aav_things_rs</exec_depend>
   <exec_depend>aav_voxels_rs</exec_depend>
   <exec_depend>aav_ghost</exec_depend>
   <exec_depend>aav_safety</exec_depend>
+  <exec_depend>aav_safety_rs</exec_depend>   <!-- stop_hold, the default (stop_hold_impl) -->
   <exec_depend>aav_track</exec_depend>
   <exec_depend>aav_mppi_lag</exec_depend>
   <exec_depend>aav_mpc_lag</exec_depend>
@@ -30,11 +30,9 @@
   <exec_depend>aav_behaviour_rs</exec_depend>
   <exec_depend>aav_localization</exec_depend>
   <exec_depend>aav_diffusion_planner</exec_depend>
-  <exec_depend>aav_behaviour</exec_depend>
   <exec_depend>aav_ego</exec_depend>
-  <!-- The one Nav2 package kept (amcl:=true, a scored trial), with its lifecycle manager. -->
-  <exec_depend>nav2_amcl</exec_depend>
-  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <!-- AMCL (amcl:=true, a scored trial): ours; stock nav2_amcl went on 20 Nov. -->
+  <exec_depend>aav_amcl_rs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 

@@ -10,6 +10,8 @@
 //! sim_cameras --ros --pose truth      # draw where /vehicle/sim/truth says, stamped with its time
 //! sim_cameras --world road.sdf        # an SDF world (the core's reader), not the test copy
 //! sim_cameras --at 49,-71,0          # parked there (m, m, rad), in the map frame
+//! sim_cameras --poses p.csv --save D  # one picture per camera at each x,y,yaw line, then stop
+//!                                     # (tools/lane_data.py: the learned lane finder's data)
 //! sim_cameras --image-topic front_left=/x/image_raw  # its picture elsewhere (faults)
 //! sim_cameras --software              # a software renderer only (lavapipe), even beside a GPU
 //! sim_cameras --graphics simple       # plain colours, flat sky (default in software; pretty on a GPU)
@@ -64,6 +66,8 @@ struct Options {
     models: Vec<PathBuf>,
     topics: Vec<(String, String)>,
     at: Option<[f64; 3]>,
+    /// A file of `x,y,yaw` lines: draw each pose once, save, and stop.
+    poses: Option<PathBuf>,
     adapter: Adapter,
     /// None: pretty on a GPU, simple in software.
     graphics: Option<Graphics>,
@@ -85,6 +89,7 @@ impl Options {
             models: Vec::new(),
             topics: Vec::new(),
             at: None,
+            poses: None,
             adapter: Adapter::Any,
             graphics: None,
         };
@@ -125,6 +130,7 @@ impl Options {
                     };
                     o.at = Some([x, y, yaw]);
                 }
+                "--poses" => o.poses = Some(PathBuf::from(value("--poses")?)),
                 "--world" => o.world = Some(PathBuf::from(value("--world")?)),
                 "--models" => o.models.extend(
                     value("--models")?
@@ -150,6 +156,9 @@ impl Options {
                 other => return Err(format!("unknown option {other}\n{USAGE}")),
             }
         }
+        if o.poses.is_some() && (o.ros || o.save.is_none()) {
+            return Err("--poses needs --save DIR, and no --ros".into());
+        }
         if o.pose == PoseSource::Truth && !o.ros {
             return Err("--pose truth needs --ros".into());
         }
@@ -158,7 +167,7 @@ impl Options {
 }
 
 const USAGE: &str = "sim_cameras [--ros] [--pose script|truth] [--seconds S] \
-[--cameras front_left,front_right,rear,chase] [--save DIR] [--speed M/S] [--from X] [--plain-sign] [--bench N] [--at X,Y,YAW] [--world FILE.sdf] [--models DIR:DIR] [--image-topic camera=/topic] [--software] [--graphics auto|simple|pretty]";
+[--cameras front_left,front_right,rear,chase] [--save DIR] [--speed M/S] [--from X] [--plain-sign] [--bench N] [--at X,Y,YAW] [--poses FILE] [--world FILE.sdf] [--models DIR:DIR] [--image-topic camera=/topic] [--software] [--graphics auto|simple|pretty]";
 
 fn number(s: &str) -> Result<f64, String> {
     s.parse().map_err(|e| format!("{s}: {e}"))
@@ -311,6 +320,9 @@ fn run_in(o: &Options, rig: Rig, world: &SimWorld, dirs: &[PathBuf]) -> Result<(
     if let Some(n) = o.bench {
         return bench(&mut cameras, n);
     }
+    if let (Some(file), Some(dir)) = (&o.poses, &o.save) {
+        return each_pose(&mut cameras, file, dir);
+    }
 
     #[cfg(feature = "ros")]
     let (out, truth, entities) = if o.ros {
@@ -425,7 +437,54 @@ fn free_until(out: Option<&ros::RosOut>, next: Option<Duration>) -> Result<(), S
     }
 }
 
-fn save(dir: &PathBuf, name: &str, f: &Frame) -> Result<(), String> {
+/// The poses in a file: one `x,y,yaw` (m, m, rad, the map frame) a line; `#` starts a note.
+fn read_poses(text: &str) -> Result<Vec<[f64; 3]>, String> {
+    text.lines()
+        .map(|l| l.split('#').next().unwrap_or("").trim())
+        .filter(|l| !l.is_empty())
+        .map(|l| {
+            let n = l
+                .split(',')
+                .map(|s| number(s.trim()))
+                .collect::<Result<Vec<_>, _>>()?;
+            match n[..] {
+                [x, y, yaw] => Ok([x, y, yaw]),
+                _ => Err(format!("{l}: x,y,yaw")),
+            }
+        })
+        .collect()
+}
+
+/// Every camera at each pose in `file`, saved as `<camera>_<line>.png` (the line counted
+/// from 0, five digits) in `dir`.
+fn each_pose(cameras: &mut Cameras<BevyRenderer>, file: &Path, dir: &Path) -> Result<(), String> {
+    let text = std::fs::read_to_string(file).map_err(|e| format!("{}: {e}", file.display()))?;
+    let poses = read_poses(&text)?;
+    let all: Vec<usize> = (0..cameras.rig().cameras.len()).collect();
+    let start = Instant::now();
+    for (k, [x, y, yaw]) in poses.iter().enumerate() {
+        let frames = cameras
+            .renderer_mut()
+            .render(
+                &Pose::planar(*x, *y, *yaw),
+                Duration::from_millis(k as u64 * 100),
+                &all,
+            )
+            .map_err(|e| e.to_string())?;
+        for frame in frames {
+            let name = format!("{}_{k:05}", cameras.rig().cameras[frame.camera].name);
+            save(dir, &name, &frame)?;
+        }
+    }
+    eprintln!(
+        "sim_cameras: {} poses in {:.1} s",
+        poses.len(),
+        start.elapsed().as_secs_f64()
+    );
+    Ok(())
+}
+
+fn save(dir: &Path, name: &str, f: &Frame) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{name}.png"));
     image::save_buffer(
@@ -499,4 +558,16 @@ fn bench(cameras: &mut Cameras<BevyRenderer>, n: usize) -> Result<(), String> {
         ms(quantile(&times, 1.0)),
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::read_poses;
+
+    #[test]
+    fn poses_are_read_line_by_line() {
+        let poses = read_poses("# x,y,yaw\n1,2,0.5\n\n -3 , 4.5, -1 # a note\n").unwrap();
+        assert_eq!(poses, vec![[1.0, 2.0, 0.5], [-3.0, 4.5, -1.0]]);
+        assert!(read_poses("1,2\n").is_err());
+    }
 }

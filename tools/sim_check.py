@@ -14,8 +14,6 @@ docs/league-results-2026-11-16.md).
     pixi run sim-check --plan-around       (a box in the lane the planner sees: the car must
                                             drive round it without stopping, in a second
                                             run: 3 more minutes)
-    pixi run sim-check --lane              (adds lane keeping, in a second run: 2 more minutes;
-                                           --lane-only: that run alone)
     pixi run sim-check --lidar-obstacle    (the lidar alone, radar off, stops for a post: a
                                             second run, 3 more minutes)
     pixi run sim-check --rear-obstacle     (backing up, the lidar stops the car for a post
@@ -88,7 +86,7 @@ docs/league-results-2026-11-16.md).
                                             0.25 m with the adaptive brake. The empty
                                             world, one more run; --loaded-stop-only skips
                                             the road world's run. docs/stopping.md)
-    pixi run sim-check --things           (the things, things:=true, aav_things: a box
+    pixi run sim-check --things           (the things, things:=true, aav_things_rs: a box
                                             placed 12 m ahead must be listed on
                                             /world/things within 1 m, standing; taken away,
                                             still listed 1.5 s on, gone after 5 s. One more
@@ -150,12 +148,19 @@ docs/league-results-2026-11-16.md).
                                             --three-point-only skips the road world's;
                                             AAV_THREE_POINT_SAVE=<file> keeps the run's
                                             track, plans and commands as JSON)
+    pixi run sim-check --blocked-street   (reverse, TODO 174: a 3.5 m street of walls, too
+                                            narrow to turn in, closed 8 m ahead; the goal
+                                            25 m behind, facing back. The car must back out
+                                            of it, changing direction at least once,
+                                            without touching a wall. One more run, with the
+                                            lidar; --blocked-street-only skips the road
+                                            world's)
 
 bench_check.py tests the car's software against pretend sensors that draw a flat world;
 this tests it against Ravensim's cameras and radar stand-in, which see the road world
 (aav_sim_models worlds/road.sdf: the bench road and its stop sign, in 3D).
 
-1. Starts sim.launch.py world:=road gui:=false rviz:=false on a private ROS domain,
+1. Starts sim.launch.py world:=road rviz:=false on a private ROS domain,
    on this computer only.
 2. Start-up: the truth, the global EKF, the camera and the radar stand-in all run,
    and navigation is up (unless nav:=false).
@@ -204,10 +209,9 @@ this tests it against Ravensim's cameras and radar stand-in, which see the road 
    screen, the check beats for it (/hud/heartbeat, 10 Hz, a rising count) and stops, as a
    frozen HUD does. Latched: beating again, it must still hold the navigator (hud LOST) 5 s later,
    until the check clears it (/safety/sensor_watchdog/clear), as a person would.
+   `lidar stop` (TODO 246): sim_lidar_relay stops the roof lidar; the watchdog's lidar input
+   goes STALE after 1 s and holds the navigator, as on the car (car-test's step 5e).
    With --no-watchdog it only reports, without the watchdog's own two.
-11. With --lane: the road world again, with lane keeping (lane:=true) and nothing else driving, the
-   car 0.3 m left of the road's centre. lane_finder and control_interface must bring it
-   back within 5 cm, and keep it there.
 11. With --spine: the road world again with the spine in the loop (spine:=true: ego -> spine_bridge
    -> CAN frames -> spine_sim, the spine's own firmware logic -> the actuator model). The
    normal checks first (the graph against the spine profile, the scripted drive, the EKF
@@ -229,7 +233,7 @@ this tests it against Ravensim's cameras and radar stand-in, which see the road 
    the sensor watchdog's lock). Each drive's truth goes to /tmp/aav-sim-points/ as an
    measure atob CSV (`pixi run measure atob /tmp/aav-sim-points/1-*.csv --speed 1`).
 
-14. With --things: the road world again with things:=true (aav_things), the car standing.
+14. With --things: the road world again with things:=true (aav_things_rs), the car standing.
    The bench's box 12 m past the bumper must be on /world/things within 1 m of where it
    is (relative to the car: the truth for the box, the local EKF for the thing), at under
    0.3 m/s. Then the box goes: the same id must still be listed 1.5 s later (the memory,
@@ -251,8 +255,9 @@ its clock waits for each picture (camera_lockstep:=auto): slower than real time,
 camera at its full rate. --simulator ravensim is the only choice (own: its old name).
 
 Times are Ravensim's, simulated; only the limits on waiting are wall-clock. Prints a table and
-exits 1 if anything failed. The launch logs go to /tmp/aav-sim-check.log and, with --lane,
-/tmp/aav-sim-check-lane.log: AAV_SIM_LOG=/tmp/mine.log moves them. AAV_SIM_DOMAIN picks the
+exits 1 if anything failed. The launch logs go to /tmp/aav-sim-check.log (each extra run
+beside it): AAV_SIM_LOG=/tmp/mine.log moves them. --lane (lane keeping) went with the lane
+follower on 19 Nov (TODO 264; git tag save/lane-followers). AAV_SIM_DOMAIN picks the
 ROS domain (otherwise one nobody on this computer uses now).
 """
 
@@ -339,13 +344,6 @@ NAV_TOPICS = ('/map', '/safety/stop_hold/lock', '/drivers/nav/costmap/global',
 RADAR_FIELDS = ['x', 'y', 'z', 'intensity', 'velocity']   # the TI driver's
 LIDAR_RAYS = (1800, 16)     # the simulated roof lidar: steps around, beams (sensors xacro)
 
-# Lane keeping (--lane), as bench_check.py: where the car starts, what counts as back on the
-# centre line, and how long it has to get there.
-LANE_START = 0.3        # m left of the road's centre
-LANE_BAND = 0.05        # m either side of the centre
-LANE_TIME = 30.0        # s of driving, from when the car starts moving
-LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, lookahead)
-
 # Sensor failures on purpose (--faults): each while the car drives, in this order (the NaNs
 # last: a NaN that reaches an EKF could spoil the runs after it). The watchdog's limits
 # (aav_safety config/sensor_watchdog.yaml) and the stop zone's source_timeout set how
@@ -353,7 +351,8 @@ LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, 
 # The watchdog's own two: hang (mended by SIGCONT) early; kill last, as nothing mends it.
 FAULTS = [('gps', 'stop'), ('watchdog', 'hang'), ('hud', 'stop'), ('imu', 'stop'),
           ('odom', 'stop'),
-          ('odom', 'freeze'), ('camera', 'freeze'), ('radar', 'stop'), ('imu', 'freeze'),
+          ('odom', 'freeze'), ('camera', 'freeze'), ('radar', 'stop'), ('lidar', 'stop'),
+          ('imu', 'freeze'),
           ('gps', 'jump'), ('gps', 'nan'), ('odom', 'nan'), ('imu', 'nan'), ('watchdog', 'kill')]
 REACT = 6.0             # s of sim time from the fault to standing still
 STILL = 0.05            # m/s: standing still
@@ -1224,56 +1223,6 @@ def check_obstacle(probe, ahead=15.0, goal=30.0, model=OBSTACLE, depth=1.0, name
         remove_model()
 
 
-def check_lane_keeping(probe):
-    """
-    Lane keeping alone: from LANE_START m left of the road's centre, the car must come back.
-
-    control_interface drives from the moment it sees the lane, so this reads the track the
-    probe has kept since start-up: LANE_TIME seconds of sim time, from when the car
-    started moving.
-    """
-    def moved():
-        return next((s for s in probe.track if s[4] > 0.1), None)
-
-    if not probe.spin_for(60.0, lambda: moved() is not None):
-        result('lane keeping', False, f'the car never moved ({len(probe.lanes)} lane messages)')
-        return
-    t0, x0, y0 = moved()[:3]
-    probe.spin_for(4.0 * LANE_TIME, lambda: probe.track[-1][0] - t0 >= LANE_TIME)
-    run = [s for s in probe.track if t0 <= s[0] <= t0 + LANE_TIME]
-    stamps = [s[0] for s in run]
-
-    def at(t):
-        """Return the truth sample nearest to time t (s, sim time)."""
-        i = min(bisect.bisect_left(stamps, t), len(stamps) - 1)
-        return run[i - 1 if i and t - stamps[i - 1] < stamps[i] - t else i]
-
-    start = y0 - ROAD_Y
-    outside = [s[0] - t0 for s in run if abs(s[2] - ROAD_Y) > LANE_BAND]
-    settled = outside[-1] if outside else 0.0   # s of driving: within the band from then on
-    over = max(0.0, max(-math.copysign(1.0, start) * (s[2] - ROAD_Y) for s in run))
-    last = [s for s in run if s[0] >= stamps[-1] - 5.0]
-    end = sum(s[2] for s in last) / len(last) - ROAD_Y
-    heading = sum(s[3] for s in last) / len(last)
-    # lane_finder against the truth: the car's offset LOOKAHEAD m ahead, square to the road.
-    errors, both = [], 0
-    for t, offset, two in (m for m in probe.lanes if t0 <= m[0] <= stamps[-1]):
-        _, _, y, yaw, _ = at(t)
-        errors.append(abs(offset - (y - ROAD_Y + LOOKAHEAD * math.sin(yaw)) / math.cos(yaw)))
-        both += two
-    every = '  '.join(f'{at(t0 + k)[2] - ROAD_Y:+.2f}' for k in range(0, int(LANE_TIME) + 1, 3))
-    print(f'      the offset (m), every 3 s of driving: {every}', flush=True)
-    driven = stamps[-1] - t0
-    ok = (driven >= LANE_TIME - 1.0 and settled <= LANE_TIME - 5.0 and over < 0.10
-          and abs(end) < LANE_BAND and bool(errors) and both >= 0.9 * len(errors))
-    finder = (f'lane_finder {100 * sum(errors) / len(errors):.1f} cm from the truth on average, '
-              f'both lines in {both} of {len(errors)} pictures' if errors else 'no lane messages')
-    result('lane keeping', ok,
-           f'{start:+.2f} m to {end:+.2f} m, within {100 * LANE_BAND:.0f} cm after '
-           f'{settled:.1f} s and {at(t0 + settled)[1] - x0:.1f} m, overshoot {100 * over:.0f} '
-           f'cm, heading {heading:+.3f} rad, over {driven:.0f} s; {finder}')
-
-
 def check_plan_around(probe, ahead=15.0, goal=30.0, depth=1.0, model=OBSTACLE,
                       name='plan around'):
     """
@@ -1408,6 +1357,65 @@ def check_three_point_turn(probe, width=6.5, goal=5.0):
                        'street': (x0, y0, h, half), 'commands': probe.commands,
                        'actuator': probe.actuator_cmds, 'asked': asked,
                        'behaviour': probe.behaviour, 'monitor': probe.monitor}, f)
+
+
+def check_blocked_street(probe, width=3.5, block=8.0, goal=25.0):
+    """
+    Leave a narrow street blocked ahead (TODO 174): walls `width` m apart, closed `block` m on.
+
+    Too narrow to turn in, even in three points: the car must back out. The goal is
+    `goal` m behind it, facing back, past the street's end (15 m behind). It must reach
+    it, change direction at least once, and keep every corner inside the walls.
+    """
+    body = vehicle.load()['vehicle']['body']
+    x0, y0 = probe.xy(probe.truth)
+    h = yaw_of(probe.truth)
+    c, s = math.cos(h), math.sin(h)
+    half = width / 2.0
+    names = place_street(x0, y0, h, half, (-10.0, 0.0, 10.0), 'blocked street')
+    if names is None:
+        return
+    wall, bx, by, byaw = street_check.block(x0, y0, h, block)
+    if not place_model(WALL, bx, by, byaw, name=wall):
+        result('blocked street', False, f'could not place {wall}: {SERVICE_SAID[0]}')
+        for name in names:
+            remove_model(name)
+        return
+    names.append(wall)
+    probe.spin_for(3.0)          # the lidar sees the walls before the planner is asked
+    start = len(probe.track)
+    plans = []
+    sub = probe.create_subscription(
+        Path, '/plan', lambda m: plans.append(
+            (seconds(m.header.stamp), [(p.pose.position.x, p.pose.position.y)
+                                       for p in m.poses])), 10)
+    gx, gy, gyaw = x0 - goal * c, y0 - goal * s, math.atan2(-s, -c)
+    done = probe.go_to(gx, gy, gyaw)
+    if done is not None:
+        probe.spin_for(300.0, done.done)
+        if not done.done():
+            probe.goal.cancel_goal_async()
+    probe.destroy_subscription(sub)
+    for name in names:
+        remove_model(name)
+    if done is None:
+        result('blocked street', False, 'no navigator, or it refused the goal')
+        return
+    drive = probe.track[start:]
+    reached = done.done() and done.result().status == 4
+    turns = street_check.turns(drive)
+    # Only the street's own stretch: past its end the car is free to turn round.
+    inside = [p for p in drive
+              if -15.0 <= (p[1] - x0) * c + (p[2] - y0) * s <= block]
+    room = street_check.clearance(inside, x0, y0, h, half, body) if inside else math.inf
+    x1, y1 = probe.xy(probe.truth)
+    ok = reached and turns >= 1 and room > 0.0
+    planned = street_check.plan_cusps([path for _, path in plans])
+    result('blocked street', ok,
+           f'{"reached" if reached else "did not reach"} the goal '
+           f'({math.hypot(gx - x1, gy - y1):.2f} m off), {turns} changes of direction '
+           f'({len(plans)} plans, their changes {planned or "-"}), {room:.2f} m from a wall '
+           f'at the closest (street {width:g} m)')
 
 
 def check_kerb(probe, sensors):
@@ -3150,7 +3158,7 @@ def session(launch_args, checks, log_path, label='', ignore=(), radar=True, spin
           f"{env['ROS_DOMAIN_ID']} (this computer only)...", flush=True)
     log = open(log_path, 'w')
     launch = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py', f'world:={world}',
-                               'gui:=false', 'rviz:=false', *launch_args, *EVERY_RUN],
+                               'rviz:=false', *launch_args, *EVERY_RUN],
                               cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
                               start_new_session=True)
     LAUNCH.update(pgid=launch.pid, log=log_path)
@@ -3232,8 +3240,8 @@ def main():
     global CAMERAS
     CAMERAS = '--no-cameras' not in args
     if not CAMERAS:
-        if perception or '--lane' in args:
-            print('--no-cameras leaves nothing for --perception or --lane to see',
+        if perception:
+            print('--no-cameras leaves nothing for --perception to see',
                   file=sys.stderr)
             return 2
         EVERY_RUN.append('cameras:=false')
@@ -3281,8 +3289,6 @@ def main():
         except ValueError as e:
             print(f'--simulator: {e}', file=sys.stderr)
             return 2
-        if worlds.simulator_warning(given):
-            print(worlds.simulator_warning(given), file=sys.stderr)
     # Always said: the checks place models and read logs the way this simulator wants.
     EVERY_RUN.append(f'simulator:={SIMULATOR}')
     global COSTMAP
@@ -3340,9 +3346,9 @@ def main():
     log = os.environ.get('AAV_SIM_LOG', '/tmp/aav-sim-check.log')
     logs = [log]
     if not {'--drive-to-point-only', '--speed-steps-only', '--spine-points-only',
-            '--stop-point-only', '--loaded-stop-only', '--behaviour-only', '--lane-only',
+            '--stop-point-only', '--loaded-stop-only', '--behaviour-only',
             '--things-only', '--behaviour-things-only', '--legs-only', '--movers-only',
-            '--three-point-only', '--moving-only', '--low-box-only',
+            '--three-point-only', '--blocked-street-only', '--moving-only', '--low-box-only',
             '--thing-names-only',
             '--actuator-faults-only', '--kerb-only'} & set(args):
         # With --obstacle the planner is blind to the box, so the stop zone must stop the car.
@@ -3394,11 +3400,12 @@ def main():
                 'actuator faults', world='empty')
     if '--faults' in args:
         # Its own run: a fault spoils the car's software for a while, and the camera's
-        # picture goes through sim_adapter (faults:=true). No lidar: a lighter run.
+        # picture and the lidar's cloud go through their relays (faults:=true). With the
+        # lidar, as the car: its own fault, `lidar stop` (TODO 246).
         watchdog = '--no-watchdog' not in args
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-faults{ext}')
-        session(['faults:=true', 'lidar:=false', f'watchdog:={str(watchdog).lower()}',
+        session(['faults:=true', f'watchdog:={str(watchdog).lower()}',
                  f'watch_hud:={str(watchdog).lower()}'],
                 [lambda probe: check_faults(probe, watchdog)], logs[-1], 'faults')
     if {'--drive-to-point', '--drive-to-point-only', '--spine-points',
@@ -3508,18 +3515,16 @@ def main():
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-three-point{ext}')
         session(['lidar:=true'], [check_three_point_turn], logs[-1], 'three-point turn')
+    if {'--blocked-street', '--blocked-street-only'} & set(args):
+        # Its own run, as the three-point turn's: the lidar sees the walls (TODO 174).
+        stem, ext = os.path.splitext(log)
+        logs.append(f'{stem}-blocked-street{ext}')
+        session(['lidar:=true'], [check_blocked_street], logs[-1], 'blocked street')
     if {'--things', '--things-only'} & set(args):
         # Its own run: the cubes and the things on, the car standing, a box placed.
         stem, ext = os.path.splitext(log)
         logs.append(f'{stem}-things{ext}')
         session(['things:=true', 'lidar:=true'], [check_things], logs[-1], 'things')
-    if {'--lane', '--lane-only'} & set(args):
-        # Its own run: control_interface drives whenever it sees the lane, so it would take
-        # the wheel between the other checks. Nothing else drives here: no navigation.
-        stem, ext = os.path.splitext(log)
-        logs.append(f'{stem}-lane{ext}')
-        session(['lane:=true', 'nav:=false', 'lidar:=false', f'start_y:={ROAD_Y + LANE_START}'],
-                [check_lane_keeping], logs[-1], 'lane', ignore=NAV_TOPICS)
 
     if spine:
         # Its own run: the spine in the loop (spine:=true). No lidar: a lighter run.

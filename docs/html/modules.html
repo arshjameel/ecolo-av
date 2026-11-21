@@ -7,7 +7,7 @@
 <!-- Generated from docs/modules.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every module, explained</h1>
-<div class="meta">42 min read · 16 sections</div></header>
+<div class="meta">45 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a class="here" href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -181,7 +195,8 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 </tbody>
 </table></div>
-<p>"(guess)" marks what the code doesn't say for sure. Status follows <a href="status.html">Status</a>.</p>
+<p>"(guess)" marks what the code doesn't say for sure. Status follows <a href="status.html">Status</a>.
+"Gazebo" in a status means tested there, before it went on 16 Nov; Ravensim has the same topics.</p>
 </section>
 <section class="card"><h2 id="contents">Contents</h2>
 <div class="table-wrap"><table>
@@ -198,11 +213,11 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><a href="#description-and-localization">bringup, localization</a></td>
-<td><code>aav_description</code>, <code>aav_localization</code>, <code>aav_gps_heading</code>; <code>aav_localization_health</code>, <code>aav_ndt</code>, <code>aav_kiss_icp</code>, <code>aav_run_info</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
+<td><code>aav_description</code>, <code>aav_localization</code>, <code>aav_gps_heading_rs</code>; <code>aav_localization_health_rs</code>, <code>aav_ndt</code>, <code>aav_kiss_icp</code>, <code>aav_run_info</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#drivers">drivers</a></td>
-<td><code>aav_teleop</code>, <code>aav_actuator_tests</code>, <code>aav_scripted</code>, <code>aav_drive_to_point</code>, <code>aav_language</code>, <code>aav_navigation</code>; <code>aav_rc</code>, <code>aav_rc_rs</code>, <code>aav_routes</code>, <code>aav_track</code>, <code>aav_mppi_lag</code>, <code>aav_costmap</code>, <code>aav_planner</code>, <code>aav_navigator</code>, <code>aav_smoother</code>, <code>aav_diffusion_planner</code>, <code>aav_behaviour</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
+<td><code>aav_teleop</code>, <code>aav_actuator_tests</code>, <code>aav_scripted</code>, <code>aav_drive_to_point</code>, <code>aav_language</code>, <code>aav_navigation</code>; <code>aav_rc</code>, <code>aav_rc_rs</code>, <code>aav_routes</code>, <code>aav_track</code>, <code>aav_mppi_lag</code>, <code>aav_costmap</code>, <code>aav_planner</code>, <code>aav_navigator</code>, <code>aav_smoother</code>, <code>aav_diffusion_planner</code>, <code>aav_behaviour_rs</code> (<a href="#more-packages-see-their-readmes">one line</a>)</td>
 </tr>
 <tr>
 <td><a href="#mux-and-ego">command_mux, io_mux, ego</a></td>
@@ -532,7 +547,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 </tbody>
 </table></div>
-<h3 id="aav_gps_heading">aav_gps_heading</h3>
+<h3 id="aav_gps_heading_rs">aav_gps_heading_rs</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -571,11 +586,11 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Test</strong></td>
-<td><code>test/test_course.py</code> (in <code>tools/test.sh</code>)</td>
+<td><code>cargo test -p gps-heading-core</code> (in <code>tools/test.sh</code>); the golden <code>vectors.json</code> from the Python (removed 20 Nov)</td>
 </tr>
 <tr>
 <td><strong>Read first</strong></td>
-<td><code>aav_gps_heading/course.py</code></td>
+<td><code>aav_gps_heading_rs/crates/gps-heading-core/src/lib.rs</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -839,7 +854,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
-<td><code>/localization/odom/local</code>, TF, <code>/map</code>, <code>/goal_pose</code>, <code>/sensors/radar/points</code>, <code>/perception/camera_obstacles</code> → <code>/drivers/nav/cmd_vel</code>, <code>/plan</code>, <code>/safety/collision_monitor/state</code></td>
+<td><code>/localization/odom/local</code>, TF, <code>/map</code>, <code>/goal_pose</code>, <code>/sensors/radar/points</code>, <code>/perception/camera_obstacles</code> → <code>/drivers/nav/cmd_vel</code>, <code>/plan</code>, <code>/safety/stop_zone/state</code></td>
 </tr>
 <tr>
 <td><strong>Origin</strong></td>
@@ -888,7 +903,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
-<td>every <code>/drivers/&lt;driver&gt;/cmd_vel</code>, <code>/safety/estop</code>, <code>/perception/stop_sign</code> → <code>/control/cmd_vel</code></td>
+<td>every <code>/drivers/&lt;driver&gt;/cmd_vel</code>, <code>/safety/estop</code>, <code>/perception/stop_sign</code> → <code>/control/cmd_vel</code>; beside it <code>command_mux_state</code> (<code>aav_mux_state</code>) → <code>/control/command_mux/state</code> (who is driving)</td>
 </tr>
 <tr>
 <td><strong>Origin</strong></td>
@@ -1263,7 +1278,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>three nodes: <code>object_detector</code> (RF-DETR Nano on camera pictures by default; YOLO with <code>detector:=yolo</code>), <code>stop_sign_watcher</code> (locks the mux at a close stop sign), <code>camera_obstacles</code> (boxes as points on the road for Nav2)</td>
+<td>three nodes: <code>object_detector</code> (RF-DETR Nano on camera pictures by default; YOLO with <code>detector:=yolo</code>), <code>stop_sign_watcher</code> (locks the mux at a close stop sign), <code>camera_obstacles</code> (boxes as points on the road for the costmap)</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -1385,7 +1400,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Test</strong></td>
-<td><code>test/</code> (in <code>tools/test.sh</code>); <code>pixi run bench-check --lane</code></td>
+<td><code>test/</code> (in <code>tools/test.sh</code>); <code>aav_lane_finder_rs</code>'s shared vectors</td>
 </tr>
 <tr>
 <td><strong>Read first</strong></td>
@@ -1404,39 +1419,39 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td><code>control_interface</code>: steers back to the lane's centre, as the AI driver; also the <code>LaneGeometry</code> message</td>
+<td>the <code>LaneGeometry</code> message (the lane finder's lines, each one's paint)</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
-<td>the steering half of lane keeping</td>
+<td>the lane finder's answer, for the costmap's lanes and the lane pose</td>
 </tr>
 <tr>
 <td><strong>Runs on</strong></td>
-<td>with the lane finder</td>
+<td>(a message package)</td>
 </tr>
 <tr>
 <td><strong>In → out</strong></td>
-<td><code>/perception/lane/geometry</code> → <code>/drivers/ai/cmd_vel</code> (priority 10), <code>/drivers/ai/lane_status</code>, <code>/drivers/ai/lane_state</code></td>
+<td>none</td>
 </tr>
 <tr>
 <td><strong>Origin</strong></td>
-<td>inherited: 2025-26 <code>Lane_Detection_ROS2</code> @ 345285860e; renamed, publishes TwistStamped</td>
+<td>inherited: 2025-26 <code>Lane_Detection_ROS2</code> @ 345285860e; its <code>control_interface</code> (lane keeping) removed 19 Nov (TODO 264, <code>save/lane-followers</code>)</td>
 </tr>
 <tr>
 <td><strong>Status</strong></td>
-<td><span class="badge b-works">works</span> on the bench, with <code>aav_lane_finder</code></td>
+<td><span class="badge b-works">works</span></td>
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>ros2 launch aav_lane_geometry lane_follower.launch.py fake:=true</code> (a pretend straight lane)</td>
+<td><code>ros2 interface show aav_lane_geometry/msg/LaneGeometry</code></td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
-<td><code>pixi run bench-check --lane</code></td>
+<td>the lane finder's tests</td>
 </tr>
 <tr>
 <td><strong>Read first</strong></td>
-<td><code>scripts/control_interface.py</code></td>
+<td><code>msg/LaneGeometry.msg</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1736,11 +1751,6 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <td><code>ros/perception/aav_lidar_rs/README.md</code></td>
 </tr>
 <tr>
-<td><code>aav_things_rs</code></td>
-<td><code>things</code> in Rust, the default (<code>things_impl:=</code>): the same things</td>
-<td><code>ros/perception/aav_things_rs/README.md</code></td>
-</tr>
-<tr>
 <td><code>aav_voxels_rs</code></td>
 <td><code>voxels</code> in Rust: the lidar's cubes, the Python node's drop-in (<code>voxels_impl:=rust</code>)</td>
 <td><code>ros/perception/aav_voxels_rs/README.md</code></td>
@@ -1761,9 +1771,9 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <td><code>ros/bringup/aav_run_info/README.md</code></td>
 </tr>
 <tr>
-<td><code>aav_localization_health</code></td>
+<td><code>aav_localization_health_rs</code></td>
 <td>warn-only checks on what the EKFs read and say (<code>/localization/health</code>, <code>/diagnostics</code>)</td>
-<td><code>ros/localization/aav_localization_health/README.md</code></td>
+<td><code>ros/localization/aav_localization_health_rs/README.md</code></td>
 </tr>
 <tr>
 <td><code>aav_ndt</code></td>
@@ -1782,7 +1792,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_track</code></td>
-<td>trial path followers in <code>controller_server</code>'s place (<code>tracker:=</code> pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag)</td>
+<td>trial path followers in <code>mppi_lag</code>'s place (<code>tracker:=</code> pure_pursuit, stanley, lqr, mpc, mpc_full, mpc_lag)</td>
 <td><code>ros/drivers/aav_track/README.md</code>, then <a href="trials.html">Trials</a></td>
 </tr>
 <tr>
@@ -1816,8 +1826,8 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <td><code>ros/drivers/aav_diffusion_planner/README.md</code>, then <a href="../designs/2026-11-02_diffusion-planner.md">the design</a></td>
 </tr>
 <tr>
-<td><code>aav_behaviour</code></td>
-<td>the behaviour planner, a trial (<code>behaviour:=true</code>): six states and a speed cap on navigation</td>
+<td><code>aav_behaviour_rs</code></td>
+<td>the behaviour planner (<code>behaviour:=true</code>, on in <code>stack:=ours</code>): six states and the road ahead; the Python twin of <code>aav_behaviour_rs</code></td>
 <td><code>ros/drivers/aav_behaviour/README.md</code>, then <a href="stopping.html">How the car stops</a></td>
 </tr>
 <tr>
@@ -1834,6 +1844,96 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <td><code>aav_dev_window</code></td>
 <td>the developer window (Bevy), for a laptop: <code>pixi run dev-window</code>; a cargo program, not a colcon package</td>
 <td><code>ros/hud/aav_dev_window/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_ego_rs</code></td>
+<td><code>ego</code> and <code>look_ahead</code> in Rust, the default (<code>ego_impl:=python</code> falls back)</td>
+<td><code>ros/ego/aav_ego_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_watchdog_rs</code></td>
+<td>the sensor watchdog in Rust, the default (the Python removed 20 Nov)</td>
+<td><code>ros/safety/aav_watchdog_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_io_mux_rs</code></td>
+<td>the sensor mux and the output mux in Rust, the default (<code>io_mux_impl:=python</code> falls back)</td>
+<td><code>ros/io_mux/aav_io_mux_rs/README.md</code>, then <a href="sources-and-targets.html">Sources and targets</a></td>
+</tr>
+<tr>
+<td><code>aav_legacy_rs</code></td>
+<td><code>legacy_uart_bridge</code> in Rust, the default (<code>legacy_impl:=python</code> falls back)</td>
+<td><code>ros/can_bridge/aav_legacy_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_rc_rs</code></td>
+<td><code>rc_driver</code> in Rust, the default (<code>rc_impl:=python</code> falls back)</td>
+<td><code>ros/drivers/aav_rc_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_joy_alive_rs</code></td>
+<td><code>joy_alive</code> in Rust, the default (the Python removed 20 Nov)</td>
+<td><code>ros/safety/aav_joy_alive_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_safety_rs</code></td>
+<td><code>geofence</code>, <code>stop_hold</code>, <code>goal_leash</code> in Rust, the defaults (<code>*_impl:=python</code> falls back)</td>
+<td><code>ros/safety/aav_safety_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_mux_state</code></td>
+<td><code>command_mux_state</code> (Rust): who twist_mux passes on, on <code>/control/command_mux/state</code>, for the debug screen</td>
+<td><code>ros/command_mux/aav_mux_state/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_stop_sign_rs</code></td>
+<td><code>stop_sign_watcher</code> in Rust, the default (<code>stop_sign_impl:=python</code> falls back)</td>
+<td><code>ros/perception/aav_stop_sign_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_lane_finder_rs</code></td>
+<td><code>lane_finder</code> in Rust, the default (<code>lane_finder_impl:=python</code> falls back)</td>
+<td><code>ros/perception/aav_lane_finder_rs/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_camera_stream_rs</code></td>
+<td><code>camera_stream</code> in Rust, the default with no detector (<code>camera_stream_impl:=python</code> falls back)</td>
+<td><code>ros/sources/aav_camera_stream_rs/README.md</code>, then <a href="camera-pipeline.html">Camera pipeline</a></td>
+</tr>
+<tr>
+<td><code>aav_drive_to_point_rs</code></td>
+<td><code>point_driver</code> and <code>drive_to_point</code> in Rust, the default (<code>drive_to_point_impl:=python</code> falls back)</td>
+<td><code>ros/drivers/aav_drive_to_point_rs/README.md</code>, then <a href="a-to-b.html">A to B</a></td>
+</tr>
+<tr>
+<td><code>aav_detector_rs</code></td>
+<td>the detector in Rust through ONNX Runtime, a challenger (<code>detector_impl:=rust</code>)</td>
+<td><code>ros/perception/aav_detector_rs/README.md</code>, then <a href="onnx.html">ONNX</a></td>
+</tr>
+<tr>
+<td><code>aav_amcl_rs</code></td>
+<td>AMCL in Rust, the default AMCL (stock <code>nav2_amcl</code> removed 20 Nov); a trial, <code>amcl:=true</code></td>
+<td><code>ros/localization/aav_amcl_rs/README.md</code>, then <a href="../history/trials-log.md#18-nov-amcl-in-rust-against-stock">Trials</a></td>
+</tr>
+<tr>
+<td><code>aav_lane_pose</code></td>
+<td><code>lane_pose</code>: the lane finder's offset as a sideways pose for the global EKF (<code>stack:=ours</code>)</td>
+<td><code>ros/localization/aav_lane_pose/README.md</code></td>
+</tr>
+<tr>
+<td><code>aav_mpc_lag</code></td>
+<td><code>mpc_lag_rs</code>: the lag-aware MPC in Rust, a challenger (<code>tracker:=mpc_lag_rs</code>)</td>
+<td><code>ros/drivers/aav_mpc_lag/README.md</code>, then <a href="trials.html">Trials</a></td>
+</tr>
+<tr>
+<td><code>aav_things_rs</code></td>
+<td>the things near the car: the cubes grouped and tracked, on <code>/world/things</code> (<code>things:=true</code>)</td>
+<td><code>ros/perception/aav_things/README.md</code>, then <a href="stopping.html">How the car stops</a></td>
+</tr>
+<tr>
+<td><code>aav_stop_zone</code></td>
+<td>the stop zone in Rust: the lock that zeroes navigation's command for points just ahead or behind</td>
+<td><code>ros/safety/aav_stop_zone/README.md</code>, then <a href="safety-case.html">The safety case</a></td>
 </tr>
 </tbody>
 </table></div>
@@ -2142,7 +2242,7 @@ until the spine replaces it.</p>
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="packages.html"><small>Previous</small>← Packages</a>
-<a class="next" href="work.html"><small>Next</small>Work →</a></nav>
+<a class="next" href="codemap.html"><small>Next</small>Code map →</a></nav>
 </main>
 <footer>Source: <code>docs/modules.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

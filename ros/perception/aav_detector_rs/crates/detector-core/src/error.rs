@@ -47,6 +47,16 @@ impl std::error::Error for Error {
 }
 
 #[cfg(feature = "ort")]
+impl From<onnx_session::Error> for Error {
+    fn from(e: onnx_session::Error) -> Self {
+        match e {
+            onnx_session::Error::Runtime(e) => Self::Runtime(e),
+            other => Self::Provider(other.to_string()),
+        }
+    }
+}
+
+#[cfg(feature = "ort")]
 impl From<ort::Error> for Error {
     fn from(e: ort::Error) -> Self {
         Self::Runtime(e)

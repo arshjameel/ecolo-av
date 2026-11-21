@@ -5,7 +5,8 @@ The joystick's whole chain, with each joy_alive: a pretend pad drives ego, and s
 
 It starts teleop.launch.py (joy_device:=false: this test plays the pad), the car's
 twist_mux (no watchdog or geofence here: their locks off) and ego, on their own ROS domain,
-on this computer only. For joy_alive_impl rust and python: a live hand drives ego forward
+on this computer only. For joy_alive_impl rust (the Python went on 20 Nov): a live hand
+drives ego forward
 (OK); the same values frozen stop it (FROZEN) and keep it stopped while the trigger stays
 held; released and pressed again it drives; then the pad goes silent: ego stops (SILENT).
 Needs the workspace built and sourced: `colcon test` runs it.
@@ -48,7 +49,7 @@ def start(env, cmd):
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-@pytest.mark.parametrize('impl', ['rust', 'python'])
+@pytest.mark.parametrize('impl', ['rust'])
 def test_a_pretend_pad_drives_ego_then_frozen_and_silent_stop_it(impl):
     domain = 200 + (os.getpid() + (impl == 'python')) % 20
     env = dict(os.environ, ROS_DOMAIN_ID=str(domain), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')

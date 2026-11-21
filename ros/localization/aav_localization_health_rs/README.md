@@ -2,12 +2,25 @@
 
 ## Overview
 
-`localization_health` in Rust (rclrs): the twin of `aav_localization_health`'s Python
-node. The same node name, topics, QoS, parameters and answers. Ben, 14 Nov: "convert
+`localization_health` in Rust (rclrs): a port of Betsi's `aav_localization_health`
+(1 Nov). The same node name, topics, QoS, parameters and answers. The Python was removed
+on 20 Nov (tag `save/python-localization-health`). Ben, 14 Nov: "convert
 anything that uses a lot of resources to rust" (TODO 185).
 
-**Warn only.** It never stops the car and never touches the EKFs. What each check means:
-`aav_localization_health`'s README.
+**Warn only.** It never stops the car and never touches the EKFs. The sensor watchdog does the
+stopping; these are the checks it doesn't do.
+
+| Check | WARN when |
+|---|---|
+| `gyro_bias` | parked, the gyro's mean turn rate stands out (0.2 deg/s = 12 deg a minute without GPS) |
+| `imu_mounting` | parked, gravity says the IMU is upside down, tilted, or in the wrong units |
+| `gps_quality` | no fix, an unknown covariance, or a sigma too big or too small to believe |
+| `timestamps` | an input's stamp is too old, or from the future (a computer's clock is off) |
+| `frames` | an input's `frame_id` isn't the one the EKFs expect |
+| `tf` | `base_link -> imu_link / gps_link` missing, or `map -> base_link` old |
+| `wheels` | the two front wheels disagree with the turn the gyro measures |
+| `motion` | an EKF says a speed, turn or acceleration the car can't do; `ekf_local` jumps |
+
 
 ```
 /sensors/imu/data, /vehicle/odom, /vehicle/wheels, /sensors/gps/fix ─┐
@@ -19,8 +32,7 @@ anything that uses a lot of resources to rust" (TODO 185).
 
 | Where | Default |
 |---|---|
-| our simulator (`sim.launch.py`) | **Rust**, since 16 Nov (`localization_health_impl:=python` for the Python) |
-| the car, the bench (`localization.launch.py`, `car.launch.py`) | **Rust**, since 16 Nov (Ben); `localization_health_impl:=python` falls back until a car day proves it |
+| our simulator, the car, the bench | **Rust**, since 16 Nov; the only one since 20 Nov (`localization_health_impl:=rust`, a hook for a challenger) |
 
 ## Interface
 
@@ -34,7 +46,8 @@ anything that uses a lot of resources to rust" (TODO 185).
 colcon builds it through `CMakeLists.txt` (`cargo build --release --locked`), installed as
 `lib/aav_localization_health_rs/localization_health`. It reuses `ego-core` (Python's
 `hypot` and `%g`) and `watchdog-core` (Python's `sum`, `max`, `min`). The launch file
-gives it `aav_localization_health`'s `config/localization_health.yaml`; the wheelbase
+gives it `config/localization_health.yaml` (every threshold, with its reason; moved here
+from the Python on 20 Nov); the wheelbase
 and track come from `aav_description`'s `vehicle.yaml`.
 
 ### Node `localization_health`
@@ -46,8 +59,9 @@ questions the node asks (is `base_link -> imu_link / gps_link` there; how old is
 
 ## Invariants
 
-- **The same answers as the Python**: `tests/vectors.rs` reads `vectors.json`, which
-  `gen_vectors.py` writes by running `health.py`. Every report: each check's level,
+- **The same answers as the Python**: `tests/vectors.rs` reads `vectors.json`, a
+  **golden fixture** since 20 Nov (`health.py` wrote it; it and `gen_vectors.py` went with
+  the Python, `save/python-localization-health`: never regenerate it). Every report: each check's level,
   words and numbers (bit for bit; `tilt_deg` within 4 ulps, libm's `acos`), the summary
   line, and each number as `/diagnostics` writes it. Change one, change both.
 - **The same TF answers as tf2**: 300 random trees of the car's frames, fed to tf2_ros's
@@ -82,7 +96,6 @@ Our simulator's road world, headless, `/clock` at 100 Hz, Ben's MacBook (M4 Max)
 
 ```sh
 cd ros/localization/aav_localization_health_rs && cargo test --locked -p health-core   # no ROS; tools/test.sh
-pixi run python ros/localization/aav_localization_health_rs/gen_vectors.py          # after changing the Python
 pixi run build && colcon test --packages-select aav_localization_health_rs && colcon test-result --verbose
 ```
 

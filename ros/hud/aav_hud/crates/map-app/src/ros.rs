@@ -13,7 +13,11 @@
 //!   reliable, volatile, depth 10, as RViz's "2D Goal Pose" (the navigator listens);
 //! - `/system/source`: reliable, transient local, depth 1, as the HUD;
 //! - the sensor watchdog's verdict: reliable, depth 1, as the HUD;
-//! - street_router's street route: reliable, transient local, depth 1 (latched).
+//! - street_router's street route: reliable, transient local, depth 1 (latched);
+//! - the debug page's (key D): the command mux's state, `/control/cmd_vel`,
+//!   `/ego/actuator_cmd`, the output mux's state and `/vehicle/status`: the ROS default
+//!   (reliable, volatile, depth 10), keep last 1; `/system/algorithms`: reliable,
+//!   transient local, depth 1 (latched).
 
 use std::{
     sync::{
@@ -28,18 +32,22 @@ use std::{
 use anyhow::{anyhow, Context as _, Result};
 use hud_core::{
     origin::{Announcement, Entry, Origin},
-    units::MetresPerSecond,
+    units::{Fraction, MetresPerSecond, Radians},
+    vehicle::{Faults, Mode, VehicleStatus},
 };
 use map_core::{
     config::{MapConfig, Topic, NODE_NAME},
+    debug::{Ask, MuxReport, Sent},
     geom::{Point, Pose, Quaternion},
     grid::{Grid, GridInfo},
     route::Route,
     state::{Car, Update},
 };
 use rclrs::*;
-use ros_env::aav_interfaces::msg::DataSource;
-use ros_env::geometry_msgs::msg::{Pose as PoseMsg, PoseStamped};
+use ros_env::aav_interfaces::msg::{DataSource, VehicleStatus as VehicleStatusMsg};
+use ros_env::ackermann_msgs::msg::AckermannDriveStamped;
+use ros_env::diagnostic_msgs::msg::DiagnosticStatus;
+use ros_env::geometry_msgs::msg::{Pose as PoseMsg, PoseStamped, TwistStamped};
 use ros_env::nav_msgs::msg::{OccupancyGrid, Odometry, Path};
 use ros_env::std_msgs::msg::String as StringMsg;
 
@@ -220,6 +228,63 @@ fn spin(
         },
     )?;
 
+    // The debug page (key D).
+    let newest = QoSProfile::topics_default().reliable().keep_last(1);
+    let _mux = node.create_subscription(config.topic(Topic::MuxState).qos(newest), {
+        let tx = tx.clone();
+        move |m: DiagnosticStatus| {
+            let rows = m
+                .values
+                .iter()
+                .map(|kv| (kv.key.as_str(), kv.value.as_str()));
+            send(
+                &tx,
+                Update::MuxState(MuxReport::from_values(&m.message, rows)),
+            )
+        }
+    })?;
+    let _command = node.create_subscription(config.topic(Topic::Command).qos(newest), {
+        let tx = tx.clone();
+        move |m: TwistStamped| {
+            send(
+                &tx,
+                Update::Command(Ask {
+                    speed: m.twist.linear.x,
+                    turn: m.twist.angular.z,
+                }),
+            )
+        }
+    })?;
+    let _actuator = node.create_subscription(config.topic(Topic::Actuator).qos(newest), {
+        let tx = tx.clone();
+        move |m: AckermannDriveStamped| {
+            send(
+                &tx,
+                Update::Actuator(Sent {
+                    speed: f64::from(m.drive.speed),
+                    steering: f64::from(m.drive.steering_angle),
+                    accel: f64::from(m.drive.acceleration),
+                }),
+            )
+        }
+    })?;
+    let _gate = node.create_subscription(config.topic(Topic::Gate).qos(newest), {
+        let tx = tx.clone();
+        move |m: StringMsg| send(&tx, Update::Gate(m.data))
+    })?;
+    let _vehicle = node.create_subscription(config.topic(Topic::Vehicle).qos(newest), {
+        let tx = tx.clone();
+        move |m: VehicleStatusMsg| send(&tx, Update::Vehicle(vehicle(&m)))
+    })?;
+    let _algorithms = node.create_subscription(config.topic(Topic::Algorithms).qos(latched), {
+        let tx = tx.clone();
+        move |m: DiagnosticStatus| {
+            if let Some(kv) = m.values.iter().find(|kv| kv.key == "path follower") {
+                send(&tx, Update::Follower(kv.value.clone()));
+            }
+        }
+    })?;
+
     let goal_publisher = node.create_publisher::<PoseStamped>(config.topic(Topic::Goal))?;
 
     if let Some(r) = ready.take() {
@@ -285,6 +350,20 @@ fn grid(m: &OccupancyGrid) -> Update {
     };
     Grid::new(info, m.header.frame_id.clone(), m.data.clone())
         .map_or_else(|e| Update::BadMap(e.to_string()), Update::Map)
+}
+
+/// `/vehicle/status` in hud-core's words, as the HUD reads it.
+fn vehicle(m: &VehicleStatusMsg) -> VehicleStatus {
+    VehicleStatus {
+        mode: Mode::from(m.mode),
+        armed: m.armed,
+        estop_active: m.estop_active,
+        speed: MetresPerSecond(m.speed),
+        steering_angle: Radians(m.steering_angle),
+        throttle: Fraction::new(m.throttle),
+        brake: Fraction::new(m.brake),
+        faults: Faults(m.faults),
+    }
 }
 
 fn announcement(m: &DataSource) -> Announcement {

@@ -45,6 +45,25 @@ sensor_watchdog:
       stop: true
       max_jump_speed: 15.0      # m/s: the car can't; a bad fix can (latched: clear it)
       jump_margin: 5.0          # m more: two noisy fixes 0.2 s apart can be 2.5 m apart
+    # NDT leads, the GPS checks (pose_source:=ndt, TODO 210): sim.launch.py watches these
+    # two in place of gps. The GPS's own checks, said loudly but holding nothing: a silent,
+    # NaN or jumped GPS no longer moves the pose (pose_check holds it out of ekf_global).
+    # pose_check's own say stops instead: ERROR is HOLD (neither NDT nor the GPS trusted),
+    # and its silence (a dead pose_check) stops too.
+    gps_check:
+      topic: /sensors/gps/fix
+      kind: gps
+      max_age: 2.0
+      stop: false
+      max_jump_speed: 15.0
+      jump_margin: 5.0
+    pose_check:                 # 10 Hz
+      topic: /localization/pose_check/status
+      kind: status
+      status_name: pose_check
+      min_level: 2
+      max_age: 1.0
+      stop: true
     local:                      # ekf_local: Nav2's odometry
       topic: /localization/odom/local
       kind: odom
@@ -115,6 +134,16 @@ sensor_watchdog:
       over_warn: 1.0            # s
       over_persist: 2.0         # s
       over_slowing: 0.3         # m/s^2
+    lidar:                      # the roof VLP-16, 10 Hz: the stop zone's and costmap's eyes
+      topic: /sensors/lidar/points
+      kind: cloud
+      max_age: 1.0              # as the camera's (also 10 Hz): 10 clouds, well over 0.5 s
+      stop: true                # as the camera: a dead lidar holds Nav2 and the AI slot
+      # The same cloud again for 1 s while the wheels turn: a driver stuck, resending its
+      # last cloud with fresh stamps (the CRC of a sample of its bytes, as a picture's).
+      # Only while moving: the bench's pretend lidar has no noise, so a still car there
+      # sees the same cloud. Watched only where a lidar runs (launches: lidar:=true).
+      frozen_after: 1.0
     radar:                      # the stop zone stops navigation itself when it goes quiet
       topic: /sensors/radar/points
       kind: cloud
@@ -133,3 +162,45 @@ sensor_watchdog:
     node_things: {topic: /things, kind: node, max_age: 3.0, stop: false}
     node_ego: {topic: /ego, kind: node, max_age: 3.0, stop: false}
     node_look_ahead: {topic: /look_ahead, kind: node, max_age: 3.0, stop: false}
+    # Our navigation nodes in their own words (Ben, 18 Nov: warn only, TODO 171): kind
+    # status, a DiagnosticStatus topic. FAULT while the newest message says min_level or
+    # worse (1 WARN, 2 ERROR); STALE when it goes silent for max_age, unless quiet_ok (the
+    # node speaks only while it works). stop: true is the switch to hold Nav2 and the AI
+    # slot on one later; false for now, as respawn, mppi_lag's costmap age and twist_mux's
+    # timeout already stop the car. The ages: a few messages at each one's rate. The
+    # smoother has no status topic: node_smoother watches it in the graph only.
+    status_costmap_local:       # 2 Hz; WARN while it waits for odometry, /tf, a sensor
+      topic: /drivers/nav/costmap/status
+      kind: status
+      status_name: costmap local
+      min_level: 1
+      max_age: 3.0
+      stop: false
+    status_costmap_global:      # 1 Hz; WARN while it waits for the map
+      topic: /drivers/nav/costmap/status
+      kind: status
+      status_name: costmap global
+      min_level: 1
+      max_age: 5.0
+      stop: false
+    status_planner:             # one a plan; ERROR when it finds none
+      topic: /drivers/nav/planner/status
+      kind: status
+      min_level: 2
+      quiet_ok: true
+      max_age: 3.0
+      stop: false
+    status_navigator:           # 2 Hz always; WARN while recovering is normal
+      topic: /drivers/nav/navigator/status
+      kind: status
+      min_level: 2
+      max_age: 2.0
+      stop: false
+    status_mppi_lag:            # 20 Hz while it follows a path; WARN: a tick ran late
+      topic: /drivers/nav/track/status
+      kind: status
+      status_name: track
+      min_level: 1
+      quiet_ok: true
+      max_age: 1.0
+      stop: false

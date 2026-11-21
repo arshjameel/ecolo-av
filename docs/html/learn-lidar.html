@@ -7,7 +7,7 @@
 <!-- Generated from docs/learn-lidar.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>From lidar points to cubes, maps and where we are</h1>
-<div class="meta">15 min read · 12 sections</div></header>
+<div class="meta">16 min read · 12 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a class="here" href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#1-what-a-lidar-does">1. What a lidar does</a><a href="#2-our-lidar-the-vlp-16">2. Our lidar: the VLP-16</a><a href="#3-cubes-voxels">3. Cubes (voxels)</a><a href="#4-not-teslas-occupancy-network">4. Not Tesla&#x27;s &quot;occupancy network&quot;</a><a href="#5-from-cubes-to-the-flat-map">5. From cubes to the flat map</a><a href="#6-cubes-into-objects-with-names">6. Cubes into objects, with names</a><a href="#7-where-are-we-ndt-on-a-saved-map">7. Where are we? NDT on a saved map</a><a href="#8-making-the-map-kiss-icp">8. Making the map: KISS-ICP</a><a href="#9-a-trial-alternative-amcl-on-a-2d-map">9. A trial alternative: AMCL on a 2D map</a><a href="#10-seeing-it-all-the-debug-hud">10. Seeing it all: the debug HUD</a><a href="#11-today-planned-idea">11. Today, planned, idea</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#1-what-a-lidar-does">1. What a lidar does</a><a href="#2-our-lidar-the-vlp-16">2. Our lidar: the VLP-16</a><a href="#3-cubes-voxels">3. Cubes (voxels)</a><a href="#4-not-teslas-occupancy-network">4. Not Tesla&#x27;s &quot;occupancy network&quot;</a><a href="#5-from-cubes-to-the-flat-map">5. From cubes to the flat map</a><a href="#6-cubes-into-objects-with-names">6. Cubes into objects, with names</a><a href="#7-where-are-we-ndt-on-a-saved-map">7. Where are we? NDT on a saved map</a><a href="#8-making-the-map-kiss-icp">8. Making the map: KISS-ICP</a><a href="#9-a-trial-beside-it-amcl-on-a-2d-map">9. A trial beside it: AMCL on a 2D map</a><a href="#10-seeing-it-all-the-debug-hud">10. Seeing it all: the debug HUD</a><a href="#11-built-trial-idea-18-nov">11. Built, trial, idea (18 Nov)</a><a href="#where-this-lives-in-the-code">Where this lives in the code</a></nav>
 <div class="lead"><p>Ben's guess (29 Oct): "the lidar returns some kind of point map and we have an NDT and
 occupation network that reads that data and produces something cube related."</p>
 <p><strong>Close.</strong> The lidar gives a cloud of dots. From those dots we can make <strong>cubes</strong> (what is
@@ -139,7 +153,7 @@ and with a saved map, <strong>where we are</strong> (NDT). This page takes them 
 <li>how cubes flatten into the costmap, and what runs today;</li>
 <li>joining cubes into named objects;</li>
 <li>NDT, KISS-ICP and AMCL: finding the car on a map;</li>
-<li>what's built, what's planned, what's only an idea.</li>
+<li>what's built, what's a trial, what's only an idea (section 11, as of 18 Nov).</li>
 </ul>
 <p>The maths of NDT and ICP, with pictures, is in
 <a href="learn-localization.html#8-next-matching-the-lidar-to-a-map-ndt-and-icp">Learn: localization §8</a>.
@@ -326,9 +340,10 @@ round the car into <strong>cubes</strong>, 20 cm on a side. A 3D pixel is called
 cubes</strong>, against 28,800 points a turn. Most cubes are free or unknown. Cubes not seen for
 a while <strong>fade</strong> back to unknown, so a person who walked away doesn't stay.</p>
 <div class="admonition note">
-<p class="admonition-title">Planned, not built</p>
-<p>No code makes cubes yet. The plan (TODO, "Tesla-style cubes on our HUD"): a voxel grid
-in Rust in <code>hud-core</code>, no ROS, its own tests; the simulator first.</p>
+<p class="admonition-title">Built since 30 Oct</p>
+<p><code>aav_voxels</code> (Python) and <code>aav_voxels_rs</code> (Rust, <code>voxels_impl:=rust</code>) cut the cloud
+into 0.25 m cubes (<code>voxels:=true</code>; on in <code>stack:=ours</code>). The debug HUD and the
+developer window draw them. Section 5 has the trial.</p>
 </div>
 </section>
 <section class="card"><h2 id="4-not-teslas-occupancy-network">4. Not Tesla's "occupancy network"</h2>
@@ -339,7 +354,7 @@ at eight cameras and <strong>guesses</strong> which cubes are filled.</p>
 <tr>
 <th></th>
 <th>Tesla</th>
-<th>Ours (planned)</th>
+<th>Ours</th>
 </tr>
 </thead>
 <tbody>
@@ -411,9 +426,9 @@ blocked (<a href="learn-nav2.html">Learn: navigation</a>). To get there, look <s
 </table></div>
 <p>The band comes from <code>vehicle.yaml</code>: the body is 1.5 m tall, plus a 0.5 m margin
 (<code>aav_description</code> <code>obstacle_heights</code>). Both are guesses until measured.</p>
-<h3 id="what-runs-today-lidar_scan-no-cubes">What runs today: <code>lidar_scan</code>, no cubes</h3>
-<p>Today there are no cubes. <code>lidar_scan</code> (<code>ros/perception/aav_lidar</code>) does the same job a
-simpler way: in each of <strong>720 directions</strong> (every 0.5°), it keeps the <strong>nearest point
+<h3 id="the-plain-way-lidar_scan-no-cubes">The plain way: <code>lidar_scan</code>, no cubes</h3>
+<p>Without cubes (<code>voxels:=false</code>, the car's default), <code>lidar_scan</code> (<code>aav_lidar_rs</code>; Python:
+<code>aav_lidar</code>) does the same job a simpler way: in each of <strong>720 directions</strong> (every 0.5°), it keeps the <strong>nearest point
 inside the band</strong>.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -433,11 +448,11 @@ inside the band</strong>.</p>
 </tr>
 <tr>
 <td>Read by</td>
-<td>the local costmap's <code>lidar_layer</code>, and <code>collision_monitor</code>'s stop zone</td>
+<td>the local costmap's <code>lidar_layer</code>, and the stop zone (<code>aav_stop_zone</code>)</td>
 </tr>
 </tbody>
 </table></div>
-<p>The local costmap (<code>nav2.yaml</code>) stacks its layers:</p>
+<p>The local costmap (ours, <code>aav_costmap</code>, set in <code>nav2.yaml</code>) stacks its layers:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -521,12 +536,13 @@ That's fine for a car. A 3D layer (as Nav2's <code>VoxelLayer</code>) could foll
 </tbody>
 </table></div>
 <p>The costmap's <code>lidar_layer</code> and the stop zone read the cubes instead of the scan. It's
-off unless asked for: <code>pixi run sim world:=test_lot voxels:=true</code>. The numbers:
-<a href="trials.html#voxels-30-oct-the-lidar-as-cubes">Trials</a>. The design:
+off unless asked for (<code>pixi run sim world:=test_lot voxels:=true</code>); <code>stack:=ours</code> runs the cubes for the things and the kerbs. The numbers:
+<a href="../history/trials-log.md#voxels-30-oct-the-lidar-as-cubes">Trials</a>. The design:
 <code>docs/designs/2026-10-30_voxels.md</code>.</p>
 </section>
 <section class="card"><h2 id="6-cubes-into-objects-with-names">6. Cubes into objects, with names</h2>
-<p>Cubes say <strong>something</strong> is there. Not <strong>what</strong>. Two steps (TODO, 29 Oct; <strong>planned</strong>):</p>
+<p>Cubes say <strong>something</strong> is there. Not <strong>what</strong>. Two steps, built since 14-15 Nov as
+<code>aav_things</code> (<code>/world/things</code>, <code>things:=true</code>; Rust: <code>aav_things_rs</code>, the default):</p>
 <p><strong>Step 1: join touching filled cubes into one object.</strong> The radar already does this with
 its points (<code>aav_radar_clusters</code>, DBSCAN).</p>
 <pre class="highlight"><code class="language-text">   ■■         ■            two objects:
@@ -566,7 +582,8 @@ inside a box, it gets the box's name, and the cubes give its distance.</p>
 </section>
 <section class="card"><h2 id="7-where-are-we-ndt-on-a-saved-map">7. Where are we? NDT on a saved map</h2>
 <p>GPS is good to 1-3 m. A lidar matched to a <strong>saved map</strong> of the lot is good to centimetres
-(<a href="../designs/2026-10-28_research-picks.md">research picks</a>, pick 2; <strong>planned</strong>).</p>
+(<a href="../designs/2026-10-28_research-picks.md">research picks</a>, pick 2; built 29 Oct as <code>aav_ndt</code>,
+in Rust: <code>ndt:=true</code> scores it, <code>ndt_ekf:=true</code> feeds it to <code>ekf_global</code>, a challenger).</p>
 <p><strong>NDT</strong> (Normal Distributions Transform) keeps the map as cubes too, but each cube holds a
 <strong>bell curve</strong>: the centre of its points, and how spread out they are.</p>
 <pre class="highlight"><code class="language-text">  a lamp post's cube:  points ∙∙∙∙  ──►  centre (12.0, 3.0), spread 0.1 m
@@ -598,7 +615,9 @@ really is from where it thought.</p>
 2 cm. Step by step, with pictures: <a href="learn-localization.html#8-next-matching-the-lidar-to-a-map-ndt-and-icp">Learn: localization §8</a>.</p>
 </section>
 <section class="card"><h2 id="8-making-the-map-kiss-icp">8. Making the map: KISS-ICP</h2>
-<p>NDT needs a map first. <strong>KISS-ICP</strong> makes one (planned):</p>
+<p>NDT needs a map first. <strong>KISS-ICP</strong> can make one (<code>aav_kiss_icp</code>, built 30 Oct, a trial;
+today <code>pixi run ndt-map</code> builds NDT's map from a drive or a bag, and the testing plan's
+phase D adds SLAM):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -629,16 +648,16 @@ really is from where it thought.</p>
 wheels' clicks come slowly (<a href="learn-speed.html">Learn: speed</a>).</p>
 <p><strong>The catch:</strong> a bare lot gives the lidar little to match. Kerbs, posts and walls help.</p>
 </section>
-<section class="card"><h2 id="9-a-trial-alternative-amcl-on-a-2d-map">9. A trial alternative: AMCL on a 2D map</h2>
-<p><strong>AMCL</strong> (Adaptive Monte Carlo Localization) is Nav2's stock way (its <code>nav2_amcl</code>, kept for this trial) to find a robot on a 2D
+<section class="card"><h2 id="9-a-trial-beside-it-amcl-on-a-2d-map">9. A trial beside it: AMCL on a 2D map</h2>
+<p><strong>AMCL</strong> (Adaptive Monte Carlo Localization) is Nav2's stock way (<code>nav2_amcl</code>) to find a robot on a 2D
 map. It scatters hundreds of guesses ("particles") and keeps the ones whose view matches
 the lidar's 2D scan.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
-<th>NDT (planned)</th>
-<th>AMCL (a trial design)</th>
+<th>NDT</th>
+<th>AMCL</th>
 </tr>
 </thead>
 <tbody>
@@ -654,22 +673,22 @@ the lidar's 2D scan.</p>
 </tr>
 <tr>
 <td>Software</td>
-<td>not chosen: look at stock NDT localizers first</td>
-<td>stock <code>nav2_amcl</code></td>
+<td>ours, in Rust (<code>aav_ndt</code>)</td>
+<td>ours, in Rust (<code>aav_amcl_rs</code>, 18 Nov); stock <code>nav2_amcl</code> removed 20 Nov, TODO 232</td>
 </tr>
 <tr>
-<td>First test</td>
-<td>a recording of the real lot</td>
-<td>the simulator's <code>test_lot</code> world</td>
+<td>Tested</td>
+<td>Ravensim's lot and campus</td>
+<td>Ravensim's lot: ours ties with stock</td>
 </tr>
 </tbody>
 </table></div>
-<p>The trials design (<code>docs/designs/2026-10-29_trials.md</code>, on branch <code>trials</code>, Tentative) runs
-AMCL <strong>beside</strong> <code>ekf_global</code>: its pose goes out on <code>/localization/amcl/pose</code>, it never
-takes over <code>map → odom</code>, and it's scored against the EKF on the same drives. Not built yet.</p>
+<p>Both run <strong>beside</strong> <code>ekf_global</code> (<code>ndt:=true</code>, <code>amcl:=true</code>): AMCL's pose goes out on
+<code>/localization/amcl/pose</code>, it never takes over <code>map → odom</code>, and it's scored against the
+EKF on the same drives (<a href="../history/trials-log.md#18-nov-amcl-in-rust-against-stock">Trials</a>).</p>
 </section>
 <section class="card"><h2 id="10-seeing-it-all-the-debug-hud">10. Seeing it all: the debug HUD</h2>
-<p>The debug HUD (TODO, 29 Oct; <strong>planned</strong>) puts what the car thinks on one screen:</p>
+<p>The debug HUD (<code>pixi run debug-hud</code>, built 30 Oct-3 Nov) puts what the car thinks on one screen:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -699,7 +718,7 @@ takes over <code>map → odom</code>, and it's scored against the EKF on the sam
 <p>It reads each sensor's own topic, not what comes out of the muxes, so a fault shows where
 it starts. Built on the raylib HUD (<code>ros/hud/aav_hud</code>).</p>
 </section>
-<section class="card"><h2 id="11-today-planned-idea">11. Today, planned, idea</h2>
+<section class="card"><h2 id="11-built-trial-idea-18-nov">11. Built, trial, idea (18 Nov)</h2>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -717,42 +736,47 @@ it starts. Built on the raylib HUD (<code>ros/hud/aav_hud</code>).</p>
 <tr>
 <td>Points → 2D scan → costmap and the stop zone</td>
 <td>✅ built; the simulator</td>
-<td><code>aav_lidar</code> <code>lidar_scan</code>, <code>nav2.yaml</code></td>
+<td><code>aav_lidar_rs</code> (<code>aav_lidar</code> in Python) <code>lidar_scan</code>, <code>nav2.yaml</code></td>
 </tr>
 <tr>
 <td>Cubes from the lidar</td>
-<td>planned (TODO: cubes on the HUD)</td>
-<td><code>hud-core</code>, Rust</td>
+<td>✅ built; the simulator</td>
+<td><code>aav_voxels</code>, <code>aav_voxels_rs</code></td>
 </tr>
 <tr>
 <td>Cubes drawn on the camera picture</td>
-<td>planned; on the car, needs calibration</td>
-<td><code>picture.rs</code>, research pick 4</td>
+<td>✅ on the debug HUD; on the car, needs calibration</td>
+<td><code>hud-core</code> <code>picture.rs</code>, research pick 4</td>
 </tr>
 <tr>
 <td>Cubes into named objects</td>
-<td>planned (TODO 29 Oct)</td>
-<td></td>
+<td>✅ built (<code>/world/things</code>); names from the camera's boxes</td>
+<td><code>aav_things</code>, <code>aav_things_rs</code></td>
 </tr>
 <tr>
-<td>A map of the lot with KISS-ICP</td>
-<td>planned (research pick 2)</td>
-<td>needs a recording of the lot</td>
+<td>Kerbs from the cubes</td>
+<td>✅ the step finder (<code>kerbs:=true</code>); <span class="badge b-untested">untested</span> on a real kerb</td>
+<td><code>aav_voxels_rs</code>, <a href="kerbs.html">Kerbs</a></td>
+</tr>
+<tr>
+<td>A map of the lot</td>
+<td>✅ <code>pixi run ndt-map</code>; the campus guessed from OpenStreetMap</td>
+<td><code>tools/ndt_map.py</code>; KISS-ICP a trial</td>
 </tr>
 <tr>
 <td>NDT pose into <code>ekf_global</code></td>
-<td>planned (research pick 2)</td>
-<td></td>
+<td>a challenger (<code>ndt_ekf:=true</code>, TODO 210)</td>
+<td><code>aav_ndt</code></td>
 </tr>
 <tr>
 <td>AMCL beside the EKF</td>
-<td>a trial design, Tentative</td>
-<td>branch <code>trials</code></td>
+<td>✅ a trial, ours in Rust since 18 Nov</td>
+<td><code>aav_amcl_rs</code></td>
 </tr>
 <tr>
 <td>The debug HUD</td>
-<td>planned (TODO 29 Oct)</td>
-<td></td>
+<td>✅ built</td>
+<td><code>pixi run debug-hud</code></td>
 </tr>
 <tr>
 <td>A 3D costmap layer (as Nav2's <code>VoxelLayer</code>)</td>

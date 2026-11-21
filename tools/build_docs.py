@@ -33,8 +33,8 @@ DOCS = ROOT / 'docs'
 OUT = DOCS / 'html'
 STYLE = DOCS / 'style.css'
 WPM = 150          # an unhurried reading speed, so the times are a promise
-READ_FIRST = 26    # PAGES[:26] are the reading list
-LEARN_END = 41     # PAGES[26:41] are the learn pages; the rest are reference
+READ_FIRST = 29    # PAGES[:29] are the reading list
+LEARN_END = 50    # PAGES[29:50] are the learn pages; the rest are reference
 
 # (file in docs/, menu title, what it's for). A name in ROOT_PAGES is a page kept at the
 # repository's root instead, built the same way (none since 25 Oct: every page is in docs/).
@@ -55,10 +55,16 @@ PAGES = [
     ('first-day.md', 'Your first day', 'Install, the turtle, rqt_graph, Ravensim, a goal'),
     ('git.md', 'Git', 'Rebasing, conflicts, worktrees; the flow is in CONTRIBUTING.md'),
     ('how-it-fits.md', 'How it fits', 'What each box does, and the safety layers'),
+    ('stack-survey.md', 'The stack, surveyed',
+     'Every algorithm we built or studied: where from, what testing found, still used?'),
+    ('how-self-driving-works.md', 'How self-driving works',
+     'Every algorithm, taught: AMCL, NDT, SLAM, A*, Hybrid-A*, MPC, MPPI, with pictures'),
     ('start-up.md', 'Bottom-up', 'Each layer from the device up; start-up; testing each layer'),
     ('team.md', 'Starting points', 'One per team member: read, run, first tasks'),
     ('packages.md', 'Packages', 'What each package does, layer by layer'),
     ('modules.md', 'Every module', 'One card per package, crate and board'),
+    ('codemap.md', 'Code map',
+     'Where the code is: one line per package (made by tools/codemap.py)'),
     ('work.md', 'Work', "The plan, what's done, what needs doing"),
     ('plan.md', 'The plan', 'The proposal as a to-do list: the gates, every task'),
     ('features.md', 'Features', 'What the software does, why, and who built it'),
@@ -72,13 +78,30 @@ PAGES = [
     ('car-evening.md', 'Tonight: drive as is',
      'Nothing flashed: their stack drives, and we record everything'),
     ('car-day.md', 'Car day', 'The order: Day A changes nothing, Day B upgrades'),
+    ('car-day-2026-11-21.md', 'Car day, 21 Nov',
+     'Flash, calibrate the steering, record drives for the maps'),
+    ('drive-and-record.md', 'Drive by hand and record',
+     'The laptop as the Orin: joystick, screen, RC; record everything'),
     ('car-setup.md', 'Car setup', 'One car computer: back up, upgrade, install, start at boot'),
     ('rollout.md', 'Rolling out on the car',
      "The names, the order (ESP32 and Motor Pi first), each computer's upgrade"),
     ('tests.md', 'Every test', 'Every test, in order: sim, bench, stands, lot, the drive'),
+    ('after-install.md', 'After the install',
+     'Every laptop and car computer checked, before the stands'),
+    ('testing-plan.md', 'The testing plan', 'Seven phases, stands to campus twin, each automated'),
     ('know-the-car.md', 'Know the car', 'The car tests: the order, and when to stop'),
+    ('recording.md', 'Recording a mapping drive',
+     'Every sensor at full rate: checks before, a summary after'),
+    ('maps-from-drives.md', 'Maps from drives',
+     "KISS-SLAM on a recorded drive: NDT's map and a 2D map, placed by the GPS"),
+    ('map-editor.md', 'The map editor',
+     'Our map over the street map: line it up, delete parked cars, label, approve, save'),
+    ('labelling.md', 'Labelling after a drive',
+     "OWLv2's boxes onto the lidar points, labels.yaml, our small model, the campus twin"),
     ('measure-the-car.md', 'Measure the car', 'The sheet for whoever measures the car'),
     ('decisions.md', 'Decisions', 'Decided, Tentative, Proposed, and Q1–Q34'),
+    ('decisions-2026-11-19.md', 'Decided 18-19 Nov',
+     'Git history, testing, NDT leads, maps, scores, ONNX: what and why'),
     ('infrastructure.md', 'Infrastructure', 'The repo, Pixi, the contracts, profiles, computers'),
     ('learn-car.md', 'The car, box by box', 'Every computer, board and wire on the car'),
     ('learn-journey.md', "A command's journey", 'One push and one goal, from hand to wheels'),
@@ -109,6 +132,8 @@ PAGES = [
     ('league.md', 'The league', "Each level's champion and challengers; stack:="),
     ('league-results-2026-11-16.md', 'League scores, 16 Nov',
      "Every level scored inside ours, the hybrids, Nav2's last scores, the survey"),
+    ('league-results-2026-11-20.md', 'League scores, 20 Nov',
+     'Stage 2: the challengers, the planners, diffusion from Rust, lanes, NDT'),
     ('mppi-lag.md', 'MPPI with lag', "Nav2's MPPI in Rust, planning with the actuators' lag"),
     ('own-costmap.md', 'Our own costmap', "Nav2's costmap layers, ported to Rust"),
     ('own-planner.md', 'Our own planner',
@@ -154,6 +179,8 @@ PAGES = [
      "One part at a time: the parts, by hand through the Pi, ego's messages; the link check"),
     ('learn-state-space.md', 'Learn: state space',
      'From a drawing to a car simulator: matrices, poles, Bode, roll'),
+    ('control-explained.md', 'Control, explained',
+     'Models, feedforward, PI, LQR, LQI, MPC, MPPI, stability, the EKF: to learn from'),
     ('vehicle-model.md', 'The car as a linear model',
      'Transfer functions, state space, poles and margins (SYSC 3600)'),
     ('car-model.md', 'One car model', "The lags, ego's lead and its trace, in Python and Rust"),
@@ -204,7 +231,16 @@ SHARED = {RELEASE: (RELEASE_PDF, 'release notes'),
           'release-0.2.md': ('aav-0.2.pdf', 'the 0.2 guide'),
           'whats-new.md': ('aav-whats-new.pdf', "what's new"),
           'what-we-built.md': ('aav-what-we-built.pdf', 'what we built'),
-          'release-0.4-guide.md': ('aav-0.4-guide.pdf', 'the 0.4 guide')}
+          'release-0.4-guide.md': ('aav-0.4-guide.pdf', 'the 0.4 guide'),
+          'testing-plan.md': ('aav-testing-plan.pdf', 'the testing plan'),
+          'car-day-2026-11-21.md': ('aav-car-day-2026-11-21.pdf', 'car day 21 Nov'),
+          'control-explained.md': ('aav-control-explained.pdf', 'control, explained'),
+          'stack-survey.md': ('aav-stack-survey.pdf', 'the self-driving survey'),
+          'how-self-driving-works.md': ('aav-how-self-driving-works.pdf',
+                                        'how a self-driving car works'),
+          'after-install.md': ('aav-after-install.pdf', 'after the install'),
+          'decisions-2026-11-19.md': ('aav-decisions-2026-11-19.pdf',
+                                      'what we decided, 18-19 Nov')}
 # A shared page's own PDF: a running footer, and the cover on a page of its own.
 RELEASE_STYLE = """
 @page {

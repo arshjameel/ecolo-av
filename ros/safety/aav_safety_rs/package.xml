@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_safety_rs</name>
+  <version>0.1.0</version>
+  <description>The geofence, the stop hold and the goal leash in Rust (rclrs): the defaults since 19 Nov (Ben, 16 Nov: "lets remove python were possible"), in place of aav_safety's Python nodes (removed 20 Nov). The same node names, topics, QoS, parameters and answers. Safety locks: the Python is one switch away. The rules are the safety-core crate, with no ROS, checked event by event and bit by bit against the Python's answers.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>nav2_msgs</depend>
+  <depend>action_msgs</depend>
+  <depend>unique_identifier_msgs</depend>
+  <!-- vehicle.yaml: the geofence's footprint. Its configs and geofence.launch.py are
+       aav_safety's, which depends on this package (not the other way: no cycle). -->
+  <exec_depend>aav_description</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -20,7 +20,6 @@ import math
 
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 SIZE, POINTS, CHANNELS, COND = 128, 64, 5, 8
 
@@ -45,7 +44,9 @@ class MapEncoder(nn.Module):
         self.fc = nn.Linear(c * side * side, out)
 
     def forward(self, crop):
-        return self.fc(self.conv(crop).flatten(1))
+        h = self.conv(crop)
+        # reshape, not flatten: Core ML's provider takes no Flatten (19 Nov).
+        return self.fc(h.reshape(h.shape[0], -1))
 
 
 def time_embed(t, dim=64):
@@ -60,6 +61,23 @@ def time_embed(t, dim=64):
                                                       dtype=torch.float32) / half)
     a = t.float()[:, None] * 1000.0 * freq[None, :]
     return torch.cat([torch.sin(a), torch.cos(a)], dim=1).to(t.dtype)
+
+
+def halve(x):
+    """
+    Average each pair of points: F.avg_pool1d(x, 2), the same numbers.
+
+    As a reshape and a mean: Core ML's provider takes no 1D AveragePool (19 Nov), and it
+    took the 0.3 export in 376 pieces.
+    """
+    b, c, n = x.shape
+    return x.reshape(b, c, n // 2, 2).mean(dim=3)
+
+
+def double(x):
+    """Repeat each point twice: F.interpolate(x, scale_factor=2), nearest, without Resize."""
+    b, c, n = x.shape
+    return torch.stack([x, x], dim=3).reshape(b, c, 2 * n)
 
 
 class Block(nn.Module):
@@ -99,17 +117,19 @@ class Denoiser(nn.Module):
         self.out = nn.Conv1d(w0, CHANNELS, 1)
 
     def forward(self, x, c):
-        b = x.shape[0]
-        where = torch.linspace(0.0, 1.0, POINTS, device=x.device, dtype=x.dtype).expand(
-            b, 1, POINTS)
-        h = self.inp(torch.cat([x.transpose(1, 2), where], dim=1))
+        xt = x.transpose(1, 2)
+        # Where along the path, broadcast by an add (not expand): the same numbers, and
+        # every op one Core ML and TensorRT take (19 Nov).
+        where = torch.zeros_like(xt[:, :1]) + torch.linspace(
+            0.0, 1.0, POINTS, device=x.device, dtype=x.dtype)
+        h = self.inp(torch.cat([xt, where], dim=1))
         s0 = self.d0(h, c)                                   # 64
-        s1 = self.d1(F.avg_pool1d(s0, 2), c)                 # 32
-        s2 = self.d2(F.avg_pool1d(s1, 2), c)                 # 16
+        s1 = self.d1(halve(s0), c)                           # 32
+        s2 = self.d2(halve(s1), c)                           # 16
         m = self.mid(s2, c)
         h = self.u2(torch.cat([m, s2], 1), c)
-        h = self.u1(torch.cat([F.interpolate(h, scale_factor=2.0), s1], 1), c)
-        h = self.u0(torch.cat([F.interpolate(h, scale_factor=2.0), s0], 1), c)
+        h = self.u1(torch.cat([double(h), s1], 1), c)
+        h = self.u0(torch.cat([double(h), s0], 1), c)
         return self.out(h).transpose(1, 2)
 
 
@@ -149,12 +169,22 @@ def ends(cond):
 
 
 def pin(x, x0, t, start, goal):
-    """Hold the first and last points where they belong at time t (inpainting)."""
-    x = x.clone()
-    t = t.view(-1, 1)
-    x[:, 0, :4] = (1.0 - t) * x0[:, 0, :4] + t * start
-    x[:, -1, :4] = (1.0 - t) * x0[:, -1, :4] + t * goal
-    return x
+    """
+    Hold the first and last points where they belong at time t (inpainting).
+
+    By masks, not by writing into x: the same numbers, without ScatterND, which neither
+    Core ML's provider nor TensorRT runs well (19 Nov). start, goal: (K, 4); t: (K,).
+    """
+    t = t.view(-1, 1, 1)
+    first = torch.zeros(1, POINTS, CHANNELS, dtype=x.dtype, device=x.device)
+    first[0, 0, :4] = 1.0
+    last = torch.zeros(1, POINTS, CHANNELS, dtype=x.dtype, device=x.device)
+    last[0, -1, :4] = 1.0
+    pad = torch.zeros_like(start[:, :1])
+    start5 = torch.cat([start, pad], dim=1).unsqueeze(1)        # (K, 1, 5)
+    goal5 = torch.cat([goal, pad], dim=1).unsqueeze(1)
+    ends_at = first * ((1.0 - t) * x0 + t * start5) + last * ((1.0 - t) * x0 + t * goal5)
+    return x * (1.0 - first - last) + ends_at
 
 
 class Sampler(nn.Module):
@@ -167,9 +197,11 @@ class Sampler(nn.Module):
     def forward(self, crop, cond, noise):
         k = noise.shape[0]
         # The map and the goal once, then shared by the K samples: the map encoder ran K
-        # times on the same crop until 7 Nov (the same answer, K times the work).
-        ctx = self.model.context(crop, cond).expand(k, -1)
-        cond = cond.expand(k, -1)
+        # times on the same crop until 7 Nov (the same answer, K times the work). Shared
+        # by a broadcast multiply, not expand (Core ML's provider takes no Expand).
+        ones = torch.ones_like(noise[:, :1, 0])                 # (K, 1)
+        ctx = self.model.context(crop, cond) * ones
+        cond = cond * ones
         start, goal = ends(cond)
         x = pin(noise, noise, torch.zeros(k, device=noise.device, dtype=noise.dtype), start,
                 goal)

@@ -950,7 +950,7 @@ pub const LATTE: Theme = {
 pub const CALM: Theme = MOCHA;
 
 /// The things' colours (`hud_core::things`, TODO 192): the same in every theme, and the
-/// same as the RViz markers' (aav_things `looks.py`): person yellow, vehicle blue, stop
+/// same as the RViz markers' (aav_things_rs `looks.py`): person yellow, vehicle blue, stop
 /// sign red, any other name green, unknown orange. Their words are drawn in the theme's
 /// own ink, so these only colour shapes.
 #[must_use]

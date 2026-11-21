@@ -10,6 +10,10 @@
 //!   seen 8 m out          kept in odom             sent back in base_link
 //!   ▲ step  ─────────▶   ▪ (x, y, z) at t    ──▶   each cloud, while younger than keep
 //! ```
+//!
+//! A point under every beam (inside [`Blind`], round the lidar) can be neither seen again
+//! nor seen gone, so its clock stands still there (TODO 219): a car that stood before a
+//! kerb for longer than `keep` forgot it before, and the stop zone let it on.
 
 use std::collections::HashMap;
 
@@ -43,8 +47,41 @@ impl Pose2 {
     }
 }
 
+/// The ground the roof lidar can't see: a circle round the lidar, flat, in `base_link`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Blind {
+    /// m: the lidar's place, flat, in `base_link`.
+    pub x: f64,
+    /// m.
+    pub y: f64,
+    /// m: its lowest beam meets the road this far out.
+    pub radius: f64,
+}
+
+/// The VLP-16's lowest beam, below level (rad): -15 degrees.
+pub const LOWEST_BEAM: f64 = 15.0 * std::f64::consts::PI / 180.0;
+
+impl Blind {
+    /// The lidar at `xyz` (m, `base_link`, z over the road), its lowest beam `lowest`
+    /// rad below level: the ground nearer than z / tan(lowest) is under every beam.
+    #[must_use]
+    pub fn under(xyz: [f64; 3], lowest: f64) -> Self {
+        Self {
+            x: xyz[0],
+            y: xyz[1],
+            radius: xyz[2] / lowest.tan(),
+        }
+    }
+
+    /// Is this point (`base_link`) under every beam?
+    #[must_use]
+    pub fn holds(&self, p: &Point) -> bool {
+        (p.x - self.x).hypot(p.y - self.y) <= self.radius
+    }
+}
+
 /// The step points of the last [`StepMemory::keep`] seconds, one per `cell` square in
-/// `odom` (the newest).
+/// `odom` (the newest); those under every beam ([`Blind`]) kept while they stay there.
 #[derive(Clone, Debug)]
 pub struct StepMemory {
     /// s: a point older than this is forgotten.
@@ -53,6 +90,8 @@ pub struct StepMemory {
     pub range: f64,
     /// m: one point per square this size.
     pub cell: f64,
+    /// Where the lidar can't see: a point there isn't aging. None: every point ages.
+    pub blind: Option<Blind>,
     held: HashMap<[i64; 2], (f64, Point)>,
 }
 
@@ -64,8 +103,16 @@ impl StepMemory {
             keep,
             range,
             cell,
+            blind: None,
             held: HashMap::new(),
         }
+    }
+
+    /// The same, with the lidar's blind ground: a point under every beam isn't aging.
+    #[must_use]
+    pub fn with_blind(mut self, blind: Blind) -> Self {
+        self.blind = Some(blind);
+        self
     }
 
     /// The points held now.
@@ -96,10 +143,18 @@ impl StepMemory {
             ];
             self.held.insert(key, (stamp, o));
         }
-        let (keep, range) = (self.keep, self.range);
+        let (keep, range, blind) = (self.keep, self.range, self.blind);
         self.held.retain(|_, (t, o)| {
             let age = stamp - *t;
-            (0.0..=keep).contains(&age) && pose.to_base(o).flat() <= range
+            let here = pose.to_base(o);
+            if !(0.0..=keep).contains(&age) || here.flat() > range {
+                return false;
+            }
+            // Under every beam: neither seen again nor seen gone, so it doesn't age.
+            if blind.is_some_and(|b| b.holds(&here)) {
+                *t = stamp;
+            }
+            true
         });
         let mut out: Vec<([i64; 2], Point)> = self
             .held
@@ -165,6 +220,33 @@ mod tests {
         // Time going back (a bag looped, the sim restarted): the old ones are gone.
         m.update(30.0, Pose2::default(), &[Point::new(5.0, 0.0, 0.2)]);
         assert!(m.update(1.0, Pose2::default(), &[]).is_empty());
+    }
+
+    #[test]
+    fn a_kerb_under_every_beam_is_kept_while_the_car_stands_before_it() {
+        // TODO 219: the car stands 1 m before a kerb for a minute; the lidar, 1.52 m up
+        // and 0.54 m ahead of base_link, can't see it there.
+        let blind = Blind::under([0.54, 0.0, 1.52], LOWEST_BEAM);
+        assert!((blind.radius - 5.67).abs() < 0.01);
+        let mut m = StepMemory::new(10.0, 12.0, 0.1).with_blind(blind);
+        let start = Pose2::default();
+        m.update(0.0, start, &[Point::new(8.0, 0.0, 0.15)]);
+        let before = Pose2 { x: 5.15, ..start };
+        for t in 1..=60 {
+            let held = m.update(f64::from(t), before, &[]);
+            assert_eq!(held.len(), 1, "forgotten at {t} s");
+        }
+        // Backed away out of the blind circle, it ages again and goes 10 s on.
+        let back = Pose2 { x: -1.0, ..start };
+        assert_eq!(m.update(61.0, back, &[]).len(), 1);
+        assert!(m.update(71.5, back, &[]).is_empty());
+    }
+
+    #[test]
+    fn without_a_blind_circle_a_kerb_ages_as_before() {
+        let mut m = StepMemory::new(10.0, 12.0, 0.1);
+        m.update(0.0, Pose2::default(), &[Point::new(2.0, 0.0, 0.15)]);
+        assert!(m.update(10.5, Pose2::default(), &[]).is_empty());
     }
 
     #[test]

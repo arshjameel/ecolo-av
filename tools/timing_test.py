@@ -360,7 +360,7 @@ def main():
     results = []
     with open(log_path, 'w') as log:
         launch = subprocess.Popen(
-            ['ros2', 'launch', 'aav_bringup', 'sim.launch.py', 'world:=test_lot', 'gui:=false',
+            ['ros2', 'launch', 'aav_bringup', 'sim.launch.py', 'world:=test_lot',
              # Reversing, as the car's reversing:=true (Ben, 22 Oct): forward only, the lot tour's
              # U-turn can end facing a wall, and the drive stops there (23 Oct).
              'rviz:=false', 'reversing:=true',

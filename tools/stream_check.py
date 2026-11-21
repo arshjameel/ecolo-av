@@ -30,9 +30,9 @@ Options:
   --gst              gst-soft: GStreamer's software decoder (avdec_h264), to compare
   --impl I           the node: rust (aav_camera_stream_rs, the default; with a detector
                      the Python one runs, as camera_stream.launch.py) or python
-  --pattern          no Gazebo: aav_detector's stop-sign photo, moving, with noise (the
+  --pattern          no simulator: aav_detector's stop-sign photo, moving, with noise (the
                      noise makes the encoder work as on a real camera)
-  --sign-at X        put Gazebo's stop sign X m ahead of the car (25)
+  --sign-at X        put a stop sign X m ahead of the car (25)
   --drive V          roll the car towards it at V m/s while measuring (0.3), so the
                      picture changes as on the road and the sign comes into range
 
@@ -220,7 +220,7 @@ class Check(Node):
             self.create_subscription(Image, f'/sensors/camera/{CAMERA}/image_raw',
                                      self.on_image, LATEST)
             self.create_subscription(Odometry, '/vehicle/sim/truth', self.on_truth, 10)
-            # Straight to Gazebo's car: no ego or mux here (a private domain, a stand-in).
+            # Straight to Ravensim's car: no ego or mux here (a private domain, a stand-in).
             self.drive = self.create_publisher(AckermannDriveStamped,
                                                '/control/sim/actuator_cmd', 10)
             self.create_timer(0.1, self.send_drive)
@@ -261,7 +261,7 @@ class Check(Node):
         return cv2.resize(newest, (WIDTH, HEIGHT), interpolation=cv2.INTER_LINEAR)
 
     def feed(self):
-        """15 Hz, like the camera: the newest Gazebo picture, its time code drawn last."""
+        """15 Hz, like the camera: the newest Ravensim picture, its time code drawn last."""
         period = 1.0 / FPS
         next_t = time.monotonic()
         i = 0
@@ -401,9 +401,9 @@ def main():
     conf = os.path.join(tmp, 'mediamtx.yml')
     with open(conf, 'w') as f:
         yaml.safe_dump(mediamtx_config(rtsp_port, api_port), f)
-    # Gazebo's lens, scaled to the stream: no distortion, so the undistortion runs (its
+    # Ravensim's lens, scaled to the stream: no distortion, so the undistortion runs (its
     # cost is measured) and changes nothing.
-    calibration = os.path.join(tmp, 'gazebo_front_left.yaml')
+    calibration = os.path.join(tmp, 'ravensim_front_left.yaml')
     with open(calibration, 'w') as f:
         yaml.safe_dump({'image_width': 640, 'image_height': 360,
                         'camera_matrix': {'rows': 3, 'cols': 3,
@@ -433,8 +433,8 @@ def main():
         check = Check(enc.stdin, pattern)
         if not pattern:
             got = check.spin_for(120.0, lambda: check.gz_frames > 0)
-            result('Gazebo camera', got, 'its pictures are coming' if got else
-                   'no picture from Gazebo in 120 s (see ' + LOG + '-gazebo.log)')
+            result('Ravensim camera', got, 'its pictures are coming' if got else
+                   'no picture from Ravensim in 120 s (see ' + LOG + '-ravensim.log)')
             if not got:
                 return 1
             result('stop sign moved', move_sign(sign_at) or None,
@@ -517,7 +517,7 @@ def main():
         fed = (check.fed - fed0) / span
         if not pattern:
             moved = (check.x - x0) if check.x is not None and x0 is not None else float('nan')
-            result('Gazebo', None, f'{(check.gz_frames - gz0) / span:.1f} pictures a second '
+            result('Ravensim', None, f'{(check.gz_frames - gz0) / span:.1f} pictures a second '
                    f'from its camera (640x360; scaled up to {WIDTH}x{HEIGHT}); the car rolled '
                    f'{moved:.1f} m at {speed:g} m/s')
         fps_out = float(status.get('fps_out', 0))

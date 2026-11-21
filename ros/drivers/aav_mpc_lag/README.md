@@ -26,12 +26,52 @@ navigator --FollowPath--> mpc_lag_rs --cmd_vel_nav--> velocity_smoother
 | A tick on a Mac (U-turn at 2 m/s) | 5.3 ms mean, 26 ms worst | 0.75 ms mean, 2.4 ms worst |
 | Lane keeping (`road_ahead_topic`, TODO 169) | yes, with `behaviour:=true` and a lane map | not yet |
 | Live swap | yes (`live_swap`) | no: chosen at launch |
+| Reversing | yes (TODO 174, `gears.py`) | yes since 20 Nov (TODO 213, `gears.rs`): the same cut and mirror; it stands at each cusp (under 0.05 m/s, not 0.15) and plans backwards at the reverse limit |
 | Our simulator, the lot tour (15 Nov, one run) | 4 of 4 legs; a tick 3.7-7.7 ms; 28-35 % CPU | 4 of 4 legs; a tick 0.7-1.3 ms; 4-6 % CPU |
+| The lot tour with `--reversing` (20 Nov, one run) | (scored 19 Nov with the trackers) | 4 of 4 legs; 3.4 m and 4.4 m backwards, a stop at each cusp; off the path 0.16 m mean, 0.65 worst; sway 0.054 m/s²; a tick 0.75 ms |
 
 ```sh
-pixi run sim world:=test_lot reversing:=false tracker:=mpc_lag_rs
-pixi run measure controllers --trackers mpc_lag_rs mpc_lag --tours lot
+pixi run sim world:=test_lot tracker:=mpc_lag_rs
+pixi run measure controllers --trackers mpc_lag_rs mpc_lag --tours lot --reversing
 ```
+
+### Forward and back (TODO 213)
+
+```text
+   forward  ─────────►  cusp  ◄───────── backwards  cusp  ─────────► forward
+   stretch 0          (stand)  stretch 1          (stand)  stretch 2
+```
+
+| Step | What |
+|---|---|
+| Cut | the path is cut where a segment turns against its pose's yaw (`gears.rs`, as `gears.py`) |
+| Mirror | a backwards stretch goes to the MPC turned round: yaw + pi, speed and steering negated. The same bicycle about the rear axle, so the model needs no change |
+| Speed | backwards, the MPC plans up to `max_reverse_speed` (vehicle.yaml's, with `reversing:=true`; 0 refuses a path that reverses) |
+| Stop | each stretch ends at its cusp, so the plan slows to 0 there; within 0.3 m it holds 0 |
+| Change | the next stretch once the car stands (under 0.05 m/s) within 0.3 m; or after standing 2 s within 1.5 m (a lock held it short). The estimate's steering turns round with it |
+| Goal | checked on the last stretch only; the progress check starts again at each stretch |
+
+### The tube (Ben, 21 Nov)
+
+Ben: "It doesn't need to be super aggressive sticking to the line so that it doesn't
+oscillate so much."
+
+```text
+   cost on e_y
+     │\                 /
+     │ \               /
+     │  \_____________/      ← flat: no pull to the centre
+     └──────┼─────┼──────  e_y (m)
+          -tube    +tube
+```
+
+| Setting | What |
+|---|---|
+| `mpc_lag.tube` (m; the node's own default 0 = off) | e_y is costed only beyond it: its target is e_y clipped to ±tube, so inside the tube the plan keeps the line it has. Heading, steering and speed are costed as before |
+| `mpc_lag_tube:=` | the launch's switch (sim.launch.py, navigation.launch.py). Empty: **0.3 m** (`vehicle.MPC_LAG_TUBE`, tuned 21 Nov: University Drive's sway 0.251 to 0.160, every leg); `0`: off |
+
+Tested: `closed_loop.rs` `in_the_tube_it_holds_its_line_and_outside_it_comes_back` (0.15 m
+off: it keeps its line and steers less; 1 m off: back inside 0.25 m, at 1 and 3 m/s).
 
 ### Why our own QP, not clarabel
 
@@ -47,7 +87,7 @@ pixi run measure controllers --trackers mpc_lag_rs mpc_lag --tours lot
 ## Interface
 
 **`mpc_lag_rs`** (`crates/mpc-node/src/main.rs`), started by `aav_navigation`'s
-`navigation.launch.py tracker:=mpc_lag_rs` (forward only: refused with `reversing:=true`)
+`navigation.launch.py tracker:=mpc_lag_rs` (reverses with `reversing:=true`, since 20 Nov)
 
 | Item | What |
 |---|---|
@@ -72,10 +112,11 @@ lookahead, and vehicle.yaml's actuators; nothing copied):
 | `max_brake`, `wheelbase`, `max_steering_angle`, `actuators.*` | vehicle.yaml (dead times 0 while unset) |
 | `max_steering_rate` | the lower of vehicle.yaml's `steer_rate` and ego.yaml's |
 | `map_correction` | the launch's switch (never in the yaml) |
+| `max_reverse_speed` | vehicle.yaml's with `reversing:=true`, else 0 (forward only) |
 | `mpc_lag.speed_loop` | the spine's speed loop profile the car runs: the sim's `speed_loop:=` (`default`, `smooth`, `firm`; `lqi` is refused at launch); never in the yaml (TODO 163) |
 
 From `config/mpc_lag_rs.yaml`: `lateral_accel`, `odom_timeout`, the map correction's rates,
-and `mpc_lag.*` (`horizon`, `q`, `r`, `r_rate`, `q_speed`, `r_speed`, `latency`; also `w_slack`, `terminal`, `substeps`, `max_iter`, `rho`, `sqp` at the
+and `mpc_lag.*` (`horizon`, `q`, `tube`, `r`, `r_rate`, `q_speed`, `r_speed`, `latency`; also `w_slack`, `terminal`, `substeps`, `max_iter`, `rho`, `sqp` at the
 Python's defaults). `aav_navigation`'s `test_launch_params.py` checks they match
 `track.yaml`'s.
 
@@ -87,14 +128,18 @@ Python's defaults). `aav_navigation`'s `test_launch_params.py` checks they match
 | `model.rs` | `step`: the car with its lags in the path's frame; `PiLoop` (the spine's PI in f64) | `lag_model.py` |
 | `qp.rs` | `solve`: OSQP's ADMM; `RowMatrix` (sparse rows) | `qp.py` |
 | `tracker.rs` | `MpcLag`: the estimate, the nominal plan, linearise, condense, one QP, the command | `trackers/mpc_lag.py` |
+| `gears.rs` | `Gears`: the path cut at its cusps, which stretch the car is on; `mirror` | `gears.py` |
+| `geared.rs` | `Geared`: the MPC forward and back, a stretch at a time | `track_node.py`'s gears |
 
 ## Invariants
 
-- Forward only. Never both followers: with it, `mppi_lag` doesn't start.
+- Forward and back with `reversing:=true`; a change of gear only standing at a cusp.
+  Never both followers: with it, `mppi_lag` doesn't start.
+- A path with no cusp is one forward stretch: the same commands as `MpcLag` alone.
 - The same maths as the Python: after changing `lag_model.py`, `mpc_lag.py` or `qp.py`,
   run `gen_vectors.py` and both test suites.
 - Every steering command within full lock and the steering rate; every set speed within
-  0..cruise and the smoother's ramps.
+  0..cruise forwards, 0..-max_reverse_speed backwards, and the smoother's ramps.
 - Nothing in the safety path changes: the smoother, the stop zone, twist_mux's slot,
   the locks and e-stops all sit after `cmd_vel_nav`. It doesn't read the costmap.
 - The maths has no ROS; the node has no maths. Rust API Guidelines; `cargo fmt` and
@@ -117,6 +162,7 @@ pixi run python3 ros/drivers/aav_mpc_lag/crates/mpc-lag/gen_vectors.py   # after
 | `tests/vectors.rs` | the model against `lag_model.step`: 240 states, three cars, both PI loops (worst 4e-15); the tracker's commands against the Python's on the same observations, a bend and the U-turn at 2 m/s (worst 6e-5 rad, 1.2e-3 m/s) |
 | `qp.rs` | hand answers: free, a box, an equality, a coupling row; the warm start (the same 400 and 50 iterations as `qp.py`); bad problems |
 | `path.rs`, `model.rs`, `tracker.rs` | the foot past the ends, a circle's curvature; the motor's rate, the brake never reversing, the drift on a bend; `interp`, `D'D`, the queues |
-| `tests/closed_loop.rs` | a pretend car (ego's ramps, the shared car model at 100 Hz): straight at 1 and 3 m/s, no speed overshoot, a 1 m offset, an 8 m bend, the U-turn at 2 m/s with vehicle.yaml's lags (0.10 m) and doubled (0.18 m), the stop at the end, the dead-time queues, the tick time, bad numbers |
+| `gears.rs`, `geared.rs` | the cut at each cusp, the mirror, when the next stretch is taken (and not while rolling); a reversing path refused forward only; backwards within the reverse limit; a forward path gives `MpcLag`'s own commands |
+| `tests/closed_loop.rs` | a pretend car (ego's ramps, the shared car model at 100 Hz): straight at 1 and 3 m/s, no speed overshoot, a 1 m offset, an 8 m bend, the U-turn at 2 m/s with vehicle.yaml's lags (0.10 m) and doubled (0.18 m), the stop at the end, the dead-time queues, the tick time, bad numbers. Forward and back (a pretend ego both ways): 8 m straight back (under 0.05 m off), 6 m on, a stop at the cusp (0.02 m short, 0.03 m/s), back round a 5 m bend (0.007 m off); forward, back, forward (each gear changed within 0.11 m of its cusp, standing) |
 
 `colcon test --packages-select aav_mpc_lag` runs the same; `pixi run test` everything.

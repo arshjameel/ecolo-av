@@ -9,7 +9,7 @@ use ego_core::fmt_g;
 use crate::wheels::{radians, CrossCheck, WheelCheck, EARTH_RADIUS};
 use crate::{hypot, py_max};
 
-/// m/s: faster than this, the camera's picture must change.
+/// m/s: faster than this, a camera's picture or a cloud (the lidar's) must change.
 pub const MOVING: f64 = 0.2;
 /// s: the overspeed check's look back, for "is it slowing?".
 pub const SLOWING_WINDOW: f64 = 0.5;
@@ -37,11 +37,13 @@ pub enum Kind {
     Actuator,
     /// ackermann_msgs/AckermannDriveStamped: ego's speed against the wheels'.
     Speed,
+    /// diagnostic_msgs/DiagnosticStatus: one of our nodes in its own words (TODO 171).
+    Status,
 }
 
 impl Kind {
     /// Every kind, in the Python's order (`KINDS`).
-    pub const ALL: [Kind; 10] = [
+    pub const ALL: [Kind; 11] = [
         Kind::Odom,
         Kind::Imu,
         Kind::Gps,
@@ -52,6 +54,7 @@ impl Kind {
         Kind::Node,
         Kind::Actuator,
         Kind::Speed,
+        Kind::Status,
     ];
 
     /// Its name in the YAML.
@@ -68,7 +71,17 @@ impl Kind {
             Kind::Node => "node",
             Kind::Actuator => "actuator",
             Kind::Speed => "speed",
+            Kind::Status => "status",
         }
+    }
+}
+
+impl Kind {
+    /// Whether its FROZEN check counts only while the car moves (`MOVING_KINDS`): a
+    /// camera's picture, a lidar's cloud.
+    #[must_use]
+    pub fn frozen_only_moving(self) -> bool {
+        matches!(self, Kind::Image | Kind::Cloud)
     }
 }
 
@@ -108,6 +121,54 @@ pub enum State {
     Overspeed,
     /// A latch input dropped out after its start-up. Latched.
     Lost,
+    /// A status input's node says min_level or worse.
+    Fault,
+}
+
+/// How bad a node says things are (`diagnostic_msgs/DiagnosticStatus`'s levels above OK),
+/// in order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Severity {
+    /// 1.
+    Warn,
+    /// 2.
+    Error,
+    /// 3.
+    Stale,
+}
+
+impl Severity {
+    /// The message's level byte: None for OK (0); anything above 3 counts as STALE.
+    #[must_use]
+    pub fn from_level(level: u8) -> Option<Severity> {
+        match level {
+            0 => None,
+            1 => Some(Severity::Warn),
+            2 => Some(Severity::Error),
+            _ => Some(Severity::Stale),
+        }
+    }
+
+    /// A rule's `min_level`: 1, 2 or 3 only.
+    #[must_use]
+    pub fn from_min_level(level: i64) -> Option<Severity> {
+        match level {
+            1 => Some(Severity::Warn),
+            2 => Some(Severity::Error),
+            3 => Some(Severity::Stale),
+            _ => None,
+        }
+    }
+
+    /// The level's name, as the Python's `LEVELS`.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Severity::Warn => "WARN",
+            Severity::Error => "ERROR",
+            Severity::Stale => "STALE",
+        }
+    }
 }
 
 impl State {
@@ -126,6 +187,7 @@ impl State {
             State::Over => "OVER",
             State::Overspeed => "OVERSPEED",
             State::Lost => "LOST",
+            State::Fault => "FAULT",
         }
     }
 
@@ -181,6 +243,12 @@ pub struct Rule {
     pub over_persist: f64,
     /// m/s²: slowing at least this fast doesn't count.
     pub over_slowing: f64,
+    /// Status only: the messages of this name count (empty: all).
+    pub status_name: String,
+    /// Status only: this or worse is a FAULT.
+    pub min_level: Severity,
+    /// Status only: silence is quiet, not STALE.
+    pub quiet_ok: bool,
 }
 
 /// A rule that makes no sense, and why (the Python's words).
@@ -218,6 +286,9 @@ impl Rule {
             over_warn: 1.0,
             over_persist: 2.0,
             over_slowing: 0.3,
+            status_name: String::new(),
+            min_level: Severity::Error,
+            quiet_ok: false,
         }
     }
 
@@ -269,6 +340,9 @@ impl Rule {
         if self.latch_grace.is_nan() || self.latch_grace < 0.0 {
             return fail("latch_grace must be 0 or more seconds");
         }
+        if self.kind != Kind::Status && (!self.status_name.is_empty() || self.quiet_ok) {
+            return fail("only a status input has status_name or quiet_ok");
+        }
         if let Some(c) = self.cross_check {
             c.checked().map_err(|e| RuleError(e.0))?;
         }
@@ -279,6 +353,12 @@ impl Rule {
     #[must_use]
     pub fn counts(&self, frame_id: &str) -> bool {
         self.kind != Kind::Detections || frame_id == self.frame_id
+    }
+
+    /// Whether a status message of this name is this input's.
+    #[must_use]
+    pub fn hears(&self, status_name: &str) -> bool {
+        self.kind != Kind::Status || self.status_name.is_empty() || status_name == self.status_name
     }
 }
 
@@ -304,10 +384,12 @@ pub struct Arrival {
     pub fix: Option<(f64, f64)>,
     /// The GPS says it has no fix.
     pub no_fix: bool,
-    /// The car's newest wheel speed (m/s), for the camera's frozen check.
+    /// The car's newest wheel speed (m/s), for a camera's or a cloud's frozen check.
     pub speed: Option<f64>,
     /// The fix's own time (s).
     pub stamp: Option<f64>,
+    /// A status message: its level byte and its words.
+    pub status: Option<(u8, String)>,
 }
 
 /// What was wrong with the newest message.
@@ -348,6 +430,8 @@ pub struct Watch {
     over_words: String,
     speeds: Vec<(f64, f64)>,
     overspeed: Option<String>,
+    /// Status: the newest message, if it says min_level or worse.
+    said: Option<(Severity, String)>,
     first_good: Option<f64>,
     was_ok: bool,
     forgiven: bool,
@@ -379,6 +463,7 @@ impl Watch {
             over_words: String::new(),
             speeds: Vec::new(),
             overspeed: None,
+            said: None,
             first_good: None,
             was_ok: false,
             forgiven: false,
@@ -441,6 +526,14 @@ impl Watch {
         }
         self.bad = None;
         self.good = Some(now);
+        if kind == Kind::Status {
+            let min = self.rule.min_level;
+            self.said = a.status.and_then(|(level, words)| {
+                Severity::from_level(level)
+                    .filter(|s| *s >= min)
+                    .map(|s| (s, words))
+            });
+        }
         if let Some(cross) = &mut self.cross {
             if a.values.len() >= 3 {
                 cross.wheels(now, a.values[0], a.values[2]); // forward speed, turn rate
@@ -448,7 +541,10 @@ impl Watch {
         }
         if self.rule.frozen_after > 0.0 {
             if let Some(digest) = a.digest {
-                let moving = kind != Kind::Image || a.speed.is_some_and(|v| v.abs() > MOVING);
+                // A camera or a cloud only while the car moves: a still car in a still
+                // world sees the same picture, and a noiseless lidar the same cloud.
+                let moving =
+                    !kind.frozen_only_moving() || a.speed.is_some_and(|v| v.abs() > MOVING);
                 if Some(&digest) != self.digest.as_ref() || !moving {
                     self.same_since = Some(now);
                 }
@@ -575,13 +671,20 @@ impl Watch {
             );
         }
         if self.heard.is_none() {
-            return (State::Never, "nothing yet".into());
+            return if self.rule.quiet_ok {
+                (State::Ok, "quiet: nothing yet".into())
+            } else {
+                (State::Never, "nothing yet".into())
+            };
         }
         if self.bad == Some(Bad::Nan) {
             return (State::Nan, "NaN or inf in the newest message".into());
         }
         let rule = &self.rule;
         let age = self.good.map_or(f64::INFINITY, |g| now - g);
+        if age > rule.max_age && rule.quiet_ok {
+            return (State::Ok, format!("quiet for {age:.1} s"));
+        }
         if age > rule.max_age {
             let why = if self.bad == Some(Bad::NoFix) {
                 "no fix"
@@ -604,6 +707,9 @@ impl Watch {
                     return (State::Frozen, format!("the same for {:.1} s", now - same));
                 }
             }
+        }
+        if let Some((level, words)) = &self.said {
+            return (State::Fault, format!("says {}: {words}", level.as_str()));
         }
         if let (Some(over), Some(good)) = (self.over_since, self.good) {
             if good - over >= rule.over_warn {
@@ -841,6 +947,19 @@ mod tests {
             ..Rule::new("radar", "/sensors/radar/points", Kind::Cloud, 1.0)
         }
     }
+    fn lidar() -> Rule {
+        Rule {
+            frozen_after: 1.0,
+            ..Rule::new("lidar", "/sensors/lidar/points", Kind::Cloud, 1.0)
+        }
+    }
+    fn cloud(digest: u32, speed: f64) -> Arrival {
+        Arrival {
+            digest: Some(Digest::Crc(digest)),
+            speed: Some(speed),
+            ..Arrival::default()
+        }
+    }
     fn latched_hud() -> Rule {
         Rule {
             frozen_after: 1.0,
@@ -930,6 +1049,45 @@ mod tests {
             arrive(dog, "speed", t, values(&[command(t), measured(t)]));
         }
         t
+    }
+
+    #[test]
+    fn a_silent_lidar_goes_stale_and_stops_the_drivers() {
+        let mut d = dog(vec![lidar()]);
+        for k in 0..10_u32 {
+            arrive(&mut d, "lidar", f64::from(k) * 0.1, cloud(k, 1.0));
+        }
+        assert_eq!(state(&mut d, "lidar", 1.8), State::Ok);
+        assert!(!d.locked(1.8));
+        assert_eq!(state(&mut d, "lidar", 2.0), State::Stale);
+        assert!(d.locked(2.0));
+        arrive(&mut d, "lidar", 2.1, cloud(99, 1.0));
+        assert_eq!(state(&mut d, "lidar", 2.1), State::Ok);
+    }
+
+    #[test]
+    fn a_repeated_lidar_cloud_is_frozen_only_while_the_car_moves() {
+        let mut d = dog(vec![lidar()]);
+        for k in 0..30_u32 {
+            arrive(&mut d, "lidar", f64::from(k) * 0.1, cloud(7, 0.0)); // parked
+        }
+        assert_eq!(state(&mut d, "lidar", 2.9), State::Ok);
+        for k in 30..45_u32 {
+            arrive(&mut d, "lidar", f64::from(k) * 0.1, cloud(7, 1.0)); // driving
+        }
+        assert_eq!(state(&mut d, "lidar", 4.4), State::Frozen);
+        assert!(d.locked(4.4));
+        arrive(&mut d, "lidar", 4.5, cloud(8, 1.0));
+        assert_eq!(state(&mut d, "lidar", 4.5), State::Ok);
+    }
+
+    #[test]
+    fn a_cloud_without_frozen_after_never_freezes() {
+        let mut d = dog(vec![radar()]);
+        for k in 0..30_u32 {
+            arrive(&mut d, "radar", f64::from(k) * 0.1, cloud(7, 2.0));
+        }
+        assert_eq!(state(&mut d, "radar", 2.9), State::Ok);
     }
 
     #[test]
@@ -1186,5 +1344,68 @@ mod tests {
     fn ground_distance_is_metres() {
         let north = (HERE.0 + 100.0 / 111_195.0, HERE.1);
         assert!((ground_distance(HERE, north) - 100.0).abs() < 0.1);
+    }
+
+    fn said(level: u8, words: &str) -> Arrival {
+        Arrival {
+            status: Some((level, words.into())),
+            ..Arrival::default()
+        }
+    }
+
+    fn costmap() -> Rule {
+        Rule {
+            stop: false,
+            status_name: "costmap local".into(),
+            min_level: Severity::Warn,
+            ..Rule::new("costmap", "/drivers/nav/costmap/status", Kind::Status, 3.0)
+        }
+    }
+
+    #[test]
+    fn a_node_that_says_it_waits_warns_in_its_own_words() {
+        let mut dog = Watchdog::new(vec![costmap().checked().expect("rule")], 0.5, 3.0);
+        assert_eq!(state(&mut dog, "costmap", 0.0), State::Never);
+        let w = dog.watch_mut("costmap").expect("watch");
+        w.arrived(1.0, said(0, "fine"));
+        w.arrived(2.0, said(1, "local costmap: waiting for odometry"));
+        assert_eq!(
+            w.state(2.0),
+            (
+                State::Fault,
+                "says WARN: local costmap: waiting for odometry".into()
+            )
+        );
+        assert!(!dog.locked(2.0), "warn only");
+        assert_eq!(state(&mut dog, "costmap", 5.1), State::Stale);
+        assert!(costmap().hears("costmap local") && !costmap().hears("costmap global"));
+    }
+
+    #[test]
+    fn a_quiet_node_is_ok_and_can_be_switched_to_stop() {
+        let rule = Rule {
+            quiet_ok: true,
+            ..Rule::new("plans", "/drivers/nav/planner/status", Kind::Status, 3.0)
+        };
+        let mut dog = Watchdog::new(vec![rule.checked().expect("rule")], 0.5, 3.0);
+        assert_eq!(state(&mut dog, "plans", 0.0), State::Ok);
+        let w = dog.watch_mut("plans").expect("watch");
+        w.arrived(1.0, said(2, "no path"));
+        assert!(dog.locked(1.0), "stop: true holds the drivers");
+        let w = dog.watch_mut("plans").expect("watch");
+        assert_eq!(w.state(4.5), (State::Ok, "quiet for 3.5 s".into()));
+        w.arrived(5.0, said(1, "slow"));
+        assert_eq!(state(&mut dog, "plans", 5.0), State::Ok, "under ERROR");
+    }
+
+    #[test]
+    fn status_settings_belong_to_status_inputs() {
+        let odom = Rule {
+            quiet_ok: true,
+            ..Rule::new("odom", "/vehicle/odom", Kind::Odom, 0.5)
+        };
+        assert!(odom.checked().is_err());
+        assert_eq!(Severity::from_min_level(0), None);
+        assert_eq!(Severity::from_level(7), Some(Severity::Stale));
     }
 }

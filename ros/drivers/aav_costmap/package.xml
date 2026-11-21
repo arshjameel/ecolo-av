@@ -22,6 +22,8 @@
   <depend>diagnostic_msgs</depend>
   <depend>action_msgs</depend>
   <depend>unique_identifier_msgs</depend>
+  <!-- The camera's lane lines (lane_source:=camera, TODO 264). -->
+  <depend>aav_lane_geometry</depend>
 
   <test_depend>ament_cmake_test</test_depend>
 

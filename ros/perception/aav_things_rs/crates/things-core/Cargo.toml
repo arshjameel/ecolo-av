@@ -11,9 +11,13 @@ publish.workspace = true
 # chunks.yaml (map-chunks); the NDT map's PCD reader (ndt-core).
 ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }
 map-chunks = { path = "../../../../bringup/aav_description/map-chunks" }
+# Ours: a PointCloud2's bytes, shared by every crate that reads a cloud (TODO 176).
+cloud-view = { path = "../../../../bringup/aav_description/cloud-view" }
 ndt-core = { path = "../../../../localization/aav_ndt/crates/ndt-core" }
 # The filter's 4 x 4 matrices (ndt-core's version).
 nalgebra = { version = "0.35", default-features = false, features = ["std"] }
+# MIT/Apache-2.0 (TODO 195): measured, kept only where it pays.
+rayon = "1"
 
 [dev-dependencies]
 # float_roundtrip: read each number exactly as Python wrote it.

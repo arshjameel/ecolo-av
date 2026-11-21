@@ -7,7 +7,7 @@
 <!-- Generated from docs/status.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Status: what works and what doesn&#x27;t yet</h1>
-<div class="meta">35 min read · 6 sections</div></header>
+<div class="meta">38 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,9 +139,11 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#on-the-car">On the car</a><a href="#each-box-in-the-picture">Each box in the picture</a><a href="#added-since-25-october">Added since 25 October</a><a href="#builds-and-tests">Builds and tests</a><a href="#is-it-all-on-jazzy">Is it all on Jazzy?</a><a href="#next">Next</a></nav>
-<div class="lead"><p>Where things stand on 13 November 2026. Each row carries the date of its last run: a
-row dated October hasn't been run again unless it says so.</p>
+<nav class="toc"><span>On this page:</span><a href="#on-the-car">On the car</a><a href="#each-box-in-the-picture">Each box in the picture</a><a href="#added-since-25-october">Added since 25 October</a><a href="#since-16-november">Since 16 November</a><a href="#builds-and-tests">Builds and tests</a><a href="#is-it-all-on-jazzy">Is it all on Jazzy?</a><a href="#next">Next</a></nav>
+<div class="lead"><p>Where things stand on 18 November 2026. Each row carries the date of its last run: a
+row dated October hasn't been run again unless it says so. The newest work is in
+<a href="#since-16-november">Since 16 November</a>; the older "Next" lists are in
+<a href="../history/status-log.md">the status log</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -183,6 +199,11 @@ row dated October hasn't been run again unless it says so.</p>
 <td>13 Nov</td>
 <td>the car drove "and stopped well" (Ben), with <strong>only the localization update installed</strong>. The full suite isn't on the car yet</td>
 <td><code>docs/history/messages-2026-11-13.md</code>: no recording, numbers or audit page in the repo yet</td>
+</tr>
+<tr>
+<td>18 Nov</td>
+<td>the team upgraded the car (Ben: "People are upgrading the car now"). 0.4-rc1 was ready to install (<a href="release-0.4-rc1.html">on the car</a>); the ESP32 flash and Motor Pi upgrade rehearsed the night before, the ESP32 in QEMU (<a href="rehearsal-2026-11-18.html">rehearsal</a>). The Orin moves to JetPack 7.2 or newer: the hardware lead's call</td>
+<td>no result of that day in the repo yet: until one is, our stack is <span class="badge b-untested">untested</span> on the car</td>
 </tr>
 </tbody>
 </table></div>
@@ -436,7 +457,7 @@ car, in what order: <a href="rollout.html">Rolling out</a>.</p>
 </tr>
 <tr>
 <td>Heading from the GPS velocity (25 Oct)</td>
-<td><code>aav_gps_heading</code> <code>gps_heading</code> -&gt; <code>ekf_global</code> (yaw only), <code>pixi run tools/ros.sh --local python3 tools/heading_check.py</code></td>
+<td><code>aav_gps_heading_rs</code> <code>gps_heading</code> -&gt; <code>ekf_global</code> (yaw only), <code>pixi run tools/ros.sh --local python3 tools/heading_check.py</code></td>
 <td><span class="badge b-works">works</span> in Gazebo: at walking pace the heading's median error fell from 2.2-2.8° to 1.6-2.1°, forward and reversing. <span class="badge b-untested">untested</span> on the car: needs <code>gps_driver:=ublox</code> for the velocity</td>
 </tr>
 <tr>
@@ -510,9 +531,9 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td><span class="badge b-works">works</span> in Gazebo: 1-3 cm off on the lot tour (29 Oct); the EKF 17 → 1.6 cm with it (30 Oct). Off: it needs the lot's map (<code>pixi run ndt-map drive</code>, not in git). <span class="badge b-untested">untested</span> on a real lot (<a href="trials.html">Trials</a>)</td>
 </tr>
 <tr>
-<td>AMCL (29 Oct)</td>
-<td>stock <code>nav2_amcl</code>, <code>amcl:=true</code></td>
-<td><span class="badge b-works">works</span> in Gazebo, 29 Oct: 6-11 cm off once tuned. Scored only, never steers</td>
+<td>AMCL (29 Oct; in Rust 18 Nov)</td>
+<td>ours, <code>aav_amcl_rs</code> (stock <code>nav2_amcl</code> removed 20 Nov, TODO 232), <code>amcl:=true</code></td>
+<td><span class="badge b-works">works</span> in Gazebo, 29 Oct: 6-11 cm off once tuned; ours in Ravensim, 18 Nov: a tie with stock, 3 runs each. Scored only, never steers</td>
 </tr>
 <tr>
 <td>KISS-ICP lidar odometry (30 Oct)</td>
@@ -521,7 +542,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 </tr>
 <tr>
 <td>Localization health checks (1 Nov, Betsi)</td>
-<td><code>aav_localization_health</code></td>
+<td><code>aav_localization_health_rs</code></td>
 <td><span class="badge b-works">works</span> in its tests; <code>pixi run check</code> prints its line. It only warns. Thresholds tuned in Gazebo only</td>
 </tr>
 <tr>
@@ -541,13 +562,13 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 </tr>
 <tr>
 <td>Things: the lidar's cubes with an id, a speed, a memory (14 Nov)</td>
-<td><code>aav_things</code>, <code>things:=true</code></td>
+<td><code>aav_things_rs</code>, <code>things:=true</code></td>
 <td><span class="badge b-works">works</span> in Ravensim, 15 Nov: the behaviour slows for a walker crossing, 5 of 5 (0.5-1.0 m clear). Names from the camera (<code>things_names:=true</code>) and the stop sign's distance from the lidar: built, not yet run with the detector. Off</td>
 </tr>
 <tr>
-<td>Lane drives, scored (8 Nov)</td>
-<td><code>pixi run measure lane</code></td>
-<td><span class="badge b-works">works</span> in Ravensim: Library Road, 171 m at 1.4 m/s, mean error 4 cm. In Gazebo on the campus the lane was lost in 68 % of pictures (not diagnosed) (<a href="perception.html#in-the-simulators-8-nov">Perception</a>)</td>
+<td>Lane drives, scored (8 Nov; retired 19 Nov with the lane follower, TODO 264)</td>
+<td><code>pixi run measure lane</code> (gone)</td>
+<td><span class="badge b-works">works</span> in Ravensim: Library Road, 171 m at 1.4 m/s, mean error 4 cm. In Gazebo on the campus the lane was lost in 68 % of pictures (not diagnosed) (<a href="../history/lane-followers.md#earlier-lane-drives-8-nov-the-2025-26-pid">Perception</a>)</td>
 </tr>
 <tr>
 <td><strong>Navigation</strong></td>
@@ -595,9 +616,9 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <td><span class="badge b-works">works</span> in Ravensim, 8 Nov, 3 runs: every leg, 88 % of plans from the model. <span class="badge b-untested">untested</span> on the Orin (TensorRT) and the car</td>
 </tr>
 <tr>
-<td>The behaviour planner (7 Nov)</td>
-<td><code>aav_behaviour</code>, <code>behaviour:=true</code></td>
-<td><span class="badge b-works">works</span> in its tests (every transition). Gazebo, 8 Nov: the obstacle stop 2 of 4 (the other 2 went round); the goal reached. <strong>Open:</strong> it never entered APPROACH for the stop sign (<a href="stopping.html#2-the-behaviour-planner">Stopping</a>)</td>
+<td>The behaviour planner (7 Nov; Rust the default 16 Nov)</td>
+<td><code>aav_behaviour_rs</code> (the Python removed 20 Nov), <code>behaviour:=true</code>, on in <code>stack:=ours</code></td>
+<td><span class="badge b-works">works</span> in its tests (every transition); in Ravensim since (below). Gazebo, 8 Nov: the obstacle stop 2 of 4 (the other 2 went round); the goal reached. <strong>Open:</strong> it never entered APPROACH for the stop sign (<a href="stopping.html#2-the-behaviour-planner">Stopping</a>)</td>
 </tr>
 <tr>
 <td>Directions on the campus (7 Nov)</td>
@@ -717,6 +738,80 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 </tbody>
 </table></div>
 </section>
+<section class="card"><h2 id="since-16-november">Since 16 November</h2>
+<p>Ravensim on a Mac unless the row says so; none of it on the car yet.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Box</th>
+<th>Implemented by</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Our own stack, the only one</strong> (Nav2 deleted 17 Nov, Gazebo 16 Nov)</td>
+<td><code>stack:=ours</code>: our costmap, planner, navigator, <code>mppi_lag</code>, smoother, stop zone, map server</td>
+<td><span class="badge b-works">works</span> in Ravensim: the league's final, 16 Nov, 30 of 30 legs on three tours (<a href="league-results-2026-11-16.html">League scores</a>)</td>
+</tr>
+<tr>
+<td>Rust by default (16-18 Nov)</td>
+<td>ego, behaviour, the watchdog, localization_health, the muxes, the Motor Pi's bridge and RC, <code>lidar_scan</code>, things, <code>joy_alive</code>, the stop-sign watcher, the lane finder, the point driver, <code>arm_when_open</code>, <code>camera_stream</code>, AMCL; <code>*_impl:=python</code> falls back</td>
+<td><span class="badge b-works">works</span> against the Python's answers (shared vectors) and in Ravensim; <span class="badge b-untested">untested</span> on the car (<a href="languages.html">Languages</a>)</td>
+</tr>
+<tr>
+<td>AMCL in Rust (18 Nov)</td>
+<td><code>aav_amcl_rs</code>, <code>amcl_impl:=rust</code> (stock removed 20 Nov)</td>
+<td><span class="badge b-works">works</span> the lot, 3 runs each: a tie with stock (5-9 cm a leg). <code>nav2_amcl</code> still in <code>pixi.toml</code> (TODO 232)</td>
+</tr>
+<tr>
+<td>The lane's centre as the path (16 Nov)</td>
+<td><code>path:=lane</code>, ours' default</td>
+<td><span class="badge b-works">works</span> University Drive, 3 runs: 0 % over the centre line (<a href="own-planner.html">Our planner</a>)</td>
+</tr>
+<tr>
+<td>Stop for anything moving (17 Nov)</td>
+<td>the behaviour planner, <code>moving_*</code> parameters</td>
+<td><span class="badge b-works">works</span> <code>sim-check --movers --moving</code>: every mover held the car, the parked box never (<a href="stopping.html">Stopping</a>)</td>
+</tr>
+<tr>
+<td>Kerbs (16 Nov)</td>
+<td><code>kerbs:=true</code>: the Rust voxels' step finder, the costmap's <code>kerb_layer</code></td>
+<td><span class="badge b-works">works</span> a 0.15 m kerb, at 1 m/s; a 0.10 m one never seen (<a href="kerbs.html">Kerbs</a>). <span class="badge b-untested">untested</span> on a real kerb</td>
+</tr>
+<tr>
+<td>The pedal waits to change direction (17-18 Nov)</td>
+<td>ego's <code>pedal_shift_hold</code></td>
+<td><span class="badge b-works">works</span> in tests and the rehearsal; <span class="badge b-untested">untested</span> on the car</td>
+</tr>
+<tr>
+<td>The speed loop and its model apart (18 Nov)</td>
+<td><code>speed_loop_model:=</code></td>
+<td><span class="badge b-works">works</span>: <code>firm</code> car, <code>smooth</code> model stops best, sways a little more; not the default (TODO 163)</td>
+</tr>
+<tr>
+<td>The navigator's follow call (18 Nov)</td>
+<td><code>aav_navigator</code> <code>call.rs</code></td>
+<td><span class="badge b-works">works</span> here, with software GL and load; CI's nightly to be counted (TODO 240)</td>
+</tr>
+<tr>
+<td>The watchdog reads our nodes' status (18 Nov)</td>
+<td><code>kind: status</code>, warn only</td>
+<td><span class="badge b-works">works</span> in tests, Python and Rust tick by tick (TODO 171)</td>
+</tr>
+<tr>
+<td>The detector in Rust, through ONNX (17 Nov)</td>
+<td><code>aav_detector_rs</code>, <code>detector_impl:=rust</code>, a challenger</td>
+<td><span class="badge b-works">works</span> <code>sim-check --perception</code> on Core ML; TensorRT on the Orin <span class="badge b-untested">untested</span> (<a href="onnx.html">ONNX</a>)</td>
+</tr>
+<tr>
+<td>A prettier Ravensim (17 Nov)</td>
+<td><code>graphics:=pretty</code></td>
+<td><span class="badge b-works">works</span>: the scored checks pass as before</td>
+</tr>
+</tbody>
+</table></div>
+</section>
 <section class="card"><h2 id="builds-and-tests">Builds and tests</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -728,7 +823,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <tbody>
 <tr>
 <td><code>colcon build</code>, Jazzy</td>
-<td><span class="badge b-works">works</span> on Linux and the Mac: 37 packages on 25 Oct. Today 51 packages (30 Python, 21 CMake, 12 of those Rust), plus two Bevy crates outside colcon</td>
+<td><span class="badge b-works">works</span> on Linux and the Mac: 37 packages on 25 Oct; 51 on 13 Nov; 72 on 18 Nov (counted by <code>package.xml</code>), plus two Bevy crates outside colcon</td>
 </tr>
 <tr>
 <td><code>pixi run test</code>: build, tests, lint, <code>colcon test</code></td>
@@ -780,13 +875,11 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 <section class="card"><h2 id="is-it-all-on-jazzy">Is it all on Jazzy?</h2>
 <p>Yes. Everything builds against Jazzy, and the turtle, sim and replay profiles run. Every
 configuration key was checked against what the running Jazzy nodes accept. The fixes were
-small: clean shutdowns, Nav2 on simulated time, and the simulated GPS noise. The details
+small: clean shutdowns, Nav2 on simulated time (Nav2 went on 17 Nov), and the simulated GPS noise. The details
 are in <code>docs/history/audit-2026-10-10-*.md</code>.</p>
 </section>
 <section class="card"><h2 id="next">Next</h2>
-<p>From the top of <code>TODO.md</code> (15 Nov). The night of 14-15 Nov fixed two stalls in the
-simulator (TODO 193: the car stood still after an obstacle was taken away; 194: the
-behaviour missed a walker 1 time in 3) and built the trials above.</p>
+<p>From the top of <code>TODO.md</code> (18 Nov) and <a href="testing-plan.html">the testing plan</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -798,33 +891,38 @@ behaviour missed a walker 1 time in 3) and built the trials above.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td>Look at the screens' new layers (HUD <code>--demo</code>, <code>pixi run dev-window</code>); a sim with the detector and <code>things_names:=true</code></td>
-<td>192</td>
+<td>~~<code>nav2_amcl</code> out of <code>pixi.toml</code>~~ done 20 Nov (TODO 232); the one-option switches kept as hooks</td>
+<td>231, 232</td>
 </tr>
 <tr>
 <td>2</td>
-<td>Ravensim's software cameras on Linux (oirp-spss, CI's nightly job)</td>
-<td>183</td>
+<td>The sim car's 14 % overshoot: which speed loop is the default</td>
+<td>163</td>
 </tr>
 <tr>
 <td>3</td>
-<td>The slow map correction against the default in the league</td>
-<td>186</td>
+<td>Count CI's nightly <code>sim</code> job after the navigator's fix; then drop <code>continue-on-error</code></td>
+<td>240, 23</td>
 </tr>
 <tr>
 <td>4</td>
-<td>The planner's sideways swing on a replan, near things it can't see</td>
-<td>177, 193</td>
+<td>Ours against stock, 3 runs each, the lot and the campus</td>
+<td>167</td>
 </tr>
 <tr>
 <td>5</td>
-<td>The car's blockers, with the hardware lead</td>
-<td>157, 158, 173</td>
+<td>Our planner faster; reverse in a narrow street</td>
+<td>152, 174</td>
 </tr>
 <tr>
 <td>6</td>
-<td>Measure the car: the "Know the car" tests replace the guesses in <code>vehicle.yaml</code></td>
-<td>60, 61</td>
+<td>The testing plan's phase A: <code>pixi run car-test --stands</code>; the debug screen</td>
+<td>246, 247</td>
+</tr>
+<tr>
+<td>waits</td>
+<td>The car (the hardware lead; being upgraded 18 Nov): the seven blockers, one drive recorded and scored</td>
+<td>157, 158, 173</td>
 </tr>
 </tbody>
 </table></div></section>

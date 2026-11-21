@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "adaptive-brake"
+version = "0.1.0"
+dependencies = [
+ "libm",
+]
+
+[[package]]
 name = "ament_rs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -530,6 +537,7 @@ dependencies = [
 name = "legacy-bridge"
 version = "0.1.0"
 dependencies = [
+ "adaptive-brake",
  "legacy-link",
  "serde_json",
 ]
@@ -566,6 +574,12 @@ dependencies = [
  "cfg-if",
  "windows-link",
 ]
+
+[[package]]
+name = "libm"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "linux-raw-sys"

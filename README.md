@@ -80,6 +80,7 @@ After [Your first day](#your-first-day), add only the parts you need:
 | The map window's street map and place search | `pixi run get street-map`, `pixi run get places` | [HUD](docs/hud.md) |
 | Street routes (Valhalla) | `pixi run get routes` | [Street routes](docs/routes.md) |
 | KISS-ICP lidar odometry (a trial, `kiss_icp:=true`) | `pixi install --locked -e kiss` (Linux, Apple-silicon Macs) | [Trials](docs/trials.md) |
+| Maps from recorded drives (KISS-SLAM, `map-drive`, `map-area`) | `pixi install --locked -e slam` (x86_64 Linux, Apple-silicon Macs: not the car) | [Maps from drives](docs/maps-from-drives.md) |
 | The camera stream check | `pixi run get mediamtx` | [Camera pipeline](docs/camera-pipeline.md) |
 | CARLA on Carleton's streets | `pixi run get carla-osm` | [CARLA](docs/carla.md) |
 | Flashing a Pico 2 with a debug probe | `pixi run pico spine tools` | [Rust firmware](docs/rust-firmware.md) |
@@ -146,11 +147,18 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `drop-in` | is what's running a true drop-in? Each stream's rate and frame against the contract; only listens |
 | `bench-check` | starts bench mode and tests the whole graph: contract, drive, e-stops (2 min) |
 | `sim-check` | starts the road world headless and tests the whole graph in it, on our own stack, on Ravensim (2 min); `--stack best` for the champions; with no GPU, `tools/software_gl.sh` in front |
-| `measure` | `measure controllers`: Pure Pursuit against MPPI (and the trials: docs/trials.md) on the same routes; `measure timing`: are messages on time?; `measure stream`: the camera stream end to end; `measure atob <bag>`: scores an A-to-B run; `measure lane`: a long lane drive scored by the truth (`--simulator own`, `--world campus`); `measure bandwidth`: every topic's MB/s; `measure diffusion`: the diffusion planner's time a plan against its budget (for the Orin) |
+| `measure` | `measure controllers`: Pure Pursuit against MPPI (and the trials: docs/trials.md) on the same routes; `measure timing`: are messages on time?; `measure stream`: the camera stream end to end; `measure atob <bag>`: scores an A-to-B run; `measure bandwidth`: every topic's MB/s; `measure diffusion`: the diffusion planner's time a plan against its budget (for the Orin); `measure onnx`: every ONNX model in `models/` on the CPU and Core ML: the same answers, the share of the graph, ms, PASS/WARN/FAIL (`--json`) |
 | `diffusion` | the diffusion planner trial (`planner:=diffusion`): `diffusion data` (the lattice's and Hybrid-A*'s paths on random maps, no simulator), `diffusion train` (the model, scored by its guard, into `models/diffusion/planner.onnx`; `pixi install --locked -e learn` first), `diffusion score`, `diffusion replay <folder>` (a sim run's recorded plans through a model, offline), `diffusion export --fp16` |
 | `campus` | Carleton for the simulators, navigation and NDT, from OpenStreetMap, into `maps/campus/`: then `pixi run sim world:=campus` ([docs](docs/campus.md)) |
 | `campus-route` | directions on the campus, without ROS: `campus-route "Mackenzie Building"` (from P4), `--from`, `--waypoints`, `--list`; the same graph as `street_router router:=campus` ([docs](docs/routes.md#on-the-campus)) |
 | `ndt-map` | NDT's map of the simulator's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
+| `record-drive` | record a mapping drive: every raw sensor at full rate, checked before (disk, rates, clocks, frames), summarised after (good for the map, SLAM, labelling, the transfer functions); `--sim` tests it in Ravensim ([docs](docs/recording.md)) |
+| `map-drive` | a map from a recorded drive, no ROS: KISS-SLAM's path with its loop closures, NDT's map and a 2D map for the planner, in 64 m chunks, placed by the GPS where it is good; `--merge` two or more drives' maps (NDT: what two saw; the 2D maps merged) ([docs](docs/maps-from-drives.md)) |
+| `map-area` | one area's map from several drives, offline: `map-drive` each, fitted together, then occupancy across passes (a parked car one drive saw and another saw through is removed; what only one drive saw is kept and labelled `seen_in`); NDT's map, the 2D map, chunks, `labels.yaml` and one `report.md` in `maps/<area>/`, ready for `map-edit` ([docs](docs/maps-from-drives.md#many-drives-of-one-area)) |
+| `map-edit` | the map editor (Bevy, no ROS): a `map-drive` map over the street map, to line up, delete parked cars in a box, label, then approve and save as a new folder with its edit log and chunks ([docs](docs/map-editor.md)) |
+| `label-drive` | (ml env) label what's around after a drive: OWLv2's boxes onto the lidar points, into the map folder's `labels.yaml` for `map-edit`; `--sim-drive` makes a drive from Ravensim alone, scored against its truth ([docs](docs/labelling.md)) |
+| `label-train` | (ml env) our small point segmenter from the reviewed `labels.yaml` of one or more maps: scored on held-out frames, ONNX checked on the CPU and Core ML ([docs](docs/labelling.md)) |
+| `twin-world` | a Ravensim world from a labelled map (buildings, trees, poles; parked cars left out): then `pixi run sim world:=maps/twins/<name>/twin.sdf` ([docs](docs/labelling.md#the-twin-todo-253)) |
 
 ### At the car
 
@@ -160,6 +168,7 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `estop` | block every driver (the car brakes) |
 | `clear` | a person clears a latch: `clear estop`, `clear gate` (the output mux's STOP), `clear geofence` (car back inside), `clear watchdog` (the sensor watchdog's faults) |
 | `actuator-test` | the actuator tests, on stands and in a lot: `actuator-test --list`. The preflight on stands, every sensor checked: `actuator-test preflight --stands` |
+| `car-test` | phase A on stands, one command and one report: `car-test --stands` runs the preflight, every sensor, the steering, throttle on free wheels and the faults on purpose; `--sim` against its own Ravensim, `--no-manual`, `--only` ([docs](docs/actuator-tests.md#car-test-the-whole-stands-test)). Phase B in a measured hallway: `car-test --hallway` (the transfer functions with error bars, the model laid over each pass; `--sim` a pretend hallway; `--analyse <session>`) ([docs](docs/actuator-tests.md#car-test-hallway-the-transfer-functions)) |
 | `calibrate-camera` | calibrate a streamed camera: `calibrate-camera board` prints the checkerboard |
 | `doctor` | can this computer join the car's ROS network? Says what to fix |
 | `link-check` | did the Motor Pi's frames reach the ESP32? `link-check <bag> --esp32 <file>`: PASS, FAIL or NOT TESTED; a parked car is never a PASS ([docs](docs/hardware-debug.md)) |

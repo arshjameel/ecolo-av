@@ -445,11 +445,11 @@ first line of "Coming in 0.3" above, is not in this release.
 |---|---|---|---|
 | Our own simulator, in Rust, with its cameras | the default; `simulator:=gazebo` for Gazebo | passed every `sim-check` leg Gazebo passes; needs a GPU for its cameras | [Our simulator](own-simulator.md), [its cameras](own-simulator-cameras.md) |
 | Our own costmap, planner, navigator and velocity smoother, in Rust | `costmap:=own`, `planner:=own`, `navigator:=own`, `smoother:=own` | trials, scored beside Nav2's in our simulator; Nav2's stay the default | [costmap](own-costmap.md), [planner](own-planner.md), [navigator](own-navigator.md), [smoother](own-smoother.md) |
-| MPPI and MPC that know the actuators' lag | `tracker:=mppi_lag`, `tracker:=mpc_lag` | trials | [MPPI with lag](mppi-lag.md), [Trials](trials.md#lag-aware-mpc-7-nov-mpc_lag) |
+| MPPI and MPC that know the actuators' lag | `tracker:=mppi_lag`, `tracker:=mpc_lag` | trials | [MPPI with lag](mppi-lag.md), [Trials](history/trials-log.md#lag-aware-mpc-7-nov-mpc_lag) |
 | One car model, ego's lag lead and trace, the squiggly line | `lag_lead:` (simulator only) | built; the lead waits for the car's measured numbers | [One car model](car-model.md), [HUD](hud.md#the-squiggly-line-ahead) |
 | One stopping law, the behaviour planner, the stop-point check | `behaviour:=true`; `sim-check --stop-point` | a trial, off by default | [How the car stops](stopping.md) |
 | The adaptive brake, for a heavier car | `adaptive_brake:=true` (simulator) | a simulator trial; the brake's real limits wait for the car | [A heavier car](stopping.md#4-a-heavier-car-the-adaptive-brake) |
-| The diffusion planner, behind its guard | `planner:=diffusion`; on the car only with `diffusion_trial:=true`, 0.5 m/s at most | 88 % of plans from the model in the simulator; the car trial not run | [Trials](trials.md#diffusion-7-8-nov-the-u-turn-the-orin-the-car) |
+| The diffusion planner, behind its guard | `planner:=diffusion`; on the car only with `diffusion_trial:=true`, 0.5 m/s at most | 88 % of plans from the model in the simulator; the car trial not run | [Trials](history/trials-log.md#diffusion-7-8-nov-the-u-turn-the-orin-the-car) |
 | The campus world, directions on it, lane drives scored | `world:=campus` (after `pixi run campus`), `router:=campus`, `measure lane` | simulator; P4 to the Fieldhouse reached 1 of 2 with our navigator | [The campus](campus.md), [Routes](routes.md#on-the-campus) |
 | The hardware debug plan: ESP32 status lines, the link check, the graphs page | `pixi run link-check`, `pixi run esp first-check`, `esp walk` | built | [Hardware debug](hardware-debug.md) |
 | IMU and GPS on the localization Pi (Senura) | `pixi run car localization` | built | [Rolling out](rollout.md) |

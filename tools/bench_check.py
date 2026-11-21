@@ -6,7 +6,6 @@ Bench check: start bench mode, then test the whole car graph on this computer.
     pixi run -e ml bench-check --perception    (adds the detector and the stop sign: 3 minutes)
     pixi run bench-check --obstacle            (adds a box for the radar: 3 minutes)
     pixi run bench-check --lidar               (adds a box for the lidar alone: 3 minutes)
-    pixi run bench-check --lane   (adds lane keeping, in a second bench run: 1 more minute)
     pixi run bench-check --weave              (adds a straight 40 m drive: 1 more minute)
     pixi run bench-check --zone-edge          (adds a box at the stop zone's edge: 1 more minute)
     pixi run bench-check --geofence           (a scripted drive at a 12 m geofence, in a second
@@ -45,17 +44,13 @@ Bench check: start bench mode, then test the whole car graph on this computer.
    in NEAR, and the stop from the lock closing no longer than the stopping distance the
    geofence counts on (RSS, with the spine's numbers). Then the keyboard, a person, backs
    the car 4 m: the lock must not hold it, and must open again (OK).
-11. With --lane: the bench again, with lane keeping (lane:=true) and nothing else driving,
-   the car 0.3 m left of the road's centre. lane_finder and control_interface must bring it
-   back within 5 cm, and keep it there. Its own start-up and graph checks come first.
 
 Prints a table and exits 1 if anything failed. Run it after changing anything between the
-drivers and the spine. The launch logs go to /tmp/aav-bench-check.log and, with --lane,
-/tmp/aav-bench-check-lane.log. AAV_BENCH_LOG=/tmp/mine.log moves them to /tmp/mine.log and
-/tmp/mine-lane.log.
+drivers and the spine. The launch logs go to /tmp/aav-bench-check.log (each extra run
+beside it). AAV_BENCH_LOG=/tmp/mine.log moves them. --lane (lane keeping) went with the lane
+follower on 19 Nov (TODO 264; git tag save/lane-followers).
 """
 
-import bisect
 import math
 import os
 import signal
@@ -99,13 +94,7 @@ import drive_metrics  # noqa: E402, I100
 
 RESULTS = []
 
-# Lane keeping (--lane): where the car starts, what counts as back on the centre line,
-# and how long it has to get there.
-LANE_START = 0.3        # m left of the road's centre
-LANE_BAND = 0.05        # m either side of the centre
-LANE_TIME = 30.0        # s of driving, from when the car starts moving
 WEAVE_LIMIT = 0.1       # m RMS: the most the car may swing round its own path (--weave)
-LOOKAHEAD = 3.0         # m: where lane_finder measures the offset (its config, lookahead)
 GEOFENCE_RADIUS = 12.0  # m: --geofence's fence round the start, short of the bench's sign
 JOY_THROTTLE = 0.5      # the pad's throttle axis: 0.5 m/s (teleop_twist_joy scale 1.0)
 with open(os.path.join(ROOT, 'ros', 'drivers', 'aav_teleop', 'config', 'joy_alive.yaml')) as f:
@@ -655,84 +644,6 @@ def check_zone_edge(probe, hold=20.0):
                                  f'its bumper' + latched_note(latches))
 
 
-def check_lane_keeping(probe):
-    """
-    Lane keeping alone: from LANE_START m left of the road's centre, the car must come back.
-
-    control_interface drives from the moment the spine arms, so this reads the track the
-    probe has kept since start-up: LANE_TIME seconds of driving, from when the car started
-    moving. On a busy computer a gap in commands can latch the spine, which stops the car:
-    the check arms it again, as a safety driver would, and its clock only runs while the
-    car moves.
-    """
-    def moved():
-        return next((s for s in probe.track if s[4] > 0.1), None)
-
-    if not probe.spin_for(30.0, lambda: moved() is not None):
-        result('lane keeping', False, f'the car never moved ({len(probe.lanes)} lane messages)')
-        return
-    t0, x0, y0 = moved()[:3]
-
-    def driven():
-        """Return (seconds of driving so far, sample) for each truth sample since t0."""
-        clock, out, last = 0.0, [], None
-        for s in probe.track:
-            if s[0] >= t0:
-                if last is not None and s[4] > 0.05:
-                    clock += s[0] - last[0]
-                out.append((clock, s))
-                last = s
-        return out
-
-    give_up = time.monotonic() + 3.0 * LANE_TIME
-    while driven()[-1][0] < LANE_TIME and time.monotonic() < give_up:
-        probe.spin_for(0.5)
-        if not probe.status.armed:
-            probe.arm()
-    run = [(c, s) for c, s in driven() if c <= LANE_TIME]
-    clocks, stamps = [c for c, _ in run], [s[0] for _, s in run]
-
-    def nearest(values, v):
-        i = min(bisect.bisect_left(values, v), len(values) - 1)
-        return i - 1 if i and v - values[i - 1] < values[i] - v else i
-
-    def at(t):
-        """Return the truth sample nearest to time t (s, a stamp)."""
-        return run[nearest(stamps, t)][1]
-
-    def after(c):
-        """Return the truth sample after c seconds of driving."""
-        return run[nearest(clocks, c)][1]
-
-    start = y0 - ROAD_Y
-    outside = [c for c, s in run if abs(s[2] - ROAD_Y) > LANE_BAND]
-    settled = outside[-1] if outside else 0.0   # s of driving: within the band from then on
-    over = max(0.0, max(-math.copysign(1.0, start) * (s[2] - ROAD_Y) for _, s in run))
-    last = [s for c, s in run if c >= clocks[-1] - 5.0]
-    end = sum(s[2] for s in last) / len(last) - ROAD_Y
-    heading = sum(s[3] for s in last) / len(last)
-    # lane_finder against the truth: the car's offset LOOKAHEAD m ahead, square to the road.
-    errors, both = [], 0
-    for t, offset, two in (m for m in probe.lanes if t0 <= m[0] <= stamps[-1]):
-        _, _, y, yaw, _ = at(t)
-        errors.append(abs(offset - (y - ROAD_Y + LOOKAHEAD * math.sin(yaw)) / math.cos(yaw)))
-        both += two
-    every = '  '.join(f'{after(k)[2] - ROAD_Y:+.2f}' for k in range(0, int(LANE_TIME) + 1, 3))
-    print(f'      the offset (m), every 3 s of driving: {every}', flush=True)
-    latches = sum(t0 <= s[0] <= stamps[-1] for s in probe.latches)
-    ok = (clocks[-1] >= LANE_TIME - 1.0 and settled <= LANE_TIME - 5.0 and over < 0.10
-          and abs(end) < LANE_BAND and bool(errors) and both >= 0.9 * len(errors))
-    finder = (f'lane_finder {100 * sum(errors) / len(errors):.1f} cm from the truth on average, '
-              f'both lines in {both} of {len(errors)} pictures' if errors else 'no lane messages')
-    times = 'once' if latches == 1 else f'{latches} times'
-    paused = (f'; the spine latched {times} (gaps in the commands: a busy computer?) and was '
-              'armed again' if latches else '')
-    result('lane keeping', ok,
-           f'{start:+.2f} m to {end:+.2f} m, within {100 * LANE_BAND:.0f} cm after '
-           f'{settled:.1f} s and {after(settled)[1] - x0:.1f} m, overshoot {100 * over:.0f} cm, '
-           f'heading {heading:+.3f} rad; {finder}{paused}')
-
-
 def check_contract(probe, env, tag):
     """Check the running graph against docs/interfaces.yaml (check_graph.py --profile bench)."""
     # Up to three tries, 10 s apart: a node's first start after a build can take 20 s
@@ -941,13 +852,6 @@ def main():
         logs.append(f'{stem}-geofence{ext}')
         session([f'geofence_radius:={GEOFENCE_RADIUS:g}'] + bridge, [check_geofence],
                 logs[-1], 'geofence')
-    if '--lane' in args:
-        # Its own run: control_interface drives whenever it sees the lane, so it would take
-        # the wheel between the other checks. Nothing else drives here: no navigation.
-        stem, ext = os.path.splitext(log)
-        logs.append(f'{stem}-lane{ext}')
-        session(['lane:=true', 'nav:=false', f'start_y:={ROAD_Y + LANE_START}'] + bridge,
-                [check_lane_keeping], logs[-1], 'lane')
 
     print('\n| Check | Result | Detail |\n|---|---|---|')
     for name, ok, detail in RESULTS:

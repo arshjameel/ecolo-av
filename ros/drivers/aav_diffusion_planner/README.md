@@ -36,6 +36,7 @@ Launch arguments: `planner:=diffusion` (`navigation.launch.py`, `sim.launch.py`)
 | `diffusion_model` | empty: `models/diffusion/planner.onnx` | the model |
 | `diffusion_provider` | `CPUExecutionProvider` | the engine (`engines.py`): `TensorrtExecutionProvider` (FP16, the Orin), `CUDAExecutionProvider`, `CoreMLExecutionProvider`; each falls back to the CPU |
 | `diffusion_python` | empty: Pixi's learn environment | the worker's Python (on the Orin, one with JetPack's ONNX Runtime) |
+| `diffusion_impl` | `python` | the model's worker: `python` (`worker.py`) or `rust` (`aav_diffusion_rs`'s `diffusion_worker`: the same pipe, ONNX Runtime from Rust; `diffusion_provider:=auto` picks Core ML on a Mac). [ONNX](../../../docs/onnx.md) |
 | `diffusion_smoothing` | `gear` | each gear's run smoothed on its own, the cusps kept; `average`: 2 Nov's |
 | `diffusion_record` | empty | a folder: each plan's inputs saved, for `pixi run diffusion replay` |
 
@@ -65,7 +66,7 @@ pixi install --locked -e learn     # PyTorch, ONNX, ONNX Runtime: once
 pixi run diffusion data            # the lattice's and Hybrid-A*'s paths (no simulator)
 pixi run diffusion data --first 800 --maps 400 --uturn 0.6 --out models/diffusion/data_uturn
 pixi run diffusion train --data models/diffusion/data models/diffusion/data_uturn --suffixes 3
-pixi run diffusion export --fp16   # planner_fp16.onnx too, for a GPU
+pixi run diffusion export --fp16   # planner_fp16.onnx too, for a GPU (16 samples fixed: Core ML runs it whole)
 pixi run measure diffusion         # the time a plan, against the budget
 pixi run sim world:=test_lot planner:=diffusion
 pixi run measure controllers --planners own diffusion --reversing --tours lot \

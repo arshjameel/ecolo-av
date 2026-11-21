@@ -11,7 +11,7 @@ Reports, for every topic in the contract:
 and lists topics that are running but not in the contract (a typo, or the contract
 needs an entry). Exit status 1 if anything failed: usable in a test script.
 
-Then, where aav_localization_health runs, one line from /localization/health (Betsi's
+Then, where aav_localization_health_rs runs, one line from /localization/health (Betsi's
 warn-only checks): OK, or WARN and the checks that aren't OK. A WARN never fails the
 check: those checks are warn-only, as on the car.
 

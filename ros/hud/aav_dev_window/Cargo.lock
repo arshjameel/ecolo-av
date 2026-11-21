@@ -2349,6 +2349,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "cloud-view"
+version = "0.1.0"
+
+[[package]]
 name = "codespan-reporting"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2674,6 +2678,7 @@ dependencies = [
  "lanelet-map",
  "map-chunks",
  "map-core",
+ "map-edit",
  "rclrs",
  "ros-env",
  "serde",
@@ -4183,6 +4188,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "map-edit"
+version = "0.1.0"
+dependencies = [
+ "map-chunks",
+ "ndt-core",
+ "serde",
+ "serde_yaml_ng",
+]
+
+[[package]]
 name = "matchers"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4356,6 +4371,7 @@ dependencies = [
 name = "ndt-core"
 version = "0.1.0"
 dependencies = [
+ "cloud-view",
  "map-chunks",
  "nalgebra",
 ]
@@ -5221,6 +5237,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 [[package]]
 name = "radar-clustering"
 version = "0.1.0"
+dependencies = [
+ "cloud-view",
+]
 
 [[package]]
 name = "radium"

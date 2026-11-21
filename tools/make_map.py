@@ -43,7 +43,9 @@ import sys
 
 import yaml
 
-FREE, BLOCKED, UNKNOWN = 254, 0, 205
+# Unknown is mid-grey 128 (p = 0.498): unknown under free_thresh 0.25 and occupied_thresh 0.65.
+# 205, the ROS 1 grey, is p = 0.196: under 0.25 it reads back as free (TODO 263).
+FREE, BLOCKED, UNKNOWN = 254, 0, 128
 
 
 def rect_cells(rect, origin, res, width, height):

@@ -1,0 +1,29 @@
+# The laptop in the Orin's place (Ben, 20 Nov: "make the joystick and the remote control
+# drive the car and the hardware screen ... provide the heartbeat"). For days without the
+# Orin: the safety driver's laptop runs what the Orin would - the mux, ego and the output
+# mux - with the joystick plugged in and the hardware screen open beside it. The Motor Pi
+# runs only its bridge (`car motor_pi`). Never with `car orin` or `car motor_pi_alone`
+# running too: two muxes and two egos on domain 42 would both drive.
+#
+#   joystick (USB on this laptop) -> teleop -> twist_mux -> ego -> output mux
+#   hw_panel (this laptop)        ->            (slot 45)            (the heartbeat, made here)
+#        ... WiFi ...  -> Motor Pi: legacy_uart_bridge -> UART -> ESP32
+#
+# The heartbeat crosses the WiFi: with the Rust ESP32 firmware (frame_version: 2), the
+# ESP32 brakes 100 ms after the laptop, the WiFi, the Pi or the wire stops - a WiFi
+# hiccup is a hard stop. The C++ firmware has no timeout: stands only.
+#
+# The geofence and the sensor watchdog come with the mux: with no GPS or EKF here they
+# hold every program, never a person. So only the joystick, the keyboard, the hardware
+# screen's buttons (speed off on the real car until TODO 49b) and the RC through ROS drive.
+parts:
+  mux: true
+  ego: true
+  stop_signs: true        # one watcher per car, next to the mux: no camera here, it never
+                          # holds a person
+  teleop: true            # the joystick's USB receiver, plugged into this laptop
+  scripted: true          # drive a set distance and stop (aav_scripted): next to the mux.
+                          # It counts metres on /localization/odom/local, so it needs the
+                          # Orin's EKFs (car orin_sensors): the wheels come by the Orin's CAN
+  drive_to_point: true    # drive to a point and stop (aav_drive_to_point): needs the GPS
+                          # and the global EKF, the same way

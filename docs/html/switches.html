@@ -7,7 +7,7 @@
 <!-- Generated from docs/switches.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Switches: what you can swap in the simulated car</h1>
-<div class="meta">15 min read · 7 sections</div></header>
+<div class="meta">19 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-stack-ours-by-default">The stack: ours by default</a><a href="#who-draws-the-route">Who draws the route</a><a href="#who-steers-along-the-path">Who steers along the path</a><a href="#where-am-i">Where am I</a><a href="#speed">Speed</a><a href="#the-world-and-the-rest">The world and the rest</a><a href="#the-defaults-what-runs-if-you-say-nothing">The defaults: what runs if you say nothing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-stack-ours-by-default">The stack: ours by default</a><a href="#who-draws-the-route">Who draws the route</a><a href="#who-steers-along-the-path">Who steers along the path</a><a href="#where-am-i">Where am I</a><a href="#speed">Speed</a><a href="#the-world-and-the-rest">The world and the rest</a><a href="#stage-1-batch-8-challengers-built-19-nov-scored-in-stage-2">Stage 1, batch 8: challengers built 19 Nov, scored in stage 2</a><a href="#the-defaults-what-runs-if-you-say-nothing">The defaults: what runs if you say nothing</a></nav>
 <div class="lead"><p>Every part we're trying out is a <strong>switch</strong> you give when you start. You don't need to
 remember them: <strong><code>pixi run pick</code></strong> asks, in plain words, and runs it.</p>
 <pre class="highlight"><code>pixi run pick          # a menu: what to start, the route, who steers, obstacles, where-am-I, speed loop
@@ -192,14 +206,17 @@ it. The real car (<code>pixi run car</code>) and the bench run ours too.</p>
 <tr>
 <td><code>planner:=diffusion</code> (a trial)</td>
 <td><strong>a model draws the route</strong>, a guard checks it, the lattice's route if it fails. Needs <code>pixi install --locked -e learn</code> and <code>pixi run diffusion train</code></td>
-<td>3 Nov, reversing, 3 runs: every leg, 177-270 s (the lattice 183-184); <strong>73 %</strong> of routes from the model (<a href="trials.html#3-nov-everything-for-02">trials</a>)</td>
+<td>3 Nov, reversing, 3 runs: every leg, 177-270 s (the lattice 183-184); <strong>73 %</strong> of routes from the model (<a href="../history/trials-log.md#3-nov-everything-for-02">trials</a>)</td>
 </tr>
 </tbody>
 </table></div>
 <p>Ours is the default everywhere since Nav2 went (17 Nov); the simulator ran it from 14 Nov.
 Nav2's planners (<code>lattice</code>, <code>hybrid</code>, <code>smac2d</code>, <code>navfn</code>, <code>theta_star</code>) went with it; their
 scores stay in <a href="controllers.html">Controllers, Planners</a>. The real car takes only <code>own</code> (it
-refuses <code>diffusion</code> without <code>diffusion_trial</code>). More: <a href="controllers.html">Controllers, Planners</a>, <a href="trials.html#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">the runs</a>.</p>
+refuses <code>diffusion</code> without <code>diffusion_trial</code>). More: <a href="controllers.html">Controllers, Planners</a>, <a href="../history/trials-log.md#planners-30-oct-reversing-on-hybrid-lattice-and-lattice32">the runs</a>.</p>
+<p><code>path:=lane_jerk</code> (or <code>lane_pass_shape:=jerk</code> with <code>lane_route</code>; TODO 214, a challenger,
+scored in stage 2): a parked obstacle on the lane is passed by a QP that holds the
+<strong>lateral jerk</strong> at the car's top speed (Apollo's piecewise-jerk path), not the half cosine.</p>
 </section>
 <section class="card"><h2 id="who-steers-along-the-path">Who steers along the path</h2>
 <div class="table-wrap"><table>
@@ -239,17 +256,23 @@ refuses <code>diffusion</code> without <code>diffusion_trial</code>). More: <a h
 <tr>
 <td><code>tracker:=mpc_lag</code></td>
 <td>ours: MPC that knows the car is late, and plans for it (7 Nov)</td>
-<td>Ravensim, 8 Nov: 6 of 12 (no U-turn by the building; <a href="trials.html#lag-aware-mpc-7-nov-mpc_lag">trials</a>)</td>
+<td>Ravensim, 8 Nov: 6 of 12 (no U-turn by the building; <a href="../history/trials-log.md#lag-aware-mpc-7-nov-mpc_lag">trials</a>)</td>
 </tr>
 <tr>
 <td><code>tracker:=mppi_lag</code> (default; Nav2's MPPI and RPP went on 17 Nov)</td>
 <td>ours: Nav2's MPPI in Rust, knowing the steering and pedals lag (<a href="mppi-lag.html">page</a>)</td>
-<td>Ravensim, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; <a href="trials.html#results-our-simulator-8-nov-the-lot-tour-3-runs-each">trials</a>). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU (<a href="own-navigator.html#the-verdict">our navigator</a>)</td>
+<td>Ravensim, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; <a href="../history/trials-log.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each">trials</a>). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU (<a href="own-navigator.html#the-verdict">our navigator</a>)</td>
 </tr>
 </tbody>
 </table></div>
-<p><code>aav_track</code>'s trackers drive forward only: give them <code>reversing:=false</code> (the menu does).
-<code>mppi_lag</code> reverses (14 Nov).
+<p><code>mppi_lag</code> reverses (14 Nov); <code>aav_track</code>'s trackers too since 19 Nov (TODO 174: each
+backwards stretch of the plan mirrored, <code>gears.py</code>); <code>mpc_lag_rs</code> since 20 Nov (TODO 213,
+the same in Rust, <code>gears.rs</code>). Every tracker reverses.
+<code>steer:=mppi_lag_1k</code> (or <code>mppi_lag_batch:=1000</code>): <code>mppi_lag</code> with 1000 samples a tick, not
+2000: half the work, a challenger for the Orin (TODO 152).</p>
+<p><code>tracker:=mppi_lag mppi_lag_sampling:=smooth</code> (or <code>steer:=mppi_lag_smooth</code>; TODO 212, a
+challenger, scored in stage 2): MPPI samples the steering's <strong>change</strong>, so its commands come
+out smooth without a larger control cost.
 In <code>demo --debug</code>, keys 1-4 swap the tracker live. More: <a href="controllers.html">Controllers</a>,
 <a href="trials.html">Trials</a>.</p>
 </section>
@@ -280,13 +303,18 @@ others offer the EKFs only first.</p>
 </tr>
 <tr>
 <td><code>amcl:=true</code></td>
-<td>many guesses; keep the ones that match the walls</td>
-<td>6-11 cm</td>
+<td>many guesses; keep the ones that match the walls (ours in Rust; stock removed 20 Nov)</td>
+<td>6-11 cm (5-9 cm, 18 Nov)</td>
 </tr>
 <tr>
 <td><code>ndt_ekf:=true ndt_map:=maps/ndt/test_lot.pcd</code></td>
 <td>NDT, and the global EKF <strong>uses</strong> it beside the GPS (a trial)</td>
-<td>the EKF <strong>1.6 cm</strong> (<a href="trials.html#ndt-into-the-global-ekf-30-oct">trials</a>)</td>
+<td>the EKF <strong>1.6 cm</strong> (<a href="../history/trials-log.md#ndt-into-the-global-ekf-30-oct">trials</a>)</td>
+</tr>
+<tr>
+<td><code>pose_source:=ndt</code></td>
+<td>NDT <strong>leads</strong> the global EKF; the GPS only checks it, and stands in when NDT is lost (a challenger, TODO 210; <code>aav_pose_check</code>)</td>
+<td>the EKF <strong>1 cm</strong>, and the same with the GPS stopped, jumping or drifting 5 m (<a href="maps-and-position.html#8-ndt-leads-the-gps-checks">Maps and position</a>)</td>
 </tr>
 <tr>
 <td><code>kiss_icp:=true</code></td>
@@ -296,7 +324,7 @@ others offer the EKFs only first.</p>
 <tr>
 <td><code>kiss_ekf:=true</code></td>
 <td>KISS-ICP, and the local EKF <strong>uses</strong> its speed beside the wheels (a trial)</td>
-<td>no clear win yet (<a href="trials.html#kiss-icp-into-the-local-ekf-1-nov">trials</a>)</td>
+<td>no clear win yet (<a href="../history/trials-log.md#kiss-icp-into-the-local-ekf-1-nov">trials</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -328,11 +356,16 @@ KISS-ICP needs its own environment once: <code>pixi install --locked -e kiss</co
 <td><code>speed_loop:=firm</code></td>
 <td><code>smooth</code> with a firmer brake: stops where it was told</td>
 </tr>
+<tr>
+<td><code>speed_loop_model:=smooth</code></td>
+<td>the car keeps <code>speed_loop:=</code>'s loop; every model of the car plans with this one. Empty (the default): the car's own</td>
+</tr>
 </tbody>
 </table></div>
 <p>Every model of the car follows <code>speed_loop:=</code> (TODO 163): the path follower's
 (<code>mppi_lag</code>, <code>mpc_lag</code>, <code>mpc_lag_rs</code>), ego's trace and the behaviour planner's stopping
-law. <code>tracker:=mpc_lag</code> and <code>mpc_lag_rs</code> don't model <code>lqi</code> yet: the launch refuses it.</p>
+law, unless <code>speed_loop_model:=</code> names another (sim and bench). <code>tracker:=mpc_lag</code> and
+<code>mpc_lag_rs</code> don't model <code>lqi</code> yet: the launch refuses it as their model.</p>
 </section>
 <section class="card"><h2 id="the-world-and-the-rest">The world and the rest</h2>
 <div class="table-wrap"><table>
@@ -373,7 +406,7 @@ law. <code>tracker:=mpc_lag</code> and <code>mpc_lag_rs</code> don't model <code
 </tr>
 <tr>
 <td><code>voxels:=true</code></td>
-<td>the costmap sees the lidar as 0.25 m cubes, not a flat scan (a trial: <a href="trials.html#voxels-30-oct-the-lidar-as-cubes">Trials</a>)</td>
+<td>the costmap sees the lidar as 0.25 m cubes, not a flat scan (a trial: <a href="../history/trials-log.md#voxels-30-oct-the-lidar-as-cubes">Trials</a>)</td>
 </tr>
 <tr>
 <td><code>costmap:=own</code> (the only one since 17 Nov)</td>
@@ -394,6 +427,7 @@ law. <code>tracker:=mpc_lag</code> and <code>mpc_lag_rs</code> don't model <code
 </tbody>
 </table></div>
 <p>| <code>behaviour:=false</code> | no behaviour planner. On by default in the sim (<code>stack:=ours</code>; off with <code>stack:=best</code>): a speed cap before a stop sign, an obstacle, the fence and the goal (<a href="stopping.html#2-the-behaviour-planner">page</a>) |
+| <code>lanes:=ramp</code> / <code>camera</code> / <code>both</code> | the lanes layer in our global costmap (<code>lane_costs:=true</code>), a challenger, off by default. <code>ramp</code>: the lane map's roads; <code>camera</code>: the same costs from the lane finder's lines, yellow or white (<code>lane_source:=camera</code>, TODO 264; it starts the lane finder): the kerb high, the centre line and oncoming lane medium, the right lane's centre low, never a wall; <code>both</code>: the lane map wins where it has a road (<a href="own-costmap.html#the-lanes-from-the-camera-19-nov-todo-264">page</a>) |
 | <code>lane_map:=world</code> | with <code>behaviour:=true</code>: the road ahead's line on the right lane's centre, with its edges, from the world's lane map (the road world's, or the campus's <code>maps/campus/lanes.yaml</code>); or a <code>lanes.yaml</code>'s path. Off by default: the line is <code>/plan</code>'s |
 | <code>payload:=150</code>, <code>adaptive_brake:=true</code> | kg aboard the modelled car; the brake that learns it stops too slowly (off by default; not with <code>spine</code> or <code>esp32</code>: <a href="stopping.html#4-a-heavier-car-the-adaptive-brake">page</a>) |
 | <code>plan_around:=false</code> | the planner sees only the map, so the car stops for an obstacle (default <code>true</code>: it plans round) |
@@ -422,8 +456,23 @@ swap an algorithm. The rest:</p>
 </tr>
 <tr>
 <td><code>perception</code>, <code>lane</code>, <code>camera_obstacles</code>, <code>faults</code></td>
-<td>the detector, lane keeping (<code>true</code> or <code>fake</code>), boxes into the costmap, the camera fault path (worlds with cameras)</td>
+<td>the detector, the lane finder alone (<code>true</code>), boxes into the costmap, the camera fault path (worlds with cameras)</td>
 <td><code>false</code></td>
+</tr>
+<tr>
+<td><code>lane_finder_impl</code></td>
+<td>with <code>lane</code> or <code>lanes:=camera</code>: the lane finder in <code>rust</code> or <code>python</code>. <code>lane_follower</code>, <code>lane_follower_impl</code> and <code>lane:=fake</code> went with the lane followers on 19 Nov (<a href="../history/lane-followers.md">their scores</a>)</td>
+<td><code>rust</code></td>
+</tr>
+<tr>
+<td><code>geofence_impl</code>, <code>stop_hold_impl</code>, <code>goal_leash_impl</code></td>
+<td>the geofence, the stop hold and the goal leash in <code>rust</code> (<code>aav_safety_rs</code>, 19 Nov: the Python's answers to the bit; the Python removed 20 Nov); the car and the bench take them too</td>
+<td><code>rust</code></td>
+</tr>
+<tr>
+<td><code>gps_heading_impl</code></td>
+<td>the GPS heading in <code>rust</code> (<code>aav_gps_heading_rs</code>, 19 Nov: <code>course.py</code>'s answers to the bit; the Python removed 20 Nov); <code>localization.launch.py</code>'s</td>
+<td><code>rust</code></td>
 </tr>
 <tr>
 <td><code>spine</code>, <code>esp32</code>, <code>esp32_loop</code>, <code>bridge</code></td>
@@ -461,8 +510,47 @@ swap an algorithm. The rest:</p>
 Mac: the track node ran MPC, NDT tracked (2 ms a match), AMCL stayed off, the speed loop
 said LQI, and a Nav2 goal 15 m ahead ended SUCCEEDED.</p>
 </section>
+<section class="card"><h2 id="stage-1-batch-8-challengers-built-19-nov-scored-in-stage-2">Stage 1, batch 8: challengers built 19 Nov, scored in stage 2</h2>
+<p>Each is off by default, and a drop-in: the same topics as the champion.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch (league option)</th>
+<th>In plain words</th>
+<th>TODO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mppi_lag_sampling:=smooth</code> (<code>steer:=mppi_lag_smooth</code>)</td>
+<td>MPPI samples the steering's change, so its commands come out smooth</td>
+<td>212</td>
+</tr>
+<tr>
+<td><code>lane_pass_shape:=jerk</code> (<code>path:=lane_jerk</code>)</td>
+<td>a parked obstacle passed within a lateral-jerk limit (a QP)</td>
+<td>214</td>
+</tr>
+<tr>
+<td><code>ground:=patchwork</code> (<code>kerbs:=patchwork</code>)</td>
+<td>the ground found patch by patch, ring by ring: a lower kerb is an obstacle, a hill isn't</td>
+<td>215</td>
+</tr>
+<tr>
+<td><code>odom_lidar:=kinematic_icp</code> with <code>kiss_ekf:=true</code> (<code>pose:=kinematic_ekf</code>)</td>
+<td>lidar odometry that knows the car can't slide sideways, the wheels its prior, in KISS-ICP's place</td>
+<td>216</td>
+</tr>
+<tr>
+<td><code>things_tracker:=per_kind</code> with <code>things:=true</code> (<code>behaviour:=on_per_kind</code>)</td>
+<td>the things tracked with a motion model per kind (a car can't slide, a person can turn on the spot); a thing found again re-fits its speed</td>
+<td>217</td>
+</tr>
+</tbody>
+</table></div>
+</section>
 <section class="card"><h2 id="the-defaults-what-runs-if-you-say-nothing">The defaults: what runs if you say nothing</h2>
-<p>Checked 3 Nov (<a href="trials.html#3-nov-everything-for-02">the runs</a>): every switch that existed then
+<p>Checked 3 Nov (<a href="../history/trials-log.md#3-nov-everything-for-02">the runs</a>): every switch that existed then
 started and drove a leg in Gazebo. Checked against the launch files 14 Nov: 0.3 changed one
 default (the simulator). Later on 14 Nov the sim's stack became ours (<code>stack:=ours</code>): the
 Sim column below. On 17 Nov Nav2 went: the bench and the car run ours too.</p>
@@ -492,7 +580,7 @@ Sim column below. On 17 Nov Nav2 went: the bench and the car run ours too.</p>
 <td><code>mppi_lag</code></td>
 <td><code>mppi_lag</code></td>
 <td>it reads the costmap, so it steers round what the lidar sees; it reverses</td>
-<td>our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code>, <code>mpc_lag</code> (forward only), <code>mpc_lag_rs</code>; sim only: the bench and the car have no <code>tracker:=</code></td>
+<td>our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code>, <code>mpc_lag</code> (all reverse since 19 Nov), <code>mpc_lag_rs</code> (reverses since 20 Nov); sim only: the bench and the car have no <code>tracker:=</code></td>
 </tr>
 <tr>
 <td>The costmaps</td>

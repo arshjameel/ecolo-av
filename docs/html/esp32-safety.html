@@ -7,7 +7,7 @@
 <!-- Generated from docs/esp32-safety.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The ESP32&#x27;s safety rules</h1>
-<div class="meta">22 min read · 9 sections</div></header>
+<div class="meta">24 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -677,7 +691,7 @@ ESP32 brakes on its own only when ego, the mux, the Pi or the wire stops.</p>
 </tr>
 <tr>
 <td>Can a laptop run the output mux for the real car?</td>
-<td>In principle: it is a ROS node. <strong>No command or machine file does it.</strong> <code>laptop.yaml</code> has only the joystick and the detector. Never tried</td>
+<td><strong>Yes, since 20 Nov</strong>: <code>pixi run car laptop_orin</code> (below). Never tried on the car</td>
 </tr>
 <tr>
 <td>What a laptop can do</td>
@@ -715,8 +729,63 @@ ESP32 brakes on its own only when ego, the mux, the Pi or the wire stops.</p>
 </table></div>
 <p>The heartbeat is made on the Motor Pi, beside the ESP32. The laptop can drop off: its
 slot times out and ego stops the car.</p>
-<p><strong>Missing, for a laptop heartbeat:</strong> a machine file with the mux and ego and no bridge,
-and one bench run. Not recommended: the WiFi would then be in the heartbeat's path.</p>
+<h3 id="the-laptop-as-the-orin-20-nov">The laptop as the Orin (20 Nov)</h3>
+<p>Ben, 20 Nov: "make the joystick and the remote control drive the car and the hardware
+screen ... provide the heartbeat". <span class="badge b-untested">untested</span> on the car.</p>
+<pre class="highlight"><code class="language-text">laptop: joystick ─► mux ─► ego ─► output mux ── WiFi ──► Motor Pi: bridge ─UART─► ESP32
+        hw_panel ─► (45)          (the heartbeat)
+RC transmitter ──────────────────────────────────────────────────── iBUS ─────► ESP32</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the Motor Pi</td>
+<td><code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=motor_pi</code> (the bridge only)</td>
+</tr>
+<tr>
+<td>the laptop, joystick plugged in</td>
+<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run tools/ros.sh ros2 launch aav_bringup car.launch.py machine:=laptop_orin max_speed:=0.3</code></td>
+</tr>
+<tr>
+<td>the laptop, the hardware screen</td>
+<td><code>export ROS_DOMAIN_ID=42</code>, then <code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>If</th>
+<th>The car</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the laptop, the WiFi, the Pi or the wire stops for 100 ms</td>
+<td>Rust firmware: full brake, latched. <strong>A WiFi hiccup is a hard stop</strong> (<code>motor_pi_alone</code> keeps the heartbeat off the WiFi)</td>
+</tr>
+<tr>
+<td>the joystick goes quiet</td>
+<td>ego slows the car (its slot times out)</td>
+</tr>
+<tr>
+<td>the RC's CH6 goes to RC direct</td>
+<td>the sticks drive, with no laptop and no Pi</td>
+</tr>
+<tr>
+<td>the C++ firmware is still on</td>
+<td>no heartbeat at all: stands only</td>
+</tr>
+</tbody>
+</table></div>
+<p>Never with <code>car orin</code> or <code>car motor_pi_alone</code> running too: two muxes and two egos would
+both drive.</p>
+<p>With the Orin reading the sensors and a recording: <a href="drive-and-record.html">drive by hand and record</a>.</p>
 </section>
 <section class="card"><h2 id="8-the-2025-26-c-and-open-questions">8. The 2025-26 C++ and open questions</h2>
 <h3 id="what-the-c-on-the-car-today-does-differently">What the C++ (on the car today) does differently</h3>

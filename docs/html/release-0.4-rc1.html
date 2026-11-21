@@ -7,7 +7,7 @@
 <!-- Generated from docs/release-0.4-rc1.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>0.4-rc1 on the car: Wednesday 18 Nov</h1>
-<div class="meta">9 min read · 8 sections</div></header>
+<div class="meta">10 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -155,7 +169,7 @@ Rehearsed the night before on a Mac, the ESP32 in QEMU: <a href="rehearsal-2026-
 </tr>
 <tr>
 <td>Languages</td>
-<td>six nodes run in Rust by default; their Python twins stay, one switch away</td>
+<td>six nodes ran in Rust by default on 17 Nov; by 18 Nov 16 <code>*_impl:=</code> switches default to Rust (<a href="languages.html">Languages</a>); their Python twins stay, one switch away</td>
 </tr>
 <tr>
 <td>The league</td>
@@ -254,7 +268,7 @@ then <code>pixi run build</code>). Then:</p>
 <td>2</td>
 <td>a Rust node misbehaves</td>
 <td>-</td>
-<td>e-stop, stop the launch, start again with that node's fall-back: <code>~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python</code> (the <code>--</code> is needed)</td>
+<td>e-stop, stop the launch, start again with that node's fall-back: <code>~/aav-jazzy/aav.sh car orin -- ego_impl:=python</code> (the <code>--</code> is needed)</td>
 </tr>
 <tr>
 <td>3</td>
@@ -279,15 +293,15 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>behaviour</td>
-<td><code>behaviour_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-behaviour</code>)</td>
 </tr>
 <tr>
 <td>sensor watchdog</td>
-<td><code>watchdog_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-safety-nodes</code>)</td>
 </tr>
 <tr>
 <td>localization_health</td>
-<td><code>localization_health_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-localization-health</code>)</td>
 </tr>
 <tr>
 <td>lidar_scan</td>
@@ -295,7 +309,7 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>things</td>
-<td><code>things_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-things</code>)</td>
 </tr>
 <tr>
 <td>sensor mux + output mux (the ESP32's heartbeat)</td>
@@ -315,7 +329,7 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>joy_alive (the joystick's check, between joy_node and teleop)</td>
-<td><code>joy_alive_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-safety-nodes</code>)</td>
 </tr>
 <tr>
 <td>stop_sign_watcher (twist_mux's stop-sign lock)</td>
@@ -429,7 +443,7 @@ section 1, and <code>TODO.md</code> 158.</p>
 <tr>
 <td>5</td>
 <td>Clocks across the computers</td>
-<td><code>chronyc tracking</code> on each</td>
+<td><code>chronyc tracking</code> on each; <code>pixi run record-drive --check</code> asks every car computer it can reach by ssh (<a href="recording.html">Recording</a>)</td>
 </tr>
 <tr>
 <td>6</td>
@@ -568,7 +582,7 @@ own ROS domain (160-177, this computer only), the load under 8 at each start.</p
 </tr>
 <tr>
 <td>Sway</td>
-<td>ours swayed about 2 times Nav2 at their last side-by-side (15 Nov)</td>
+<td>in the sim, ours sways as Nav2 on the lot (0.021 against 0.018 m/s²) and less on the campus (0.099 against 0.131), 15 Nov afternoon; untested on the car (an earlier note here said 2 times: that was the morning's run)</td>
 <td><a href="release-0.4.html">0.4-rc1</a></td>
 </tr>
 </tbody>

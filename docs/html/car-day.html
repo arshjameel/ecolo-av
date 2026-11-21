@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-day.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car day: the runbook</h1>
-<div class="meta">83 min read · 33 sections</div></header>
+<div class="meta">84 min read · 33 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a class="here" href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -796,45 +810,7 @@ there stops every ROS program. At the car:
 <code>rm ~/.config/aav/cyclonedds.xml</code>.</p>
 </div>
 <h3 id="pixi-run-car-day-check-on-bens-mac-24-oct"><code>pixi run car-day-check</code> on Ben's Mac, 24 Oct</h3>
-<p>After step 4, before steps 1, 5 and 6: so the repo, the build and the kit are its 3
-missing, and Cyclone a reminder. (The repo line's advice is today's wording.) No secrets: the Keychain is only asked whether each
-entry exists (on a laptop without them, the vault holds them).</p>
-<pre class="highlight"><code class="language-text">Car day: is /Users/ben/Code/ecolo-av ready? (car-day.md)
-
-  MISSING  repo         main at 54304074 has commits GitHub hasn't
-                        -&gt; pixi run test, then move them to a branch and open a pull request (CONTRIBUTING.md)
-  MISSING  build        ros/ changed since the last build (24 Oct 15:06)
-                        -&gt; pixi run build
-  MISSING  car kit      made 2026-10-20 13:54; its code is 37a7b549, main is 54304074
-                        -&gt; pixi run car-kit
-  REMIND   USB stick    no stick with car-kit/ plugged in
-                        -&gt; cp -R car-kit /Volumes/&lt;stick&gt;/
-  OK       model        models/rf-detr-nano.pth (366 MB): the detector (RF-DETR Nano): the Orin builds its engine from it
-  OK       model        models/yolo11n.pt (6 MB): the YOLO fallback (detector:=yolo)
-  OK       model        models/rf-detr-nano.onnx (108 MB): the Orin's engine needs only TensorRT from it (trtexec)
-  OK       MediaMTX     vendor/mediamtx (to test a stream on the laptop)
-  OK       ESP32 tools  Xtensa Rust, espflash (vendor/esp, vendor/cargo-tools)
-  OK       ESP32 Rust   v2 and v1 built 24 Oct 2026 15:47, in car-day/esp32/
-  OK       ESP32 QEMU   esp qemu-check passed 24 Oct 2026 15:47: brakes when the heartbeat stops
-  OK       ESP32 C++    the 2025-26 C++ builds (the way back), 24 Oct 2026 15:47
-  REMIND   ESP32 C++    secrets.h has the placeholders: a C++ built again can't join the WiFi; the backup (session 6) restores it all
-                        -&gt; firmware/legacy/aav_umod_esp32/src/secrets.h: the WiFi from the team, typed in, never committed
-  OK       layouts      driving (20 topics), map (3 topics), sensors-health (6 topics); checked live at the car (session 8)
-  OK       Lichtblick   /Applications/Lichtblick.app
-  OK       docs PDF     docs/html/aav-docs.pdf, built 24 Oct 15:48
-  REMIND   Cyclone      Cyclone DDS uses one network card: name the car's (the dongle) in ~/.config/aav/cyclonedds-car.xml
-                        -&gt; car-day.md, session 0
-  OK       logins       7 of 7 in the Keychain: aav-cam2, aav-cortex, aav-jetson, aav-desktop, aav-localization, aav-cam1, aav-qnxpi
-  OK       SSH key      ~/.ssh/id_ed25519.pub
-  OK       disk         275 GB free for bags
-  REMIND   sheet        print measure-the-car.md (2 copies) and a pen
-                        -&gt; session 2
-  REMIND   kit bag      stands, the RC transmitter, the e-stop, tape, plumb line, 4 scales, blocks, multimeter, dongle, cable
-                        -&gt; car-day.md, "What to bring"
-  REMIND   questions    the hardware lead is coming? H1-H8 need them
-                        -&gt; session 3
-
-14 OK, 3 missing, 6 to tick by hand.</code></pre>
+<p>Moved to <a href="../history/car-day-log.md#pixi-run-car-day-check-on-bens-mac-24-oct">the car-day log</a> on 18 Nov (a dated record).</p>
 </section>
 <section class="card"><h2 id="the-clocks">The clocks, before any recording</h2>
 <p>Bags from two computers only line up if their clocks agree. <code>car_setup.sh</code>'s <code>services</code>
@@ -1422,8 +1398,8 @@ its TensorRT version).</p>
 </table></div>
 <p><strong>Stop point:</strong> our stack built on the Orin and the Motor Pi; the engine built (or why not).</p>
 <h3 id="4f-the-rust-nodes-are-the-ones-running">4f. The Rust nodes are the ones running</h3>
-<p>Since 16 Nov (Ben) four nodes run in <strong>Rust</strong> on the car by default; since 17 Nov six. The Python twins
-stay installed, one switch away. Check this each time you start <code>car.launch.py</code>.</p>
+<p>Since 16 Nov (Ben) four nodes run in <strong>Rust</strong> on the car by default; since 17 Nov six. Since
+20 Nov some have no Python twin left (below: "none"); the rest stay one switch away. Check this each time you start <code>car.launch.py</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1441,17 +1417,17 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>behaviour (with <code>behaviour:=true</code>)</td>
 <td><code>aav_behaviour_rs</code></td>
-<td><code>behaviour_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-behaviour</code>)</td>
 </tr>
 <tr>
 <td>sensor watchdog</td>
 <td><code>aav_watchdog_rs</code></td>
-<td><code>watchdog_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-safety-nodes</code>)</td>
 </tr>
 <tr>
 <td>localization_health</td>
 <td><code>aav_localization_health_rs</code></td>
-<td><code>localization_health_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-localization-health</code>)</td>
 </tr>
 <tr>
 <td>lidar_scan (the flat scan)</td>
@@ -1461,7 +1437,7 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>things (with <code>things:=true</code>)</td>
 <td><code>aav_things_rs</code></td>
-<td><code>things_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-things</code>)</td>
 </tr>
 <tr>
 <td>sensor mux + output mux (the ESP32's heartbeat; the Motor Pi alone too)</td>
@@ -1486,7 +1462,7 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>joy_alive (the joystick's check, wherever teleop runs)</td>
 <td><code>aav_joy_alive_rs</code></td>
-<td><code>joy_alive_impl:=python</code></td>
+<td>none: the Python removed 20 Nov (<code>save/python-safety-nodes</code>)</td>
 </tr>
 <tr>
 <td>stop_sign_watcher (the stop_signs part, next to the mux)</td>
@@ -1513,7 +1489,7 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 <tr>
 <td>1</td>
 <td>read the first lines of <code>car.launch.py</code> (<code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin ...</code>)</td>
-<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust joy_alive_impl:=rust stop_sign_impl:=rust camera_stream_impl:=rust</code></td>
+<td><code>languages: ego_impl:=rust behaviour_impl:=rust watchdog_impl:=rust localization_health_impl:=rust lidar_impl:=rust things_impl:=rust io_mux_impl:=rust legacy_impl:=rust rc_impl:=rust lane_finder_impl:=rust lane_follower_impl:=rust joy_alive_impl:=rust stop_sign_impl:=rust camera_stream_impl:=rust</code></td>
 <td>a word other than <code>rust</code>: someone passed <code>:=python</code></td>
 </tr>
 <tr>
@@ -1531,8 +1507,8 @@ stay installed, one switch away. Check this each time you start <code>car.launch
 </tbody>
 </table></div>
 <p><strong>If a Rust node misbehaves:</strong> stop the car (e-stop), stop the launch, and start it again
-with that node's switch added to the same command, such as <code>... car.launch.py machine:=orin ... watchdog_impl:=python</code>.
-With the short form, put <code>--</code> before the switch: <code>~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python</code>
+with that node's switch added to the same command, such as <code>... car.launch.py machine:=orin ... ego_impl:=python</code>.
+With the short form, put <code>--</code> before the switch: <code>~/aav-jazzy/aav.sh car orin -- ego_impl:=python</code>
 (without <code>--</code>, Pixi stops: "received more arguments than expected"). One switch
 per node; the others stay Rust. Write down what you saw: it decides whether the Rust stays.</p>
 </section>
@@ -2912,6 +2888,12 @@ the sensors' real noise (T2.4) and the replay (T2.5). Bags stay out of git.</p>
 <td>ego and the actuator model against real; the lot's map</td>
 </tr>
 <tr>
+<td>3b</td>
+<td><strong>A mapping drive</strong>, by hand, round the lot</td>
+<td>on the Orin: <code>~/aav-jazzy/aav.sh tools/record.sh --mapping --name lot</code> (<a href="recording.html">Recording a mapping drive</a>): checks first, a summary after; up to 87 GB an hour</td>
+<td>the lot's NDT and SLAM maps, labels, the transfer functions</td>
+</tr>
+<tr>
 <td>4</td>
 <td>The actuator tests</td>
 <td>they save themselves: <code>~/aav-tests/</code> on the laptop</td>
@@ -3253,7 +3235,7 @@ reboots into recovery mode and is off for the whole copy. Not possible at the dr
 </tbody>
 </table></div></section>
 <nav class="prevnext"><a class="prev" href="car-evening.html"><small>Previous</small>← Tonight: drive as is</a>
-<a class="next" href="car-setup.html"><small>Next</small>Car setup →</a></nav>
+<a class="next" href="car-day-2026-11-21.html"><small>Next</small>Car day, 21 Nov →</a></nav>
 </main>
 <footer>Source: <code>docs/car-day.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

@@ -2,8 +2,9 @@
 The geofence: stops every program before the car's stopping distance reaches the fence.
 
   ros2 launch aav_safety geofence.launch.py backend:=spine|uart|sim|sim_esp32
+      [geofence_impl:=rust]
       [radius:=30.0] [centre_x:=0.0] [centre_y:=0.0] [site:=] [max_speed:=]
-      [gps:=true] [stands:=false] [use_sim_time:=false]
+      [gps:=true] [stands:=false] [fix_topic:=/localization/gps/odom] [use_sim_time:=false]
 
 backend: who drives the car, for its command timeout and whether it brakes to a stop
 (geofence.py motion_from): spine (spine_bridge, the bench, the sim spine:=true), uart
@@ -14,6 +15,8 @@ car.launch.py's start_x, start_y). site: a polygon in config/geofence.yaml's sit
 instead, checked against navsat.yaml's datum. max_speed: a lower cap than ego.yaml's (m/s,
 empty: ego.yaml's), as the launch gives ego. gps:=false: no GPS to wait for (only with
 stands:=true). stands:=true: the wheels are off the ground, no fence, said loudly.
+fix_topic: where an absolute fix into the EKF arrives (silent gps_max_age s: LOST); with NDT
+leading (pose_source:=ndt, TODO 210) /localization/pose_check/fix, NDT's or the GPS's.
 twist_mux's geofence lock (aav_command_mux config/twist_mux.yaml) reads its
 /safety/geofence/lock. docs/geofence.md.
 """
@@ -81,11 +84,16 @@ def node_parameters(context):
 
 
 def geofence(context):
+    # geofence_impl: rust (aav_safety_rs, the default since 19 Nov; the Python went on
+    # 20 Nov, tag save/python-safety-nodes).
+    impl = vehicle.check_geofence_impl(LaunchConfiguration('geofence_impl').perform(context))
     # These aren't in the file, so this dict adds them rather than losing to it.
-    return [Node(package='aav_safety', executable='geofence', name='geofence',
-                 output='screen',
+    return [Node(package=vehicle.GEOFENCE_IMPLS[impl], executable='geofence', name='geofence',
+                 namespace='/', output='screen',
                  parameters=[share('aav_safety', 'config', 'geofence.yaml'),
-                             node_parameters(context)])]
+                             node_parameters(context)],
+                 remappings=[('/localization/gps/odom',
+                              LaunchConfiguration('fix_topic').perform(context))])]
 
 
 def generate_launch_description():
@@ -107,6 +115,11 @@ def generate_launch_description():
         DeclareLaunchArgument('gps', default_value='true'),
         DeclareLaunchArgument('stands', default_value='false',
                               description='true: wheels off the ground, no fence (loudly)'),
+        DeclareLaunchArgument('fix_topic', default_value='/localization/gps/odom',
+                              description='where a fix into the EKF arrives: '
+                                          '/localization/pose_check/fix with NDT leading'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
+        DeclareLaunchArgument('geofence_impl', default_value=vehicle.DEFAULT_GEOFENCE_IMPL,
+                              description='rust (aav_safety_rs; the Python removed 20 Nov)'),
         OpaqueFunction(function=geofence),
     ])

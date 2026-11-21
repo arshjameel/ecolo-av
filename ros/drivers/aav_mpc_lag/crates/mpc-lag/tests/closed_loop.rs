@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use car_model::{ActuatorConfig, CarState, Command as CarCommand, SpeedLoop, SpeedLoopProfile};
 use mpc_lag::model::lags_scaled;
-use mpc_lag::{wrap, Limits, MpcLag, Observed, Path, Settings, TrackError};
+use mpc_lag::{wrap, CuspRules, Geared, Limits, MpcLag, Observed, Path, Settings, TrackError};
 
 /// sim_car.py's LIMITS: ego's steering rate is the tighter one.
 const LIMITS: Limits = Limits {
@@ -242,6 +242,52 @@ fn a_step_offset_converges() {
 }
 
 #[test]
+fn in_the_tube_it_holds_its_line_and_outside_it_comes_back() {
+    let with_tube = |cruise| {
+        let settings = Settings {
+            cruise,
+            tube: 0.2,
+            ..Settings::default()
+        };
+        MpcLag::new(LIMITS, ActuatorConfig::default(), settings).expect("a tracker")
+    };
+    let steering_work = |run: &Run| {
+        run.rows
+            .windows(2)
+            .map(|w| (w[1][5] - w[0][5]).abs())
+            .sum::<f64>()
+    };
+    // 0.15 m off, inside the tube: no pull back to the centre, so it barely steers.
+    let held = follow(with_tube(1.0), &straight(30.0), (0.0, 0.15, 0.0), 1.0);
+    let pulled = follow(tracker(1.0), &straight(30.0), (0.0, 0.15, 0.0), 1.0);
+    assert!(held.reached && pulled.reached);
+    let late = |run: &Run| {
+        run.rows
+            .iter()
+            .filter(|r| r[1] > 20.0)
+            .map(|r| r[6])
+            .sum::<f64>()
+            / run.rows.iter().filter(|r| r[1] > 20.0).count() as f64
+    };
+    assert!(late(&held) > 0.1, "{} m: pulled to the centre", late(&held));
+    assert!(late(&pulled).abs() < 0.05);
+    assert!(steering_work(&held) < steering_work(&pulled));
+    // 1 m off: back into the tube, and no further.
+    for cruise in [1.0, 3.0] {
+        let run = follow(with_tube(cruise), &straight(40.0), (0.0, 1.0, 0.0), 1.0);
+        assert!(run.reached);
+        let worst_late = run
+            .rows
+            .iter()
+            .filter(|r| r[1] > 25.0)
+            .map(|r| r[6].abs())
+            .fold(0.0, f64::max);
+        assert!(worst_late < 0.25, "{worst_late} m off at {cruise} m/s");
+        run.check_limits(cruise);
+    }
+}
+
+#[test]
 fn a_curve_stays_close() {
     for cruise in [1.0, 3.0] {
         let run = follow(tracker(cruise), &arc(8.0), (0.0, 0.0, 0.0), 1.0);
@@ -335,4 +381,177 @@ fn it_refuses_bad_numbers() {
         mpc.step(&Observed::default(), PERIOD).err(),
         Some(TrackError::NoPath)
     );
+}
+
+// --- Forward and back (TODO 213) ---------------------------------------------------------
+
+/// m/s: vehicle.yaml's max_reverse_speed.
+const REVERSE: f64 = 0.5;
+
+/// Ego both ways: the speed within its ramps (through 0 at a change of direction), the
+/// steering within its rate, held below 0.05 m/s.
+struct SignedEgo {
+    speed: f64,
+    steering: f64,
+}
+
+impl SignedEgo {
+    fn step(&mut self, v: f64, steer: f64, dt: f64) -> (f64, f64) {
+        let target = if v.abs() > 0.05 { steer } else { self.steering };
+        let target = target.clamp(-LIMITS.max_steer, LIMITS.max_steer);
+        let v = v.clamp(-REVERSE, 5.0);
+        // Slowing (toward 0) at the brake's 2 m/s², speeding up at 1.
+        let slowing = (v - self.speed) * self.speed.signum() < 0.0;
+        let most = if slowing { 2.0 * dt } else { 1.0 * dt };
+        self.speed += (v - self.speed).clamp(-most, most);
+        let most = 0.6 * dt;
+        self.steering += (target - self.steering).clamp(-most, most);
+        (self.speed, self.steering)
+    }
+}
+
+/// A geared run: every tick (t, x, y, yaw, speed, steer, cross track, speed asked,
+/// stretch); and where and how fast the car was at each change of stretch.
+#[derive(Default)]
+struct GearedRun {
+    rows: Vec<[f64; 9]>,
+    changes: Vec<(f64, f64, f64)>,
+    reached: bool,
+}
+
+/// Drive `poses` with its cusps as the node does: `Geared` on the pretend car (signed).
+fn follow_geared(poses: &[(f64, f64, f64)], cruise: f64) -> GearedRun {
+    let settings = Settings {
+        cruise,
+        ..Settings::default()
+    };
+    let mpc = MpcLag::new(LIMITS, ActuatorConfig::default(), settings).expect("a tracker");
+    let mut g = Geared::new(mpc, REVERSE, CuspRules::default());
+    g.follow(poses).expect("a path");
+    let car = ActuatorConfig {
+        wheelbase: LIMITS.wheelbase,
+        ..ActuatorConfig::default()
+    };
+    let mut lp = SpeedLoop::new(SpeedLoopProfile::Default.config());
+    let mut ego = SignedEgo {
+        speed: 0.0,
+        steering: 0.0,
+    };
+    let mut state = CarState::default();
+    let (gx, gy, gyaw) = g.goal().expect("a goal");
+    let (mut t, mut steer, mut xy_done) = (0.0, 0.0, false);
+    let mut run = GearedRun::default();
+    while t < 120.0 {
+        if g.advance(state.x, state.y, state.v, t) {
+            run.changes.push((state.x, state.y, state.v));
+        }
+        if g.on_last() {
+            xy_done |= (gx - state.x).hypot(gy - state.y) <= 1.0;
+            if xy_done && wrap(gyaw - state.yaw).abs() <= 0.75 {
+                run.reached = true;
+                return run;
+            }
+        }
+        let seen = Observed {
+            x: state.x,
+            y: state.y,
+            yaw: state.yaw,
+            v: state.v,
+            steer,
+        };
+        let cmd = g.step(&seen, PERIOD).expect("a command");
+        steer = cmd.steer;
+        let cross = cmd.report.foot.map_or(0.0, |f| f.cross);
+        let stretch = g.gears().map_or(0, |gs| gs.index()) as f64;
+        run.rows.push([
+            t, state.x, state.y, state.yaw, state.v, steer, cross, cmd.speed, stretch,
+        ]);
+        for _ in 0..(PERIOD / PHYSICS).round() as usize {
+            let (v, d) = ego.step(cmd.speed, steer, PHYSICS);
+            state = car
+                .step(&state, CarCommand::speed(v, d), PHYSICS, Some(&mut lp))
+                .expect("a step");
+            t += PHYSICS;
+        }
+    }
+    run
+}
+
+/// Backing up 8 m along -x: the poses face +x (the car's way), the path runs -x.
+fn back_straight() -> Vec<(f64, f64, f64)> {
+    (0..=80).map(|i| (-(i as f64) * 0.1, 0.0, 0.0)).collect()
+}
+
+/// 6 m east, a cusp, then backwards round a quarter circle of 5 m to the left (aav_track's
+/// sim_car.forward_then_back): it ends 5 m behind the cusp and 5 m left, facing south.
+fn forward_then_back() -> Vec<(f64, f64, f64)> {
+    let (ahead, radius, step) = (6.0, 5.0, 0.1);
+    let mut pts: Vec<_> = (0..=60).map(|i| (i as f64 * step, 0.0, 0.0)).collect();
+    let n = (radius * PI / 2.0 / step) as usize;
+    for i in 1..=n {
+        let a = i as f64 * step / radius;
+        pts.push((ahead - radius * a.sin(), radius - radius * a.cos(), -a));
+    }
+    pts
+}
+
+#[test]
+fn it_backs_up_a_straight_line() {
+    let run = follow_geared(&back_straight(), 1.0);
+    assert!(run.reached);
+    assert!(run.changes.is_empty());
+    for r in &run.rows {
+        assert!((-REVERSE - 1e-9..=0.0).contains(&r[7]), "asked {}", r[7]);
+        assert!(
+            r[4] >= -0.65,
+            "the speed loop overshoots a little: {}",
+            r[4]
+        );
+        assert!(r[6].abs() < 0.05, "{} m off the line", r[6]);
+    }
+}
+
+#[test]
+fn it_stops_at_the_cusp_then_backs_round_a_bend() {
+    let run = follow_geared(&forward_then_back(), 1.0);
+    assert!(run.reached, "the goal");
+    // One change of gear, at the cusp (6, 0), standing.
+    assert_eq!(run.changes.len(), 1);
+    let (x, y, v) = run.changes[0];
+    println!("at the cusp: ({x:.2}, {y:.2}) at {v:.3} m/s");
+    assert!(
+        (x - 6.0).hypot(y) < 0.3,
+        "the gear changed at {x:.2}, {y:.2}"
+    );
+    assert!(v.abs() <= 0.05, "the gear changed at {v} m/s");
+    let forward: Vec<_> = run.rows.iter().filter(|r| r[8] == 0.0).collect();
+    let back: Vec<_> = run.rows.iter().filter(|r| r[8] == 1.0).collect();
+    assert!(!forward.is_empty() && !back.is_empty());
+    assert!(forward.iter().all(|r| r[7] >= 0.0) && back.iter().all(|r| r[7] <= 0.0));
+    assert!(back.iter().all(|r| r[7] >= -REVERSE - 1e-9));
+    // Never further past the cusp than the stretch's own stop allows.
+    assert!(forward.iter().all(|r| r[1] < 6.3));
+    // Close round the bend backwards (after the first quarter: it starts from a stop with
+    // the wheels straight; ego holds them while it stands).
+    let worst = back[back.len() / 4..]
+        .iter()
+        .map(|r| r[6].abs())
+        .fold(0.0, f64::max);
+    println!("backwards round the 5 m bend: {worst:.3} m off the path");
+    assert!(worst < 0.25, "{worst} m off backwards");
+}
+
+#[test]
+fn it_goes_forward_back_and_forward_again() {
+    // A three-point turn's shape: 4 m east, 3 m back, 4 m east again.
+    let mut p: Vec<_> = (0..=40).map(|i| (i as f64 * 0.1, 0.0, 0.0)).collect();
+    p.extend((1..=30).map(|i| (4.0 - i as f64 * 0.1, 0.0, 0.0)));
+    p.extend((1..=40).map(|i| (1.0 + i as f64 * 0.1, 0.0, 0.0)));
+    let run = follow_geared(&p, 1.0);
+    assert!(run.reached);
+    assert_eq!(run.changes.len(), 2);
+    for (&(x, _, v), cusp) in run.changes.iter().zip([4.0, 1.0]) {
+        println!("cusp at {cusp} m: changed at {x:.2} m, {v:.3} m/s");
+        assert!((x - cusp).abs() < 0.3 && v.abs() <= 0.05, "at {x}, {v} m/s");
+    }
 }

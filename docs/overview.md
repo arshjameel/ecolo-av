@@ -53,7 +53,7 @@ The main ones. Every package: [Packages](packages.md).
 | `aav_navigation` | our navigation set up for a car (each node a port of a Nav2 server), and the maps | drivers |
 | `aav_routes` | street routes (Valhalla) as GPS waypoints for the navigator | drivers |
 | `aav_localization` | the two EKFs and GPS-to-map: settings only | localization |
-| `aav_gps_heading` | the heading from the GPS receiver's velocity, for `ekf_global` | localization |
+| `aav_gps_heading_rs` | the heading from the GPS receiver's velocity, for `ekf_global` | localization |
 | `aav_description` | the car's model and `vehicle.yaml` | bringup |
 | `aav_sensors` | starts the sensor drivers, with their settings. The GPS: `ublox_gps` by default | sources |
 | `aav_imu_yahboom` | the IMU driver, in Rust (Ben's rewrite of the 2025-26 C++ one) | sources |
@@ -82,12 +82,12 @@ Off unless a switch turns them on; in the simulator only, except where it says
 
 | Package | Does | Area |
 |---|---|---|
-| `aav_ndt`, `aav_kiss_icp`, `aav_localization_health` | NDT on a saved lidar map (Rust); KISS-ICP lidar odometry (stock, MIT); health checks that only warn (on by default) | localization |
+| `aav_ndt`, `aav_kiss_icp`, `aav_localization_health_rs` | NDT on a saved lidar map (Rust); KISS-ICP lidar odometry (stock, MIT); health checks that only warn (on by default) | localization |
 | `aav_voxels` | the lidar as 0.25 m cubes for the costmap | perception |
 | `aav_track`, `aav_mppi_lag` | path followers: pure pursuit, Stanley, LQR, MPC, a lag-aware MPC; Nav2's MPPI in Rust on a model with the car's lags | drivers |
 | `aav_costmap`, `aav_planner`, `aav_navigator`, `aav_smoother` | Nav2's costmap, State Lattice planner, navigator and velocity smoother, ported to Rust: the defaults since 17 Nov | drivers |
 | `aav_diffusion_planner` | a small model draws the path, a guard checks it, the lattice is the fallback | drivers |
-| `aav_behaviour` | the behaviour planner: a speed cap on navigation before a stop sign, an obstacle, the fence and the goal | drivers |
+| `aav_behaviour_rs` | the behaviour planner: a speed cap on navigation before a stop sign, an obstacle, the fence and the goal | drivers |
 
 ## Stock ROS packages and plugins we use
 
@@ -106,7 +106,7 @@ Off unless a switch turns them on; in the simulator only, except where it says
 | Description | `robot_state_publisher`, `joint_state_publisher`, `xacro` | the car's model and frames |
 | Localization | `robot_localization`: `ekf_node` (twice) and `navsat_transform_node` | where the car is: `ekf_local` to steer, `ekf_global` to plan, GPS into map coordinates |
 | Localization | `tf2_ros` | a fixed map-to-odom frame when there's no GPS |
-| Localization | `nav2_amcl` (kept, with its lifecycle manager, when the rest of Nav2 went); KISS-ICP (not ROS, MIT) | trials beside the EKFs, off by default |
+| Localization | AMCL, ours in Rust (`aav_amcl_rs`, since 18 Nov; stock `nav2_amcl` removed 20 Nov); KISS-ICP (not ROS, MIT) | trials beside the EKFs, off by default |
 | Drivers | `joy`, `teleop_twist_joy`, `joy_teleop` | the joystick, its deadman, its e-stop button |
 | Drivers | `teleop_twist_keyboard` | driving from a laptop's keyboard |
 | Messages | `nav2_msgs` | Nav2's action and message types: our navigator, planner and follower serve Nav2's names, so goal senders never changed. Nav2's servers went on 17 Nov ([as it was](history/nav2-as-it-was.md)) |

@@ -68,7 +68,11 @@ speed_loop.mode picks how ego's speed becomes throttle and brake: open (the defa
 (speed_control: feed-forward from ego's speed profile plus PI on the wheel speed, out as
 throttle or brake; docs/designs/2026-10-27_control-plan.md, step 1). Its gains are
 speed_loop.kp and the rest of SpeedControlConfig; the car model's numbers come from
-vehicle.yaml's actuators: through legacy.launch.py.
+vehicle.yaml's actuators: through legacy.launch.py. adaptive_brake (false; pi only, TODO
+258) puts the adaptive brake (aav_description adaptive_brake.py, the sim's) between the pi
+loop and the brake: harder when the car slows less than the model, never above
+brake.safe_max; the stops (stale, e-stop) never pass through it. adaptive_brake.* and
+brake.* come from vehicle.yaml through legacy.launch.py.
 
 The bridge only relays the counter, never makes one: when ego or the output mux go quiet
 it keeps sending its stale-stop frames (brake, no throttle), with the last counter
@@ -81,6 +85,8 @@ only (wheels off the ground, a person at the e-stop).
 
 import signal
 
+from aav_description.adaptive_brake import AdaptiveBrake, BrakeLimits
+from aav_description.car_model import ActuatorConfig
 from aav_interfaces.msg import (ActuatorRaw, ActuatorState, DataSource, Heartbeat, LinkFrame,
                                 RcSticks, SensorSource, SteeringCalibration, UplinkHealth,
                                 VehicleStatus)
@@ -88,7 +94,7 @@ from aav_legacy import uplink_reader as ur
 from aav_legacy.legacy_protocol import LegacyMapping
 from aav_legacy.link_report import LinkReport
 from aav_legacy.speed_control import SpeedControl, SpeedControlConfig
-from aav_legacy.uart_relay import programs_locked, Relay
+from aav_legacy.uart_relay import ADAPTIVE_CAR, programs_locked, Relay
 from ackermann_msgs.msg import AckermannDriveStamped
 from nav_msgs.msg import Odometry
 import rclpy
@@ -132,7 +138,8 @@ class LegacyUartBridge(Node):
             loop = SpeedControl(SpeedControlConfig(**{
                 k: float(self.declare_parameter(f'speed_loop.{k}', float(v)).value)
                 for k, v in vars(SpeedControlConfig()).items()}))
-        self.relay = Relay(mapping, timeout, version, loop, odom_timeout, calibration)
+        self.relay = Relay(mapping, timeout, version, loop, odom_timeout, calibration,
+                           adaptive_brake=self.adaptive_brake(loop))
         self.relay.uplink_timeout = uplink_timeout
         if calibration != 'none':
             self.get_logger().warning(
@@ -221,6 +228,29 @@ class LegacyUartBridge(Node):
 
     def on_cmd(self, msg):
         self.relay.command(msg.drive.speed, msg.drive.steering_angle, self.now())
+
+    def adaptive_brake(self, loop):
+        """
+        Return the adaptive brake (TODO 258) if adaptive_brake is true, else None.
+
+        Only with the pi loop, which asks for a brake. Its car model (adaptive_brake.*) and
+        the brake's limits (brake.*) come from vehicle.yaml through legacy.launch.py.
+        """
+        if not self.declare_parameter('adaptive_brake', False).value:
+            return None
+        if loop is None:
+            raise ValueError('adaptive_brake needs speed_loop.mode pi: it sits after the speed '
+                             'loop, and open sends no brake to adapt')
+        car = ActuatorConfig(**{
+            k: float(self.declare_parameter(f'adaptive_brake.{k}',
+                                            float(getattr(ActuatorConfig(), k))).value)
+            for k in ADAPTIVE_CAR})
+        limits = BrakeLimits(**{
+            k: float(self.declare_parameter(f'brake.{k}', float(v)).value)
+            for k, v in vars(BrakeLimits()).items()})
+        self.get_logger().info('adaptive_brake: on, after the pi loop; never above '
+                               'brake.safe_max')
+        return AdaptiveBrake(car, limits)
 
     def on_odom(self, msg):
         self.relay.wheel_speed(msg.twist.twist.linear.x, self.now())

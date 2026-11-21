@@ -73,3 +73,4 @@ through ROS.
 - 2026-10-15: finished. Topic names by area; the C++ vectors recorded and checked; wired
   into car, bench and sim launch files; `aav_object_detection` removed.
 - 2026-11-15 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.
+- 2026-11-20 (TODO 176): `cloud.rs` reads through the shared `cloud-view` crate (`ros/bringup/aav_description/cloud-view`); its `Datatype` is now that crate's (all eight PointField types); the C++ vectors still pass bit for bit.

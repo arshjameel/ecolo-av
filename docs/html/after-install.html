@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>After the install: is everything working? · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/after-install.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>After the install: is everything working?</h1>
+<div class="meta">7 min read · 7 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a class="here" href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#the-order">The order</a><a href="#1-each-laptop-about-30-minutes">1. Each laptop (about 30 minutes)</a><a href="#2-each-car-computer-alone">2. Each car computer, alone</a><a href="#3-the-car-together">3. The car together</a><a href="#4-then-phase-a">4. Then phase A</a><a href="#when-something-fails">When something fails</a><a href="#whats-been-tested">What&#x27;s been tested</a></nav>
+<div class="lead"><p>Ben, 19 Nov: "we need a testing document after everybody installs stuff". The car is being
+upgraded (the Pis to Ubuntu 24.04, the Orin to JetPack 7.2) and everyone installs our code.
+This page is the checklist <strong>after</strong> that, <strong>before</strong> <a href="testing-plan.html#phase-a-the-car-on-stands">phase A</a>
+puts the car on stands. Nothing here moves the car.</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ol>
+<li><strong>Each laptop</strong>: install, build, test, a sim drive.</li>
+<li><strong>Each car computer</strong>: <code>car_setup.sh &lt;role&gt; check</code>, its service, its clock, its devices.</li>
+<li>
+<p><strong>The car together</strong>, wheels off the ground, e-stop in hand: every topic, every screen,
+   the e-stop.</p>
+</li>
+<li>
+<p>All ✅ → <a href="testing-plan.html#phase-a-the-car-on-stands">phase A</a>: <code>pixi run car-test --stands</code>.</p>
+</li>
+</ol>
+</blockquote>
+<p>How to install: laptops <a href="first-day.html">Your first day</a>; car computers <a href="car-setup.html">Car setup</a>
+and <a href="car-install.html">From a USB stick</a>.</p></div>
+<section class="card"><h2 id="the-order">The order</h2>
+<pre class="highlight"><code class="language-text"> 1. laptops (anyone, any time)
+ 2. each car computer, alone      Orin ─ Motor Pi ─ localization Pi ─ dash Pi ─ camera Pis
+ 3. the car together              network ─ clocks ─ topics ─ screens ─ e-stop
+ 4. phase A on stands             pixi run car-test --stands</code></pre>
+<p>Write a ✅ or ❌ in each box, your name and the date, and put the filled page (a photo is
+fine) in the team chat. A ❌ stops here: fix it, or ask, before the next part.</p>
+</section>
+<section class="card"><h2 id="1-each-laptop-about-30-minutes">1. Each laptop (about 30 minutes)</h2>
+<p>Who: everyone on the team. Mac or Linux.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Do</th>
+<th>You should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td><code>git pull</code> (on <code>main</code> of your fork), then <code>pixi install</code></td>
+<td>no errors</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run build</code></td>
+<td><code>Summary: ... packages finished</code>, no <code>failed</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run test</code></td>
+<td><code>0 errors, 0 failures</code> (about 30-45 min the first time)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run sim-check</code></td>
+<td>every line PASS: the contract, the sensors, a drive</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run sim-check --faults</code></td>
+<td>15 of 15: each fault stops the car</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run map --demo --debug-page</code></td>
+<td>the map window; press <strong>D</strong>: who is driving, what each asks</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run doctor</code> (on the car's WiFi)</td>
+<td>OK lines; any FIX says what to change</td>
+</tr>
+</tbody>
+</table></div>
+<p>No GPU (a Linux laptop without one): put <code>tools/software_gl.sh</code> in front of <code>sim-check</code>.</p>
+</section>
+<section class="card"><h2 id="2-each-car-computer-alone">2. Each car computer, alone</h2>
+<p>Who: the person who installed it, with the hardware lead. Over <code>ssh</code>. Logins from the team's
+vault, typed, never pasted into a file or chat.</p>
+<h3 id="on-every-car-computer">On every car computer</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Do</th>
+<th>You should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td><code>bash ~/car-kit/car_setup.sh &lt;role&gt; check</code></td>
+<td>the new release (Ubuntu 24.04; JetPack 7.2 on the Orin) and <strong>no STOP</strong> line</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>systemctl --user status aav-car</code> (not the camera Pis)</td>
+<td><code>active (running)</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>journalctl --user -u aav-car -n 50</code></td>
+<td>no <code>ERROR</code>, no restarts in a loop</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>chronyc sources</code></td>
+<td>the Orin with <code>*</code> (the Orin itself: its own source)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>~/aav-jazzy/aav.sh tools/car_listen.sh</code></td>
+<td>the devices it should have, each found (read-only: opens nothing)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Reboot, wait 2 min, run <code>systemctl --user status aav-car</code> again</td>
+<td>it came back by itself</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="and-per-computer">And per computer</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Computer</th>
+<th>☐</th>
+<th>Also check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Orin</strong></td>
+<td>☐</td>
+<td><code>nvidia-smi</code> or <code>tegrastats</code>: the GPU is seen</td>
+</tr>
+<tr>
+<td></td>
+<td>☐</td>
+<td>The lidar (VLP-16, over Ethernet) answers: <code>ros2 topic hz /sensors/lidar/points</code> about 10 Hz</td>
+</tr>
+<tr>
+<td></td>
+<td>☐</td>
+<td>The TensorRT engine rebuilt for JetPack 7.2's TensorRT (<a href="car-day.html#4d-rf-detrs-tensorrt-engine">session 4d</a>)</td>
+</tr>
+<tr>
+<td></td>
+<td>☐</td>
+<td>Untested: the ONNX models from Rust on TensorRT, the detector and the diffusion worker; delete the old engines in <code>models/*.cache/tensorrt/</code> first (<a href="onnx.html#untested-the-orin">ONNX, the Orin</a>)</td>
+</tr>
+<tr>
+<td><strong>Motor Pi</strong></td>
+<td>☐</td>
+<td>The ESP32's serial port is back (<code>check</code>'s <code>UART</code> line is OK)</td>
+</tr>
+<tr>
+<td></td>
+<td>☐</td>
+<td>The 2025-26 <code>aav_serial_bridge</code> is <strong>not</strong> running beside ours (never two drive paths)</td>
+</tr>
+<tr>
+<td><strong>Localization Pi</strong></td>
+<td>☐</td>
+<td>The IMU and the GPS: <code>/dev/aav/imu</code>, <code>/dev/aav/gps</code></td>
+</tr>
+<tr>
+<td><strong>Dash Pi</strong></td>
+<td>☐</td>
+<td>Both screens come up at boot: <code>aav-hud</code> and <code>aav-map</code></td>
+</tr>
+<tr>
+<td><strong>Camera Pis</strong></td>
+<td>☐</td>
+<td>MediaMTX running; the stream opens on a laptop</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="3-the-car-together">3. The car together</h2>
+<p>Who: three people. <strong>The e-stop person</strong> (hand on the button the whole time), the person at
+the laptop, the hardware lead. The car on stands or with its wheels blocked; the drive
+motor's power off until the last row.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Do (on a laptop on the car's WiFi)</th>
+<th>You should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>☐</td>
+<td><code>pixi run doctor</code></td>
+<td>it finds the car (<code>/ego</code>, <code>/twist_mux</code>); domain 42</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run check car</code></td>
+<td>every topic in the contract, at its rate; nothing missing</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run tools/ros.sh ros2 topic hz /sensors/lidar/points</code> (and the IMU, GPS, wheels, each camera)</td>
+<td>about the rate in <a href="interfaces.html">Interfaces</a></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Look at the HUD and the map screen on the dash</td>
+<td>the car's speed, the GPS fix, the map; press <strong>D</strong> on the map: the debug page</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Press the <strong>e-stop</strong></td>
+<td>the HUD says E-STOP; the debug page's gate says why; <code>/safety/estop</code> true</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Release it, then the joystick: steer left and right only (drive power off)</td>
+<td>the wheels follow, positive = left</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Unplug one sensor (the hardware lead says which), then plug it back</td>
+<td>the watchdog says STALE for it within 1 s, the gate stops; it clears when back</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>pixi run record-drive --check</code></td>
+<td>every check OK: disk space, rates, clocks, sensor frames</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="4-then-phase-a">4. Then phase A</h2>
+<p>All ✅? The car goes on stands: <code>pixi run car-test --stands</code>, one command, one report
+(<a href="testing-plan.html#phase-a-the-car-on-stands">phase A</a>). It repeats the sensor checks above and
+adds steering, throttle on free wheels and faults on purpose, losing the Orin among them.</p>
+</section>
+<section class="card"><h2 id="when-something-fails">When something fails</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Try</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>check</code> says STOP</td>
+<td>its line says why; <a href="car-setup.html#when-it-stops">Car setup: when it stops</a></td>
+</tr>
+<tr>
+<td><code>aav-car</code> restarts in a loop</td>
+<td><code>journalctl --user -u aav-car -n 200</code>: the first error; often a device name missing (<code>udev</code>)</td>
+</tr>
+<tr>
+<td>A laptop can't see the car</td>
+<td><code>pixi run doctor</code>; the same <code>ROS_DOMAIN_ID</code> (42 for the car) and the car's WiFi</td>
+</tr>
+<tr>
+<td>A topic is missing in <code>check car</code></td>
+<td>the computer that publishes it (<a href="car-day.html#the-machines">the machines</a>): its service and its log</td>
+</tr>
+<tr>
+<td>The clocks disagree</td>
+<td><code>chronyc sources</code> on each; the Orin serves the time</td>
+</tr>
+<tr>
+<td>A test fails on a laptop</td>
+<td>run it again; still failing: the last 20 lines into the team chat or Claude</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="whats-been-tested">What's been tested</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Part 1 (laptops)</td>
+<td><span class="badge b-works">works</span> on Ben's Mac, 19 Nov (<code>pixi run test</code>, <code>sim-check --faults</code>)</td>
+</tr>
+<tr>
+<td>Parts 2 and 3</td>
+<td><span class="badge b-untested">untested</span>: written for the upgraded car; each command's own page says what was tried</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="tests.html"><small>Previous</small>← Every test</a>
+<a class="next" href="testing-plan.html"><small>Next</small>The testing plan →</a></nav>
+</main>
+<footer>Source: <code>docs/after-install.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

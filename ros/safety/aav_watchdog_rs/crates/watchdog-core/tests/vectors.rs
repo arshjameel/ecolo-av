@@ -9,7 +9,7 @@ use std::fs;
 use serde_json::Value;
 use watchdog_core::feed::{Feed, Said};
 use watchdog_core::picture_digest;
-use watchdog_core::watch::{Kind, Rule, Watchdog};
+use watchdog_core::watch::{Kind, Rule, Severity, Watchdog};
 use watchdog_core::wheels::CrossCheck;
 
 fn vectors() -> Value {
@@ -60,6 +60,10 @@ fn rule(d: &Value) -> Rule {
         over_warn: f(&d["over_warn"]),
         over_persist: f(&d["over_persist"]),
         over_slowing: f(&d["over_slowing"]),
+        status_name: text(&d["status_name"]).into(),
+        min_level: Severity::from_min_level(d["min_level"].as_i64().expect("min_level"))
+            .expect("1, 2 or 3"),
+        quiet_ok: d["quiet_ok"].as_bool().expect("quiet_ok"),
     }
     .checked()
     .expect("a good rule")
@@ -109,7 +113,14 @@ fn every_tick_is_the_pythons() {
                 "heartbeat" => feed.heartbeat(t, text(&e[2]), e[3].as_u64().expect("count")),
                 "actuator" => feed.actuator(t, text(&e[2]), f(&e[3]), f(&e[4])),
                 "speed" => feed.speed(t, text(&e[2]), f(&e[3])),
-                "cloud" => feed.cloud(t, text(&e[2])),
+                "cloud" => {
+                    let digest = u32::try_from(e[3].as_u64().expect("digest")).expect("u32");
+                    feed.cloud(t, text(&e[2]), digest);
+                }
+                "status" => {
+                    let level = u8::try_from(e[4].as_u64().expect("level")).expect("u8");
+                    feed.status(t, text(&e[2]), text(&e[3]), level, text(&e[5]));
+                }
                 "clear" => feed.clear(),
                 "tick" => {
                     let running: HashSet<String> = e[3]
@@ -180,7 +191,7 @@ fn every_tick_is_the_pythons() {
     );
     assert!(ticks_seen >= 1600);
     // Every state was exercised.
-    assert_eq!(states_seen.len(), 11, "{states_seen:?}");
+    assert_eq!(states_seen.len(), 12, "{states_seen:?}");
 }
 
 #[test]

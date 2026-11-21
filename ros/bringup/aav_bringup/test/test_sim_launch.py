@@ -10,6 +10,7 @@ them (test_lot renders them since 15 Oct). The lidar is on by default (15 Oct).
 import importlib.util
 import os
 
+from aav_sim_models import worlds
 from ament_index_python.packages import get_package_prefix
 from ament_index_python.packages import get_package_share_directory
 from ament_index_python.packages import PackageNotFoundError
@@ -180,6 +181,12 @@ def test_ours_plans_the_lanes_centre_where_the_world_has_a_lane_map():
     assert lane_route(world='road', stack='best') == ''
     assert lane_route(world='road', path='lattice_rs_strong') == ''
 
+    # TODO 214: path:=lane_jerk passes with the jerk-limited QP; the others the cosine.
+    def pass_shape(**args):
+        return included(started(SIM, **args))['navigation.launch.py']['lane_pass_shape']
+    assert pass_shape(world='road', path='lane_jerk') == 'jerk'
+    assert pass_shape(world='road') == ''
+
 
 def test_the_global_costmap_is_made_of_chunks_only_where_there_are_chunks(tmp_path):
     # TODO 175: costmap_chunks:=auto is the campus's chunks (pixi run campus makes them);
@@ -214,6 +221,19 @@ def test_the_simulated_cars_speed_loop_reaches_ego_and_the_car():
         started(SIM, speed_loop='fast')
     with pytest.raises(ValueError, match='PI'):
         started(SIM, speed_loop='lqi', tracker='mpc_lag', reversing='false')
+    # speed_loop_model:= (TODO 163): the car runs one loop, every model plans with another.
+    split = included(started(SIM, speed_loop='firm', speed_loop_model='smooth'))
+    assert split['ravensim.launch.py']['speed_loop'] == 'firm'
+    assert split['ego.launch.py']['speed_loop'] == 'smooth'
+    assert split['navigation.launch.py']['speed_loop'] == 'smooth'
+    with pytest.raises(ValueError, match='speed_loop_model:=fast'):
+        started(SIM, speed_loop_model='fast')
+    # The MPCs refuse the LQI as their model, not as the car's loop.
+    with pytest.raises(ValueError, match='PI'):
+        started(SIM, speed_loop_model='lqi', tracker='mpc_lag', reversing='false')
+    sent = included(started(SIM, speed_loop='lqi', speed_loop_model='smooth',
+                            tracker='mpc_lag', reversing='false'))
+    assert sent['ravensim.launch.py']['speed_loop'] == 'lqi'
 
 
 def test_the_stacks_switches_are_declared_empty_so_a_hand_set_one_is_seen():
@@ -244,7 +264,7 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
     # The empty world renders no camera, radar or lidar: the watchdog watches the rest.
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     # The sensors, then our own nodes the stack starts (warn only: TODO 180).
-    sensors = [i for i in inputs if not i.startswith('node_')]
+    sensors = [i for i in inputs if not i.startswith(('node_', 'status_'))]
     assert sensors == 'odom,imu,gps,local,global,steering,speed'.split(',')
     assert {'node_ego', 'node_planner', 'node_mppi_lag'} <= set(inputs)
     assert nav['map'].endswith(os.path.join('maps', 'empty.yaml'))
@@ -268,6 +288,15 @@ def test_run_info_says_which_algorithms_the_run_uses():
     assert info['kiss_icp'] and info['kiss_ekf']
 
 
+def test_odom_lidar_picks_kinematic_icp_in_kiss_icps_place():
+    # TODO 216: pose:=kinematic_ekf, Kinematic-ICP's idea in Rust; else KISS-ICP.
+    sent = included(started(SIM, world='road', pose='kinematic_ekf'))
+    assert 'kinematic_icp.launch.py' in sent and 'kiss_icp.launch.py' not in sent
+    assert sent['localization.launch.py']['kiss_ekf'] == 'true'
+    with pytest.raises(ValueError, match='odom_lidar'):
+        started(SIM, world='road', kiss_icp='true', odom_lidar='loam')
+
+
 def test_every_node_runs_on_simulated_time():
     first = started(SIM)[0]
     assert isinstance(first, SetParameter)
@@ -286,8 +315,8 @@ def test_the_road_world_adds_the_radar_to_navigation_and_its_clusters():
     # Ours' lane pose reads the camera (17 Nov), so the watchdog watches it.
     inputs = sent['watchdog.launch.py']['inputs'].split(',')
     # The sensors, then our own nodes the stack starts (warn only: TODO 180).
-    sensors = [i for i in inputs if not i.startswith('node_')]
-    assert sensors == 'odom,imu,gps,local,global,camera,radar,steering,speed'.split(',')
+    sensors = [i for i in inputs if not i.startswith(('node_', 'status_'))]
+    assert sensors == 'odom,imu,gps,local,global,camera,radar,lidar,steering,speed'.split(',')
     # Nothing reads it on the champions' stack (best), so the watchdog leaves it alone.
     stock = included(started(SIM, world='road', stack='best'))['watchdog.launch.py']
     assert 'camera' not in stock['inputs'].split(',')
@@ -301,6 +330,10 @@ def test_the_lidar_alone_guards_the_car_with_the_radar_off():
     assert 'radar_clusters.launch.py' not in sent
     assert sent['ravensim.launch.py']['radar'] == 'false'
     assert 'radar' not in sent['watchdog.launch.py']['inputs']
+    assert 'lidar' in sent['watchdog.launch.py']['inputs'].split(',')
+    # No lidar, nothing to watch (TODO 246): its silence would stop the car for nothing.
+    off = included(started(SIM, world='road', lidar='false'))['watchdog.launch.py']
+    assert 'lidar' not in off['inputs'].split(',')
 
 
 def test_faults_route_the_camera_and_the_watchdog_can_be_left_out():
@@ -347,7 +380,9 @@ def test_the_geofence_runs_with_its_lock_and_a_sim_sized_circle():
     sent = included(started(SIM))
     assert sent['geofence.launch.py'] == {'backend': 'sim', 'radius': '200.0',
                                           'centre_x': '0.0', 'centre_y': '0.0',
-                                          'max_speed': '', 'use_sim_time': 'true'}
+                                          'max_speed': '', 'use_sim_time': 'true',
+                                          'fix_topic': '/localization/gps/odom',
+                                          'geofence_impl': 'rust'}
     assert included(started(SIM, spine='true'))['geofence.launch.py']['backend'] == 'spine'
     assert included(started(SIM, esp32='true'))['geofence.launch.py']['backend'] == \
         'sim_esp32'
@@ -388,7 +423,7 @@ def test_the_road_worlds_full_graph(hud_package):
     assert sent['detector.launch.py'] == {'labels': 'stop sign', 'use_sim_time': 'true',
                                           'detector_impl': 'python'}
     assert sent['lane_finder.launch.py'] == {'lane_finder_impl': 'rust'}
-    assert sent['lane_follower.launch.py'] == {'fake': 'false'}
+    assert 'lane_follower.launch.py' not in sent   # removed 19 Nov (TODO 264)
     assert sent['hud.launch.py'] == {}   # aav_hud's window (15 Oct)
     assert sent['navigation.launch.py']['camera_obstacles'] == 'true'
     assert (sent['ravensim.launch.py']['obstacle'], sent['ravensim.launch.py']['start_y']) == (
@@ -418,8 +453,28 @@ def test_the_screens_and_lichtblick(hud_package):
     assert fox['foxglove_address'] == '127.0.0.1'  # this computer only: test_foxglove_launch
 
 
-def test_a_pretend_lane_needs_no_camera():
-    assert included(started(SIM, lane='fake'))['lane_follower.launch.py'] == {'fake': 'true'}
+def test_the_lane_followers_are_gone():
+    # TODO 264 (19 Nov): the costmap draws the lanes; lane:=fake and the follower went.
+    with pytest.raises(ValueError, match='lane:=fake'):
+        started(SIM, world='road', lane='fake')
+    assert 'lane_follower.launch.py' not in included(started(SIM, world='road', lane='true'))
+
+
+def test_camera_lanes_start_the_lane_finder_and_reach_the_costmap():
+    # lanes:=camera (TODO 264): the lane finder's lines into the global costmap.
+    sent = included(started(SIM, world='road', lanes='camera'))
+    assert sent['lane_finder.launch.py'] == {'lane_finder_impl': 'rust'}
+    nav = sent['navigation.launch.py']
+    assert (nav['lane_source'], nav['lane_costs']) == ('camera', '')
+    both = included(started(SIM, world='road', lanes='both'))['navigation.launch.py']
+    assert both['lane_source'] == 'both' and both['lane_costs'].endswith('road.lanes.yaml')
+    # Off (ours' lanes level): the lane source stays the map's (the lane finder may still
+    # run, for ours' lane pose).
+    off = included(started(SIM, world='road'))
+    assert off['navigation.launch.py']['lane_source'] == 'map'
+    assert 'lane_finder.launch.py' not in included(started(SIM, world='road', pose='ekf'))
+    with pytest.raises(ValueError, match='lane_source:=camera'):
+        started(SIM, world='empty', lanes='camera')
 
 
 def test_bad_values_stop_the_launch():
@@ -458,6 +513,27 @@ def test_ravensim_runs_the_sensors_only_where_the_world_renders_them():
     assert not any(n.startswith(('gz_', 'spawn_')) for n in road)
 
 
+def remaps(a):
+    """Return the node's remappings, as (from, to) text."""
+    return [tuple(part if isinstance(part, str)
+                  else perform_substitutions(LaunchContext(), list(part)) for part in pair)
+            for pair in (a._Node__remappings or [])]
+
+
+def test_faults_route_the_lidar_through_its_relay():
+    # TODO 246: fault.lidar can stop or freeze the lidar, only with faults:=true.
+    plain = started(RAVENSIM, world='road')
+    assert 'sim_lidar_relay' not in names(plain)
+    assert remaps(node(plain, 'simulator')) == []
+    faulty = started(RAVENSIM, world='road', faults='true')
+    assert {'sim_lidar_relay', 'sim_camera_relay'} <= names(faulty)
+    assert remaps(node(faulty, 'simulator')) == [('/sensors/lidar/points',
+                                                  '/vehicle/sim/lidar/points')]
+    # No lidar, no relay.
+    no_lidar = started(RAVENSIM, world='road', faults='true', lidar='false')
+    assert 'sim_lidar_relay' not in names(no_lidar)
+
+
 def test_ravensim_obstacle_and_start_pose():
     actions = started(RAVENSIM, world='road', obstacle='true', start_y='0.3', start_yaw='0.1')
     sim = parameters(node(actions, 'simulator'))
@@ -493,42 +569,38 @@ def test_the_cameras_graphics_pass_through():
     assert included(started(SIM, world='road'))['ravensim.launch.py']['graphics'] == 'auto'
 
 
-def test_the_old_simulator_name_still_works_for_a_release():
-    assert 'ravensim.launch.py' in included(started(SIM, simulator='own'))
+def test_the_old_simulator_names_are_refused():
+    with pytest.raises(ValueError, match='old name'):
+        started(SIM, simulator='own')
     with pytest.raises(ValueError, match='Gazebo was removed'):
         started(SIM, simulator='gazebo')
 
 
 def test_the_lidar_only_where_the_world_renders_it():
     road = started(RAVENSIM, world='road', lidar='true')
-    assert included(road)['description.launch.py']['lidar'] == 'true'
     assert parameters(node(road, 'simulator'))['lidar'] is True
     lot = started(RAVENSIM, world='test_lot', lidar='true')
-    assert included(lot)['description.launch.py']['lidar'] == 'true'
+    assert parameters(node(lot, 'simulator'))['lidar'] is True
     actions = started(RAVENSIM, world='empty', lidar='true')
-    assert included(actions)['description.launch.py']['lidar'] == 'false'
     assert parameters(node(actions, 'simulator'))['lidar'] is False
 
 
 def test_the_lidar_is_on_by_default():
     road = started(RAVENSIM, world='road')
-    assert included(road)['description.launch.py']['lidar'] == 'true'
+    assert parameters(node(road, 'simulator'))['lidar'] is True
     assert included(started(SIM, world='road'))['ravensim.launch.py']['lidar'] == 'true'
     off = started(RAVENSIM, world='road', lidar='false')
-    assert included(off)['description.launch.py']['lidar'] == 'false'
     assert parameters(node(off, 'simulator'))['lidar'] is False
 
 
 def test_the_chase_camera_only_where_the_world_renders_it():
     road = started(RAVENSIM, world='road')
-    assert included(road)['description.launch.py']['chase_camera'] == 'true'
     assert '--cameras' not in cameras_command(road)     # all four, the chase camera too
     jpeg = node(road, 'chase_jpeg')
     assert (jpeg.node_package, jpeg.node_executable) == ('image_transport', 'republish')
     assert included(started(SIM, world='road'))['ravensim.launch.py']['chase_camera'] == 'true'
     for actions in (started(RAVENSIM, world='empty'),
                     started(RAVENSIM, world='road', chase_camera='false')):
-        assert included(actions)['description.launch.py']['chase_camera'] == 'false'
         assert 'chase_jpeg' not in names(actions)
     cmd = cameras_command(started(RAVENSIM, world='road', chase_camera='false'))
     assert cmd[cmd.index('--cameras') + 1] == 'front_left,front_right,rear'
@@ -655,6 +727,60 @@ def test_the_global_ekf_reads_ndt_only_with_ndt_ekf():
     assert p['smooth_lagged_data'] is True and p['history_length'] >= 0.5
 
 
+def test_ndt_leads_only_with_pose_source_ndt(tmp_path):
+    # TODO 210, a challenger: off by default (today's GPS-led EKF, the GPS watched as ever).
+    sent = included(started(SIM, world='test_lot'))
+    assert sent['localization.launch.py']['pose_source'] == 'gps'
+    inputs = sent['watchdog.launch.py']['inputs'].split(',')
+    assert 'gps' in inputs and 'pose_check' not in inputs
+    assert sent['geofence.launch.py']['fix_topic'] == '/localization/gps/odom'
+    map_file = tmp_path / 'test_lot.pcd'
+    map_file.write_bytes(b'')
+    sent = included(started(SIM, world='test_lot', pose_source='ndt', ndt_map=str(map_file)))
+    assert 'ndt.launch.py' in sent                      # NDT runs
+    assert sent['localization.launch.py']['pose_source'] == 'ndt'
+    assert sent['localization.launch.py']['pose_trust_score'] == ''   # the lot: the file's
+    # The GPS's checks warn only; pose_check's HOLD stops; the geofence hears either's fix.
+    inputs = sent['watchdog.launch.py']['inputs'].split(',')
+    assert {'gps_check', 'pose_check'} <= set(inputs) and 'gps' not in inputs
+    assert sent['geofence.launch.py']['fix_topic'] == '/localization/pose_check/fix'
+    with pytest.raises(ValueError, match='pose_source'):
+        started(SIM, world='test_lot', pose_source='lidar')
+    with pytest.raises(ValueError, match='truth_pose'):
+        started(SIM, world='test_lot', pose_source='ndt', truth_pose='true',
+                ndt_map=str(map_file))
+
+
+def test_ndt_leading_on_the_campus_has_the_campus_trust_score(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    campus_files(tmp_path)
+    sent = included(started(SIM, world='campus', pose_source='ndt'))
+    assert float(sent['localization.launch.py']['pose_trust_score']) == pytest.approx(
+        worlds.CAMPUS_POSE_TRUST)
+
+
+def test_with_ndt_leading_the_global_ekf_reads_both_through_pose_check():
+    assert LOCALIZATION.pose_check_node(context_for(LOCALIZATION)) == []
+    assert global_ekf_files(pose_source='ndt') == [
+        'ekf_global.yaml', 'ekf_global_ndt.yaml', 'ekf_global_ndt_leads.yaml']
+    path = os.path.join(get_package_share_directory('aav_localization'), 'config',
+                        'ekf_global_ndt_leads.yaml')
+    with open(path) as f:
+        p = yaml.safe_load(f)['ekf_global']['ros__parameters']
+    assert p == {'pose0': '/localization/pose_check/ndt_pose',
+                 'odom1': '/localization/pose_check/gps_odom'}
+    context = context_for(LOCALIZATION, pose_source='ndt', pose_trust_score='1.7')
+    (check,) = LOCALIZATION.pose_check_node(context)
+    assert check._Node__node_executable == 'pose_check'
+    values = {}
+    for v in evaluate_parameters(context, check._Node__parameters):
+        if isinstance(v, dict):
+            values.update(v)
+    assert values['trust_score'] == 1.7
+    with pytest.raises(ValueError, match='pose_source'):
+        global_ekf_files(pose_source='both')
+
+
 def test_kiss_icp_needs_the_lidar_and_is_off_by_default():
     # A trial, scored only (docs/designs/2026-10-30_kiss-icp.md).
     assert 'kiss_icp.launch.py' not in included(started(SIM, world='test_lot'))
@@ -724,6 +850,11 @@ def test_the_watchdog_watches_only_our_nodes_that_run():
                           navigator='own', smoother='own', behaviour=False, cubes=False,
                           things=False)
     assert 'node_planner' not in trial and 'node_mppi_lag' not in trial
+    # TODO 171 (Ben, 18 Nov: warn only): their status topics too, status_* inputs.
+    assert {'status_costmap_local', 'status_costmap_global', 'status_planner',
+            'status_navigator', 'status_mppi_lag'} <= set(ours)
+    assert 'status_planner' not in trial and 'status_mppi_lag' not in trial
+    assert 'status_navigator' in trial
     assert SIM.our_nodes(nav=False, costmap='own', planner='own', tracker='mppi_lag',
                          navigator='own', smoother='own', behaviour=True, cubes=False,
                          things=False) == ['node_ego', 'node_look_ahead']
@@ -732,7 +863,8 @@ def test_the_watchdog_watches_only_our_nodes_that_run():
     with open(config) as f:
         rules = yaml.safe_load(f)['sensor_watchdog']['ros__parameters']
     for name in ours:
-        assert rules[name]['kind'] == 'node' and rules[name]['stop'] is False
+        kind = 'status' if name.startswith('status_') else 'node'
+        assert rules[name]['kind'] == kind and rules[name]['stop'] is False, name
 
 
 def test_lane_pose_runs_the_lane_finder_and_feeds_the_global_ekf():
@@ -800,3 +932,13 @@ def test_ours_runs_the_things_so_the_behaviour_can_hold_for_what_moves():
         'things'] == 'false'
     # The empty world has no lidar: the stack's things are off there, not an error.
     assert included(started(SIM))['navigation.launch.py']['things'] == 'false'
+
+
+def test_diffusion_impl_picks_the_rust_worker_or_says_what_to_pick():
+    # diffusion_impl:=rust: aav_diffusion_rs's worker under the same node (TODO 243).
+    sent = included(started(SIM, world='test_lot', planner='diffusion', diffusion_impl='Rust',
+                            diffusion_provider='auto'))
+    nav = sent['navigation.launch.py']
+    assert (nav['diffusion_impl'], nav['diffusion_provider']) == ('rust', 'auto')
+    with pytest.raises(ValueError, match='diffusion_impl:=cpp: pick one of python, rust'):
+        started(SIM, world='test_lot', planner='diffusion', diffusion_impl='cpp')

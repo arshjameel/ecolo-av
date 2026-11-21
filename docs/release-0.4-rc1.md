@@ -19,7 +19,7 @@ The whole stack on one page: [What we built](what-we-built.md). In short:
 |---|---|
 | Driving | our own stack (`stack:=ours`): costmap, planner, navigator, MPPI, smoother, stop zone. Nav2 deleted 17 Nov |
 | Simulator | Ravensim, ours. Gazebo deleted 16 Nov |
-| Languages | six nodes run in Rust by default; their Python twins stay, one switch away |
+| Languages | six nodes ran in Rust by default on 17 Nov; by 18 Nov 16 `*_impl:=` switches default to Rust ([Languages](languages.md)); their Python twins stay, one switch away |
 | The league | no champion changed on 16 Nov ([its final configuration](league-results-2026-11-16.md#final-configuration)) |
 
 The release in one page, one command per job: [0.4-rc1: start here](release-0.4.md).
@@ -55,7 +55,7 @@ Undo: `rm -rf ~/aav-jazzy`. Nothing else changes, no sudo. (Installed with `--sc
 | # | Check | You should see | If not |
 |---|---|---|---|
 | 1 | which language runs ([car day 4f](car-day.md#4f-the-rust-nodes-are-the-ones-running)) | `languages: ego_impl:=rust ... things_impl:=rust` in `car.launch.py`'s first lines | a Rust package didn't build: `~/aav-jazzy/build.log` |
-| 2 | a Rust node misbehaves | - | e-stop, stop the launch, start again with that node's fall-back: `~/aav-jazzy/aav.sh car orin -- watchdog_impl:=python` (the `--` is needed) |
+| 2 | a Rust node misbehaves | - | e-stop, stop the launch, start again with that node's fall-back: `~/aav-jazzy/aav.sh car orin -- ego_impl:=python` (the `--` is needed) |
 | 3 | the clocks | `chronyc tracking` on every computer | [Car day](car-day.md#the-clocks) |
 
 The fall-backs, one per node (the others stay Rust):
@@ -63,16 +63,16 @@ The fall-backs, one per node (the others stay Rust):
 | Node | Fall back to Python |
 |---|---|
 | ego + look_ahead | `ego_impl:=python` |
-| behaviour | `behaviour_impl:=python` |
-| sensor watchdog | `watchdog_impl:=python` |
-| localization_health | `localization_health_impl:=python` |
+| behaviour | none: the Python removed 20 Nov (`save/python-behaviour`) |
+| sensor watchdog | none: the Python removed 20 Nov (`save/python-safety-nodes`) |
+| localization_health | none: the Python removed 20 Nov (`save/python-localization-health`) |
 | lidar_scan | `lidar_impl:=python` |
-| things | `things_impl:=python` |
+| things | none: the Python removed 20 Nov (`save/python-things`) |
 | sensor mux + output mux (the ESP32's heartbeat) | `io_mux_impl:=python` |
 | legacy_uart_bridge (the ESP32's UART, the Motor Pi) | `legacy_impl:=python` |
 | rc_driver (RC via ROS) | `rc_impl:=python` |
 | lane_finder (lane keeping, the lane pose) | `lane_finder_impl:=python` |
-| joy_alive (the joystick's check, between joy_node and teleop) | `joy_alive_impl:=python` |
+| joy_alive (the joystick's check, between joy_node and teleop) | none: the Python removed 20 Nov (`save/python-safety-nodes`) |
 | stop_sign_watcher (twist_mux's stop-sign lock) | `stop_sign_impl:=python` |
 | point_driver (drive to a point; the Orin) and its client | `drive_to_point_impl:=python`; `pixi run drive-to-point --python ...` |
 | arm_when_open (bench and Ravensim's spine only) | `arm_when_open_impl:=python` |
@@ -103,7 +103,7 @@ section 1, and `TODO.md` 158.
 | 2 | COASTING until the stop is measured | test 4.3, then a decel in `vehicle.yaml` |
 | 3 | The brake doesn't follow a wish | the `pi` brake loop, unless `open` stops within 1 m |
 | 4 | Wheel speed not yet seen on the car | the Arduino's CAN frames seen (TODO 60) |
-| 5 | Clocks across the computers | `chronyc tracking` on each |
+| 5 | Clocks across the computers | `chronyc tracking` on each; `pixi run record-drive --check` asks every car computer it can reach by ssh ([Recording](recording.md)) |
 | 6 | Steering pulls right; its ends and centre unknown | measure them (TODO 67) |
 | 7 | No way to score "1 m" | a tape mark at B (proposed) |
 
@@ -140,4 +140,4 @@ own ROS domain (160-177, this computer only), the load under 8 at each start.
 | `aav_detector_rs` (ONNX in Rust) builds on macOS only | on Linux (the Orin) `-DDETECTOR_RS=ON` builds it; the Python detector is the default | [ONNX](onnx.md) |
 | The kit needs the models | build the kit from a checkout with `models/` filled (`pixi run get models`), or the Orin has no detector | [Car install](car-install.md) |
 | The QEMU check is host-speed sensitive | at load 11-32 its uplink rate and stop times slipped; it now retries once, only for timings | `tools/esp32_qemu.py` |
-| Sway | ours swayed about 2 times Nav2 at their last side-by-side (15 Nov) | [0.4-rc1](release-0.4.md) |
+| Sway | in the sim, ours sways as Nav2 on the lot (0.021 against 0.018 m/s²) and less on the campus (0.099 against 0.131), 15 Nov afternoon; untested on the car (an earlier note here said 2 times: that was the morning's run) | [0.4-rc1](release-0.4.md) |

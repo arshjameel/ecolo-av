@@ -26,7 +26,7 @@ Every message starts with `std_msgs/Header header`, except `SensorSource` (an en
 | `SteeringCalibration` | `/drivers/buttons/steering_calibration`, hw_panel, 10 Hz while held | `mode` (`MODE_OFF` 0, `MODE_LIMP` 1, `MODE_JOG` 2), `target` (counts, for jog) |
 | `RoadAhead` | `/world/road_ahead`, the behaviour planner, 10 Hz (`behaviour:=true`) | the line (`x`, `y`, `heading`, one point every `spacing` m), `speed_limit` (m/s per point, 0 at `end`), `left_hard`, `right_hard`, `left_soft`, `right_soft` (m, NaN = not known), `stops` (`StopPoint[]`), `end` (m along: the car may not pass it), `state`, `reason` |
 | `StopPoint` | (inside `RoadAhead`) | `along` (m), `reason` (sign, obstacle, fence, goal), `kind` (`WAIT` 0, `FINAL` 1) |
-| `Things` | `/world/things`, aav_things, 10 Hz (`things:=true`) | `header` (odom), `things` (`Thing[]`) |
+| `Things` | `/world/things`, aav_things_rs, 10 Hz (`things:=true`) | `header` (odom), `things` (`Thing[]`) |
 | `Thing` | (inside `Things`) | `id`, `kind` (`UNKNOWN` until camera-to-lidar calibration, Q22), `x`, `y` (m), `vx`, `vy` (m/s over the ground), `length`, `width`, `height` (m), `position_sigma` (m), `confidence` (0..1), `last_seen`, `seen` (clouds), `radar` (its speed from the radar too), `coasting` (not in the last cloud) |
 | `SensorSource` | (inside the two below) | `name`, `topic`, `source` (`REAL` 0, `SIM` 1, `BENCH` 2, `REPLAY` 3) |
 | `DataSource` | `/system/source`, latched, each data node | `announcer`, `sensors` (`SensorSource[]`) |

@@ -291,8 +291,13 @@ def test_diffusion_takes_compute_path_to_pose_with_our_planner_behind_it():
 def test_bad_trackers_and_reversing_trackers_are_refused():
     with pytest.raises(ValueError, match='pick one of'):
         nav_nodes(tracker='none')                       # Nav2's controller_server went
-    with pytest.raises(ValueError, match='reversing:=false'):
-        nav_nodes(tracker='stanley', reversing='true')
+    # Every tracker reverses now: mpc_lag_rs too since 20 Nov (TODO 213).
+    rs = given(nav_nodes(tracker='mpc_lag_rs', reversing='true')['mpc_lag_rs'])
+    assert rs['max_reverse_speed'] > 0
+    # aav_track's reverse since 19 Nov (TODO 174), at vehicle.yaml's reverse speed.
+    track = given(nav_nodes(tracker='stanley', reversing='true')['track'])
+    assert track['max_reverse_speed'] > 0
+    assert given(nav_nodes(tracker='stanley')['track'])['max_reverse_speed'] == 0.0
 
 
 def test_map_correction_newest_turns_the_followers_slew_off():
@@ -337,6 +342,46 @@ def test_the_sim_and_the_bench_pass_their_speed_loop_on():
     assert sent_to_navigation(BENCH, nav='true', speed_loop='smooth')['speed_loop'] == 'smooth'
     with pytest.raises(ValueError, match='speed_loop:=fast'):
         sent_to_navigation(SIM, speed_loop='fast')
+    # speed_loop_model:= (TODO 163): navigation's models take it, not the car's loop.
+    assert sent_to_navigation(SIM, speed_loop='firm',
+                              speed_loop_model='smooth')['speed_loop'] == 'smooth'
+    assert sent_to_navigation(BENCH, nav='true', speed_loop='firm',
+                              speed_loop_model='default')['speed_loop'] == 'default'
+
+
+def test_patchwork_ground_runs_the_rust_voxels_node_with_it():
+    # TODO 215: ground:=patchwork, the Rust voxels node with ground patchwork; none: plane.
+    assert 'voxels' not in nav_nodes(lidar='true')
+    nodes = nav_nodes(lidar='true', ground='patchwork', voxels_impl='python')
+    assert nodes['voxels']._Node__package == 'aav_voxels_rs'
+    assert given(nodes['voxels'])['ground'] == 'patchwork'
+    with pytest.raises(ValueError, match='ground'):
+        nav_nodes(lidar='true', ground='ransac')
+
+
+def test_the_per_kind_tracker_reaches_the_things_node():
+    # TODO 217: things_tracker:=per_kind; none: the constant-velocity champion.
+    assert given(nav_nodes(lidar='true', things='true')['things'])['per_kind'] is False
+    p = given(nav_nodes(lidar='true', things='true', things_tracker='per_kind')['things'])
+    assert p['per_kind'] is True
+    with pytest.raises(ValueError, match='things_tracker'):
+        nav_nodes(lidar='true', things='true', things_tracker='imm')
+
+
+def test_smooth_sampling_reaches_mppi_lag():
+    # TODO 212: mppi_lag_sampling:=smooth, a challenger; none: the node's own (correlated).
+    assert 'sampling' not in given(nav_nodes(tracker='mppi_lag')['mppi_lag'])
+    # The tube (Ben, 21 Nov): mpc_lag_rs leaves the car alone near the path.
+    # Tuned 21 Nov: 0.3 m unless asked; 0 turns it off.
+    assert given(nav_nodes(tracker='mpc_lag_rs')['mpc_lag_rs'])['mpc_lag.tube'] == 0.3
+    tube = given(nav_nodes(tracker='mpc_lag_rs', mpc_lag_tube='0')['mpc_lag_rs'])
+    assert tube['mpc_lag.tube'] == 0.0
+    with pytest.raises(ValueError, match='mpc_lag_tube'):
+        nav_nodes(tracker='mpc_lag_rs', mpc_lag_tube='wide')
+    p = given(nav_nodes(tracker='mppi_lag', mppi_lag_sampling='smooth')['mppi_lag'])
+    assert p['sampling'] == 'smooth'
+    with pytest.raises(ValueError, match='mppi_lag_sampling'):
+        nav_nodes(tracker='mppi_lag', mppi_lag_sampling='jerky')
 
 
 def test_the_steering_gamma_and_the_strong_smoother_reach_their_nodes():
@@ -356,6 +401,24 @@ def test_the_steering_gamma_and_the_strong_smoother_reach_their_nodes():
         nav_nodes(planner='own', plan_smoothing='soft')
 
 
+def test_the_behaviour_planner_slows_for_the_kerbs_with_kerbs_on():
+    # TODO 219: kerbs:=true (with the lidar) gives the behaviour planner the steps.
+    assert given(nav_nodes(behaviour='true', lidar='true')['behaviour'])['kerbs'] is False
+    on = given(nav_nodes(behaviour='true', lidar='true', kerbs='true')['behaviour'])
+    assert on['kerbs'] is True
+    # No lidar, no steps.
+    assert given(nav_nodes(behaviour='true', kerbs='true')['behaviour'])['kerbs'] is False
+
+
+def test_mppi_lag_batch_reaches_mppi_lag():
+    # TODO 152: mppi_lag_batch:=1000 gives mppi_lag its batch_size; none: nav2.yaml's.
+    assert given(nav_nodes(tracker='mppi_lag')['mppi_lag'])['batch_size'] == 2000
+    p = given(nav_nodes(tracker='mppi_lag', mppi_lag_batch='1000')['mppi_lag'])
+    assert p['batch_size'] == 1000
+    with pytest.raises(ValueError, match='mppi_lag_batch'):
+        nav_nodes(tracker='mppi_lag', mppi_lag_batch='0')
+
+
 def test_amcl_needs_the_lidar_and_never_publishes_map_to_odom():
     with pytest.raises(ValueError, match='lidar:=true'):
         nav_nodes(amcl='true')
@@ -372,8 +435,9 @@ def test_amcl_needs_the_lidar_and_never_publishes_map_to_odom():
         file = yaml.safe_load(f)['amcl']['ros__parameters']
     assert file['tf_broadcast'] is False
     assert file['scan_topic'] == '/sensors/lidar/scan' and file['base_frame_id'] == 'base_link'
-    # Its own manager, the only lifecycle manager left (nav2_amcl is a lifecycle node).
-    assert list(given(nodes['lifecycle_manager_localization'])['node_names']) == ['amcl']
+    # Ours by default (TODO 231): a plain node, so no lifecycle manager at all.
+    assert amcl._Node__package == 'aav_amcl_rs'
+    assert 'lifecycle_manager_localization' not in nodes
     assert 'lifecycle_manager_navigation' not in nodes
     assert 'amcl_map_server' not in nodes and 'map_topic' not in start   # our /map
     # What the launch file sets must not be in the file too: under sim.launch.py's global
@@ -389,7 +453,13 @@ def test_amcl_may_have_a_map_of_its_own():
     assert served['topic_name'] == given(nodes['amcl'])['map_topic'] == '/localization/amcl/map'
     # Our map server keeps /map; AMCL's is ours too, not a lifecycle node.
     assert nodes['amcl_map_server']._Node__package == 'aav_costmap'
-    assert list(given(nodes['lifecycle_manager_localization'])['node_names']) == ['amcl']
+
+
+def test_amcl_impl_is_ours_only():
+    # Stock nav2_amcl, the last of Nav2, went on 20 Nov (TODO 232, tag save/nav2-amcl).
+    for impl in ('stock', 'python'):
+        with pytest.raises(ValueError, match='amcl_impl'):
+            nav_nodes(lidar='true', amcl='true', amcl_impl=impl)
 
 
 def test_the_sim_passes_the_trials_on_and_checks_them():
@@ -398,8 +468,10 @@ def test_the_sim_passes_the_trials_on_and_checks_them():
     assert sent_to_navigation(SIM, stack='best')['tracker'] == 'mppi_lag'
     assert sent_to_navigation(SIM)['live_swap'] == 'true'
     assert sent_to_navigation(SIM, tracker='mpc', reversing='false')['tracker'] == 'mpc'
-    with pytest.raises(ValueError, match='reversing:=false'):
-        sent_to_navigation(SIM, tracker='mpc')          # the sim reverses by default
+    # The sim reverses by default; aav_track's trackers do too since 19 Nov (TODO 174).
+    assert sent_to_navigation(SIM, tracker='mpc')['tracker'] == 'mpc'
+    # mpc_lag_rs reverses too since 20 Nov (TODO 213).
+    assert sent_to_navigation(SIM, tracker='mpc_lag_rs')['tracker'] == 'mpc_lag_rs'
     with pytest.raises(ValueError, match='world:=test_lot'):
         sent_to_navigation(SIM, amcl='true')            # the empty world: no real map
     with pytest.raises(ValueError, match='world:=test_lot'):
@@ -408,6 +480,7 @@ def test_the_sim_passes_the_trials_on_and_checks_them():
                               start_yaw='1.0')
     assert (sent['amcl'], sent['lidar']) == ('true', 'true')
     assert (sent['amcl_y'], sent['amcl_yaw']) == ('4.0', '1.0')
+    assert sent['amcl_impl'] == 'rust'
     assert sent['amcl_map'].endswith('maps/example_lot_amcl.yaml')
     assert os.path.exists(sent['amcl_map'])
     assert sent_to_navigation(SIM, world='test_lot')['amcl_map'] == ''
@@ -703,7 +776,8 @@ def test_the_sim_and_the_car_pass_lidar_impl_and_things_impl_on():
         assert sent_to_navigation(SIM)[key] == default
         assert sent_to_navigation(SIM, world='road', **{key: 'Rust'})[key] == 'rust'
         assert sent_to_navigation(CAR, machine='all')[key] == default
-        assert sent_to_navigation(CAR, machine='all', **{key: 'python'})[key] == 'python'
+        if key == 'lidar_impl':   # the Python things went on 20 Nov
+            assert sent_to_navigation(CAR, machine='all', **{key: 'python'})[key] == 'python'
         with pytest.raises(ValueError, match=key):
             sent_to_navigation(SIM, **{key: 'go'})
 

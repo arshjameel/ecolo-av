@@ -1,7 +1,7 @@
 //! Lane lines in the bird's-eye view: find the paint, follow each line, say where the car is.
 //!
-//! The offset is + when the car is left of the lane's centre: control_interface then
-//! steers right, back to the centre. It is measured `lookahead` metres ahead of
+//! The offset is + when the car is left of the lane's centre (the 2025-26 lane follower
+//! steered right by it, back to the centre). It is measured `lookahead` metres ahead of
 //! base_link, because a PID on the offset at the rear axle weaves; a few metres ahead,
 //! the offset also says which way the car is pointing.
 
@@ -45,6 +45,8 @@ pub struct Settings {
     pub lookahead: f64,
     /// m, for steering_hint (vehicle.yaml).
     pub wheelbase: f64,
+    /// Paint is yellow when its blue is below this share of the lower of its red and green.
+    pub yellow_ratio: f64,
 }
 
 impl Default for Settings {
@@ -63,7 +65,55 @@ impl Default for Settings {
             max_lane_width: 5.0,
             lookahead: 3.0,
             wheelbase: 1.57,
+            yellow_ratio: 0.75,
         }
+    }
+}
+
+/// A line's paint (TODO 264): the costmap prices a yellow centre line apart from a white
+/// edge line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Paint {
+    /// Not detected, or no pixels to tell.
+    #[default]
+    Unknown,
+    White,
+    Yellow,
+}
+
+impl Paint {
+    /// LaneGeometry's `PAINT_*` constant.
+    pub fn code(self) -> u8 {
+        match self {
+            Self::Unknown => 0,
+            Self::White => 1,
+            Self::Yellow => 2,
+        }
+    }
+
+    /// The paint of a `PAINT_*` code; an unknown code is Unknown.
+    pub fn from_code(code: u8) -> Self {
+        match code {
+            1 => Self::White,
+            2 => Self::Yellow,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+/// A line's paint from its pixels (blue, green, red): yellow paint is red and green with
+/// little blue; white has as much blue as the others. A grey picture's lines are white.
+pub fn paint_of<'a>(pixels: impl IntoIterator<Item = &'a [u8; 3]>, s: &Settings) -> Paint {
+    let (mut n, mut blue, mut red_green) = (0usize, 0.0, 0.0);
+    for p in pixels {
+        n += 1;
+        blue += f64::from(p[0]);
+        red_green += f64::from(p[1].min(p[2]));
+    }
+    match n {
+        0 => Paint::Unknown,
+        _ if blue < s.yellow_ratio * red_green => Paint::Yellow,
+        _ => Paint::White,
     }
 }
 
@@ -112,6 +162,9 @@ pub struct Lane {
     pub curve_direction: f64,
     /// rad, + = left: pure pursuit to the lane's centre.
     pub steering_hint: f64,
+    /// Each line's paint; Unknown when not detected.
+    pub left_paint: Paint,
+    pub right_paint: Paint,
 }
 
 /// One sliding window, in bird's-eye pixels, and whether it found paint.
@@ -368,6 +421,8 @@ pub fn lane_from(
             mean_radius: MAX_RADIUS,
             curve_direction: 0.0,
             steering_hint: 0.0,
+            left_paint: Paint::Unknown,
+            right_paint: Paint::Unknown,
         };
     };
     let width = match (&left, &right) {
@@ -404,6 +459,8 @@ pub fn lane_from(
         mean_radius,
         curve_direction,
         steering_hint,
+        left_paint: Paint::Unknown,
+        right_paint: Paint::Unknown,
     }
 }
 
@@ -470,8 +527,16 @@ impl LaneFinder {
                 .iter()
                 .map(|&i| grid.y_of_col(pixels[i].1 as f64))
                 .collect();
-            fit_line(&x, &y, hits, &s)
+            let paint = paint_of(
+                found
+                    .iter()
+                    .map(|&i| &bev.pixels[pixels[i].0 * bev.cols + pixels[i].1]),
+                &s,
+            );
+            Some((fit_line(&x, &y, hits, &s)?, paint))
         });
+        let paints = lines.map(|l| l.map_or(Paint::Unknown, |(_, p)| p));
+        let lines = lines.map(|l| l.map(|(line, _)| line));
         let mut confidence = lines.map(|l| l.map_or(0.0, |l| l.confidence));
         let [mut left, mut right] = lines.map(|l| l.filter(|l| l.confidence >= s.min_confidence));
         if let (Some(l), Some(r)) = (left, right) {
@@ -488,7 +553,19 @@ impl LaneFinder {
                 }
             }
         }
-        let lane = lane_from(left, right, self.width, &s, confidence[0], confidence[1]);
+        let lane = Lane {
+            left_paint: if left.is_some() {
+                paints[0]
+            } else {
+                Paint::Unknown
+            },
+            right_paint: if right.is_some() {
+                paints[1]
+            } else {
+                Paint::Unknown
+            },
+            ..lane_from(left, right, self.width, &s, confidence[0], confidence[1])
+        };
         if left.is_some() && right.is_some() {
             self.width += 0.2 * (lane.width - self.width); // smooth: one frame can be off
         }
@@ -589,6 +666,21 @@ mod tests {
         );
         // A shorter array than the box: numpy swaps them.
         assert_eq!(box_sum(&[1.0, 2.0], 3), vec![1.0, 3.0, 3.0]);
+    }
+
+    #[test]
+    fn yellow_paint_is_told_from_white() {
+        let s = Settings::default();
+        let yellow = [[40u8, 200, 230]; 5];
+        let white = [[235u8, 235, 235]; 5];
+        let warm_white = [[200u8, 230, 240]; 5];
+        assert_eq!(paint_of(&yellow, &s), Paint::Yellow);
+        assert_eq!(paint_of(&white, &s), Paint::White);
+        assert_eq!(paint_of(&warm_white, &s), Paint::White);
+        assert_eq!(paint_of(&[], &s), Paint::Unknown);
+        for p in [Paint::Unknown, Paint::White, Paint::Yellow] {
+            assert_eq!(Paint::from_code(p.code()), p);
+        }
     }
 
     #[test]

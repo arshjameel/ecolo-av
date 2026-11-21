@@ -1,0 +1,40 @@
+# pose_check (aav_pose_check): NDT leads ekf_global's pose, the GPS checks it (TODO 210,
+# pose_source:=ndt). What each number means: pose-check-core's Settings. Units: m, s, m/s.
+# sim.launch.py sets trust_score on the campus (worlds.CAMPUS_POSE_TRUST): not here, or
+# this file would win over the launch's.
+pose_check:
+  ros__parameters:
+    rate_hz: 10.0
+    # NDT: a good fit every cloud (10 Hz). 1 s without one: stale. LOST comes from NDT.
+    ndt_max_age: 1.0
+    # NDT's median score per point (over `window`) at which it wins a disagreement with the
+    # GPS: NDT's own floor (ndt.yaml's min_score_per_point, 2.3 in the lot), so a fit good
+    # enough to publish is good enough to win. Ravensim's lot, 19 Nov (TODO 121), 12 tours:
+    # NDT on the right place scored 2.0-4.0 (99 % over 2.5, median about 3); seeded 5 m off
+    # by a drifting GPS it scored 0-2.0 (median about 1.2). 2.6 (Gazebo's good-fit floor)
+    # judged a right NDT wrong when the GPS drifted: its median over 5 s dipped under 2.6.
+    trust_score: 2.3
+    # The GPS: as the sensor watchdog's and the geofence's. Over 3 m of its own spread
+    # (1 sigma) it is no fall-back; the sim's is 0.5 m, a plain u-blox's 1-2.5 m.
+    gps_max_age: 2.0
+    gps_max_std: 3.0
+    max_jump_speed: 15.0      # m/s: the car can't; a bad fix can. As the watchdog's
+    jump_margin: 5.0
+    # The disagreement: 5 s of NDT-GPS pairs (25 at 5 Hz), at least 5. They disagree when
+    # the mean d'(S_ndt + S_gps)^-1 d is over 13.8 (chi-square, 2 numbers, 99.9 %) AND the
+    # mean gap is over 1.5 m: a receiver's covariance is often too sure of itself, so a
+    # gap in metres too. They agree again under 1.0 m (and 13.8): no flicker between.
+    # A 5 m drift over a minute is named about 20-25 s in (the core's tests).
+    window: 5.0
+    min_pairs: 5
+    pair_max_dt: 0.25         # s: a fix pairs with the NDT fit nearest in time
+    pair_var: 0.09            # m^2, (0.3 m)^2: the car moves between a pair's stamps
+    disagree_nees: 13.8
+    disagree_m: 1.5
+    agree_m: 1.0
+    # AMCL (aav_amcl_rs, where it runs) seeds a lost NDT once it has converged: a pose
+    # this fresh, 0.5 m and 10 degrees (1 sigma) or better. Else the GPS, else none.
+    amcl_max_age: 2.0
+    amcl_max_std: 0.5
+    amcl_max_yaw_std: 0.17
+    reseed_every: 5.0         # s between seeds while NDT stays lost

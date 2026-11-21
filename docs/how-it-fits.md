@@ -81,7 +81,7 @@ level of [the league](league.md), with challengers beside the champion
 | Step | Ours | Other choices |
 |---|---|---|
 | Which roads | none: a goal on the map | street routes (Valhalla) or the campus's road graph, `aav_routes` |
-| The rules: slow, stop, wait | the behaviour planner, `aav_behaviour` ([Stopping](stopping.md)), in `stack:=ours` | `behaviour:=false` |
+| The rules: slow, stop, wait | the behaviour planner, `aav_behaviour_rs` ([Stopping](stopping.md)), in `stack:=ours` | `behaviour:=false` |
 | Plan, follow, replan, recover | `aav_navigator` | |
 | Where may I go | `aav_costmap` | |
 | The path | `aav_planner` (Nav2's lattice in Rust) | Hybrid-A* (`path:=hybrid_rs`), the lane's centre (`path:=lane`), the diffusion planner (`planner:=diffusion`) |

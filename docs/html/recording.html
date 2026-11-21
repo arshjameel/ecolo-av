@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recording a mapping drive · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/recording.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Recording a mapping drive</h1>
+<div class="meta">6 min read · 8 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a class="here" href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#what-it-does">What it does</a><a href="#what-it-records">What it records</a><a href="#how-big">How big</a><a href="#the-checks-before">The checks before</a><a href="#the-folder">The folder</a><a href="#the-summary-after">The summary after</a><a href="#then-the-map">Then the map</a><a href="#ravensims-run-19-nov">Ravensim&#x27;s run, 19 Nov</a></nav>
+<div class="lead"><p>One hand-driven drive that records <strong>everything</strong> the later phases need: the NDT map and
+SLAM, AMCL and a learned localizer, labelling, the transfer functions. Phase C of the
+<a href="testing-plan.html">testing plan</a> (TODO 249).</p>
+<pre class="highlight"><code class="language-sh">pixi run record-drive --check                  # only the checks
+pixi run record-drive --name lot --note "the lot, clockwise, dry"
+pixi run record-drive --summary bags/&lt;folder&gt;  # the summary again
+pixi run record-drive --sim                    # the kit's own test, in Ravensim
+pixi run record-drive --sim --loop             # the whole route, back home (for SLAM)
+pixi run record-drive --sim --loop --sim-box 22 -6.5   # ... with a parked car (a box)
+                                               # for this drive only: map-area's test data</code></pre>
+<p><code>tools/record.sh --mapping</code> is the same command. The short <code>tools/record.sh</code> (cameras as
+JPEG, what the stack decided) stays for everyday drives.</p>
+<div class="admonition warning">
+<p class="admonition-title">Not yet run on the car</p>
+<p>Built and tested in Ravensim (19 Nov). The car's clocks, its disk and its real rates
+are untested.</p>
+</div></div>
+<section class="card"><h2 id="what-it-does">What it does</h2>
+<pre class="highlight"><code>  checks ──▶ asks "record anyway?" ──▶ ros2 bag record ──▶ Ctrl-C ──▶ summary
+ disk, rates,     (only on warnings)      MCAP + zstd                 per topic, and
+ clocks, frames                           2 GB / 5 min files          "good for ..."</code></pre>
+</section>
+<section class="card"><h2 id="what-it-records">What it records</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Topics</th>
+<th>Rate on the car</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lidar</td>
+<td><code>/sensors/lidar/points</code> and its raw <code>packets</code></td>
+<td>10 Hz</td>
+</tr>
+<tr>
+<td>IMU</td>
+<td><code>/sensors/imu/data_raw</code>, <code>data</code>, <code>mag</code></td>
+<td>200 Hz</td>
+</tr>
+<tr>
+<td>GPS</td>
+<td><code>/sensors/gps/*</code> (fix, velocity), the u-blox driver's own (<code>/ublox_gps/*</code>)</td>
+<td>1 Hz</td>
+</tr>
+<tr>
+<td>Cameras</td>
+<td>all three as JPEG (<code>image_raw/compressed</code>) and <code>camera_info</code></td>
+<td>15 Hz</td>
+</tr>
+<tr>
+<td>Radar</td>
+<td><code>/sensors/radar/points</code></td>
+<td>10 Hz</td>
+</tr>
+<tr>
+<td>The car</td>
+<td><code>/vehicle/wheels</code>, <code>odom</code>, <code>steering</code>, <code>throttle</code>, <code>brake</code>, <code>status</code>, <code>/can/rx</code></td>
+<td>50-100 Hz</td>
+</tr>
+<tr>
+<td>Commands</td>
+<td><code>/ego/actuator_cmd</code>, <code>/control/cmd_vel</code>, each driver's, <strong>who is driving</strong> (<code>/control/command_mux/state</code>)</td>
+<td>10-50 Hz</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td>the watchdog's state and lock, the e-stop, the output mux, the geofence</td>
+<td>2-10 Hz</td>
+</tr>
+<tr>
+<td>Position</td>
+<td>the EKFs (<code>/localization/odom/local</code>, <code>global</code>), NDT</td>
+<td>30 Hz</td>
+</tr>
+<tr>
+<td>Frames</td>
+<td><code>/tf</code>, <code>/tf_static</code>, <code>/robot_description</code></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>The full list, with sizes: <code>STREAMS</code> in <code>tools/recording.py</code>.</p>
+<p>A camera with pictures but no JPEG topic gets a JPEG copy for the drive
+(image_transport's <code>republish</code>). <code>--raw-cameras</code> keeps raw pictures: huge.</p>
+</section>
+<section class="card"><h2 id="how-big">How big</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Group</th>
+<th>GB an hour (before zstd)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cameras (3 × JPEG, ~300 kB)</td>
+<td>49</td>
+</tr>
+<tr>
+<td>Lidar (points 33 + packets 3)</td>
+<td>37</td>
+</tr>
+<tr>
+<td>Everything else</td>
+<td>about 1.5</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>about 87</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>zstd hardly shrinks JPEGs. In Ravensim it shrank the lidar to a quarter; a real lidar's
+noise compresses less. So plan for <strong>up to 87 GB an hour</strong>: a fast SSD on the Orin. The
+camera size is a guess (docs/bandwidth.md): the check prints the measured rate too.</p>
+</section>
+<section class="card"><h2 id="the-checks-before">The checks before</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Refuses</th>
+<th>Warns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Disk</td>
+<td>under 10 min left</td>
+<td>under 1 hour left</td>
+</tr>
+<tr>
+<td>Topics</td>
+<td>none at all (wrong domain?)</td>
+<td>one missing, or under 80 % of its rate</td>
+</tr>
+<tr>
+<td>Stamps</td>
+<td></td>
+<td>a sensor's stamps from the future, or over 0.5 s old (a clock off)</td>
+</tr>
+<tr>
+<td>Clocks</td>
+<td></td>
+<td><code>chronyc tracking</code> over 10 ms, here and on each car computer by ssh</td>
+</tr>
+<tr>
+<td>Frames</td>
+<td></td>
+<td><code>/tf_static</code> lacks a sensor's frame</td>
+</tr>
+</tbody>
+</table></div>
+<p>Warnings ask "Record anyway?". <code>--yes</code> skips the question; <code>--force</code> records past a
+refusal. On a Mac there is no <code>chronyc</code>: the line says "not checked".</p>
+<p>The ssh to the other computers uses keys only (<code>BatchMode</code>): it never asks for a password.
+A computer it can't reach gets a WARN line, not a stop. <code>--no-ssh</code> skips them.</p>
+</section>
+<section class="card"><h2 id="the-folder">The folder</h2>
+<p><code>bags/&lt;date&gt;_&lt;name&gt;/</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bag/</code></td>
+<td>the recording: MCAP, zstd, a new file every 2 GB or 5 min</td>
+</tr>
+<tr>
+<td><code>drive.yaml</code></td>
+<td>when, the git commit, the computer, your note, every check, the clocks; after: the verdicts</td>
+</tr>
+<tr>
+<td><code>vehicle.yaml</code>, <code>machines/</code></td>
+<td>the car's measurements and machine files, as they were</td>
+</tr>
+<tr>
+<td><code>summary.md</code></td>
+<td>per topic: count, rate, gaps, size; good for which job</td>
+</tr>
+<tr>
+<td><code>record.log</code></td>
+<td>the recorder's own output</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-summary-after">The summary after</h2>
+<p>Per topic: how many, the rate, gaps over 3 periods, the size, and flags (dropped,
+gaps, none). Then one line per job:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NDT map</td>
+<td>the lidar, a pose (<code>/localization/odom/global</code>), <code>lidar_link</code> in <code>/tf_static</code></td>
+</tr>
+<tr>
+<td>SLAM</td>
+<td>the lidar, the raw IMU, the wheels or odometry</td>
+</tr>
+<tr>
+<td>Labelling</td>
+<td>the front camera and its lens, the lidar, the frames</td>
+</tr>
+<tr>
+<td>Transfer functions</td>
+<td>ego's command, steering, throttle, brake, wheels, the raw IMU</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each says <strong>good</strong>, <strong>weak</strong> (there, with gaps) or <strong>no</strong> (missing).</p>
+</section>
+<section class="card"><h2 id="then-the-map">Then the map</h2>
+<pre class="highlight"><code class="language-sh">pixi run ndt-map --out maps/ndt/&lt;place&gt; build bags/&lt;folder&gt;/bag --poses /localization/odom/global</code></pre>
+<p><code>--sim</code> does all of it: Ravensim's test lot, two legs, the summary, then this map.</p>
+</section>
+<section class="card"><h2 id="ravensims-run-19-nov">Ravensim's run, 19 Nov</h2>
+<p><code>pixi run record-drive --sim</code> on an M4 Max: the test lot, two legs, both reached.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Checks</td>
+<td>all OK but <code>/vehicle/battery</code> (Ravensim has none); the three cameras republished as JPEG</td>
+</tr>
+<tr>
+<td>Recorded</td>
+<td>102 s, 1.0 GB of messages, <strong>245 MB on disk</strong> (zstd: 24 %)</td>
+</tr>
+<tr>
+<td>Lost</td>
+<td>none (the recorder's own count); no gaps on any topic</td>
+</tr>
+<tr>
+<td>Good for</td>
+<td>NDT map <strong>good</strong>, SLAM <strong>good</strong>, labelling <strong>good</strong>, transfer functions <strong>good</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Some rows of its summary:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Count</th>
+<th>Rate (Hz)</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/sensors/lidar/points</code></td>
+<td>1013</td>
+<td>10.0</td>
+<td>934 MB</td>
+</tr>
+<tr>
+<td><code>/sensors/camera/front_left/image_raw/compressed</code></td>
+<td>1015</td>
+<td>10.0</td>
+<td>17 MB</td>
+</tr>
+<tr>
+<td><code>/sensors/imu/data_raw</code></td>
+<td>5068</td>
+<td>49.9</td>
+<td>1.6 MB</td>
+</tr>
+<tr>
+<td><code>/vehicle/wheels</code></td>
+<td>10135</td>
+<td>99.8</td>
+<td>0.5 MB</td>
+</tr>
+<tr>
+<td><code>/ego/actuator_cmd</code></td>
+<td>5076</td>
+<td>50.0</td>
+<td>0.2 MB</td>
+</tr>
+<tr>
+<td><code>/control/command_mux/state</code></td>
+<td>1016</td>
+<td>10.0</td>
+<td>0.2 MB</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The NDT map from it</strong> (1012 clouds, 8 s), against the same clouds placed by Ravensim's
+truth:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Poses</th>
+<th>Points</th>
+<th>Off the truth's map: median</th>
+<th>95 %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ravensim's truth</td>
+<td>77,000</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>/localization/odom/local</code> (wheels + IMU)</td>
+<td>132,000</td>
+<td>16 cm</td>
+<td>60 cm</td>
+</tr>
+<tr>
+<td><code>/localization/odom/global</code> (with the GPS)</td>
+<td>463,000</td>
+<td>33 cm</td>
+<td>1.2 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>The recording is usable, but <strong>a map from the EKF's poses is blurred</strong>: each wall is drawn
+several times (6 times the points). That is why phase D makes the map with SLAM
+(KISS-SLAM), not from the EKF: <a href="maps-from-drives.html">Maps from drives</a> (<code>pixi run
+map-drive</code>: 2.3 cm off).</p>
+<p>The first run found two faults, both fixed: 60 ms of jitter at 50 Hz counted as a gap (now
+a gap must also be over 0.1 s), and Ravensim's cameras, still being built, came up after the
+check (no JPEG copies, so labelling read "no").</p></section>
+<nav class="prevnext"><a class="prev" href="know-the-car.html"><small>Previous</small>← Know the car</a>
+<a class="next" href="maps-from-drives.html"><small>Next</small>Maps from drives →</a></nav>
+</main>
+<footer>Source: <code>docs/recording.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

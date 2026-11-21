@@ -151,7 +151,7 @@ changes.
 | Profile | Start it with | The car is | Runs |
 |---|---|---|---|
 | `turtle` | `pixi run turtle` | the turtlesim turtle | mux, ego, scripted driver, the car's model, `ekf_local` |
-| `sim` | `pixi run sim` | Ravensim, our own simulator (with no GPU: `tools/software_gl.sh` in front, the cameras in lockstep) | the whole stack: both EKFs, `navsat_transform`, Nav2 |
+| `sim` | `pixi run sim` | Ravensim, our own simulator (with no GPU: `tools/software_gl.sh` in front, the cameras in lockstep) | the whole stack: both EKFs, `navsat_transform`, our navigation |
 | `car` | `pixi run car <machine>` | the real car | the parts its machine file switches on |
 | `carla` | `pixi run carla-car host:=<the CARLA computer>` | a CARLA car (untested against a server) | the same as `sim` ([CARLA](carla.md)) |
 | `replay` | `ros2 launch aav_bringup replay.launch.py`, with a bag playing | a recorded drive | localization (and navigation) on real sensor data |
@@ -164,7 +164,7 @@ The car runs one ROS graph across several computers. Each one starts `pixi run c
 
 | Machine | Runs | Today |
 |---|---|---|
-| `orin` (Jetson AGX Orin) | the car's model, mux, ego, scripted and point drivers, the roof lidar, the two camera streams (RF-DETR inside), the stop-sign watcher, localization, Nav2, the CAN bus (wheels), Foxglove | JetPack 6 (Ubuntu 22.04) and the 2025-26 Humble software. Ours goes on beside it from the car kit; not yet run on the real Orin ([Rolling out](rollout.md)) |
+| `orin` (Jetson AGX Orin) | the car's model, mux, ego, scripted and point drivers, the roof lidar, the two camera streams (RF-DETR inside), the stop-sign watcher, localization, our navigation, the CAN bus (wheels), Foxglove | JetPack 6 (Ubuntu 22.04; JetPack 7.2 or newer next, the hardware lead's call) and the 2025-26 Humble software. Ours goes on beside it from the car kit; not yet run on the real Orin ([Rolling out](rollout.md)) |
 | `motor_pi` | the legacy bridge to today's ESP32 (UART); the 2025-26 UDP encoder is off since 23 Oct. `motor_pi_alone`: the same Pi without the Orin, for the stands | Ubuntu 22.04; the 2025-26 Humble bridge was running it on 6 Nov (the audit) |
 | `localization` | the IMU and GPS drivers, on the Pi they are plugged into | 13 Nov: the car drove with only the localization update installed ([Ben's messages](history/messages-2026-11-13.md)) |
 | `laptop` | the safety driver's joystick, and its own detector (`-e ml`) | any laptop with Pixi |

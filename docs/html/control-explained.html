@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control, explained: the maths that drives our car · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/control-explained.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Control, explained: the maths that drives our car</h1>
+<div class="meta">25 min read · 13 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a class="here" href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#0-the-whole-chain">0. The whole chain</a><a href="#1-models-how-the-car-answers">1. Models: how the car answers</a><a href="#2-feedback-and-feedforward">2. Feedback and feedforward</a><a href="#3-pi-the-speed-loop-on-the-esp32">3. PI: the speed loop on the ESP32</a><a href="#4-lqr-the-best-gains-from-the-model">4. LQR: the best gains from the model</a><a href="#5-lqi-lqr-with-an-integral">5. LQI: LQR with an integral</a><a href="#6-mpc-lqr-that-looks-ahead-and-respects-limits">6. MPC: LQR that looks ahead and respects limits</a><a href="#7-mppi-sampling-instead-of-solving">7. MPPI: sampling instead of solving</a><a href="#8-stability-will-it-settle">8. Stability: will it settle?</a><a href="#9-the-ekf-where-am-i">9. The EKF: where am I?</a><a href="#10-what-to-make-better-first">10. What to make better first</a><a href="#glossary">Glossary</a><a href="#run-it">Run it</a></nav>
+<div class="lead"><p>Ben, 21 Nov: "write a document explaining the mpc and the feed forward pi and all the
+different math and models that we use and how we can make them better ... I need to
+learn from it." Then: "LQR and LQI would be good too", "and the EKF".</p>
+<p>Each section has the same four parts:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The idea</strong></td>
+<td>one picture, in words</td>
+</tr>
+<tr>
+<td><strong>The maths</strong></td>
+<td>the equations, step by step (the gentle start: <a href="learn-state-space.html">learn state space</a>)</td>
+</tr>
+<tr>
+<td><strong>On our car</strong></td>
+<td>where it lives in the code, and its numbers</td>
+</tr>
+<tr>
+<td><strong>Better</strong></td>
+<td>how we could improve it</td>
+</tr>
+</tbody>
+</table></div>
+<p>The figures come from <code>tools/control_figures.py</code>, using the same models and guesses as
+<a href="vehicle-model.html">the car as a linear model</a>. <strong>Every car number is a guess</strong> until car
+day's step tests measure it.</p></div>
+<section class="card"><h2 id="0-the-whole-chain">0. The whole chain</h2>
+<pre class="highlight"><code class="language-text">             ESTIMATION                         CONTROL
+ sensors ──► EKF: where am I? ──► follower: what do I do? ──► ego ──► ESP32 ──► actuators
+ wheels,     (section 9)          MPPI or MPC (6, 7)          limits   speed loop   steering
+ IMU, GPS,                        steering + set speed        ramps    PI (3)       Jrk PID
+ lidar                            every 50 ms                 50 Hz    every 10 ms  (its own)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Asks</th>
+<th>Answers with</th>
+<th>How often</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EKF</td>
+<td>Where is the car, which way, how fast?</td>
+<td>a best guess and how sure it is</td>
+<td>30 Hz</td>
+</tr>
+<tr>
+<td>Follower (MPPI, MPC)</td>
+<td>Which steering and speed keep us on the path?</td>
+<td>a steering angle and a set speed</td>
+<td>20 Hz</td>
+</tr>
+<tr>
+<td>ego</td>
+<td>Is that safe and possible?</td>
+<td>the same, limited and smoothed</td>
+<td>50 Hz</td>
+</tr>
+<tr>
+<td>ESP32 speed loop</td>
+<td>How much throttle or brake gives that speed?</td>
+<td>a pedal level</td>
+<td>100 Hz</td>
+</tr>
+<tr>
+<td>Steering actuator (Jrk)</td>
+<td>How do I turn the motor to that angle?</td>
+<td>motor power</td>
+<td>its own loop</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Two ideas run through everything:</strong></p>
+<ul>
+<li><strong>A model</strong> says how the car answers a command (section 1).</li>
+<li><strong>A controller</strong> uses the model to pick the command. Feedback corrects what went wrong;
+  feedforward acts on what we already know is coming (section 2).</li>
+</ul>
+</section>
+<section class="card"><h2 id="1-models-how-the-car-answers">1. Models: how the car answers</h2>
+<h3 id="the-idea">The idea</h3>
+<p>A model is a small set of equations: "if I send this, the car does that". Every
+controller here, and the EKF, uses one.</p>
+<h3 id="the-maths-three-pieces">The maths: three pieces</h3>
+<p><strong>The bicycle.</strong> Two wheels instead of four, about the rear axle:</p>
+<p><img alt="x dot = v cos theta, y dot = v sin theta, theta dot = v tan delta over L" src="../img/control/eq-bicycle.svg" /></p>
+<p>The dot means "how fast it changes". δ = the wheel angle, L = the wheelbase, 1.561 m.</p>
+<p><strong>A lag.</strong> An actuator doesn't jump: it creeps toward the command. A first-order lag:</p>
+<p><img alt="tau a dot plus a equals u" src="../img/control/eq-lag.svg" /></p>
+<p>a = what the actuator does, u = what we asked, τ = its time constant.</p>
+<p>After τ seconds it has done 63 % of the change; after 3τ, 95 %.</p>
+<p><strong>A dead time.</strong> Nothing happens at all for T seconds, then the lag starts. The camera
+frame's age and the ROS chain add these.</p>
+<h3 id="state-space-the-matrix-form">State space: the matrix form</h3>
+<p>Ben, 20 Nov: "state space is the matrix form for x order derivatives right?" Yes. Any
+n-th order equation becomes n first-order ones, stacked as a vector:</p>
+<p><img alt="x dot = A x + B u, y = C x" src="../img/control/eq-state-space.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Letter</th>
+<th>Is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>x</strong></td>
+<td>the state: everything the future depends on</td>
+</tr>
+<tr>
+<td>u</td>
+<td>what we send</td>
+</tr>
+<tr>
+<td>y</td>
+<td>what we measure</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The car's sideways motion</strong>, linearised for small errors (vehicle-model.md, section 3):</p>
+<p><img alt="the state e_y, e_theta, delta; A and B matrices" src="../img/control/eq-lateral.svg" /></p>
+<p>Read row by row:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Row</th>
+<th>Says</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>e_y' = v · e_θ</td>
+<td>pointing off the path moves you sideways, faster at speed</td>
+</tr>
+<tr>
+<td>e_θ' = (v/L) · δ</td>
+<td>steering turns the car</td>
+</tr>
+<tr>
+<td>δ' = (δcmd − δ)/τs</td>
+<td>the wheels creep toward what we asked (τs ≈ 0.16 s)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The eigenvalues of A</strong> say how the car behaves left alone: 0, 0 and −1/τs. Two zeros
+mean nothing pulls it back to the path. That's why we need a controller.</p>
+<h3 id="on-our-car">On our car</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The full nonlinear model (lags, dead times, rate limits, the speed loop)</td>
+<td><code>ros/bringup/aav_description/car-model/</code> (Rust) and <code>car_model.py</code> (<a href="car-model.html">car model</a>)</td>
+</tr>
+<tr>
+<td>Its numbers</td>
+<td><code>vehicle.yaml</code> <code>actuators:</code></td>
+</tr>
+<tr>
+<td>The linear version, poles and margins</td>
+<td><code>tools/vehicle_model.py</code>, <a href="vehicle-model.html">vehicle-model.md</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>The same model is used by ego (its look-ahead), MPPI, the MPC and the simulator.</p>
+<h3 id="better">Better</h3>
+<ul>
+<li><strong>Measure it.</strong> Car day's step tests (<code>car-test</code>, <code>tools/step_plots.py</code>) give the real
+  lags, dead times and throttle map. Fit, put into <code>vehicle.yaml</code>, and every controller
+  gets better at once.</li>
+<li><strong>A dynamic bicycle</strong> (tyre slip) only matters fast or on ice: not yet.</li>
+</ul>
+</section>
+<section class="card"><h2 id="2-feedback-and-feedforward">2. Feedback and feedforward</h2>
+<h3 id="the-idea_1">The idea</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Acts on</th>
+<th>Like</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Feedback</strong></td>
+<td>the error you can see now</td>
+<td>steering back after you drift</td>
+</tr>
+<tr>
+<td><strong>Feedforward</strong></td>
+<td>what you know is coming</td>
+<td>turning the wheel as the bend starts</td>
+</tr>
+</tbody>
+</table></div>
+<p>Feedback alone is always late: it waits for an error. Feedforward is fast but blind: if
+the model is wrong, it's wrong. <strong>Together:</strong> feedforward does most of the work, feedback
+mops up what's left.</p>
+<h3 id="the-maths">The maths</h3>
+<p>For a bend of curvature κ (1/radius), the bicycle says the steering that holds it is</p>
+<p><img alt="delta_ff = arctan(L kappa); delta_cmd = delta_ff minus K x" src="../img/control/eq-feed-forward.svg" /></p>
+<p>The first line is the bend's own steering (feedforward); the second adds the feedback.</p>
+<p><img alt="Feedback alone lags behind the bend; with feedforward it barely leaves the path" src="../img/control/feed-forward.png" /></p>
+<p><strong>What the figure shows</strong> (a 5 m bend at 1 m/s, pure pursuit's gains):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Off the path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Feedback only</td>
+<td>22 cm, and it <strong>stays</strong> 22 cm off: it needs an error to hold any steering at all</td>
+</tr>
+<tr>
+<td>Feedforward + feedback</td>
+<td>2 cm, then back to nearly 0</td>
+</tr>
+</tbody>
+</table></div>
+<p>That steady 22 cm is a rule: <strong>a feedback controller with no integral needs an error to
+produce an output</strong>. Feedforward supplies the output, so no error is needed.</p>
+<h3 id="on-our-car_1">On our car</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Feedforward</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The MPC's steering</td>
+<td>✅ <code>atan(L κ)</code> along the path ahead, shifted by the steering's dead time (<code>feed_forward</code> in <code>aav_mpc_lag/crates/mpc-lag/src/tracker.rs</code>; the node reports <code>feed_forward_rad</code>)</td>
+</tr>
+<tr>
+<td>MPPI</td>
+<td>in effect: its samples are rolled out on the path's bends, so the best one already turns</td>
+</tr>
+<tr>
+<td>The ESP32 speed loop</td>
+<td>❌ tried on the model, turned down: with the throttle 2x stronger than guessed it overshot 88 % (<a href="vehicle-model.html#the-candidates-on-the-model">vehicle-model.md</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="better_1">Better</h3>
+<ul>
+<li><strong>A speed feedforward</strong>, once the throttle map is measured: throttle ≈ (drag · v +
+  wanted acceleration) / a_max. The PI then corrects only the map's error.</li>
+</ul>
+</section>
+<section class="card"><h2 id="3-pi-the-speed-loop-on-the-esp32">3. PI: the speed loop on the ESP32</h2>
+<h3 id="the-idea_2">The idea</h3>
+<p>PI is feedback with two parts:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Does</th>
+<th>Alone</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>P</strong>: proportional</td>
+<td>push harder the bigger the error</td>
+<td>always a little short (needs an error to push)</td>
+</tr>
+<tr>
+<td><strong>I</strong>: integral</td>
+<td>keep adding up the error over time</td>
+<td>slowly removes that last bit</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-maths_1">The maths</h3>
+<p><img alt="e = v_set minus v; throttle = kp e + ki integral of e" src="../img/control/eq-pi.svg" /></p>
+<p>The car (vehicle-model.md, section 1), with d its drag and a_max its full-throttle
+acceleration:</p>
+<p><img alt="tau_v v dot + v = K u_a" src="../img/control/eq-speed-car.svg" /></p>
+<p>With a lag on the throttle too, in Laplace form (s ≈ "how fast"):</p>
+<p><img alt="P(s) = K over (tau_v s + 1)(tau_t s + 1); C(s) = kp + ki over s" src="../img/control/eq-speed-plant.svg" /></p>
+<p>P is the car (throttle command to speed), C the controller.</p>
+<p><strong>Why the integral removes the error.</strong> The final value theorem: the error left at the end
+is 1 / (1 + C(0) P(0)). With ki &gt; 0, C(0) = ∞, so the error is 0.</p>
+<p><img alt="e at infinity = 1 over 1 + C(0) P(0)" src="../img/control/eq-final-value.svg" /></p>
+<p><strong>Why today's PI overshoots.</strong> The PI adds a "zero" at −ki/kp that sits near the car's
+slow pole, and kicks the response. The fix, a <strong>setpoint weight</strong> b:</p>
+<p><img alt="throttle = kp (b v_set minus v) + ki integral of e; b = 0.75" src="../img/control/eq-setpoint-weight.svg" /></p>
+<p>The P part reacts less to a new set speed, but still fully to the car's own speed.</p>
+<p><img alt="P only stops short; today's PI overshoots 15 %; smooth gets there with none" src="../img/control/pi.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Design</th>
+<th>Overshoot</th>
+<th>Settles</th>
+<th>Error at the end</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P only (kp 0.3)</td>
+<td>0</td>
+<td>—</td>
+<td>18 % short</td>
+</tr>
+<tr>
+<td>PI today (0.3, 0.1)</td>
+<td>15 %</td>
+<td>13 s</td>
+<td>0</td>
+</tr>
+<tr>
+<td><strong><code>smooth</code></strong> (1.0, 0.25, b 0.75)</td>
+<td><strong>0</strong></td>
+<td><strong>6 s</strong></td>
+<td>0</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="on-our-car_2">On our car</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The loop</td>
+<td><code>firmware/spine/crates/spine-core/src/speed_loop.rs</code>, every 10 ms on the ESP32</td>
+</tr>
+<tr>
+<td>Profiles</td>
+<td><code>default</code>, <code>smooth</code>, <code>lqi</code> (<code>speed_loop:=</code>)</td>
+</tr>
+<tr>
+<td>Anti-windup</td>
+<td>clamping: no integrating while the throttle is pinned</td>
+</tr>
+<tr>
+<td>Brake</td>
+<td>a separate P loop past a 0.2 m/s coast band</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="better_2">Better</h3>
+<ul>
+<li><strong>Pole placement</strong> on the measured car: pick where the poles go, solve for kp, ki
+  (vehicle-model.md, "Pole placement").</li>
+<li><strong>Gain scheduling</strong> if the car behaves differently at 0.5 and 2 m/s.</li>
+</ul>
+</section>
+<section class="card"><h2 id="4-lqr-the-best-gains-from-the-model">4. LQR: the best gains from the model</h2>
+<h3 id="the-idea_3">The idea</h3>
+<p>PI's gains are picked by hand. LQR picks them <strong>from the model</strong>, by answering: what
+feedback u = −K x makes this cost as small as possible, forever?</p>
+<p><img alt="J = integral of x transpose Q x plus u transpose R u" src="../img/control/eq-lqr-cost.svg" /></p>
+<p>The first term is how far off we are; the second, how hard we work.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>You choose</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Q</strong> big</td>
+<td>"I hate being off the path"</td>
+</tr>
+<tr>
+<td><strong>R</strong> big</td>
+<td>"I hate big steering"</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-maths_2">The maths</h3>
+<ol>
+<li>Write the model: A, B (section 1).</li>
+<li>Choose Q and R.</li>
+<li>Solve the <strong>Riccati equation</strong> for P (a computer does this):
+   <img alt="A transpose P + P A minus P B R inverse B transpose P + Q = 0; K = R inverse B transpose P; u = minus K x" src="../img/control/eq-riccati.svg" /></li>
+<li>The gain: <code>K = R⁻¹ Bᵀ P</code>. The controller: <code>u = −K x</code>.</li>
+</ol>
+<p><strong>What you get for free:</strong> the closed loop is always stable (if the model is right), with
+at least 60° of phase margin. That is the "maths proof it will resolve".</p>
+<p><img alt="LQR from 0.5 m off: small R steers hard and fast, big R gently; pure pursuit for comparison" src="../img/control/lqr.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>R</th>
+<th>K = [e_y, e_θ, δ]</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1</td>
+<td>[3.16, 4.90, 0.42]</td>
+<td>back in 2 s, but 45° of steering: <strong>beyond full lock</strong></td>
+</tr>
+<tr>
+<td>1</td>
+<td>[1.00, 2.18, 0.20]</td>
+<td>back in 4 s, 18°</td>
+</tr>
+<tr>
+<td>10</td>
+<td>[0.32, 1.09, 0.11]</td>
+<td>gentle, 7°</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The catch:</strong> LQR doesn't know about limits. R = 0.1 asks for more steering than the car
+has. That's what MPC fixes (section 6).</p>
+<h3 id="on-our-car_3">On our car</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tracker:=lqr</code></td>
+<td><code>aav_track</code>'s LQR lane keeper, a trial follower</td>
+</tr>
+<tr>
+<td><code>VehicleModel.speed_lqi</code></td>
+<td>the speed loop's gains (next section)</td>
+</tr>
+<tr>
+<td>Pure pursuit</td>
+<td>is secretly a hand-made u = −K x (vehicle-model.md, section 3), which is why it fits on the same graph</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="better_3">Better</h3>
+<ul>
+<li><strong>K that changes with speed</strong> (gain scheduling): A has v in it, so the best K does too.</li>
+</ul>
+</section>
+<section class="card"><h2 id="5-lqi-lqr-with-an-integral">5. LQI: LQR with an integral</h2>
+<h3 id="the-idea_4">The idea</h3>
+<p>LQR, like P, leaves a steady error when something pushes constantly (a hill, drag). LQI
+adds the <strong>integral of the error as one more state</strong>, so the LQR solves for the I gain
+too.</p>
+<h3 id="the-maths_3">The maths</h3>
+<p><img alt="z dot = v_set minus v; the state grows by z; u = minus K x_aug" src="../img/control/eq-lqi.svg" /></p>
+<p>z is the integral of the speed error, added as one more state.</p>
+<p>Solve the same Riccati equation for the bigger state. The k_z part is the integral gain,
+chosen by the maths rather than by hand. The ESP32 solves the <strong>discrete</strong> version (it runs
+in steps of 10 ms, not continuously).</p>
+<h3 id="on-our-car_4">On our car</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>speed_loop:=lqi</code></td>
+<td><code>spine-core</code>; one signed acceleration for both throttle and brake</td>
+</tr>
+<tr>
+<td>Its gains</td>
+<td><code>VehicleModel.speed_lqi</code> (the discrete Riccati equation), in <a href="vehicle-model.html#the-lqi-todo-3">vehicle-model.md</a></td>
+</tr>
+<tr>
+<td>Result on the model</td>
+<td>0 % overshoot, settles in 5.0 s, 44° margin: as good as <code>smooth</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="better_4">Better</h3>
+<ul>
+<li>Re-solve K once car day measures a_max, drag and the lags. LQI's advantage over PI
+  grows the better the model is.</li>
+</ul>
+</section>
+<section class="card"><h2 id="6-mpc-lqr-that-looks-ahead-and-respects-limits">6. MPC: LQR that looks ahead and respects limits</h2>
+<h3 id="the-idea_5">The idea</h3>
+<p>Every 50 ms:</p>
+<ol>
+<li><strong>Predict</strong> the next 1.5 s (30 ticks) with the model, for a sequence of commands.</li>
+<li><strong>Choose</strong> the sequence with the lowest cost, <strong>within the limits</strong> (full lock, the
+   steering rate, top speed).</li>
+<li><strong>Send only the first command.</strong> Next tick, start again from where the car really is.</li>
+</ol>
+<p><img alt="The MPC's plan over 1.5 s: only the first command is sent, then it plans again" src="../img/control/horizon.png" /></p>
+<p>This "plan, send one, plan again" is called the <strong>receding horizon</strong>. Replanning every
+tick is the feedback; the plan along the bends ahead is the feedforward.</p>
+<h3 id="the-maths_4">The maths</h3>
+<p>The cost, summed over the 30 ticks (<code>tracker.rs</code>'s header):</p>
+<p><img alt="the MPC cost: path, heading, steering, speed, smoothness, within the limits" src="../img/control/eq-mpc-cost.svg" /></p>
+<p><strong>How it's solved:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linearise</td>
+<td>about the last plan, shifted by one tick: <code>X = X̄ + M ΔU</code></td>
+</tr>
+<tr>
+<td>Condense</td>
+<td>write every future state through ΔU only: a quadratic in ΔU</td>
+</tr>
+<tr>
+<td>QP</td>
+<td>minimise ½ ΔUᵀ P ΔU + qᵀ ΔU within the limits: our own ADMM solver (<code>qp.rs</code>)</td>
+</tr>
+<tr>
+<td>Send</td>
+<td>u[0] and c[0]</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="X = X bar + M delta U; minimise half delta U transpose P delta U + q transpose delta U" src="../img/control/eq-qp.svg" /></p>
+<p>It is LQR's cost (section 4), with a finite horizon, limits, and the full lagged model.</p>
+<h3 id="the-tube-21-nov">The tube (21 Nov)</h3>
+<p>Ben: "It doesn't need to be super aggressive sticking to the line so that it doesn't
+oscillate so much."</p>
+<p><img alt="The tube: no cost within ±0.3 m, so the car holds its line" src="../img/control/tube.png" /></p>
+<p>Inside ±w the target for e_y is where the plan already is, so there is no pull to the
+centre. Outside, the cost rises as before. Tuned 21 Nov: <strong>w = 0.3 m</strong> is the default
+(<code>mpc_lag_tube:=0</code> turns it off).</p>
+<p><img alt="cost = q1 (e_y minus clip(e_y, minus w, w)) squared, w = 0.3 m" src="../img/control/eq-tube.svg" /></p>
+<h3 id="on-our-car_5">On our car</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Rust MPC</td>
+<td><code>ros/drivers/aav_mpc_lag/</code> (<code>tracker:=mpc_lag_rs</code>), 1.6 ms a tick</td>
+</tr>
+<tr>
+<td>The Python one</td>
+<td><code>aav_track</code> (<code>tracker:=mpc_lag</code>), 6.8 ms</td>
+</tr>
+<tr>
+<td>Reversing</td>
+<td>cut at cusps, a backwards stretch mirrored (20 Nov)</td>
+</tr>
+<tr>
+<td>League, 21 Nov</td>
+<td>every leg, the closest to the path, but <strong>2x MPPI's sway</strong> (<a href="league-results-2026-11-20.html#mpc-against-mppi-21-nov-todo-213">results</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="better_5">Better</h3>
+<ul>
+<li><strong>The tube</strong> ✅ tuned 21 Nov: 0.3 m cut University Drive's sway from 0.251 to 0.160
+  (MPPI: 0.132), every leg still reached.</li>
+<li><strong>Tune r_rate</strong> (the cost on steering changes): more = calmer.</li>
+<li><strong>The costmap in the cost</strong> (Ben's idea): the kerb as a wall, the yellow line costly,
+  the other side costlier. Today the MPC follows only the path.</li>
+<li><strong>A terminal cost from LQR's P</strong> makes the finite horizon provably stable.</li>
+</ul>
+</section>
+<section class="card"><h2 id="7-mppi-sampling-instead-of-solving">7. MPPI: sampling instead of solving</h2>
+<h3 id="the-idea_6">The idea</h3>
+<p>Instead of solving for the best commands, <strong>try lots of them</strong>:</p>
+<ol>
+<li>Take the last plan and add random wiggles: 2,000 versions (<code>mppi_lag_1k</code>: 1,000).</li>
+<li>Roll each one forward through the car model.</li>
+<li>Score each one (the critics: path, goal, obstacles, smoothness).</li>
+<li>Average them, <strong>weighted by how good they were</strong>: cheap ones count a lot.</li>
+</ol>
+<p><img alt="MPPI's samples: darker means cheaper and weighs more; the blue mean is what it sends" src="../img/control/mppi.png" /></p>
+<h3 id="the-maths_5">The maths</h3>
+<p><img alt="w_k = exp(minus c_k over lambda) over the sum; u = u_last + sum of w_k epsilon_k" src="../img/control/eq-mppi.svg" /></p>
+<p>c_k = sample k's cost, ε_k = its wiggle, λ = how picky.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>MPC</th>
+<th>MPPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Finds the plan by</td>
+<td>solving a QP (calculus)</td>
+<td>sampling and averaging</td>
+</tr>
+<tr>
+<td>Cost must be</td>
+<td>smooth, quadratic</td>
+<td>anything: walls, lanes, if-then</td>
+</tr>
+<tr>
+<td>Limits</td>
+<td>exact constraints</td>
+<td>samples clipped</td>
+</tr>
+<tr>
+<td>Result</td>
+<td>the exact best, for a linearised model</td>
+<td>close to the best, for the full model</td>
+</tr>
+<tr>
+<td>Calm?</td>
+<td>can chase small errors</td>
+<td>averaging smooths it: <strong>the calmest today</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Our change:</strong> the noise is <strong>correlated</strong> (smooth wiggles, AR(1) 0.8). White noise
+averages away through the slow steering, so every sample drives alike and MPPI learns
+nothing (<a href="mppi-lag.html#why-the-noise-is-correlated">mppi-lag.md</a>).</p>
+<h3 id="on-our-car_6">On our car</h3>
+<p><code>ros/drivers/aav_mppi_lag/</code> (<code>tracker:=mppi_lag</code>), the default follower: 3.4 ms a tick on
+a Mac; about 10 ms on the Orin.</p>
+<h3 id="better_6">Better</h3>
+<ul>
+<li><strong>Time <code>mppi_lag_1k</code> on the Orin</strong> (TODO 152), then use it on the car.</li>
+<li><strong>Lane and kerb costs</strong> from the map (already a <code>LaneCritic</code>).</li>
+</ul>
+</section>
+<section class="card"><h2 id="8-stability-will-it-settle">8. Stability: will it settle?</h2>
+<h3 id="the-idea_7">The idea</h3>
+<p>A controller is <strong>stable</strong> if, after a push, the car comes back and stays. Three ways to
+check:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Asks</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Poles</strong> (eigenvalues of the closed loop)</td>
+<td>do all of them have a negative real part?</td>
+<td>every linear loop here</td>
+</tr>
+<tr>
+<td><strong>Margins</strong> (Bode)</td>
+<td>how much extra delay or gain before it oscillates?</td>
+<td>the delays: vehicle-model.md, section 4</td>
+</tr>
+<tr>
+<td><strong>Lyapunov</strong></td>
+<td>is there an "energy" that always goes down?</td>
+<td>LQR (its P is one); MPC with a terminal cost; Ben's safety filter</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-maths_6">The maths</h3>
+<p><strong>Poles.</strong> For u = −K x, the closed loop is <code>x' = (A − BK) x</code>. Its eigenvalues λ:</p>
+<p><img alt="x dot = (A minus B K) x" src="../img/control/eq-closed-loop.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>λ</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>real part &lt; 0</td>
+<td>the error dies away (faster the more negative)</td>
+</tr>
+<tr>
+<td>an imaginary part</td>
+<td>it rings (oscillates) as it dies</td>
+</tr>
+<tr>
+<td>real part &gt; 0</td>
+<td><strong>unstable</strong>: it grows</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Lyapunov.</strong> Find V(x) &gt; 0 (like distance², or LQR's xᵀPx) that always falls:
+V' &lt; 0. Then x must go to 0. This is the "maths proof it will resolve".</p>
+<p><img alt="V &gt; 0 and V dot &lt; 0 means x goes to 0" src="../img/control/eq-lyapunov.svg" /></p>
+<p><strong>The final value theorem.</strong> Where does it end up? <code>lim s·E(s)</code> as s → 0 (section 3).</p>
+<h3 id="on-our-car_7">On our car</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Loop</th>
+<th>Poles</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Speed, <code>smooth</code></td>
+<td>−0.28, −1.61, −8.2 (all real: no ringing)</td>
+<td>vehicle-model.md</td>
+</tr>
+<tr>
+<td>Pure pursuit at 1 m/s</td>
+<td>−0.76 ± 0.78j, −4.6 (ζ 0.7)</td>
+<td>vehicle-model.md</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="better_7">Better</h3>
+<ul>
+<li><strong>Barrier functions (CBF)</strong>, the safety filter idea: like Lyapunov, but proving the car
+  never <strong>enters</strong> a bad set (the kerb, another car), instead of always reaching a good
+  one. Each follower's look-ahead is checked against the barriers (Ben's thesis).</li>
+</ul>
+</section>
+<section class="card"><h2 id="9-the-ekf-where-am-i">9. The EKF: where am I?</h2>
+<h3 id="the-idea_8">The idea</h3>
+<p>Every sensor is wrong in its own way:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Sensor</th>
+<th>Good at</th>
+<th>Bad at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>wheels</td>
+<td>short distances</td>
+<td>drift over time, slip</td>
+</tr>
+<tr>
+<td>IMU gyro</td>
+<td>turning</td>
+<td>drift; no absolute heading</td>
+</tr>
+<tr>
+<td>GPS</td>
+<td>absolute position</td>
+<td>jumpy, ±1 m, slow</td>
+</tr>
+<tr>
+<td>lidar + map (NDT)</td>
+<td>precise position</td>
+<td>needs a map; can lose it</td>
+</tr>
+</tbody>
+</table></div>
+<p>The Kalman filter blends them: <strong>predict</strong> with the model, <strong>correct</strong> with each
+reading, trusting each by how noisy it is.</p>
+<h3 id="the-maths-predict-then-update">The maths: predict, then update</h3>
+<p><strong>Predict</strong> (the model moves the guess; we get less sure):</p>
+<p><img alt="x hat minus = f(x hat, u); P minus = F P F transpose + Q" src="../img/control/eq-ekf-predict.svg" /></p>
+<p><strong>Update</strong> (a reading pulls the guess; we get more sure):</p>
+<p><img alt="K = P minus H transpose (H P minus H transpose + R) inverse; x hat = x hat minus + K (z minus h); P = (I minus K H) P minus" src="../img/control/eq-ekf-update.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Letter</th>
+<th>Is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P</td>
+<td>how unsure we are (the covariance)</td>
+</tr>
+<tr>
+<td>Q</td>
+<td>how wrong the model may be</td>
+</tr>
+<tr>
+<td>R</td>
+<td>how noisy the reading is</td>
+</tr>
+<tr>
+<td>K</td>
+<td>the Kalman gain: 0 = ignore the reading, 1 = trust it fully</td>
+</tr>
+<tr>
+<td>z</td>
+<td>the reading</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The "E" (extended):</strong> the bicycle has sin and cos, so it isn't linear. The EKF
+linearises it at each step (F and H are Jacobians): the same trick as the MPC.</p>
+<p><img alt="One update: the fused guess sits between and is narrower; over time, predicting grows the doubt and each GPS fix shrinks it" src="../img/control/kalman.png" /></p>
+<p><strong>LQR's mirror image.</strong> The Kalman gain comes from a Riccati equation, the same one as
+LQR's, run in the other direction. Control and estimation are twins; that's why they're
+taught together.</p>
+<h3 id="on-our-car_8">On our car</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>EKF</th>
+<th>Fuses</th>
+<th>Gives</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ekf_local</code></td>
+<td>wheels, IMU turn rate</td>
+<td>smooth <code>odom → base_link</code></td>
+<td>the followers, the local costmap</td>
+</tr>
+<tr>
+<td><code>ekf_global</code></td>
+<td>+ GPS, GPS heading (+ NDT)</td>
+<td><code>map → odom</code>, true position</td>
+<td>the planner</td>
+</tr>
+</tbody>
+</table></div>
+<p>Both are robot_localization, at 30 Hz, in 2D. Config: <code>ros/localization/aav_localization/config/</code>.
+Choices worth knowing (<a href="learn-localization.html#7-our-two-ekfs-their-real-inputs">learn-localization.md</a>):
+it fuses vy = 0 (a car can't slide sideways); the IMU gives the turn rate, never the
+heading.</p>
+<h3 id="better_8">Better</h3>
+<ul>
+<li><strong>Tune Q and R from car day's recordings</strong>: the noise numbers are guesses today.</li>
+<li><strong>A kinematic EKF</strong> (<code>pose:=kinematic_ekf</code>): no gain in the sim, kept for the car,
+  where wheels slip.</li>
+<li><strong>NDT leading</strong>, the GPS as a fallback (<code>--ndt-leads</code>): 92 % of clouds gave a pose on
+  the campus.</li>
+</ul>
+</section>
+<section class="card"><h2 id="10-what-to-make-better-first">10. What to make better first</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Do</th>
+<th>Helps</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Measure the car</strong> (step tests, lock to lock, throttle map)</td>
+<td>every model, every controller</td>
+<td>car day</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>The MPC's <code>r_rate</code></strong>, then the costmap in its cost (the tube is done: 0.3 m)</td>
+<td>MPC sway</td>
+<td>the sim</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Re-solve LQI and pole placement</strong> on measured numbers</td>
+<td>the speed loop</td>
+<td>1</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>A speed feedforward</strong> from the measured throttle map</td>
+<td>faster speed response</td>
+<td>1</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Tune the EKFs' Q and R</strong> from recorded drives</td>
+<td>where-am-I</td>
+<td>car day's bags</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>The costmap in the MPC's cost</strong> (kerb wall, yellow line)</td>
+<td>lane keeping</td>
+<td>after car day</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>The safety filter</strong> (barriers) on every program driver</td>
+<td>safety</td>
+<td>Ben's thesis</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="glossary">Glossary</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>state x</td>
+<td>the numbers the future depends on (position, heading, speed, wheel angle...)</td>
+</tr>
+<tr>
+<td>A, B</td>
+<td>how the state changes by itself (A), and from a command (B)</td>
+</tr>
+<tr>
+<td>pole, eigenvalue</td>
+<td>a "speed" of the system: negative = settles, positive = blows up</td>
+</tr>
+<tr>
+<td>lag (τ)</td>
+<td>creeping toward the command; 63 % after τ</td>
+</tr>
+<tr>
+<td>dead time</td>
+<td>nothing at all, then the lag</td>
+</tr>
+<tr>
+<td>gain K</td>
+<td>how hard the controller pushes for each unit of error</td>
+</tr>
+<tr>
+<td>Q, R</td>
+<td>in LQR and MPC: how much we hate error (Q) and effort (R). In the EKF: model noise (Q) and sensor noise (R)</td>
+</tr>
+<tr>
+<td>Riccati equation</td>
+<td>the equation whose answer gives LQR's best K (and the Kalman gain)</td>
+</tr>
+<tr>
+<td>horizon</td>
+<td>how far ahead the MPC plans (1.5 s)</td>
+</tr>
+<tr>
+<td>QP</td>
+<td>quadratic program: minimise a bowl-shaped cost within straight-line limits</td>
+</tr>
+<tr>
+<td>covariance P</td>
+<td>how unsure the EKF is: a spread, drawn as an ellipse</td>
+</tr>
+<tr>
+<td>Jacobian</td>
+<td>the slopes of a nonlinear function: how to linearise it</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="run-it">Run it</h2>
+<pre class="highlight"><code class="language-sh">pixi run python tools/control_figures.py        # these figures
+pixi run python3 tools/vehicle_model.py         # poles, steps, margins
+pixi run python3 tools/state_space_demo.py      # the state-space teaching example</code></pre></section>
+<nav class="prevnext"><a class="prev" href="learn-state-space.html"><small>Previous</small>← Learn: state space</a>
+<a class="next" href="vehicle-model.html"><small>Next</small>The car as a linear model →</a></nav>
+</main>
+<footer>Source: <code>docs/control-explained.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

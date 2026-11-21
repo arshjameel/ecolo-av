@@ -3,8 +3,8 @@
 ## Overview
 
 Finds the lane lines in the front left camera's pictures, with classic OpenCV and no
-model. It publishes `/perception/lane/geometry`, which lane keeping steers by
-(`control_interface` in [aav_lane_geometry](../aav_lane_geometry/README.md)).
+model. It publishes `/perception/lane/geometry`, which our costmap draws as lane costs
+(`lane_source:=camera`, TODO 264) and `aav_lane_pose` reads as a sideways pose.
 
 For each picture:
 
@@ -12,9 +12,13 @@ For each picture:
 2. mask the paint: brighter than the road on both sides, and narrow;
 3. climb each line with sliding windows;
 4. fit y = a x² + b x + c per line, in `base_link` metres;
-5. work out the car's offset from the lane's centre, the lane width and each radius.
+5. work out the car's offset from the lane's centre, the lane width and each radius;
+6. say each line's paint: yellow (little blue against its red and green) or white
+   (`paint_of`, `yellow_ratio`). A grey camera sees every line white.
 
-A model can replace it later, behind the same topic.
+A model can replace it, behind the same topic: the learned finder,
+[aav_lane_finder_learned](../aav_lane_finder_learned/README.md) (`lane_finder_impl:=learned`,
+a challenger).
 
 **Its Rust twin runs by default** since 18 Nov: [aav_lane_finder_rs](../aav_lane_finder_rs/README.md),
 the same node, topics, parameters and lanes, without OpenCV, at a fifth of the CPU.
@@ -38,6 +42,7 @@ the same node, topics, parameters and lanes, without OpenCV, at a fifth of the C
 |---|---|---|
 | `camera_xyz`, `camera_rpy` | from `vehicle.yaml` (launch); without it [1.80, 0.29, 1.20], [0, 0, 0] | the camera's place on the car: m, rad |
 | `wheelbase` | from `vehicle.yaml` (launch); without it 1.57 | m, for `steering_hint` |
+| `yellow_ratio` | 0.75 | a line is yellow when its blue is below this share of the lower of its red and green |
 | `focal_px` | 343 px | only until CameraInfo arrives |
 | `use_camera_info` | true | false: always use `focal_px` |
 | `x_min`, `x_max`, `y_max`, `resolution` | 4 m, 16 m, 4 m, 0.05 m | the patch of road the view covers |
@@ -59,11 +64,11 @@ Every field of `Settings` in `lane_lines.py` is also a parameter (`windows`,
 | Module | No ROS? | Holds |
 |---|---|---|
 | `birds_eye.py` | yes | `Lens`, `Mount`, `Grid`, `BirdsEye`, `project`, `rotation` |
-| `lane_lines.py` | yes | `Settings`, `Line`, `Lane`, `LaneFinder`, `paint_mask`, `follow`, `fit_line`, `lane_from`, `draw` |
+| `lane_lines.py` | yes | `Settings`, `Line`, `Lane`, `LaneFinder`, `paint_mask`, `follow`, `fit_line`, `lane_from`, `paint_of`, `draw` |
 | `lane_finder.py` | no | the node; `message()` turns a `Lane` into `LaneGeometry` |
 
 `test/scenes.py` draws the made-up lanes the tests (and `aav_lane_finder_rs`'s vectors) use:
-solid or dashed (`dash=`), straight or bent, either line missing.
+solid or dashed (`dash=`), straight or bent, either line missing, a line yellow (`yellow=`).
 
 ## Invariants
 
@@ -90,4 +95,4 @@ pixi run build && colcon test --packages-select aav_lane_finder && colcon test-r
 ```
 
 `tools/test.sh` runs the first; `pixi run test` runs everything. In Ravensim:
-`pixi run sim-check --lane`.
+`pixi run sim lanes:=camera`.

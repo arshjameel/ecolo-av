@@ -13,7 +13,7 @@ use things_core::{
     group,
     naming::{best_label, project, thing_box, Axes, Camera, CameraMount, Lens, Namer, Seen},
     radar::{clusters, RadarPoint},
-    to_frame, GroupShape, Pose2, Tracker, TrackerShape,
+    to_frame, GroupShape, Pose2, Track, Tracker, TrackerShape,
 };
 
 /// The largest difference allowed in a number (m, m/s, or none): the two languages'
@@ -95,6 +95,19 @@ fn vectors() -> Value {
     serde_json::from_str(&fs::read_to_string(path).expect("vectors.json")).expect("JSON")
 }
 
+/// A thing's kind by its outline, for the per-kind runs: gen_vectors.py's rule.
+fn kind_by_shape(t: &Track) -> String {
+    let size = t.length.max(t.width);
+    if size > 2.5 {
+        "car"
+    } else if size <= 0.8 && t.height > 1.2 {
+        "person"
+    } else {
+        "unknown"
+    }
+    .to_string()
+}
+
 #[test]
 fn the_same_things_as_the_python() {
     let all = vectors();
@@ -102,7 +115,22 @@ fn the_same_things_as_the_python() {
     let (mut clouds, mut listed) = (0, 0);
     for run in runs {
         let name = run["name"].as_str().expect("name");
-        let mut tracker = Tracker::new(TrackerShape::default());
+        // TODO 217: the per-kind runs set per_kind (and refind_gap); the kinds by shape.
+        let given = run.get("tracker").filter(|t| t.is_object());
+        let d = TrackerShape::default();
+        let shape = TrackerShape {
+            per_kind: given
+                .and_then(|t| t.get("per_kind"))
+                .and_then(Value::as_bool)
+                .unwrap_or(d.per_kind),
+            refind_gap: given
+                .and_then(|t| t.get("refind_gap"))
+                .and_then(Value::as_f64)
+                .unwrap_or(d.refind_gap),
+            ..d
+        };
+        let kinds = run.get("kinds").and_then(Value::as_bool).unwrap_or(false);
+        let mut tracker = Tracker::new(shape);
         let bg = run.get("map").filter(|m| !m.is_null()).map(background);
         let below = run.get("below").and_then(Value::as_f64);
         let frames = run["frames"].as_array().expect("frames");
@@ -136,6 +164,9 @@ fn the_same_things_as_the_python() {
             }
             let car = [odom.x, odom.y];
             tracker.step(number(&frame["t"]), &groups, car);
+            if kinds {
+                tracker.rename(kind_by_shape);
+            }
             if let Some(radar) = frame.get("radar").filter(|r| !r.is_null()) {
                 let rows: Vec<RadarPoint> = radar["rows"]
                     .as_array()

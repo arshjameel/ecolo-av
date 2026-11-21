@@ -2,8 +2,9 @@
 
 The workspace of the 2026-27 Carleton AAV capstone team: one git repo = one colcon
 workspace for ROS 2 **Jazzy on Ubuntu 24.04** (Python 3.12), plus the spine firmware.
-Read `README.md` first, then `docs/how-it-fits.md` (how the stack fits together) and
-`docs/status.md` (what works and what's missing).
+Read `docs/codemap.md` to find code; don't search the tree. Then `README.md`,
+`docs/how-it-fits.md` (how the stack fits together) and `docs/status.md` (what works and
+what's missing).
 
 These are the conventions decided so far. They apply to people and to Claude sessions alike.
 
@@ -61,7 +62,9 @@ These are the conventions decided so far. They apply to people and to Claude ses
   source to learn from, and check its licence (Ben, 15 Oct).
 - **Our own algorithms** (Ben, 5 Nov): for each area we build a new best hybrid from papers,
   known algorithms and current implementations. A new one runs beside the current default
-  as the challenger until it wins on the same routes and bags. Every algorithm stays.
+  as the challenger until it wins on the same routes and bags. Don't delete one too early;
+  once we know it isn't the path for us, strip it out (Ben, 19 Nov: "We can strip down when
+  we know stuff isn't going ot work for us"): its scores stay in the docs, a `save/` tag in git.
 - **Everything is a drop-in replacement** (Ben, 5 Nov: "just swap out and test"). Ravensim,
   CARLA and the real sensors all produce the same topics; so does every algorithm for its
   job. `docs/interfaces.yaml` is what they must match. Nothing downstream may care which one
@@ -135,7 +138,7 @@ EGM artifact directory: docs/designs
 - Pixi + RoboStack provide Jazzy without admin rights: on Ben's AlmaLinux workstation
   (oirp-spss), on Macs, and on any Linux. `pixi.toml` and `pixi.lock` define the
   environment; `pixi run <task>` runs a command inside it. That machine has no screen
-  for GUIs: run headless there (`QT_QPA_PLATFORM=offscreen`, `gui:=false`).
+  for GUIs: run headless there (`QT_QPA_PLATFORM=offscreen`, `rviz:=false`).
 - Say what you actually ran. A profile that hasn't been launched is "untested", not
   "works".
 - Keep `pixi run test` all green: it's the first thing a new laptop runs.

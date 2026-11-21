@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drive by hand and record everything · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/drive-and-record.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Drive by hand and record everything</h1>
+<div class="meta">6 min read · 6 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a class="here" href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#who-does-what">Who does what</a><a href="#who-drives">Who drives</a><a href="#which-firmware">Which firmware</a><a href="#record">Record</a><a href="#what-to-do-in-order">What to do, in order</a><a href="#after">After</a></nav>
+<div class="lead"><p>Ben, 20 Nov: "make the joystick and the remote control drive the car and the hardware
+screen ... provide the heartbeat", and record "the lidar, camera, stopping, steering,
+acceleration, imu data, etc. Especially how it all fits together."</p>
+<p><span class="badge b-untested">untested</span> on the car: both machine files are new (20 Nov), tested only by the launch
+tests.</p></div>
+<section class="card"><h2 id="who-does-what">Who does what</h2>
+<pre class="highlight"><code class="language-text"> laptop (laptop_orin)                       Orin (orin_sensors)
+   joystick ─► mux ─► ego ─► output mux       lidar, front cameras, the EKFs, /tf
+   hardware screen ─┘        (the heartbeat)  records the bag
+            │ Ethernet cable                          ▲ Ethernet
+            ▼                                         │ every topic
+ Motor Pi (motor_pi): bridge ─UART─► ESP32 ◄─iBUS─ RC transmitter
+ localization Pi (localization): IMU, GPS</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Computer</th>
+<th>Runs</th>
+<th>Command (<code>export ROS_DOMAIN_ID=42</code> first)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Motor Pi</td>
+<td>the bridge to the ESP32</td>
+<td><code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=motor_pi</code></td>
+</tr>
+<tr>
+<td>localization Pi</td>
+<td>IMU, GPS</td>
+<td><code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=localization</code></td>
+</tr>
+<tr>
+<td>Orin</td>
+<td>lidar, cameras, where the car is</td>
+<td><code>~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin_sensors</code></td>
+</tr>
+<tr>
+<td>laptop, joystick plugged in</td>
+<td>mux, ego, output mux: the heartbeat</td>
+<td><code>pixi run tools/ros.sh ros2 launch aav_bringup car.launch.py machine:=laptop_orin max_speed:=0.3</code></td>
+</tr>
+<tr>
+<td>laptop, second terminal</td>
+<td>the hardware screen</td>
+<td><code>pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>No Orin, or it doesn't run our stack yet? Skip its row: the joystick and the screen still
+work, but no lidar or cameras.</p>
+<p><strong>Plug the laptop into the car's switch with the Ethernet cable</strong>, not WiFi: the heartbeat
+then goes over the wire, and the lidar's 9 MB/s fits. Give the laptop an address on the
+car's network (192.168.1.x) and run <code>pixi run doctor</code>.</p>
+<p><strong>Then turn the laptop's WiFi off.</strong> ROS (Cyclone DDS) uses one network card, and with both
+on it may pick the WiFi. If the WiFi must stay on, name the cable's card (<code>ifconfig</code>: the
+<code>en</code> with the 192.168.1.x address) in <code>~/.config/aav/cyclonedds.xml</code>:</p>
+<pre class="highlight"><code class="language-xml">&lt;CycloneDDS xmlns="https://cdds.io/config"&gt;&lt;Domain id="any"&gt;&lt;General&gt;&lt;Interfaces&gt;
+  &lt;NetworkInterface name="en7"/&gt;
+&lt;/Interfaces&gt;&lt;/General&gt;&lt;/Domain&gt;&lt;/CycloneDDS&gt;</code></pre>
+<p><strong>Never</strong> run <code>car orin</code> or <code>car motor_pi_alone</code> beside these: two muxes and two egos
+would both drive.</p>
+</section>
+<section class="card"><h2 id="who-drives">Who drives</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>How</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RC transmitter, CH6 up</td>
+<td>the sticks, straight into the ESP32</td>
+<td>nothing else: no laptop, no Pi</td>
+</tr>
+<tr>
+<td>joystick</td>
+<td>through the laptop's mux and ego, as <strong>a pedal</strong>: push and hold to hold a speed, let go to slow at 1 m/s², pull back to brake, hold back at a stop for 1 s to reverse. The centre 10 % is let go</td>
+<td>the laptop, the Motor Pi</td>
+</tr>
+<tr>
+<td>hardware screen</td>
+<td>STOP, E-STOP, steering; <strong>speed off on the real car</strong> (TODO 49b)</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>scripted drive ("3 m and stop")</td>
+<td><code>ros2 action send_goal /scripted_drive aav_interfaces/action/ScriptedDrive "{target_speed: 0.5, acceleration: 0.3, deceleration: 0.3, hold_distance: 3.0, curvature: 0.0}" --feedback</code></td>
+<td>the Orin's EKFs (the wheels come by its CAN); the geofence's good position</td>
+</tr>
+</tbody>
+</table></div>
+<p>CH6 is the RC's override switch (the 2025-26 <code>RC_EN_CH</code>). Which switch sends it is set in
+the transmitter's menu: flip each and watch the hardware screen's GRAPHS page. Two or three
+positions is the hardware lead's question (H10).</p>
+</section>
+<section class="card"><h2 id="which-firmware">Which firmware</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>On the ESP32</th>
+<th>The heartbeat</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the C++ (on the car today)</td>
+<td><strong>none</strong>: frames stop, the last throttle stays</td>
+<td><strong>stands only</strong></td>
+</tr>
+<tr>
+<td>the Rust, with <code>frame_version: 2</code> on the Motor Pi</td>
+<td>100 ms without a new counter: full brake, latched. Over WiFi a hiccup brakes too: use the Ethernet cable</td>
+<td>the ground, at <code>max_speed:=0.3</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Flashing the Rust is Ben's call (<a href="esp32-bench.html">the bench</a>).</p>
+</section>
+<section class="card"><h2 id="record">Record</h2>
+<p>On the Orin (or the laptop, if there's no Orin), before the first move:</p>
+<pre class="highlight"><code class="language-sh">pixi run tools/record.sh --lidar handdrive      # bags/&lt;date&gt;_handdrive/, MCAP</code></pre>
+<p>About 9 MB/s with the lidar: 10 minutes is about 5 GB. Without <code>--lidar</code>, a few hundred
+KB/s.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>In the bag</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the joystick, the screen's buttons, <code>/control/cmd_vel</code>, the mux's state</td>
+<td>who drove, and what they asked</td>
+</tr>
+<tr>
+<td><code>/ego/actuator_cmd</code>, <code>/control/car/actuator_cmd</code>, <code>/control/car/heartbeat</code></td>
+<td>what ego sent, what passed the gate, the heartbeat</td>
+</tr>
+<tr>
+<td><code>/control/car/link_frame</code>, <code>/vehicle/esp32/uplink_health</code></td>
+<td>what the Pi wrote; what the ESP32 says back (with the uplink)</td>
+</tr>
+<tr>
+<td><code>/vehicle/steering</code>, <code>/throttle</code>, <code>/brake</code>, <code>/wheels</code>, <code>/odom</code></td>
+<td>what the car did</td>
+</tr>
+<tr>
+<td>the IMU, the GPS, the EKFs, <code>/tf</code></td>
+<td>how it moved, and where it was</td>
+</tr>
+<tr>
+<td>the lidar, the front camera (JPEG)</td>
+<td>what it saw</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="what-to-do-in-order">What to do, in order</h2>
+<p>Each move 3 times, a few seconds still between moves, so each one stands out in the bag.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Move</th>
+<th>Measures</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>on stands: steering full left, centre, full right, slowly then quickly</td>
+<td>the steering's lag and rate</td>
+</tr>
+<tr>
+<td>2</td>
+<td>on stands: throttle steps, 0 to a little and back</td>
+<td>the throttle's lag</td>
+</tr>
+<tr>
+<td>3</td>
+<td>on stands: brake steps</td>
+<td>the brake's lag</td>
+</tr>
+<tr>
+<td>4</td>
+<td>E-STOP on the screen; then the joystick let go; then the RC switched off</td>
+<td>each stop, and how fast</td>
+</tr>
+<tr>
+<td>5</td>
+<td>on the ground (Rust firmware only): straight at 0.3 m/s, then a stop</td>
+<td>the stopping distance</td>
+</tr>
+<tr>
+<td>6</td>
+<td>a slow circle each way, full lock</td>
+<td>the turning radius, the IMU's turn rate</td>
+</tr>
+<tr>
+<td>7</td>
+<td>one lap of the lot by joystick</td>
+<td>everything together: the lidar map, the EKFs, the camera</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="after">After</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Gives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi run tools/ros.sh python3 tools/score_drive.py bags/&lt;drive&gt;</code></td>
+<td>one scorecard: speed, distance, stops, who drove</td>
+</tr>
+<tr>
+<td><code>pixi run link-check bags/&lt;drive&gt;</code></td>
+<td>did the Pi's frames reach the ESP32</td>
+</tr>
+<tr>
+<td><code>pixi run map-drive bags/&lt;drive&gt;</code></td>
+<td>a map of the lot from the lap (with <code>--lidar</code>)</td>
+</tr>
+<tr>
+<td><code>pixi run -e rerun view-bag bags/&lt;drive&gt;/&lt;drive&gt;_0.mcap</code></td>
+<td>watch it all again</td>
+</tr>
+</tbody>
+</table></div>
+<p>Steps 1-3 fit the lags in <code>vehicle.yaml</code> (<a href="actuator-tests.html">the actuator tests</a>): every
+lag there is still a guess.</p></section>
+<nav class="prevnext"><a class="prev" href="car-day-2026-11-21.html"><small>Previous</small>← Car day, 21 Nov</a>
+<a class="next" href="car-setup.html"><small>Next</small>Car setup →</a></nav>
+</main>
+<footer>Source: <code>docs/drive-and-record.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

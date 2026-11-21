@@ -1,0 +1,11 @@
+[package]
+name = "safety-core"
+description = "The geofence's, the stop hold's and the goal leash's rules without ROS (the Rust twins of aav_safety's geofence.py, hold.py and leash.py)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dev-dependencies]
+# Reads the shared vectors, tests/vectors.json (gen_vectors.py, from the Python).
+serde_json = { version = "1", features = ["float_roundtrip"] }

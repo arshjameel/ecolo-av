@@ -17,8 +17,13 @@
 //!             /perception/voxels/steps    sensor_msgs/PointCloud2, base_link, the same QoS,
 //!                                         only with steps:=true: the high side of every
 //!                                         sudden step in the ground (a kerb), 0.1 m squares
-//!                                         (voxels::steps, TODO 119), and those of the last
-//!                                         step_keep s, kept in odom (voxels::StepMemory)
+//!                                         (voxels::steps, TODO 119), not the foot of
+//!                                         anything taller than a kerb (voxels::kerbs_only,
+//!                                         TODO 189), and those of the last
+//!                                         step_keep s, kept in odom (voxels::StepMemory);
+//!                                         those under every beam (nearer the lidar than
+//!                                         its height / tan 15 degrees) while they stay
+//!                                         there, however long (TODO 219)
 //!             /perception/voxels/status   diagnostic_msgs/DiagnosticStatus, every cloud: ms,
 //!                                         cubes, ground_cubes, points, fitted, roll_deg,
 //!                                         pitch_deg, clouds_dropped (and steps, with
@@ -30,7 +35,11 @@
 //!             (voxels_impl:=rust); they have no defaults, so a missing one stops the node.
 //!             steps (bool, false), step_min (m, 0.10), step_radius (m, 0.3), step_range
 //!             (m, 12), step_keep (s, 10): the kerbs' step finder and how long it keeps
-//!             each kerb (navigation.launch.py kerbs:=true).
+//!             each kerb (navigation.launch.py kerbs:=true). ground (plane, the default;
+//!             patchwork: the ground a plane a patch, ring by ring, so a lower kerb is a
+//!             cube: voxels::patchwork, TODO 215, a challenger; navigation.launch.py
+//!             ground:=patchwork), patch_min_height (m, 0.15: its floor over a patch's own
+//!             plane).
 //!
 //! No serving, no calls, never TF. The maths is the `voxels` crate, with no ROS.
 
@@ -47,7 +56,10 @@ use ros_env::sensor_msgs::msg::{PointCloud2, PointField};
 use ros_env::std_msgs::msg::Header;
 use voxels::{
     cloud::{self, CloudView, Field},
-    cubes, steps, usable, Body, CubeShape, Cubes, Mount, Point, Pose2, StepMemory, StepShape,
+    cubes, kerbs_only,
+    patchwork::{self, Ground, PatchSettings},
+    steps, usable, Blind, Body, CubeShape, Cubes, Mount, Point, Pose2, StepMemory, StepShape,
+    LOWEST_BEAM,
 };
 
 /// The lidar's period (10 Hz): to count the clouds that came while one was cut.
@@ -63,6 +75,7 @@ fn main() -> Result<()> {
     let (shape, mount, lidar_xyz) = params.read()?;
     let step_shape = params.read_steps()?;
     let step_keep = params.step_keep.get();
+    let ground_finder = params.read_ground()?;
     log_info!(
         node.logger(),
         "voxels (Rust): {:.2} m cubes from {:.2} to {:.2} m above the fitted road, out to \
@@ -87,6 +100,7 @@ fn main() -> Result<()> {
     // connect, and a Mac's UDP doesn't lose whole clouds.
     let state = State {
         shape,
+        patches: ground_finder,
         mount,
         last_stamp: None,
         dropped: 0,
@@ -96,7 +110,9 @@ fn main() -> Result<()> {
         status: node.create_publisher("/perception/voxels/status".keep_last(10).reliable())?,
         kerbs: match step_shape {
             Some(shape) => Some(Kerbs {
-                memory: StepMemory::new(step_keep, shape.range_max, shape.cell),
+                // A kerb under every beam stays while it is there (TODO 219).
+                memory: StepMemory::new(step_keep, shape.range_max, shape.cell)
+                    .with_blind(Blind::under(lidar_xyz, LOWEST_BEAM)),
                 shape,
                 pose: None,
                 publisher: node
@@ -135,6 +151,8 @@ fn main() -> Result<()> {
 /// The worker's payload.
 struct State {
     shape: CubeShape,
+    /// Patchwork's settings with ground:=patchwork (TODO 215); None: one plane.
+    patches: Option<PatchSettings>,
     mount: Mount,
     /// The last cloud's stamp (s), to count the ones dropped since.
     last_stamp: Option<f64>,
@@ -190,7 +208,10 @@ impl State {
             }
         };
         let base: Vec<Point> = points.iter().map(|p| self.mount.to_base(p)).collect();
-        let found = cubes(&base, &self.shape);
+        let found = match &self.patches {
+            Some(patches) => patchwork::cubes(&base, &self.shape, patches),
+            None => cubes(&base, &self.shape),
+        };
         let header = Header {
             stamp: msg.header.stamp.clone(),
             frame_id: "base_link".into(),
@@ -205,7 +226,16 @@ impl State {
         }
         let mut kerb_points = None;
         if let Some(k) = self.kerbs.as_mut() {
-            let found_steps = steps(&usable(&base, &self.shape), &k.shape);
+            // The kerbs only: the foot of a person, a post or a wall is the cubes', and it
+            // may walk away, so it must not be kept under every beam (TODO 189).
+            let good = usable(&base, &self.shape);
+            let found_steps = kerbs_only(
+                steps(&good, &k.shape),
+                &good,
+                &found.road,
+                &k.shape,
+                self.shape.max_height,
+            );
             // Kept in odom, the ones still in reach sent back; no odometry yet: these only.
             let held = match k.pose {
                 Some(pose) => k.memory.update(stamp, pose, &found_steps),
@@ -330,6 +360,8 @@ struct Params {
     step_radius: ReadOnlyParameter<f64>,
     step_range: ReadOnlyParameter<f64>,
     step_keep: ReadOnlyParameter<f64>,
+    ground: ReadOnlyParameter<Arc<str>>,
+    patch_min_height: ReadOnlyParameter<f64>,
 }
 
 impl Params {
@@ -366,6 +398,12 @@ impl Params {
             step_radius: number("step_radius", s.radius)?,
             step_range: number("step_range", s.range_max)?,
             step_keep: number("step_keep", 10.0)?,
+            ground: node
+                .declare_parameter("ground")
+                .default(Arc::from("plane"))
+                .read_only()
+                .context("parameter ground (plane or patchwork)")?,
+            patch_min_height: number("patch_min_height", PatchSettings::default().min_height)?,
         })
     }
 
@@ -388,6 +426,22 @@ impl Params {
         let xyz = three("lidar_xyz", self.lidar_xyz.get())?;
         let rpy = three("lidar_rpy", self.lidar_rpy.get())?;
         Ok((shape, Mount::new(xyz, rpy), xyz))
+    }
+
+    /// Patchwork's settings with ground:=patchwork (TODO 215); None: one plane.
+    fn read_ground(&self) -> Result<Option<PatchSettings>> {
+        let ground: Ground = self
+            .ground
+            .get()
+            .parse()
+            .map_err(|e: String| anyhow::anyhow!(e))?;
+        Ok(match ground {
+            Ground::Plane => None,
+            Ground::Patchwork => Some(PatchSettings {
+                min_height: self.patch_min_height.get(),
+                ..PatchSettings::default()
+            }),
+        })
     }
 
     /// The step finder's shape, with steps:=true.

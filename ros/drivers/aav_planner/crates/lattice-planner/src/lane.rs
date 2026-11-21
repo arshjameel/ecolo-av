@@ -35,6 +35,7 @@ use std::collections::{BinaryHeap, HashMap};
 use costmap::{Grid, Road};
 use lanelet_map::{LaneletMap, Place};
 
+use crate::jerk_pass::{self, JerkSettings};
 use crate::pass::{self, PassSettings};
 use crate::steps::{self, EDGE_MARGIN};
 use crate::{curves::wrap, Plan, PlanError, Planner, Pose};
@@ -86,6 +87,9 @@ pub struct LaneSettings {
     /// Something parked on the line: pass it ([`crate::pass`]); None: the lattice, all of
     /// it, as before 16 Nov.
     pub pass: Option<PassSettings>,
+    /// The pass's shape: None, the half cosine ([`crate::pass`]); Some, the jerk-limited
+    /// QP ([`crate::jerk_pass`], TODO 214, a challenger) at this speed (m/s).
+    pub pass_jerk: Option<(JerkSettings, f64)>,
 }
 
 impl Default for LaneSettings {
@@ -108,6 +112,7 @@ impl Default for LaneSettings {
             // loops to goals 44-103 m away, inside (2, 40); the sim drove them.
             detour_lanelets: (1.5, 20.0),
             pass: Some(PassSettings::default()),
+            pass_jerk: None,
         }
     }
 }
@@ -765,7 +770,13 @@ impl LaneRouter {
             };
             let half = planner.half_width();
             let room = |p: &Pose| self.room_left(p, half);
-            match pass::plan(&line, &along, radius, settings, &fits, &room) {
+            let passed = match &self.settings.pass_jerk {
+                Some((jerk, speed)) => {
+                    jerk_pass::plan(&line, &along, radius, *speed, settings, jerk, &fits, &room)
+                }
+                None => pass::plan(&line, &along, radius, settings, &fits, &room),
+            };
+            match passed {
                 Ok(None) => {}
                 Ok(Some(p)) => {
                     passing = p.shift();

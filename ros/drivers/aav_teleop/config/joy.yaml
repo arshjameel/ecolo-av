@@ -6,7 +6,9 @@
   ros__parameters:
     device_id: 0                # first joystick; or set device_name instead
     device_name: ""
-    deadzone: 0.05              # same as the 2025-26 joy_params.yaml
+    deadzone: 0.10              # the stick's centre 10 % reads 0 (let go): with the pedal
+                                # (TODO 206) a resting thumb must not creep or brake. Ben,
+                                # 20 Nov; a guess to tune on the car (0.05: the 2025-26 value)
     autorepeat_rate: 20.0       # Hz: resend while held, so teleop keeps publishing
     sticky_buttons: false
     coalesce_interval_ms: 1

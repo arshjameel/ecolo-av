@@ -7,7 +7,7 @@
 <!-- Generated from docs/actuator-tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Actuator tests: measure how the car moves</h1>
-<div class="meta">32 min read · 11 sections</div></header>
+<div class="meta">51 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a class="here" href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-tests">The tests</a><a href="#in-ravensim">In Ravensim</a><a href="#on-the-car">On the car</a><a href="#find-the-steering-actuators-ends-and-centre">Find the steering actuator&#x27;s ends and centre</a><a href="#the-preflight-on-stands">The preflight on stands</a><a href="#trusting-the-fits">Trusting the fits</a><a href="#the-speed-loops-profile-todo-27">The speed loop&#x27;s profile (TODO 27)</a><a href="#what-it-saves">What it saves</a><a href="#proven-in-gazebo-15-oct">Proven in Gazebo (15 Oct)</a><a href="#the-code">The code</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-it-fits">How it fits</a><a href="#the-tests">The tests</a><a href="#in-ravensim">In Ravensim</a><a href="#on-the-car">On the car</a><a href="#find-the-steering-actuators-ends-and-centre">Find the steering actuator&#x27;s ends and centre</a><a href="#the-preflight-on-stands">The preflight on stands</a><a href="#car-test-the-whole-stands-test">car-test: the whole stands test</a><a href="#car-test-hallway-the-transfer-functions">car-test --hallway: the transfer functions</a><a href="#trusting-the-fits">Trusting the fits</a><a href="#the-speed-loops-profile-todo-27">The speed loop&#x27;s profile (TODO 27)</a><a href="#what-it-saves">What it saves</a><a href="#proven-in-gazebo-15-oct">Proven in Gazebo (15 Oct)</a><a href="#the-code">The code</a></nav>
 <div class="lead"><p>One script runs the stage-3 and stage-4 tests of <code>tests.md</code>: it drives the car,
 logs what happened, and prints the numbers for <code>vehicle.yaml</code>. Built and proven in Gazebo, the simulator then
 (15 Oct); the same script runs on the car.</p>
@@ -230,6 +244,13 @@ slot: below every person (joystick, RC, keyboard), above navigation and every ot
 <td>stands</td>
 <td>speed up, hold, slow, brake; steer left, right, centre; every sensor counted</td>
 <td>PASS / FAIL per line, no <code>vehicle.yaml</code> lines (<a href="#the-preflight-on-stands">below</a>)</td>
+</tr>
+<tr>
+<td><code>wheel-steps</code></td>
+<td>3.14</td>
+<td>stands</td>
+<td>0.1, 0.2, 0.3, 0.15 m/s, 4 s each: throttle on free wheels</td>
+<td>does the wheel speed follow; no <code>vehicle.yaml</code> lines</td>
 </tr>
 </tbody>
 </table></div>
@@ -864,6 +885,649 @@ The word to type: <code>preflight</code>. If the car is still moving 5 s after t
 </tbody>
 </table></div>
 </section>
+<section class="card"><h2 id="car-test-the-whole-stands-test">car-test: the whole stands test</h2>
+<p>Phase A of <a href="testing-plan.html#phase-a-the-car-on-stands">the testing plan</a> in one command
+(TODO 246). It runs every step below in order and writes <strong>one report folder</strong>.</p>
+<pre class="highlight"><code class="language-bash">pixi run car-test --stands                       # the real car, wheels off the ground
+pixi run car-test --stands --sim --no-manual     # its own Ravensim (this computer only)
+pixi run car-test --stands --only faults         # some steps (or a group: steering, faults)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>How</th>
+<th>Passes when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>the preflight</td>
+<td><code>actuator-test preflight --stands</code></td>
+<td>every line PASS</td>
+</tr>
+<tr>
+<td>2</td>
+<td>every sensor</td>
+<td><code>actuator-test preflight --stands --no-drive</code> (15 s still)</td>
+<td>each at its documented rate</td>
+</tr>
+<tr>
+<td>3a-c</td>
+<td>steering</td>
+<td><code>steer-sweep</code>, <code>steer-rate</code>, <code>steer-centre</code></td>
+<td>its <code>vehicle.yaml</code> lines printed</td>
+</tr>
+<tr>
+<td>4</td>
+<td>throttle on free wheels</td>
+<td><code>wheel-steps</code> (new, 3.14): 0.1, 0.2, 0.3, 0.15 m/s, 4 s each</td>
+<td>the wheel speed follows: each step up within 25 % (or 0.05 m/s), the step down slower</td>
+</tr>
+<tr>
+<td>5a</td>
+<td>the Orin is lost</td>
+<td>car: a person pulls the Orin's cable to the Motor Pi. Sim: the runner pauses its own output mux</td>
+<td>car: the ESP32 brakes, and <strong>holds</strong> while still asked to roll once the cable is back. Sim: still within 2 s</td>
+</tr>
+<tr>
+<td>5b-d</td>
+<td>GPS, IMU, camera lost</td>
+<td>car: a person unplugs it. Sim: <code>fault.&lt;sensor&gt; stop</code></td>
+<td>the sensor watchdog names it within its <code>max_age</code> + 1 s; still 3 s later</td>
+</tr>
+<tr>
+<td>5e</td>
+<td>lidar lost</td>
+<td>car: a person unplugs it. Sim: <code>fault.lidar stop</code></td>
+<td>the sensor watchdog names it (its <code>lidar</code> input, since 19 Nov) within 1.0 s + 1 s; still 3 s later</td>
+</tr>
+<tr>
+<td>5f-g</td>
+<td>a Pi's link; a cable</td>
+<td>a person pulls it (car only)</td>
+<td>the car stops, and something says why</td>
+</tr>
+<tr>
+<td>5h</td>
+<td>the e-stop</td>
+<td>car: a person presses it. Sim: the runner publishes <code>/safety/estop</code> true</td>
+<td>still within 2 s</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Each fault</strong> starts from a slow roll (0.2 m/s, inside the stands' 0.3 cap) and records
+<strong>who said why</strong> (the sensor watchdog's line, <code>/vehicle/status</code>, <code>/safety/estop</code>, the output
+gate) and <strong>how soon the car stood still</strong>.</p>
+<div class="admonition warning">
+<p class="admonition-title">The sensor faults: the runner stops itself</p>
+<p>The watchdog's lock (priority 30) holds navigation and the AI slot, <strong>never the tests
+(60)</strong>: that is by design. So the runner rolls, waits for the watchdog to <strong>say</strong> the
+sensor's name, then stops itself, as navigation would be held. The step measures how fast
+the watchdog notices, not a lock on the tests.</p>
+</div>
+<h3 id="the-rules">The rules</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--stands</code> required; <code>--ground</code> refused</td>
+<td>phase A is on stands only</td>
+</tr>
+<tr>
+<td>Any FAIL <strong>ends the run</strong>: the steps after it are NOT RUN</td>
+<td>the car stays on stands</td>
+</tr>
+<tr>
+<td>After each step: zeros until still; not still in 5 s → <code>/safety/estop</code> <strong>true</strong> (never false)</td>
+<td>as the preflight does</td>
+</tr>
+<tr>
+<td>On the car: type <code>car-test</code> to start, and each test asks again</td>
+<td>a person confirms every move</td>
+</tr>
+<tr>
+<td>A person's step prints what to do and waits for Enter; <code>skip</code> skips it</td>
+<td>the e-stop person stays at the button</td>
+</tr>
+<tr>
+<td><code>--no-manual</code>: every person's step is SKIPPED, and listed</td>
+<td>for the stand-in and CI</td>
+</tr>
+<tr>
+<td><code>--sim</code>: its own Ravensim, its own ROS domain (<code>AAV_SIM_DOMAIN</code>, or a free one), <code>--local</code></td>
+<td>never reaches a car</td>
+</tr>
+<tr>
+<td>The e-stop is the last step</td>
+<td>it latches: nothing drives after it</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-report-folder">The report folder</h3>
+<p><code>~/aav-tests/&lt;time&gt;-stands[-sim]/</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>report.md</code></td>
+<td>the table: PASS / FAIL / SKIPPED / NOT RUN per step, what happened, the <code>vehicle.yaml</code> lines</td>
+</tr>
+<tr>
+<td><code>report.yaml</code></td>
+<td>the same, for tools</td>
+</tr>
+<tr>
+<td><code>run.log</code></td>
+<td>everything printed</td>
+</tr>
+<tr>
+<td><code>&lt;step&gt;/</code></td>
+<td>each test's own folder (<code>log.csv</code>, <code>summary.txt</code>, <code>meta.yaml</code>) and <code>output.log</code></td>
+</tr>
+<tr>
+<td><code>sim-launch.log</code></td>
+<td><code>--sim</code>: our Ravensim's log</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="no-new-hook-for-the-heartbeat">No new hook for the heartbeat</h3>
+<p>The output mux makes the heartbeat. Rather than add a "stop the heartbeat" switch to a
+safety lock, the runner:</p>
+<ul>
+<li><strong>in <code>--sim</code></strong>, pauses <strong>its own</strong> Ravensim's <code>output_mux</code> (SIGSTOP, then SIGCONT),
+  found in its own launch log and checked in its own process group. Commands and heartbeat
+  stop together; Ravensim's backend brakes on its 0.2 s timeout. The ESP32 isn't in
+  Ravensim's loop: its own check is <code>pixi run esp qemu-check</code>;</li>
+<li><strong>on the car</strong>, asks a person to pull the Orin's cable to the Motor Pi. The Pi keeps
+  sending the last command with a <strong>frozen counter</strong> for 0.3 s; the ESP32 brakes after
+  100 ms on its own. Once the cable is back, the runner still asks to roll for 2 s: the
+  wheels must stay braked (the ESP32's latch), and <code>/vehicle/status</code> say disarmed or
+  <code>CMD_TIMEOUT</code>.</li>
+</ul>
+<h3 id="tested-19-nov-ravensim-only">Tested, 19 Nov (Ravensim only)</h3>
+<p><code>pixi run car-test --stands --sim --no-manual</code>, Ben's MacBook, its own Ravensim (road world,
+domain 110), about 7 minutes:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1-2 preflight, sensors</td>
+<td>PASS (Ravensim has no battery: skipped, and said)</td>
+</tr>
+<tr>
+<td>3a-c steering</td>
+<td>PASS: lines for <code>max_steering_angle</code>, <code>steer_offset</code>, <code>steer_lag</code>, <code>steer_rate</code>, <code>steer_deadband</code></td>
+</tr>
+<tr>
+<td>4 wheel-steps</td>
+<td>PASS: 0.10 → 0.09, 0.20 → 0.21, 0.30 → 0.31, 0.15 → 0.23 m/s</td>
+</tr>
+<tr>
+<td>5a heartbeat</td>
+<td>PASS: still 0.50 s after the output mux paused</td>
+</tr>
+<tr>
+<td>5b-d GPS, IMU, camera</td>
+<td>PASS: the watchdog named each 2.11, 0.57, 1.09 s after its last message; still 0.41-0.45 s after its word</td>
+</tr>
+<tr>
+<td>5e lidar (since 19 Nov, TODO 246)</td>
+<td>PASS: the watchdog named it 1.12 s after its last cloud (limit 2 s); still 0.45 s after its word</td>
+</tr>
+<tr>
+<td>5f-g Pi, cable</td>
+<td>SKIPPED: not in Ravensim</td>
+</tr>
+<tr>
+<td>5h e-stop</td>
+<td>PASS: still 0.67 s after it</td>
+</tr>
+</tbody>
+</table></div>
+<p>The first runs found: Ravensim's cameras build on first use (the runner now waits for the
+camera), and the watchdog writes <code>STOP: gps STALE (...)</code>, not <code>STOP - ...</code> as the contract
+said (fixed there). <strong>On the car: untested.</strong></p>
+</section>
+<section class="card"><h2 id="car-test-hallway-the-transfer-functions">car-test --hallway: the transfer functions</h2>
+<p>Phase B of <a href="testing-plan.html#phase-b-the-transfer-functions-in-the-hallway">the testing plan</a>
+in one command (TODO 248). It measures the throttle, the drag, the brake and the steering
+in a hallway, <strong>with the IMU as well as the wheels</strong>, and gives each number <strong>with an error
+bar</strong>.</p>
+<pre class="highlight"><code class="language-bash">pixi run car-test --hallway                      # the real car: asks the hallway's length
+pixi run car-test --hallway --length 12          # the same, length given
+pixi run car-test --hallway --sim --no-manual    # a pretend 15 m hallway in its own Ravensim
+pixi run car-test --analyse ~/aav-tests/&lt;session&gt;   # the report again, from the files</code></pre>
+<pre class="highlight"><code> start line                                                     far wall
+ |&lt;------------------------- length (tape) -------------------------&gt;|
+ |  speed up --&gt;  brake point  stop  |&lt;------- margin (3 m) --------&gt;|
+ |&lt;-------------- room -------------&gt;|   never driven into</code></pre>
+<h3 id="what-one-pass-does">What one pass does</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Phase</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>wait until still, then <strong>stand still 10 s</strong></td>
+<td>the IMU's offset and noise (<code>fusion.still_imu</code>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>let go</strong>: told 0.02 m/s for 1.5 s</td>
+<td>the speed loop lets the hold brake go, too gently to move the car</td>
+</tr>
+<tr>
+<td>3</td>
+<td>speed up to the top speed</td>
+<td>the throttle</td>
+</tr>
+<tr>
+<td>4</td>
+<td>coast, brake, or steer left, right, left</td>
+<td>the drag, the brake, the steering</td>
+</tr>
+<tr>
+<td>5</td>
+<td>stop</td>
+<td>every pass ends still</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Every driving step is fenced</strong>: it ends at the <strong>brake point</strong>, where the car, at its
+speed, needs all the room left to stop (0.3 s to react, then 0.5 m/s²). Past the room the
+test's envelope stops it at once, with the margin still ahead.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Pass</th>
+<th>Test</th>
+<th>Gives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B1</td>
+<td><code>hall-speed-up</code></td>
+<td><code>max_accel</code>, <code>throttle_lag</code>, <code>throttle_dead_time</code></td>
+</tr>
+<tr>
+<td>B2</td>
+<td><code>hall-coast</code></td>
+<td><code>drag</code> (and any rolling resistance)</td>
+</tr>
+<tr>
+<td>B3</td>
+<td><code>hall-brake</code></td>
+<td><code>max_brake</code>, <code>brake_lag</code>, <code>brake_dead_time</code>, the stopping distance</td>
+</tr>
+<tr>
+<td>B4</td>
+<td><code>hall-steer</code></td>
+<td><code>steer_lag</code>, <code>steer_dead_time</code> on the ground</td>
+</tr>
+</tbody>
+</table></div>
+<p>The session runs coast first (its drag goes into the others), then speed-up, brake, steer,
+<strong>three times</strong> (<code>--repeats</code>). Between passes a person <strong>turns the car round</strong> (<code>--one-way</code>:
+no), so the passes face both ways: the floor's slope shows up, then cancels.</p>
+<h3 id="the-top-speed">The top speed</h3>
+<p>From the length you type: speed up at 0.5 m/s², 0.3 s to react, stop at 0.5 m/s², plus the
+margin. <strong>Never above 1.0 m/s.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Hallway</th>
+<th>Margin</th>
+<th>Top speed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4 m</td>
+<td>3 m</td>
+<td>0.64 m/s</td>
+</tr>
+<tr>
+<td>5.3 m</td>
+<td>3 m</td>
+<td>1.0 m/s</td>
+</tr>
+<tr>
+<td>12 m</td>
+<td>3 m</td>
+<td>1.0 m/s</td>
+</tr>
+<tr>
+<td>under 3.2 m</td>
+<td>3 m</td>
+<td>refused (under 0.2 m/s)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-imu-and-the-wheels">The IMU and the wheels</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Offset</td>
+<td>the IMU's mean while still: its bias + the slope</td>
+</tr>
+<tr>
+<td>Slope</td>
+<td>the offsets facing each way: bias = the mean, slope = half the difference. One way only: unknown</td>
+</tr>
+<tr>
+<td>Level enough?</td>
+<td>under 1 % (0.1 m/s²)</td>
+</tr>
+<tr>
+<td>Blend</td>
+<td>a Kalman filter: the IMU moves the speed on, each wheel speed pulls it back; it learns the IMU's bias drift</td>
+</tr>
+<tr>
+<td>Forces</td>
+<td>F = m a, with <code>vehicle.yaml</code>'s mass: the hardest push, the hardest stop, the drag at 1 m/s</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="error-bars-and-trust">Error bars and trust</h3>
+<p>Each pass gives its own fit; the number is their <strong>mean ± sd</strong> (and a bootstrap 90 %
+interval). The bar is never under the time the data can resolve, nor under 3 % of a gain
+(the wheel's size is known to about that until the rollout test, M3).</p>
+<p>A number is <strong>not trusted</strong> when the data can't tell: one pass only, a fit under its
+resolution, or passes that disagree (sd over 25 % of the mean). <strong>Only trusted numbers are
+printed to paste</strong>; the rest are commented out, with why.</p>
+<div class="admonition note">
+<p class="admonition-title">Dead time and lag trade off</p>
+<p>ego and the speed loop ramp the throttle, so a dead time and a lag look alike through
+it. Their <strong>sum</strong> (<code>throttle_delay</code>) is what the data pins down. When the dead time is
+not trusted, the line to paste is the lag = the whole delay, and no dead time (the model
+takes 0), as the single tests already do.</p>
+</div>
+<h3 id="the-model-against-the-car">The model against the car</h3>
+<p>Every pass's pedal demands and steering go through the car model, once with the fitted
+numbers and once with <code>vehicle.yaml</code>'s. <strong>Passes when</strong> the speed is within 10 % (rms, of
+the pass's top speed) and the stop within 0.2 m.</p>
+<h3 id="the-safety-rules">The safety rules</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Phase A passed first</td>
+<td>stands before the ground</td>
+</tr>
+<tr>
+<td>The hallway <strong>measured with a tape</strong>; the length typed, not guessed</td>
+<td>the top speed and the room come from it</td>
+</tr>
+<tr>
+<td><strong>A spotter at each end</strong>, the hallway cleared</td>
+<td>people walk there</td>
+</tr>
+<tr>
+<td>A safety driver on the joystick (its deadman outranks the test); someone else at the e-stop, walking beside the car</td>
+<td>the one sure stop</td>
+</tr>
+<tr>
+<td>The car started <strong>indoors</strong>: <code>pixi run car &lt;machine&gt; gps:=false stands:=true</code></td>
+<td>no GPS indoors, so the geofence can't fence: it says STANDS. Only the hallway tests accept that; this test's own fence (the wheels' distance) stands in. NEAR, OUTSIDE, LOST, JUMP still stop it</td>
+</tr>
+<tr>
+<td>Type <code>hallway</code> to start; each pass asks again (its test's name)</td>
+<td>a person confirms every move</td>
+</tr>
+<tr>
+<td>Before each pass: put the car on the start line, facing the way asked; Enter (<code>s</code> skips, <code>q</code> stops)</td>
+<td>the room counts from the start line</td>
+</tr>
+<tr>
+<td>Any pass refused or stopped by a safety rule <strong>ends the session</strong></td>
+<td>as phase A</td>
+</tr>
+<tr>
+<td>Every stop rule of the other tests still holds</td>
+<td>Ctrl-C, the e-stop, a takeover, stale odometry, a runaway</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="step-by-step-on-the-car">Step by step, on the car</h3>
+<ol>
+<li>Measure the hallway with a tape: start line to the far wall. Mark the start line.</li>
+<li>Clear it; a spotter at each end.</li>
+<li>Start the car indoors: <code>pixi run car &lt;machine&gt; gps:=false stands:=true</code>.</li>
+<li>Put the car on the start line, pointing straight down the hallway.</li>
+<li><code>pixi run car-test --hallway</code> (or <code>--length 12</code>); read the top speed it works out.</li>
+<li>Check the list out loud; type <code>hallway</code>; type each pass's name when asked.</li>
+<li>Between passes: turn the car round (or drive it back with the joystick) onto the line.</li>
+<li>Read <code>report.md</code>; paste the trusted lines from <code>vehicle-yaml.txt</code>, by hand.</li>
+</ol>
+<h3 id="the-report-folder_1">The report folder</h3>
+<p><code>~/aav-tests/&lt;time&gt;-hallway[-sim]/</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>report.md</code></td>
+<td>the result, the stand-still and slope, every number ± its bar and trust, the forces, the model against the car, the lines to paste, the passes</td>
+</tr>
+<tr>
+<td><code>vehicle-yaml.txt</code></td>
+<td>the lines to paste (trusted only)</td>
+</tr>
+<tr>
+<td><code>fits.csv</code></td>
+<td>each number: mean, sd, n, interval, resolution, trust, and each pass's own value</td>
+</tr>
+<tr>
+<td><code>compare.csv</code></td>
+<td>each pass: the model's rms speed error and stop error, fitted and <code>vehicle.yaml</code>'s</td>
+</tr>
+<tr>
+<td><code>overlays/</code></td>
+<td>each pass's speed, measured and both models (CSV; <code>overlays.png</code> with matplotlib)</td>
+</tr>
+<tr>
+<td><code>session.yaml</code></td>
+<td>the hallway, the passes, in Ravensim the true numbers</td>
+</tr>
+<tr>
+<td><code>NN-hall-&lt;kind&gt;-&lt;facing&gt;/</code></td>
+<td>each pass's own <code>actuator_test</code> folder and <code>output.log</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="in-ravensim_1">In Ravensim</h3>
+<p><code>--sim</code> starts its own Ravensim: the empty world, no cameras, its own ROS domain, 15 m
+of pretend hallway. <code>--sim-actuators "throttle_lag=0.3,drag=0.2,..."</code> gives <strong>the
+simulated car its own numbers</strong> (<code>sim.launch.py actuators:=</code>), while every driver still
+reads <code>vehicle.yaml</code>; the report then adds <strong>the recovery table</strong>: true against fitted.
+<code>--wheel-noise 0.05 --wheel-slip 0.02</code> makes the wheels noisy and slipping.</p>
+<h3 id="proven-known-numbers-found-again">Proven: known numbers found again</h3>
+<p>The key evidence: give the car numbers we know, run the whole procedure, and check the fits
+find them. "Within" = within 2 error bars (the bar: the passes' sd, at least the
+resolution, at least 3 % of a gain). 19 Nov, Ben's MacBook, 12 passes each (3 x coast,
+speed-up, brake, steer), about 6 minutes each:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Ravensim A: true</th>
+<th>fitted ± sd</th>
+<th>Ravensim B (wheels 0.02 m/s noise, 2 % slip): true</th>
+<th>fitted ± sd</th>
+<th>Car model alone (0.05 m/s noise, 2 % slip, IMU bias): true</th>
+<th>fitted ± sd</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>drag</code> (1/s)</td>
+<td>0.2</td>
+<td>0.202 ± 0.001</td>
+<td>0.15</td>
+<td>0.150 ± 0.004</td>
+<td>0.2</td>
+<td>0.199 ± 0.014</td>
+</tr>
+<tr>
+<td><code>max_accel</code> (m/s²)</td>
+<td>1.2</td>
+<td>1.204 ± 0.002</td>
+<td>1.0</td>
+<td>1.016 ± 0.002</td>
+<td>1.2</td>
+<td>1.214 ± 0.004</td>
+</tr>
+<tr>
+<td><code>throttle_lag</code> (s)</td>
+<td>0.3</td>
+<td>0.335 ± 0.085</td>
+<td>0.25</td>
+<td>0.228 ± 0.024</td>
+<td>0.3</td>
+<td>0.320 ± 0.048</td>
+</tr>
+<tr>
+<td><code>throttle_dead_time</code> (s)</td>
+<td>0.1</td>
+<td>0.085 ± 0.076</td>
+<td>0.06</td>
+<td>0.090 ± 0.025</td>
+<td>0.1</td>
+<td>0.085 ± 0.073</td>
+</tr>
+<tr>
+<td>throttle delay, the sum (s)</td>
+<td>0.4</td>
+<td>0.420 ± 0.025</td>
+<td>0.31</td>
+<td>0.318 ± 0.018</td>
+<td>0.4</td>
+<td>0.405 ± 0.025</td>
+</tr>
+<tr>
+<td><code>max_brake</code> (m/s²)</td>
+<td>2.5</td>
+<td>2.582 ± 0.169</td>
+<td>2.0</td>
+<td>1.850 ± 0.133</td>
+<td>2.5</td>
+<td>2.537 ± 0.321</td>
+</tr>
+<tr>
+<td><code>brake_lag</code> (s)</td>
+<td>0.25</td>
+<td>0.340 ± 0.127</td>
+<td>0.3</td>
+<td>0.275 ± 0.005</td>
+<td>0.25</td>
+<td>0.145 ± 0.126</td>
+</tr>
+<tr>
+<td><code>brake_dead_time</code> (s)</td>
+<td>0.06</td>
+<td>0.052 ± 0.050</td>
+<td>0.1</td>
+<td>0.122 ± 0.052</td>
+<td>0.06</td>
+<td>0.148 ± 0.115</td>
+</tr>
+<tr>
+<td>brake delay, the sum (s)</td>
+<td>0.31</td>
+<td>0.392 ± 0.081</td>
+<td>0.4</td>
+<td>0.397 ± 0.056</td>
+<td>0.31</td>
+<td>0.293 ± 0.023</td>
+</tr>
+<tr>
+<td><code>steer_lag</code> (s)</td>
+<td>0.2</td>
+<td>0.200 ± 0.000</td>
+<td>0.15</td>
+<td>0.150 ± 0.000</td>
+<td>0.2</td>
+<td>0.200 ± 0.000</td>
+</tr>
+<tr>
+<td><code>steer_dead_time</code> (s)</td>
+<td>0.08</td>
+<td>0.062 ± 0.000</td>
+<td>0.04</td>
+<td>0.023 ± 0.000</td>
+<td>0.08</td>
+<td>0.062 ± 0.000</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Every number within its error bars, in all three.</strong> The fitted model matched all 12
+passes each time (speed within 3 %, stop within 0.1 m); <code>vehicle.yaml</code>'s guesses matched
+none (40-70 % off, stops 0.4-1.0 m off).</p>
+<p>What it shows:</p>
+<ul>
+<li>The <strong>gains</strong> (<code>drag</code>, <code>max_accel</code>, <code>max_brake</code>) and the <strong>sums</strong> (delays) are pinned; a
+  dead time and a lag apart often are not, and say so (NOT TRUSTED): only the sum is then
+  pasted, as the lag.</li>
+<li>With 2 % wheel slip, <code>max_accel</code> reads 2 % high: the wheel's size, not the fit (the 3 %
+  floor on the bar). The rollout test (M3) fixes it.</li>
+<li>The steering's dead time reads 0.02 s short: the model's deadband (0.005 rad) starts the
+  motor a step late, which the fit counts as lag. Within its 0.04 s resolution.</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Noisy wheels trip the runaway rule</p>
+<p>With Ravensim's <code>wheel_noise:=0.05</code> <strong>every</strong> actuator test stops itself, even standing
+still: <code>safety.runaway</code> compares two single speed readings 1 s apart against 0.1 m/s, and
+0.05 m/s of noise on each crosses that. The rule is right to stop; the noise is too big
+for it. So the 0.05 m/s proof ran on the car model alone (<code>test/fake_hallway.py</code>, in the
+tests), and Ravensim's at 0.02 m/s. The car's Hall sensors read exactly 0 standing still,
+so this is unlikely on the car, but <strong>watch for it</strong>: the rule is unchanged (a safety
+rule; a person decides). Each pass also holds its top speed 2.5 s before it slows, so a
+speed loop still creeping up doesn't look like a runaway.</p>
+</div>
+<p>Run it again: <code>pixi run car-test --hallway --sim --no-manual --sim-actuators
+"max_accel=1.2,throttle_lag=0.3,throttle_dead_time=0.1,max_brake=2.5,brake_lag=0.25,brake_dead_time=0.06,drag=0.2,steer_lag=0.2,steer_dead_time=0.08"</code>;
+the car model alone (seconds): <code>pixi run python ros/drivers/aav_actuator_tests/test/fake_hallway.py</code>.</p>
+<p><strong>On the car: untested.</strong></p>
+<p>A hallway shorter than 15 m gives short coasts: the drag then comes out NOT TRUSTED.</p>
+</section>
 <section class="card"><h2 id="trusting-the-fits">Trusting the fits</h2>
 <p>Each lag fit is now a <strong>dead time, then a lag</strong> (FOPDT). The old fit (a lag alone)
 stays beside it, so you can compare.</p>
@@ -1307,6 +1971,14 @@ car measures it. <code>steer-sweep --sim</code> still reads 0.495 (the deadband)
 <tr>
 <td><code>tools/actuator_test.sh</code></td>
 <td>the pixi task: <code>--local</code> only with <code>--sim</code></td>
+</tr>
+<tr>
+<td><code>car_test.py</code>, <code>car_test_node.py</code>, <code>test/test_car_test.py</code></td>
+<td>car-test: its steps and judging (no ROS, unit-tested), and its ROS runner</td>
+</tr>
+<tr>
+<td><code>tools/car_test.sh</code></td>
+<td>the pixi task <code>car-test</code>: <code>--local</code> only with <code>--sim</code></td>
 </tr>
 </tbody>
 </table></div></section>

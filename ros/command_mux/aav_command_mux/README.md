@@ -22,7 +22,8 @@ the e-stop button, or publish `/safety/estop` true.
 |---|---|
 | Launch | `ros2 launch aav_command_mux mux.launch.py geofence_lock:=true\|false [use_sim_time:=false] [sensor_lock:=true]` |
 | Node | `twist_mux` (package twist_mux), output `cmd_vel_out` remapped to `/control/cmd_vel` |
-| Publishes | `/control/cmd_vel` (`geometry_msgs/TwistStamped`) |
+| Node | `command_mux_state` ([`aav_mux_state`](../aav_mux_state/README.md)), given the same files in the same order: who is driving |
+| Publishes | `/control/cmd_vel` (`geometry_msgs/TwistStamped`); `/control/command_mux/state` (`diagnostic_msgs/DiagnosticStatus`, from `command_mux_state`) |
 
 Inputs (`config/twist_mux.yaml`), all `TwistStamped`, timeout 0.5 s:
 
@@ -92,7 +93,7 @@ pixi run build && colcon test --packages-select aav_command_mux && colcon test-r
 
 | Test | Covers |
 |---|---|
-| `test_mux_runtime.py` | priority selection and input timeouts at runtime |
+| `test_mux_runtime.py` | priority selection and input timeouts at runtime; `command_mux_state` names the driver twist_mux passes, and the lock that holds navigation |
 
 Other tests that check its files:
 

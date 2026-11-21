@@ -26,11 +26,12 @@ to ego. A person always outranks the computer.
 | [aav_navigator](./aav_navigator/README.md) | the navigator in Rust (plan, follow, replan, recover; through-poses; waypoints and GPS waypoints by the datum), in Nav2's bt_navigator's and waypoint_follower's old place: `navigator:=own`, the only one ([page](../../docs/own-navigator.md)) | Nav2's action names (`/navigate_to_pose`...) | (20) |
 | [aav_smoother](./aav_smoother/README.md) | the velocity smoother in Rust (Nav2's `velocity_smoother` for a car: the steering's rate and full lock): `smoother:=own`, the only one ([page](../../docs/own-smoother.md)) | `/control/cmd_vel_smoothed` or `/drivers/nav/cmd_vel` | (20) |
 | [aav_diffusion_planner](./aav_diffusion_planner/README.md) | a trial planner: a model draws the path, a guard checks it, the lattice's path if it fails: `planner:=diffusion` (`docs/trials.md`) | `/plan` | (20) |
-| [aav_behaviour](./aav_behaviour/README.md) | a trial: the behaviour states and a speed cap from the stopping law, in the road ahead, for a stop sign, an obstacle ahead, the fence and the goal: `behaviour:=true` ([page](../../docs/stopping.md)) | `/drivers/nav/speed_limit` | (20) |
+| [aav_diffusion_rs](./aav_diffusion_rs/README.md) | the diffusion planner's model worker in Rust, a challenger under the same node: `diffusion_impl:=rust` (ONNX Runtime; Core ML on a Mac, [ONNX](../../docs/onnx.md)) | (its node's) | (20) |
+| [aav_behaviour_rs](./aav_behaviour_rs/README.md) | Rust (the Python removed 20 Nov); a trial: the behaviour states and a speed cap from the stopping law, in the road ahead, for a stop sign, an obstacle ahead, the fence and the goal: `behaviour:=true`, on in `stack:=ours` ([page](../../docs/stopping.md)) | `/world/road_ahead`, `/drivers/nav/behaviour/state` | (20) |
 | [aav_routes](./aav_routes/README.md) | street routes (Valhalla or OSRM) as GPS waypoints for the navigator; directions on the campus by a place's name (its own road graph) | `/drivers/nav/route/*` | — |
 | [aav_language](./aav_language/README.md) | plain-English driving: MCP drive tools and a local-model agent | uses the actions above | — |
 
-The lane follower on the AI slot (priority 10) lives in `ros/perception/aav_lane_geometry`.
+The AI slot (priority 10) has no driver since 19 Nov: the lane followers were removed (TODO 264, git tag `save/lane-followers`); the costmap draws the lanes now.
 The hardware panel's buttons (`/drivers/buttons/cmd_vel`, priority 45) live in `ros/hud/aav_hud` (`hw_panel`).
 
 ## Invariants

@@ -12,7 +12,7 @@ through the Python helper `aav_description.vehicle`.
 
 | File | Starts |
 |---|---|
-| `description.launch.py [sim:=] [use_sim_time:=] [lidar:=] [chase_camera:=] [joint_state_publisher:=true]` | `robot_state_publisher` from the URDF; `joint_state_publisher`, which merges `/vehicle/joint_states` |
+| `description.launch.py [use_sim_time:=] [joint_state_publisher:=true]` | `robot_state_publisher` from the URDF; `joint_state_publisher`, which merges `/vehicle/joint_states` |
 | `view.launch.py` (`pixi run view`) | the model in RViz, with joint sliders |
 
 ### Topics
@@ -54,12 +54,13 @@ Many values are still `TODO measure` (docs/car_measurements.md).
 | `diffusion_trial_speed(max_speed)` | the diffusion car trial's top speed: empty gives `DIFFUSION_TRIAL_SPEED` (0.5 m/s); above it is refused |
 | `lattice_file_name(headings, moves)`, `check_lattice_moves(moves)`, `smooth_moves(moves)` | the primitives file for 16 headings (the default) or 32 (`LATTICE_HEADINGS`, `lattice_headings:=`), and for Nav2's moves or the smooth ones (`LATTICE_MOVES`, `lattice_moves:=`; 16 headings only) |
 | `costmap_chunks_block(folder, ahead, margin)` | our global costmap's `chunks` block (`costmap_chunks:=`, TODO 175): the folder (checked for `chunks.yaml`), `CHUNKS_AHEAD` (100 m of route) and `CHUNKS_MARGIN` (1 chunk more round them) |
-| `check_plan_smoothing(s)`, `with_plan_smoothing(cfg, s)`, `check_steer_gamma(g)` | `plan_smoothing:=` (`PLAN_SMOOTHINGS`: `nav2`, or `strong`'s smoother weights into GridBased's `smoother`); `mppi_lag_steer_gamma:=` as a number (TODO 168) |
+| `check_plan_smoothing(s)`, `with_plan_smoothing(cfg, s)`, `check_steer_gamma(g)` | `plan_smoothing:=` (`PLAN_SMOOTHINGS`: `nav2`, or `strong`'s smoother weights into GridBased's `smoother`); `mppi_lag_steer_gamma:=` as a number (TODO 168); `check_mppi_batch(b)`: `mppi_lag_batch:=` as a whole number (TODO 152) |
 | `check_planner_search(search, planner)`, `planner_params(tuned, v, costmap, search, nav2)` | our planner's search (`PLANNER_SEARCHES`, `planner_search:=`: `lattice` or `hybrid`, with `planner:=own` only); its settings: the tuned Lattice block, or with `hybrid` nav2.yaml's own Hybrid-A* block, the planning radius, the motion model and the global costmap's cells |
-| `check_tracker(name, reversing)`, `track_params(nav2, cfg, ego, max_speed)` | a trial tracker's name, checked (`FORWARD_ONLY_TRACKERS`, `aav_track`'s, refused with `reversing`); `aav_track`'s parameters from nav2.yaml, vehicle.yaml and ego.yaml |
-| `mpc_lag_rs_params(nav2, cfg, ego, max_speed)` | `aav_mpc_lag`'s (`tracker:=mpc_lag_rs`): `track_params` without the lookahead, and vehicle.yaml's actuators as `actuators.<key>` (`MPPI_LAG_ACTUATORS`) |
+| `check_tracker(name, reversing)`, `track_params(nav2, cfg, ego, max_speed, reversing=)` | a trial tracker's name, checked (`FORWARD_ONLY_TRACKERS`, refused with `reversing`: empty since 20 Nov, when `mpc_lag_rs` learnt to reverse, TODO 213); `max_reverse_speed` with `reversing` (TODO 174); `aav_track`'s parameters from nav2.yaml, vehicle.yaml and ego.yaml |
+| `mpc_lag_rs_params(nav2, cfg, ego, max_speed, reversing=)` | `aav_mpc_lag`'s (`tracker:=mpc_lag_rs`): `track_params` without the lookahead (`max_reverse_speed` with `reversing`, TODO 213), and vehicle.yaml's actuators as `actuators.<key>` (`MPPI_LAG_ACTUATORS`) |
 | `mppi_lag_params(nav2, cfg, ego, max_speed, reversing, lane)` | `aav_mppi_lag`'s: nav2.yaml's MPPI block and checks, the costmap's outline, vehicle.yaml's actuators (`MPPI_LAG_ACTUATORS`), ego's ramps; with `reversing`, set up to reverse as `nav2_tuned` sets Nav2's MPPI; with `lane` (a lane map), `/world/road_ahead` (`ROAD_AHEAD_TOPIC`) and our `LaneCritic` (`LANE_CRITIC`) |
 | `check_speed_loop(name, tracker)`, `DEFAULT_SPEED_LOOP` | `speed_loop:=`, checked against `car_model.SPEED_LOOP_PROFILES` (spine-core's names); `PI_ONLY_TRACKERS` (`mpc_lag`, `mpc_lag_rs`) refuse `lqi`. `track_params`, `mpc_lag_rs_params`, `mppi_lag_params` and `behaviour_params` take `speed_loop=` (default `default`), so every model of the car assumes the loop the sim runs (TODO 163) |
+| `check_speed_loop_model(name, car_loop, tracker)` | `speed_loop_model:=` (sim, bench): the loop the models assume when it is not the car's; empty gives `car_loop` (TODO 163) |
 | `obstacle_heights(v)`, `centre_of_mass(...)` | the lidar's height band; centre of mass from the scales |
 
 Constants: `SELF_MARGIN`, `SENSOR_HALF_SIZE` (m), `STOP_ZONE_AHEAD`, `STOP_ZONE_BEHIND`, `STOP_ZONE_MARGIN` (m),
@@ -108,7 +109,7 @@ The strip every level shares (`/world/road_ahead`; [the whole car](../../../docs
 
 | Item | What |
 |---|---|
-| `build(plan, car, stops, curve, base)` | the writer's (`aav_behaviour`): the plan's next 40 m from the car, a point every 0.5 m; its stops; its end (the nearest stop); the speed limit by the stopping law, 0 at the end |
+| `build(plan, car, stops, curve, base)` | the writer's (`aav_behaviour_rs`): the plan's next 40 m from the car, a point every 0.5 m; its stops; its end (the nearest stop); the speed limit by the stopping law, 0 at the end |
 | `limit_at(strip, x, y, curve, base)`, `room_at`, `along_of` | the readers' (ego): the speed allowed here, the metres left to the end; no strip allows 0 |
 | `capped(strip, cap)` | the writer's: no limit above the behaviour planner's cap (TODO 233); 0.0 is no cap |
 | `Strip`, `StopOnLine`, `resample`; `WAIT`, `FINAL` | the strip; a stop on it; the plan cut into points |
@@ -173,8 +174,18 @@ car model says (`docs/stopping.md`, "A heavier car").
 
 `aav.urdf.xacro` builds `base_link`, `chassis`, four wheels with two steering joints,
 and one link per sensor in `vehicle.yaml`. Gazebo's `aav.gazebo.xacro` and
-`aav.sensors.gazebo.xacro` were removed with Gazebo (16 Nov); the `sim`, `lidar` and
-`chase_camera` arguments are still accepted, and do nothing.
+`aav.sensors.gazebo.xacro` were removed with Gazebo (16 Nov); its `sim`, `lidar` and
+`chase_camera` arguments on 20 Nov (TODO 241).
+
+### Rust crates beside the package (no ROS, their own workspaces)
+
+| Crate | What |
+|---|---|
+| [`car-model/`](./car-model/README.md) | the car model's Rust twin |
+| [`map-chunks/`](./map-chunks/README.md) | the map in fixed 64 m chunks |
+| [`lanelet-map/`](./lanelet-map/README.md) | Lanelet2 maps in Rust |
+| [`map-edit/`](./map-edit/README.md) | the map editor's edits, saves and layers (TODO 251) |
+| [`cloud-view/`](./cloud-view/README.md) | a `PointCloud2`'s bytes read by field name: one reader for every Rust crate (TODO 176) |
 
 ## Invariants
 

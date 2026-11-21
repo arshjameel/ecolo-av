@@ -96,6 +96,14 @@ impl<'a> Picture<'a> {
         self.height
     }
 
+    /// Red, green and blue at (x, y) (grey three times for `mono8`): for the learned lane
+    /// finder (`aav_lane_finder_learned`), which takes colour pictures.
+    pub fn rgb(&self, x: usize, y: usize) -> [u8; 3] {
+        let p = self.pixel(x, y);
+        let [b, g, r] = self.encoding.bgr_at();
+        [p[r], p[g], p[b]]
+    }
+
     /// The pixel's bytes at (x, y), then where blue, green and red are in them.
     pub(crate) fn pixel(&self, x: usize, y: usize) -> &'a [u8] {
         let n = self.encoding.bytes();

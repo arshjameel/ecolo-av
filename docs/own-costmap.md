@@ -171,6 +171,36 @@ table: [own-planner.md](own-planner.md#the-scores-16-nov-our-simulator-the-unive
 Later that day, 3 clean runs each: `path:=lane` no worse on any column, and since then
 `ours`' path; the ramp stays a challenger (`lanes:=ramp`; TODO 148).
 
+## The lanes from the camera (19 Nov, TODO 264)
+
+Ben, 19 Nov: "We use the perception system to identify the lines and then we bake it into
+the cost map. So curb, high cost, yllow line med cost, lright side low cost, car in the
+way high cost, person in the way high cost, etc then have the nav system handle it".
+
+Where there is no lane map, the lane finder's two lines draw **the same costs** as the
+lane map's roads: one function, `lanes::across`, prices both.
+
+```text
+   y (left)
+   off_road ┤░░░░░░░░░░░░░░░░░░  assumed: an oncoming lane as wide as ours
+       kerb ┤══════════════════
+ wrong_lane ┤                     the oncoming lane: medium (150)
+       line ┤── ── ── ── ── ──    the left line: the centre line (yellow, or by default)
+          0 ┤ ●── the car's lane ──►  x (ahead): 2 m behind to 16 m ahead
+       line ┤──────────────────   the right line (white): the edge line
+       kerb ┤══════════════════   0.5 m past it: high (200)
+   off_road ┤░░░░░░░░░░░░░░░░░░   1 m, then nothing
+```
+
+| Part | What |
+|---|---|
+| Turn it on | `pixi run sim lanes:=camera` (`lane_costs:=true lane_source:=camera`; it starts the lane finder). `lanes:=both`: the lane map wins where it has a road, the camera elsewhere |
+| The lines | `/perception/lane/geometry`: each line detected at 0.3 confidence or more, placed on the map by the odometry and map -> odom at the picture's stamp; forgotten after 0.5 s |
+| Which side is right | the car's own lane is the one it is in: its left line is the road's centre line. A **yellow right line** says the car is in the oncoming lane: its lane is then right of that line. One white line alone (the edge line): the centre is a lane to its left |
+| The costs | `lanes.rs`'s ramp: 0 at the lane's centre, 80 at its lines, 150 over the centre line, 200 at the kerb and 1 m past it. Added to the inflation, at most 252: **never a wall**. Cars and people stay walls (the obstacle layers) |
+| Code | `crates/costmap/src/camera_lanes.rs` (no ROS, 8 tests); `layered.rs` (`set_camera_lanes`, `see_lanes`; the map and camera grids merged per cell, the map first); the node's `on_lanes`; `lane_map.lanes_block` |
+| Scores | not yet: stage 2 scores it on the same roads as the lane followers ([their numbers](history/lane-followers.md)) |
+
 ## Threads and bounds (14 Nov)
 
 **The problem.** On the campus map (6400 × 6400 cells, 41 million) every leg with
@@ -332,7 +362,7 @@ one from `/map`) stays a challenger.
 
 | Reader | When |
 |---|---|
-| `aav_things` (the background: walls aren't things) | `things:=true` |
+| `aav_things_rs` (the background: walls aren't things) | `things:=true` |
 | the screens: RViz, the map window, the dev window, Foxglove's cockpit | when they run |
 | AMCL | `amcl:=true`, without its own map |
 | `sim_check.py` | its checks |

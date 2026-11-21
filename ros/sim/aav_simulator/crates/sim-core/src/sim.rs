@@ -358,6 +358,21 @@ pub struct Simulator {
     wheel_heights: [f64; 4],
     /// Placed models that move on their own (`set_motion`): a person walking.
     movers: Vec<Mover>,
+    /// The car's motion at the last IMU reading: the next one averages over the time
+    /// between, as a real IMU's filter does (None: the first, or the car was placed).
+    imu_last: Option<ImuMemory>,
+}
+
+/// What the IMU remembers from its last reading.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ImuMemory {
+    time_ns: u64,
+    /// m/s, forward.
+    speed: f64,
+    /// rad/s.
+    yaw_rate: f64,
+    /// `base_link`'s rotation in the world.
+    rotation: Rot3,
 }
 
 impl std::fmt::Debug for Simulator {
@@ -427,6 +442,7 @@ impl Simulator {
             wheel_noise: seed.fork(),
             drift: [0.0; 3],
             movers: Vec::new(),
+            imu_last: None,
             settings,
             world,
             car,
@@ -561,6 +577,8 @@ impl Simulator {
     pub fn place_car(&mut self, x: f64, y: f64, yaw: f64) {
         self.car.reset(x, y, yaw);
         self.settle();
+        // A jump, not a motion: the IMU starts afresh.
+        self.imu_last = None;
     }
 
     /// The wheels' heights where the car stands, found from a little up.
@@ -784,28 +802,50 @@ impl Simulator {
         self.odom.yaw_rate = yaw_rate;
     }
 
+    /// The IMU: what a real one on the car feels (S3, 18 Nov). Its turn rates on all three
+    /// axes come from how `base_link` turned since the last reading (slopes too); its
+    /// acceleration from how the speed and the turn rate changed since then, the turn's
+    /// pull at the sensor's place, and gravity as the tilted car feels it. Averaging over
+    /// the time between readings is what a real IMU's low-pass filter does; an
+    /// instant's acceleration would alias the car model's 1 ms steps (it catches each new
+    /// command in a step or two at up to 10 m/s²).
     fn imu(&mut self) -> ImuReading {
         let s = self.car.state();
         let mount = self.settings.mounts.imu;
-        let world = self.base_link().then(&mount);
+        let base = self.base_link();
+        let world = base.then(&mount);
         let into_imu = mount.rotation.transpose();
-        let n = self.settings.noise;
-        let rate = into_imu.apply(Vec3::new(0.0, 0.0, s.yaw_rate));
-        // The specific force at the sensor: the car's acceleration (along, and the turn's
-        // pull toward the centre, at the sensor's place ahead of the axle) and gravity.
-        let r = mount.position;
+        let now = ImuMemory {
+            time_ns: self.time_ns,
+            speed: s.speed,
+            yaw_rate: s.yaw_rate,
+            rotation: base.rotation,
+        };
+        let motion = match self.imu_last.replace(now) {
+            Some(before) if now.time_ns > before.time_ns => {
+                Motion::between(&before, &now, (now.time_ns - before.time_ns) as f64 * 1e-9)
+            }
+            _ => Motion {
+                accel: s.accel,
+                yaw_accel: 0.0,
+                rate: Vec3::new(0.0, 0.0, s.yaw_rate),
+            },
+        };
         // Gravity's pull, as the tilted car feels it (straight up on flat ground).
-        let up = self
-            .base_link()
+        let up = base
             .rotation
             .transpose()
             .apply(Vec3::new(0.0, 0.0, GRAVITY));
-        let accel = Vec3::new(
-            s.accel - s.yaw_rate * s.yaw_rate * r.x + up.x,
-            s.speed * s.yaw_rate + up.y,
-            up.z,
-        );
+        let accel = sensor_acceleration(
+            motion.accel,
+            s.speed,
+            s.yaw_rate,
+            motion.yaw_accel,
+            mount.position,
+        ) + up;
+        let rate = into_imu.apply(motion.rate);
         let accel = into_imu.apply(accel);
+        let n = self.settings.noise;
         let g = &mut self.imu_noise;
         ImuReading {
             orientation: world.rotation.quaternion(),
@@ -832,6 +872,60 @@ impl Simulator {
         fix.altitude += g.gauss(n.gps_vertical);
         fix
     }
+}
+
+/// The car's motion between two IMU readings, in `base_link`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Motion {
+    /// m/s², forward: the mean over the time between.
+    accel: f64,
+    /// rad/s².
+    yaw_accel: f64,
+    /// rad/s, about x, y and z: the mean turn.
+    rate: Vec3,
+}
+
+impl Motion {
+    fn between(before: &ImuMemory, now: &ImuMemory, dt: f64) -> Motion {
+        Motion {
+            accel: (now.speed - before.speed) / dt,
+            yaw_accel: (now.yaw_rate - before.yaw_rate) / dt,
+            rate: body_rate(&before.rotation, &now.rotation, dt),
+        }
+    }
+}
+
+/// rad/s about the body's own x, y and z: the turn from `before` to `now` (both the body's
+/// rotation in the world) over `dt` s. A gyro's reading.
+#[must_use]
+pub fn body_rate(before: &Rot3, now: &Rot3, dt: f64) -> Vec3 {
+    // The turn in the body's frame, as an axis and an angle.
+    let r = before.transpose().then(now).m;
+    let skew = Vec3::new(r[2][1] - r[1][2], r[0][2] - r[2][0], r[1][0] - r[0][1]) * 0.5;
+    let sin = skew.length();
+    let cos = ((r[0][0] + r[1][1] + r[2][2] - 1.0) / 2.0).clamp(-1.0, 1.0);
+    let angle = sin.atan2(cos);
+    let scale = if sin > 1e-12 { angle / sin } else { 1.0 };
+    skew * (scale / dt)
+}
+
+/// m/s² at a point `at` (m, in `base_link`) of a car on the ground whose rear axle speeds
+/// up at `accel` while it drives at `speed` and turns at `yaw_rate`, itself changing at
+/// `yaw_accel`: a rigid body's a + α × r + ω × (ω × r), without gravity.
+#[must_use]
+pub fn sensor_acceleration(
+    accel: f64,
+    speed: f64,
+    yaw_rate: f64,
+    yaw_accel: f64,
+    at: Vec3,
+) -> Vec3 {
+    let w2 = yaw_rate * yaw_rate;
+    Vec3::new(
+        accel - yaw_accel * at.y - w2 * at.x,
+        speed * yaw_rate + yaw_accel * at.x - w2 * at.y,
+        0.0,
+    )
 }
 
 /// Each front wheel's angle for the centre wheel's `steering` (Ackermann), left then right:
@@ -1060,6 +1154,175 @@ mod tests {
         let fix = sim.navsat();
         assert!((fix.latitude - 45.386).abs() < 1e-9);
         assert!((fix.altitude - 71.4).abs() < 1e-6);
+    }
+
+    fn quiet() -> Settings {
+        let mut s = settings();
+        s.noise = SensorNoise {
+            gyro: 0.0,
+            accel: 0.0,
+            gps_horizontal_deg: 0.0,
+            gps_vertical: 0.0,
+            ..SensorNoise::default()
+        };
+        s.lidar = None;
+        s
+    }
+
+    /// Run `secs` s, the command from `command(t)` changed every 20 ms (sim_adapter's
+    /// 50 Hz); return every IMU reading with its time (s).
+    fn imu_readings(
+        sim: &mut Simulator,
+        secs: f64,
+        command: impl Fn(f64) -> Command,
+    ) -> Vec<(f64, ImuReading)> {
+        let mut out = Vec::new();
+        let mut now = command(0.0);
+        for k in 0..(secs * 1000.0) as usize {
+            if k % 20 == 0 {
+                now = command(k as f64 * 1e-3);
+            }
+            for o in sim.step(&now) {
+                if let Output::Imu(r) = o {
+                    out.push((sim.time_ns() as f64 * 1e-9, r));
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn speeding_up_the_imu_reads_the_cars_acceleration_not_the_steps() {
+        // sim_adapter ramps 1 m/s² at 50 Hz; the follower catches each new speed within
+        // 2 ms at 10 m/s². A real IMU reads 1 m/s² all along (S3).
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(quiet(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let ramp = |t: f64| Command::Twist {
+            speed: t.min(2.0),
+            yaw_rate: 0.0,
+        };
+        let readings = imu_readings(&mut sim, 1.5, ramp);
+        for (t, r) in readings.iter().filter(|(t, _)| (0.1..1.4).contains(t)) {
+            let a = r.linear_acceleration;
+            assert!((a.x - 1.0).abs() < 1e-6, "at {t:.2} s: {a:?}");
+            assert!(a.y.abs() < 1e-9 && (a.z - GRAVITY).abs() < 1e-9, "{a:?}");
+        }
+    }
+
+    #[test]
+    fn in_a_steady_turn_the_imu_feels_the_pull_and_the_turn() {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(quiet(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let (v, r) = (2.0, 0.4);
+        let turn = |_| Command::Twist {
+            speed: v,
+            yaw_rate: r,
+        };
+        let readings = imu_readings(&mut sim, 3.0, turn);
+        let (_, last) = readings.last().expect("readings");
+        let w = last.angular_velocity;
+        let a = last.linear_acceleration;
+        let x = 0.49; // the IMU's place ahead of the rear axle (settings())
+        assert!(
+            (w.z - r).abs() < 1e-3 && w.x.abs() < 1e-9 && w.y.abs() < 1e-9,
+            "{w:?}"
+        );
+        assert!(
+            (a.y - v * r).abs() < 1e-2,
+            "the pull toward the centre: {a:?}"
+        );
+        assert!(
+            (a.x + r * r * x).abs() < 1e-2,
+            "ahead of the axle, pulled in: {a:?}"
+        );
+    }
+
+    #[test]
+    fn a_gyro_reads_each_axis_of_a_turn() {
+        let dt = 0.02;
+        let level = Rot3::from_yaw(1.0);
+        let pitched = Rot3::from_rpy(0.0, 0.01, 1.0);
+        let w = body_rate(&level, &pitched, dt);
+        assert!(
+            (w.y - 0.5).abs() < 1e-3 && w.x.abs() < 1e-3 && w.z.abs() < 1e-3,
+            "{w:?}"
+        );
+        let turned = Rot3::from_yaw(1.0 + 0.008);
+        let w = body_rate(&level, &turned, dt);
+        assert!((w.z - 0.4).abs() < 1e-9 && w.x.abs() < 1e-12, "{w:?}");
+        let w = body_rate(&level, &level, dt);
+        assert_eq!(w, Vec3::new(0.0, 0.0, 0.0));
+        // A big turn (nearly half a circle) is still read by its angle.
+        let far = Rot3::from_yaw(1.0 + 3.0);
+        assert!((body_rate(&level, &far, 1.0).z - 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn the_acceleration_at_the_sensor_is_a_rigid_bodys() {
+        let at = Vec3::new(0.5, 0.2, 1.4);
+        let a = sensor_acceleration(1.0, 2.0, 0.0, 0.0, at);
+        assert_eq!(a, Vec3::new(1.0, 0.0, 0.0));
+        // Turning: the pull toward the centre, v r, and the point's own circle.
+        let a = sensor_acceleration(0.0, 2.0, 0.5, 0.0, at);
+        assert!((a.x + 0.25 * 0.5).abs() < 1e-12 && (a.y - (1.0 - 0.25 * 0.2)).abs() < 1e-12);
+        // Turning faster: a point ahead of the axle swings left.
+        let a = sensor_acceleration(0.0, 0.0, 0.0, 1.0, at);
+        assert!((a.y - 0.5).abs() < 1e-12 && (a.x + 0.2).abs() < 1e-12);
+    }
+
+    #[test]
+    fn a_placed_car_gives_the_imu_no_jolt() {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(quiet(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        let go = |_| Command::Twist {
+            speed: 1.0,
+            yaw_rate: 0.2,
+        };
+        imu_readings(&mut sim, 2.0, go);
+        sim.place_car(30.0, 5.0, -2.0);
+        let still = |_| Command::Twist {
+            speed: 0.0,
+            yaw_rate: 0.0,
+        };
+        for (t, r) in imu_readings(&mut sim, 0.5, still) {
+            let (a, w) = (r.linear_acceleration, r.angular_velocity);
+            assert!(
+                a.x.abs() < 1e-9 && w.z.abs() < 1e-9,
+                "at {t:.2} s: {a:?} {w:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn rolling_onto_a_mat_the_gyro_feels_the_pitch() {
+        let mut s = quiet();
+        s.body = None;
+        s.ground_step = Some(0.1);
+        let mut world = World::flat(400.0);
+        world.scene.place(
+            "mat",
+            &crate::scene::Mesh::cuboid(Vec3::new(4.0, 10.0, 0.05)),
+            &Pose::new(Vec3::new(5.0, 0.0, 0.025), Rot3::IDENTITY),
+        );
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(s, world, car, (0.0, 0.0, 0.0));
+        sim.start();
+        let go = |_| Command::Twist {
+            speed: 1.0,
+            yaw_rate: 0.0,
+        };
+        let readings = imu_readings(&mut sim, 6.0, go);
+        let most = readings
+            .iter()
+            .map(|(_, r)| r.angular_velocity.y.abs())
+            .fold(0.0, f64::max);
+        // The front wheels step up 5 cm, then the rear: the nose goes up, then down.
+        assert!(most > 0.1, "the pitch rate on the mat's edge: {most}");
+        let (_, end) = readings.last().expect("readings");
+        assert!(
+            end.angular_velocity.y.abs() < 1e-9,
+            "level again on the mat"
+        );
     }
 
     #[test]

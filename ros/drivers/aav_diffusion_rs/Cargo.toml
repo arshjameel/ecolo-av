@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+# diffusion-core: the diffusion planner's model from its ONNX file, in plain Rust (no ROS),
+# and the binary diffusion_worker: the Python node's model worker, in Rust (the same pipe).
+#   cargo test -p diffusion-core                                  the pipe, the batches
+#   cargo test --release -p diffusion-core --features coreml      and the model, if built
+#   cargo run --release -p diffusion-core --features coreml --example bench
+members = ["crates/diffusion-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[profile.test]
+opt-level = 3

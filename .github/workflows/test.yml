@@ -41,7 +41,7 @@ jobs:
   linux:
     if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - name: Install Pixi
@@ -63,7 +63,12 @@ jobs:
       # so a run rebuilds only our crates, not every dependency (the colcon build went from
       # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
       # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
-      - uses: actions/cache@v5
+      # Restored here, saved right after the build (below), so a run whose tests fail or
+      # time out still leaves its build for the next: actions/cache saves only on success,
+      # and on 18 Nov main's linux job built cold (27 of its 60 min), timed out in the
+      # tests, saved nothing, and so the next run would build cold again.
+      - uses: actions/cache/restore@v5
+        id: rust-cache
         with:
           path: |
             ~/.cargo/registry/index
@@ -75,6 +80,33 @@ jobs:
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
+      # A cache from older code can hold rclrs's and rosidl_runtime_rs's build-script output
+      # (the libraries to link, where they were): then a Rust node fails to link (20 Nov,
+      # PR #34: aav_costmap, Linux and ARM, while the fork's own cache built it). Their
+      # build scripts are cheap: run them again every time.
+      - name: Drop the ROS Rust bindings' cached build-script output
+        run: |
+          rm -rf build/*/target/*/build/rclrs-* build/*/target/*/.fingerprint/rclrs-* \
+                 build/*/target/*/build/rosidl_runtime_rs-* \
+                 build/*/target/*/.fingerprint/rosidl_runtime_rs-*
+      # The build on its own, with its own limit, so the tests keep their full 60 min.
+      # pixi run test builds again first, but then nothing has changed (a minute or two).
+      - name: pixi run build
+        timeout-minutes: 45
+        run: pixi run --locked build 2>&1 | tee build.log
+      - name: Save the Rust cache, even if a later step fails
+        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
@@ -84,16 +116,24 @@ jobs:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
       - name: Failures as annotations (readable without signing in)
-        # Not when the run failed before the tests (GitHub down, say): no test.log.
-        if: (failure() || cancelled()) && hashFiles('test.log') != ''
-        run: python3 tools/ci_annotate.py test.log build
+        # Not when the run failed before the build (GitHub down, say): no log.
+        if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
+        # test.log, or build.log when the build step stopped first
+        run: python3 tools/ci_annotate.py "$(if [[ -f test.log ]]; then echo test.log; else echo build.log; fi)" build
+      - name: The failed packages' errors in full
+        # colcon's console shows a linker's first line only; its log keeps the rest.
+        if: failure() && hashFiles('build.log') != ''
+        run: |
+          for f in log/latest_build/*/stderr.log; do
+            [ -s "$f" ] && { echo "== $f"; tail -n 80 "$f"; }
+          done; true
       - name: The MCP server, over stdio
         run: pixi run --locked -e mcp python3 tools/tests/mcp_smoke.py
 
   mac:
     if: (github.event_name == 'schedule' && github.repository == 'AAV-2025-2026/ecolo-av') || github.event_name == 'workflow_dispatch'
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - name: Install Pixi
@@ -115,7 +155,12 @@ jobs:
       # so a run rebuilds only our crates, not every dependency (the colcon build went from
       # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
       # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
-      - uses: actions/cache@v5
+      # Restored here, saved right after the build (below), so a run whose tests fail or
+      # time out still leaves its build for the next: actions/cache saves only on success,
+      # and on 18 Nov main's linux job built cold (27 of its 60 min), timed out in the
+      # tests, saved nothing, and so the next run would build cold again.
+      - uses: actions/cache/restore@v5
+        id: rust-cache
         with:
           path: |
             ~/.cargo/registry/index
@@ -127,6 +172,33 @@ jobs:
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
+      # A cache from older code can hold rclrs's and rosidl_runtime_rs's build-script output
+      # (the libraries to link, where they were): then a Rust node fails to link (20 Nov,
+      # PR #34: aav_costmap, Linux and ARM, while the fork's own cache built it). Their
+      # build scripts are cheap: run them again every time.
+      - name: Drop the ROS Rust bindings' cached build-script output
+        run: |
+          rm -rf build/*/target/*/build/rclrs-* build/*/target/*/.fingerprint/rclrs-* \
+                 build/*/target/*/build/rosidl_runtime_rs-* \
+                 build/*/target/*/.fingerprint/rosidl_runtime_rs-*
+      # The build on its own, with its own limit, so the tests keep their full 60 min.
+      # pixi run test builds again first, but then nothing has changed (a minute or two).
+      - name: pixi run build
+        timeout-minutes: 45
+        run: pixi run --locked build 2>&1 | tee build.log
+      - name: Save the Rust cache, even if a later step fails
+        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
@@ -136,9 +208,17 @@ jobs:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
       - name: Failures as annotations (readable without signing in)
-        # Not when the run failed before the tests (GitHub down, say): no test.log.
-        if: (failure() || cancelled()) && hashFiles('test.log') != ''
-        run: python3 tools/ci_annotate.py test.log build
+        # Not when the run failed before the build (GitHub down, say): no log.
+        if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
+        # test.log, or build.log when the build step stopped first
+        run: python3 tools/ci_annotate.py "$(if [[ -f test.log ]]; then echo test.log; else echo build.log; fi)" build
+      - name: The failed packages' errors in full
+        # colcon's console shows a linker's first line only; its log keeps the rest.
+        if: failure() && hashFiles('build.log') != ''
+        run: |
+          for f in log/latest_build/*/stderr.log; do
+            [ -s "$f" ] && { echo "== $f"; tail -n 80 "$f"; }
+          done; true
       - name: The MCP server, over stdio
         run: pixi run --locked -e mcp python3 tools/tests/mcp_smoke.py
 
@@ -149,7 +229,7 @@ jobs:
   arm:
     if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - name: Install Pixi
@@ -172,7 +252,12 @@ jobs:
       # so a run rebuilds only our crates, not every dependency (the colcon build went from
       # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
       # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
-      - uses: actions/cache@v5
+      # Restored here, saved right after the build (below), so a run whose tests fail or
+      # time out still leaves its build for the next: actions/cache saves only on success,
+      # and on 18 Nov main's linux job built cold (27 of its 60 min), timed out in the
+      # tests, saved nothing, and so the next run would build cold again.
+      - uses: actions/cache/restore@v5
+        id: rust-cache
         with:
           path: |
             ~/.cargo/registry/index
@@ -184,14 +269,49 @@ jobs:
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
+      # A cache from older code can hold rclrs's and rosidl_runtime_rs's build-script output
+      # (the libraries to link, where they were): then a Rust node fails to link (20 Nov,
+      # PR #34: aav_costmap, Linux and ARM, while the fork's own cache built it). Their
+      # build scripts are cheap: run them again every time.
+      - name: Drop the ROS Rust bindings' cached build-script output
+        run: |
+          rm -rf build/*/target/*/build/rclrs-* build/*/target/*/.fingerprint/rclrs-* \
+                 build/*/target/*/build/rosidl_runtime_rs-* \
+                 build/*/target/*/.fingerprint/rosidl_runtime_rs-*
+      # The build on its own, with its own limit, so the tests keep their full 60 min.
+      # pixi run test builds again first, but then nothing has changed (a minute or two).
+      - name: pixi run build
+        timeout-minutes: 45
+        run: pixi run --locked build 2>&1 | tee build.log
+      - name: Save the Rust cache, even if a later step fails
+        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            build/*/target
+            ros/*/*/target
+            firmware/*/target
+            !**/target/*/incremental
+          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
       - name: pixi run test
         timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
         run: pixi run --locked test 2>&1 | tee test.log
       - name: Failures as annotations (readable without signing in)
-        if: (failure() || cancelled()) && hashFiles('test.log') != ''
-        run: python3 tools/ci_annotate.py test.log build
+        if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
+        # test.log, or build.log when the build step stopped first
+        run: python3 tools/ci_annotate.py "$(if [[ -f test.log ]]; then echo test.log; else echo build.log; fi)" build
+      - name: The failed packages' errors in full
+        # colcon's console shows a linker's first line only; its log keeps the rest.
+        if: failure() && hashFiles('build.log') != ''
+        run: |
+          for f in log/latest_build/*/stderr.log; do
+            [ -s "$f" ] && { echo "== $f"; tail -n 80 "$f"; }
+          done; true
       # The HUD's CMake skips it, with only a warning, where X11's headers are missing: so
       # check that both programs were built, and for ARM.
       - name: The HUD and the map window, built for ARM

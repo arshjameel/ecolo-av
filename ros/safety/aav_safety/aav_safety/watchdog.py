@@ -14,9 +14,10 @@ What counts as wrong, per input (each check only where its rule asks for it):
   NO FIX  a GPS fix that says it has none, or NaN: the GPS counts as lost (STALE after
           max_age), as navsat_transform ignores those fixes too
   FROZEN  the same values again and again for frozen_after seconds (a driver stuck,
-          sending its last message with fresh stamps). For a camera only while the car
-          moves: a still car in a still world sees the same picture. For a heartbeat: its
-          count stopped rising
+          sending its last message with fresh stamps). For a camera or a cloud (the lidar)
+          only while the car moves: a still car in a still world sees the same picture,
+          and a noiseless lidar (the bench's) the same cloud. For a heartbeat: its count
+          stopped rising
   JUMP    two GPS fixes further apart than max_jump_speed allows in the time between
           their stamps, plus jump_margin for the fixes' own noise. Latched: the position
           after a jump can't be trusted until a person says so (clear())
@@ -39,6 +40,9 @@ What counts as wrong, per input (each check only where its rule asks for it):
           Only fresh numbers count (16 Nov): a wheel speed older than the speed input's
           max_age, or a command after a gap of more than max_age, is no check (the
           watched odom input says STALE for the wheels; this input for ego)
+  FAULT   a status input (kind status) whose newest message says min_level or worse
+          (1 WARN, 2 ERROR, 3 STALE): one of our nodes says it is in trouble, in its own
+          words (the costmap waiting for odometry, the planner finding no path)
   LOST    where the rule says latch (the HUD's heartbeat): the input went wrong (STALE,
           FROZEN...) after its start-up. Latched: a program that died or froze once may
           do it again, so a person looks before Nav2 drives again (clear())
@@ -61,6 +65,16 @@ our nodes, warn only, no lock): its topic is the node's full name (/planner), an
 respawn didn't bring it back, or it hangs before it joins): STALE, a warning. A node input
 never stops the car (stop must be false): the costmap's and odometry's age checks and
 twist_mux's timeout already stop it while a node it needs is down.
+
+A status input (kind status) watches one of our nodes through its own status topic
+(diagnostic_msgs/DiagnosticStatus; Ben, 18 Nov: warn only by default, TODO 171). Only the
+messages whose name is the rule's status_name count (one topic can carry two: 'costmap
+local' and 'costmap global'; empty: all). Silence for max_age is STALE (a node that hangs
+in the graph still says nothing), unless the rule says quiet_ok: the node speaks only while
+it works (the planner, one a plan; the path follower, while a path runs), so silence is
+quiet, OK, and an old complaint no longer counts. Its stop switch works as any input's:
+false by default (respawn, mppi_lag's costmap age and twist_mux's timeout already stop
+the car), true to hold Nav2 and the AI slot while it isn't OK.
 
 A detections input (kind detections) watches a camera through its detector's output: the
 car's camera_stream nodes (aav_camera_stream) keep their pictures inside, and send a
@@ -88,12 +102,15 @@ LOST = 'LOST'
 STUCK = 'STUCK'
 OVER = 'OVER'
 OVERSPEED = 'OVERSPEED'
+FAULT = 'FAULT'
 WARN_ONLY = (OVER,)         # states that warn but never stop the drivers
 
 KINDS = ('odom', 'imu', 'gps', 'image', 'cloud', 'heartbeat', 'detections', 'node',
-         'actuator', 'speed')
+         'actuator', 'speed', 'status')
+LEVELS = {1: 'WARN', 2: 'ERROR', 3: 'STALE'}    # diagnostic_msgs/DiagnosticStatus's
 EARTH_RADIUS = 6371000.0    # m
-MOVING = 0.2                # m/s: faster than this, the camera's picture must change
+MOVING = 0.2                # m/s: faster than this, a camera's picture or a cloud must change
+MOVING_KINDS = ('image', 'cloud')    # frozen only while the car moves
 SLOWING_WINDOW = 0.5        # s: the overspeed check's look back, for "is it slowing?"
 
 
@@ -119,6 +136,9 @@ class Rule:
     over_warn: float = 1.0      # ... for this many s while not slowing: OVER (a warning)
     over_persist: float = 2.0   # ... for this many s: OVERSPEED (latched)
     over_slowing: float = 0.3   # m/s^2: slowing at least this fast doesn't count
+    status_name: str = ''       # status only: the messages of this name count ('' all)
+    min_level: int = 2          # status only: this level or worse is a FAULT (1 WARN, 2 ERROR)
+    quiet_ok: bool = False      # status only: silence is quiet, not STALE
 
     def __post_init__(self):
         if self.kind not in KINDS:
@@ -152,10 +172,18 @@ class Rule:
                              'and 0 < over_warn <= over_persist')
         if not self.latch_grace >= 0.0:
             raise ValueError(f'{self.name}: latch_grace must be 0 or more seconds')
+        if self.kind != 'status' and (self.status_name or self.quiet_ok):
+            raise ValueError(f'{self.name}: only a status input has status_name or quiet_ok')
+        if self.min_level not in LEVELS:
+            raise ValueError(f'{self.name}: min_level is 1 (WARN), 2 (ERROR) or 3 (STALE)')
 
     def counts(self, frame_id: str) -> bool:
         """Report whether a message from this frame is this input's (detections: its camera)."""
         return self.kind != 'detections' or frame_id == self.frame_id
+
+    def hears(self, status_name: str) -> bool:
+        """Report whether a status message of this name is this input's."""
+        return self.kind != 'status' or not self.status_name or status_name == self.status_name
 
 
 def finite(values: Sequence[float]) -> bool:
@@ -188,6 +216,7 @@ class Watch:
         self.over_words = ''       # speed: what is over, as text, while over_since is set
         self.speeds = []           # speed: (now, |measured|) over the last SLOWING_WINDOW
         self.overspeed = None      # speed: what latched OVERSPEED, as text, until clear()
+        self.said = None           # status: (level, words) of a newest message at min_level+
         # Latch rules (rule.latch), kept by update().
         self.first_good = None     # the first update() it was OK at: the grace starts
         self.was_ok = False        # OK at the last update()
@@ -203,13 +232,15 @@ class Watch:
 
     def arrived(self, now: float, values: Sequence[float] = (), digest=None,
                 fix: Optional[Tuple[float, float]] = None, has_fix: bool = True,
-                speed: Optional[float] = None, stamp: Optional[float] = None):
+                speed: Optional[float] = None, stamp: Optional[float] = None,
+                words: str = ''):
         """
         Note a message: its numbers (NaN check), a digest of it (frozen check), a GPS fix.
 
-        speed is the car's newest wheel speed (m/s), for the camera's frozen check. stamp
+        speed is the car's newest wheel speed (m/s), for a camera's or cloud's frozen check. stamp
         is the fix's own time (s): fixes can arrive two at once, so their arrival times
-        say nothing about how far apart they were taken.
+        say nothing about how far apart they were taken. A status: values (its level,)
+        and words, its message.
         """
         rule = self.rule
         gap_before = None if self.heard is None else now - self.heard
@@ -238,10 +269,13 @@ class Watch:
             return
         self.bad = None
         self.good = now
+        if rule.kind == 'status':
+            level = int(values[0]) if values else 0
+            self.said = (level, words) if level >= rule.min_level else None
         if self.cross is not None and len(values) >= 3:
             self.cross.wheels(now, values[0], values[2])    # forward speed, turn rate
         if rule.frozen_after > 0.0 and digest is not None:
-            moving = rule.kind != 'image' or (speed is not None and abs(speed) > MOVING)
+            moving = rule.kind not in MOVING_KINDS or (speed is not None and abs(speed) > MOVING)
             if digest != self.digest or not moving:
                 self.same_since = now
             self.digest = digest
@@ -322,10 +356,12 @@ class Watch:
         if why is not None:
             return DISAGREE, why + ': clear it once the wheels are right'
         if self.heard is None:
-            return NEVER, 'nothing yet'
+            return (OK, 'quiet: nothing yet') if rule.quiet_ok else (NEVER, 'nothing yet')
         if self.bad == NAN:
             return NAN, 'NaN or inf in the newest message'
         age = now - self.good if self.good is not None else math.inf
+        if age > rule.max_age and rule.quiet_ok:
+            return OK, f'quiet for {age:.1f} s'
         if age > rule.max_age:
             why = 'no fix' if self.bad == 'NO FIX' else 'nothing'
             since = f'for {age:.1f} s' if math.isfinite(age) else 'yet'
@@ -333,6 +369,9 @@ class Watch:
         if (rule.frozen_after > 0.0 and self.same_since is not None
                 and now - self.same_since > rule.frozen_after):
             return FROZEN, f'the same for {now - self.same_since:.1f} s'
+        if self.said is not None:
+            level, words = self.said
+            return FAULT, f'says {LEVELS.get(level, LEVELS[3])}: {words}'
         if self.over_since is not None and self.good - self.over_since >= rule.over_warn:
             return OVER, self.over_words
         return OK, f'{age:.1f} s old'

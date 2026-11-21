@@ -15,6 +15,7 @@ source: /system/source                           # DataSource, latched: SIM or r
 status: /vehicle/status                          # VehicleStatus: the e-stop
 gate: /safety/output_mux/state                   # String: the output gate
 watchdog: /safety/sensor_watchdog/state          # String: the sensor watchdog
+driving: /control/command_mux/state              # DiagnosticStatus: who is driving (aav_mux_state)
 goal: /goal_pose                                 # PoseStamped, out: only in developer mode
 screen_alive: /hud/dev_window/heartbeat         # UInt64, out: only in developer mode, frames drawn
 estop: /safety/estop                             # Bool, out: only ever true, developer mode
@@ -26,4 +27,4 @@ stop_point: /ego/stop_point                      # PoseStamped, base_link: where
 road_ahead: /world/road_ahead                    # RoadAhead, map: the road ahead, coloured by its speed limit
 ahead: /ego/ahead                                # DiagnosticStatus: the gap, the stop, the room
 route: /drivers/nav/route/path                   # Path, map, latched: the street route (street_router)
-things: /world/things                            # Things, odom: the things near the car, named by the camera (aav_things)
+things: /world/things                            # Things, odom: the things near the car, named by the camera (aav_things_rs)

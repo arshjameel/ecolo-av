@@ -862,10 +862,110 @@ def straight(rows, ctx: Context) -> Report:
     return rep
 
 
+WHEEL_STEP_SETTLED = 1.5     # s: the end of each wheel step, where its speed is read
+WHEEL_STEP_SLACK = 0.02      # m/s: each step moves the speed at least this, its command's way
+WHEEL_STEP_MATCH = 0.25      # a step up: within this share of the command (or WHEEL_STEP_FLOOR)
+WHEEL_STEP_FLOOR = 0.05      # m/s
+
+
+@dataclass(frozen=True)
+class WheelStep:
+    command: float     # m/s asked
+    measured: float    # m/s, the wheel speed's mean over the step's last WHEEL_STEP_SETTLED s
+
+
+@dataclass(frozen=True)
+class WheelVerdict:
+    """Did the free wheels follow the steps (car_test.py's step 4)."""
+
+    steps: Tuple[WheelStep, ...]
+    follows: bool      # each step moves the speed the way its command moved; all turn
+    matches: bool      # each step up within WHEEL_STEP_MATCH of its command (or FLOOR)
+    detail: str
+
+
+def wheel_step_results(rows: Sequence[Mapping]) -> List[WheelStep]:
+    """Return each wheel step's command and settled wheel speed, in order."""
+    out = []
+    for name, rs in phases(rows):
+        if not name.startswith('wheel step'):
+            continue
+        command = mean(col(rs, 'cmd_speed'))
+        measured = mean([abs(v) for v in col(tail(rs, WHEEL_STEP_SETTLED), 'speed')])
+        out.append(WheelStep(command, measured))
+    return out
+
+
+def judge_wheel_steps(steps: Sequence[WheelStep], expected: int = 4) -> WheelVerdict:
+    """
+    Judge throttle on free wheels: does the wheel speed follow the commands.
+
+    follows: every step reads a speed (above an.STOPPED), and each step moves the speed
+    the way its command moved, by at least WHEEL_STEP_SLACK. matches: each step reached
+    from below is within its tolerance. A step down is judged on its direction only: free
+    wheels carry no load, so they coast down slowly. An open-loop throttle (the ESP32's)
+    may follow without matching: a throttle-gain finding, not a fault.
+    """
+    steps = tuple(steps)
+    if len(steps) < expected or not all(finite(s.measured) for s in steps):
+        return WheelVerdict(steps, False, False,
+                            f'{len(steps)} of {expected} steps with a speed: the run ended '
+                            'early, or no wheel speed')
+    words = ', '.join(f'{s.command:.2f} -> {s.measured:.2f}' for s in steps)
+    moving = all(s.measured > an.STOPPED for s in steps)
+    pairs = list(zip(steps, steps[1:]))
+    with_it = all(b.measured >= a.measured + WHEEL_STEP_SLACK if b.command > a.command
+                  else b.measured <= a.measured - WHEEL_STEP_SLACK
+                  for a, b in pairs if b.command != a.command)
+    follows = moving and with_it
+    upward = [steps[0]] + [b for a, b in pairs if b.command > a.command]
+    matches = all(abs(s.measured - s.command) <= max(WHEEL_STEP_FLOOR,
+                                                     WHEEL_STEP_MATCH * s.command)
+                  for s in upward)
+    if not moving:
+        why = 'a step the wheels did not turn'
+    elif not with_it:
+        why = 'a step the wheel speed did not follow (up or down)'
+    elif not matches:
+        why = (f'follows, but not within {WHEEL_STEP_MATCH:.0%} (or {WHEEL_STEP_FLOOR} m/s) '
+               'going up: an open-loop throttle gain to measure (full_throttle_speed)')
+    else:
+        why = (f'follows: each step up within {WHEEL_STEP_MATCH:.0%} (or {WHEEL_STEP_FLOOR} '
+               'm/s), the step down slower')
+    return WheelVerdict(steps, follows, matches, f'{why}; m/s asked -> wheels: {words}')
+
+
+def wheel_steps(rows, ctx: Context) -> Report:
+    rep = Report('Throttle on free wheels (3.14)')
+    verdict = judge_wheel_steps(wheel_step_results(rows))
+    for s in verdict.steps:
+        rep.add(f'wheel speed at {s.command:.2f} m/s asked', s.measured, 'm/s',
+                note=f'{s.measured / s.command:.2f} x' if s.command > 0 and finite(s.measured)
+                else '')
+    rep.notes.append(('FOLLOWS: ' if verdict.follows else 'DOES NOT FOLLOW: ') + verdict.detail)
+    return rep
+
+
+def hall_steer(rows, ctx: Context) -> Report:
+    """B4: one hallway pass's steering on the ground (hallway.single; the session: car-test)."""
+    from aav_actuator_tests import hallway
+    rep = Report('B4 steering on the ground (hallway)')
+    p = hallway.single(rows, ctx, 'steer')
+    for k, v in p.values.items():
+        rep.add(k.replace('_', ' '), v.value, 's', f'actuators.{k}' if 'delay' not in k else None,
+                ctx, note=v.problem)
+    rep.notes += p.notes + ['one pass: no error bars. car-test --hallway fits every pass '
+                            'together, with error bars']
+    return rep
+
+
 ANALYSES = {
     'steer-sweep': steer_sweep, 'steer-rate': steer_rate, 'steer-centre': steer_centre,
     'speed-up': speed_up, 'coast': coast, 'brake': brake, 'throttle-map': throttle_map,
-    'circles': circles, 'straight': straight,
+    'circles': circles, 'straight': straight, 'wheel-steps': wheel_steps,
+    # The hallway's passes: each one alone, as its stage-4 twin (the session: hallway.py).
+    'hall-speed-up': speed_up, 'hall-coast': coast, 'hall-brake': brake,
+    'hall-steer': hall_steer,
 }
 
 

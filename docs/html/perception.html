@@ -7,7 +7,7 @@
 <!-- Generated from docs/perception.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Perception: cameras, RF-DETR and YOLO, stop signs, lanes and radar</h1>
-<div class="meta">36 min read · 11 sections</div></header>
+<div class="meta">38 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-chain">The chain</a><a href="#the-packages">The packages</a><a href="#stop-signs">Stop signs</a><a href="#models">Models</a><a href="#better-models-to-try">Better models to try</a><a href="#where-it-runs">Where it runs</a><a href="#lane-keeping">Lane keeping</a><a href="#radar-clustering">Radar clustering</a><a href="#the-roof-lidar">The roof lidar</a><a href="#on-the-car">On the car</a><a href="#still-to-do">Still to do</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-chain">The chain</a><a href="#the-packages">The packages</a><a href="#stop-signs">Stop signs</a><a href="#models">Models</a><a href="#better-models-to-try">Better models to try</a><a href="#where-it-runs">Where it runs</a><a href="#lanes-perception-finds-them-the-costmap-prices-them">Lanes: perception finds them, the costmap prices them</a><a href="#radar-clustering">Radar clustering</a><a href="#the-roof-lidar">The roof lidar</a><a href="#on-the-car">On the car</a><a href="#still-to-do">Still to do</a></nav>
 <div class="lead"><p>What the car sees, and what it does about it: what each node does, how to run it, and
 what was measured. All of it runs on the bench and in both simulators. On the car, it
 waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).</p>
@@ -154,7 +168,7 @@ waits for the cameras' calibration and the Orin's move to JetPack 7.2 (Q24).</p>
 <section class="card"><h2 id="the-chain">The chain</h2>
 <pre class="highlight"><code>camera ─► object_detector ─► /perception/detections ─► stop_sign_watcher ─► /perception/stop_sign
                                                                     (a lock on twist_mux)
-lane_finder ─────────► /perception/lane/geometry ─► control_interface ─► /drivers/ai/cmd_vel ─► twist_mux
+lane_finder ─────────► /perception/lane/geometry ─► costmap (lanes:=camera) ─► planner
 radar ─► /sensors/radar/points ─► radar_clusters ─► /perception/radar/clusters, /perception/radar/cluster_boxes</code></pre>
 <h3 id="who-reads-what-today-13-nov">Who reads what, today (13 Nov)</h3>
 <p>Checked against the code and <code>docs/interfaces.yaml</code>. "Nobody" means no node acts on it:
@@ -173,7 +187,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 <td>Roof lidar</td>
 <td><code>lidar_scan</code> (<code>aav_lidar_rs</code>; <code>aav_lidar</code> with <code>lidar_impl:=python</code>)</td>
 <td><code>/sensors/lidar/scan</code></td>
-<td>the local costmap's <code>lidar_layer</code>; <code>collision_monitor</code>; AMCL (<code>amcl:=true</code>); <code>behaviour</code> (<code>behaviour:=true</code>)</td>
+<td>the local costmap's <code>lidar_layer</code>; the stop zone; AMCL (<code>amcl:=true</code>); <code>behaviour</code> (<code>behaviour:=true</code>)</td>
 </tr>
 <tr>
 <td>Roof lidar</td>
@@ -195,7 +209,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 </tr>
 <tr>
 <td>Roof lidar</td>
-<td><code>things</code> (<code>aav_things_rs</code>; <code>aav_things</code> with <code>things_impl:=python</code>), only with <code>things:=true</code></td>
+<td><code>things</code> (<code>aav_things_rs</code>), only with <code>things:=true</code></td>
 <td><code>/world/things</code>, <code>/markers</code></td>
 <td><strong>nobody</strong> yet: for RViz; the behaviour planner and the screens will</td>
 </tr>
@@ -231,9 +245,9 @@ a person can still look at it in RViz or Lichtblick.</p>
 </tr>
 <tr>
 <td>Front left camera</td>
-<td><code>lane_finder</code> (<code>lane:=true</code>)</td>
+<td><code>lane_finder</code> (<code>lane:=true</code>, <code>lanes:=camera</code>)</td>
 <td><code>/perception/lane/geometry</code></td>
-<td><code>control_interface</code> only, the AI slot's driver. Navigation, the planner and the costmaps <strong>don't</strong> read lanes</td>
+<td>the global costmap's lanes (<code>lanes:=camera</code>, <code>both</code>; TODO 264); <code>lane_pose</code> (<code>lane_pose:=true</code>). The lane follower that steered by it went on 19 Nov</td>
 </tr>
 <tr>
 <td></td>
@@ -259,7 +273,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 <li><strong>Labels:</strong> only "stop sign" does anything by default. People, cars and the rest reach
   navigation only through <code>camera_obstacles</code>, which is off everywhere until the cameras are
   calibrated (Q22).</li>
-<li><strong>Objects with an ID and a speed:</strong> a first form, 14 Nov (TODO 156, <code>aav_things</code>,
+<li><strong>Objects with an ID and a speed:</strong> a first form, 14 Nov (TODO 156, <code>aav_things_rs</code>,
   <code>things:=true</code>): the cubes grouped, one Kalman filter each, the radar's speed, a memory
   for the blind zone. No names until Q22. <code>aav_track</code> is something else: trial path followers.</li>
 <li><strong>Lanes as costs for the planner</strong> are a proposal only
@@ -679,7 +693,7 @@ far more pictures may do better:</p>
 </tr>
 <tr>
 <td>Lane lines and the drivable area</td>
-<td>YOLOPv2, TwinLiteNet</td>
+<td>Ultra-Fast-Lane-Detection v2 (the pick, trained by us: <a href="#a-learned-lane-finder-the-survey-19-nov">the survey</a>), CLRNet, YOLOPv2, TwinLiteNet</td>
 </tr>
 <tr>
 <td>Distance from one camera</td>
@@ -804,10 +818,57 @@ names, passed on as they are.</p>
 <li><code>YOLO_AUTOINSTALL=false</code>: Ultralytics must never pip-install into the environment.</li>
 </ul>
 </section>
-<section class="card"><h2 id="lane-keeping">Lane keeping</h2>
-<p>Two nodes, from the camera to the wheels. <code>lane_finder</code> (ours) finds the lane;
-<code>control_interface</code> (the 2025-26 team's) steers by it.</p>
-<pre class="highlight"><code>/sensors/camera/front_left/image_raw ─► lane_finder ─► /perception/lane/geometry ─► control_interface ─► /drivers/ai/cmd_vel</code></pre>
+<section class="card"><h2 id="lanes-perception-finds-them-the-costmap-prices-them">Lanes: perception finds them, the costmap prices them</h2>
+<p>Ben, 19 Nov: "put lanes in the cost map and then behaviour keep to the right side. then
+the motion planner can just cross the line when its go no other choice". <code>lane_finder</code>
+(ours) finds the lines and their paint; the costmap draws them as soft costs; the planner
+and <code>mppi_lag</code> drive. The lane followers that steered by the camera alone went on 19 Nov:
+<a href="../history/lane-followers.md">Lane followers, as they were</a> (their scores, and git tag
+<code>save/lane-followers</code>).</p>
+<pre class="highlight"><code>/sensors/camera/front_left/image_raw ─► lane_finder ─► /perception/lane/geometry
+     ─► costmap's lanes layer (lanes:=camera) ─► planner ─► mppi_lag ─► /drivers/nav/cmd_vel</code></pre>
+<pre class="highlight"><code class="language-text"> cost  (across the road, the car driving right to left in this picture's frame)
+ 200 ┤█                               █   kerb, and 1 m past it: high
+ 150 ┤ ███████████                        the oncoming lane, past the yellow line: medium
+  80 ┤            █         █             the lane's own lines
+   0 ┤                 ●                  the right lane's centre: low
+     └─ kerb ── yellow line ── white edge line ── kerb</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Thing</th>
+<th>Cost</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the right lane's centre</td>
+<td>low (0)</td>
+<td>the camera's lines, or the lane map</td>
+</tr>
+<tr>
+<td>the yellow centre line, the oncoming lane</td>
+<td>medium (150)</td>
+<td>the line's paint (<code>left_paint</code>, <code>right_paint</code>)</td>
+</tr>
+<tr>
+<td>a white edge line, then the kerb</td>
+<td>a step (80), then high (200)</td>
+<td>the lines; the lidar's kerbs too (<code>kerbs:=true</code>, the local costmap)</td>
+</tr>
+<tr>
+<td>a car or a person in the way</td>
+<td>a wall</td>
+<td>the obstacle layers, as before</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Which side is right.</strong> With the lane map, the route's direction says (<code>lanes.rs</code>). With
+the camera alone, the car's lane is the one it is in: its left line is the centre line, so
+it keeps right of it. A <strong>yellow line on its right</strong> says it has drifted into the oncoming
+lane: its lane is then right of that line. The behaviour planner's speed and stop logic
+didn't change.</p>
 <p><img alt="The bench camera, and what lane_finder found in it" src="../img/lane-finder.png" /></p>
 <div class="table-wrap"><table>
 <thead>
@@ -873,6 +934,10 @@ names, passed on as they are.</p>
 <td>5. The answer</td>
 <td>the car's offset, the lane's width, each line's radius, and how sure it is</td>
 </tr>
+<tr>
+<td>6. The paint</td>
+<td>each line white or yellow: little blue against its red and green (<code>yellow_ratio</code>, TODO 264)</td>
+</tr>
 </tbody>
 </table></div>
 <ul>
@@ -917,26 +982,22 @@ names, passed on as they are.</p>
 </tr>
 <tr>
 <td><code>steering_hint</code></td>
-<td>a pure-pursuit wheel angle to the centre (rad, + = left). control_interface doesn't use it</td>
+<td>a pure-pursuit wheel angle to the centre (rad, + = left)</td>
+</tr>
+<tr>
+<td><code>left_paint</code>, <code>right_paint</code></td>
+<td><code>PAINT_UNKNOWN</code> (0), <code>PAINT_WHITE</code> (1), <code>PAINT_YELLOW</code> (2)</td>
 </tr>
 </tbody>
 </table></div>
 <ul>
 <li><strong>One line:</strong> the centre is half a lane beside it.</li>
-<li><strong>No lines:</strong> nothing detected, so control_interface slows down and stops.</li>
+<li><strong>No lines:</strong> nothing detected; the costmap forgets the camera's lanes after 0.5 s.</li>
 <li><strong>Why 3 m ahead:</strong> an offset at the rear axle says nothing about which way the car
   points. On the bench, measured there, the car weaved 0.3 m either side and ran off the
   lane within 20 s. 3 m ahead, it comes back in about 6 s, 2 cm past the centre at most.</li>
 </ul>
-<h3 id="the-steering-control_interface">The steering: control_interface</h3>
-<ul>
-<li>It steers with a PID on the offset, through five states (keep, change, committed,
-  stopping, resuming).</li>
-<li>It publishes on <code>/drivers/ai/cmd_vel</code>, the mux's slot for a learned driver. Every other driver
-  outranks it.</li>
-<li>It asks for 2 m/s; ego caps it at the car's 1 m/s.</li>
-</ul>
-<h3 id="on-the-bench">On the bench</h3>
+<h3 id="try-it">Try it</h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -946,89 +1007,148 @@ names, passed on as they are.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>pixi run bench lane:=true nav:=false start_y:=0.3</code></td>
-<td>lane keeping on the pretend camera, from 0.3 m left of the centre</td>
+<td><code>pixi run sim world:=road lanes:=camera</code></td>
+<td>the lane finder's lines in the global costmap</td>
 </tr>
 <tr>
-<td><code>pixi run bench lane:=fake</code></td>
-<td>control_interface on a pretend lane, without the camera</td>
+<td><code>pixi run sim world:=campus lanes:=both</code></td>
+<td>the lane map where it has a road, the camera elsewhere</td>
 </tr>
 <tr>
-<td><code>pixi run bench-check --lane</code></td>
-<td>the same, measured: <span class="badge b-works">works</span> back within 5 cm of the centre in about 6 s, 2 cm past it at most</td>
-</tr>
-<tr>
-<td><code>pixi run bench lane:=true nav:=false bend_radius:=60</code></td>
-<td>a 60 m bend to the left, from 30 m on: <span class="badge b-works">works</span> within 8 cm of the centre, 4-5 cm inside it round the bend</td>
+<td><code>pixi run bench lane:=true</code></td>
+<td>the lane finder on the bench's pretend camera</td>
 </tr>
 </tbody>
 </table></div>
-<p>More in <a href="bench.html">Bench mode</a>.</p>
-<h3 id="in-the-simulators-8-nov">In the simulators (8 Nov)</h3>
+<p>The lane drives the followers scored (<code>measure lane</code>, <code>sim-check --lane</code>, <code>bench-check
+--lane</code>) went with them; their numbers are in <a href="../history/lane-followers.md">the history</a>.
+Scoring the camera lanes on the same roads is stage 2.</p>
+<h3 id="a-learned-lane-finder-the-survey-19-nov">A learned lane finder? The survey (19 Nov)</h3>
+<p>Ben, 19 Nov: "or find a better version". Open lane detectors, their code's licence (from
+each repository), and the catch. <strong>Built the same day</strong> (below): our UFLD-v2-style model,
+through ONNX (TODO 243), behind the same <code>/perception/lane/geometry</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Command</th>
-<th>Does</th>
+<th>Model</th>
+<th>Code licence</th>
+<th>How it finds lanes</th>
+<th>Speed</th>
+<th>The catch</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>pixi run sim-check --lane-only</code></td>
-<td>the 30 s check: from 0.3 m left, back within 5 cm</td>
+<td><strong>Ultra-Fast-Lane-Detection v2</strong> (Qin et al., TPAMI 2022)</td>
+<td>MIT</td>
+<td>a plain CNN picks, per row and column anchor, where each lane crosses</td>
+<td>the fastest: ~300 pictures/s (ResNet-18, GPU)</td>
+<td>a fixed number of lanes; weaker on odd shapes</td>
 </tr>
 <tr>
-<td><code>pixi run measure lane</code></td>
-<td>a longer drive on the road world, scored by the truth</td>
+<td>CLRNet (Zheng et al., CVPR 2022); CLRerNet</td>
+<td>Apache-2.0</td>
+<td>lane anchors refined across feature levels</td>
+<td>~200/s</td>
+<td>its NMS is a custom CUDA op: harder to export to ONNX and TensorRT</td>
 </tr>
 <tr>
-<td><code>pixi run measure lane --world campus --road "Library Road"</code></td>
-<td>the same on a campus road (<code>pixi run campus</code> first)</td>
+<td>LaneATT (Tabelini et al., CVPR 2021)</td>
+<td>MIT</td>
+<td>anchors with attention</td>
+<td>~250/s</td>
+<td>the same custom NMS</td>
+</tr>
+<tr>
+<td>PolyLaneNet (Tabelini et al., 2020)</td>
+<td>MIT</td>
+<td>a polynomial per lane, straight out</td>
+<td>fast</td>
+<td>the least accurate; but its answer is our message's shape</td>
+</tr>
+<tr>
+<td>CondLaneNet (Liu et al., ICCV 2021)</td>
+<td>Apache-2.0</td>
+<td>conditional instance shapes</td>
+<td>~200/s</td>
+<td>more parts to export</td>
+</tr>
+<tr>
+<td>YOLOP, YOLOPv2; TwinLiteNet</td>
+<td>MIT</td>
+<td>segmentation: lane pixels and the drivable area</td>
+<td>fast; TwinLiteNet tiny</td>
+<td>pixels, not lines: our fit still needed; the drivable area is a bonus</td>
 </tr>
 </tbody>
 </table></div>
-<p>The score (<code>tools/lane_score.py</code>): the car's distance from its lane's centre by the
-simulator's truth, the time off the road, the share of pictures with no line found, and
-the speed. On a campus road the lane runs from the yellow centre line to the white edge line.</p>
+<p><strong>The datasets are the problem, not the code.</strong> Every published set of weights was
+trained on one of these, and none has a licence we may use (<code>CLAUDE.md</code>: no non-commercial
+or unclear licences):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Run (Ben's Mac, quiet)</th>
-<th>Ravensim</th>
-<th>Gazebo</th>
+<th>Dataset</th>
+<th>Terms</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>sim-check --lane-only</code> (road)</td>
-<td><span class="badge b-works">works</span> back within 5 cm in 5.4 s, overshoot 3 cm; finder 1.0 cm from the truth; both lines in 299 of 299</td>
-<td><span class="badge b-works">works</span> 5.1 s, overshoot 5 cm; finder 1.1 cm; 301 of 301</td>
+<td>CULane</td>
+<td>non-commercial only; no redistribution (its page)</td>
 </tr>
 <tr>
-<td><code>measure lane</code>, road, 60 s from 0.3 m off</td>
-<td>60 m at 0.99 m/s; error mean 3.0 cm, 95 % 19.5 cm (the start); lane never lost</td>
-<td>60 m at 0.99 m/s; mean 3.0 cm, 95 % 19.7 cm; never lost</td>
+<td>BDD100K</td>
+<td>its own licence, accepted at download; not plainly open</td>
 </tr>
 <tr>
-<td><code>measure lane</code>, Library Road, 120 s</td>
-<td>171 m at 1.4 m/s; error mean 3.9-4.1 cm, 95 % 13-15 cm, max 25-29 cm; lost in 0-1 % of pictures, both lines in 50 % (the centre line is dashed)</td>
-<td>60 m at 0.5 m/s; mean 197 cm: the car ended in the other lane; lost in 68 % of pictures</td>
-</tr>
-<tr>
-<td>The finder alone on still pictures, road, 36 poses</td>
-<td>0.3 cm from the truth, 0.7 cm at worst</td>
-<td>not run</td>
+<td>TuSimple, CurveLanes</td>
+<td>no clear licence</td>
 </tr>
 </tbody>
 </table></div>
-<ul>
-<li><strong>Campus paint (8 Nov):</strong> the campus had only a dashed yellow centre line. <code>campus_world.py</code>
-  now adds a white edge line 0.5 m in from each edge of a painted road (trunk to tertiary),
-  and writes <code>maps/campus/lanes.yaml</code> for the score. Service roads have no paint, so no lane.</li>
-<li><strong>Gazebo on the campus:</strong> not diagnosed. Its lane finder ran (91 pictures in 10 s) but found
-  no line in 68 % of them. A guess: Gazebo draws the paint 5 mm above the tarmac, close
-  enough for its depth buffer to hide it far off. <span class="badge b-untested">untested</span></li>
-</ul>
+<p><strong>The pick: Ultra-Fast-Lane-Detection v2</strong> (MIT): a plain CNN, so it exports to ONNX and
+TensorRT with no custom ops (its repository has the export), the fastest of the lot on
+the Orin's budget, and its points per row fit into our polynomial and <code>LaneGeometry</code>
+unchanged. <strong>Trained by us</strong>, not from the published weights: on Ravensim's pictures,
+labelled for free from the world's lane map, then on the car's recordings through the
+labelling loop (TODO 252). CLRNet stays the accuracy challenger once its NMS is outside
+the ONNX graph. TODO 262b.</p>
+<h3 id="the-learned-lane-finder-19-nov-todo-262b-a-challenger">The learned lane finder (19 Nov, TODO 262b, a challenger)</h3>
+<p><code>lane_finder_impl:=learned</code> (<a href="../../ros/perception/aav_lane_finder_learned/README.md">aav_lane_finder_learned</a>).
+Our own small UFLD-v2-style model (ResNet-18 from random weights; row anchors), trained on
+this Mac's GPU on <strong>7,472 Ravensim pictures</strong> labelled from the lane maps
+(<code>tools/lane_data.py</code>, <code>tools/lane_train.py</code>). Its lines go through the same lens, mount
+and fit as the classic finder's, into the same message.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>On 1,286 held-out pictures (unseen campus roads)</th>
+<th>The car's left line</th>
+<th>Its right line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>found</td>
+<td>100 %</td>
+<td>99.9 %</td>
+</tr>
+<tr>
+<td>error at 5 / 10 / 15 m, median</td>
+<td>1.2 / 2.1 / 3.5 cm</td>
+<td>1.3 / 2.2 / 3.6 cm</td>
+</tr>
+<tr>
+<td>error at 5 / 10 / 15 m, 90th percentile</td>
+<td>18 / 25 / 35 cm</td>
+<td>23 / 21 / 30 cm</td>
+</tr>
+</tbody>
+</table></div>
+<p>Core ML runs it whole: 2.4 ms (FP32, GPU), <strong>1.2 ms in FP16 on the Neural Engine</strong>
+(<a href="onnx.html">ONNX</a>). <strong>Not yet driven</strong> with it, nor scored against the classic finder in
+Ravensim (stage 2); not yet trained on the car's pictures (TODO 252).</p>
 <h3 id="next">Next</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -1250,8 +1370,8 @@ turns them on where they run (<a href="platforms.html#on-the-car-what-runs-where
 </tr>
 <tr>
 <td><code>lane</code></td>
-<td><code>lane_finder</code> → <code>/perception/lane/geometry</code>, and <code>control_interface</code> → <code>/drivers/ai/cmd_vel</code></td>
-<td>off on every machine: it drives whenever it sees a lane</td>
+<td><code>lane_finder</code> → <code>/perception/lane/geometry</code>, for the costmap's lanes and the lane pose</td>
+<td>off on every machine</td>
 </tr>
 </tbody>
 </table></div>

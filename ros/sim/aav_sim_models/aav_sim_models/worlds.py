@@ -44,6 +44,11 @@ CAMPUS_LANES = os.path.join('maps', 'campus', 'lanes.yaml')
 # recorded map, and stayed within 0.12 m of the truth. Whether a WRONG pose can score this
 # high isn't measured, so don't feed it to the EKF here (ndt_ekf) until it is.
 CAMPUS_NDT_MIN_SCORE = 1.5
+# NDT's median score per point at which it wins a disagreement with the GPS there
+# (pose_source:=ndt, aav_pose_check's trust_score): NDT's own floor, as in the lot (where a
+# right NDT scored 2.0-4.0 and one 5 m off 0-2.0, 19 Nov). TODO 121: a WRONG pose's score
+# on the campus is still unmeasured.
+CAMPUS_POSE_TRUST = CAMPUS_NDT_MIN_SCORE
 # The grass is a kerb up, 0.30 m (Ben, 5 Nov), right on the car's usual 0.3 m floor, so half of
 # every hit on it would count as an obstacle, or as a wall for NDT. NDT looks above it. The
 # screen's cubes look below it, so the kerb and the grass show as the lidar's rings.
@@ -55,15 +60,47 @@ CAMPUS_CUBE_FLOOR = 0.12
 # Who plays the world (simulator:=): Ravensim, our own simulator (aav_simulator, Rust), the
 # only one since Gazebo was removed (16 Nov). It casts the lidar's and radar's rays; its
 # cameras are their own program (aav_sim_cameras, Bevy), drawing the same world file.
-# simulator:=own, its name before 16 Nov, still works for one release, with a warning.
+# simulator:=own, its name before 16 Nov, went on 20 Nov (TODO 241).
 RAVENSIM = 'ravensim'
 SIMULATORS = (RAVENSIM,)
-OLD_NAMES = {'own': RAVENSIM}
 DEFAULT_SIMULATOR = RAVENSIM
 
 
+def is_world_file(world: str) -> bool:
+    """Return whether world:= names a world file (a twin: tools/twin_world.py), not a name."""
+    return world.endswith('.sdf')
+
+
+def twin(world: str) -> dict:
+    """
+    Return a twin world's files, from the twin.yaml tools/twin_world.py writes beside it.
+
+    {'map': its 2D map's YAML, 'ndt': NDT's points or '', 'start': (x, y, yaw)}.
+    """
+    folder = os.path.dirname(os.path.abspath(world))
+    place = os.path.join(folder, 'twin.yaml')
+    start = (0.0, 0.0, 0.0)
+    if os.path.isfile(place):
+        with open(place) as f:
+            s = (yaml.safe_load(f) or {}).get('start') or {}
+        start = (float(s.get('x', 0.0)), float(s.get('y', 0.0)), float(s.get('yaw', 0.0)))
+    ndt = os.path.join(folder, 'ndt.pcd')
+    return {'map': os.path.join(folder, 'map2d.yaml'),
+            'ndt': ndt if os.path.isfile(ndt) else '', 'start': start}
+
+
 def world_file(share: str, world: str) -> str:
-    """Return the path of a world in aav_sim_models's share folder, or say which ones exist."""
+    """
+    Return the path of a world in aav_sim_models's share folder, or say which ones exist.
+
+    A path ending .sdf (a twin from tools/twin_world.py, TODO 253) is taken as it is.
+    """
+    if is_world_file(world):
+        path = os.path.abspath(world)
+        if not os.path.isfile(path):
+            raise ValueError(f'world:={world}: no such file. Make a twin with '
+                             '`pixi run twin-world <map>`')
+        return path
     if world == CAMPUS:
         path = os.path.abspath(CAMPUS_SDF)
         if not os.path.isfile(path):
@@ -105,20 +142,12 @@ def campus_start(place_text: str) -> Tuple[float, float, float]:
 
 
 def check_simulator(name: str) -> str:
-    """Return the simulator's name, checked: one of SIMULATORS (or an old name for one)."""
-    name = OLD_NAMES.get(name, name)
+    """Return the simulator's name, checked: one of SIMULATORS."""
     if name not in SIMULATORS:
-        gone = ' (Gazebo was removed on 16 Nov)' if name == 'gazebo' else ''
+        gone = {'gazebo': ' (Gazebo was removed on 16 Nov)',
+                'own': " (own is Ravensim's old name, gone on 20 Nov)"}.get(name, '')
         raise ValueError(f'simulator:={name}: pick one of {", ".join(SIMULATORS)}{gone}')
     return name
-
-
-def simulator_warning(name: str) -> str:
-    """Return what to say when simulator:= is an old name, or '' when it isn't."""
-    if name in OLD_NAMES:
-        return (f'simulator:={name} is now simulator:={OLD_NAMES[name]} (Ravensim): '
-                f'the old name goes in the next release')
-    return ''
 
 
 def has_cameras(path: str, simulator: str = RAVENSIM) -> bool:

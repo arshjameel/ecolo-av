@@ -34,6 +34,10 @@ struct Node {
     /// The move from the parent: (heading group, index in it, driven backwards).
     by: Option<(usize, usize, bool)>,
     visited: bool,
+    /// The car's outline checked here, at this heading: once, however many moves end
+    /// here (TODO 152). Every move to a node ends at the same place (the moves land on
+    /// the grid), so the answer is the same each time.
+    fit: Option<Fit>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -154,6 +158,7 @@ impl State<'_> {
             parent: None,
             by: None,
             visited: false,
+            fit: None,
         });
         self.keys.insert(key, self.nodes.len() - 1);
         self.nodes.len() - 1
@@ -181,7 +186,7 @@ impl Search<'_> {
         let mut st = State {
             grid,
             nodes: Vec::with_capacity(100_000),
-            keys: Keys::default(),
+            keys: Keys::with_capacity_and_hasher(100_000, Default::default()),
             obstacles: Obstacles::new(
                 grid,
                 (start.0 as usize, start.1 as usize),
@@ -312,21 +317,11 @@ impl Search<'_> {
 
     /// The highest cost along a move from (x, y), or None if the car doesn't fit on it
     /// (Nav2 checks the end, then a pose about every cell's diagonal along it).
-    fn sweep(&self, grid: &Grid, x: f64, y: f64, by: (usize, usize, bool)) -> Option<u8> {
+    /// `end`: the check where the move ends (its node's, `Node::fit`).
+    fn sweep(&self, grid: &Grid, x: f64, y: f64, by: (usize, usize, bool), end: Fit) -> Option<u8> {
         let prim = self.primitive(by);
         let res = self.lattice.resolution;
-        let (ex, ey) = prim.end();
-        let end_heading = if by.2 {
-            self.lattice.opposite(prim.end_heading)
-        } else {
-            prim.end_heading
-        };
-        let Fit::Free(mut worst) = self.checker.fit(
-            grid,
-            x + ex / res,
-            y + ey / res,
-            self.lattice.headings[end_heading],
-        ) else {
+        let Fit::Free(mut worst) = end else {
             return None;
         };
         if matches!(self.expansion, Expansion::Hybrid { .. }) {
@@ -461,7 +456,7 @@ impl Search<'_> {
             let node = &st.nodes[id];
             (node.x, node.y, node.heading, node.g, node.by)
         };
-        for by in self.moves(heading).collect::<Vec<_>>() {
+        for by in self.moves(heading) {
             let prim = self.primitive(by);
             let (ex, ey) = prim.end();
             let (nx, ny) = (x + ex / res, y + ey / res);
@@ -483,7 +478,15 @@ impl Search<'_> {
             if g + self.travel(from, by, 0) >= st.nodes[next].g {
                 continue;
             }
-            let Some(cost) = self.sweep(st.grid, x, y, by) else {
+            let end = match st.nodes[next].fit {
+                Some(fit) => fit,
+                None => {
+                    let fit = self.checker.fit(st.grid, nx, ny, self.lattice.headings[nh]);
+                    st.nodes[next].fit = Some(fit);
+                    fit
+                }
+            };
+            let Some(cost) = self.sweep(st.grid, x, y, by, end) else {
                 continue;
             };
             let new_g = g + self.travel(from, by, cost);

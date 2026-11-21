@@ -10,6 +10,13 @@ map:
     source_topic: /system/source              # aav_interfaces/msg/DataSource, latched: the SIMULATED banner
     watchdog_topic: /safety/sensor_watchdog/state  # std_msgs/msg/String: the sensor watchdog's verdict, a banner unless OK
     street_route_topic: /drivers/nav/route/path   # nav_msgs/msg/Path, map frame, latched: street_router's street route (aav_routes), violet under the plan
+    # The debug page (key D, TODO 247): who drives, what it asks, what ego sends, the gate, the car.
+    mux_state_topic: /control/command_mux/state   # diagnostic_msgs/msg/DiagnosticStatus: who twist_mux passes on (aav_mux_state)
+    command_topic: /control/cmd_vel               # geometry_msgs/msg/TwistStamped: that driver's command, as twist_mux passed it
+    actuator_topic: /ego/actuator_cmd             # ackermann_msgs/msg/AckermannDriveStamped: what ego sends to the car
+    output_mux_topic: /safety/output_mux/state    # std_msgs/msg/String: the output mux's gate, OPEN / WAIT / STOP
+    vehicle_status_topic: /vehicle/status         # aav_interfaces/msg/VehicleStatus: what the car did
+    algorithms_topic: /system/algorithms          # diagnostic_msgs/msg/DiagnosticStatus, latched: the navigator's path follower
     stale_after: 1.0                          # s: the car's position this old shows STALE
     plan_stale_after: 3.0                     # s: Nav2 replans every 1 s while it drives; older = it stopped
     final_approach: 8.0                       # m from the plan's end: Nav2 keeps its path here, not replanning (TODO 17; its trees' ArePosesNear)

@@ -27,7 +27,7 @@ Who uses it (each test in test_stop_law.py checks the answer is the same or more
 | `aav_track` speed.py (the trial trackers) | its stop at the path's end: `cap(left)` |
 | `aav_drive_to_point` approach.py | `stop_law:=hybrid` (default `approach`, until it wins) |
 | ego's log (dynamics.describe) | the stopping distance it prints |
-| `aav_behaviour` | the speed cap it sends Nav2 |
+| `aav_behaviour_rs` | the speed cap it sends Nav2 |
 | `tools/sim_check.py --stop-point` | `stop_point`: where the model says the car stops |
 
 Not used by the locks: `aav_safety` geofence.py keeps its own law, on purpose (Simplex).

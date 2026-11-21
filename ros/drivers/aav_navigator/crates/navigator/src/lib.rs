@@ -25,6 +25,7 @@
 // too, and a pure function's value never dropped.
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
+pub mod call;
 mod machine;
 pub mod path;
 

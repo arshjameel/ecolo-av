@@ -1,7 +1,14 @@
 import math
 
-from aav_sim_models.imu import body_acceleration, Speedometer
+from aav_sim_models.imu import accel_from_odometry, body_acceleration, Speedometer
 import pytest
+
+
+def test_the_acceleration_comes_from_the_simulator_unless_asked():
+    assert not accel_from_odometry('simulator')
+    assert accel_from_odometry('odometry')
+    with pytest.raises(ValueError, match='accel_from'):
+        accel_from_odometry('wheels')
 
 
 def test_straight_line_is_the_speed_change():

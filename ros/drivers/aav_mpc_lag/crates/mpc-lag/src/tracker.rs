@@ -18,7 +18,7 @@
 //! 3. One QP ([`qp`], OSQP's ADMM) in `dU = [steering (N), set speed (N), slack (N)]`:
 //!
 //! ```text
-//! cost   sum q.(e_y, e_theta, wheels - r)^2 + q_speed (v - v_lim)^2
+//! cost   sum q.(e_y - tube(e_y), e_theta, wheels - r)^2 + q_speed (v - v_lim)^2
 //!          + r (u - r)^2 + r_rate (du)^2 + r_speed (dc)^2 + w_slack slack^2
 //! within |u| <= full lock, |du| <= rate dt
 //!        0 <= c <= cruise, -decel dt <= dc <= accel dt
@@ -83,6 +83,10 @@ pub struct Settings {
     pub horizon: usize,
     /// Weights on e_y, e_theta, wheels - r.
     pub q: [f64; 3],
+    /// m each side of the path where being off it costs nothing (Ben, 21 Nov: "It
+    /// doesn't need to be super aggressive sticking to the line"): e_y is costed only
+    /// beyond it, so the car holds its line instead of chasing the centre. 0 = off.
+    pub tube: f64,
     /// On the command's distance from the bend's own steering.
     pub r: f64,
     /// On each tick's change of steering.
@@ -120,6 +124,7 @@ impl Default for Settings {
             period: 0.05,
             horizon: 30,
             q: [1.0, 2.0, 0.05],
+            tube: 0.0,
             r: 0.2,
             r_rate: 1.0,
             q_speed: 0.5,
@@ -253,6 +258,8 @@ pub struct MpcLag {
     plan_u: Option<Vec<Input>>,
     warm_y: Option<Vec<f64>>,
     predicted: Vec<[f64; 4]>,
+    /// Set speed 0 (within the ramp), whatever the plan says: at a cusp (`geared`).
+    holding: bool,
 }
 
 impl MpcLag {
@@ -275,7 +282,8 @@ impl MpcLag {
         {
             return Err(TrackError::Limits);
         }
-        let checks: [(&'static str, bool); 15] = [
+        let checks: [(&'static str, bool); 16] = [
+            ("tube", s.tube >= 0.0),
             ("cruise", s.cruise > 0.0),
             ("accel", s.accel > 0.0),
             ("decel", s.decel > 0.0),
@@ -326,6 +334,7 @@ impl MpcLag {
             plan_u: None,
             warm_y: None,
             predicted: Vec::new(),
+            holding: false,
         })
     }
 
@@ -385,6 +394,41 @@ impl MpcLag {
         self.car_state = None;
         self.plan_u = None;
         self.warm_y = None;
+    }
+
+    /// Hold the car: send set speed 0 (slowing within the ramp) until released. The plan
+    /// runs on as before. `geared` holds it at a cusp it has reached, so it stands there
+    /// for the change of gear instead of creeping past the stretch's end.
+    pub fn hold(&mut self, on: bool) {
+        self.holding = on;
+    }
+
+    /// The car turned round at a cusp (the next stretch is driven the other way, mirrored,
+    /// `gears`): the estimate's steering, the commands in the dead time and the plan's
+    /// steering change sign, so they stay true in the new stretch's frame. The speeds stay
+    /// (the car stands at a cusp); the QP starts cold.
+    pub fn turn_round(&mut self) {
+        if let Some(car) = self.car_state.as_mut() {
+            car.steer = -car.steer;
+            car.steer_motor = -car.steer_motor;
+            car.steer_setpoint = -car.steer_setpoint;
+            car.steer_linkage = -car.steer_linkage;
+        }
+        self.steer_queue.iter_mut().for_each(|s| *s = -*s);
+        self.sent.0 = -self.sent.0;
+        self.acting.0 = -self.acting.0;
+        if let Some(plan) = self.plan_u.as_mut() {
+            plan.iter_mut().for_each(|u| u[0] = -u[0]);
+        }
+        self.warm_y = None;
+    }
+
+    /// m from (x, y)'s foot on the path to its end (searched from the last foot), or None
+    /// before a path.
+    #[must_use]
+    pub fn left_from(&self, x: f64, y: f64) -> Option<f64> {
+        let path = self.path.as_ref()?;
+        Some(path.left(path.project((x, y), self.hint, SEARCH).s))
     }
 
     fn foot(&mut self, x: f64, y: f64) -> Result<Foot, TrackError> {
@@ -646,8 +690,9 @@ impl MpcLag {
         // Exactly within the limits: the steering's lock and rate, the speed's.
         let tick = dt.max(period);
         let steer = self.limited(plan[0][0], seen.steer, tick);
+        let wanted = if self.holding { 0.0 } else { plan[0][1] };
         let speed = model::clip(
-            plan[0][1],
+            wanted,
             self.sent.1 - self.settings.decel * tick,
             self.sent.1 + self.settings.accel * tick,
         );
@@ -718,7 +763,9 @@ impl MpcLag {
         let mut weights = vec![0.0; 4 * n];
         let mut err = vec![0.0; 4 * n];
         for k in 0..n {
-            let target = [0.0, 0.0, r[k], v_lim[k]];
+            // In the tube the target is where the plan already is: no pull to the centre.
+            let e_y = xs[k][row::E_Y];
+            let target = [model::clip(e_y, -s.tube, s.tube), 0.0, r[k], v_lim[k]];
             let scale = if k + 1 == n { s.terminal } else { 1.0 };
             for c in 0..4 {
                 weights[k * 4 + c] = q[c] * scale;

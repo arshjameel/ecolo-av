@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">19 min read · 8 sections</div></header>
+<div class="meta">31 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -125,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#taught-in-the-guide-19-nov">Taught in the guide (19 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
 <div class="lead"><p>Everything we copied, ported, or took an idea from, with its licence and where we used it.
 Ben, 14 Nov: "give acknowlegement to stuff we have looked at or used as insperation".
 Add a row in the same commit as the work (<code>CLAUDE.md</code>). Copied or ported code also keeps
@@ -271,13 +285,13 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>Pure Pursuit</strong>: R. C. Coulter, CMU-RI-TR-92-01, 1992; <strong>Regulated Pure Pursuit</strong>: S. Macenski et al., Autonomous Robots, 2023</td>
 <td>paper</td>
 <td>idea</td>
-<td><code>aav_track</code>, Nav2's RPP</td>
+<td><code>aav_track</code>, Nav2's RPP; <code>aav_lane_follower_rs</code>'s <code>lane_follower:=pure_pursuit</code> (removed 19 Nov, <code>save/lane-followers</code>) (on the camera's lane centre, with the car's lag)</td>
 </tr>
 <tr>
 <td><strong>Stanley</strong>: S. Thrun et al., "Stanley: The Robot that Won the DARPA Grand Challenge", J. Field Robotics, 2006</td>
 <td>paper</td>
 <td>idea</td>
-<td><code>aav_track</code>'s Stanley follower</td>
+<td><code>aav_track</code>'s Stanley follower; <code>aav_lane_follower_rs</code>'s <code>lane_follower:=stanley</code> (removed 19 Nov, <code>save/lane-followers</code>) (heading and cross-track at the front axle, from the camera's lane centre)</td>
 </tr>
 <tr>
 <td>LQR and MPC (textbook control)</td>
@@ -294,8 +308,8 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <tr>
 <td><strong>Clarabel</strong> (P. Goulart, Y. Chen; Oxford)</td>
 <td>Apache-2.0</td>
-<td>idea</td>
-<td>read and weighed for <code>aav_mpc_lag</code>'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (<code>aav_mpc_lag</code> README)</td>
+<td>idea, runs</td>
+<td>read and weighed for <code>aav_mpc_lag</code>'s QP (15 Nov); we kept our ADMM for its warm start and the same answers as the Python (<code>aav_mpc_lag</code> README). Runs as a crate for the jerk-limited pass's QP (<code>aav_planner</code> <code>jerk_pass.rs</code>, TODO 214)</td>
 </tr>
 <tr>
 <td><strong>Flow matching</strong> and the diffusion planner's other ideas</td>
@@ -327,7 +341,13 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>The Kalman filter: R. E. Kalman, 1960</td>
 <td>paper</td>
 <td>idea</td>
-<td>the EKFs; the things tracker (<code>aav_things</code>)</td>
+<td>the EKFs; the things tracker (<code>aav_things_rs</code>); the hallway's IMU-with-wheels filter, speed and IMU bias (<code>aav_actuator_tests</code> <code>fusion.py</code>, TODO 248)</td>
+</tr>
+<tr>
+<td><strong>The bootstrap</strong>: B. Efron, "Bootstrap Methods: Another Look at the Jackknife", Annals of Statistics, 1979</td>
+<td>paper</td>
+<td>idea</td>
+<td>the hallway fits' 90 % intervals, resampling the passes (<code>aav_actuator_tests</code> <code>errorbars.py</code>)</td>
 </tr>
 <tr>
 <td><strong>Complementary filter</strong>: W. T. Higgins, "A Comparison of Complementary and Kalman Filtering", IEEE Trans. Aerospace and Electronic Systems, 1975</td>
@@ -342,16 +362,106 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><code>aav_ndt</code> (its <code>PROVENANCE.md</code> lists the rest)</td>
 </tr>
 <tr>
+<td><strong>Autoware's localization</strong> (the Autoware Foundation): NDT the main pose, the GNSS only for the first pose (<code>pose_initializer</code>); <code>localization_error_monitor</code> and <code>pose_instability_detector</code></td>
+<td>Apache-2.0</td>
+<td>idea</td>
+<td><code>aav_pose_check</code> (<code>pose_source:=ndt</code>, TODO 210): NDT leads <code>ekf_global</code>, the GPS only checks it, and a lost NDT starts again from AMCL or the GPS. Our own checks: the gap against both covariances, NDT's score, the GPS's fix, spread and jumps</td>
+</tr>
+<tr>
+<td><strong>Normalised innovation squared, chi-square gating</strong>: Y. Bar-Shalom, X. R. Li, T. Kirubarajan, <em>Estimation with Applications to Tracking and Navigation</em>, 2001</td>
+<td>book</td>
+<td>idea</td>
+<td><code>aav_pose_check</code>: NDT against the GPS, d'(Σ_ndt + Σ_gps)⁻¹d over a window, 99.9 % for 2 numbers</td>
+</tr>
+<tr>
 <td><strong>KISS-ICP</strong>: I. Vizzo et al., RA-L, 2023</td>
 <td>MIT</td>
 <td>runs</td>
 <td><code>kiss_icp:=true</code>, scored beside the EKF</td>
 </tr>
 <tr>
-<td>AMCL (Nav2)</td>
-<td>LGPL-2.1</td>
+<td><strong>KISS-SLAM</strong>: T. Guadagnino, B. Mersch, S. Gupta, I. Vizzo, G. Grisetti, C. Stachniss, "KISS-SLAM: A Simple, Robust, and Accurate 3D LiDAR SLAM System With Enhanced Generalization Capabilities", IROS 2025 (PRBonn, <code>kiss-slam</code> 0.0.2 on PyPI)</td>
+<td>MIT (its wheel builds in g2o, BSD, and SuiteSparse's CHOLMOD, LGPL-2.1+: an offline tool, never on the car)</td>
 <td>runs</td>
-<td><code>amcl:=true</code>, a trial</td>
+<td><code>pixi run map-drive</code>: a map from a recorded drive, with loop closures (TODO 250, <a href="maps-from-drives.html">Maps from drives</a>)</td>
+</tr>
+<tr>
+<td><strong>MapClosures</strong>: S. Gupta, T. Guadagnino, B. Mersch, I. Vizzo, C. Stachniss, "Effectively Detecting Loop Closures using Point Cloud Density Maps", ICRA 2024</td>
+<td>MIT</td>
+<td>runs</td>
+<td>KISS-SLAM's loop closures, in <code>map-drive</code></td>
+</tr>
+<tr>
+<td><strong>g2o</strong>: R. Kümmerle, G. Grisetti, H. Strasdat, K. Konolige, W. Burgard, ICRA 2011</td>
+<td>BSD (core)</td>
+<td>runs</td>
+<td>KISS-SLAM's pose graph, in <code>map-drive</code></td>
+</tr>
+<tr>
+<td><strong>Open3D</strong>: Q.-Y. Zhou, J. Park, V. Koltun, 2018</td>
+<td>MIT</td>
+<td>runs</td>
+<td>KISS-SLAM's closure check; <code>map-drive --merge</code>'s and <code>map-area</code>'s ICP between drives' maps</td>
+</tr>
+<tr>
+<td><strong>Least-squares fit of two point sets</strong>: S. Umeyama, IEEE TPAMI, 1991 (after W. Kabsch, 1976)</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>map-drive</code>: the SLAM path turned and moved onto the good GPS fixes (<code>slam_map.fit_2d</code>)</td>
+</tr>
+<tr>
+<td><strong>UTM by series</strong>: J. P. Snyder, <em>Map Projections: A Working Manual</em>, USGS, 1987</td>
+<td>public domain</td>
+<td>idea</td>
+<td><code>slam_map.utm</code>, checked against GeoConvert's numbers in <code>aav_hud</code>'s <code>earth.rs</code></td>
+</tr>
+<tr>
+<td><strong>Removert</strong>: G. Kim, A. Kim, "Remove, then Revert: Static Point Cloud Map Construction using Multiresolution Range Images", IROS 2020 (<code>irapkaist/removert</code>)</td>
+<td>CC BY-NC-SA 4.0</td>
+<td>idea</td>
+<td><code>map-area</code>'s occupancy across passes (TODO 259, <code>tools/passes.py</code>): a map point another drive sees through is gone. No code read or copied</td>
+</tr>
+<tr>
+<td><strong>ERASOR</strong>: H. Lim, S. Hwang, H. Myung, "ERASOR: Egocentric Ratio of Pseudo Occupancy-Based Dynamic Object Removal for Static 3D Point Cloud Map Building", RA-L 2021 (<code>LimHyungTae/ERASOR</code>)</td>
+<td>GPL-3.0</td>
+<td>idea</td>
+<td><code>tools/passes.py</code>: judge the column over each 2D cell, not single points; a car's points go up to a height (<code>--top</code>), what is above stays. No code read or copied</td>
+</tr>
+<tr>
+<td><strong>DUFOMap</strong>: D. Duberg, Q. Zhang, M. Jia, P. Jensfelt, "DUFOMap: Efficient Dynamic Awareness Mapping", RA-L 2024 (<code>KTH-RPL/dufomap</code>)</td>
+<td>BSD-3-Clause</td>
+<td>idea</td>
+<td><code>tools/passes.py</code>: space a drive saw empty is empty, kept a margin off what that drive saw occupied (the pose's and the sensor's error: <code>--tolerance</code>)</td>
+</tr>
+<tr>
+<td><strong>Occupancy grids</strong>: A. Elfes, "Using Occupancy Grids for Mobile Robot Perception and Navigation", Computer, 1989</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>map-drive</code>'s 2D map: hits and free rays per cell</td>
+</tr>
+<tr>
+<td><strong>TUM trajectory format</strong>: J. Sturm et al., "A Benchmark for the Evaluation of RGB-D SLAM Systems", IROS 2012</td>
+<td>format</td>
+<td>idea</td>
+<td><code>map-drive</code>'s <code>poses.tum</code>; <code>ndt-map build --poses-file</code></td>
+</tr>
+<tr>
+<td>AMCL (Nav2's <code>nav2_amcl</code>, from Player's amcl: A. Howard, B. Gerkey, K. Stoy)</td>
+<td>LGPL-2.1-or-later</td>
+<td>runs, ported</td>
+<td><code>amcl:=true</code>, a trial: stock until 20 Nov (TODO 232); ported to Rust as <code>aav_amcl_rs</code> (the default, TODO 231; same licence; its <code>PROVENANCE.md</code> lists the files)</td>
+</tr>
+<tr>
+<td><strong>Monte Carlo localization and KLD sampling</strong>: D. Fox, W. Burgard, F. Dellaert, S. Thrun, AAAI 1999; D. Fox, IJRR 2003; S. Thrun, W. Burgard, D. Fox, <em>Probabilistic Robotics</em>, 2005</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>aav_amcl_rs</code>: the filter, the odometry motion model, low-variance resampling, recovery's averages</td>
+</tr>
+<tr>
+<td><strong>Distance transform</strong>: P. Felzenszwalb, D. Huttenlocher, "Distance Transforms of Sampled Functions", Theory of Computing, 2012</td>
+<td>paper</td>
+<td>idea</td>
+<td><code>aav_amcl_rs</code>: the likelihood field's distances to the walls</td>
 </tr>
 <tr>
 <td><strong>Lane markings against a map</strong>: Autoware's YabLoc (camera road markings matched to a vector map); D. Schreiber, B. Switkes, C. Stiller, "LaneLoc: Lane marking based localization using highly accurate maps", IEEE IV 2013</td>
@@ -401,7 +511,7 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>AB3DMOT</strong>: X. Weng, J. Wang, D. Held, K. Kitani, "3D Multi-Object Tracking: A Baseline and New Evaluation Metrics", IROS 2020</td>
 <td>paper</td>
 <td>idea</td>
-<td>the things' tracker: a constant-velocity Kalman filter per thing, greedy association (<code>aav_things</code>, and its Rust twin <code>aav_things_rs</code>)</td>
+<td>the things' tracker: a constant-velocity Kalman filter per thing, greedy association (<code>aav_things_rs</code>, and its Rust twin <code>aav_things_rs</code>)</td>
 </tr>
 <tr>
 <td><strong>NumPy</strong>'s pairwise summation (<code>loops_utils.h.src</code>)</td>
@@ -473,13 +583,13 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td><strong>ONNX Runtime</strong> (Microsoft)</td>
 <td>MIT</td>
 <td>runs</td>
-<td>the Rust detector (<code>aav_detector_rs</code>), and <code>tools/onnx_check.py</code> (<a href="onnx.html">ONNX</a>)</td>
+<td>the Rust detector (<code>aav_detector_rs</code>), the Rust diffusion worker (<code>aav_diffusion_rs</code>), <code>tools/onnx_check.py</code> and <code>onnx_measure.py</code>; its float16 converter makes the FP16 detector (<code>export_model.py --fp16</code>) (<a href="onnx.html">ONNX</a>)</td>
 </tr>
 <tr>
 <td><strong><code>ort</code></strong> crate (pyke), 2.0.0-rc.15, and its prebuilt ONNX Runtime</td>
 <td>MIT or Apache-2.0</td>
 <td>runs</td>
-<td>ONNX Runtime from Rust: <code>detector-core</code></td>
+<td>ONNX Runtime from Rust: <code>onnx-session</code>, <code>detector-core</code>, <code>diffusion-core</code>, <code>ufld-core</code></td>
 </tr>
 <tr>
 <td>ONNX; onnxscript</td>
@@ -492,6 +602,48 @@ a <code>PROVENANCE.md</code> beside it, with the repository, the commit and ever
 <td>Apache-2.0</td>
 <td>ported</td>
 <td><code>detector-core</code>'s decode and labels, through our <code>detr.py</code></td>
+</tr>
+<tr>
+<td><strong>Ultra-Fast-Lane-Detection v2</strong>: Z. Qin, P. Zhang, X. Li, "Ultra Fast Deep Lane Detection With Hybrid Anchor Driven Ordinal Classification", IEEE TPAMI 2022 (<code>cfzd/Ultra-Fast-Lane-Detection-v2</code>)</td>
+<td>MIT</td>
+<td>idea (our own code from the paper; no code or weights copied)</td>
+<td>the learned lane finder (TODO 262b): row anchors, the column as a class with its expected value, the existence branch, the local expectation when decoding (<code>tools/lane_train.py</code>, <code>aav_lane_finder_learned</code>)</td>
+</tr>
+<tr>
+<td><strong>torchvision</strong>'s ResNet-18 (the architecture; K. He et al., CVPR 2016)</td>
+<td>BSD-3</td>
+<td>runs (random start, no pretrained weights)</td>
+<td>the learned lane finder's backbone</td>
+</tr>
+<tr>
+<td><strong>Pillow</strong>'s resampling (<code>precompute_coeffs</code>, its 8-bit fixed point)</td>
+<td>MIT-CMU (HPND)</td>
+<td>ported (the rules)</td>
+<td>the learned lane finder's crop and scale in Rust, so the model gets the numbers it was trained on (<code>ufld-core</code> <code>preprocess.rs</code>)</td>
+</tr>
+<tr>
+<td>CLRNet (T. Zheng et al., CVPR 2022), CLRerNet; LaneATT (L. Tabelini et al., CVPR 2021); PolyLaneNet (L. Tabelini et al., 2020); CondLaneNet (L. Liu et al., ICCV 2021); YOLOP, YOLOPv2, TwinLiteNet</td>
+<td>Apache-2.0; Apache-2.0; MIT; MIT; Apache-2.0; MIT</td>
+<td>idea (looked at)</td>
+<td>the lane detector survey (<code>docs/perception.md</code>); their published weights are trained on CULane (non-commercial), BDD100K, TuSimple or CurveLanes (not clearly open), so not used</td>
+</tr>
+<tr>
+<td><strong>OWLv2</strong>: M. Minderer, A. Gritsenko, N. Houlsby, "Scaling Open-Vocabulary Object Detection", NeurIPS 2023 (<code>google/owlv2-base-patch16-ensemble</code>, from Google's <code>scenic</code>/<code>big_vision</code>)</td>
+<td>Apache-2.0 (code and weights); trained on WebLI pseudo-labels, Objects365 and Visual Genome</td>
+<td>runs</td>
+<td>the labelling loop's open-vocabulary detector, offline (<code>tools/label_drive.py</code>, TODO 252; <a href="labelling.html">Labelling</a>)</td>
+</tr>
+<tr>
+<td><strong>Hugging Face transformers</strong></td>
+<td>Apache-2.0</td>
+<td>runs</td>
+<td>OWLv2 on PyTorch (mps), in <code>label-drive</code></td>
+</tr>
+<tr>
+<td><strong>Grounding DINO</strong> (IDEA Research), <strong>YOLO-World</strong> (Tencent), <strong>SAM 2</strong> (Meta)</td>
+<td>Apache-2.0; GPL-3.0; Apache-2.0</td>
+<td>looked at</td>
+<td>the labelling loop's other candidates: Grounding DINO a later challenger, YOLO-World left out (copyleft), SAM 2's masks not needed yet (<a href="labelling.html#why-owlv2-the-licences">Labelling</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -581,7 +733,7 @@ Each has a TODO row to port its idea.</p>
 <td><strong>Smooth MPPI / KMPPI</strong> (<code>pytorch_mppi</code>, UM ARM Lab)</td>
 <td>MIT</td>
 <td>idea</td>
-<td>to try in <code>mppi_lag</code> (TODO 212)</td>
+<td><code>mppi_lag</code>'s smooth sampling: the steering's noise drawn on its change and summed (<code>aav_mppi_lag</code> <code>optimizer.rs</code>, <code>mppi_lag_sampling:=smooth</code>, TODO 212)</td>
 </tr>
 <tr>
 <td><strong>Autoware's MPC lateral controller</strong> (the Autoware Foundation)</td>
@@ -599,13 +751,13 @@ Each has a TODO row to port its idea.</p>
 <td><strong>Apollo's piecewise-jerk path</strong> (Baidu; Zhang et al., "Optimal Vehicle Path Planning Using Quadratic Optimization for Baidu Apollo Open Platform", IV 2020); Autoware's static obstacle avoidance</td>
 <td>Apache-2.0; paper</td>
 <td>idea</td>
-<td>smooth lane corners and passes in <code>lane.rs</code> and <code>pass.rs</code> (TODO 211, 214)</td>
+<td>smooth lane corners in <code>lane.rs</code> (TODO 211); the jerk-limited pass, a QP along the lane (<code>aav_planner</code> <code>jerk_pass.rs</code>, <code>lane_pass_shape:=jerk</code>, TODO 214)</td>
 </tr>
 <tr>
 <td><strong>Patchwork++</strong> (S. Lee et al., IROS 2022; URL-KAIST)</td>
 <td>BSD-2-Clause</td>
 <td>idea</td>
-<td>finding the ground so a kerb stands out (TODO 215). Read for the kerbs' step finder (<code>aav_voxels_rs</code> <code>steps.rs</code>, TODO 119): its lesson that the ground must be found locally, not one plane for all; we kept a simpler local rule (a point 0.10 m above another within 0.3 m), since its zones fit a pavement's top as ground too. No code taken</td>
+<td>finding the ground so a kerb stands out: <code>aav_voxels_rs</code> <code>patchwork.rs</code> (<code>ground:=patchwork</code>, TODO 215): its concentric zones, rings and sectors, the lowest-point seeds, a PCA plane a patch and its uprightness, elevation and flatness checks, rewritten in Rust. Read for the kerbs' step finder (<code>aav_voxels_rs</code> <code>steps.rs</code>, TODO 119): its lesson that the ground must be found locally, not one plane for all; we kept a simpler local rule (a point 0.10 m above another within 0.3 m), since its zones fit a pavement's top as ground too. No code taken</td>
 </tr>
 <tr>
 <td><strong>grid_map</strong> (ANYbotics, ETH); <strong>nvblox</strong> (NVIDIA)</td>
@@ -623,13 +775,113 @@ Each has a TODO row to port its idea.</p>
 <td><strong>Fast-Poly / Poly-MOT</strong> (X. Li et al., 2023-24); <strong>OC-SORT</strong> (J. Cao et al., CVPR 2023); <strong>MapMOS</strong> (PRBonn)</td>
 <td>MIT</td>
 <td>idea</td>
-<td>motion models per kind and re-found tracks for <code>aav_things</code> (TODO 217)</td>
+<td>motion models per kind and re-found tracks: <code>aav_things_rs</code> and <code>aav_things_rs</code> <code>tracker</code> (<code>things_tracker:=per_kind</code>, TODO 217): a vehicle's noise a bicycle's, a person's round, and the speed re-fitted from the last sightings (OC-SORT's observation-centric re-update)</td>
 </tr>
 <tr>
 <td><strong>Kinematic-ICP</strong> (T. Guadagnino et al., PRBonn, 2025); <strong>small_gicp</strong> (K. Koide); <strong>GenZ-ICP</strong> (D. Lee et al., 2024)</td>
 <td>MIT</td>
 <td>idea</td>
-<td>the next lidar-odometry challenger (TODO 216); yardsticks for NDT</td>
+<td>Kinematic-ICP: <code>aav_kinematic_icp</code> (TODO 216, <code>odom_lidar:=kinematic_icp</code>): one arc a step and the wheels as a prior, rewritten in Rust, no code taken; small_gicp and GenZ-ICP: yardsticks for NDT</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="taught-in-the-guide-19-nov">Taught in the guide (19 Nov)</h2>
+<p>Explained in <a href="how-self-driving-works.html">How a self-driving car works</a>, not built (or
+not yet). The papers the guide names; the ones we built on are in the tables above.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ICP</strong>: P. J. Besl, N. D. McKay, "A Method for Registration of 3-D Shapes", IEEE T-PAMI, 1992</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's ICP; inside KISS-ICP and <code>map-drive --merge</code></td>
+</tr>
+<tr>
+<td><strong>Scan Context</strong>: G. Kim, A. Kim, IROS 2018; <strong>OverlapNet</strong>: X. Chen et al., RSS 2020; <strong>IR-MCL</strong> (PRBonn, 2023)</td>
+<td>paper</td>
+<td>idea</td>
+<td>place recognition and learned MCL: studied</td>
+</tr>
+<tr>
+<td><strong>YOLO</strong>: J. Redmon et al., CVPR 2016; <strong>DETR</strong>: N. Carion et al., ECCV 2020</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's detectors (we run Ultralytics YOLO and RF-DETR, above)</td>
+</tr>
+<tr>
+<td><strong>SORT</strong>: A. Bewley et al., ICIP 2016</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's tracking</td>
+</tr>
+<tr>
+<td><strong>RRT</strong>: S. M. LaValle, 1998; <strong>RRT*</strong>: S. Karaman, E. Frazzoli, IJRR 2011</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's sampling planners: not built</td>
+</tr>
+<tr>
+<td><strong>Dubins</strong> curves: L. E. Dubins, American J. Mathematics, 1957</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's curves (Reeds-Shepp, above, is the one we use)</td>
+</tr>
+<tr>
+<td><strong>UniAD</strong>: Y. Hu et al., "Planning-oriented Autonomous Driving", CVPR 2023; Wayve's GAIA-1</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's end-to-end section: studied</td>
+</tr>
+<tr>
+<td><strong>Statecharts</strong>: D. Harel, "Statecharts: A Visual Formalism for Complex Systems", Science of Computer Programming, 1987</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's hierarchical state machines: studied</td>
+</tr>
+<tr>
+<td><strong>BehaviorTree.CPP</strong> (Nav2's tree engine); Nav2's <code>navigate_to_pose_w_replanning_and_recovery.xml</code></td>
+<td>MIT; Apache-2.0</td>
+<td>idea</td>
+<td>the guide's behaviour trees: the tree we ran for a car until Nav2 went (17 Nov)</td>
+</tr>
+<tr>
+<td><strong>Apollo's scenarios and stages</strong>; <strong>Autoware's behaviour path and behaviour velocity planners</strong></td>
+<td>Apache-2.0</td>
+<td>idea</td>
+<td>the guide's traffic-rule modules, in general terms; our road ahead's stops are the same shape in small</td>
+</tr>
+<tr>
+<td><strong>IDM</strong>, the Intelligent Driver Model: M. Treiber, A. Hennecke, D. Helbing, Physical Review E, 2000</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's car following: not built</td>
+</tr>
+<tr>
+<td><strong>POMDPs</strong>: L. P. Kaelbling, M. L. Littman, A. R. Cassandra, Artificial Intelligence, 1998; D. Sadigh et al., "Planning for Autonomous Cars that Leverage Effects on Human Actions", RSS 2016</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's decisions under uncertainty and games: studied</td>
+</tr>
+<tr>
+<td><strong>ALVINN</strong>: D. Pomerleau, NIPS 1989; <strong>ChauffeurNet</strong>: M. Bansal et al., RSS 2019; <strong>DAgger</strong>: S. Ross, G. Gordon, D. Bagnell, AISTATS 2011</td>
+<td>paper</td>
+<td>idea</td>
+<td>the guide's learned behaviour: studied</td>
+</tr>
+<tr>
+<td>matplotlib; NumPy</td>
+<td>PSF-based; BSD-3</td>
+<td>runs</td>
+<td>drawing the guide's pictures (<code>tools/teach_figures.py</code>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -734,8 +986,8 @@ Each has a TODO row to port its idea.</p>
 <tr>
 <td>twist_mux; teleop_twist_joy and teleop_twist_keyboard</td>
 <td>Apache-2.0; BSD</td>
-<td>runs</td>
-<td>the command mux and the locks; the joystick and keyboard</td>
+<td>runs; ported (its rule)</td>
+<td>the command mux and the locks; the joystick and keyboard. twist_mux's selection rule is rewritten in Rust in <code>aav_mux_state</code> (who is driving, TODO 247)</td>
 </tr>
 <tr>
 <td><strong>rclrs</strong> (ros2-rust)</td>
@@ -747,7 +999,7 @@ Each has a TODO row to port its idea.</p>
 <td><strong>rayon</strong></td>
 <td>MIT / Apache-2.0</td>
 <td>runs</td>
-<td>each map chunk loaded and built on its own core (<code>map-chunks</code> <code>Store::update</code>, TODO 195); our global costmap's 64 m tiles and chunks inflated each on its own core (<code>aav_costmap</code> <code>layered.rs</code>, TODO 175)</td>
+<td>each map chunk loaded and built on its own core (<code>map-chunks</code> <code>Store::update</code>, TODO 195); our global costmap's 64 m tiles and chunks inflated each on its own core (<code>aav_costmap</code> <code>layered.rs</code>, TODO 175); the things' background: the 3 x 3 chunks read and the walls grown on many cores (<code>aav_things_rs</code> <code>background.rs</code>, TODO 195)</td>
 </tr>
 <tr>
 <td><strong>proptest</strong></td>
@@ -774,6 +1026,24 @@ Each has a TODO row to port its idea.</p>
 <td>MPPI's <code>follow_plan</code> reads a recording's plans (<code>examples/bag</code>, TODO 202)</td>
 </tr>
 <tr>
+<td><strong>mcap</strong>, <strong>mcap-ros2-support</strong> (Foxglove, Python)</td>
+<td>MIT</td>
+<td>runs, laptops only</td>
+<td><code>map-drive</code> reads a recording without ROS (TODO 250)</td>
+</tr>
+<tr>
+<td><strong>rosbag2</strong> (its MCAP storage, <code>zstd_fast</code> preset); image_transport's <code>republish</code></td>
+<td>Apache-2.0; BSD</td>
+<td>runs</td>
+<td>the mapping drive's recorder and its JPEG copies of the cameras (<code>pixi run record-drive</code>, TODO 249)</td>
+</tr>
+<tr>
+<td><strong>chrony</strong> (<code>chronyc tracking</code>)</td>
+<td>GPL-2.0</td>
+<td>runs, a separate program</td>
+<td>the recording kit's clock check on each car computer (TODO 249)</td>
+</tr>
+<tr>
 <td><strong>criterion</strong> (Brook Heisler, Jorge Aparicio)</td>
 <td>MIT / Apache-2.0</td>
 <td>benchmarks only</td>
@@ -795,7 +1065,7 @@ Each has a TODO row to port its idea.</p>
 <td>CPython's <code>math.hypot</code> (<code>vector_norm</code> in <code>Modules/mathmodule.c</code>, R. Hettinger)</td>
 <td>PSF-2.0</td>
 <td>idea</td>
-<td><code>aav_ego_rs</code>'s <code>hypot</code>: the same algorithm, so the Rust ego gives the Python's last bit (TODO 185)</td>
+<td><code>aav_ego_rs</code>'s <code>hypot</code>: the same algorithm, so the Rust ego gives the Python's last bit (TODO 185); <code>aav_safety_rs</code>'s <code>pyfmt::hypot</code>, so the Rust geofence's distances match <code>geofence.py</code>'s to the bit (batch 7)</td>
 </tr>
 <tr>
 <td><strong>RoboStack</strong>; <strong>Pixi</strong></td>

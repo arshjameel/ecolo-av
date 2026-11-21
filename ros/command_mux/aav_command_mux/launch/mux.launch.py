@@ -6,6 +6,9 @@ The command mux: every /drivers/<driver>/cmd_vel in, one /control/cmd_vel out (t
 
 See config/twist_mux.yaml for the inputs and their priorities.
 
+Beside twist_mux runs command_mux_state (aav_mux_state): it reads the same files and
+publishes who twist_mux passes on, on /control/command_mux/state (the debug screen).
+
 sensor_lock:=true (the default) keeps the sensors lock fail-safe: Nav2 and the AI slot are
 held unless aav_safety's sensor_watchdog says "false" at least once a second. Start the
 watchdog wherever this runs with it (sim, bench and car launch files do). sensor_lock:=false
@@ -43,13 +46,25 @@ def mux(context):
     files = ([config('twist_mux.yaml')]
              + ([] if flag(context, 'sensor_lock') else [config('no_sensor_lock.yaml')])
              + ([] if flag(context, 'geofence_lock') else [config('no_geofence_lock.yaml')]))
-    return [Node(
-        package='twist_mux',
-        executable='twist_mux',
-        name='twist_mux',
-        parameters=[*files, {'use_sim_time': LaunchConfiguration('use_sim_time')}],
-        remappings=[('cmd_vel_out', '/control/cmd_vel')],
-    )]
+    sim_time = {'use_sim_time': LaunchConfiguration('use_sim_time')}
+    return [
+        Node(
+            package='twist_mux',
+            executable='twist_mux',
+            name='twist_mux',
+            parameters=[*files, sim_time],
+            remappings=[('cmd_vel_out', '/control/cmd_vel')],
+        ),
+        # Who is driving (TODO 247): the same files, in the same order, so it follows the
+        # same inputs, locks and overrides; it publishes /control/command_mux/state.
+        Node(
+            package='aav_mux_state',
+            executable='command_mux_state',
+            name='command_mux_state',
+            # One dict, one source: no YAML entry to win over it (rclrs; docs/languages.md).
+            parameters=[{'config_files': [f.perform(context) for f in files], **sim_time}],
+        ),
+    ]
 
 
 def generate_launch_description():

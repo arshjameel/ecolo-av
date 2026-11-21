@@ -9,16 +9,18 @@ No ROS imports, so the tests run anywhere. For each camera picture:
    base_link (metres), and how sure the finder is of it (0 to 1).
 4. `lane_from`: the car's offset from the lane's centre, the lane's width, each line's
    radius and the way the road bends: aav_lane_geometry/LaneGeometry's fields.
+5. `paint_of`: each line's paint, white or yellow, from its pixels' colour (TODO 264):
+   the costmap prices a yellow centre line apart from a white edge line.
 
 Signs follow REP-103: x forward, y left. The offset is + when the car is left of the lane's
-centre: control_interface then steers right, back to the centre. It is measured `lookahead`
+centre (the 2025-26 lane follower steered right by it). It is measured `lookahead`
 metres ahead of base_link, because a PID on the offset at the rear axle weaves; a few
 metres ahead, the offset also says which way the car is pointing.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
 from typing import List, Optional, Tuple
 
@@ -26,6 +28,11 @@ import cv2
 import numpy as np
 
 from .birds_eye import BirdsEye, Grid
+
+# Each line's paint: LaneGeometry's PAINT_* constants.
+PAINT_UNKNOWN = 0
+PAINT_WHITE = 1
+PAINT_YELLOW = 2
 
 MAX_RADIUS = 9999.0   # m: what a straight line, or a line not seen, reports as its radius
 STRAIGHT = 500.0      # m: a bigger radius counts as straight (curve_direction 0)
@@ -48,6 +55,8 @@ class Settings:
     max_lane_width: float = 5.0    # m
     lookahead: float = 3.0         # m ahead of base_link: where the offset is measured
     wheelbase: float = 1.57        # m, for steering_hint (vehicle.yaml)
+    # Paint is yellow when its blue is below this share of the lower of its red and green.
+    yellow_ratio: float = 0.75
 
 
 @dataclass(frozen=True)
@@ -85,6 +94,8 @@ class Lane:
     mean_radius: float
     curve_direction: float        # +1 bends left, -1 right, 0 straight (or no lane)
     steering_hint: float          # rad, + = left: pure pursuit to the lane's centre
+    left_paint: int = PAINT_UNKNOWN    # PAINT_*: unknown when not detected
+    right_paint: int = PAINT_UNKNOWN
 
 
 @dataclass(frozen=True)
@@ -187,6 +198,21 @@ def fit_line(x: np.ndarray, y: np.ndarray, hits: int, s: Settings) -> Optional[L
     return Line(a, b, c, min(1.0, confidence))
 
 
+def paint_of(bgr: np.ndarray, s: Settings) -> int:
+    """
+    Return a line's paint from its pixels' colours (n x 3, blue, green, red).
+
+    Yellow paint is red and green with little blue; white has as much blue as the others.
+    A grey picture has no colour: every line in it is white.
+    """
+    if bgr.size == 0:
+        return PAINT_UNKNOWN
+    bgr = bgr.reshape(-1, 3).astype(float)
+    blue = float(bgr[:, 0].mean())
+    red_green = float(np.minimum(bgr[:, 1], bgr[:, 2]).mean())
+    return PAINT_YELLOW if blue < s.yellow_ratio * red_green else PAINT_WHITE
+
+
 def radius(curvature: float) -> float:
     return MAX_RADIUS if abs(curvature) < 1.0 / MAX_RADIUS else 1.0 / abs(curvature)
 
@@ -245,15 +271,18 @@ class LaneFinder:
         mask = paint_mask(bev, grid.resolution, s) & self.view.valid
         rows, cols = np.nonzero(mask)
         self.last = View(bev, mask)
-        lines = []
+        lines, paints = [], []
+        colour = bev if bev.ndim == 3 else np.repeat(bev[:, :, None], 3, axis=2)
         for start in starts(rows, cols, grid, s):
-            line = None
+            line, paint = None, PAINT_UNKNOWN
             if start is not None:
                 found, windows = follow(rows, cols, start, grid, s)
                 self.last.windows += windows
                 line = fit_line(grid.x_of_row(rows[found]), grid.y_of_col(cols[found]),
                                 sum(w.hit for w in windows), s)
+                paint = paint_of(colour[rows[found], cols[found]], s)
             lines.append(line)
+            paints.append(paint)
         confidence = [line.confidence if line else 0.0 for line in lines]
         left, right = (line if line and line.confidence >= s.min_confidence else None
                        for line in lines)
@@ -268,6 +297,8 @@ class LaneFinder:
                 else:
                     left, confidence[0] = None, 0.0
         lane = lane_from(left, right, self.width, s, confidence[0], confidence[1])
+        lane = replace(lane, left_paint=paints[0] if left else PAINT_UNKNOWN,
+                       right_paint=paints[1] if right else PAINT_UNKNOWN)
         if left and right:
             self.width += 0.2 * (lane.width - self.width)   # smooth: one frame can be off
         return lane

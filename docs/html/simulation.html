@@ -7,7 +7,7 @@
 <!-- Generated from docs/simulation.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Simulation: Ravensim, replay, and when nothing moves</h1>
-<div class="meta">51 min read · 8 sections</div></header>
+<div class="meta">52 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -19,10 +19,13 @@
 <a href="first-day.html">Your first day</a>
 <a href="git.html">Git</a>
 <a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
 <a href="start-up.html">Bottom-up</a>
 <a href="team.html">Starting points</a>
 <a href="packages.html">Packages</a>
 <a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
 <a href="work.html">Work</a>
 <a href="plan.html">The plan</a>
 <a href="features.html">Features</a>
@@ -33,13 +36,22 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
 <span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
 <a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
 <a href="measure-the-car.html">Measure the car</a>
 <a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
 <a href="infrastructure.html">Infrastructure</a>
 <a href="learn-car.html">The car, box by box</a>
 <a href="learn-journey.html">A command&#x27;s journey</a>
@@ -47,10 +59,10 @@
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
-<span class="sep">Reference:</span>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
 <a href="campus.html">The campus</a>
@@ -65,6 +77,7 @@
 <a href="trials.html">Trials</a>
 <a href="league.html">The league</a>
 <a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
 <a href="mppi-lag.html">MPPI with lag</a>
 <a href="own-costmap.html">Our own costmap</a>
 <a href="own-planner.html">Our own planner</a>
@@ -96,6 +109,7 @@
 <a href="actuator-tests.html">Actuator tests</a>
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -227,7 +241,7 @@ tools/software_gl.sh pixi run sim world:=road   # no GPU: the cameras in softwar
 since 8 Nov and the only one since 16 Nov). Gazebo played the car until then:
 <a href="../history/gazebo-as-it-was.md">Gazebo, as it was</a>. Ravensim passed every <code>sim-check</code> leg
 Gazebo passed. Its maps cut into chunks are <strong>RavenTiles</strong> (<a href="campus.html">Campus</a>).
-<code>simulator:=own</code>, its old name, still works for one release.</p>
+<code>simulator:=own</code>, its old name, went on 20 Nov (TODO 241).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -303,7 +317,7 @@ Gazebo passed. Its maps cut into chunks are <strong>RavenTiles</strong> (<a href
 <tr>
 <td><code>faults</code></td>
 <td><code>false</code></td>
-<td><code>true</code>: the front left picture goes through <code>sim_camera_relay</code> too, so it can freeze on purpose</td>
+<td><code>true</code>: the front left picture goes through <code>sim_camera_relay</code>, and the lidar through <code>sim_lidar_relay</code>, so they can stop or freeze on purpose</td>
 </tr>
 <tr>
 <td><code>actuator_model</code></td>
@@ -635,6 +649,11 @@ ones once the tests are done: no code changes.</p>
 <td><code>sim_camera_relay</code></td>
 <td>the front left picture, only with <code>faults:=true</code></td>
 <td><code>usb_cam</code></td>
+</tr>
+<tr>
+<td><code>sim_lidar_relay</code></td>
+<td><code>/sensors/lidar/points</code>, only with <code>faults:=true</code> and the lidar</td>
+<td><code>velodyne</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1008,7 +1027,7 @@ camera views, and at grazing angles small depth errors become large range errors
 <tr>
 <td><code>lane</code></td>
 <td><code>false</code></td>
-<td><code>true</code>: lane keeping (<code>lane_finder</code>, and <code>control_interface</code> on <code>/drivers/ai/cmd_vel</code>). Add <code>nav:=false</code>: navigation outranks it. <code>fake</code>: on a pretend lane, in any world</td>
+<td><code>true</code>: the lane finder alone, on <code>/perception/lane/geometry</code> (the lane follower went on 19 Nov (TODO 264; git tag <code>save/lane-followers</code>; <a href="../history/lane-followers.md">as it was</a>)). <code>lanes:=camera</code> draws its lines into the costmap, and starts it</td>
 </tr>
 <tr>
 <td><code>camera_obstacles</code></td>
@@ -1104,7 +1123,6 @@ pixi run sim world:=road lane:=true nav:=false start_y:=0.3  # lane keeping alon
 <h3 id="sim-check">sim-check</h3>
 <pre class="highlight"><code class="language-bash">pixi run sim-check                                # start-up, contract, sensors, a drive
 pixi run -e ml sim-check --perception --obstacle  # and the stop sign, and the box
-pixi run sim-check --lane                         # and lane keeping, in a second run
 pixi run sim-check --lidar-obstacle               # and the lidar alone (radar off) stops for a post
 pixi run sim-check --plan-around                  # and the car drives round a box it sees, without stopping
 pixi run sim-check --ghost                        # and a pretend person only navigation sees, in a second run
@@ -1148,7 +1166,7 @@ on this computer only. The launch log goes to <code>/tmp/aav-sim-check.log</code
 <td>front cameras 6.9 and 9.7 Hz, rear 7.7 Hz, lidar 9.7 Hz with 2891 hits a sweep on the walls, building and cars</td>
 </tr>
 <tr>
-<td><code>pixi run sim-check --lane</code></td>
+<td><code>pixi run sim-check --lane</code> (gone with the lane follower, 19 Nov)</td>
 <td>✅ 15 Oct, after the cameras moved: back to the lane's centre within 5 cm in 5 s</td>
 </tr>
 <tr>
@@ -1205,7 +1223,7 @@ pixi run sim-fault clear                  # after a GPS jump or a lost HUD: a pe
 <tr>
 <td><code>gps</code></td>
 <td><code>/sensors/gps/fix</code></td>
-<td><code>stop</code>, <code>freeze</code>, <code>nan</code>, <code>jump</code> (20 m north)</td>
+<td><code>stop</code>, <code>freeze</code>, <code>nan</code>, <code>jump</code> (20 m north), <code>drift</code> (5 m north over a minute, then stays: no jump, never silent; TODO 210)</td>
 </tr>
 <tr>
 <td><code>imu</code></td>
@@ -1227,11 +1245,16 @@ pixi run sim-fault clear                  # after a GPS jump or a lost HUD: a pe
 <td><code>/sensors/camera/front_left/image_raw</code> (with <code>faults:=true</code>)</td>
 <td><code>stop</code>, <code>freeze</code></td>
 </tr>
+<tr>
+<td><code>lidar</code></td>
+<td><code>/sensors/lidar/points</code> (with <code>faults:=true</code>; TODO 246)</td>
+<td><code>stop</code>, <code>freeze</code></td>
+</tr>
 </tbody>
 </table></div>
 <p><code>freeze</code> sends the last good message again, with fresh stamps: it looks alive. It's a
 parameter, <code>fault.&lt;sensor&gt;</code>, of that sensor's node (<code>sim_gps</code>, <code>sim_imu</code>,
-<code>sim_radar</code>, <code>sim_camera_relay</code>; the wheels' is <code>sim_adapter</code>'s). The logic is
+<code>sim_radar</code>, <code>sim_camera_relay</code>, <code>sim_lidar_relay</code>; the wheels' is <code>sim_adapter</code>'s). The logic is
 <code>aav_sim_models/faults.py</code>.</p>
 <h3 id="actuator-failures-on-purpose-15-nov-todo-159">Actuator failures on purpose (15 Nov, TODO 159)</h3>
 <p>The actuators break too, in <code>sim_adapter</code>, between the speed loop and the car:</p>

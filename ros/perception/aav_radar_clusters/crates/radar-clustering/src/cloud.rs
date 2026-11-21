@@ -3,174 +3,34 @@
 //! No ROS here either: the node copies a message's fields into a [`CloudView`], and puts
 //! the bytes [`write_clusters`] makes into the message it publishes. The TI radar driver
 //! and the bench's pretend radar both send float32 x, y, z, intensity and velocity: 20
-//! bytes a point, little-endian.
+//! bytes a point, little-endian. The reading is the shared `cloud-view` crate's (TODO 176).
 
-use std::{error::Error, fmt};
+pub use cloud_view::{CloudError, CloudView, Datatype, Field};
 
 use crate::{colour, Cluster, Point};
-
-/// The `sensor_msgs/PointField` datatypes this module reads or writes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Datatype {
-    /// UINT32 (6).
-    Uint32,
-    /// FLOAT32 (7).
-    Float32,
-}
-
-impl Datatype {
-    /// The number PointField uses for it.
-    #[must_use]
-    pub const fn code(self) -> u8 {
-        match self {
-            Self::Uint32 => 6,
-            Self::Float32 => 7,
-        }
-    }
-
-    /// The datatype a PointField number stands for, if it is one of these.
-    #[must_use]
-    pub fn from_code(code: u8) -> Option<Self> {
-        [Self::Uint32, Self::Float32]
-            .into_iter()
-            .find(|d| d.code() == code)
-    }
-}
-
-/// A field of every point, as `sensor_msgs/PointField` describes it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Field<'a> {
-    /// `x`, `y`, `intensity`...
-    pub name: &'a str,
-    /// Where it starts in each point, in bytes.
-    pub offset: u32,
-    /// PointField's number for its type: [`Datatype::code`].
-    pub datatype: u8,
-    /// How many values it holds.
-    pub count: u32,
-}
-
-/// The parts of a `sensor_msgs/PointCloud2` this module needs: its layout and its bytes.
-#[derive(Clone, Debug)]
-pub struct CloudView<'a> {
-    /// What each point holds.
-    pub fields: Vec<Field<'a>>,
-    /// Points in a row.
-    pub width: u32,
-    /// Rows.
-    pub height: u32,
-    /// Bytes a point.
-    pub point_step: u32,
-    /// Bytes a row.
-    pub row_step: u32,
-    /// The numbers are big-endian.
-    pub is_bigendian: bool,
-    /// The points' bytes.
-    pub data: &'a [u8],
-}
-
-/// Why a cloud's points couldn't be read.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CloudError {
-    /// The cloud has no field of this name: x, y and z are needed.
-    MissingField(&'static str),
-    /// The field is there, but it isn't one float32.
-    NotFloat32(&'static str),
-    /// The field doesn't fit inside a point: its offset is past `point_step`.
-    OutsidePoint(&'static str),
-    /// The cloud says it has more points than its bytes hold.
-    TooShort {
-        /// Points the cloud says it has.
-        points: usize,
-        /// Bytes it has.
-        bytes: usize,
-    },
-}
-
-impl fmt::Display for CloudError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MissingField(name) => write!(f, "the cloud has no {name} field"),
-            Self::NotFloat32(name) => write!(f, "the cloud's {name} field isn't one float32"),
-            Self::OutsidePoint(name) => {
-                write!(f, "the cloud's {name} field doesn't fit inside a point")
-            }
-            Self::TooShort { points, bytes } => {
-                write!(
-                    f,
-                    "the cloud says it has {points} points, in only {bytes} bytes"
-                )
-            }
-        }
-    }
-}
-
-impl Error for CloudError {}
 
 /// Reads every point of `cloud`, row by row. Intensity and velocity are 0 if it has none.
 ///
 /// # Errors
 ///
-/// [`CloudError`] if x, y or z is missing or not a float32, or the bytes are too few.
+/// [`CloudError`] if x, y or z is missing or not a float32, intensity or velocity is not
+/// a float32, or the bytes are too few.
 pub fn read_points(cloud: &CloudView<'_>) -> Result<Vec<Point>, CloudError> {
-    let required = |name| float_field(cloud, name)?.ok_or(CloudError::MissingField(name));
+    let float32 = [Datatype::Float32];
+    let required = |name| cloud.column(name, &float32);
     let position = [required("x")?, required("y")?, required("z")?];
-    let intensity = float_field(cloud, "intensity")?;
-    let velocity = float_field(cloud, "velocity")?;
-
-    let (width, height) = (to_usize(cloud.width), to_usize(cloud.height));
-    let (point_step, row_step) = (to_usize(cloud.point_step), to_usize(cloud.row_step));
-    let too_short = CloudError::TooShort {
-        points: width.saturating_mul(height),
-        bytes: cloud.data.len(),
-    };
-    let value = |bytes: &[u8], offset: usize| {
-        // In range: float_field checked that offset + 4 <= point_step = bytes.len().
-        let raw = [0, 1, 2, 3].map(|i| bytes[offset + i]);
-        if cloud.is_bigendian {
-            f32::from_be_bytes(raw)
-        } else {
-            f32::from_le_bytes(raw)
-        }
-    };
-    (0..height)
-        .flat_map(|row| (0..width).map(move |column| (row, column)))
-        .map(|(row, column)| {
-            let start = row
-                .checked_mul(row_step)
-                .and_then(|r| r.checked_add(column.checked_mul(point_step)?));
-            let bytes = start
-                .and_then(|s| cloud.data.get(s..s.checked_add(point_step)?))
-                .ok_or_else(|| too_short.clone())?;
-            Ok(Point {
-                position: position.map(|offset| value(bytes, offset)),
-                intensity: intensity.map_or(0.0, |offset| value(bytes, offset)),
-                velocity: velocity.map_or(0.0, |offset| value(bytes, offset)),
-            })
+    let intensity = cloud.optional_column("intensity", &float32)?;
+    let velocity = cloud.optional_column("velocity", &float32)?;
+    // A float32 read as f64 and back is the same float32.
+    let value = |bytes: &[u8], column: &cloud_view::Column| column.read(bytes) as f32;
+    Ok(cloud
+        .points()?
+        .map(|bytes| Point {
+            position: position.map(|c| value(bytes, &c)),
+            intensity: intensity.map_or(0.0, |c| value(bytes, &c)),
+            velocity: velocity.map_or(0.0, |c| value(bytes, &c)),
         })
-        .collect()
-}
-
-/// Where the float32 field `name` starts in each point, or `None` if there is no such
-/// field.
-fn float_field(cloud: &CloudView<'_>, name: &'static str) -> Result<Option<usize>, CloudError> {
-    let Some(field) = cloud.fields.iter().find(|f| f.name == name) else {
-        return Ok(None);
-    };
-    if Datatype::from_code(field.datatype) != Some(Datatype::Float32) || field.count != 1 {
-        return Err(CloudError::NotFloat32(name));
-    }
-    let offset = to_usize(field.offset);
-    if offset.saturating_add(4) > to_usize(cloud.point_step) {
-        return Err(CloudError::OutsidePoint(name));
-    }
-    Ok(Some(offset))
-}
-
-/// A u32 from a message as a usize: always lossless on the 32- and 64-bit computers ROS
-/// runs on. Saturating otherwise, so a size check fails instead of wrapping.
-fn to_usize(value: u32) -> usize {
-    usize::try_from(value).unwrap_or(usize::MAX)
+        .collect())
 }
 
 /// The fields of each point in the clusters cloud: x, y, z, intensity and velocity as
@@ -182,30 +42,15 @@ pub const CLUSTER_FIELDS: [Field<'static>; 7] = [
     float32("z", 8),
     float32("intensity", 12),
     float32("velocity", 16),
-    Field {
-        name: "rgb",
-        offset: 20,
-        datatype: Datatype::Uint32.code(),
-        count: 1,
-    },
-    Field {
-        name: "cluster",
-        offset: 24,
-        datatype: Datatype::Uint32.code(),
-        count: 1,
-    },
+    Field::new("rgb", 20, Datatype::Uint32),
+    Field::new("cluster", 24, Datatype::Uint32),
 ];
 
 /// Bytes per point in the clusters cloud.
 pub const CLUSTER_POINT_STEP: u32 = 28;
 
 const fn float32(name: &'static str, offset: u32) -> Field<'static> {
-    Field {
-        name,
-        offset,
-        datatype: Datatype::Float32.code(),
-        count: 1,
-    }
+    Field::new(name, offset, Datatype::Float32)
 }
 
 /// The clusters cloud's bytes, little-endian, laid out as [`CLUSTER_FIELDS`]: the first
@@ -287,7 +132,7 @@ mod tests {
         assert_eq!((points[0].intensity, points[0].velocity), (0.0, 0.0));
         fields.remove(1);
         let missing = read_points(&view(fields, &data, 1, 20));
-        assert_eq!(missing, Err(CloudError::MissingField("y")));
+        assert_eq!(missing, Err(CloudError::MissingField("y".into())));
     }
 
     #[test]
@@ -295,11 +140,11 @@ mod tests {
         let (mut fields, data) = ti_cloud(&[[1.0, 2.0, 3.0, 4.0, 5.0]]);
         fields[2].datatype = 8; // float64
         let refused = read_points(&view(fields.clone(), &data, 1, 20));
-        assert_eq!(refused, Err(CloudError::NotFloat32("z")));
+        assert_eq!(refused, Err(CloudError::WrongType("z".into())));
         fields[2].datatype = Datatype::Float32.code();
         fields[4].offset = 18; // 18 + 4 > 20
         let refused = read_points(&view(fields, &data, 1, 20));
-        assert_eq!(refused, Err(CloudError::OutsidePoint("velocity")));
+        assert_eq!(refused, Err(CloudError::OutsidePoint("velocity".into())));
     }
 
     #[test]
@@ -381,6 +226,6 @@ mod tests {
     fn datatype_numbers_are_pointfields() {
         assert_eq!(Datatype::from_code(7), Some(Datatype::Float32));
         assert_eq!(Datatype::from_code(6), Some(Datatype::Uint32));
-        assert_eq!(Datatype::from_code(8), None);
+        assert_eq!(Datatype::from_code(9), None);
     }
 }

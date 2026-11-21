@@ -1,0 +1,9 @@
+[package]
+name = "self-test-core"
+description = "The boot self-test's logic, no ROS: every sensor, actuator, lock and clock checked; READY or NOT READY and why"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]

@@ -11,6 +11,9 @@ NDT's map of the simulator's test lot: the lidar's clouds, laid down where the c
                                         a real drive (tools/record.sh --lidar): no truth, so
                                         the clouds go where an Odometry topic in the bag
                                         says (docs/tests.md, 4.21)
+    pixi run ndt-map --out maps/ndt/<place> build <bag> --poses-file <drive>/map/poses.tum
+                                        ... where a file of poses says (TUM: t x y z qx qy
+                                        qz qw), such as map-drive's SLAM path (TODO 250)
 
 The map goes to maps/ndt/test_lot.pcd (binary PCD: x y z float32, map frame) with
 maps/ndt/test_lot.yaml beside it (frame, datum, source bag, git commit, voxel size, the
@@ -244,6 +247,18 @@ def build(clouds, truth, mount, body=None, voxel=VOXEL):
     return cloud, notes
 
 
+def read_tum(path):
+    """Return [(t, (x, y, z), (qx, qy, qz, qw))] from a TUM file of poses ('#' skipped)."""
+    out = []
+    with open(path) as f:
+        for line in f:
+            words = line.split()
+            if words and not words[0].startswith('#'):
+                v = [float(w) for w in words[:8]]
+                out.append((v[0], tuple(v[1:4]), tuple(v[4:8])))
+    return out
+
+
 def git_commit():
     """Return this checkout's commit, or 'unknown'."""
     out = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT,
@@ -300,7 +315,7 @@ def read_bag(bag, poses=TRUTH_TOPIC):
                                m.pose.pose.position.z),
                     (m.pose.pose.orientation.x, m.pose.pose.orientation.y,
                      m.pose.pose.orientation.z, m.pose.pose.orientation.w))
-                   for m in messages(poses, Odometry)])
+                   for m in messages(poses, Odometry)]) if poses else None
     clouds = ((stamp(m), cloud_xyz([(f.name, f.offset, f.datatype, f.count) for f in m.fields],
                                    m.point_step, m.data, m.width, m.height, m.row_step,
                                    m.is_bigendian))
@@ -319,7 +334,7 @@ def drive(bag):
     print(f'== the test lot, headless, on ROS domain {domain} (this computer only)', flush=True)
     with open(log_path, 'w') as log:
         sim = subprocess.Popen(['ros2', 'launch', 'aav_bringup', 'sim.launch.py',
-                                'world:=test_lot', 'gui:=false', 'rviz:=false',
+                                'world:=test_lot', 'rviz:=false',
                                 'lidar:=true', 'reversing:=false',
                                 # The champions' stack (best; Nav2's until it went, 17
                                 # Nov): cc.Recorder() sends the goals to /navigate_to_pose.
@@ -369,6 +384,9 @@ def main():
     b.add_argument('--poses', default=TRUTH_TOPIC,
                    help="the Odometry topic that places each cloud (default: Gazebo's truth; "
                         'a real drive: /localization/odom/global)')
+    b.add_argument('--poses-file', type=Path,
+                   help='a TUM file of poses (t x y z qx qy qz qw) instead of a topic: '
+                        "map-drive's poses.tum")
     parser.add_argument('--out', type=Path, default=OUT,
                         help='where the map goes, without .pcd (default maps/ndt/test_lot)')
     parser.add_argument('--voxel', type=float, default=VOXEL, help='m (default 0.1)')
@@ -387,7 +405,13 @@ def main():
         bag = args.bag
     started = time.monotonic()
     poses = getattr(args, 'poses', TRUTH_TOPIC)
-    clouds, truth = read_bag(bag, poses)
+    poses_file = getattr(args, 'poses_file', None)
+    if poses_file:
+        clouds, _ = read_bag(bag, None)
+        truth = Truth(read_tum(poses_file))
+        poses = str(poses_file)
+    else:
+        clouds, truth = read_bag(bag, poses)
     points, notes = build(clouds, truth, mount, body, args.voxel)
     if len(points) == 0:
         raise SystemExit(f'{bag}: no cloud had {poses} around it; nothing to map')

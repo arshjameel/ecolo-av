@@ -52,10 +52,31 @@ def test_nan_and_jump_change_a_copy():
     assert msg.value == 45.0
 
 
+def test_drift_slides_north_slowly_then_stays_and_restarts_when_set_again():
+    def drift(m, seconds):
+        m.value = faults.jumped(m.value, faults.drifted(seconds))
+
+    def north_m(out):
+        return (out.value - 45.0) * faults.METRES_PER_DEGREE
+
+    f = Fault('gps')
+    f.switch('drift')
+    assert north_m(f.apply(reading(45.0), drift=drift, now=100.0)) == pytest.approx(0.0)
+    assert north_m(f.apply(reading(45.0), drift=drift, now=130.0)) == pytest.approx(2.5)
+    assert north_m(f.apply(reading(45.0), drift=drift, now=400.0)) == pytest.approx(
+        faults.DRIFT_MAX)
+    # Never a jump for the watchdog (15 m/s + 5 m) or its speed check (0.15 m/s).
+    assert faults.DRIFT_RATE < 0.15
+    f.switch('drift')
+    assert north_m(f.apply(reading(45.0), drift=drift, now=500.0)) == pytest.approx(0.0)
+    assert faults.check('gps', 'drift') is None
+    assert 'no' in faults.check('imu', 'drift')
+
+
 def test_each_sensor_has_only_its_own_faults():
     assert faults.check('gps', 'jump') is None
     assert 'no' in faults.check('imu', 'jump')
-    assert 'no sensor' in faults.check('lidar', 'stop')
+    assert 'no sensor' in faults.check('sonar', 'stop')
     with pytest.raises(ValueError):
         Fault('radar').switch('nan')
 
@@ -112,3 +133,14 @@ def test_a_dead_brake_lets_the_car_model_roll_on():
     dead = roll(f.apply)
     assert healthy.speed < 0.05 < dead.speed
     assert dead.brake_command > 0.0 and dead.brake == 0.0   # asked, never given
+
+
+def test_the_lidar_can_stop_and_freeze_through_its_own_relay():
+    assert faults.check('lidar', 'stop') is None
+    assert faults.check('lidar', 'freeze') is None
+    assert faults.check('lidar', 'nan') is not None     # a cloud's NaN is a ray that missed
+    assert faults.NODES['lidar'] == 'sim_lidar_relay'
+    assert faults.LIDAR_RELAYED.startswith('/vehicle/sim/')
+    f = Fault('lidar')
+    f.switch('stop')
+    assert f.apply(reading(1.0)) is None

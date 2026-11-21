@@ -26,7 +26,7 @@ Since 8 Nov `pixi run sim` and `pixi run sim-check` run **Ravensim** by default
 and on a computer with no GPU. The results dated before 8 Nov below were in Gazebo. The
 0.3 checks (`sim-check --stop-point`, `--behaviour`, `--loaded-stop`, `measure lane`) have
 no rows here yet: their results are on [How the car stops](stopping.md) and
-[Perception](perception.md#in-the-simulators-8-nov).
+[Lane followers, as they were](history/lane-followers.md#earlier-lane-drives-8-nov-the-2025-26-pid).
 
 | # | Test | Run | Passes when | Status |
 |---|---|---|---|---|
@@ -34,7 +34,7 @@ no rows here yet: their results are on [How the car stops](stopping.md) and
 | 1.2 | All three cameras send pictures | part of 1.1 | front left 10 Hz; front right and rear 5 Hz or more, each in its own frame | ✅ 15 Oct |
 | 1.3 | The roof lidar | `pixi run sim-check` (on by default) | 1800 × 16 rays at 10 Hz in `lidar_link` | ✅ |
 | 1.4 | Stop for an obstacle | `pixi run sim-check --obstacle` | stops 0-2 m before the box; drives on when it's gone | ✅ at 272 kg; ⚠️ at 181 kg, unconfirmed (the Mac was overloaded); ✅ 3 Nov: 0.23 m before it |
-| 1.5 | Lane keeping | `pixi run sim-check --lane` | back to the lane's centre within 5 cm | ✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs navigation) |
+| 1.5 | Lane keeping (retired 19 Nov with the lane follower, TODO 264) | `pixi run sim-check --lane` | back to the lane's centre within 5 cm | ✅ 15 Oct; 3 Nov: within 5 cm after 5.4 s (its contract check fixed: it asked for stop_hold, which needs navigation) |
 | 1.6 | The HUD, with pretend data | `pixi run hud --demo` | the window opens with speed, camera, GPS, e-stop | ✅ Ben, 15 Oct |
 | 1.7 | The HUD with the turtle | `pixi run turtle`, `pixi run hud`, `pixi run keyboard --local` | speed and steering move as you drive | ✅ Ben, 15 Oct |
 | 1.8 | Plain-English driving | `pixi run -e llm talk`: "drive 10 m forward" | drives 10 m (±0.2 m) after you type yes | ✅ Gazebo |
@@ -47,9 +47,9 @@ no rows here yet: their results are on [How the car stops](stopping.md) and
 | 1.15 | **Ghost obstacles: a pretend person only navigation sees** | `pixi run sim-check --ghost` ([docs](ghost-obstacles.md)) | a ghost 15 m ahead (nothing in the world): stops 0-2 m before it (the stop zone or the controller), the local costmap marks it; drives on once it's off | ✅ 16 Oct: 0.21 m before it, the stop zone fired (one run, radar and lidar on too); 3 Nov: 0.51 m before it |
 | 1.16 | **Every screen in Initial D**, with pretend data | `pixi run hud --demo`, `map --demo`, `debug-hud --demo`, `hw-panel --demo` ([Themes](hud.md#themes-the-screens-colours)) | each opens black and red with thin white edges and sharp corners, no Catppuccin blue-grey; the e-stop red with white words; GO green, WAIT amber; the localizers keep their colours | ✅ 2 Nov: all four, screenshots on Ben's Mac |
 | 1.17 | The theme's contrast test | `cargo test -p hud-core theme` (in `tools/test.sh`) | every word 4.5 : 1, every shape and mark 3 : 1 on each screen's backgrounds; Initial D has no Catppuccin colour but the localizers' | ✅ 2 Nov |
-| 1.18 | **The diffusion planner's lot tour** | `pixi run measure controllers --planners own diffusion --reversing --tours lot` ([trials](trials.md#diffusion-2-nov-a-model-draws-the-lattice-guards)) | every leg, as the lattice; no plan tighter than full lock; the share of plans from the model (`/drivers/nav/diffusion/status`) | ✅ 2 Nov, 2 runs: 8 of 8 legs, 63 % from the model; 3 Nov, 3 runs: 12 of 12 legs, 73 % from the model, never tighter than full lock |
+| 1.18 | **The diffusion planner's lot tour** | `pixi run measure controllers --planners own diffusion --reversing --tours lot` ([trials](history/trials-log.md#diffusion-2-nov-a-model-draws-the-lattice-guards)) | every leg, as the lattice; no plan tighter than full lock; the share of plans from the model (`/drivers/nav/diffusion/status`) | ✅ 2 Nov, 2 runs: 8 of 8 legs, 63 % from the model; 3 Nov, 3 runs: 12 of 12 legs, 73 % from the model, never tighter than full lock |
 | 1.19 | **The diffusion planner's guard falls back** | `pixi run measure controllers --planners diffusion_nomodel --reversing --tours lot` (no model file); the guard's checks: `tools/test.sh` (`aav_diffusion_planner/test`) | every plan the lattice's, every leg; each check G1-G8 refuses its bad path in the unit tests | ✅ 2 Nov: 156 of 156 plans the lattice's, 4 of 4 legs; 3 Nov (one leg): 25 of 25 |
-| 1.20 | **Every switch starts and drives a leg** | `pixi run measure controllers --tours lot --legs 1` with each switch ([switches](switches.md), [the runs](trials.md#3-nov-everything-for-02)) | each planner, follower, localizer and `voxels` starts, and the car finishes the first leg | ✅ 3 Nov: 23 of 23 (lattice32 and smac2d on a second try: the first, on a busy Mac, stalled) |
+| 1.20 | **Every switch starts and drives a leg** | `pixi run measure controllers --tours lot --legs 1` with each switch ([switches](switches.md), [the runs](history/trials-log.md#3-nov-everything-for-02)) | each planner, follower, localizer and `voxels` starts, and the car finishes the first leg | ✅ 3 Nov: 23 of 23 (lattice32 and smac2d on a second try: the first, on a busy Mac, stalled) |
 
 ## Stage 2: the bench
 
@@ -101,6 +101,7 @@ trigger, a little throttle, wheels turning, then:
 | 3.11 | **Steering speed**: centre to full lock | seconds, from a video (or `actuator-test steer-rate --stands`, once a steering sensor reports) | written in `vehicle.yaml` | 🔧 |
 | 3.12 | **Centre**: command straight | the wheels' angle; `actuator-test steer-centre --stands` | under 1°, or the offset written down | 🔧 |
 | 3.13 | Wheel speed on stands | `/vehicle/status` speed vs a phone tachometer app | within 10% | ⬜ |
+| 3.14 | **Throttle on free wheels** | `pixi run actuator-test wheel-steps --stands`: 0.1, 0.2, 0.3, 0.15 m/s, 4 s each (step 4 of `pixi run car-test --stands`) | each step up within 25 % (or 0.05 m/s), the step down slower | ⬜ the car |
 
 ## Stage 4: the car in an empty lot
 
@@ -108,6 +109,11 @@ trigger, a little throttle, wheels turning, then:
 The test script (`pixi run actuator-test <test>`, [docs](actuator-tests.md)) logs the IMU (g),
 the wheel speed, the pose and the GPS for every test.
 Which test fits which number, and when to stop repeating it: [Know the car](know-the-car.md).
+
+**First, in a hallway (phase B, this winter):** speed up, coast, brake and steer on the
+ground, with the IMU blended with the wheels and error bars on every number, in one command:
+`pixi run car-test --hallway` ([docs](actuator-tests.md#car-test-hallway-the-transfer-functions)).
+Built; **untested on the car**.
 
 ### 4a. Speed up, coast, brake
 

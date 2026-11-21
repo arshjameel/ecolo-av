@@ -4,14 +4,15 @@ Navigation as one more driver: goals in, /drivers/nav/cmd_vel (TwistStamped) out
   ros2 launch aav_navigation navigation.launch.py [map:=<path to map yaml>]
       [radar:=false] [lidar:=false] [stop_zone:=<radar or lidar>]
       [camera_obstacles:=false] [ghost:=false] [voxels:=false] [voxels_impl:=python]
-      [kerbs:=false] [lidar_impl:=rust] [things_impl:=rust]
+      [kerbs:=false] [lidar_impl:=rust] [things_impl:=rust] [stop_hold_impl:=rust]
       [reversing:=false] [max_speed:=] [planner:=own] [planner_search:=lattice]
       [diffusion_model:=] [diffusion_provider:=CPUExecutionProvider] [diffusion_record:=]
-      [diffusion_python:=] [diffusion_smoothing:=gear]
+      [diffusion_python:=] [diffusion_smoothing:=gear] [diffusion_impl:=python]
       [plan_around:=true] [behaviour:=false] [behaviour_impl:=rust] [things:=false]
       [replan_hz:=1.0] [tracker:=mppi_lag] [live_swap:=false]
       [map_correction:=newest] [speed_loop:=default]
-      [amcl:=false] [amcl_x:=0.0] [amcl_y:=0.0] [amcl_yaw:=0.0] [amcl_map:=]
+      [amcl:=false] [amcl_impl:=rust] [amcl_x:=0.0] [amcl_y:=0.0] [amcl_yaw:=0.0]
+      [amcl_map:=]
       [use_sim_time:=false] [autostart:=true]
 
 Our own nodes only (Nav2 deleted, 17 Nov, TODO 184; its scores:
@@ -33,8 +34,8 @@ lifecycle node: each respawns 1 s after it dies, and while one is down the car s
   stop_zone         the stop zone (aav_stop_zone, a safety lock): /control/cmd_vel_smoothed
                     -> /drivers/nav/cmd_vel, zero for points in the box ahead (behind,
                     reversing) or a silent sensor; its state on /safety/stop_zone/state
-  stop_hold         with the stop zone (aav_safety): holds its stops until the zone stays
-                    clear for 1 s, through twist_mux's stop_zone lock
+  stop_hold         with the stop zone (aav_safety_rs): holds its stops until the zone
+                    stays clear for 1 s, through twist_mux's stop_zone lock
   lidar_scan        with lidar:=true (aav_lidar_rs): the roof lidar's cloud ->
                     /sensors/lidar/scan, for the costmap and the stop zone;
                     lidar_impl:=python for the Python node (aav_lidar)
@@ -54,8 +55,12 @@ Switches:
                           the lattice's trial files and its smoother (docs/own-planner.md)
   tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag|mpc_lag_rs
                           another follower serves follow_path (aav_track's; mpc_lag_rs:
-                          aav_mpc_lag). aav_track's and mpc_lag_rs drive forwards only
+                          aav_mpc_lag). Each reverses with reversing:=true (TODO 174,
+                          213)
   mppi_lag_steer_gamma:=0.05  mppi_lag's steering control cost (TODO 168)
+  mppi_lag_batch:=1000        mppi_lag's samples a tick (empty: 2000; TODO 152)
+  mppi_lag_sampling:=smooth   mppi_lag samples the steering's change (TODO 212)
+  mpc_lag_tube:=0             mpc_lag_rs's tube off (empty: 0.3 m, tuned 21 Nov)
   live_swap:=true         aav_track's tracker can change while it runs
   map_correction:=slow    the follower's held map -> odom moves toward the newest slowly
                           (TODO 186)
@@ -63,24 +68,27 @@ Switches:
                           planner assume (TODO 163)
   costmap:=own, navigator:=own, smoother:=own, controller:=mppi
                           each the only option since Nav2 went; kept for a challenger
-  amcl:=true              stock nav2_amcl, scored only (the one Nav2 package kept): on the
-                          map and /sensors/lidar/scan (lidar:=true), with its own lifecycle
-                          manager; amcl_map:= gives it its own map (amcl_map_server)
+  amcl:=true              AMCL, scored only: on the map and /sensors/lidar/scan
+                          (lidar:=true); amcl_map:= gives it its own map (amcl_map_server).
+                          amcl_impl:=rust (aav_amcl_rs: a plain node; stock nav2_amcl went
+                          on 20 Nov, TODO 232); config/amcl.yaml
   voxels:=true            (with lidar:=true) aav_voxels' 0.25 m cubes instead of the scan,
                           for the costmap and the stop zone; voxels_impl:=rust for the
                           Rust node. screen_cubes:=true: the cubes for the screens only
+  ground:=patchwork       (with lidar:=true) the cubes over a ground plane a patch,
+                          ring by ring, the costmap on them (TODO 215, a challenger)
   kerbs:=true             (with lidar:=true) the Rust voxels node's step finder: the local
                           costmap's kerb_layer and the stop zone's steps source (TODO 119)
-  behaviour:=true         the behaviour planner (aav_behaviour_rs; behaviour_impl:=python):
+  behaviour:=true         the behaviour planner (aav_behaviour_rs):
                           the states and a speed cap, in /world/road_ahead's limits; lane_map:=
                           a lanes.yaml for the road ahead's line
-  lane_costs:=, costmap_chunks:=, local_chunks:=true, lane_route:=, lane_pass:=,
-  lane_corners:=,
+  lane_costs:=, lane_source:=, costmap_chunks:=, local_chunks:=true, lane_route:=,
+  lane_pass:=, lane_corners:=, lane_pass_shape:=jerk,
   lane_graph:=            our costmap's lanes and chunks, our planner's lane-centre route
                           (TODO 148, 175; docs/own-costmap.md, docs/own-planner.md)
   things:=true            (with lidar:=true) aav_things_rs: the cubes as tracked things on
-                          /world/things; things_background*, things_names: theirs;
-                          things_impl:=python for the Python node (aav_things)
+                          /world/things; things_background*, things_names: theirs
+                          (the Python node went on 20 Nov)
   replan_hz:=0            the navigator plans a to-pose goal once (a test: TODO 149)
 
 Obstacles, from where the sensors are:
@@ -132,6 +140,14 @@ LOCAL = 'local_costmap.local_costmap.ros__parameters.'
 
 def flag(context, name):
     return LaunchConfiguration(name).perform(context).lower() == 'true'
+
+
+def check_lane_pass_shape(value):
+    """Return lane_pass_shape:= checked: 'cosine' (empty too) or 'jerk' (TODO 214)."""
+    value = value.strip().lower() or 'cosine'
+    if value not in ('cosine', 'jerk'):
+        raise ValueError(f'lane_pass_shape:={value}: cosine or jerk')
+    return value
 
 
 def check_lane_corners(value):
@@ -253,6 +269,7 @@ def nodes(context):
     speed_loop = vehicle.check_speed_loop(LaunchConfiguration('speed_loop').perform(context),
                                           tracker)
     amcl = flag(context, 'amcl')
+    amcl_impl = vehicle.check_amcl_impl(LaunchConfiguration('amcl_impl').perform(context))
     voxels = flag(context, 'voxels')
     screen_cubes = flag(context, 'screen_cubes')
     voxels_impl = vehicle.check_voxels_impl(LaunchConfiguration('voxels_impl').perform(context))
@@ -261,6 +278,11 @@ def nodes(context):
     things_impl = vehicle.check_things_impl(LaunchConfiguration('things_impl').perform(context))
     # The kerbs need the lidar; a world without one just runs without them.
     kerbs = flag(context, 'kerbs') and lidar
+    # TODO 215: ground:=patchwork, the ground a plane a patch (Patchwork++'s idea) in the
+    # Rust voxels node, so a lower kerb is a cube; the costmap then reads the cubes.
+    patchwork = vehicle.check_ground(LaunchConfiguration('ground').perform(context)) == \
+        'patchwork' and lidar
+    voxels = voxels or patchwork
     if (voxels or screen_cubes or things) and not lidar:
         raise ValueError('voxels:=true (and things:=true) needs lidar:=true: the cubes come '
                          'from the lidar')
@@ -320,6 +342,9 @@ def nodes(context):
     diffusion = planner == 'diffusion'
     # lane_costs:=<lanes.yaml>: the lanes layer in our global costmap (TODO 148).
     lane_costs = LaunchConfiguration('lane_costs').perform(context).strip()
+    # lane_source:=camera|both: its lanes from the lane finder's lines too (TODO 264).
+    lane_source = lane_map.check_lane_source(
+        LaunchConfiguration('lane_source').perform(context))
     # costmap_chunks:=<folder>: our global costmap from the map's chunks (TODO 175).
     costmap_chunks = LaunchConfiguration('costmap_chunks').perform(context).strip()
     # lane_route:=<lanes.yaml>: the lane-centre planner, inside ours (TODO 148, path:=lane).
@@ -348,6 +373,9 @@ def nodes(context):
                          # The things: wait only for what moves, a parked thing is the
                          # planner's to go round (behaviour.py moving_ahead).
                          'things': things,
+                         # The kerbs (TODO 219): one on the road ahead slows the car as
+                         # an obstacle does, before the stop zone acts.
+                         'kerbs': kerbs,
                          # Every navigator action: a goal running on any of them.
                          'goal_status_topics': [
                              vehicle.navigator_action(a) + '/_action/status'
@@ -372,8 +400,11 @@ def nodes(context):
         # a zone flickers between stop and go at its edge. It locks nothing until the zone
         # first says STOP.
         config = FindPackageShare('aav_safety').perform(context) + '/config/stop_hold.yaml'
-        actions.append(Node(package='aav_safety', executable='stop_hold', name='stop_hold',
-                            output='screen',
+        # stop_hold_impl: rust (aav_safety_rs; the Python went on 20 Nov).
+        hold = vehicle.check_stop_hold_impl(
+            LaunchConfiguration('stop_hold_impl').perform(context))
+        actions.append(Node(package=vehicle.STOP_HOLD_IMPLS[hold], executable='stop_hold',
+                            name='stop_hold', namespace='/', output='screen',
                             parameters=[config, {'use_sim_time': use_sim_time}]))
     if lidar and (amcl or not voxels):
         # Not a lifecycle node: it runs from the start. With voxels:=true only AMCL still
@@ -391,17 +422,18 @@ def nodes(context):
         # voxels_impl:=rust: the Rust port, the same name and topics; it reads no
         # vehicle.yaml, so the car's numbers come with it.
         # kerbs:=true: only the Rust node finds steps, so it runs whatever voxels_impl says.
-        impl = 'rust' if kerbs else voxels_impl
+        impl = 'rust' if kerbs or patchwork else voxels_impl
         car = voxels_car(cfg) if impl == 'rust' else {}
         if kerbs:
             car['steps'] = True
+        if patchwork:
+            car['ground'] = 'patchwork'
         actions.append(Node(package=vehicle.VOXELS_IMPLS[impl], executable='voxels',
                             name='voxels', namespace='/', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
     if things:
-        # The cubes as things, on /world/things (aav_things; things_impl:=rust: the Rust
-        # port, aav_things_rs, the same name, topics and settings file).
-        config = FindPackageShare('aav_things').perform(context) + '/config/things.yaml'
+        # The cubes as things, on /world/things (aav_things_rs).
+        config = FindPackageShare('aav_things_rs').perform(context) + '/config/things.yaml'
         actions.append(Node(package=vehicle.THINGS_IMPLS[things_impl], executable='things',
                             name='things', namespace='/',
                             output='screen',
@@ -416,6 +448,10 @@ def nodes(context):
                                                          'things_background_below'
                                                      ).perform(context) or 0.0),
                                                  'names': flag(context, 'things_names'),
+                                                 # TODO 217: a motion model per kind.
+                                                 'per_kind': vehicle.check_things_tracker(
+                                                     LaunchConfiguration('things_tracker')
+                                                     .perform(context)) == 'per_kind',
                                                  'use_sim_time': use_sim_time}]))
     if ghost:
         # Its own file, then use_sim_time: the file doesn't set it, so the dict adds it.
@@ -426,8 +462,9 @@ def nodes(context):
     # aav_costmap (Rust): our local and global costmaps, Nav2's layers ported, from the
     # tuned file's blocks (the same layers and sources). Not a lifecycle node.
     blocks = vehicle.costmap_params(tuned, v, radar, camera)
-    if lane_costs:
-        blocks['global']['lanes'] = lane_map.costmap_block(lane_map.load(lane_costs))
+    if lane_costs or lane_source != 'map':
+        blocks['global']['lanes'] = lane_map.lanes_block(
+            lane_map.load(lane_costs) if lane_costs else None, lane_source)
     if costmap_chunks:
         blocks['global']['chunks'] = vehicle.costmap_chunks_block(costmap_chunks)
         if LaunchConfiguration('local_chunks').perform(context).strip().lower() == 'true':
@@ -450,6 +487,11 @@ def nodes(context):
             context).strip().lower() != 'false'
         settings['lanes']['corners'] = check_lane_corners(
             LaunchConfiguration('lane_corners').perform(context))
+        # TODO 214: the pass a jerk-limited QP at the car's top speed (a challenger).
+        if check_lane_pass_shape(LaunchConfiguration('lane_pass_shape').perform(
+                context)) == 'jerk':
+            settings['lanes']['pass_shape'] = 'jerk'
+            settings['lanes']['pass_speed'] = max_speed or 1.0
     topic, updates, latched = vehicle.GLOBAL_COSTMAP_TOPICS['own']
     actions.append(Node(
         package='aav_planner', executable='planner', name='planner', output='screen',
@@ -506,17 +548,29 @@ def nodes(context):
     gamma = LaunchConfiguration('mppi_lag_steer_gamma').perform(context).strip()
     if gamma:
         slew['steer_gamma'] = vehicle.check_steer_gamma(gamma)
+    # TODO 152: mppi_lag's samples a tick (empty: nav2.yaml's batch_size, 2000).
+    batch = LaunchConfiguration('mppi_lag_batch').perform(context).strip()
+    if batch:
+        slew['batch_size'] = vehicle.check_mppi_batch(batch)
+    # TODO 212: mppi_lag samples the steering's change (smooth), a challenger.
+    sampling = LaunchConfiguration('mppi_lag_sampling').perform(context).strip()
+    if sampling:
+        slew['sampling'] = vehicle.check_mppi_lag_sampling(sampling)
     # The behaviour planner's speed cap is in /world/road_ahead's limits (TODO 233).
     if tracker == 'mpc_lag_rs':
         # aav_mpc_lag (Rust): aav_track's mpc_lag ported, a challenger beside it.
         own = FindPackageShare('aav_mpc_lag').perform(context) + '/config/mpc_lag_rs.yaml'
+        # The tube (Ben, 21 Nov): no cost for being off the path within this many m.
+        tube = LaunchConfiguration('mpc_lag_tube').perform(context).strip()
+        extra = {'mpc_lag.tube': vehicle.check_mpc_lag_tube(tube) if tube
+                 else vehicle.MPC_LAG_TUBE}
         actions.append(Node(
             package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs', namespace='/',
             output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[own, vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed,
-                                                       speed_loop),
+                                                       speed_loop, reversing=reversing),
                         {'use_sim_time': use_sim_time,
-                         'map_correction': slew['map_correction']}]))
+                         'map_correction': slew['map_correction'], **extra}]))
     elif tracker == 'mppi_lag':
         # aav_mppi_lag (Rust): Nav2's MPPI with the actuators' lag in its model. nav2.yaml's
         # MPPI block and checks, vehicle.yaml's actuators, ego.yaml's ramps; our local
@@ -534,7 +588,8 @@ def nodes(context):
         actions.append(Node(
             package='aav_track', executable='track', name='track', output='screen',
             respawn=True, respawn_delay=RESPAWN_DELAY,
-            parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed, speed_loop),
+            parameters=[own, vehicle.track_params(nav2, cfg, ego, max_speed, speed_loop,
+                                                  reversing=reversing),
                         {'tracker': tracker, 'use_sim_time': use_sim_time,
                          'road_ahead_topic': '/world/road_ahead' if lane else '',
                          'live_swap': IfCondition(
@@ -551,14 +606,16 @@ def nodes(context):
                 'provider': LaunchConfiguration('diffusion_provider').perform(context),
                 'record': LaunchConfiguration('diffusion_record').perform(context),
                 'learn_python': LaunchConfiguration('diffusion_python').perform(context),
+                'worker': vehicle.check_diffusion_impl(
+                    LaunchConfiguration('diffusion_impl').perform(context)),
                 'smoothing': LaunchConfiguration('diffusion_smoothing').perform(context),
                 'use_sim_time': use_sim_time}],
             # It reads our global costmap's grid (/drivers/nav/costmap/global) itself.
             remappings=[('compute_path_to_pose_lattice', vehicle.OWN_PLANNER_ACTION)]))
     if amcl:
-        # Stock AMCL, scored only (a pose trial; tf_broadcast false). It is Nav2's
-        # (nav2_amcl) and a lifecycle node, with its own manager: the one part of Nav2 kept
-        # (TODO 184), until ours or none replaces it.
+        # AMCL, scored only (a pose trial; tf_broadcast false). Ours (aav_amcl_rs):
+        # stock's parameters, topics and frames, a plain node. Stock nav2_amcl, the last of
+        # Nav2, went on 20 Nov (TODO 232, tag save/nav2-amcl).
         config = f'{share}/config/amcl.yaml'
         start = {'set_initial_pose': True, 'use_sim_time': use_sim_time}
         for axis in ('x', 'y', 'yaw'):
@@ -574,18 +631,15 @@ def nodes(context):
                 output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
                 parameters=[{'yaml_filename': amcl_map, 'topic_name': '/localization/amcl/map',
                              'frame_id': 'map', 'use_sim_time': use_sim_time}]))
-        actions += [
-            Node(package='nav2_amcl', executable='amcl', name='amcl', output='screen',
-                 parameters=[config, start],
-                 remappings=[('amcl_pose', '/localization/amcl/pose'),
-                             ('particle_cloud', '/localization/amcl/particles'),
-                             ('initialpose', '/localization/amcl/initial_pose')]),
-            Node(package='nav2_lifecycle_manager', executable='lifecycle_manager',
-                 name='lifecycle_manager_localization', output='screen',
-                 parameters=[{'use_sim_time': use_sim_time,
-                              'autostart': flag(context, 'autostart'),
-                              'node_names': ['amcl']}]),
-        ]
+        remaps = [('amcl_pose', '/localization/amcl/pose'),
+                  ('particle_cloud', '/localization/amcl/particles'),
+                  ('initialpose', '/localization/amcl/initial_pose')]
+        # Not a lifecycle node: it respawns like our others. namespace='/': so the
+        # start (a launch dict) beats amcl.yaml in rclrs too (docs/languages.md).
+        actions.append(Node(
+            package=vehicle.AMCL_IMPLS[amcl_impl], executable='amcl', name='amcl',
+            namespace='/', output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
+            parameters=[config, start], remappings=remaps))
     return actions
 
 
@@ -626,6 +680,11 @@ def generate_launch_description():
         DeclareLaunchArgument('global_window', default_value='0.0',
                               description='m: the global costmap a square rolling with the '
                                           'car (192: the 3 x 3 chunks; 0: the whole map)'),
+        DeclareLaunchArgument('things_tracker', default_value='',
+                              description='with things:=true: constant_velocity (empty too: '
+                                          "one model for all) or per_kind: a bicycle's noise "
+                                          "for a vehicle, a person's for a person, speeds "
+                                          're-fitted when found again (TODO 217, a challenger)'),
         DeclareLaunchArgument('things_background', default_value='true',
                               description='with things:=true: low cubes on the saved map '
                                           'are not things (TODO 175 step 5; the default '
@@ -651,26 +710,32 @@ def generate_launch_description():
                               description='true (with lidar:=true): the trial, aav_voxels: '
                                           "the costmap's lidar_layer and collision_monitor "
                                           'read 0.25 m cubes instead of the flat scan'),
+        DeclareLaunchArgument('ground', default_value='',
+                              description='with lidar:=true: plane (empty too: one road plane '
+                                          'a cloud) or patchwork, a plane a patch ring by ring '
+                                          'in the Rust voxels node, the costmap on its cubes '
+                                          '(TODO 215, a challenger)'),
         DeclareLaunchArgument('kerbs', default_value='false',
                               description='true (with lidar:=true): the Rust voxels node '
                                           'finds kerbs (steps in the ground) and the local '
                                           "costmap's kerb_layer marks them (TODO 119)"),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
-                              description='rust (aav_behaviour_rs) or python (aav_behaviour, '
-                                          'the same node in Python): which behaviour node runs, '
-                                          'with behaviour:=true'),
+                              description='rust (aav_behaviour_rs; the Python removed 20 Nov): '
+                                          'which behaviour node runs, with behaviour:=true'),
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python (aav_voxels) or rust (aav_voxels_rs, the '
                                           'same node in Rust): which voxels node runs, with '
                                           'voxels:=true or screen_cubes:=true'),
+        DeclareLaunchArgument('stop_hold_impl', default_value=vehicle.DEFAULT_STOP_HOLD_IMPL,
+                              description='rust (aav_safety_rs, the default) or python '
+                                          '(aav_safety): which stop_hold runs'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
                               description='python (aav_lidar) or rust (aav_lidar_rs, the same '
                                           'node in Rust): which lidar_scan runs, with '
                                           'lidar:=true'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
-                              description='python (aav_things) or rust (aav_things_rs, the '
-                                          'same node in Rust): which things node runs, with '
-                                          'things:=true'),
+                              description='rust (aav_things_rs; the Python removed 20 Nov): '
+                                          'which things node runs, with things:=true'),
         DeclareLaunchArgument('max_speed', default_value='',
                               description="m/s: Nav2's top speed, if not nav2.yaml's 1.0 "
                                           '(sim.launch.py sim_speed:=)'),
@@ -695,6 +760,10 @@ def generate_launch_description():
         DeclareLaunchArgument('diffusion_smoothing', default_value='gear',
                               description="with planner:=diffusion: gear (each gear's run "
                                           'smoothed on its own) or average (2 Nov)'),
+        DeclareLaunchArgument('diffusion_impl', default_value=vehicle.DEFAULT_DIFFUSION_IMPL,
+                              description="with planner:=diffusion: the model's worker: "
+                                          'python (worker.py) or rust (aav_diffusion_rs, '
+                                          'ONNX Runtime from Rust; docs/onnx.md)'),
         DeclareLaunchArgument('diffusion_python', default_value='',
                               description="with planner:=diffusion: the model worker's "
                                           "Python (empty: Pixi's learn environment)"),
@@ -713,6 +782,18 @@ def generate_launch_description():
                                           'trial: curvature no faster than the steering '
                                           'turns at 1 or 2.5 m/s, the smoother off '
                                           '(config/lattice_ackermann_smooth*.json)'),
+        DeclareLaunchArgument('mppi_lag_batch', default_value='',
+                              description='with tracker:=mppi_lag: its samples a tick '
+                                          "(batch_size); empty: nav2.yaml's 2000. 1000, a "
+                                          'challenger: half the work a tick (TODO 152)'),
+        DeclareLaunchArgument('mpc_lag_tube', default_value='',
+                              description='with tracker:=mpc_lag_rs: m each side of the '
+                                          'path where being off it costs nothing; empty: '
+                                          '0.3 (tuned 21 Nov); 0: off'),
+        DeclareLaunchArgument('mppi_lag_sampling', default_value='',
+                              description='with tracker:=mppi_lag: correlated (empty too: '
+                                          "the steering's noise AR(1)) or smooth (TODO 212, "
+                                          "a challenger: noise on the steering's change)"),
         DeclareLaunchArgument('mppi_lag_steer_gamma', default_value='',
                               description="with tracker:=mppi_lag: its steering's control "
                                           "cost weight; empty: nav2.yaml's gamma (0.015, as "
@@ -737,7 +818,7 @@ def generate_launch_description():
                                            "again (Hz; Nav2's trees' 1.0); 0: once a goal, a "
                                            'test (the wiggle, TODO 149)')),
         DeclareLaunchArgument('behaviour', default_value='false',
-                              description='true: aav_behaviour, the behaviour states and a '
+                              description='true: aav_behaviour_rs, the behaviour states and a '
                                           'speed cap on Nav2 (a trial, docs/stopping.md)'),
         DeclareLaunchArgument('lane_map', default_value='',
                               description="with behaviour: a lanes.yaml, so the road ahead's "
@@ -747,6 +828,11 @@ def generate_launch_description():
                                           'global costmap as soft costs, lowest at the right '
 
                                           "lane's centre (TODO 148); empty: off"),
+        DeclareLaunchArgument('lane_source', default_value=lane_map.DEFAULT_LANE_SOURCE,
+                              description="the lanes layer's lanes: map (lane_costs:='s "
+                                          "roads), camera (the lane finder's lines, on "
+                                          '/perception/lane/geometry; needs it running) or '
+                                          'both (the map wins where it has a road; TODO 264)'),
         DeclareLaunchArgument('costmap_chunks', default_value='',
                               description="with costmap:=own: a folder of the map's chunks "
                                           '(chunks.yaml, fine/); the global costmap holds '
@@ -760,6 +846,11 @@ def generate_launch_description():
                               description='with lane_route: true, a parked obstacle on the '
                                           'lane is passed by moving only its stretch left; '
                                           "false: the whole path is the lattice's"),
+        DeclareLaunchArgument('lane_pass_shape', default_value='',
+                              description='with lane_route: a pass round a parked obstacle '
+                                          'as a half cosine (empty, cosine: the default) or '
+                                          'jerk, a QP holding the lateral jerk (TODO 214, a '
+                                          'challenger)'),
         DeclareLaunchArgument('lane_corners', default_value='arc',
                               description="with lane_route: the lane line's corners, "
                                           'arc (circle arcs, the default) or clothoid '
@@ -772,7 +863,7 @@ def generate_launch_description():
                                           "'s static layer from the chunks round the car "
                                           'too, not /map (TODO 175)'),
         DeclareLaunchArgument('things', default_value='false',
-                              description='true (with lidar:=true): aav_things, the cubes as '
+                              description='true (with lidar:=true): aav_things_rs, the cubes as '
                                           'tracked things on /world/things (voxels runs too)'),
         DeclareLaunchArgument('costmap', default_value=vehicle.DEFAULT_COSTMAP,
                               description='own: aav_costmap, our costmaps, on '
@@ -807,8 +898,11 @@ def generate_launch_description():
                                           'changed while it runs, `ros2 param set /track '
                                           'tracker lqr`. Never on the car'),
         DeclareLaunchArgument('amcl', default_value='false',
-                              description='true (with lidar:=true): stock AMCL as a trial, '
+                              description='true (with lidar:=true): AMCL as a trial, '
                                           'scored only: /localization/amcl/pose'),
+        DeclareLaunchArgument('amcl_impl', default_value=vehicle.DEFAULT_AMCL_IMPL,
+                              description='rust: which AMCL (aav_amcl_rs; stock nav2_amcl '
+                                          'removed 20 Nov)'),
         DeclareLaunchArgument('amcl_x', default_value='0.0',
                               description="m, map frame: AMCL's start"),
         DeclareLaunchArgument('amcl_y', default_value='0.0',

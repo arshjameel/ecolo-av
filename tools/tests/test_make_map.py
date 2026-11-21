@@ -49,3 +49,17 @@ def test_amcl_gets_the_lots_own_finer_map_and_nav2_keeps_its_own():
         header = (MAPS / meta['image']).read_bytes()[:80].split(b'\n')
         width, height = map(int, header[2].split())
         assert (width, height) == tuple(round(v / one['resolution']) for v in one['size'])
+
+
+def test_unknown_reads_back_as_unknown():
+    """
+    TODO 263: a map server's trinary read of UNKNOWN is unknown, not free.
+
+    p = (255 - v) / 255 is the chance a cell is occupied: free below free_thresh,
+    occupied above occupied_thresh. ROS 1's grey 205 (p = 0.196) is under our 0.25.
+    """
+    free_thresh, occupied_thresh = 0.25, 0.65
+    p = (255 - make_map.UNKNOWN) / 255
+    assert free_thresh < p < occupied_thresh
+    assert (255 - make_map.FREE) / 255 < free_thresh
+    assert (255 - make_map.BLOCKED) / 255 > occupied_thresh

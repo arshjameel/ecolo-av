@@ -4,10 +4,21 @@ import math
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import street_check  # noqa: E402
 
 BODY = {'length': 2.0, 'width': 1.0, 'rear_overhang': 0.2}
+
+
+def test_the_block_closes_the_street_ahead_across_it():
+    # TODO 174: facing north, a block 8 m on: its near face at y 8, turned across.
+    name, x, y, yaw = street_check.block(0.0, 0.0, math.pi / 2, 8.0)
+    assert name == 'wall_block'
+    assert x == pytest.approx(0.0, abs=1e-12)
+    assert y == pytest.approx(8.0 + street_check.WALL_THICK / 2.0)
+    assert yaw == pytest.approx(math.pi)
 
 
 def test_a_three_point_turn_changes_direction_twice():

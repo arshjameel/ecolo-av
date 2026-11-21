@@ -60,7 +60,7 @@ tools/software_gl.sh pixi run sim world:=road   # no GPU: the cameras in softwar
 since 8 Nov and the only one since 16 Nov). Gazebo played the car until then:
 [Gazebo, as it was](history/gazebo-as-it-was.md). Ravensim passed every `sim-check` leg
 Gazebo passed. Its maps cut into chunks are **RavenTiles** ([Campus](campus.md)).
-`simulator:=own`, its old name, still works for one release.
+`simulator:=own`, its old name, went on 20 Nov (TODO 241).
 
 | Name | What |
 |---|---|
@@ -80,7 +80,7 @@ Rows below dated before 16 Nov were measured in Gazebo; Ravensim copies its numb
 | `lidar` | `true` | the simulated roof lidar, in the road and test_lot worlds, read by the costmap and the stop zone ([below](#the-lidar-the-sim-only)); `false` drops it |
 | `radar` | `true` | the radar stand-in, in the road and test_lot worlds; `false`: the lidar alone feeds the stop zone |
 | `watchdog` | `true` | the sensor watchdog: stops navigation and the AI slot when a sensor fails ([below](#sensor-failures-on-purpose)) |
-| `faults` | `false` | `true`: the front left picture goes through `sim_camera_relay` too, so it can freeze on purpose |
+| `faults` | `false` | `true`: the front left picture goes through `sim_camera_relay`, and the lidar through `sim_lidar_relay`, so they can stop or freeze on purpose |
 | `actuator_model` | `true` | the car answers like `vehicle.yaml`'s `actuators:` say ([below](#the-actuator-model)); `false`: the old instant car, to compare |
 
 **Gazebo's source** is still in `vendor/gazebo/` (`pixi run get vendor`), to read: Ravensim
@@ -201,6 +201,7 @@ How the simulated car connects:
   | `sim_gps` | `/sensors/gps/fix` | `ublox_gps` |
   | `sim_radar` | `/sensors/radar/points` (road world) | the TI driver |
   | `sim_camera_relay` | the front left picture, only with `faults:=true` | `usb_cam` |
+  | `sim_lidar_relay` | `/sensors/lidar/points`, only with `faults:=true` and the lidar | `velodyne` |
 
   Each is a process of its own, so each runs on its own core: until 22 Oct one Python
   node did all of it on one thread, and the IMU sometimes went quiet behind it.
@@ -393,7 +394,7 @@ camera views, and at grazing angles small depth errors become large range errors
 |---|---|---|
 | (always, where the world renders sensors) | | `radar_clusters`, and the costmap's obstacle layer and the stop zone; `lidar_scan` and the lidar layer; the sensor watchdog |
 | `perception` | `false` | the object detector (RF-DETR Nano; YOLO with `detector:=yolo`) and `stop_sign_watcher`: twist_mux's stop-sign lock. Needs `pixi run -e ml` |
-| `lane` | `false` | `true`: lane keeping (`lane_finder`, and `control_interface` on `/drivers/ai/cmd_vel`). Add `nav:=false`: navigation outranks it. `fake`: on a pretend lane, in any world |
+| `lane` | `false` | `true`: the lane finder alone, on `/perception/lane/geometry` (the lane follower went on 19 Nov (TODO 264; git tag `save/lane-followers`; [as it was](history/lane-followers.md))). `lanes:=camera` draws its lines into the costmap, and starts it |
 | `camera_obstacles` | `false` | the detectors' boxes into the local costmap |
 | `hud` | `false` | the HUD window (raylib) |
 | `obstacle` | `false` | the bench's 1 m box, in the lane 15 m ahead |
@@ -436,7 +437,6 @@ Ben's Mac (Apple silicon, macOS), 15 Oct, in Gazebo (Ravensim's numbers match: [
 ```bash
 pixi run sim-check                                # start-up, contract, sensors, a drive
 pixi run -e ml sim-check --perception --obstacle  # and the stop sign, and the box
-pixi run sim-check --lane                         # and lane keeping, in a second run
 pixi run sim-check --lidar-obstacle               # and the lidar alone (radar off) stops for a post
 pixi run sim-check --plan-around                  # and the car drives round a box it sees, without stopping
 pixi run sim-check --ghost                        # and a pretend person only navigation sees, in a second run
@@ -459,7 +459,7 @@ Ran on Ben's Mac, 15 Oct (in Gazebo), after the topic renaming:
 | The same, with the lidar on | failed 3 times out of 3 that morning (why: [the lidar](#the-lidar-the-sim-only)), so the lidar went off by default |
 | The same, afternoon, a quiet Mac (an orphaned Gazebo and five leftover ROS daemons stopped) | **passed 2 out of 2** with the lidar, three cameras, the radar and YOLO: the sign seen from 9.6 m, the car stood 3.6 m before it, then reached its goal. So the lidar is on by default again |
 | The test_lot world with its new sensors | front cameras 6.9 and 9.7 Hz, rear 7.7 Hz, lidar 9.7 Hz with 2891 hits a sweep on the walls, building and cars |
-| `pixi run sim-check --lane` | ✅ 15 Oct, after the cameras moved: back to the lane's centre within 5 cm in 5 s |
+| `pixi run sim-check --lane` (gone with the lane follower, 19 Nov) | ✅ 15 Oct, after the cameras moved: back to the lane's centre within 5 cm in 5 s |
 | `pixi run sim-check --obstacle --lidar-obstacle` (15 Oct, the lidar into Nav2; twice) | all pass: the box 0.32-0.46 m ahead with radar and lidar; with the radar off, the lidar alone stopped the car 0.16-0.55 m before a person-sized post, the costmap 100 of 100 there; both goals reached once they were gone |
 | `AAV_RMW=cyclone pixi run sim-check --obstacle --lidar-obstacle --plan-around`, `--ghost` (22 Oct, MPPI, the planner seeing the sensors) | all pass: with `plan_around:=false` the box 0.37 m ahead, the post 0.26 m; with the planner seeing them, round the box 3.9 m clear, never stopped; the ghost 0.13 m |
 | `pixi run sim-check --faults` (15 Oct) | all 10 faults pass: the car stood still 1.7-4.1 s after each, and the watchdog (or `collision_monitor`, for the radar) said why; then let go |
@@ -488,15 +488,16 @@ pixi run sim-fault clear                  # after a GPS jump or a lost HUD: a pe
 
 | Sensor | Topic it breaks | Faults |
 |---|---|---|
-| `gps` | `/sensors/gps/fix` | `stop`, `freeze`, `nan`, `jump` (20 m north) |
+| `gps` | `/sensors/gps/fix` | `stop`, `freeze`, `nan`, `jump` (20 m north), `drift` (5 m north over a minute, then stays: no jump, never silent; TODO 210) |
 | `imu` | `/sensors/imu/data_raw` | `stop`, `freeze`, `nan` |
 | `odom` | the wheels: `/vehicle/odom`, `/vehicle/wheels` | `stop`, `freeze`, `nan` |
 | `radar` | `/sensors/radar/points` | `stop`, `freeze` |
 | `camera` | `/sensors/camera/front_left/image_raw` (with `faults:=true`) | `stop`, `freeze` |
+| `lidar` | `/sensors/lidar/points` (with `faults:=true`; TODO 246) | `stop`, `freeze` |
 
 `freeze` sends the last good message again, with fresh stamps: it looks alive. It's a
 parameter, `fault.<sensor>`, of that sensor's node (`sim_gps`, `sim_imu`,
-`sim_radar`, `sim_camera_relay`; the wheels' is `sim_adapter`'s). The logic is
+`sim_radar`, `sim_camera_relay`, `sim_lidar_relay`; the wheels' is `sim_adapter`'s). The logic is
 `aav_sim_models/faults.py`.
 
 ### Actuator failures on purpose (15 Nov, TODO 159)

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The map editor · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/map-editor.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>The map editor</h1>
+<div class="meta">7 min read · 7 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a class="here" href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#what-it-looks-like">What it looks like</a><a href="#the-layers">The layers</a><a href="#the-tools">The tools</a><a href="#what-a-save-writes">What a save writes</a><a href="#the-proof-in-ravensim">The proof in Ravensim</a><a href="#labels-and-what-comes-next">Labels, and what comes next</a><a href="#code">Code</a></nav>
+<div class="lead"><p>A person checks <strong>our map</strong> from a drive over the street map, lines it up, removes what
+won't be there next time (parked cars), labels what is, then <strong>approves</strong> it. Phase E of
+the <a href="testing-plan.html">testing plan</a> (TODO 251). The maps come from
+<a href="maps-from-drives.html">Maps from drives</a>.</p>
+<pre class="highlight"><code class="language-sh">pixi run map-drive bags/&lt;drive&gt;              # the drive's maps, into bags/&lt;drive&gt;/map/
+pixi run map-edit bags/&lt;drive&gt;/map           # the editor: no ROS, a laptop</code></pre>
+<div class="admonition warning">
+<p class="admonition-title">Not yet looked at on a screen</p>
+<p>Built 19 Nov. Its logic is tested, and the proof below ran in Ravensim. The window
+itself was only started and closed (the Mac's screen was locked, so its own screenshot
+came out black). Untested on a real drive.</p>
+</div></div>
+<section class="card"><h2 id="what-it-looks-like">What it looks like</h2>
+<pre class="highlight"><code class="language-text">┌ tools ──────────────────┬ the map ──────────────────────────────────────┐
+│ Layers: Streets  NDT    │   streets and buildings (OpenStreetMap)        │
+│   2D map  chunks  ...   │     our 2D map (white = something there)       │
+│ Tool: Pan  Box  Align   │       NDT's points from above, by height       │
+│ Align: x  y  yaw        │         64 m chunks, labels, the drive's path  │
+│ Box: Delete  Label      │                                                │
+│ Labels: 1 parked car    │   [ a box being drawn ]                        │
+│ Edits: ...   Undo       │                                                │
+│ Approve and save…       │ Box (B)  moved by hand: x 0.00 m ...           │
+└─────────────────────────┴────────────────────────────────────────────────┘</code></pre>
+<p>The proof's edit, drawn from the saved files (not the window):</p>
+<p><img alt="The test lot's map before and after: the parked cars deleted and labelled" src="../img/map-editor-parked-cars.png" /></p>
+</section>
+<section class="card"><h2 id="the-layers">The layers</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Shows</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Streets (OSM)</td>
+<td>roads, buildings, parks</td>
+<td><code>maps/streets/</code> (<code>pixi run get street-map</code>), placed by the map's datum</td>
+</tr>
+<tr>
+<td>NDT points</td>
+<td>each 10 cm cell's highest point, blue (low) to red (high)</td>
+<td><code>ndt.pcd</code></td>
+</tr>
+<tr>
+<td>2D map</td>
+<td>occupied white, free grey, unknown clear</td>
+<td><code>map2d.pgm</code></td>
+</tr>
+<tr>
+<td>64 m chunks</td>
+<td>the chunks a save will write</td>
+<td><code>map-chunks</code>' grid</td>
+</tr>
+<tr>
+<td>Labels</td>
+<td>each label's box and class</td>
+<td><code>labels.yaml</code></td>
+</tr>
+<tr>
+<td>Path</td>
+<td>the drive, red</td>
+<td><code>poses.tum</code></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-tools">The tools</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Do</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>move the view</td>
+<td>Pan tool (P) and drag; or a right or middle drag in any tool</td>
+</tr>
+<tr>
+<td>zoom</td>
+<td>the wheel, or a pinch</td>
+</tr>
+<tr>
+<td>draw a box</td>
+<td>Box tool (B) and drag; "turn (°)" turns it</td>
+</tr>
+<tr>
+<td>delete in the box</td>
+<td>Delete or Backspace, or <strong>Delete in box</strong>: NDT's points go; the 2D cells become unknown, free or stay</td>
+</tr>
+<tr>
+<td>only some heights</td>
+<td>tick <strong>only heights</strong> (a parked car: 0 to 2 m; keep the tree above it)</td>
+</tr>
+<tr>
+<td>label the box</td>
+<td>pick tree, building, parked car, pole or other, then <strong>Label box</strong></td>
+</tr>
+<tr>
+<td>change or remove a label</td>
+<td>its row in <strong>Labels</strong></td>
+</tr>
+<tr>
+<td>line our map up</td>
+<td>Align tool (A): drag; arrows 5 cm (shift 50 cm); Q / E turn 0.1° (shift 1°); or type x, y, yaw and <strong>Apply</strong></td>
+</tr>
+<tr>
+<td>undo</td>
+<td>Cmd/Ctrl+Z, or <strong>Undo</strong></td>
+</tr>
+<tr>
+<td>approve</td>
+<td><strong>Approve and save…</strong>, check the summary, <strong>Approve and save</strong></td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="what-a-save-writes">What a save writes</h2>
+<p>A <strong>new</strong> folder, <code>&lt;map&gt;-edit-1</code> (then <code>-2</code>...) beside the map, or the one typed. The
+map opened is never written over; a folder already there is refused.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ndt.pcd</code>, <code>ndt.yaml</code></td>
+<td>NDT's map; the YAML's <code>edited:</code> says from where and how many edits</td>
+</tr>
+<tr>
+<td><code>map2d.pgm</code>, <code>map2d.yaml</code></td>
+<td>the 2D map (unknown as grey 128, as <code>map-drive</code> writes it)</td>
+</tr>
+<tr>
+<td><code>poses.tum</code></td>
+<td>the path, moved with the map</td>
+</tr>
+<tr>
+<td><code>labels.yaml</code></td>
+<td>the labels, in the map frame</td>
+</tr>
+<tr>
+<td><code>edits.yaml</code></td>
+<td>every edit, in order, and what each changed</td>
+</tr>
+<tr>
+<td><code>chunks/</code></td>
+<td>cut again, by the same code as <code>map-drive</code> (<code>map-chunks</code>, <code>ndt-core</code>)</td>
+</tr>
+<tr>
+<td><code>closures.yaml</code>, <code>poses_slam.tum</code></td>
+<td>copied</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Lining up never moves points silently.</strong> The map in memory stays as read. The move is
+one edit in the log. On save, the points, the 2D map, the path and the labels move
+together, and both YAMLs say so: <code>placed: aligned_by_hand: {x_m, y_m, yaw_deg}</code>, and
+<code>slam_to_map</code> becomes SLAM's move followed by the hand's. A moved 2D map gets new cells,
+on whole metres (NDT's chunks need 1 m edges).</p>
+</section>
+<section class="card"><h2 id="the-proof-in-ravensim">The proof in Ravensim</h2>
+<p>The loop drive's map (<code>bags/2026-11-19_061817_simloop/map</code>, from
+<a href="maps-from-drives.html">Maps from drives</a>). The test lot has a row of parked cars: a box
+2 m x 30 m at (51, 15). Deleted with a 3 m x 32 m box, then labelled:</p>
+<pre class="highlight"><code class="language-sh">cd ros/bringup/aav_description/map-edit
+cargo run --release --bin map-edit-batch -- &lt;drive&gt;/map \
+    --delete 49.5,-1,52.5,31 --label parked_car:49.5,-1,52.5,31 --out &lt;drive&gt;/map-no-cars</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NDT's points</td>
+<td>131,291</td>
+<td>120,764 (10,527 out)</td>
+</tr>
+<tr>
+<td>2D cells changed</td>
+<td></td>
+<td>478, to unknown</td>
+</tr>
+<tr>
+<td>chunks</td>
+<td></td>
+<td>2 fine, 2 coarse, 2 NDT</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>map-edit-batch</code> runs the same <code>Editor</code> and save as the window, so the proof needs no
+screen.</p>
+<p><strong>NDT on the edited map</strong> (the parked cars are still in the world, so the lidar sees
+things the map no longer has):</p>
+<pre class="highlight"><code class="language-sh">pixi run measure controllers --ndt --ndt-map &lt;drive&gt;/map-no-cars/ndt.pcd --tours lot \
+    --controllers mppi --runs 2</code></pre>
+<p>Two runs each, the lot tour (4 legs, 152 m), 19 Nov:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>NDT's map</th>
+<th>Off the truth, mean per leg (run 1 / run 2)</th>
+<th>Worst</th>
+<th>Clouds with a pose</th>
+<th>Restarts</th>
+<th>Legs reached</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>edited</strong> (no parked cars)</td>
+<td>3.6 / 3.7, 4.3 / 4.3, 4.5 / 4.4, 4.8 / 4.9 cm</td>
+<td>15 cm</td>
+<td>99-100 %</td>
+<td>0</td>
+<td>8/8</td>
+</tr>
+<tr>
+<td>unedited (<code>map/ndt.pcd</code>)</td>
+<td>3.5 / 3.5, 4.3 / 4.2, 4.3 / 4.4, 4.9 / 5.0 cm</td>
+<td>29 cm</td>
+<td>98-100 %</td>
+<td>0</td>
+<td>6/8</td>
+</tr>
+</tbody>
+</table></div>
+<p>NDT on the edited map is as good as on the unedited one: within 0.2 cm a leg, each match
+1.1-1.5 ms. The two legs missed on the unedited map were the path follower (it aborted;
+a costmap went quiet for 0.7 s), not NDT: its numbers on those legs are like the others.
+Results in <code>bags/proof/</code> (not in git).</p>
+</section>
+<section class="card"><h2 id="labels-and-what-comes-next">Labels, and what comes next</h2>
+<pre class="highlight"><code class="language-yaml">labels:
+- id: 1
+  class: parked_car          # tree, building, parked_car, pole, other
+  region: {centre_m: [51.0, 15.0], size_m: [3.0, 32.0], yaw_rad: 0.0}
+  band: {min_m: 0.0, max_m: 2.0}   # optional: all heights if left out
+  source: person             # who made it: person, passes (map-area) or camera
+  seen_in: [2026-11-19_181817_simbox]   # map-area: the drives that saw it</code></pre>
+<h3 id="seen_in-what-only-one-drive-saw"><code>seen_in</code>: what only one drive saw</h3>
+<p><code>pixi run map-area</code> (<a href="maps-from-drives.html#many-drives-of-one-area">Maps from drives</a>)
+merges several drives of one area. What one drive hit and another saw through (a car
+that left) is already gone. What <strong>only one drive saw</strong>, and no other saw through, stays
+in the map, and gets a label for a person to judge:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>class</code></td>
+<td><code>other</code>: relabel it (<code>parked_car</code>, <code>pole</code>...) or delete it</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>passes</code></td>
+</tr>
+<tr>
+<td><code>seen_in</code></td>
+<td>the one drive that saw it</td>
+</tr>
+<tr>
+<td><code>band</code></td>
+<td>0.3-2 m, the 2D map's</td>
+</tr>
+</tbody>
+</table></div>
+<p>Open the area's folder (<code>pixi run map-edit maps/&lt;area&gt;</code>): the labels are drawn with the
+rest. A box-delete with its label's box takes it out; a relabel makes it <code>person</code>'s.</p>
+<p>Room is left for the camera's labels, and the editor reads their fields already:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Next</th>
+<th>How it plugs in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Camera labels (TODO 252, built 19 Nov)</td>
+<td><code>pixi run label-drive</code> writes them: OWLv2's boxes on the lidar points, with <code>source: camera</code>, a <code>confidence</code> and <code>seen_in</code>; a person keeps, fixes or removes them here (a relabel makes it <code>person</code>). Then <code>label-train</code> learns from the file as the person left it (<a href="labelling.html">Labelling</a>)</td>
+</tr>
+<tr>
+<td>Occupancy across passes (TODO 259)</td>
+<td>built 19 Nov: <code>map-area</code> writes <code>labels.yaml</code> with <code>source: passes</code> and <code>seen_in</code> (above)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="code">Code</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ros/bringup/aav_description/map-edit/</code></td>
+<td>the logic, no ROS, no window: load, the edits, undo, save, the layers' pictures; <code>map-edit-batch</code></td>
+</tr>
+<tr>
+<td><code>ros/hud/aav_dev_window/src/map_edit/</code></td>
+<td>the window (Bevy and egui, the developer window's setup), the binary <code>map_edit</code></td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="maps-from-drives.html"><small>Previous</small>← Maps from drives</a>
+<a class="next" href="labelling.html"><small>Next</small>Labelling after a drive →</a></nav>
+</main>
+<footer>Source: <code>docs/map-editor.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

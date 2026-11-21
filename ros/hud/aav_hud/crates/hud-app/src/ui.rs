@@ -59,6 +59,7 @@ use hud_core::{
     origin::Origin,
     picture::Picture,
     segments::{self, Digit, Segment},
+    self_test::Readiness,
     silhouette::Placement,
     state::{Alarm, EstopReport, HudState},
     theme::{Arcade, Rgba, Style, Theme},
@@ -991,6 +992,36 @@ fn camera(
         };
         c.bar((inner.0, top, inner.2, 40.0), colour);
         c.fitted(inner.0 + 8.0, top + 9.0, 22.0, inner.2 - 16.0, text, ink);
+        top += 40.0;
+    }
+    // The boot self-test: NOT READY and why (or SILENT) as a stop banner under the
+    // watchdog's; READY as a small green tag in the corner. Never heard: nothing.
+    match state.readiness(now) {
+        Some(Readiness::NotReady(why)) => {
+            let th = c.t;
+            let fill = if blink {
+                th.stop_fill_alt
+            } else {
+                th.stop_fill
+            };
+            c.bar((inner.0, top, inner.2, 40.0), fill);
+            c.fitted(
+                inner.0 + 8.0,
+                top + 9.0,
+                22.0,
+                inner.2 - 16.0,
+                &why,
+                th.stop_ink,
+            );
+        }
+        Some(Readiness::Ready) => {
+            let (size, pad) = (18.0, 6.0);
+            let w = c.width("READY", size) + 2.0 * pad;
+            let tag = (inner.0 + inner.2 - w - 6.0, top + 6.0, w, size + 2.0 * pad);
+            c.bar(tag, c.t.go_fill);
+            c.right(tag.0 + w - pad, tag.1 + pad, size, "READY", c.t.go_ink);
+        }
+        None => {}
     }
 }
 

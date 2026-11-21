@@ -17,10 +17,14 @@ The modes, and what they stand for on the car:
   nan     NaN in every number: a driver that parsed garbage
   jump    the GPS only: the position jumps JUMP_NORTH m north and stays there (a bad
           multipath fix, an RTK fix on the wrong integer)
+  drift   the GPS only: the position slides north, DRIFT_RATE m/s, until DRIFT_MAX m off,
+          and stays (TODO 210: multipath near buildings, a bad correction stream). The
+          hard case: no jump, never silent, the fix still says it is good
 
 The sensors: gps (/sensors/gps/fix), imu (/sensors/imu/data_raw), odom (the wheels:
-/vehicle/odom and /vehicle/wheels), radar (/sensors/radar/points) and camera (the front
-left camera's picture, only with faults:=true, which routes it through sim_camera_relay).
+/vehicle/odom and /vehicle/wheels), radar (/sensors/radar/points), camera (the front
+left camera's picture) and lidar (/sensors/lidar/points). The camera and the lidar only
+with faults:=true, which routes them through sim_camera_relay and sim_lidar_relay.
 """
 
 import copy
@@ -28,11 +32,12 @@ from dataclasses import replace
 from typing import Optional
 
 SENSORS = {
-    'gps': ('ok', 'stop', 'freeze', 'nan', 'jump'),
+    'gps': ('ok', 'stop', 'freeze', 'nan', 'jump', 'drift'),
     'imu': ('ok', 'stop', 'freeze', 'nan'),
     'odom': ('ok', 'stop', 'freeze', 'nan'),
     'radar': ('ok', 'stop', 'freeze'),
     'camera': ('ok', 'stop', 'freeze'),
+    'lidar': ('ok', 'stop', 'freeze'),
 }
 # Which node passes each sensor on, and so takes its fault.<sensor> parameter: one node
 # per sensor (relay.py); the wheels go with the car, in sim_adapter.
@@ -42,8 +47,13 @@ NODES = {
     'odom': 'sim_adapter',
     'radar': 'sim_radar',
     'camera': 'sim_camera_relay',
+    'lidar': 'sim_lidar_relay',
 }
 JUMP_NORTH = 20.0               # m
+# The drift: a slow bias of a few metres over a minute, 0.083 m/s: under the watchdog's
+# 0.15 m/s wheels-against-GPS speed check.
+DRIFT_MAX = 5.0                 # m
+DRIFT_RATE = DRIFT_MAX / 60.0   # m/s
 METRES_PER_DEGREE = 111195.0    # of latitude, on a 6371 km Earth
 
 
@@ -61,6 +71,11 @@ def jumped(latitude: float, metres: float = JUMP_NORTH) -> float:
     return latitude + metres / METRES_PER_DEGREE
 
 
+def drifted(seconds: float) -> float:
+    """Return how far north (m) the drift has slid `seconds` after it began."""
+    return min(DRIFT_MAX, DRIFT_RATE * max(0.0, seconds))
+
+
 class Fault:
     """One sensor's fault: decides what goes out in place of each message."""
 
@@ -68,19 +83,22 @@ class Fault:
         self.sensor = sensor
         self.mode = 'ok'
         self.held = None        # the last message passed on while ok: what freeze repeats
+        self.since = None       # drift: the time it began (the first message after)
 
     def switch(self, mode: str):
         why = check(self.sensor, mode)
         if why is not None:
             raise ValueError(why)
         self.mode = mode
+        self.since = None
 
-    def apply(self, msg, nan=None, jump=None):
+    def apply(self, msg, nan=None, jump=None, drift=None, now=None):
         """
         Return what to send for msg, or None to send nothing.
 
-        nan(msg) and jump(msg) change a message in place: the caller knows its type. They
-        get a copy, so the held message stays good.
+        nan(msg), jump(msg) and drift(msg, seconds) change a message in place: the caller
+        knows its type. They get a copy, so the held message stays good. now (s, the
+        message's own time) times the drift from its first message.
         """
         if self.mode == 'ok':
             self.held = msg
@@ -90,7 +108,12 @@ class Fault:
         if self.mode == 'freeze':
             return copy.deepcopy(self.held) if self.held is not None else None
         out = copy.deepcopy(msg)
-        (nan if self.mode == 'nan' else jump)(out)
+        if self.mode == 'drift':
+            if self.since is None:
+                self.since = now
+            drift(out, now - self.since)
+        else:
+            (nan if self.mode == 'nan' else jump)(out)
         return out
 
 
@@ -158,3 +181,7 @@ CAMERA = '/sensors/camera/front_left/image_raw'
 # faults:=true: the cameras put the front left picture here, and sim_camera_relay passes it
 # on to CAMERA through its fault.
 CAMERA_RELAYED = '/vehicle/sim/camera/front_left/image_raw'
+LIDAR = '/sensors/lidar/points'
+# faults:=true: the simulator's lidar is remapped here, and sim_lidar_relay passes it on to
+# LIDAR through its fault (TODO 246).
+LIDAR_RELAYED = '/vehicle/sim/lidar/points'
