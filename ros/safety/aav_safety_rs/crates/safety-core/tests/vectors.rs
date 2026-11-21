@@ -27,9 +27,13 @@ fn fs(v: &Value) -> Vec<f64> {
     v.as_array().expect("a list").iter().map(f).collect()
 }
 
-/// The same number, bit for bit (any NaN matches a NaN).
+/// The same number: bit for bit on the computer that wrote the vectors, within 1e-9 on any
+/// other (any NaN matches a NaN). Linux's maths library rounds sin, cos and atan2 apart
+/// from macOS's in the last bit (20 Nov: CI failed on Linux and ARM only).
 fn same(a: f64, b: f64) -> bool {
-    a.to_bits() == b.to_bits() || (a.is_nan() && b.is_nan())
+    a.to_bits() == b.to_bits()
+        || (a.is_nan() && b.is_nan())
+        || (a - b).abs() <= 1e-9 * a.abs().max(b.abs()).max(1.0)
 }
 
 fn fence(spec: &Value) -> Fence {
