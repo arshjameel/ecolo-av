@@ -306,6 +306,25 @@ def test_a_lost_rc_must_say_fault_256_and_brake():
     assert any('fault 256' in p for p in r.problems)
 
 
+
+def test_the_failsafe_sends_ch6_under_the_spines_threshold():
+    ch = q.rc_channels('failsafe', throttle=q.BAND)
+    assert ch[5] == 900 < 950 and ch[2] == 1500
+    # The gear switch (CH5) is no longer set: it stays in the middle.
+    assert q.rc_channels('direct')[4] == 1500
+
+
+def test_the_failsafe_must_say_fault_256_and_brake_at_once():
+    phase = q.RcPhase('normal_failsafe', 100.0, 101.0, rc_stop=100.0)
+    lost = up(switch=q.SWITCH_NONE, mode=q.MODE_STOPPED, faults=q.RC_SIGNAL_LOST,
+              throttle_out=0.0, brake_out=1.0)
+    # Seen 20 ms after the failsafe's first frame: fine (a silence needs 100 ms).
+    ups = [(100.0 + i * 0.02, lost if i >= 1 else up()) for i in range(50)]
+    lines = rc_lines(dac=0, brake=q.BRAKE_FULL)
+    r = q.judge_rc(phase, ups, lines, q.ClockMap.fit(lines))
+    assert r.ok, r.problems
+    assert r.ms == pytest.approx(20)
+
 # --- A loaded computer (24 Oct): the next cycle's stop must not count as driving again ---
 
 def with_counters(lines, resume=7, after=8):

@@ -40,10 +40,13 @@ cycle's uplink frames (judge_uplink) must come at ~50 Hz, echo a counter the Ori
 just sent, say computer and armed while it drives, and say stopped with fault 1 within
 100-250 ms of the last new counter; in a frozen gap the echo must stay the frozen one.
 
-Then the RC (TODO 48; RC_PHASES): iBUS frames every 7 ms with the mode switch (CH6) in
-the middle, RC via ROS: the sticks come up, and only the frames drive; at the top, RC
-direct: the sticks drive, whatever the frames say; then silence in each: fault 256 and
-full brake within 100-250 ms; and back on RC via ROS it stays braked until a stop.
+The RC (TODO 48; RC_PHASES) sends iBUS frames every 7 ms from boot: the firmware has a
+receiver, so normal mode (CH6 low) needs them too, with the left stick resting in its
+brake band (1500) so the computer may drive. Then, with the mode switch (CH6) in the
+middle, RC via ROS: the sticks come up, and only the frames drive; at the top, RC direct
+(manual): the sticks drive, whatever the frames say; then silence in each: fault 256 and
+full brake within 100-250 ms; back on RC via ROS it stays braked until a stop; and in
+normal mode, the transmitter's failsafe (CH6 at 900): fault 256 and the full brake.
 
 Times: `t` is the firmware's clock (esp-hal's Instant, from QEMU's virtual clock, which
 follows the host's clock without -icount). The host notes when each line arrives;
@@ -94,10 +97,11 @@ UPLINK_LIMIT_MS = 400
 ECHO_WINDOW = 0.5           # s: an echo must be a counter sent this recently
 
 # The RC (TODO 48): the mode switch on CH6 (index 5), the proposal (RcMap::THREE_POSITION).
-SWITCH = {'computer': 1000, 'via_ros': 1500, 'direct': 2000}
-FULL_STICK = 1000           # the throttle stick (CH3) all the way: below the middle is go
-FORWARD = 1000              # the gear switch (CH5) on forward
-GEAR_BRAKE = 1500           # the gear switch on brake: between 1200 and 1800
+# 'failsafe': what the transmitter's failsafe sends on CH6 when the link drops (under 950).
+SWITCH = {'computer': 1000, 'via_ros': 1500, 'direct': 2000, 'failsafe': 900}
+FULL_STICK = 1000           # the left stick (CH3) all the way forward: below the middle
+BAND = 1500                 # the left stick in its brake band (the middle 30 % each way)
+RC_WINDOW = 1.2             # s: the RC's first second after boot or a stop, and a margin
 IBUS_PERIOD = 0.007         # s: a FlySky receiver sends a frame about every 7 ms
 
 RATE_HZ = 50.0              # legacy_uart_bridge's rate_hz
@@ -405,12 +409,11 @@ def ibus_frame(channels: List[int]) -> bytes:
     return body + struct.pack('<H', (0xFFFF - sum(body)) & 0xFFFF)
 
 
-def rc_channels(switch: str, throttle: int = FULL_STICK, gear: int = FORWARD) -> List[int]:
-    """Return the 14 channels: the mode switch (CH6), the throttle, the gear (CH5)."""
+def rc_channels(switch: str, throttle: int = FULL_STICK) -> List[int]:
+    """Return the 14 channels: the mode switch (CH6) and the left stick (CH3)."""
     ch = [1500] * 14
     ch[5] = SWITCH[switch]
     ch[2] = throttle
-    ch[4] = gear
     return ch
 
 
@@ -447,6 +450,7 @@ RC_PHASES = {
     'direct_lost': 'RC direct, then the receiver goes silent',
     'via_ros_lost': 'RC via ROS, the frames driving, then the receiver goes silent',
     'via_ros_back': 'the receiver back on RC via ROS, the frames still driving, no stop',
+    'normal_failsafe': 'normal mode, the frames driving, then the failsafe: CH6 at 900',
 }
 
 
@@ -484,7 +488,7 @@ def judge_rc(phase: RcPhase, ups: List[Tuple[float, Uplink]], lines: List[Line],
         if not dac_peak:
             r.problems.append('the sticks did not drive')
         r.seen = f'switch RC direct, mode RC direct, DAC peak {dac_peak} (the sticks)'
-    elif name in ('direct_lost', 'via_ros_lost'):
+    elif name in ('direct_lost', 'via_ros_lost', 'normal_failsafe'):
         lost = next(((h, u) for h, u in ups if h > phase.rc_stop
                      and u.faults & RC_SIGNAL_LOST and u.switch == SWITCH_NONE), None)
         braked = next((ln for ln in lines if ln.kind == 'DEVICES'
@@ -494,7 +498,9 @@ def judge_rc(phase: RcPhase, ups: List[Tuple[float, Uplink]], lines: List[Line],
             r.problems.append('no uplink frame said fault 256 and no signal')
         else:
             r.ms = (lost[0] - phase.rc_stop) * 1000
-            if not TIMEOUT_MS <= r.ms <= UPLINK_LIMIT_MS:
+            # The failsafe is seen on its first frame; silence only after the timeout.
+            low = 0 if name == 'normal_failsafe' else TIMEOUT_MS
+            if not low <= r.ms <= UPLINK_LIMIT_MS:
                 r.problems.append(f'fault 256 came up after {r.ms:.0f} ms')
         if braked is None:
             r.problems.append('the brake Jrk never got 3500 with the DAC at 0')
@@ -745,6 +751,10 @@ def run(qemu: Path, flash: Path, cycles: int, rc: bool = True, relay=None):
         fw = Firmware(qemu, flash, Path(tmp))
         try:
             fw.wait_for(lambda ln: ln.kind == 'STATUS', timeout=30)
+            # The transmitter on, normal mode, the left stick resting in its band: the RC
+            # has the car for its first second after boot, then the computer may drive.
+            fw.ibus.send(rc_channels('computer', throttle=BAND))
+            time.sleep(RC_WINDOW)
             plan = []
             for i in range(cycles):
                 kind = KINDS[i % len(KINDS)]
@@ -795,19 +805,26 @@ def rc_run(fw: Firmware, orin: Orin, mapping: LegacyMapping) -> List[RcPhase]:
     fw.ibus.send(rc_channels('via_ros'))
     phase('via_ros_still', still, 1.0)          # also the arming stop
     phase('via_ros_drive', drive, 1.0)
-    # RC direct holds after any stop, power-up too, until a person clears it: the stick
-    # at zero, the gear switch on brake (spine-core's rc_hold).
-    fw.ibus.send(rc_channels('direct', throttle=1500, gear=GEAR_BRAKE))
+    # RC direct holds after any stop, after the mode switch moves and at power-up, until a
+    # person clears it: the left stick in its brake band (spine-core's rc_hold).
+    fw.ibus.send(rc_channels('direct', throttle=BAND))
     fw.send_for(still, 0.3, orin.frames(still))
     fw.ibus.send(rc_channels('direct'))
     phase('direct', still, 1.0)
     phase('direct_lost', still, 0.6, rc_stop=fw.ibus.send(None))
-    fw.ibus.send(rc_channels('via_ros', throttle=1500))
+    fw.ibus.send(rc_channels('via_ros', throttle=BAND))
     fw.send_for(still, 0.5, orin.frames(still))  # stand still: a stop, so it drives again
     fw.send_for(drive, 1.0, orin.frames(drive))
     phase('via_ros_lost', drive, 0.6, rc_stop=fw.ibus.send(None))
-    fw.ibus.send(rc_channels('via_ros', throttle=1500))
+    fw.ibus.send(rc_channels('via_ros', throttle=BAND))
     phase('via_ros_back', drive, 0.6)
+    # Normal mode, the stick in its band: a stop to re-arm, the RC's second, then the
+    # frames drive. The link drops: the failsafe puts CH6 at 900, and frames still come.
+    fw.ibus.send(rc_channels('computer', throttle=BAND))
+    fw.send_for(still, 0.5, orin.frames(still))
+    fw.send_for(drive, RC_WINDOW + 0.5, orin.frames(drive))
+    failsafe = rc_channels('failsafe', throttle=BAND)
+    phase('normal_failsafe', drive, 0.6, rc_stop=fw.ibus.send(failsafe))
     return phases
 
 
