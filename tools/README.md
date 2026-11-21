@@ -178,6 +178,8 @@ Each lands outside git, checksum pinned where the script says.
 | `label_drive.py` | labels after a drive (TODO 252): OWLv2's boxes onto the lidar points, into `labels.yaml`; `--sim-drive` makes a drive from Ravensim; scored against its truth. The maths: `label_core.py` (no ROS, tested) | `label-drive` (ml env) |
 | `label_train.py` | our small point segmenter from the reviewed labels: mps, held-out scores, ONNX on the CPU and Core ML | `label-train` (ml env) |
 | `onnx_check.py` | the ONNX detector's boxes against PyTorch's, and each runtime's ms a picture (`--time`); `--write-fixtures` for `detector-core`'s tests ([ONNX](../docs/onnx.md)) | - (`pixi run -e ml python3 tools/onnx_check.py`) |
+| `step_plots.py` | the actuator tests' runs as graphs, one per test: asked, ego, the car (speed, steering, pedals), the IMU (smoothed), the distance; several sessions drawn over each other, the sim's and the car's (car day 21 Nov) | - |
+| `sim_moves.py` | two baseline moves against a running sim, logged as the actuator tests log: `pedal` (the stick through ego's pedal, to reverse) and `three` (3 m and stop, the scripted drive) | - (ros.sh --local) |
 | `vehicle_model.py` | the car's linear model: poles, steps, margins | - |
 | `state_space_demo.py` | the state-space teaching example | - |
 | `measure_map.py` | the measuring map: tape route, pictures, readings into `vehicle.yaml` (no ROS) | - |
