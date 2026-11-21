@@ -291,8 +291,9 @@ def test_diffusion_takes_compute_path_to_pose_with_our_planner_behind_it():
 def test_bad_trackers_and_reversing_trackers_are_refused():
     with pytest.raises(ValueError, match='pick one of'):
         nav_nodes(tracker='none')                       # Nav2's controller_server went
-    with pytest.raises(ValueError, match='reversing:=false'):
-        nav_nodes(tracker='mpc_lag_rs', reversing='true')
+    # Every tracker reverses now: mpc_lag_rs too since 20 Nov (TODO 213).
+    rs = given(nav_nodes(tracker='mpc_lag_rs', reversing='true')['mpc_lag_rs'])
+    assert rs['max_reverse_speed'] > 0
     # aav_track's reverse since 19 Nov (TODO 174), at vehicle.yaml's reverse speed.
     track = given(nav_nodes(tracker='stanley', reversing='true')['track'])
     assert track['max_reverse_speed'] > 0
@@ -462,8 +463,8 @@ def test_the_sim_passes_the_trials_on_and_checks_them():
     assert sent_to_navigation(SIM, tracker='mpc', reversing='false')['tracker'] == 'mpc'
     # The sim reverses by default; aav_track's trackers do too since 19 Nov (TODO 174).
     assert sent_to_navigation(SIM, tracker='mpc')['tracker'] == 'mpc'
-    with pytest.raises(ValueError, match='reversing:=false'):
-        sent_to_navigation(SIM, tracker='mpc_lag_rs')   # still forward only
+    # mpc_lag_rs reverses too since 20 Nov (TODO 213).
+    assert sent_to_navigation(SIM, tracker='mpc_lag_rs')['tracker'] == 'mpc_lag_rs'
     with pytest.raises(ValueError, match='world:=test_lot'):
         sent_to_navigation(SIM, amcl='true')            # the empty world: no real map
     with pytest.raises(ValueError, match='world:=test_lot'):
