@@ -833,3 +833,16 @@ def test_the_self_test_launch_checks_its_names():
         test.node(context_for(test, self_test_locks='watchdog,fence'))
     with pytest.raises(ValueError, match='self_test_actuators'):
         test.node(context_for(test, self_test_actuators='both'))
+
+
+def test_the_dash_starts_the_two_screens_and_nothing_that_drives():
+    actions = started(CAR, machine='dash')
+    files = included(actions)
+    assert set(files) == {'hud.launch.py', 'map.launch.py'}
+    assert all(args['fullscreen'] == 'true' for args in files.values())
+    assert not nodes(actions)
+
+
+def test_a_camera_pi_starts_nothing_in_ros_and_the_battery_pi_only_the_sensors():
+    assert not included(started(CAR, machine='camera_pi'))
+    assert set(included(started(CAR, machine='battery_pi'))) == {'sensors.launch.py'}

@@ -121,6 +121,10 @@ Parts and what they start:
                   Where the mux runs too, the sensor watchdog watches it (lidar: STALE
                   after 1 s, FROZEN; it stops navigation and the AI slot)
   camera          usb_cam -> /sensors/camera/front_left/image_raw (Linux only)
+  hud, map        the two screens (aav_hud: hud.launch.py, map.launch.py), full screen, on
+                  the dash Pi (machines/dash.yaml). They only listen. At boot the dash
+                  starts them by aav-hud.service and aav-map.service (tools/screens),
+                  which pick each one's monitor: never both ways at once
   camera_stream   the front cameras' H.264 streams from the camera Pi's MediaMTX (RTSP,
                   port 8554): one camera_stream_<camera> node each (aav_camera_stream),
                   which decodes, undistorts and runs its own detector ->
@@ -190,7 +194,7 @@ PARTS = ('description', 'mux', 'ego', 'teleop', 'scripted', 'drive_to_point', 'i
          'radar', 'lidar', 'battery', 'camera', 'camera_stream', 'detector', 'stop_signs',
          'radar_clusters',
          'camera_obstacles', 'lane', 'localization', 'navigation', 'spine', 'legacy_uart',
-         'legacy_encoder', 'foxglove', 'ndt')
+         'legacy_encoder', 'foxglove', 'ndt', 'hud', 'map')
 # What a machine file holds: the parts, the detector's settings and the camera streams'.
 SECTIONS = ('parts', 'detector', 'camera_stream', 'geofence')
 # Each model format: what runs it, besides PyTorch and Ultralytics, and how to make it.
@@ -631,6 +635,15 @@ def launch_setup(context):
         actions.append(include('aav_sensors', 'sensors.launch.py',
                                imu=on('imu'), gps=on('gps'), radar=on('radar'), lidar=on('lidar'),
                                battery=on('battery'), gps_driver=arg('gps_driver')))
+    for screen, launch_args in (('hud', {'max_speed': arg('max_speed')}),
+                                ('map', {'streets': '', 'places': ''})):
+        if on(screen):
+            if installed('aav_hud'):
+                actions.append(include('aav_hud', f'{screen}.launch.py', fullscreen='true',
+                                       monitor='', **launch_args))
+            else:
+                actions += skipped(screen, 'aav_hud is not built here '
+                                           '(car_install.sh --screens builds it)')
     if on('camera'):
         if installed('usb_cam'):
             actions.append(include('aav_sensors', 'cameras.launch.py',

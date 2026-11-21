@@ -311,11 +311,11 @@ repo yet: fill them in from the vault.</p>
 </tr>
 <tr>
 <td>CORTEX, <strong>the Motor Pi?</strong> (H1), Pi 4</td>
-<td>.120</td>
+<td>.145 (21 Nov; .120 until then)</td>
 <td><code>motor_pi</code></td>
 <td>☐</td>
 <td><code>aav-cortex</code></td>
-<td><code>aav_serial_bridge</code> on <code>/dev/ttyAMA0</code> (to the ESP32), joystick teleop. Ubuntu 22.04. 6 Nov: it does the Motor Pi's job today; the hardware lead still confirms H1</td>
+<td><code>aav_serial_bridge</code> on <code>/dev/ttyAMA0</code> (to the ESP32), joystick teleop. Ubuntu 22.04. 6 Nov: it does the Motor Pi's job today; the hardware lead still confirms H1. 21 Nov: our kit of 20 Nov is on it too; 3.8 GB free of 29</td>
 <td>24.04, only after the Rust ESP32</td>
 </tr>
 <tr>
@@ -324,8 +324,8 @@ repo yet: fill them in from the vault.</p>
 <td><code>localization</code></td>
 <td>☐</td>
 <td><code>aav-localization</code></td>
-<td>the IMU (200 Hz) and GPS (10 Hz) drivers. Ubuntu 22.04. Our kit is on it too (by 11 Nov)</td>
-<td>24.04: its machine file exists now (<code>machines/localization.yaml</code>); not upgraded, by the records</td>
+<td>the IMU (200 Hz) and GPS (10 Hz) drivers, ours, in domain 42 (seen 21 Nov). <strong>Ubuntu 24.04</strong> (seen 21 Nov). Our kit of 9 Nov is on it</td>
+<td>done: 24.04; its machine file is <code>machines/localization.yaml</code></td>
 </tr>
 <tr>
 <td>aav-desktop, <strong>the dash</strong>, Pi 4</td>
@@ -333,8 +333,8 @@ repo yet: fill them in from the vault.</p>
 <td><code>dash</code></td>
 <td>☐</td>
 <td><code>aav-desktop</code></td>
-<td>the two screens. Ubuntu 22.04 Desktop</td>
-<td>24.04 Desktop</td>
+<td>the two screens. Ubuntu 22.04 Desktop. 21 Nov (Ben): Flutter, the 2025-26 UI, its map data and Docker's containers removed (copies on Ben's Mac); 35 GB free; the 2025-26 screens no longer start</td>
+<td>24.04 Desktop, our two screens</td>
 </tr>
 <tr>
 <td>CAM1-PI, <strong>the front cameras</strong>, Pi 5</td>
@@ -355,12 +355,21 @@ repo yet: fill them in from the vault.</p>
 <td>Pi OS, updated</td>
 </tr>
 <tr>
-<td><code>.211</code>, a Pi</td>
+<td><code>.211</code>, a Pi: the voltage meter's? (Ben, 21 Nov)</td>
 <td>.211</td>
 <td>none</td>
 <td>☐</td>
 <td>☐</td>
-<td>unknown (Ubuntu 22.04)</td>
+<td>Ubuntu 22.04; one ROS program in domain 0 (21 Nov). No login known</td>
+<td>ask the hardware lead first</td>
+</tr>
+<tr>
+<td><code>.195</code>, new on 21 Nov</td>
+<td>.195</td>
+<td>none</td>
+<td>☐</td>
+<td>☐</td>
+<td>Ubuntu 22.04 with ssh; not in any audit. No login known. CAM1-PI's addresses were silent that day</td>
 <td>ask the hardware lead first</td>
 </tr>
 <tr>
