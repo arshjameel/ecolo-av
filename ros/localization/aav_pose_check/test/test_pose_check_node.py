@@ -88,7 +88,16 @@ def test_ndt_leads_then_the_gps_takes_over_when_ndt_is_lost():
         while time.monotonic() < end and node.poll() is None and not (
                 ndt.get_subscription_count() and got['status']):
             rclpy.spin_once(me, timeout_sec=0.1)
+
+        def drain(seconds=0.5):
+            # Each pose passed is also on fix, a separate topic: let both queues arrive
+            # before counting (21 Nov: ARM's CI counted 5358 poses and 5357 fixes).
+            end = time.monotonic() + seconds
+            while time.monotonic() < end:
+                rclpy.spin_once(me, timeout_sec=0.05)
+
         run(4.0, lost=False)
+        drain()
         assert got['ndt'], 'no NDT fit passed: ' + (
             node.stdout.read().decode() if node.poll() is not None else '')
         assert not got['gps'], 'the GPS reached the EKF while NDT led'
