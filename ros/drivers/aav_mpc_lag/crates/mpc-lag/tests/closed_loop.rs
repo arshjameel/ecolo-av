@@ -242,6 +242,52 @@ fn a_step_offset_converges() {
 }
 
 #[test]
+fn in_the_tube_it_holds_its_line_and_outside_it_comes_back() {
+    let with_tube = |cruise| {
+        let settings = Settings {
+            cruise,
+            tube: 0.2,
+            ..Settings::default()
+        };
+        MpcLag::new(LIMITS, ActuatorConfig::default(), settings).expect("a tracker")
+    };
+    let steering_work = |run: &Run| {
+        run.rows
+            .windows(2)
+            .map(|w| (w[1][5] - w[0][5]).abs())
+            .sum::<f64>()
+    };
+    // 0.15 m off, inside the tube: no pull back to the centre, so it barely steers.
+    let held = follow(with_tube(1.0), &straight(30.0), (0.0, 0.15, 0.0), 1.0);
+    let pulled = follow(tracker(1.0), &straight(30.0), (0.0, 0.15, 0.0), 1.0);
+    assert!(held.reached && pulled.reached);
+    let late = |run: &Run| {
+        run.rows
+            .iter()
+            .filter(|r| r[1] > 20.0)
+            .map(|r| r[6])
+            .sum::<f64>()
+            / run.rows.iter().filter(|r| r[1] > 20.0).count() as f64
+    };
+    assert!(late(&held) > 0.1, "{} m: pulled to the centre", late(&held));
+    assert!(late(&pulled).abs() < 0.05);
+    assert!(steering_work(&held) < steering_work(&pulled));
+    // 1 m off: back into the tube, and no further.
+    for cruise in [1.0, 3.0] {
+        let run = follow(with_tube(cruise), &straight(40.0), (0.0, 1.0, 0.0), 1.0);
+        assert!(run.reached);
+        let worst_late = run
+            .rows
+            .iter()
+            .filter(|r| r[1] > 25.0)
+            .map(|r| r[6].abs())
+            .fold(0.0, f64::max);
+        assert!(worst_late < 0.25, "{worst_late} m off at {cruise} m/s");
+        run.check_limits(cruise);
+    }
+}
+
+#[test]
 fn a_curve_stays_close() {
     for cruise in [1.0, 3.0] {
         let run = follow(tracker(cruise), &arc(8.0), (0.0, 0.0, 0.0), 1.0);

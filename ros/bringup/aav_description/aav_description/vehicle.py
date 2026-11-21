@@ -1576,6 +1576,17 @@ def check_ground(value):
 MPPI_LAG_SAMPLINGS = ('correlated', 'smooth')
 
 
+def check_mpc_lag_tube(value):
+    """Return mpc_lag_tube:= checked: metres each side of the path, 0 to 1."""
+    try:
+        tube = float(value)
+    except ValueError:
+        raise ValueError(f'mpc_lag_tube:={value}: metres, such as 0.2') from None
+    if not 0.0 <= tube <= 1.0:
+        raise ValueError(f'mpc_lag_tube:={value}: 0 to 1 m')
+    return tube
+
+
 def check_mppi_lag_sampling(value):
     """Return mppi_lag_sampling:= checked: correlated or smooth (TODO 212)."""
     value = str(value).strip() or MPPI_LAG_SAMPLINGS[0]

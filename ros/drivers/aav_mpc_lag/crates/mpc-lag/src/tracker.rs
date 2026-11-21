@@ -18,7 +18,7 @@
 //! 3. One QP ([`qp`], OSQP's ADMM) in `dU = [steering (N), set speed (N), slack (N)]`:
 //!
 //! ```text
-//! cost   sum q.(e_y, e_theta, wheels - r)^2 + q_speed (v - v_lim)^2
+//! cost   sum q.(e_y - tube(e_y), e_theta, wheels - r)^2 + q_speed (v - v_lim)^2
 //!          + r (u - r)^2 + r_rate (du)^2 + r_speed (dc)^2 + w_slack slack^2
 //! within |u| <= full lock, |du| <= rate dt
 //!        0 <= c <= cruise, -decel dt <= dc <= accel dt
@@ -83,6 +83,10 @@ pub struct Settings {
     pub horizon: usize,
     /// Weights on e_y, e_theta, wheels - r.
     pub q: [f64; 3],
+    /// m each side of the path where being off it costs nothing (Ben, 21 Nov: "It
+    /// doesn't need to be super aggressive sticking to the line"): e_y is costed only
+    /// beyond it, so the car holds its line instead of chasing the centre. 0 = off.
+    pub tube: f64,
     /// On the command's distance from the bend's own steering.
     pub r: f64,
     /// On each tick's change of steering.
@@ -120,6 +124,7 @@ impl Default for Settings {
             period: 0.05,
             horizon: 30,
             q: [1.0, 2.0, 0.05],
+            tube: 0.0,
             r: 0.2,
             r_rate: 1.0,
             q_speed: 0.5,
@@ -277,7 +282,8 @@ impl MpcLag {
         {
             return Err(TrackError::Limits);
         }
-        let checks: [(&'static str, bool); 15] = [
+        let checks: [(&'static str, bool); 16] = [
+            ("tube", s.tube >= 0.0),
             ("cruise", s.cruise > 0.0),
             ("accel", s.accel > 0.0),
             ("decel", s.decel > 0.0),
@@ -757,7 +763,9 @@ impl MpcLag {
         let mut weights = vec![0.0; 4 * n];
         let mut err = vec![0.0; 4 * n];
         for k in 0..n {
-            let target = [0.0, 0.0, r[k], v_lim[k]];
+            // In the tube the target is where the plan already is: no pull to the centre.
+            let e_y = xs[k][row::E_Y];
+            let target = [model::clip(e_y, -s.tube, s.tube), 0.0, r[k], v_lim[k]];
             let scale = if k + 1 == n { s.terminal } else { 1.0 };
             for c in 0..4 {
                 weights[k * 4 + c] = q[c] * scale;

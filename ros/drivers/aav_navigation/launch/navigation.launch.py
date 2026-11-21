@@ -60,6 +60,7 @@ Switches:
   mppi_lag_steer_gamma:=0.05  mppi_lag's steering control cost (TODO 168)
   mppi_lag_batch:=1000        mppi_lag's samples a tick (empty: 2000; TODO 152)
   mppi_lag_sampling:=smooth   mppi_lag samples the steering's change (TODO 212)
+  mpc_lag_tube:=0.2           mpc_lag_rs: no cost within 0.2 m of the path (less sway)
   live_swap:=true         aav_track's tracker can change while it runs
   map_correction:=slow    the follower's held map -> odom moves toward the newest slowly
                           (TODO 186)
@@ -559,13 +560,16 @@ def nodes(context):
     if tracker == 'mpc_lag_rs':
         # aav_mpc_lag (Rust): aav_track's mpc_lag ported, a challenger beside it.
         own = FindPackageShare('aav_mpc_lag').perform(context) + '/config/mpc_lag_rs.yaml'
+        # The tube (Ben, 21 Nov): no cost for being off the path within this many m.
+        tube = LaunchConfiguration('mpc_lag_tube').perform(context).strip()
+        extra = {'mpc_lag.tube': vehicle.check_mpc_lag_tube(tube)} if tube else {}
         actions.append(Node(
             package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs', namespace='/',
             output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[own, vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed,
                                                        speed_loop, reversing=reversing),
                         {'use_sim_time': use_sim_time,
-                         'map_correction': slew['map_correction']}]))
+                         'map_correction': slew['map_correction'], **extra}]))
     elif tracker == 'mppi_lag':
         # aav_mppi_lag (Rust): Nav2's MPPI with the actuators' lag in its model. nav2.yaml's
         # MPPI block and checks, vehicle.yaml's actuators, ego.yaml's ramps; our local
@@ -781,6 +785,10 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           "(batch_size); empty: nav2.yaml's 2000. 1000, a "
                                           'challenger: half the work a tick (TODO 152)'),
+        DeclareLaunchArgument('mpc_lag_tube', default_value='',
+                              description='with tracker:=mpc_lag_rs: m each side of the '
+                                          'path where being off it costs nothing; empty: '
+                                          "the node's 0 (off)"),
         DeclareLaunchArgument('mppi_lag_sampling', default_value='',
                               description='with tracker:=mppi_lag: correlated (empty too: '
                                           "the steering's noise AR(1)) or smooth (TODO 212, "

@@ -60,6 +60,33 @@ The lane map wins where we have one. The camera's lanes help the lattice keep ri
 only a little: they are for roads with no lane map. Seen live (20 Nov): the learned finder
 misses lines on some stretches.
 
+## MPC against MPPI (21 Nov, TODO 213)
+
+Ben, 20 Nov: "fix mpc to have reverse". Once `mpc_lag_rs` reversed, all three followers
+raced with reversing on, 3 runs each: the lot, and University Drive with `path:=lane`.
+Raw: `log/stage2/mpc_lot/`, `log/stage2/mpc_univ/`.
+
+| | `mppi_lag` (ours) | `mpc_lag` (Python) | `mpc_lag_rs` (Rust) |
+|---|---:|---:|---:|
+| Lot: legs | 12/12 | 12/12 | 12/12 |
+| Lot: sway (m/s²) | **0.032** | 0.052 | 0.055 |
+| Lot: off the path, mean / worst (m) | 0.21 / 0.99 | 0.18 / 1.07 | **0.17 / 0.88** |
+| University: legs | 6/9 * | 8/9 | **9/9** |
+| University: sway (m/s²) | **0.132** | 0.224 | 0.251 |
+| University: off the lane's centre (m) | 0.23 | 0.22 | 0.24 |
+| University: in the lane, over the centre line | 100 %, 0 % | 100 %, 0 % | 100 %, 0 % |
+| The tick, mean (ms) | 3.4 | 6.8 | **1.6** |
+
+\* One run lost all 3 legs at the start: the sensor watchdog stopped the car (the wheels and
+the IMU disagreed), not the follower.
+
+- **`mpc_lag_rs` reaches every leg and reverses** (6.6 m backwards on the lot's turn back,
+  as MPPI), the closest to the path and the cheapest.
+- **But it sways about twice as much as MPPI.** So MPPI stays ours'.
+- **Next: the tube** (`mpc_lag_tube:=0.2`, Ben, 21 Nov: "It doesn't need to be super
+  aggressive sticking to the line"): no cost within 0.2 m of the path, so it stops
+  chasing the centre.
+
 ## Position and the checks
 
 | Job | Result |

@@ -51,6 +51,28 @@ pixi run measure controllers --trackers mpc_lag_rs mpc_lag --tours lot --reversi
 | Change | the next stretch once the car stands (under 0.05 m/s) within 0.3 m; or after standing 2 s within 1.5 m (a lock held it short). The estimate's steering turns round with it |
 | Goal | checked on the last stretch only; the progress check starts again at each stretch |
 
+### The tube (Ben, 21 Nov)
+
+Ben: "It doesn't need to be super aggressive sticking to the line so that it doesn't
+oscillate so much."
+
+```text
+   cost on e_y
+     │\                 /
+     │ \               /
+     │  \_____________/      ← flat: no pull to the centre
+     └──────┼─────┼──────  e_y (m)
+          -tube    +tube
+```
+
+| Setting | What |
+|---|---|
+| `mpc_lag.tube` (m, default 0 = off) | e_y is costed only beyond it: its target is e_y clipped to ±tube, so inside the tube the plan keeps the line it has. Heading, steering and speed are costed as before |
+| `mpc_lag_tube:=0.2` | the launch's switch (sim.launch.py, navigation.launch.py), a challenger |
+
+Tested: `closed_loop.rs` `in_the_tube_it_holds_its_line_and_outside_it_comes_back` (0.15 m
+off: it keeps its line and steers less; 1 m off: back inside 0.25 m, at 1 and 3 m/s).
+
 ### Why our own QP, not clarabel
 
 `clarabel` (Apache-2.0, pure Rust) was the first choice. We kept a port of `qp.py`'s ADMM:
@@ -94,7 +116,7 @@ lookahead, and vehicle.yaml's actuators; nothing copied):
 | `mpc_lag.speed_loop` | the spine's speed loop profile the car runs: the sim's `speed_loop:=` (`default`, `smooth`, `firm`; `lqi` is refused at launch); never in the yaml (TODO 163) |
 
 From `config/mpc_lag_rs.yaml`: `lateral_accel`, `odom_timeout`, the map correction's rates,
-and `mpc_lag.*` (`horizon`, `q`, `r`, `r_rate`, `q_speed`, `r_speed`, `latency`; also `w_slack`, `terminal`, `substeps`, `max_iter`, `rho`, `sqp` at the
+and `mpc_lag.*` (`horizon`, `q`, `tube`, `r`, `r_rate`, `q_speed`, `r_speed`, `latency`; also `w_slack`, `terminal`, `substeps`, `max_iter`, `rho`, `sqp` at the
 Python's defaults). `aav_navigation`'s `test_launch_params.py` checks they match
 `track.yaml`'s.
 

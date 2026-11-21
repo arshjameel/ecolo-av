@@ -743,6 +743,7 @@ impl Config {
             period: 1.0 / rate_hz,
             horizon: d.count("mpc_lag.horizon", s.horizon)?,
             q,
+            tube: d.number("mpc_lag.tube", s.tube)?,
             r: d.number("mpc_lag.r", s.r)?,
             r_rate: d.number("mpc_lag.r_rate", s.r_rate)?,
             q_speed: d.number("mpc_lag.q_speed", s.q_speed)?,

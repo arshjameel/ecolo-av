@@ -371,6 +371,12 @@ def test_the_per_kind_tracker_reaches_the_things_node():
 def test_smooth_sampling_reaches_mppi_lag():
     # TODO 212: mppi_lag_sampling:=smooth, a challenger; none: the node's own (correlated).
     assert 'sampling' not in given(nav_nodes(tracker='mppi_lag')['mppi_lag'])
+    # The tube (Ben, 21 Nov): mpc_lag_rs leaves the car alone near the path.
+    assert 'mpc_lag.tube' not in given(nav_nodes(tracker='mpc_lag_rs')['mpc_lag_rs'])
+    tube = given(nav_nodes(tracker='mpc_lag_rs', mpc_lag_tube='0.2')['mpc_lag_rs'])
+    assert tube['mpc_lag.tube'] == 0.2
+    with pytest.raises(ValueError, match='mpc_lag_tube'):
+        nav_nodes(tracker='mpc_lag_rs', mpc_lag_tube='wide')
     p = given(nav_nodes(tracker='mppi_lag', mppi_lag_sampling='smooth')['mppi_lag'])
     assert p['sampling'] == 'smooth'
     with pytest.raises(ValueError, match='mppi_lag_sampling'):

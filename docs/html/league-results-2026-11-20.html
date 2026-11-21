@@ -7,7 +7,7 @@
 <!-- Generated from docs/league-results-2026-11-20.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The league, scored: 20 Nov (stage 2)</h1>
-<div class="meta">6 min read · 6 sections</div></header>
+<div class="meta">8 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -138,7 +138,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#what-changed">What changed</a><a href="#each-challenger-against-what-it-would-replace">Each challenger against what it would replace</a><a href="#the-planners-behind-plain-mppi_lag">The planners (behind plain mppi_lag)</a><a href="#lanes-university-drive-toolslane_scorepy">Lanes: University Drive (tools/lane_score.py)</a><a href="#position-and-the-checks">Position and the checks</a><a href="#what-next">What next</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#what-changed">What changed</a><a href="#each-challenger-against-what-it-would-replace">Each challenger against what it would replace</a><a href="#the-planners-behind-plain-mppi_lag">The planners (behind plain mppi_lag)</a><a href="#lanes-university-drive-toolslane_scorepy">Lanes: University Drive (tools/lane_score.py)</a><a href="#mpc-against-mppi-21-nov-todo-213">MPC against MPPI (21 Nov, TODO 213)</a><a href="#position-and-the-checks">Position and the checks</a><a href="#what-next">What next</a></nav>
 <div class="lead"><p>Ben, 20 Nov: "Please work on phase 2". Stage 2 scores what stage 1 built, in Ravensim,
 reversing on, <strong>3 runs each</strong>, on Ben's Mac (M4 Max), one job at a time, overnight.
 Scores are tracked, not gates (<a href="league.html#how-a-challenger-wins">the league</a>).</p>
@@ -341,6 +341,81 @@ Sway in m/s²; off the path in m, mean / worst.</p>
 <p>The lane map wins where we have one. The camera's lanes help the lattice keep right, but
 only a little: they are for roads with no lane map. Seen live (20 Nov): the learned finder
 misses lines on some stretches.</p>
+</section>
+<section class="card"><h2 id="mpc-against-mppi-21-nov-todo-213">MPC against MPPI (21 Nov, TODO 213)</h2>
+<p>Ben, 20 Nov: "fix mpc to have reverse". Once <code>mpc_lag_rs</code> reversed, all three followers
+raced with reversing on, 3 runs each: the lot, and University Drive with <code>path:=lane</code>.
+Raw: <code>log/stage2/mpc_lot/</code>, <code>log/stage2/mpc_univ/</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;"><code>mppi_lag</code> (ours)</th>
+<th style="text-align: right;"><code>mpc_lag</code> (Python)</th>
+<th style="text-align: right;"><code>mpc_lag_rs</code> (Rust)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lot: legs</td>
+<td style="text-align: right;">12/12</td>
+<td style="text-align: right;">12/12</td>
+<td style="text-align: right;">12/12</td>
+</tr>
+<tr>
+<td>Lot: sway (m/s²)</td>
+<td style="text-align: right;"><strong>0.032</strong></td>
+<td style="text-align: right;">0.052</td>
+<td style="text-align: right;">0.055</td>
+</tr>
+<tr>
+<td>Lot: off the path, mean / worst (m)</td>
+<td style="text-align: right;">0.21 / 0.99</td>
+<td style="text-align: right;">0.18 / 1.07</td>
+<td style="text-align: right;"><strong>0.17 / 0.88</strong></td>
+</tr>
+<tr>
+<td>University: legs</td>
+<td style="text-align: right;">6/9 *</td>
+<td style="text-align: right;">8/9</td>
+<td style="text-align: right;"><strong>9/9</strong></td>
+</tr>
+<tr>
+<td>University: sway (m/s²)</td>
+<td style="text-align: right;"><strong>0.132</strong></td>
+<td style="text-align: right;">0.224</td>
+<td style="text-align: right;">0.251</td>
+</tr>
+<tr>
+<td>University: off the lane's centre (m)</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: right;">0.22</td>
+<td style="text-align: right;">0.24</td>
+</tr>
+<tr>
+<td>University: in the lane, over the centre line</td>
+<td style="text-align: right;">100 %, 0 %</td>
+<td style="text-align: right;">100 %, 0 %</td>
+<td style="text-align: right;">100 %, 0 %</td>
+</tr>
+<tr>
+<td>The tick, mean (ms)</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">6.8</td>
+<td style="text-align: right;"><strong>1.6</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>* One run lost all 3 legs at the start: the sensor watchdog stopped the car (the wheels and
+the IMU disagreed), not the follower.</p>
+<ul>
+<li><strong><code>mpc_lag_rs</code> reaches every leg and reverses</strong> (6.6 m backwards on the lot's turn back,
+  as MPPI), the closest to the path and the cheapest.</li>
+<li><strong>But it sways about twice as much as MPPI.</strong> So MPPI stays ours'.</li>
+<li><strong>Next: the tube</strong> (<code>mpc_lag_tube:=0.2</code>, Ben, 21 Nov: "It doesn't need to be super
+  aggressive sticking to the line"): no cost within 0.2 m of the path, so it stops
+  chasing the centre.</li>
+</ul>
 </section>
 <section class="card"><h2 id="position-and-the-checks">Position and the checks</h2>
 <div class="table-wrap"><table>
