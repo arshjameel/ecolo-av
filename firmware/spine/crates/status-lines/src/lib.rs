@@ -288,7 +288,7 @@ pub struct Config<'a> {
     /// The rest of the steering's settings, written inside `steering` after `max`.
     pub steering_more: SteeringSettings<'a>,
     /// The rest of the brake's settings, written inside `brake` after `full`.
-    pub brake_more: BrakeSettings<'a>,
+    pub brake_more: BrakeSettings,
     /// The speed limits and the throttle caps (`speed`).
     pub speed: SpeedSettings,
     /// How long before each lost input stops the car (`timeouts`).
@@ -316,17 +316,20 @@ pub struct SteeringSettings<'a> {
 
 /// The brake's settings beyond released and full, each 0..1.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct BrakeSettings<'a> {
+pub struct BrakeSettings {
     /// On every stop the spine makes.
     pub stop: f32,
     /// While the car comes back under the speed limit.
     pub overspeed: f32,
-    /// RC direct, throttle stick at zero: this brake for `rc_stop_ms`, then `stop`.
-    pub rc_stop: f32,
-    /// How long `rc_stop` holds (ms).
-    pub rc_stop_ms: u32,
-    /// The RC gear switch's brake position: `full_brake` or `speed_zero`.
-    pub rc_gear: &'a str,
+    /// The RC's brake band: the left stick this near its middle, a share of its travel
+    /// each way, is the full brake (0..1).
+    pub rc_band: f32,
+    /// The RC's brake before forward and reverse change, and normal mode's window (ms).
+    pub rc_brake_ms: u32,
+    /// The mode switch under this is the transmitter's failsafe: RC lost (µs).
+    pub rc_lost_below: u16,
+    /// The board has an RC receiver: the RC must stay in normal mode too.
+    pub rc_fitted: bool,
 }
 
 /// The speed limits, and the throttle they allow.
@@ -765,15 +768,16 @@ impl Display for Config<'_> {
         json::option(f, sm.cal_timeout_ms)?;
         write!(
             f,
-            r#","on_stop":{}}},"brake":{{"released":{},"full":{},"stop":{},"overspeed":{},"rc_stop":{},"rc_stop_ms":{},"rc_gear":{}}}"#,
+            r#","on_stop":{}}},"brake":{{"released":{},"full":{},"stop":{},"overspeed":{},"rc_band":{},"rc_brake_ms":{},"rc_lost_below":{},"rc_fitted":{}}}"#,
             Text(sm.on_stop),
             b.released,
             b.full,
             Float(bm.stop),
             Float(bm.overspeed),
-            Float(bm.rc_stop),
-            bm.rc_stop_ms,
-            Text(bm.rc_gear)
+            Float(bm.rc_band),
+            bm.rc_brake_ms,
+            bm.rc_lost_below,
+            bm.rc_fitted
         )?;
         write!(
             f,
@@ -908,8 +912,8 @@ impl Display for ConfigText<'_, '_> {
         )?;
         write!(
             f,
-            " brake_stop={:.2} brake_overspeed={:.2} brake_rc_stop={:.2} rc_stop_ms={} rc_gear={}",
-            b.stop, b.overspeed, b.rc_stop, b.rc_stop_ms, b.rc_gear
+            " brake_stop={:.2} brake_overspeed={:.2} rc_band={:.2} rc_brake_ms={} rc_lost_below={} rc_fitted={}",
+            b.stop, b.overspeed, b.rc_band, b.rc_brake_ms, b.rc_lost_below, b.rc_fitted
         )?;
         write!(
             f,

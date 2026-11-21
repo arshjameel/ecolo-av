@@ -120,7 +120,7 @@ use spine_board::{
 #[cfg(feature = "qemu")]
 use spine_board::{DeviceTargets, StandInBus};
 use spine_core::protocol::Mode;
-use spine_core::{EstopSteering, Outputs, RcGearBrake, SpeedFeedback, SpineConfig};
+use spine_core::{EstopSteering, Outputs, SpeedFeedback, SpineConfig, RC_BRAKE_MS};
 use static_cell::StaticCell;
 use {esp_backtrace as _, esp_println as _};
 
@@ -546,6 +546,9 @@ async fn main(spawner: Spawner) -> ! {
             full_throttle_speed: FULL_THROTTLE_SPEED,
         },
         idle_brake: IDLE_BRAKE,
+        // The RC receiver is on GPIO 32: in normal mode too, losing the RC is a hard stop
+        // (Arsh, 21 Nov).
+        rc_fitted: true,
         // `cpp-stop-centre`: on a stop, the wheels back to straight, as `jrkSafeStop()`.
         estop_steering: if cfg!(feature = "cpp-stop-centre") {
             EstopSteering::Centre
@@ -1040,12 +1043,10 @@ fn board_config(
         brake_more: status_lines::BrakeSettings {
             stop: config.stop_brake,
             overspeed: config.overspeed_brake,
-            rc_stop: config.rc_stop_brake,
-            rc_stop_ms: config.rc_stop_ms,
-            rc_gear: match config.rc_gear_brake {
-                RcGearBrake::FullBrake => "full_brake",
-                RcGearBrake::SpeedZero => "speed_zero",
-            },
+            rc_band: cal.rc.brake_band,
+            rc_brake_ms: RC_BRAKE_MS,
+            rc_lost_below: cal.rc.lost_below,
+            rc_fitted: config.rc_fitted,
         },
         speed: status_lines::SpeedSettings {
             max_forward: config.max_speed,

@@ -176,7 +176,7 @@ copy. Today's default build:
 | | `full_throttle_speed`, `max_accel`, `max_decel`, `overspeed_margin` | 3.0 m/s, 1.5, 2.5 m/s², 0.25 m/s | `FULL_THROTTLE_SPEED`; `SpineConfig` |
 | Brake | `brake_released`, `brake_full` | 400, 3500 counts | the calibration |
 | | `idle_brake`, `brake_stop`, `brake_overspeed` | 1.0, 1.0, 0.5 | `IDLE_BRAKE` here; `SpineConfig` |
-| | `brake_rc_stop`, `rc_stop_ms`, `rc_gear` | 0.33 for 1000 ms, `full_brake` | `SpineConfig` (#23), `RC_GEAR_BRAKE` |
+| | `rc_band`, `rc_brake_ms`, `rc_lost_below`, `rc_fitted` | 0.30, 1000 ms, 950 µs, `true` | `ibus::RcMap` (`brake_band`, `lost_below`); `RC_BRAKE_MS`; `SpineConfig::rc_fitted` here (21 Nov) |
 | Timeouts | `cmd_timeout_ms`, `watchdog_ms` | 100, 100 ms | `SpineConfig`; `WATCHDOG_MS` |
 | | `rc_lost_ms`, `speed_lost_ms`, `overspeed_ms`, `estop_release_ms`, `bad_frames_ms` | 100, 300, 2000, 50, 3000 ms | the calibration; `SpineConfig`; `OVERSPEED_WINDOW_MS`; `BAD_WINDOW_MS` |
 | Rates | `uart_baud`, `frame`, `frame_hz`, `uplink_ms` | 115200, version 2, 50 Hz, 20 ms | `legacy_link::BAUD`, `FRAME_HZ`; `UPLINK_PERIOD_MS` |
