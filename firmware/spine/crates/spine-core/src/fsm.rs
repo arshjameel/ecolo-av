@@ -184,6 +184,11 @@ impl Latch {
 /// whether it is still speeding up or only holding its speed.
 pub const OVERSPEED_WINDOW_MS: u32 = 2000;
 
+/// The RC's brake before it changes between forward and reverse, counted from when the
+/// left stick entered its brake band (ms). Arsh, 21 Nov: "if we switch directions under
+/// 1s, it remains in brake for 1s before it actually changes direction".
+pub const RC_BRAKE_MS: u32 = 1000;
+
 /// Inside the Safety region: is the car bringing itself back under the speed limit? This
 /// aims for the limit, not for a stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

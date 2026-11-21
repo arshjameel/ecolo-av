@@ -44,7 +44,7 @@
 
 use crate::fsm::{
     Authority, Confidence, Latch, Lifecycle, Motion, Overspeed, Safety, State, TestRequest,
-    TestStage, TEST_MAX_SPEED, TEST_MAX_THROTTLE,
+    TestStage, RC_BRAKE_MS, TEST_MAX_SPEED, TEST_MAX_THROTTLE,
 };
 use crate::limits::slew;
 use crate::protocol::{counter_step, DriveCmd, EstopCmd, Mode, VehicleFeedback, VehicleStatus};
@@ -400,6 +400,13 @@ pub struct Spine {
     rc_switch: RcSwitch,
     /// RC direct stays stopped after a lost input, until a person clears it on purpose.
     rc_hold: bool,
+    /// The left stick was in its brake band last time the RC was heard.
+    rc_in_band: bool,
+    /// When the left stick last entered its brake band: forward and reverse change only
+    /// [`RC_BRAKE_MS`] after it.
+    band_since_ms: Option<u32>,
+    /// Which way the RC last drove (true: reverse); `None` once it no longer drives.
+    rc_reverse: Option<bool>,
     /// The speed from the link: the latest, whether one ever came, its own watchdog.
     reported_speed: f32,
     speed_seen: bool,
@@ -437,6 +444,9 @@ impl Spine {
             seen_test_exit: false,
             rc_switch: RcSwitch::Computer,
             rc_hold: false,
+            rc_in_band: false,
+            band_since_ms: None,
+            rc_reverse: None,
             reported_speed: 0.0,
             speed_seen: false,
             speed_watchdog: Watchdog::new(cfg.speed_timeout_ms),
@@ -583,6 +593,10 @@ impl Spine {
         // The RC: lost while its switch was on an RC position (direct or via ROS).
         if let Some(rc) = i.rc {
             self.rc_switch = rc.switch;
+            if rc.brake && !self.rc_in_band {
+                self.band_since_ms = Some(i.now_ms);
+            }
+            self.rc_in_band = rc.brake;
         }
         let rc_lost = i.rc.is_none() && (self.rc_switch != RcSwitch::Computer || c.rc_fitted);
         if rc_lost {
@@ -727,7 +741,11 @@ impl Spine {
             faults: fault_bits,
         };
 
+        if self.authority != Authority::Rc {
+            self.rc_reverse = None;
+        }
         if stop || (self.authority == Authority::Idle && latched_stop) {
+            self.rc_reverse = None;
             self.speed_setpoint = 0.0;
             self.speed_loop.reset();
             if c.estop_steering == EstopSteering::Centre {
@@ -752,7 +770,21 @@ impl Spine {
                     steering: 0.0,
                     brake: true,
                 });
-                full_brake = rc.brake;
+                // Forward and reverse change only RC_BRAKE_MS after the stick entered its
+                // band, even if it is already out the other side: braked till then.
+                let want_reverse = rc.throttle < 0.0;
+                let changing = !rc.brake && self.rc_reverse.is_some_and(|r| r != want_reverse);
+                if changing && self.band_since_ms.is_none() {
+                    self.band_since_ms = Some(i.now_ms);
+                }
+                let waiting = changing
+                    && self
+                        .band_since_ms
+                        .is_none_or(|t| i.now_ms.wrapping_sub(t) < RC_BRAKE_MS);
+                full_brake = rc.brake || waiting;
+                if !full_brake {
+                    self.rc_reverse = Some(want_reverse);
+                }
                 let cap = if rc.throttle >= 0.0 {
                     c.max_speed
                 } else {
@@ -2438,6 +2470,75 @@ mod tests {
         assert_eq!(out.brake, 0.0);
         assert!(out.throttle > 0.0);
         assert_eq!(car.tick(band).brake, 1.0);
+    }
+
+    /// Ticks of RC direct with the left stick at `throttle` (0 is the brake band).
+    fn rc_ticks(car: &mut Car, throttle: f32, n: u32) -> Outputs {
+        let rc = rc_direct(throttle, throttle == 0.0);
+        (0..n)
+            .map(|_| {
+                car.tick(Inputs {
+                    rc: Some(rc),
+                    ..Default::default()
+                })
+            })
+            .last()
+            .unwrap()
+    }
+
+    #[test]
+    fn rc_changes_to_reverse_only_a_second_after_entering_the_band() {
+        let mut car = Car::with_config(open_loop_config());
+        rc_ticks(&mut car, 0.0, 5);
+        let out = rc_ticks(&mut car, 0.5, 30);
+        assert!(out.throttle > 0.0 && !out.reverse);
+        // Into the band for 300 ms, then pulled back: braked until 1 s after the band.
+        rc_ticks(&mut car, 0.0, 30);
+        for n in 0..69 {
+            let out = rc_ticks(&mut car, -0.5, 1);
+            assert_eq!((out.throttle, out.brake), (0.0, 1.0), "tick {n}");
+        }
+        let out = rc_ticks(&mut car, -0.5, 30);
+        assert!(out.throttle > 0.0 && out.reverse, "{out:?}");
+        assert_eq!(out.brake, 0.0);
+    }
+
+    #[test]
+    fn rc_after_a_second_in_the_band_reverses_at_once() {
+        let mut car = Car::with_config(open_loop_config());
+        rc_ticks(&mut car, 0.0, 5);
+        rc_ticks(&mut car, 0.5, 30);
+        rc_ticks(&mut car, 0.0, 100); // a full second in the band
+                                      // No full brake from the first tick: only the ramp's light hold brake, then reverse.
+        assert!(rc_ticks(&mut car, -0.5, 1).brake < 1.0);
+        let out = rc_ticks(&mut car, -0.5, 10);
+        assert!(out.throttle > 0.0 && out.reverse, "{out:?}");
+    }
+
+    #[test]
+    fn rc_back_the_same_way_drives_at_once() {
+        // Only a change between forward and reverse waits.
+        let mut car = Car::with_config(open_loop_config());
+        rc_ticks(&mut car, 0.0, 5);
+        rc_ticks(&mut car, 0.5, 30);
+        rc_ticks(&mut car, 0.0, 30);
+        assert!(rc_ticks(&mut car, 0.5, 1).brake < 1.0);
+        let out = rc_ticks(&mut car, 0.5, 10);
+        assert!(out.throttle > 0.0 && !out.reverse, "{out:?}");
+    }
+
+    #[test]
+    fn rc_flicked_straight_through_the_band_still_waits() {
+        // Forward, then reverse with one tick in the band: braked a second from it.
+        let mut car = Car::with_config(open_loop_config());
+        rc_ticks(&mut car, 0.0, 5);
+        rc_ticks(&mut car, 0.5, 30);
+        rc_ticks(&mut car, 0.0, 1);
+        let held = rc_ticks(&mut car, -0.5, 98);
+        assert_eq!((held.throttle, held.brake), (0.0, 1.0));
+        assert!(rc_ticks(&mut car, -0.5, 2).brake < 1.0);
+        let out = rc_ticks(&mut car, -0.5, 10);
+        assert!(out.throttle > 0.0 && out.reverse, "{out:?}");
     }
 
     #[test]

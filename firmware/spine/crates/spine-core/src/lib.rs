@@ -20,7 +20,7 @@ pub mod watchdog;
 
 pub use fsm::{
     Authority, Confidence, Lifecycle, Motion, Overspeed, Safety, State, TestRequest, TestStage,
-    OVERSPEED_WINDOW_MS, STANDSTILL_SPEED, TEST_MAX_SPEED, TEST_MAX_THROTTLE,
+    OVERSPEED_WINDOW_MS, RC_BRAKE_MS, STANDSTILL_SPEED, TEST_MAX_SPEED, TEST_MAX_THROTTLE,
 };
 pub use spine::{
     faults, DirectCmd, EstopSteering, Inputs, Outputs, RcInput, RcSwitch, SpeedFeedback,
