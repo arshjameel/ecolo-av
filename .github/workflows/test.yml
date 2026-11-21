@@ -18,8 +18,8 @@ on:
   push:
     branches-ignore: ['wt/**', 'archive/**', 'backup/**']
   pull_request:
-  # The merge queue tests each pull request on top of main and the ones ahead of it.
-  merge_group:
+  # No merge_group: the merge queue went on 21 Nov (it ran all of this a second time,
+  # an hour a pull request). The push to main after each merge tests the combination.
   schedule:
     - cron: "0 7 * * *"   # 03:00 in Ottawa (EDT)
   workflow_dispatch:

@@ -312,4 +312,4 @@ What the car decides to do on the road: when to slow, stop, wait and go, and wha
 | [Getting-started guide](getting-started.md) | A new laptop goes from nothing to driving the turtle in under 30 minutes (T1.1) | Arsh (arshjameel) | 2026-10-24 | built |
 | The previous teams' 27 repos, imported with their history | All the older code and its history in one repo, to read and port from | Arsh (arshjameel) | 2026-10-24 | built |
 | One team repo: `AAV-2025-2026/ecolo-av` | The team's own repo, keeping the whole history of both workspaces | Ben | 2026-10-25 | built |
-| [CONTRIBUTING.md](../CONTRIBUTING.md) and the merge queue | One way into `main` for everyone: fork, branch, pull request, review, merge queue | Arsh (arshjameel) | 2026-10-25 | built |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) and the rules on `main` | One way into `main` for everyone: fork, branch, pull request, review, merge. The merge queue went on 21 Nov (Ben): it ran the whole CI again, an hour a pull request | Arsh (arshjameel) | 2026-10-25 | built |

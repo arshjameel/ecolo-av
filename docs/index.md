@@ -30,7 +30,7 @@ moves the car.**
 | after what works today, and what's next | [Status](status.md); the work list is `TODO.md` |
 | after where it's heading | two designs, proposed, not built: [one shape](designs/2026-11-13_one-shape.md), [the whole car](designs/2026-11-14_the-whole-car.md) |
 | new to the team | [Getting started](getting-started.md) (30 minutes), then [Your first day](first-day.md) and your card in [Starting points](team.md) |
-| making a change | [CONTRIBUTING.md](../CONTRIBUTING.md): fork, branch, pull request, merge queue |
+| making a change | [CONTRIBUTING.md](../CONTRIBUTING.md): fork, branch, pull request, merge |
 | new to the car, or to ROS | [The car, box by box](learn-car.md), then [A command's journey](learn-journey.md); words in the [Glossary](glossary.md) |
 | a professor, or anyone with a question | [Questions people ask](faq.md) |
 | going to the car | [Car day](car-day.md): the runbook, session by session, and `pixi run car-day-check` |
