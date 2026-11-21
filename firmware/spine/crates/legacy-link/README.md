@@ -128,7 +128,7 @@ Version 2 was the first 34 bytes and its CRC: 35 bytes. `Uplink::decode` reads b
 | `Counts` | the steering and brake Jrks' positions, raw: their scaled feedback, 0 to 4095, in target units; `None` without analog feedback. Flag bits 6 and 7 say they are known |
 | `DriveMode` | `Stopped`, `RcDirect`, `Computer`: the same numbers as `VehicleStatus.mode` |
 | `ModeSwitch` | `NoSignal`, `Computer`, `RcViaRos`, `RcDirect` |
-| `Sticks` | the RC throttle and steering (-1..1, positive forward and left), and the gear switch's brake |
+| `Sticks` | the RC throttle and steering (-1..1, positive forward and left), and whether the left stick is in its brake band |
 | `UPLINK_LEN`, `UPLINK_V2_LEN`, `KIND_STATUS` | 40, 35, 1 |
 
 Steering is in radians, positive left: converted with the calibration that the counts

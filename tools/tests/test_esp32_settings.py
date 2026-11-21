@@ -39,7 +39,8 @@ def test_the_golden_config_line_has_every_setting():
     want = {
         'steering': ['min', 'centre', 'max', 'counts_per_rad', 'max_angle_rad',
                      'rate_rad_s', 'cal_rate', 'cal_timeout_ms', 'on_stop'],
-        'brake': ['released', 'full', 'stop', 'overspeed', 'rc_stop', 'rc_stop_ms', 'rc_gear'],
+        'brake': ['released', 'full', 'stop', 'overspeed', 'rc_band', 'rc_brake_ms',
+                  'rc_lost_below', 'rc_fitted'],
         'speed': ['max_forward', 'max_reverse', 'cap_code', 'reverse_cap_code',
                   'frame_dac_cap', 'rise_per_s', 'max_accel', 'max_decel',
                   'overspeed_margin'],

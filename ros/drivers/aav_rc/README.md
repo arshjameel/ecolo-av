@@ -59,7 +59,7 @@ Modules:
   (as teleop_twist_joy does on its deadman).
 - `/vehicle/rc` quiet for more than `stale` while on RC via ROS: zeros (a stop) until it
   comes back.
-- Gear switch on brake: zero speed. NaN sticks count as 0; sticks clamp to -1..1.
+- The left stick in its brake band: zero speed (a stop through ego, not the ESP32's full brake). NaN sticks count as 0; sticks clamp to -1..1.
 - Steering becomes a turn rate by the bicycle model, `w = v tan(angle) / wheelbase`.
   So the car can't steer standing still (ego holds the wheels below 0.05 m/s).
 - Positive steering = left; metres, radians, seconds.

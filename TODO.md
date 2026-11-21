@@ -182,7 +182,8 @@ The steps: [car day](docs/car-day.md), [know the car](docs/know-the-car.md),
 | Question | Today |
 |---|---|
 | Reversing on long drives: cost more, or stay short? (122) | ours reverses where the plan says |
-| The brake after boot, the steering on an e-stop, a brake on the RC gear switch | one constant each in `spine-core` |
+| The brake after boot, the steering on an e-stop | one constant each in `spine-core` |
+| The RC's left stick as brake band, forward and reverse; the RC outranking the computer in normal mode; the failsafe on CH6 (21 Nov) | built in the firmware, not yet agreed or flashed ([firmware](docs/firmware.md#the-rc-transmitter-arsh-21-nov)) |
 | The runaway rule trips on 0.05 m/s wheel noise (248) | unchanged: a safety lock |
 | The indoor geofence with `stands:=true` (hallway tests) | the hallway tests use their own distance fence |
 | `ROS_DOMAIN_ID` for the car and every laptop | 0-101 safe; never above 232 |

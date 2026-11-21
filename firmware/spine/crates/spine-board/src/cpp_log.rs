@@ -4,7 +4,7 @@
 //! | Line | The C++ |
 //! |---|---|
 //! | [`boot_devices`]: `PCA9555 (0x20) ready`, `DAC (0x0c) OK`, `JRK STEER (0x05) OK - centred (1950)`, `JRK BRAKE (0x04) OK - engaged (3500)`, or a `WARNING: ... not found` | `setup()` in `main.cpp` |
-//! | [`RcReady`]: `Ready - CH6 mode: RC direct above 1500 \| CH5 gear: ...` | `setup()`'s last line |
+//! | [`RcReady`]: `Ready - CH6 mode: RC direct above 1500 \| CH3 throttle: ...` | `setup()`'s last line |
 //! | [`CppStatus`]: `STATUS:0.00,0.00,-1.00 \| STR:OK BRK:OK` | `publishStatus()`, every 200 ms |
 //! | [`FaultChange`]: `FAULT t=... set=THROTTLE_DAC cleared=none faults=0x0020` | `ERROR: DAC did not acknowledge!`, `RC: No valid signal - SAFE STOP`, `JRK SAFE STOP` |
 //! | [`JrkErrorLine`]: `JRK STEER ERR t=... flags=0x0004` | `JRK STEER ERR: 0x%04X` in `setSteer()`, `setBrake()` |
@@ -97,11 +97,9 @@ impl Display for RcReady<'_> {
         }
         write!(
             f,
-            " | CH{} gear: Fwd below {}, Rev above {}, Brake between | CH{} throttle, CH{} steering",
-            m.gear + 1,
-            m.forward_below,
-            m.reverse_above,
+            " | CH{} throttle: brake band {}% each way | CH{} steering",
             m.throttle + 1,
+            (m.brake_band * 100.0) as u32,
             m.steering + 1
         )
     }
@@ -344,8 +342,8 @@ mod tests {
     fn the_ready_line_says_the_channels_from_one() {
         assert_eq!(
             RcReady(&RcMap::TODAY).to_string(),
-            "Ready - CH6 mode: RC direct above 1500 | CH5 gear: Fwd below 1200, Rev above 1800, \
-             Brake between | CH3 throttle, CH4 steering"
+            "Ready - CH6 mode: RC direct above 1500 | CH3 throttle: brake band 30% each way \
+             | CH4 steering"
         );
         assert!(RcReady(&RcMap::THREE_POSITION)
             .to_string()

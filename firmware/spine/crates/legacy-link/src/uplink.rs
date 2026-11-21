@@ -103,11 +103,11 @@ impl ModeSwitch {
 /// The RC sticks, as the ESP32 reads them (`ibus::RcMap`): what RC direct would drive.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Sticks {
-    /// -1..1, positive forward: the throttle stick, signed by the gear switch.
+    /// -1..1, positive forward: the left stick, 0 in its brake band.
     pub throttle: f32,
     /// -1..1, positive left.
     pub steering: f32,
-    /// The gear switch is on brake.
+    /// The left stick is in its brake band (the middle 30 % each way).
     pub brake: bool,
 }
 

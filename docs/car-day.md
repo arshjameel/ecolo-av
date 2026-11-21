@@ -628,6 +628,32 @@ The flash overwrites the C++: only with 6a's file checked (4194304 bytes).
 | 4 | Start the Orin: `~/aav-jazzy/aav.sh ros2 launch aav_bringup car.launch.py machine:=orin max_speed:=0.3 gps:=false lidar:=false stands:=true` | the output mux makes the heartbeat. Its `foxglove_bridge` can't open port 8765 (theirs holds it): harmless, see session 8 | |
 | 5 | Start the Motor Pi: `~/aav-jazzy/aav.sh car motor_pi` | the ESP32's log: `LINK frames=` rising, `bad=0` | `bad=` rising: the speed or the wire (H1) |
 
+### The RC transmitter {#the-rc-transmitter}
+
+Before 6c, on the FS-i6X (Arsh, 21 Nov; [the rules](firmware.md#the-rc-transmitter-arsh-21-nov)).
+The Rust reads it differently from the C++:
+
+```text
+left stick:  pushed away ◄── forward ──┤ the middle ±30 %: BRAKE ├── reverse ──► pulled back
+             (it doesn't spring back: put it in the middle to brake)
+CH6:         low = normal (computer; the RC can take over) · middle = RC via ROS · high = manual
+SwC (CH5):   does nothing. The left stick sideways: nothing
+```
+
+| # | Do | You should see | If not |
+|---|---|---|---|
+| T1 | The transmitter's failsafe menu: CH6 set to **900** (the others as they are) | | **don't drive**: the spine can't tell a lost link otherwise |
+| T2 | Its display or the ESP32's `STATUS` line (`ch=`): CH6 at each position | about 1000, 1500, 2000 | write the numbers down |
+| T3 | The left stick pushed away, then pulled back | CH3 near **1000** pushed away, near 2000 pulled back | the other way round: `throttle_reversed: true` in `ibus::RcMap` (Q7), rebuild |
+| T4 | The transmitter off | CH6 reads 900 for a moment, then `faults` has 256 | the failsafe isn't set: back to T1 |
+| T5 | The ESP32's `CONFIG` line | `rc_band=0.30 rc_brake_ms=1000 rc_lost_below=950 rc_fitted=true` | the wrong build |
+
+Write the values here, so the next person can check them: CH6 low ____, middle ____, high
+____, failsafe ____. CH3 pushed away ____, pulled back ____.
+
+**The transmitter must be on for every session with the Rust**, CH6 low and the left stick
+in the middle: in normal mode a lost RC is a hard stop, so without it nothing drives.
+
 ### 6c. The checks, wheels off the ground
 
 From [First flash on the bench](esp32-bench.md), in order. **Stop at the first that
@@ -635,7 +661,7 @@ fails, and roll back.** Drive from the laptop: `export ROS_DOMAIN_ID=42`, `pixi 
 
 | # | Do | Expect |
 |---|---|---|
-| 1 | Power on, nothing else | brake full (3500), steering centred (1950), DAC 0 V; `mode=Manual`, `faults=0x0000` |
+| 1 | Power on, the transmitter on, CH6 low, the left stick in the middle | brake full (3500), steering centred (1950), DAC 0 V; `faults=0x0000` (`mode=Rc` for its first second, then `Manual`) |
 | 2 | Unplug a Jrk's I2C, plug it back | red LED; fault 8 (steering) or 16 (brake) while out |
 | 3 | The bridge running, ego stale | stop frames: brake stays full; `frames=` rising, `bad=0` |
 | 4 | Drive slowly from the keyboard | `mode=Computer`, green LED, brake lets go, the wheels turn **forward** |
@@ -647,9 +673,12 @@ fails, and roll back.** Drive from the laptop: `export ROS_DOMAIN_ID=42`, `pixi 
 | 9a | While driving, unplug the Orin's network cable, **the Motor Pi's bridge still running** | within 0.2 s: brake full, `faults` has 1; `frames=` still rising, `repeats=` rising. **The heartbeat (TODO 50)** |
 | 9b | Plug the Orin back in | braked until ego stands still, then it drives |
 | 9c | `pixi run estop` while driving | `estop=true` at once, brake full |
-| 10 | RC override on, a little throttle | `mode=Rc`, blue LED; ROS ignored |
+| 10 | CH6 high (manual), the left stick in the middle, then pushed a little | `mode=Rc`, blue LED; ROS ignored. Pushed before the middle: nothing moves |
+| 10a | The stick back to the middle, at once pulled back | brake full for 1 s from the middle, then reverse |
 | 11 | RC: transmitter off | within 0.1 s: brake full, `faults` has 256 |
-| 12 | RC override off | back to the computer, or Manual |
+| 12 | CH6 low (normal), stick in the middle; drive slowly from the keyboard | braked for a second, then the computer drives |
+| 12a | While the computer drives, push the left stick | the RC takes over: brake full 1 s, then the stick drives |
+| 12b | The stick to the middle, the keyboard still driving | brake full 1 s, then the computer drives again |
 | 13 | The red e-stop button | the car stops by itself |
 | 14 | 10 min of 1-13 mixed | no unexpected reset (`the last reset:` stays the power-on one) |
 

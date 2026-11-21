@@ -109,13 +109,16 @@ The same as Computer, plus:
 |---|---|
 | RC signal healthy | the Motor Pi, the Orin, any frame |
 | No e-stop, no driver fault | arming |
-| After any stop, and after power-up: signal back, throttle stick at zero, gear switch on brake (7 Nov) | |
+| After any stop, after power-up and after CH6 moves: signal back, the left stick in its brake band (21 Nov) | |
 
-| Stick and gear | Brake |
+| The left stick (SwC is not read since 21 Nov) | Brake |
 |---|---|
-| Gear forward or reverse, throttle pushed | released |
-| Throttle at zero | 0.33 for 1 s, then full |
-| Gear on brake (middle) | full |
+| Pushed away (forward) or pulled back (reverse), past the band | released |
+| In the middle ±30 % (the band) | full, at once |
+| Forward to reverse, or back | full until 1 s after the stick entered the band |
+
+In normal mode (CH6 low) the RC outranks the computer too, decided on the ESP32, and a
+lost RC is a hard stop there as well: [the rules](firmware.md#the-rc-transmitter-arsh-21-nov).
 
 ## 4. What counts as a lost connection
 
@@ -298,10 +301,12 @@ two give the same frames, byte for byte: `legacy-bridge`'s `tests/vectors.rs`.
 | Bad CRC ignored | `link.rs:430-434` | `v2_bad_crc_frames_are_ignored_so_the_heartbeat_stops` |
 | 13-byte frames never drive this build | `link.rs:425-429` | `v2_ignores_version_1_frames_so_never_drives` |
 | E-stop flag at once; released by a new counter | `link.rs:450-469` | `v2_the_estop_flag_works_whatever_the_counter` |
-| RC lost: 100 ms; only on an RC position | `calibration.rs:147`, `spine.rs:528-531` | `a_silent_receiver_stops_rc`; `rc_lost_on_the_computer_position_changes_nothing`; QEMU 117-119 ms |
+| RC lost: 100 ms silent, or the failsafe's CH6 under 950 at once; on every position with a receiver fitted | `calibration.rs:147`, `ibus/src/rc.rs` (`lost_below`), `spine.rs` (`rc_fitted`) | `a_silent_receiver_stops_rc`; `with_a_receiver_fitted_a_lost_rc_stops_the_computer_too`; `the_failsafe_on_the_mode_switch_is_no_usable_rc`; QEMU 117-119 ms (silence) |
 | RC direct's own latch | `spine.rs:556-563`, `spine.rs:657` | `rc_direct_stays_stopped_after_a_lost_signal_until_a_person_clears_it` |
 | RC direct beats the computer; the computer still latches | `spine.rs:571-575`, `spine.rs:623-624` | `the_computer_stopping_while_rc_direct_drives_still_latches` |
-| RC zero stick: 0.33 then full | `spine.rs:192-193`, `spine.rs:750-760` | `rc_at_zero_throttle_stops_lightly_for_a_second_then_holds` |
+| The RC's brake band: full at once (21 Nov) | `ibus/src/rc.rs` (`brake_band`), `spine.rs` (`Authority::Rc`) | `rc_in_the_brake_band_stops_hard_with_no_light_stage`; `the_brake_band_is_the_full_brake_at_once` |
+| Forward and reverse change 1 s after the band | `fsm.rs` (`RC_BRAKE_MS`) | `rc_changes_to_reverse_only_a_second_after_entering_the_band` |
+| Normal mode: the RC outranks the computer | `fsm.rs` (`RcOwner`) | `the_rc_takes_over_from_the_computer_after_a_second_braked`; `a_stick_that_lost_the_race_must_come_back_to_the_band` |
 | Wheel speed rules off until a speed comes | `spine.rs:433-455` | `a_link_that_never_sends_a_speed_leaves_the_rules_off` |
 | Overspeed: 1.25 m/s, 0.5 brake, 2 s | `spine.rs:189-190`, `fsm.rs:181`, `spine.rs:540-555` | `overspeed_cuts_the_throttle_and_brakes_until_under_the_limit_then_drives_on`; `an_overspeed_that_holds_steady_for_two_seconds_is_a_hard_stop_and_latches` |
 | Driver fault stops; latches the computer | `spine.rs:532-535` | `driver_fault_stops_and_needs_rearm`; `driver_fault_stops_rc_too` |

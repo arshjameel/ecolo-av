@@ -184,6 +184,128 @@ impl Latch {
 /// whether it is still speeding up or only holding its speed.
 pub const OVERSPEED_WINDOW_MS: u32 = 2000;
 
+/// The RC's brake before it changes between forward and reverse, counted from when the
+/// left stick entered its brake band (ms). Arsh, 21 Nov: "if we switch directions under
+/// 1s, it remains in brake for 1s before it actually changes direction".
+pub const RC_BRAKE_MS: u32 = 1000;
+
+/// Who asked first while the RC's brake window was open ([`RcOwner`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Asker {
+    /// The left stick left its brake band.
+    Rc,
+    /// The computer asked to move: armed, with a speed or a throttle.
+    Computer,
+}
+
+/// Inside the Authority region, in normal mode only: does the RC or the computer have the
+/// car? (Arsh, 21 Nov.) The RC outranks the computer, and works with the computer dead.
+///
+/// ```text
+/// Computer ──stick out of the band (not held)──► Rc: braked RC_BRAKE_MS, then the RC drives
+/// Rc ──stick into the band──► braked; a new window of RC_BRAKE_MS. When it ends:
+///      the stick left the band first  → the RC drives
+///      the computer asked first       → Computer (the stick still out: rc_hold)
+///      nobody asked                   → the RC keeps it, braked (idle), until one asks
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RcOwner {
+    /// The computer has the car; it still needs arming to drive.
+    #[default]
+    Computer,
+    /// The RC has the car.
+    Rc {
+        /// When its window opened: the takeover, or the stick entering the band (ms).
+        since_ms: u32,
+        /// Who asked first in this window.
+        first: Option<Asker>,
+    },
+}
+
+impl RcOwner {
+    /// The RC, braked, with a new window from `now_ms`: after a stop, at power-up, or when
+    /// the mode switch moves.
+    #[must_use]
+    pub fn rc_braked(now_ms: u32) -> Self {
+        RcOwner::Rc {
+            since_ms: now_ms,
+            first: None,
+        }
+    }
+
+    /// One tick. `in_band` and `entered_band`: the left stick is, or just came, into its
+    /// brake band. `computer_asks`: armed, free to drive, and asking to move. `rc_hold`:
+    /// the stick must visit the band before it counts. Gives the owner, and whether the
+    /// RC must now be held (the computer won with the stick still out).
+    #[must_use]
+    pub fn next(
+        self,
+        now_ms: u32,
+        in_band: bool,
+        entered_band: bool,
+        computer_asks: bool,
+        rc_hold: bool,
+    ) -> (Self, bool) {
+        match self {
+            RcOwner::Computer if !in_band && !rc_hold => (
+                RcOwner::Rc {
+                    since_ms: now_ms,
+                    first: Some(Asker::Rc),
+                },
+                false,
+            ),
+            RcOwner::Computer => (RcOwner::Computer, false),
+            RcOwner::Rc {
+                mut since_ms,
+                mut first,
+            } => {
+                if entered_band {
+                    since_ms = now_ms;
+                    first = None;
+                }
+                // The same tick: the RC, which outranks the computer.
+                if first.is_none() {
+                    if !in_band && !rc_hold {
+                        first = Some(Asker::Rc);
+                    } else if computer_asks {
+                        first = Some(Asker::Computer);
+                    }
+                }
+                let owner = RcOwner::Rc { since_ms, first };
+                if now_ms.wrapping_sub(since_ms) < RC_BRAKE_MS {
+                    return (owner, false);
+                }
+                match first {
+                    Some(Asker::Rc) => (owner, false),
+                    Some(Asker::Computer) => (RcOwner::Computer, !in_band),
+                    None => (owner, false),
+                }
+            }
+        }
+    }
+
+    /// The RC has the car but nobody has asked since its window ended: braked, and the
+    /// hardware test mode may start.
+    #[must_use]
+    pub fn idle(self, now_ms: u32) -> bool {
+        matches!(
+            self,
+            RcOwner::Rc { since_ms, first: None } if now_ms.wrapping_sub(since_ms) >= RC_BRAKE_MS
+        )
+    }
+
+    /// The RC drives from its sticks this tick: its window is over, the stick left the
+    /// band first and is still out of it, and nothing holds it.
+    #[must_use]
+    pub fn rc_drives(self, now_ms: u32, in_band: bool, rc_hold: bool) -> bool {
+        matches!(
+            self,
+            RcOwner::Rc { since_ms, first: Some(Asker::Rc) }
+                if now_ms.wrapping_sub(since_ms) >= RC_BRAKE_MS && !in_band && !rc_hold
+        )
+    }
+}
+
 /// Inside the Safety region: is the car bringing itself back under the speed limit? This
 /// aims for the limit, not for a stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -386,6 +508,54 @@ pub struct State {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_rc_takes_over_from_the_computer_braked_for_a_second() {
+        let (o, hold) = RcOwner::Computer.next(0, false, false, true, false);
+        assert!(!hold);
+        assert!(!o.rc_drives(999, false, false));
+        let (o, _) = o.next(1000, false, false, true, false);
+        assert!(o.rc_drives(1000, false, false));
+        // Held: the stick out of the band doesn't take over.
+        let (o, _) = RcOwner::Computer.next(0, false, false, false, true);
+        assert_eq!(o, RcOwner::Computer);
+    }
+
+    #[test]
+    fn the_first_to_ask_in_the_window_wins_when_it_ends() {
+        let rc = RcOwner::Rc {
+            since_ms: 0,
+            first: Some(Asker::Rc),
+        };
+        // The stick into the band at 100: a new window.
+        let (o, _) = rc.next(100, true, true, false, false);
+        // The computer asks at 200, then the stick leaves at 300.
+        let (o, _) = o.next(200, true, false, true, false);
+        let (o, _) = o.next(300, false, false, true, false);
+        assert!(matches!(o, RcOwner::Rc { .. }));
+        // At 1100 the computer wins; the stick is out, so the RC is held.
+        let (o, hold) = o.next(1100, false, false, true, false);
+        assert_eq!((o, hold), (RcOwner::Computer, true));
+        // The stick first instead: the RC drives at 1100.
+        let (o, _) = rc.next(100, true, true, false, false);
+        let (o, _) = o.next(300, false, false, true, false);
+        let (o, hold) = o.next(1100, false, false, true, false);
+        assert!(!hold && o.rc_drives(1100, false, false));
+    }
+
+    #[test]
+    fn nobody_asking_leaves_the_rc_braked_until_one_asks() {
+        let (o, hold) = RcOwner::rc_braked(0).next(1000, true, false, false, false);
+        assert!(!hold && o.idle(1000) && !o.rc_drives(1000, true, false));
+        assert!(!RcOwner::rc_braked(0).idle(999));
+        // Later the computer asks: it has the car at once.
+        let (o, _) = o.next(5000, true, false, true, false);
+        assert_eq!(o, RcOwner::Computer);
+        // Or the stick leaves the band: the RC drives at once (its window is over).
+        let (o, _) = RcOwner::rc_braked(0).next(1000, true, false, false, false);
+        let (o, _) = o.next(5000, false, false, false, false);
+        assert!(o.rc_drives(5000, false, false));
+    }
 
     #[test]
     fn lifecycle_boots_into_the_self_test_and_passes_only_without_faults() {

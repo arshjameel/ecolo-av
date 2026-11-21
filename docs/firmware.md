@@ -236,13 +236,44 @@ reviewed these yet.**
 
 | What happens | The spine |
 |---|---|
-| E-stop, driver fault, RC gear switch on brake | hard stop |
-| Lost input: commands, RC, wheel speed | hard stop, latched until re-armed |
+| E-stop, driver fault, the RC's left stick in its brake band | hard stop |
+| Lost input: commands, RC (in normal mode too), wheel speed | hard stop, latched until re-armed |
 | Past 1.25 m/s (the limit is 1.0) | throttle off, brake 0.5, until under the limit |
 | Still over the limit 2 s later, speeding up or steady | hard stop, latched |
-| RC direct, throttle stick at zero | light brake for 1 s, then the full brake |
 
 The table in full: [`spine-core`](../firmware/spine/crates/spine-core/README.md).
+
+### The RC transmitter (Arsh, 21 Nov)
+
+The FS-i6X's left stick doesn't spring back to the middle, and its SwC switch (CH5) has
+loose wiring. So the left stick alone says brake, forward or reverse, and the ESP32 decides
+between the RC and the computer itself, so it still works with the Motor Pi or the Orin dead.
+
+```text
+left stick (CH3):  1000 ◄── forward ──┤ brake band, ±30 % ├── reverse ──► 2000
+                   full throttle    0 at the edge     0 at the edge    full reverse
+```
+
+| Mode switch (CH6) | Who drives |
+|---|---|
+| Low: **normal** | the computer, but the RC outranks it (below). The RC must stay: losing it is a hard stop |
+| Middle: RC via ROS | the computer, from the sticks sent up to ROS (unchanged) |
+| High: **manual** (RC direct) | the RC only; the computer's commands count for nothing |
+| Under 950: the transmitter's failsafe (900) | RC lost: a hard stop, latched |
+
+| Rule | The spine |
+|---|---|
+| The stick in its band | full brake at once, no light stage (T3.6's 0.33 for 1 s is gone) |
+| Forward to reverse, or back | braked until 1 s (`RC_BRAKE_MS`) after the stick entered the band; the same way again: at once |
+| After any stop, at power-up, after the mode switch moves | the RC waits for the stick to visit the band (`rc_hold`) |
+| Normal: the stick leaves the band while the computer drives | the RC takes over: braked 1 s, then it drives |
+| Normal: the stick into the band | braked, and a 1 s window: the first to ask has the car when it ends. The stick leaving the band (the RC wins a tie), or the computer asking to move (armed, over 0.05 m/s, or any throttle on the UART) |
+| Normal: the computer won with the stick still out | the stick must come back to the band before it takes over again |
+| Normal: nobody asks | the RC keeps the car, fully braked; the hardware test mode may start |
+| The left stick sideways, SwC (CH5) | nothing |
+
+Not known yet: whether the left stick's low end really is forward (`throttle_reversed` in
+`ibus::RcMap`, Q7). The transmitter check: [Car day, the RC transmitter](car-day.md#the-rc-transmitter).
 
 A person stopping any other way is ego's job, and an obstacle stop is navigation's (the stop zone) and ego's: not
 built yet. The wheel speed reaches the firmware only once the Motor Pi sends frame
@@ -267,7 +298,6 @@ For the team, from the drivers' port. Each is one constant at the top of `spine-
 |---|---|---|
 | `ESTOP_STEERING` | `Hold`: the steering stays where it is on any stop | centred it |
 | `IDLE_BRAKE` | `0.0`: the brake lets go once the e-stop clears | kept it full on (1.0) |
-| `RC_GEAR_BRAKE` | `FullBrake` (Arsh, 6 Nov, T3.6): the brake full on at once. `SpeedZero` asks the speed loop to stop instead | put the brake full on at once |
 
 ⚠️ `IDLE_BRAKE` matters most: on a slope, a car with its brake off can roll. It is a team
 choice:

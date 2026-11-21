@@ -21,7 +21,7 @@ is tested on a laptop, without a board. The board programs are in `boards/`:
 
 | Crate | What it is | Tests |
 |---|---|---|
-| [`spine-core`](./crates/spine-core/README.md) | the spine's logic: modes, arming, the 100 ms watchdog, the speed loop (closed, or open with no wheel speed), the encoder, the CAN frames, open-loop commands, the state machine and the hardware test mode (`fsm`), and the three choices still open (below) | 142 |
+| [`spine-core`](./crates/spine-core/README.md) | the spine's logic: modes, arming, the 100 ms watchdog, the speed loop (closed, or open with no wheel speed), the encoder, the CAN frames, open-loop commands, the state machine and the hardware test mode (`fsm`), normal mode's RC arbiter (`RcOwner`), and the two choices still open (below) | 142 |
 | [`adaptive-brake`](./crates/adaptive-brake/README.md) (19 Nov) | the adaptive brake (TODO 258): harder when the car slows less than the model says, never above the brake's safe max; `aav_description`'s `adaptive_brake.py` in Rust, for `legacy_uart_bridge`'s pi loop. Uses `libm` | 6 |
 | [`wheel-core`](./crates/wheel-core/README.md) | the front wheel nodes' logic: Hall sensor pulses to speed, and the WHEEL_SPEED frame | 9 |
 | [`legacy-link`](./crates/legacy-link/README.md) | the 2025-26 UART link: the Motor-Pi's 13-byte frames, and the targets the C++ set for them; versions 2 and 3 (the heartbeat; the steering calibration's rules, `SteerCal`) and the uplink | 121 |
@@ -50,7 +50,7 @@ WHEEL_SPEED frames, in Arduino C++.
 | `wheel-encoder-pico2` | [boards/wheel-encoder-pico2](./boards/wheel-encoder-pico2/README.md) |
 | `sentinel-pico2` | [boards/sentinel-pico2](./boards/sentinel-pico2/README.md) |
 
-## Three choices still open
+## Two choices still open
 
 Each is one constant in `spine-core` (`src/spine.rs`), set to what `docs/firmware.md`
 proposes. Change one only with the team; the board program and the bench both follow.
@@ -59,7 +59,10 @@ proposes. Change one only with the team; the board program and the bench both fo
 |---|---|---|
 | `ESTOP_STEERING` | `Hold`: on any stop the spine makes, the wheels stay where they are | centred them (`Centre`) |
 | `IDLE_BRAKE` | `0.0`: with nobody driving, after boot too, the brake lets go once the e-stop input clears | kept it full on (`1.0`) |
-| `RC_GEAR_BRAKE` | `FullBrake`, the same (Arsh, 6 Nov, T3.6): the gear switch's brake position is a hard stop | full brake at once |
+
+The RC gear switch's brake (`RC_GEAR_BRAKE`) went on 21 Nov: the gear switch (SwC) is no
+longer read, and the left stick's brake band is a hard stop (`docs/firmware.md`, "The RC
+transmitter").
 
 ## Invariants
 
@@ -70,7 +73,10 @@ proposes. Change one only with the team; the board program and the bench both fo
   `embedded-io`. A board crate is the only place that knows its chip.
 - `spine-core` decides; `spine-board` and the boards only carry its decisions out.
 - Any e-stop, driver fault, lost RC, lost wheel speed or 100 ms without a command is a hard
-  stop. The computer must disarm, then arm, to drive again.
+  stop. The computer must disarm, then arm, to drive again. On the ESP32 (it has a
+  receiver) the RC must stay in normal mode too.
+- In normal mode the RC outranks the computer, decided on the board (`spine-core`'s
+  `RcOwner`), so it works with the computer dead.
 - One forward limit, 1.0 m/s, for every driver: `MAX_SPEED` and `ego.yaml`'s `max_speed`.
 - Pins, I2C addresses and calibration live here, in the firmware, never in ROS.
 - The CAN frames are `firmware/can/aav.dbc`'s. `spine-core`'s `protocol` and

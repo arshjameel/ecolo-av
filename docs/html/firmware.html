@@ -7,7 +7,7 @@
 <!-- Generated from docs/firmware.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Firmware: the spine and its CAN contract</h1>
-<div class="meta">18 min read · 10 sections</div></header>
+<div class="meta">20 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -631,11 +631,11 @@ reviewed these yet.</strong></p>
 </thead>
 <tbody>
 <tr>
-<td>E-stop, driver fault, RC gear switch on brake</td>
+<td>E-stop, driver fault, the RC's left stick in its brake band</td>
 <td>hard stop</td>
 </tr>
 <tr>
-<td>Lost input: commands, RC, wheel speed</td>
+<td>Lost input: commands, RC (in normal mode too), wheel speed</td>
 <td>hard stop, latched until re-armed</td>
 </tr>
 <tr>
@@ -646,13 +646,85 @@ reviewed these yet.</strong></p>
 <td>Still over the limit 2 s later, speeding up or steady</td>
 <td>hard stop, latched</td>
 </tr>
-<tr>
-<td>RC direct, throttle stick at zero</td>
-<td>light brake for 1 s, then the full brake</td>
-</tr>
 </tbody>
 </table></div>
 <p>The table in full: <a href="../../firmware/spine/crates/spine-core/README.md"><code>spine-core</code></a>.</p>
+<h3 id="the-rc-transmitter-arsh-21-nov">The RC transmitter (Arsh, 21 Nov)</h3>
+<p>The FS-i6X's left stick doesn't spring back to the middle, and its SwC switch (CH5) has
+loose wiring. So the left stick alone says brake, forward or reverse, and the ESP32 decides
+between the RC and the computer itself, so it still works with the Motor Pi or the Orin dead.</p>
+<pre class="highlight"><code class="language-text">left stick (CH3):  1000 ◄── forward ──┤ brake band, ±30 % ├── reverse ──► 2000
+                   full throttle    0 at the edge     0 at the edge    full reverse</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Mode switch (CH6)</th>
+<th>Who drives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Low: <strong>normal</strong></td>
+<td>the computer, but the RC outranks it (below). The RC must stay: losing it is a hard stop</td>
+</tr>
+<tr>
+<td>Middle: RC via ROS</td>
+<td>the computer, from the sticks sent up to ROS (unchanged)</td>
+</tr>
+<tr>
+<td>High: <strong>manual</strong> (RC direct)</td>
+<td>the RC only; the computer's commands count for nothing</td>
+</tr>
+<tr>
+<td>Under 950: the transmitter's failsafe (900)</td>
+<td>RC lost: a hard stop, latched</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>The spine</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The stick in its band</td>
+<td>full brake at once, no light stage (T3.6's 0.33 for 1 s is gone)</td>
+</tr>
+<tr>
+<td>Forward to reverse, or back</td>
+<td>braked until 1 s (<code>RC_BRAKE_MS</code>) after the stick entered the band; the same way again: at once</td>
+</tr>
+<tr>
+<td>After any stop, at power-up, after the mode switch moves</td>
+<td>the RC waits for the stick to visit the band (<code>rc_hold</code>)</td>
+</tr>
+<tr>
+<td>Normal: the stick leaves the band while the computer drives</td>
+<td>the RC takes over: braked 1 s, then it drives</td>
+</tr>
+<tr>
+<td>Normal: the stick into the band</td>
+<td>braked, and a 1 s window: the first to ask has the car when it ends. The stick leaving the band (the RC wins a tie), or the computer asking to move (armed, over 0.05 m/s, or any throttle on the UART)</td>
+</tr>
+<tr>
+<td>Normal: the computer won with the stick still out</td>
+<td>the stick must come back to the band before it takes over again</td>
+</tr>
+<tr>
+<td>Normal: nobody asks</td>
+<td>the RC keeps the car, fully braked; the hardware test mode may start</td>
+</tr>
+<tr>
+<td>The left stick sideways, SwC (CH5)</td>
+<td>nothing</td>
+</tr>
+</tbody>
+</table></div>
+<p>Not known yet: whether the left stick's low end really is forward (<code>throttle_reversed</code> in
+<code>ibus::RcMap</code>, Q7). The transmitter check: <a href="car-day.html#the-rc-transmitter">Car day, the RC transmitter</a>.</p>
 <p>A person stopping any other way is ego's job, and an obstacle stop is navigation's (the stop zone) and ego's: not
 built yet. The wheel speed reaches the firmware only once the Motor Pi sends frame
 version 4: until then the two speed rules stay off.</p>
@@ -687,11 +759,6 @@ each. Only a deliberate re-arm releases it. Corrupted frames are tested in QEMU.
 <td><code>IDLE_BRAKE</code></td>
 <td><code>0.0</code>: the brake lets go once the e-stop clears</td>
 <td>kept it full on (1.0)</td>
-</tr>
-<tr>
-<td><code>RC_GEAR_BRAKE</code></td>
-<td><code>FullBrake</code> (Arsh, 6 Nov, T3.6): the brake full on at once. <code>SpeedZero</code> asks the speed loop to stop instead</td>
-<td>put the brake full on at once</td>
 </tr>
 </tbody>
 </table></div>

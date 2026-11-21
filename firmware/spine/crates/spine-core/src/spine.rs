@@ -2,16 +2,17 @@
 //!
 //! Its states are the five regions in [`crate::fsm`]. Priorities, highest first:
 //! 1. Any e-stop (hardware input or ESTOP_CMD): throttle off, full brake.
-//! 2. The RC transmitter, while its mode switch is on RC direct.
+//! 2. The RC transmitter, while its mode switch is on manual (RC direct).
 //! 3. The hardware test mode, once entered: one actuator at a time.
 //! 4. The computer, while armed and sending fresh DRIVE_CMD frames.
 //! 5. Otherwise idle: actuators idle.
 //!
-//! The transmitter's mode switch ([`RcSwitch`], TODO 48) has a third position, RC via
-//! ROS: the computer drives, from the sticks the board sends up to it. The spine treats
-//! it as the computer, with one rule more: the RC signal must stay, as in RC direct. A
-//! lost RC signal in either RC position is a hard stop (fault bit `RC_SIGNAL_LOST`), and
-//! latches, like a timeout, so the computer must stop, then drive again.
+//! The transmitter's mode switch ([`RcSwitch`], TODO 48) has three positions: normal
+//! (the computer drives), RC via ROS (the computer drives, from the sticks the board sends
+//! up to it) and manual (RC direct). The RC signal must stay in RC via ROS and manual, and
+//! in normal too on a board with a receiver ([`SpineConfig::rc_fitted`]). A lost RC signal
+//! is a hard stop (fault bit `RC_SIGNAL_LOST`), and latches, like a timeout, so the
+//! computer must stop, then drive again.
 //!
 //! A driver fault (steering, brake, throttle or encoder) stops the car in any mode.
 //!
@@ -19,13 +20,12 @@
 //!
 //! | What happens | The spine |
 //! |---|---|
-//! | An e-stop, a driver fault, the RC gear switch on brake | a hard stop |
+//! | An e-stop, a driver fault, the RC's left stick in its brake band | a hard stop |
 //! | A lost input: commands, RC or wheel speed (once a link has sent one) | a hard stop, latched |
 //! | Past `max_speed + overspeed_margin` | throttle off and `overspeed_brake` until under `max_speed`; still over it after [`OVERSPEED_WINDOW_MS`](crate::fsm::OVERSPEED_WINDOW_MS): a hard stop, latched |
-//! | RC direct with the throttle stick at zero | `rc_stop_brake` for `rc_stop_ms`, then the stop brake |
 //!
 //! RC direct has no arming, so its own latch (`rc_hold`) stays until the signal and the
-//! speed are back, the throttle stick is at zero and the gear switch is on brake.
+//! speed are back and the left stick is in its brake band.
 //!
 //! The computer's commands come in two kinds, with the same watchdog and arming:
 //!
@@ -43,8 +43,8 @@
 //! restarts the car by itself.
 
 use crate::fsm::{
-    Authority, Confidence, Latch, Lifecycle, Motion, Overspeed, Safety, State, TestRequest,
-    TestStage, TEST_MAX_SPEED, TEST_MAX_THROTTLE,
+    Authority, Confidence, Latch, Lifecycle, Motion, Overspeed, RcOwner, Safety, State,
+    TestRequest, TestStage, RC_BRAKE_MS, TEST_MAX_SPEED, TEST_MAX_THROTTLE,
 };
 use crate::limits::slew;
 use crate::protocol::{counter_step, DriveCmd, EstopCmd, Mode, VehicleFeedback, VehicleStatus};
@@ -69,7 +69,7 @@ pub mod faults {
     pub const WHEEL_ENCODER: u16 = 64;
     /// CAN error passive, or bus off.
     pub const CAN_BUS: u16 = 128;
-    /// The RC receiver is silent in RC mode.
+    /// The RC receiver is silent, or sends the transmitter's failsafe, while it counts.
     pub const RC_SIGNAL_LOST: u16 = 256;
     /// The measured speed is over the firmware's limit.
     pub const OVERSPEED: u16 = 512;
@@ -113,17 +113,14 @@ pub const ESTOP_STEERING: EstopSteering = EstopSteering::Hold;
 /// once the e-stop input clears. The 2025-26 firmware kept it full on (1.0).
 pub const IDLE_BRAKE: f32 = 0.0;
 
-/// What the RC gear switch's brake position does. Arsh, 6 Nov (T3.6): a hard stop, as the
-/// 2025-26 firmware did. Otherwise speed zero, so the speed loop brakes to a stop and holds.
-pub const RC_GEAR_BRAKE: RcGearBrake = RcGearBrake::FullBrake;
+/// The computer asks to move, for normal mode's arbiter ([`RcOwner`]), with a speed above
+/// this (m/s), or any throttle on the UART link. Arsh, 21 Nov: "a non zero speed".
+pub const COMPUTER_ASKS_SPEED: f32 = 0.05;
 
 /// The fastest the car may go forward (m/s), whoever drives, the RC transmitter too. The
 /// same as `ros/ego/aav_ego/config/ego.yaml`'s `max_speed` (Arsh, 6 Nov, T3.6): raise them
 /// together, per the test plan. test_vehicle.py checks they match.
 pub const MAX_SPEED: f32 = 1.0;
-
-/// An RC throttle stick nearer zero than this counts as zero: the UART link's deadband.
-const RC_ZERO_THROTTLE: f32 = 0.03;
 
 // Copies of ros/bringup/aav_description/config/vehicle.yaml, the one place the car's numbers live:
 // the firmware can't read it. ros/bringup/aav_description/test/test_vehicle.py checks the copies.
@@ -143,15 +140,6 @@ pub enum EstopSteering {
     Hold,
     /// Bring the wheels back to straight, at the steering rate limit.
     Centre,
-}
-
-/// What the RC gear switch's brake position (its middle) does.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RcGearBrake {
-    /// Ask for zero speed: the speed loop brakes to a stop, then holds the car there.
-    SpeedZero,
-    /// Throttle off and the brake full on at once; the steering still follows the stick.
-    FullBrake,
 }
 
 /// Where the speed loop gets the car's speed.
@@ -194,20 +182,17 @@ pub struct SpineConfig {
     pub overspeed_brake: f32,
     /// No speed from the link for this long, once it has sent one = a hard stop (ms).
     pub speed_timeout_ms: u32,
-    /// RC direct, the throttle stick at zero: this brake (0..1), for this long (ms), then
-    /// the stop brake. 0.33 gives about 1 m/s^2 with vehicle.yaml's guessed `max_brake`,
-    /// so about 1 s from 1 m/s. GUESS: tune in test 4.3.
-    pub rc_stop_brake: f32,
-    /// How long `rc_stop_brake` holds (ms).
-    pub rc_stop_ms: u32,
-    /// Brake for stops, and brake in manual mode (0..1).
+    /// The board has an RC receiver (Arsh, 21 Nov): then the RC signal must stay in every
+    /// position of the mode switch, normal too, and losing it is a hard stop. `false` (the
+    /// default) for a spine with no receiver: the bench, the simulators, the Pico 2. The
+    /// ESP32 on the car sets it.
+    pub rc_fitted: bool,
+    /// Brake for stops, for the RC's brake band, and in manual mode (0..1).
     pub stop_brake: f32,
     /// The brake while nobody drives (0..1): [`IDLE_BRAKE`].
     pub idle_brake: f32,
     /// The steering on a stop: [`ESTOP_STEERING`].
     pub estop_steering: EstopSteering,
-    /// The RC gear switch's brake position: [`RC_GEAR_BRAKE`].
-    pub rc_gear_brake: RcGearBrake,
     /// The closed speed loop's law and gains.
     pub speed_loop: SpeedLoopConfig,
     /// The wheel speed, or none: [`SpeedFeedback`].
@@ -227,12 +212,10 @@ impl Default for SpineConfig {
             overspeed_margin: 0.25,
             overspeed_brake: 0.5,
             speed_timeout_ms: 300,
-            rc_stop_brake: 0.33,
-            rc_stop_ms: 1000,
+            rc_fitted: false,
             stop_brake: 1.0,
             idle_brake: IDLE_BRAKE,
             estop_steering: ESTOP_STEERING,
-            rc_gear_brake: RC_GEAR_BRAKE,
             speed_loop: SpeedLoopConfig::default(),
             speed_feedback: SpeedFeedback::Wheel,
         }
@@ -273,13 +256,14 @@ impl SpineConfig {
 /// Where the transmitter's mode switch is (TODO 48).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RcSwitch {
-    /// The computer drives; the sticks do nothing.
+    /// Normal: the computer drives. With a receiver fitted, its signal must stay.
     #[default]
     Computer,
     /// A person drives with the sticks, through the computer: the board sends them up,
     /// a ROS driver turns them into commands, and the computer's frames drive.
     ViaRos,
-    /// A person drives with the sticks, straight from this board: no computer.
+    /// Manual: a person drives with the sticks, straight from this board (RC direct). The
+    /// computer's commands count for nothing.
     Direct,
 }
 
@@ -288,11 +272,13 @@ pub enum RcSwitch {
 pub struct RcInput {
     /// The transmitter's mode switch.
     pub switch: RcSwitch,
-    /// -1..1, positive forward.
+    /// -1..1, positive forward: 0 in the brake band, then from 0 at its edge to 1 at the
+    /// stick's end (`ibus::RcMap`).
     pub throttle: f32,
     /// -1..1, positive left.
     pub steering: f32,
-    /// The gear switch is on brake. What that does is [`SpineConfig::rc_gear_brake`].
+    /// The left stick is in its brake band (the middle 30 % each way): a hard stop while
+    /// the RC drives.
     pub brake: bool,
 }
 
@@ -322,6 +308,16 @@ enum Command {
 }
 
 impl Command {
+    /// This command asks the car to move, forward or back.
+    fn asks_to_move(&self) -> bool {
+        match self {
+            Command::Speed(cmd) => {
+                cmd.target_speed > COMPUTER_ASKS_SPEED || cmd.target_speed < -COMPUTER_ASKS_SPEED
+            }
+            Command::Direct(cmd) => !cmd.stop && cmd.brake <= 0.0 && cmd.throttle > 0.0,
+        }
+    }
+
     fn armed(&self) -> bool {
         match self {
             Command::Speed(cmd) => cmd.armed,
@@ -416,10 +412,18 @@ pub struct Spine {
     seen_test_exit: bool,
     /// The mode switch when the RC was last heard: Computer at boot.
     rc_switch: RcSwitch,
-    /// RC direct stays stopped after a lost input, until a person clears it on purpose.
+    /// RC direct stays stopped after a lost input, at power-up and after the mode switch
+    /// moves, until a person clears it on purpose (the left stick in its brake band).
     rc_hold: bool,
-    /// When the RC direct throttle stick reached zero.
-    rc_zero_since_ms: Option<u32>,
+    /// The left stick was in its brake band last time the RC was heard.
+    rc_in_band: bool,
+    /// When the left stick last entered its brake band: forward and reverse change only
+    /// [`RC_BRAKE_MS`] after it.
+    band_since_ms: Option<u32>,
+    /// Which way the RC last drove (true: reverse); `None` once it no longer drives.
+    rc_reverse: Option<bool>,
+    /// Normal mode: does the RC or the computer have the car? The RC's, braked, at boot.
+    owner: RcOwner,
     /// The speed from the link: the latest, whether one ever came, its own watchdog.
     reported_speed: f32,
     speed_seen: bool,
@@ -456,8 +460,11 @@ impl Spine {
             test_request: None,
             seen_test_exit: false,
             rc_switch: RcSwitch::Computer,
-            rc_hold: false,
-            rc_zero_since_ms: None,
+            rc_hold: true,
+            rc_in_band: false,
+            band_since_ms: None,
+            rc_reverse: None,
+            owner: RcOwner::rc_braked(0),
             reported_speed: 0.0,
             speed_seen: false,
             speed_watchdog: Watchdog::new(cfg.speed_timeout_ms),
@@ -602,10 +609,22 @@ impl Spine {
             self.latch.trip();
         }
         // The RC: lost while its switch was on an RC position (direct or via ROS).
+        let mut entered_band = false;
         if let Some(rc) = i.rc {
+            // A new position: the left stick may rest anywhere, so the RC waits for it to
+            // come back to the band before it drives (Arsh, 21 Nov).
+            if rc.switch != self.rc_switch {
+                self.rc_hold = true;
+                self.owner = RcOwner::rc_braked(i.now_ms);
+            }
             self.rc_switch = rc.switch;
+            entered_band = rc.brake && !self.rc_in_band;
+            if entered_band {
+                self.band_since_ms = Some(i.now_ms);
+            }
+            self.rc_in_band = rc.brake;
         }
-        let rc_lost = i.rc.is_none() && self.rc_switch != RcSwitch::Computer;
+        let rc_lost = i.rc.is_none() && (self.rc_switch != RcSwitch::Computer || c.rc_fitted);
         if rc_lost {
             self.latch.trip();
         }
@@ -633,15 +652,13 @@ impl Spine {
         if overspeed_expired {
             self.latch.trip_overspeed();
         }
-        // Any stop holds RC direct until a person clears it (stick at zero, the gear switch
-        // on brake): an e-stop or a driver fault clearing with the stick still pushed must
-        // not drive the car again by itself.
+        // Any stop holds RC direct until a person clears it (the left stick in its brake
+        // band): an e-stop or a driver fault clearing with the stick still pushed must not
+        // drive the car again by itself.
         if estop || driver_fault || rc_lost || speed_lost || overspeed_expired {
             self.rc_hold = true;
-        } else if self.overspeed == Overspeed::Clear
-            && i.rc
-                .is_some_and(|rc| rc.brake && rc.throttle.abs() < RC_ZERO_THROTTLE)
-        {
+            self.owner = RcOwner::rc_braked(i.now_ms);
+        } else if self.overspeed == Overspeed::Clear && i.rc.is_some_and(|rc| rc.brake) {
             self.rc_hold = false;
         }
         // Like the computer's disarm, the test mode's Exit counts only after the latest
@@ -665,9 +682,33 @@ impl Spine {
             armed_request && running,
         );
 
+        // [3] Normal mode's arbiter: the RC outranks the computer (RcOwner).
+        let rc_direct = self.rc_switch == RcSwitch::Direct;
+        let normal = self.rc_switch == RcSwitch::Computer && i.rc.is_some();
+        if normal {
+            let computer_asks = armed_request
+                && running
+                && !self.latch.latched
+                && self.last_cmd.is_some_and(|cmd| cmd.asks_to_move());
+            let (owner, hold) = self.owner.next(
+                i.now_ms,
+                self.rc_in_band,
+                entered_band,
+                computer_asks,
+                self.rc_hold,
+            );
+            self.owner = owner;
+            if hold {
+                self.rc_hold = true;
+            }
+        }
+        let rc_owns = normal && matches!(self.owner, RcOwner::Rc { .. });
+        // Braked with nobody asking: the test mode may start, and beats it.
+        let rc_idle = rc_owns && self.owner.idle(i.now_ms);
+        let rc_has_car = rc_direct || (rc_owns && !rc_idle);
+
         // [3] The test mode. Leave it on anything unsafe, a stale request, or an Exit;
         // leaving always latches, so the computer must re-arm before it drives.
-        let rc_direct = self.rc_switch == RcSwitch::Direct;
         let mut in_test = self.authority.in_test();
         if in_test {
             let asked_out = self.test_request == Some(TestRequest::Exit);
@@ -675,7 +716,7 @@ impl Spine {
                 || driver_fault
                 || rc_lost
                 || speed_lost
-                || rc_direct
+                || rc_has_car
                 || self.speed.abs() > TEST_MAX_SPEED;
             if !test_fresh && !unsafe_now {
                 self.latch.trip_timeout();
@@ -691,7 +732,7 @@ impl Spine {
             && !driver_fault
             && !rc_lost
             && !speed_lost
-            && !rc_direct
+            && !rc_has_car
             && self.authority != Authority::Drive
             // Nor on the tick the computer's arm releases the latch.
             && (!armed_request || self.latch.latched)
@@ -703,13 +744,15 @@ impl Spine {
         }
 
         // [3] Authority.
-        self.authority = if rc_direct {
+        self.authority = if rc_has_car {
             Authority::Rc
         } else if in_test {
             Authority::Test(
                 self.allowed_test_request()
                     .map_or(TestStage::Armed, |r| r.stage()),
             )
+        } else if rc_idle {
+            Authority::Rc
         } else if armed_request && !self.latch.latched {
             Authority::Drive
         } else {
@@ -751,12 +794,11 @@ impl Spine {
             faults: fault_bits,
         };
 
-        if self.authority != Authority::Rc
-            || i.rc.is_none_or(|rc| rc.throttle.abs() >= RC_ZERO_THROTTLE)
-        {
-            self.rc_zero_since_ms = None;
+        if self.authority != Authority::Rc {
+            self.rc_reverse = None;
         }
         if stop || (self.authority == Authority::Idle && latched_stop) {
+            self.rc_reverse = None;
             self.speed_setpoint = 0.0;
             self.speed_loop.reset();
             if c.estop_steering == EstopSteering::Centre {
@@ -767,7 +809,6 @@ impl Spine {
 
         // Targets for this mode, inside the firmware's own limits.
         let mut full_brake = false;
-        let mut rc_zero = false;
         let (target_speed, target_steering, accel, steer_rate) = match self.authority {
             Authority::Test(_) => return self.test(dt, &out),
             Authority::Idle => {
@@ -780,10 +821,26 @@ impl Spine {
                     switch: RcSwitch::Direct,
                     throttle: 0.0,
                     steering: 0.0,
-                    brake: false,
+                    brake: true,
                 });
-                full_brake = rc.brake && c.rc_gear_brake == RcGearBrake::FullBrake;
-                rc_zero = rc.throttle.abs() < RC_ZERO_THROTTLE;
+                // Forward and reverse change only RC_BRAKE_MS after the stick entered its
+                // band, even if it is already out the other side: braked till then.
+                let want_reverse = rc.throttle < 0.0;
+                let changing = !rc.brake && self.rc_reverse.is_some_and(|r| r != want_reverse);
+                if changing && self.band_since_ms.is_none() {
+                    self.band_since_ms = Some(i.now_ms);
+                }
+                let waiting = changing
+                    && self
+                        .band_since_ms
+                        .is_none_or(|t| i.now_ms.wrapping_sub(t) < RC_BRAKE_MS);
+                // Normal mode: braked until the arbiter says the RC drives.
+                let arbiter = rc.switch == RcSwitch::Computer
+                    && !self.owner.rc_drives(i.now_ms, rc.brake, self.rc_hold);
+                full_brake = rc.brake || waiting || arbiter;
+                if !full_brake {
+                    self.rc_reverse = Some(want_reverse);
+                }
                 let cap = if rc.throttle >= 0.0 {
                     c.max_speed
                 } else {
@@ -829,17 +886,6 @@ impl Spine {
             self.speed_setpoint = 0.0;
             self.speed_loop.reset();
             return out(0.0, c.stop_brake, false, self.steering_setpoint, self);
-        }
-        if rc_zero {
-            self.speed_setpoint = 0.0;
-            self.speed_loop.reset();
-            let since_ms = *self.rc_zero_since_ms.get_or_insert(i.now_ms);
-            let brake = if i.now_ms.wrapping_sub(since_ms) < c.rc_stop_ms {
-                c.rc_stop_brake
-            } else {
-                c.stop_brake
-            };
-            return out(0.0, brake, false, self.steering_setpoint, self);
         }
         // Slowing down (toward zero, or through it) uses the separate, harder cap.
         let slowing = target_speed.abs() < self.speed_setpoint.abs()
@@ -1035,6 +1081,22 @@ mod tests {
             self.spine.step(&i)
         }
 
+        /// A person clears the RC (rc_hold, at power-up and after the mode switch moves):
+        /// a few ticks with the left stick in its brake band, the switch at `switch`.
+        fn clear_rc(&mut self, switch: RcSwitch) {
+            for _ in 0..3 {
+                self.tick(Inputs {
+                    rc: Some(RcInput {
+                        switch,
+                        throttle: 0.0,
+                        steering: 0.0,
+                        brake: true,
+                    }),
+                    ..Default::default()
+                });
+            }
+        }
+
         /// The computer's arming edge: `armed = 0`, then the caller sends `armed = 1`.
         fn arm(&mut self) {
             self.drive(0.0, 0.0, false, 2);
@@ -1212,6 +1274,16 @@ mod tests {
         }
     }
 
+    /// The left stick resting in its brake band: in normal mode, the computer may drive.
+    fn band(switch: RcSwitch) -> RcInput {
+        RcInput {
+            switch,
+            throttle: 0.0,
+            steering: 0.0,
+            brake: true,
+        }
+    }
+
     impl Car {
         /// `ticks` of the computer's command, with the RC as given.
         fn drive_with_rc(
@@ -1273,7 +1345,7 @@ mod tests {
     #[test]
     fn rc_lost_on_the_computer_position_changes_nothing() {
         let mut car = Car::new();
-        let rc = Some(sticks(RcSwitch::Computer));
+        let rc = Some(band(RcSwitch::Computer));
         car.drive_with_rc(0.0, false, rc, 2);
         car.drive_with_rc(1.0, true, rc, 50);
         let out = car.drive_with_rc(1.0, true, None, 20);
@@ -1282,14 +1354,216 @@ mod tests {
     }
 
     #[test]
-    fn rc_direct_from_via_ros_takes_over_at_once() {
+    fn with_a_receiver_fitted_a_lost_rc_stops_the_computer_too() {
+        // Arsh, 21 Nov: in normal mode the RC must stay, whether the computer drives or
+        // not. The left stick rests in its brake band, so the RC doesn't take over.
+        let mut car = Car::with_config(SpineConfig {
+            rc_fitted: true,
+            ..SpineConfig::default()
+        });
+        let rc = Some(RcInput {
+            switch: RcSwitch::Computer,
+            throttle: 0.0,
+            steering: 0.0,
+            brake: true,
+        });
+        // At power-up the RC has the car, braked, for its first second.
+        car.drive_with_rc(0.0, false, rc, 2);
+        let out = car.drive_with_rc(1.0, true, rc, 150);
+        assert_eq!(out.mode, Mode::Computer);
+        assert!(out.throttle > 0.0);
+        // The receiver goes silent (or sends the failsafe): a hard stop, latched.
+        let out = car.drive_with_rc(1.0, true, None, 1);
+        assert_eq!((out.throttle, out.brake), (0.0, 1.0));
+        assert_ne!(out.faults & faults::RC_SIGNAL_LOST, 0);
+        // The RC back: its second, then still stopped until the computer re-arms.
+        let out = car.drive_with_rc(1.0, true, rc, 120);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+        car.drive_with_rc(0.0, false, rc, 2);
+        assert_eq!(car.drive_with_rc(1.0, true, rc, 5).mode, Mode::Computer);
+        // No transmitter at all, from boot: never drives.
+        let mut car = Car::with_config(SpineConfig {
+            rc_fitted: true,
+            ..SpineConfig::default()
+        });
+        car.drive_with_rc(0.0, false, None, 2);
+        let out = car.drive_with_rc(1.0, true, None, 50);
+        assert_eq!((out.throttle, out.brake), (0.0, 1.0));
+        assert_ne!(out.faults & faults::RC_SIGNAL_LOST, 0);
+    }
+
+    // --- Normal mode's arbiter: the RC outranks the computer (Arsh, 21 Nov) ---
+
+    /// A spine with a receiver, the computer driving at 1 m/s, the left stick in its band.
+    fn computer_driving() -> Car {
+        let mut car = Car::with_config(SpineConfig {
+            rc_fitted: true,
+            idle_brake: 1.0, // as the ESP32 sets it
+            ..SpineConfig::default()
+        });
+        let band = Some(band(RcSwitch::Computer));
+        car.drive_with_rc(0.0, false, band, 2);
+        let out = car.drive_with_rc(1.0, true, band, 150);
+        assert_eq!(out.mode, Mode::Computer);
+        car
+    }
+
+    /// The left stick out of its band in normal mode (0.5 forward).
+    fn pushed() -> Option<RcInput> {
+        Some(RcInput {
+            throttle: 0.5,
+            brake: false,
+            ..band(RcSwitch::Computer)
+        })
+    }
+
+    #[test]
+    fn the_rc_takes_over_from_the_computer_after_a_second_braked() {
+        let mut car = computer_driving();
+        let out = car.drive_with_rc(1.0, true, pushed(), 1);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+        let out = car.drive_with_rc(1.0, true, pushed(), 95);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+        let out = car.drive_with_rc(1.0, true, pushed(), 30);
+        assert_eq!(out.mode, Mode::Rc);
+        assert!(out.throttle > 0.0, "the RC drives: {out:?}");
+    }
+
+    #[test]
+    fn the_computer_asking_first_in_the_window_drives_after_it() {
+        let mut car = computer_driving();
+        car.drive_with_rc(1.0, true, pushed(), 130); // the RC drives
+                                                     // Into the band, the computer still asking: braked a second, then it drives.
+        let b = Some(band(RcSwitch::Computer));
+        let out = car.drive_with_rc(1.0, true, b, 90);
+        assert_eq!((out.mode, out.brake), (Mode::Rc, 1.0));
+        let out = car.drive_with_rc(1.0, true, b, 30);
+        assert_eq!(out.mode, Mode::Computer);
+        assert!(out.throttle > 0.0);
+    }
+
+    #[test]
+    fn a_stick_that_lost_the_race_must_come_back_to_the_band() {
+        let mut car = computer_driving();
+        car.drive_with_rc(1.0, true, pushed(), 130);
+        // The band for a tick with the computer asking (it is first), then the stick out.
+        car.drive_with_rc(1.0, true, Some(band(RcSwitch::Computer)), 1);
+        car.drive_with_rc(1.0, true, pushed(), 99);
+        // The window ends: the computer drives, the stick out doesn't take over.
+        let out = car.drive_with_rc(1.0, true, pushed(), 50);
+        assert_eq!(out.mode, Mode::Computer);
+        assert!(out.throttle > 0.0);
+        // Back to the band, then out: now it takes over, braked first.
+        car.drive_with_rc(1.0, true, Some(band(RcSwitch::Computer)), 3);
+        let out = car.drive_with_rc(1.0, true, pushed(), 1);
+        assert_eq!((out.mode, out.brake), (Mode::Rc, 1.0));
+    }
+
+    #[test]
+    fn the_stick_leaving_the_band_first_keeps_the_car_for_the_rc() {
+        let mut car = computer_driving();
+        car.drive_with_rc(0.0, true, pushed(), 130); // the RC drives; the computer idle
+        car.drive_with_rc(0.0, true, Some(band(RcSwitch::Computer)), 30);
+        car.drive_with_rc(0.0, true, pushed(), 10); // the stick first
+                                                    // Then the computer asks; at the window's end the RC still has the car.
+        let out = car.drive_with_rc(1.0, true, pushed(), 80);
+        assert_eq!(out.mode, Mode::Rc);
+        assert!(out.throttle > 0.0, "{out:?}");
+    }
+
+    #[test]
+    fn nobody_asking_leaves_the_rc_braked_until_the_computer_asks() {
+        let mut car = computer_driving();
+        car.drive_with_rc(0.0, true, pushed(), 130);
+        let b = Some(band(RcSwitch::Computer));
+        // A computer sending zeros (its heartbeat) is not asking: the RC keeps the car,
+        // fully braked.
+        let out = car.drive_with_rc(0.0, true, b, 150);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+        // Once it asks, it drives at once.
+        let out = car.drive_with_rc(1.0, true, b, 5);
+        assert_eq!(out.mode, Mode::Computer);
+        assert!(out.throttle > 0.0);
+    }
+
+    #[test]
+    fn manual_refuses_the_computer() {
+        let mut car = Car::with_config(SpineConfig {
+            rc_fitted: true,
+            ..SpineConfig::default()
+        });
+        car.clear_rc(RcSwitch::Direct);
+        let b = Some(band(RcSwitch::Direct));
+        car.drive_with_rc(0.0, false, b, 2);
+        let out = car.drive_with_rc(1.0, true, b, 300);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+    }
+
+    #[test]
+    fn the_uart_links_throttle_counts_as_asking() {
+        let asks = |cmd: DirectCmd| Command::Direct(cmd).asks_to_move();
+        let go = DirectCmd {
+            throttle: 0.2,
+            reverse: false,
+            brake: 0.0,
+            steering_angle: 0.0,
+            stop: false,
+        };
+        assert!(asks(go));
+        assert!(!asks(DirectCmd {
+            throttle: 0.0,
+            ..go
+        }));
+        assert!(!asks(DirectCmd { brake: 0.3, ..go }));
+        assert!(!asks(DirectCmd { stop: true, ..go }));
+        let speed = |v| DriveCmd {
+            target_speed: v,
+            steering_angle: 0.0,
+            accel_limit: 0.0,
+            steer_rate_limit: 0.0,
+            armed: true,
+            counter: 0,
+        };
+        assert!(Command::Speed(speed(-0.1)).asks_to_move());
+        assert!(!Command::Speed(speed(0.05)).asks_to_move());
+    }
+
+    #[test]
+    fn rc_direct_from_via_ros_takes_over_but_waits_for_the_band() {
         let mut car = Car::new();
         let via_ros = Some(sticks(RcSwitch::ViaRos));
         car.drive_with_rc(0.0, false, via_ros, 2);
         car.drive_with_rc(0.0, true, via_ros, 20);
+        // Switched to manual with the stick pushed: RC has the car, braked.
+        let out = car.drive_with_rc(0.0, true, Some(sticks(RcSwitch::Direct)), 30);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+        // The stick to the band and out again: the sticks drive.
+        car.clear_rc(RcSwitch::Direct);
         let out = car.drive_with_rc(0.0, true, Some(sticks(RcSwitch::Direct)), 30);
         assert_eq!(out.mode, Mode::Rc);
         assert!(out.throttle > 0.0, "the sticks drive");
+    }
+
+    #[test]
+    fn rc_direct_waits_for_the_band_after_power_up() {
+        let mut car = Car::new();
+        let pushed = Some(sticks(RcSwitch::Direct));
+        let out = car.drive_with_rc(0.0, false, pushed, 50);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+        car.clear_rc(RcSwitch::Direct);
+        assert!(car.drive_with_rc(0.0, false, pushed, 30).throttle > 0.0);
+    }
+
+    #[test]
+    fn moving_the_mode_switch_holds_rc_direct_again() {
+        let mut car = Car::new();
+        car.clear_rc(RcSwitch::Direct);
+        let pushed = Some(sticks(RcSwitch::Direct));
+        assert!(car.drive_with_rc(0.0, false, pushed, 30).throttle > 0.0);
+        // To normal and back, the stick still pushed: held until the band.
+        car.drive_with_rc(0.0, false, Some(band(RcSwitch::Computer)), 2);
+        let out = car.drive_with_rc(0.0, false, pushed, 30);
+        assert_eq!((out.throttle, out.brake), (0.0, 1.0));
     }
 
     #[test]
@@ -1310,6 +1584,7 @@ mod tests {
         assert!((car.spine.speed_setpoint() + MAX_REVERSE_SPEED).abs() < 1e-6);
         // Full reverse on the RC stick: the same cap.
         let mut car = Car::new();
+        car.clear_rc(RcSwitch::Direct);
         let rc = RcInput {
             switch: RcSwitch::Direct,
             throttle: -1.0,
@@ -1410,11 +1685,11 @@ mod tests {
         // docs/firmware.md, "Still to decide". Change them only with the team.
         assert_eq!(ESTOP_STEERING, EstopSteering::Hold);
         assert_eq!(IDLE_BRAKE, 0.0);
-        assert_eq!(RC_GEAR_BRAKE, RcGearBrake::FullBrake);
         let c = SpineConfig::default();
         assert_eq!(c.estop_steering, ESTOP_STEERING);
         assert_eq!(c.idle_brake, IDLE_BRAKE);
-        assert_eq!(c.rc_gear_brake, RC_GEAR_BRAKE);
+        // No receiver unless the board says so: the bench and the simulators have none.
+        assert!(!c.rc_fitted);
     }
 
     /// Steer to 0.3 rad, then hold the hardware e-stop for `ticks`.
@@ -1467,52 +1742,27 @@ mod tests {
         assert_eq!(Car::with_config(cfg).tick(Inputs::default()).brake, 1.0);
     }
 
-    /// RC drives, with the gear switch on brake and the steering stick full left, while
-    /// the car still rolls at 1 m/s.
-    fn rc_on_brake(cfg: SpineConfig) -> Outputs {
-        let mut car = Car::with_config(cfg);
-        let rc = RcInput {
-            switch: RcSwitch::Direct,
-            throttle: 0.0,
-            steering: 1.0,
-            brake: true,
-        };
-        let inputs = Inputs {
-            rc: Some(rc),
-            measured_speed: 1.0,
-            ..Default::default()
-        };
-        (0..10).map(|_| car.tick(inputs)).last().unwrap()
-    }
-
     #[test]
-    fn the_rc_gear_brake_can_ask_for_speed_zero() {
-        let cfg = SpineConfig {
-            rc_gear_brake: RcGearBrake::SpeedZero,
-            ..SpineConfig::default()
-        };
-        let mut car = Car::with_config(cfg);
-        let rc = RcInput {
-            switch: RcSwitch::Direct,
-            throttle: 0.2,
-            steering: 1.0,
-            brake: true,
-        };
+    fn the_brake_band_is_the_full_brake_at_once() {
+        // RC drives, the left stick in its brake band and the steering stick full left,
+        // while the car still rolls at 1 m/s: the full brake from the first tick.
+        let mut car = Car::new();
         let inputs = Inputs {
-            rc: Some(rc),
+            rc: Some(RcInput {
+                switch: RcSwitch::Direct,
+                throttle: 0.0,
+                steering: 1.0,
+                brake: true,
+            }),
             measured_speed: 1.0,
             ..Default::default()
         };
+        let first = car.tick(inputs);
+        assert_eq!(
+            (first.mode, first.throttle, first.brake),
+            (Mode::Rc, 0.0, 1.0)
+        );
         let out = (0..10).map(|_| car.tick(inputs)).last().unwrap();
-        assert_eq!((out.mode, out.throttle), (Mode::Rc, 0.0));
-        // The speed loop brakes as hard as the overspeed needs, not fully.
-        assert!(out.brake > 0.0 && out.brake < 1.0, "{}", out.brake);
-        assert!(out.steering_target > 0.0, "the stick still steers");
-    }
-
-    #[test]
-    fn the_rc_gear_brake_is_the_full_brake() {
-        let out = rc_on_brake(SpineConfig::default());
         assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
         assert!(out.steering_target > 0.0, "the stick still steers");
     }
@@ -2170,7 +2420,7 @@ mod tests {
         // The timeout latched only while the computer drove. Armed, then overridden by RC
         // direct, then silent, it came back on the computer position without a re-arm.
         let mut car = Car::new();
-        let computer = Some(sticks(RcSwitch::Computer));
+        let computer = Some(band(RcSwitch::Computer));
         car.drive_with_rc(0.0, false, computer, 2);
         car.drive_with_rc(1.0, true, computer, 10);
         // The person takes over; the computer's stream stops (a crash, a reboot).
@@ -2184,10 +2434,14 @@ mod tests {
                 ..Default::default()
             });
         }
-        // Back on the computer position; the computer sends armed commands again.
+        // Back on the computer position; the computer sends armed commands again. The RC
+        // has its second first (the mode switch moved), then the computer is latched.
         let out = car.drive_with_rc(1.0, true, computer, 5);
-        assert_eq!((out.mode, out.throttle), (Mode::Manual, 0.0));
+        assert_eq!(out.throttle, 0.0);
         assert_ne!(out.faults & faults::CMD_TIMEOUT, 0);
+        let out = car.drive_with_rc(1.0, true, computer, 100);
+        // Latched, the computer isn't asking: the RC keeps the car, braked.
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
         car.drive_with_rc(0.0, false, computer, 2);
         assert_eq!(
             car.drive_with_rc(1.0, true, computer, 5).mode,
@@ -2209,6 +2463,7 @@ mod tests {
             out.throttle
         );
         let mut car = Car::with_config(open_loop_config());
+        car.clear_rc(RcSwitch::Direct);
         let rc = RcInput {
             switch: RcSwitch::Direct,
             throttle: 1.0,
@@ -2444,36 +2699,104 @@ mod tests {
     }
 
     #[test]
-    fn rc_at_zero_throttle_stops_lightly_for_a_second_then_holds() {
+    fn rc_in_the_brake_band_stops_hard_with_no_light_stage() {
+        // T3.6 had a 0.33 brake for 1 s first; the band is a full brake at once.
         let mut car = Car::with_config(open_loop_config());
-        let inputs = Inputs {
-            rc: Some(rc_direct(0.0, false)),
+        let band = Inputs {
+            rc: Some(rc_direct(0.0, true)),
             ..Default::default()
         };
-        for _ in 0..100 {
-            let out = car.tick(inputs);
-            assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 0.33));
+        for _ in 0..150 {
+            let out = car.tick(band);
+            assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
         }
-        assert_eq!(car.tick(inputs).brake, 1.0);
-        // The stick pushed: the brake lets go, and the next zero starts a new stop.
-        for _ in 0..20 {
-            car.tick(Inputs {
-                rc: Some(rc_direct(0.5, false)),
-                ..Default::default()
-            });
-        }
-        let out = car.tick(Inputs {
+        // Out of the band: the brake lets go and it drives; back in: full at once.
+        let moving = Inputs {
             rc: Some(rc_direct(0.5, false)),
             ..Default::default()
-        });
+        };
+        for _ in 0..20 {
+            car.tick(moving);
+        }
+        let out = car.tick(moving);
         assert_eq!(out.brake, 0.0);
         assert!(out.throttle > 0.0);
-        assert_eq!(car.tick(inputs).brake, 0.33);
+        assert_eq!(car.tick(band).brake, 1.0);
+    }
+
+    /// Ticks of RC direct with the left stick at `throttle` (0 is the brake band).
+    fn rc_ticks(car: &mut Car, throttle: f32, n: u32) -> Outputs {
+        let rc = rc_direct(throttle, throttle == 0.0);
+        (0..n)
+            .map(|_| {
+                car.tick(Inputs {
+                    rc: Some(rc),
+                    ..Default::default()
+                })
+            })
+            .last()
+            .unwrap()
+    }
+
+    #[test]
+    fn rc_changes_to_reverse_only_a_second_after_entering_the_band() {
+        let mut car = Car::with_config(open_loop_config());
+        rc_ticks(&mut car, 0.0, 5);
+        let out = rc_ticks(&mut car, 0.5, 30);
+        assert!(out.throttle > 0.0 && !out.reverse);
+        // Into the band for 300 ms, then pulled back: braked until 1 s after the band.
+        rc_ticks(&mut car, 0.0, 30);
+        for n in 0..69 {
+            let out = rc_ticks(&mut car, -0.5, 1);
+            assert_eq!((out.throttle, out.brake), (0.0, 1.0), "tick {n}");
+        }
+        let out = rc_ticks(&mut car, -0.5, 30);
+        assert!(out.throttle > 0.0 && out.reverse, "{out:?}");
+        assert_eq!(out.brake, 0.0);
+    }
+
+    #[test]
+    fn rc_after_a_second_in_the_band_reverses_at_once() {
+        let mut car = Car::with_config(open_loop_config());
+        rc_ticks(&mut car, 0.0, 5);
+        rc_ticks(&mut car, 0.5, 30);
+        rc_ticks(&mut car, 0.0, 100); // a full second in the band
+                                      // No full brake from the first tick: only the ramp's light hold brake, then reverse.
+        assert!(rc_ticks(&mut car, -0.5, 1).brake < 1.0);
+        let out = rc_ticks(&mut car, -0.5, 10);
+        assert!(out.throttle > 0.0 && out.reverse, "{out:?}");
+    }
+
+    #[test]
+    fn rc_back_the_same_way_drives_at_once() {
+        // Only a change between forward and reverse waits.
+        let mut car = Car::with_config(open_loop_config());
+        rc_ticks(&mut car, 0.0, 5);
+        rc_ticks(&mut car, 0.5, 30);
+        rc_ticks(&mut car, 0.0, 30);
+        assert!(rc_ticks(&mut car, 0.5, 1).brake < 1.0);
+        let out = rc_ticks(&mut car, 0.5, 10);
+        assert!(out.throttle > 0.0 && !out.reverse, "{out:?}");
+    }
+
+    #[test]
+    fn rc_flicked_straight_through_the_band_still_waits() {
+        // Forward, then reverse with one tick in the band: braked a second from it.
+        let mut car = Car::with_config(open_loop_config());
+        rc_ticks(&mut car, 0.0, 5);
+        rc_ticks(&mut car, 0.5, 30);
+        rc_ticks(&mut car, 0.0, 1);
+        let held = rc_ticks(&mut car, -0.5, 98);
+        assert_eq!((held.throttle, held.brake), (0.0, 1.0));
+        assert!(rc_ticks(&mut car, -0.5, 2).brake < 1.0);
+        let out = rc_ticks(&mut car, -0.5, 10);
+        assert!(out.throttle > 0.0 && out.reverse, "{out:?}");
     }
 
     #[test]
     fn rc_direct_stays_stopped_after_a_lost_signal_until_a_person_clears_it() {
         let mut car = Car::with_config(open_loop_config());
+        car.clear_rc(RcSwitch::Direct);
         let moving = Inputs {
             rc: Some(rc_direct(0.5, false)),
             ..Default::default()
@@ -2490,13 +2813,7 @@ mod tests {
             let out = car.tick(moving);
             assert_eq!((out.throttle, out.brake), (0.0, 1.0));
         }
-        // The gear switch on brake with the stick pushed is not enough either.
-        let out = car.tick(Inputs {
-            rc: Some(rc_direct(0.5, true)),
-            ..Default::default()
-        });
-        assert_eq!(out.brake, 1.0);
-        // Both: cleared. The stick drives again.
+        // The left stick in its brake band: cleared. The stick drives again.
         car.tick(Inputs {
             rc: Some(rc_direct(0.0, true)),
             ..Default::default()
@@ -2526,6 +2843,7 @@ mod tests {
             },
         ] {
             let mut car = Car::with_config(open_loop_config());
+            car.clear_rc(RcSwitch::Direct);
             for _ in 0..20 {
                 car.tick(moving);
             }
@@ -2537,7 +2855,7 @@ mod tests {
                 let out = car.tick(moving);
                 assert_eq!((out.throttle, out.brake), (0.0, 1.0), "{stop:?}");
             }
-            // Stick at zero and the gear switch on brake: cleared, it drives again.
+            // The left stick in its brake band: cleared, it drives again.
             car.tick(Inputs {
                 rc: Some(rc_direct(0.0, true)),
                 ..Default::default()
@@ -2552,6 +2870,7 @@ mod tests {
     #[test]
     fn a_lost_speed_stops_rc_direct_too() {
         let mut car = Car::with_config(open_loop_config());
+        car.clear_rc(RcSwitch::Direct);
         let inputs = |speed| Inputs {
             rc: Some(rc_direct(0.5, false)),
             speed_report: speed,
@@ -2575,6 +2894,7 @@ mod tests {
     #[test]
     fn overspeed_applies_to_rc_direct() {
         let mut car = Car::with_config(open_loop_config());
+        car.clear_rc(RcSwitch::Direct);
         let inputs = |speed| Inputs {
             rc: Some(rc_direct(1.0, false)),
             speed_report: Some(SpeedReport::Known(speed)),

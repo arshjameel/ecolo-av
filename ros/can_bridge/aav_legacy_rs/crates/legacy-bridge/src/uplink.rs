@@ -230,7 +230,7 @@ pub struct Rc {
     pub throttle: f32,
     /// -1..1, + left.
     pub steering: f32,
-    /// The gear switch on brake.
+    /// The left stick in its brake band.
     pub brake: bool,
 }
 

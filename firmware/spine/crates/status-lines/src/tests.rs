@@ -180,9 +180,10 @@ fn config() -> Line<'static> {
             brake_more: BrakeSettings {
                 stop: 1.0,
                 overspeed: 0.5,
-                rc_stop: 0.33,
-                rc_stop_ms: 1000,
-                rc_gear: "full_brake",
+                rc_band: 0.3,
+                rc_brake_ms: 1000,
+                rc_lost_below: 950,
+                rc_fitted: true,
             },
             speed: SpeedSettings {
                 max_forward: 1.0,
@@ -540,7 +541,7 @@ fn a_config_on_can_in_qemu_writes_nulls_and_fits() {
 /// The settings every board build reports, in both forms (Ben, 7 Nov: "its settings
 /// including steering limits and speed limits and braking pressure limits, communication
 /// rates with the pi and the motor controllers and acceleration controller").
-const SETTINGS: [&str; 33] = [
+const SETTINGS: [&str; 34] = [
     "steer_counts_per_rad",
     "steer_max_rad",
     "steer_rate_rad_s",
@@ -549,9 +550,10 @@ const SETTINGS: [&str; 33] = [
     "steer_on_stop",
     "brake_stop",
     "brake_overspeed",
-    "brake_rc_stop",
-    "rc_stop_ms",
-    "rc_gear",
+    "rc_band",
+    "rc_brake_ms",
+    "rc_lost_below",
+    "rc_fitted",
     "max_speed",
     "max_reverse_speed",
     "throttle_cap_code",
@@ -589,8 +591,8 @@ fn the_text_config_line_keeps_its_first_keys_and_appends_the_settings() {
                 brake_released=400 brake_full=3500 throttle_full_code=700 last_reset=PowerOn \
                 steer_counts_per_rad=3100.0 steer_max_rad=0.500 steer_rate_rad_s=0.60 \
                 steer_cal_rate=300 steer_cal_timeout_ms=100 steer_on_stop=hold \
-                brake_stop=1.00 brake_overspeed=0.50 brake_rc_stop=0.33 rc_stop_ms=1000 \
-                rc_gear=full_brake max_speed=1.00 max_reverse_speed=0.50 throttle_cap_code=233 \
+                brake_stop=1.00 brake_overspeed=0.50 rc_band=0.30 rc_brake_ms=1000 \
+                rc_lost_below=950 rc_fitted=true max_speed=1.00 max_reverse_speed=0.50 throttle_cap_code=233 \
                 reverse_cap_code=117 frame_dac_cap=700 dac_rise_per_s=600 max_accel=1.50 \
                 max_decel=2.50 overspeed_margin=0.25 rc_lost_ms=100 speed_lost_ms=300 \
                 overspeed_ms=2000 estop_release_ms=50 bad_frames_ms=3000 uart_baud=115200 \
@@ -629,7 +631,7 @@ fn the_widest_config_line_fits_max_line() {
     c.steering_more.cal_rate = Some(-1234.5677);
     c.brake_more.stop = -1234.5677;
     c.brake_more.overspeed = -1234.5677;
-    c.brake_more.rc_stop = -1234.5677;
+    c.brake_more.rc_band = -1234.5677;
     c.speed.max_forward = -1234.5677;
     c.speed.max_reverse = -1234.5677;
     c.speed.max_accel = -1234.5677;

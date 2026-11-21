@@ -7,7 +7,7 @@
 <!-- Generated from docs/esp32-safety.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The ESP32&#x27;s safety rules</h1>
-<div class="meta">24 min read · 9 sections</div></header>
+<div class="meta">25 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -386,7 +386,7 @@ by themselves once ROS runs. After any timeout: the same, from step 3.</p>
 <td>arming</td>
 </tr>
 <tr>
-<td>After any stop, and after power-up: signal back, throttle stick at zero, gear switch on brake (7 Nov)</td>
+<td>After any stop, after power-up and after CH6 moves: signal back, the left stick in its brake band (21 Nov)</td>
 <td></td>
 </tr>
 </tbody>
@@ -394,25 +394,27 @@ by themselves once ROS runs. After any timeout: the same, from step 3.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Stick and gear</th>
+<th>The left stick (SwC is not read since 21 Nov)</th>
 <th>Brake</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Gear forward or reverse, throttle pushed</td>
+<td>Pushed away (forward) or pulled back (reverse), past the band</td>
 <td>released</td>
 </tr>
 <tr>
-<td>Throttle at zero</td>
-<td>0.33 for 1 s, then full</td>
+<td>In the middle ±30 % (the band)</td>
+<td>full, at once</td>
 </tr>
 <tr>
-<td>Gear on brake (middle)</td>
-<td>full</td>
+<td>Forward to reverse, or back</td>
+<td>full until 1 s after the stick entered the band</td>
 </tr>
 </tbody>
 </table></div>
+<p>In normal mode (CH6 low) the RC outranks the computer too, decided on the ESP32, and a
+lost RC is a hard stop there as well: <a href="firmware.html#the-rc-transmitter-arsh-21-nov">the rules</a>.</p>
 </section>
 <section class="card"><h2 id="4-what-counts-as-a-lost-connection">4. What counts as a lost connection</h2>
 <div class="table-wrap"><table>
@@ -989,9 +991,9 @@ two give the same frames, byte for byte: <code>legacy-bridge</code>'s <code>test
 <td><code>v2_the_estop_flag_works_whatever_the_counter</code></td>
 </tr>
 <tr>
-<td>RC lost: 100 ms; only on an RC position</td>
-<td><code>calibration.rs:147</code>, <code>spine.rs:528-531</code></td>
-<td><code>a_silent_receiver_stops_rc</code>; <code>rc_lost_on_the_computer_position_changes_nothing</code>; QEMU 117-119 ms</td>
+<td>RC lost: 100 ms silent, or the failsafe's CH6 under 950 at once; on every position with a receiver fitted</td>
+<td><code>calibration.rs:147</code>, <code>ibus/src/rc.rs</code> (<code>lost_below</code>), <code>spine.rs</code> (<code>rc_fitted</code>)</td>
+<td><code>a_silent_receiver_stops_rc</code>; <code>with_a_receiver_fitted_a_lost_rc_stops_the_computer_too</code>; <code>the_failsafe_on_the_mode_switch_is_no_usable_rc</code>; QEMU 117-119 ms (silence)</td>
 </tr>
 <tr>
 <td>RC direct's own latch</td>
@@ -1004,9 +1006,19 @@ two give the same frames, byte for byte: <code>legacy-bridge</code>'s <code>test
 <td><code>the_computer_stopping_while_rc_direct_drives_still_latches</code></td>
 </tr>
 <tr>
-<td>RC zero stick: 0.33 then full</td>
-<td><code>spine.rs:192-193</code>, <code>spine.rs:750-760</code></td>
-<td><code>rc_at_zero_throttle_stops_lightly_for_a_second_then_holds</code></td>
+<td>The RC's brake band: full at once (21 Nov)</td>
+<td><code>ibus/src/rc.rs</code> (<code>brake_band</code>), <code>spine.rs</code> (<code>Authority::Rc</code>)</td>
+<td><code>rc_in_the_brake_band_stops_hard_with_no_light_stage</code>; <code>the_brake_band_is_the_full_brake_at_once</code></td>
+</tr>
+<tr>
+<td>Forward and reverse change 1 s after the band</td>
+<td><code>fsm.rs</code> (<code>RC_BRAKE_MS</code>)</td>
+<td><code>rc_changes_to_reverse_only_a_second_after_entering_the_band</code></td>
+</tr>
+<tr>
+<td>Normal mode: the RC outranks the computer</td>
+<td><code>fsm.rs</code> (<code>RcOwner</code>)</td>
+<td><code>the_rc_takes_over_from_the_computer_after_a_second_braked</code>; <code>a_stick_that_lost_the_race_must_come_back_to_the_band</code></td>
 </tr>
 <tr>
 <td>Wheel speed rules off until a speed comes</td>

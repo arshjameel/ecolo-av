@@ -307,9 +307,9 @@ class Uplink:
     brake_position: Optional[float]  # 0..1, the brake Jrk's position
     throttle_out: float             # 0..1, what the ESP32 drives the throttle with
     brake_out: float                # 0..1, and the brake
-    rc_throttle: float              # -1..1, + forward (the gear switch gives the sign)
+    rc_throttle: float              # -1..1, + forward (the left stick; 0 in its band)
     rc_steering: float              # -1..1, + left
-    rc_brake: bool                  # the gear switch on brake
+    rc_brake: bool                  # the left stick in its brake band
     # Version 3 only (None and CAL_OFF in version 2):
     steering_counts: Optional[int] = None  # 0..4095, the steering Jrk's scaled feedback
     brake_counts: Optional[int] = None     # 0..4095, the brake Jrk's

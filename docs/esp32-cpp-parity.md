@@ -92,12 +92,12 @@ The default build keeps the team's choices. These features give the C++'s instea
 |---|---|---|---|
 | RC mode while CH6 reads 1500 to 2200 | `main.cpp:loop` | `RcMap::TODAY.direct_above` 1500 | Built (`ibus`) |
 | channels usable only between 100 and 2200 | `rc_handler.cpp:handleRCMode` | `valid_above`, `valid_below` | Built |
-| gear: forward below 1200, reverse above 1800, brake between | the same | `forward_below`, `reverse_above` | Built |
-| gear brake: brake full, DAC down | the same | `RC_GEAR_BRAKE = FullBrake` | Built |
-| throttle only past -0.05 of the stick | the same | the same | Built (`ibus/src/rc.rs`) |
+| gear: forward below 1200, reverse above 1800, brake between | the same | not read: the left stick's whole travel says forward, brake band, reverse | Changed on purpose (21 Nov): SwC's wiring is loose |
+| gear brake: brake full, DAC down | the same | the left stick's brake band (±30 %): brake full | Changed on purpose (21 Nov) |
+| throttle only past -0.05 of the stick | the same | past the brake band, rescaled from 0 at its edge | Changed on purpose (21 Nov) |
 | steering: 1950 counts right, 1550 left | the same | 1550 both sides | Built behind `cpp-rc-steering` (`steer_right_gain`) |
 | RC throttle up to 1023, capped at 700 | the same, `writeDACRamped` | capped by `MAX_SPEED`, 1 m/s | Not needed: one forward limit for every driver (`spine` README, #23) |
-| RC idle: brake released, coasting | the same | `rc_stop_brake` 0.33 for 1 s, then released | Not needed: the team's #23 rule replaced it (`spine-core`) |
+| RC idle: brake released, coasting | the same | the stick in its band: the full brake | Not needed: the team's #23 rule, then the band (21 Nov), replaced it (`spine-core`) |
 | lost RC in RC mode: safe stop, `RC: No valid signal - SAFE STOP` | the same | the `RC_LOST` fault; a `FAULT … set=RC_LOST` line | Built (`cpp_log::FaultChange`) |
 | a safe stop centres the wheels | `jrk_g2.cpp:jrkSafeStop` | held | Built behind `cpp-stop-centre` |
 | ROS frames not read in RC mode | `main.cpp:loop` | read and counted; RC wins | Not needed: the C++ then ran stale frames from the UART's buffer when RC let go |

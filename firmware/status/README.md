@@ -37,7 +37,7 @@ end of `steering` and `brake`, and as three groups after `last_reset`: no key mo
 | Where | Keys |
 |---|---|
 | `steering` | `min`, `centre`, `max` (counts); `counts_per_rad`; `max_angle_rad`; `rate_rad_s` (the spine's slew); `cal_rate` (counts/s) and `cal_timeout_ms` (the steering calibration, version 3 frames); `on_stop` (`hold` or `centre`) |
-| `brake` | `released`, `full` (counts); `stop`, `overspeed`, `rc_stop` (0..1); `rc_stop_ms`; `rc_gear` (`full_brake` or `speed_zero`) |
+| `brake` | `released`, `full` (counts); `stop`, `overspeed` (0..1); `rc_band` (the RC left stick's brake band, 0..1 of its travel each way); `rc_brake_ms` (the RC's brake before forward and reverse change, and normal mode's window); `rc_lost_below` (µs: the mode switch under it is the transmitter's failsafe); `rc_fitted` (`true`: the RC must stay in normal mode too) |
 | `speed` | `max_forward`, `max_reverse` (m/s); `cap_code`, `reverse_cap_code` (the DAC code an open-loop command can reach: the limit over `full_throttle_speed`); `frame_dac_cap` (the UART frame's scale, the C++'s `DAC_MAX_CAP`); `rise_per_s` (DAC codes/s); `max_accel`, `max_decel` (m/s²); `overspeed_margin` (m/s) |
 | `timeouts` | `rc_lost_ms`, `speed_lost_ms`, `overspeed_ms`, `estop_release_ms`, `bad_frames_ms` |
 | `rates` | `uart_baud`, `frame_hz` (what the Motor-Pi sends), `uplink_ms`, `can_kbit`, `ibus_baud`, `jrk_write_ms`, `dac_write_ms` (each device gets its target every tick), `status_ms` |
