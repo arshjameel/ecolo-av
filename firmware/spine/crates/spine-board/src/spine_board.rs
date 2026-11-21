@@ -324,7 +324,7 @@ mod loop_tests {
         assert_eq!(rig.sb.actuators().steering_counts(), Some(1950));
         assert_eq!(rig.sb.actuators().brake_counts(), Some(3500));
         assert!(rig.sb.rc_channels().is_none());
-        rig.rc(false, 1500, 1600, 1000);
+        rig.rc(false, 1500, 1600);
         let out = rig.tick();
         let report = *rig.sb.last_report().unwrap();
         assert_eq!(report.now_ms, 1010);
@@ -408,15 +408,15 @@ mod loop_tests {
     fn rc_drives_without_the_computer() {
         let mut rig = Rig::new();
         rig.ticks(6);
-        // After power-up a person clears RC direct first: the stick at zero, the gear
-        // switch on brake. Until then it holds (spine-core's rc_hold).
+        // After power-up a person clears RC direct first: the left stick in the brake
+        // band. Until then it holds (spine-core's rc_hold).
         for _ in 0..3 {
-            rig.rc(true, 1500, 1500, 1500);
+            rig.rc(true, 1500, 1500);
             rig.tick();
         }
         let mut out = rig.tick();
         for _ in 0..30 {
-            rig.rc(true, 1000, 1500, 1000); // override on, full throttle, forward
+            rig.rc(true, 1000, 1500); // manual, the left stick full forward
             out = rig.tick();
         }
         assert_eq!(out.mode, Mode::Rc);
@@ -429,7 +429,7 @@ mod loop_tests {
         let mut rig = Rig::new();
         rig.ticks(6);
         for _ in 0..30 {
-            rig.rc(true, 1000, 1500, 1000);
+            rig.rc(true, 1000, 1500);
             rig.tick();
         }
         let out = rig.ticks(15); // 150 ms without a frame
@@ -688,8 +688,7 @@ mod legacy_loop_tests {
         rig.arm();
         rig.frames(100, 0.0, 0.5, 0.0);
         let mut ch = [1500; ibus::CHANNELS];
-        ch[5] = 2000; // the override switch
-        ch[4] = 1500; // the gear switch on brake
+        ch[5] = 2000; // the mode switch on manual; the left stick in the brake band
         let rc = ibus::encode(&ibus::Channels(ch));
         rig.receiver.0.borrow_mut().extend(rc);
         let out = rig.frame(0.0, 0.5, 0.0);
@@ -826,8 +825,6 @@ mod uplink_loop_tests {
         receiver: FakeUart,
         uplink: FakeTx,
         counter: u8,
-        /// The gear switch's channel: 1000 forward, 1500 brake.
-        gear: u16,
     }
 
     impl Rig {
@@ -866,16 +863,14 @@ mod uplink_loop_tests {
                 receiver,
                 uplink,
                 counter: 0,
-                gear: 1000,
             }
         }
 
-        /// One iBUS frame: the mode switch, the throttle stick, the gear forward.
+        /// One iBUS frame: the mode switch and the left stick (1500: the brake band).
         fn rc(&mut self, switch: u16, throttle: u16) {
             let mut ch = [1500; ibus::CHANNELS];
             ch[5] = switch;
             ch[2] = throttle;
-            ch[4] = self.gear; // forward, unless a test puts it on brake
             self.receiver
                 .0
                 .borrow_mut()
@@ -979,11 +974,9 @@ mod uplink_loop_tests {
     fn rc_direct_drives_from_the_sticks_whatever_the_frames_say() {
         let mut rig = Rig::new();
         rig.steps(5, 0.0, -0.3, Some((VIA_ROS, FULL)));
-        // After power-up a person clears RC direct first: the stick at zero (1500), the
-        // gear switch on brake. Until then it holds (spine-core's rc_hold).
-        rig.gear = 1500;
+        // After power-up a person clears RC direct first: the left stick in the brake
+        // band (1500). Until then it holds (spine-core's rc_hold).
         rig.steps(5, 0.0, -0.3, Some((DIRECT, 1500)));
-        rig.gear = 1000;
         let out = rig.steps(100, 0.0, -0.3, Some((DIRECT, FULL)));
         assert_eq!(out.mode, Mode::Rc);
         assert!(rig.dac() > 0);
