@@ -338,12 +338,13 @@ It is LQR's cost (section 4), with a finite horizon, limits, and the full lagged
 Ben: "It doesn't need to be super aggressive sticking to the line so that it doesn't
 oscillate so much."
 
-![The tube: no cost within ±0.2 m, so the car holds its line](img/control/tube.png)
+![The tube: no cost within ±0.3 m, so the car holds its line](img/control/tube.png)
 
-Inside ±0.2 m the target for e_y is where the plan already is, so there is no pull to the
-centre. Outside, the cost rises as before. Switch: `mpc_lag_tube:=0.2`.
+Inside ±w the target for e_y is where the plan already is, so there is no pull to the
+centre. Outside, the cost rises as before. Tuned 21 Nov: **w = 0.3 m** is the default
+(`mpc_lag_tube:=0` turns it off).
 
-![cost = q1 (e_y minus clip(e_y, minus w, w)) squared, w = 0.2 m](img/control/eq-tube.svg)
+![cost = q1 (e_y minus clip(e_y, minus w, w)) squared, w = 0.3 m](img/control/eq-tube.svg)
 
 ### On our car
 
@@ -356,7 +357,8 @@ centre. Outside, the cost rises as before. Switch: `mpc_lag_tube:=0.2`.
 
 ### Better
 
-- **The tube** (being scored now): less chasing, less sway.
+- **The tube** ✅ tuned 21 Nov: 0.3 m cut University Drive's sway from 0.251 to 0.160
+  (MPPI: 0.132), every leg still reached.
 - **Tune r_rate** (the cost on steering changes): more = calmer.
 - **The costmap in the cost** (Ben's idea): the kerb as a wall, the yellow line costly,
   the other side costlier. Today the MPC follows only the path.
@@ -516,7 +518,7 @@ heading.
 | # | Do | Helps | Needs |
 |---|---|---|---|
 | 1 | **Measure the car** (step tests, lock to lock, throttle map) | every model, every controller | car day |
-| 2 | **Score the MPC's tube** | MPC sway | the sim (tonight) |
+| 2 | **The MPC's `r_rate`**, then the costmap in its cost (the tube is done: 0.3 m) | MPC sway | the sim |
 | 3 | **Re-solve LQI and pole placement** on measured numbers | the speed loop | 1 |
 | 4 | **A speed feedforward** from the measured throttle map | faster speed response | 1 |
 | 5 | **Tune the EKFs' Q and R** from recorded drives | where-am-I | car day's bags |

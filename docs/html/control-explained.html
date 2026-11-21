@@ -690,10 +690,11 @@ tick is the feedback; the plan along the bends ahead is the feedforward.</p>
 <h3 id="the-tube-21-nov">The tube (21 Nov)</h3>
 <p>Ben: "It doesn't need to be super aggressive sticking to the line so that it doesn't
 oscillate so much."</p>
-<p><img alt="The tube: no cost within ±0.2 m, so the car holds its line" src="../img/control/tube.png" /></p>
-<p>Inside ±0.2 m the target for e_y is where the plan already is, so there is no pull to the
-centre. Outside, the cost rises as before. Switch: <code>mpc_lag_tube:=0.2</code>.</p>
-<p><img alt="cost = q1 (e_y minus clip(e_y, minus w, w)) squared, w = 0.2 m" src="../img/control/eq-tube.svg" /></p>
+<p><img alt="The tube: no cost within ±0.3 m, so the car holds its line" src="../img/control/tube.png" /></p>
+<p>Inside ±w the target for e_y is where the plan already is, so there is no pull to the
+centre. Outside, the cost rises as before. Tuned 21 Nov: <strong>w = 0.3 m</strong> is the default
+(<code>mpc_lag_tube:=0</code> turns it off).</p>
+<p><img alt="cost = q1 (e_y minus clip(e_y, minus w, w)) squared, w = 0.3 m" src="../img/control/eq-tube.svg" /></p>
 <h3 id="on-our-car_5">On our car</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -723,7 +724,8 @@ centre. Outside, the cost rises as before. Switch: <code>mpc_lag_tube:=0.2</code
 </table></div>
 <h3 id="better_5">Better</h3>
 <ul>
-<li><strong>The tube</strong> (being scored now): less chasing, less sway.</li>
+<li><strong>The tube</strong> ✅ tuned 21 Nov: 0.3 m cut University Drive's sway from 0.251 to 0.160
+  (MPPI: 0.132), every leg still reached.</li>
 <li><strong>Tune r_rate</strong> (the cost on steering changes): more = calmer.</li>
 <li><strong>The costmap in the cost</strong> (Ben's idea): the kerb as a wall, the yellow line costly,
   the other side costlier. Today the MPC follows only the path.</li>
@@ -1013,9 +1015,9 @@ heading.</p>
 </tr>
 <tr>
 <td>2</td>
-<td><strong>Score the MPC's tube</strong></td>
+<td><strong>The MPC's <code>r_rate</code></strong>, then the costmap in its cost (the tube is done: 0.3 m)</td>
 <td>MPC sway</td>
-<td>the sim (tonight)</td>
+<td>the sim</td>
 </tr>
 <tr>
 <td>3</td>

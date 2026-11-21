@@ -1576,6 +1576,12 @@ def check_ground(value):
 MPPI_LAG_SAMPLINGS = ('correlated', 'smooth')
 
 
+# m each side of the path where mpc_lag_rs leaves the car alone (the tube, Ben 21 Nov).
+# Tuned 21 Nov, 3 runs each: University Drive's sway 0.251 (none), 0.197 (0.1), 0.205
+# (0.2), 0.160 (0.3), 0.185 (0.4); the lot's unchanged (0.054); every leg reached.
+MPC_LAG_TUBE = 0.3
+
+
 def check_mpc_lag_tube(value):
     """Return mpc_lag_tube:= checked: metres each side of the path, 0 to 1."""
     try:

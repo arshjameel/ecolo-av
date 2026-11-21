@@ -83,9 +83,27 @@ the IMU disagreed), not the follower.
 - **`mpc_lag_rs` reaches every leg and reverses** (6.6 m backwards on the lot's turn back,
   as MPPI), the closest to the path and the cheapest.
 - **But it sways about twice as much as MPPI.** So MPPI stays ours'.
-- **Next: the tube** (`mpc_lag_tube:=0.2`, Ben, 21 Nov: "It doesn't need to be super
-  aggressive sticking to the line"): no cost within 0.2 m of the path, so it stops
-  chasing the centre.
+- **So: the tube** (Ben, 21 Nov: "It doesn't need to be super aggressive sticking to the
+  line"): no cost within w m of the path, so it stops chasing the centre.
+
+### The tube, tuned (21 Nov)
+
+`mpc_lag_rs` alone, 3 runs each, the same tours. Raw: `log/stage2/tube*/`.
+
+| Tube w | University sway | Lot sway | Legs (lot, University) | Off the lane's centre (m) | University worst off the path (m) |
+|---|---:|---:|---|---:|---:|
+| none | 0.251 | 0.055 | 12/12, 9/9 | 0.24 | 0.95 |
+| 0.1 m | 0.197 | 0.058 | 12/12, 9/9 | 0.21 | 0.90 |
+| 0.2 m | 0.205 | 0.054 | 12/12, 9/9 | 0.28 | 1.33 |
+| **0.3 m** | **0.160** | **0.054** | **12/12, 9/9** | 0.24 | 1.39 |
+| 0.4 m | 0.185 | — | —, 9/9 | 0.26 | 1.57 |
+| *`mppi_lag`* | *0.132* | *0.032* | *12/12, 6/9* | *0.23* | *0.81* |
+
+- **0.3 m is the default now** (`vehicle.MPC_LAG_TUBE`; `mpc_lag_tube:=0` turns it off):
+  University Drive's sway down 36 %, every leg, as near the lane's centre.
+- **The lot is unchanged**: its sway is the tight turns, not wobble about the line.
+- **Still behind MPPI on sway** (0.160 against 0.132), ahead on legs and the tick. Next:
+  more cost on the steering's change (`r_rate`), and the costmap in its cost.
 
 ## Position and the checks
 

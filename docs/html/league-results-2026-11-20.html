@@ -7,7 +7,7 @@
 <!-- Generated from docs/league-results-2026-11-20.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The league, scored: 20 Nov (stage 2)</h1>
-<div class="meta">8 min read · 7 sections</div></header>
+<div class="meta">9 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -413,9 +413,79 @@ the IMU disagreed), not the follower.</p>
 <li><strong><code>mpc_lag_rs</code> reaches every leg and reverses</strong> (6.6 m backwards on the lot's turn back,
   as MPPI), the closest to the path and the cheapest.</li>
 <li><strong>But it sways about twice as much as MPPI.</strong> So MPPI stays ours'.</li>
-<li><strong>Next: the tube</strong> (<code>mpc_lag_tube:=0.2</code>, Ben, 21 Nov: "It doesn't need to be super
-  aggressive sticking to the line"): no cost within 0.2 m of the path, so it stops
-  chasing the centre.</li>
+<li><strong>So: the tube</strong> (Ben, 21 Nov: "It doesn't need to be super aggressive sticking to the
+  line"): no cost within w m of the path, so it stops chasing the centre.</li>
+</ul>
+<h3 id="the-tube-tuned-21-nov">The tube, tuned (21 Nov)</h3>
+<p><code>mpc_lag_rs</code> alone, 3 runs each, the same tours. Raw: <code>log/stage2/tube*/</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tube w</th>
+<th style="text-align: right;">University sway</th>
+<th style="text-align: right;">Lot sway</th>
+<th>Legs (lot, University)</th>
+<th style="text-align: right;">Off the lane's centre (m)</th>
+<th style="text-align: right;">University worst off the path (m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>none</td>
+<td style="text-align: right;">0.251</td>
+<td style="text-align: right;">0.055</td>
+<td>12/12, 9/9</td>
+<td style="text-align: right;">0.24</td>
+<td style="text-align: right;">0.95</td>
+</tr>
+<tr>
+<td>0.1 m</td>
+<td style="text-align: right;">0.197</td>
+<td style="text-align: right;">0.058</td>
+<td>12/12, 9/9</td>
+<td style="text-align: right;">0.21</td>
+<td style="text-align: right;">0.90</td>
+</tr>
+<tr>
+<td>0.2 m</td>
+<td style="text-align: right;">0.205</td>
+<td style="text-align: right;">0.054</td>
+<td>12/12, 9/9</td>
+<td style="text-align: right;">0.28</td>
+<td style="text-align: right;">1.33</td>
+</tr>
+<tr>
+<td><strong>0.3 m</strong></td>
+<td style="text-align: right;"><strong>0.160</strong></td>
+<td style="text-align: right;"><strong>0.054</strong></td>
+<td><strong>12/12, 9/9</strong></td>
+<td style="text-align: right;">0.24</td>
+<td style="text-align: right;">1.39</td>
+</tr>
+<tr>
+<td>0.4 m</td>
+<td style="text-align: right;">0.185</td>
+<td style="text-align: right;">—</td>
+<td>—, 9/9</td>
+<td style="text-align: right;">0.26</td>
+<td style="text-align: right;">1.57</td>
+</tr>
+<tr>
+<td><em><code>mppi_lag</code></em></td>
+<td style="text-align: right;"><em>0.132</em></td>
+<td style="text-align: right;"><em>0.032</em></td>
+<td><em>12/12, 6/9</em></td>
+<td style="text-align: right;"><em>0.23</em></td>
+<td style="text-align: right;"><em>0.81</em></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>0.3 m is the default now</strong> (<code>vehicle.MPC_LAG_TUBE</code>; <code>mpc_lag_tube:=0</code> turns it off):
+  University Drive's sway down 36 %, every leg, as near the lane's centre.</li>
+<li><strong>The lot is unchanged</strong>: its sway is the tight turns, not wobble about the line.</li>
+<li><strong>Still behind MPPI on sway</strong> (0.160 against 0.132), ahead on legs and the tick. Next:
+  more cost on the steering's change (<code>r_rate</code>), and the costmap in its cost.</li>
 </ul>
 </section>
 <section class="card"><h2 id="position-and-the-checks">Position and the checks</h2>

@@ -110,8 +110,8 @@ bench's argument names:
                       jitter (TODO 168)
                       mppi_lag_batch:=1000: mppi_lag's samples a tick (empty: 2000),
                       a challenger: half the work a tick (TODO 152; steer:=mppi_lag_1k)
-                      mpc_lag_tube:=0.2: mpc_lag_rs leaves the car alone within 0.2 m
-                      of the path (a challenger: less sway)
+                      mpc_lag_tube:=0: mpc_lag_rs's tube off (empty: 0.3 m, tuned
+                      21 Nov: it leaves the car alone that near the path, less sway)
                       mppi_lag_sampling:=smooth: mppi_lag samples the steering's
                       change, so its commands come out smooth (TODO 212, a challenger)
                       lattice_moves:=smooth|smooth_fast: the lattice's trial moves,
@@ -1143,7 +1143,7 @@ def generate_launch_description():
         DeclareLaunchArgument('mpc_lag_tube', default_value='',
                               description='with tracker:=mpc_lag_rs: m each side of the '
                                           'path where being off it costs nothing (the '
-                                          "tube, Ben 21 Nov); empty: the node's 0, off"),
+                                          'tube, Ben 21 Nov); empty: 0.3 (tuned); 0: off'),
         DeclareLaunchArgument('mppi_lag_sampling', default_value=stacks.CHOSEN,
                               description='with tracker:=mppi_lag: correlated (the champion) '
                                           "or smooth, noise on the steering's change (TODO "

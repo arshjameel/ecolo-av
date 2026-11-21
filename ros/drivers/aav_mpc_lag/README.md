@@ -67,8 +67,8 @@ oscillate so much."
 
 | Setting | What |
 |---|---|
-| `mpc_lag.tube` (m, default 0 = off) | e_y is costed only beyond it: its target is e_y clipped to ±tube, so inside the tube the plan keeps the line it has. Heading, steering and speed are costed as before |
-| `mpc_lag_tube:=0.2` | the launch's switch (sim.launch.py, navigation.launch.py), a challenger |
+| `mpc_lag.tube` (m; the node's own default 0 = off) | e_y is costed only beyond it: its target is e_y clipped to ±tube, so inside the tube the plan keeps the line it has. Heading, steering and speed are costed as before |
+| `mpc_lag_tube:=` | the launch's switch (sim.launch.py, navigation.launch.py). Empty: **0.3 m** (`vehicle.MPC_LAG_TUBE`, tuned 21 Nov: University Drive's sway 0.251 to 0.160, every leg); `0`: off |
 
 Tested: `closed_loop.rs` `in_the_tube_it_holds_its_line_and_outside_it_comes_back` (0.15 m
 off: it keeps its line and steers less; 1 m off: back inside 0.25 m, at 1 and 3 m/s).

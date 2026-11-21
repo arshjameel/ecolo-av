@@ -109,12 +109,12 @@ def lqr_figure():
 
 def tube_figure():
     e = np.linspace(-0.6, 0.6, 400)
-    tube = 0.2
+    tube = 0.3          # vehicle.MPC_LAG_TUBE, tuned 21 Nov
     plain = e ** 2
     beyond = np.maximum(np.abs(e) - tube, 0.0) ** 2
     fig, ax = plt.subplots(figsize=(7, 3.4))
     ax.plot(e, plain, color=ORANGE, label='today: q e_y²')
-    ax.plot(e, beyond, color=BLUE, lw=2.5, label='the tube: q (e_y - clip(e_y, ±0.2))²')
+    ax.plot(e, beyond, color=BLUE, lw=2.5, label='the tube: q (e_y - clip(e_y, ±0.3))²')
     ax.axvspan(-tube, tube, color=BLUE, alpha=0.08)
     ax.text(0, 0.30, 'free: no pull\nto the centre', ha='center', color=BLUE)
     ax.set_xlabel('e_y: off the path (m)')
@@ -353,7 +353,7 @@ EQUATIONS = {
            [r'\min_{\Delta U}\; \frac{1}{2}\,\Delta U^T P\,\Delta U + q^T \Delta U'
             r'\quad \mathrm{within\ the\ limits}']],
     'tube': [[r'\mathrm{cost}(e_y) = q_1 \left(e_y - \mathrm{clip}(e_y, -w, w)\right)^2',
-              r'\qquad w = 0.2\ \mathrm{m}']],
+              r'\qquad w = 0.3\ \mathrm{m}']],
     'mppi': [[r'w_k = \frac{e^{-c_k/\lambda}}{\sum_j e^{-c_j/\lambda}}', r'\qquad',
               r'u = u_{last} + \sum_k w_k\,\epsilon_k']],
     'closed-loop': [[r'\dot{\mathbf{x}} = (A - B K)\,\mathbf{x}']],
