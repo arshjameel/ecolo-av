@@ -86,7 +86,7 @@ and will do".
 | 210 | **NDT leads, the GPS checks** (`pose_source:=ndt`): a failing GPS no longer moves or stops the car | 🟡 merged 19 Nov, a challenger: the lot scored (every leg with the GPS stopped, jumped or drifting); ⬜ the campus runs (stopped by the usage limit); the car refuses it until 261 and a real map |
 | 231 | **AMCL in Rust** (`aav_amcl_rs`, the default): NDT's recovery | 🟡 ties stock on the lot; left: the campus, more runs |
 | 121 | **NDT's score floor on the campus** (1.5 there, 2.3 in the lot): how high does a wrong pose score? | ⬜ |
-| 175 | **Three levels, fixed chunks**: routes, paths and moves on 64 m chunks | 🔧 left: `global_window:=192` scored on the campus; seen live |
+| 175 | **Three levels, fixed chunks**: routes, paths and moves on 64 m chunks | 🔧 20 Nov, scored on the campus (3 runs each): `global_window:=192` ❌ 5 of 9 legs against 9 of 9. "Along the road" failed every run: the planner searches the whole 192 m window, runs out of time (error 207; 87 % CPU, 600 MB) and the car never moves. Kept off. Left: a route level that hands the planner one chunk's stretch at a time, then score it again |
 | 191 | **Stops reset the drift**: wheels that read nothing mean the car stands | 🔧 left: the parked yaw creep, before and after (the car) |
 | 94 | **Drive-to-point stops 0.61 m past B** (limit 0.5 m) | 🔧 left: more runs in Ravensim |
 
