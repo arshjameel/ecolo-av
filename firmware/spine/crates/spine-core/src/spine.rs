@@ -398,7 +398,8 @@ pub struct Spine {
     seen_test_exit: bool,
     /// The mode switch when the RC was last heard: Computer at boot.
     rc_switch: RcSwitch,
-    /// RC direct stays stopped after a lost input, until a person clears it on purpose.
+    /// RC direct stays stopped after a lost input, at power-up and after the mode switch
+    /// moves, until a person clears it on purpose (the left stick in its brake band).
     rc_hold: bool,
     /// The left stick was in its brake band last time the RC was heard.
     rc_in_band: bool,
@@ -443,7 +444,7 @@ impl Spine {
             test_request: None,
             seen_test_exit: false,
             rc_switch: RcSwitch::Computer,
-            rc_hold: false,
+            rc_hold: true,
             rc_in_band: false,
             band_since_ms: None,
             rc_reverse: None,
@@ -592,6 +593,11 @@ impl Spine {
         }
         // The RC: lost while its switch was on an RC position (direct or via ROS).
         if let Some(rc) = i.rc {
+            // A new position: the left stick may rest anywhere, so the RC waits for it to
+            // come back to the band before it drives (Arsh, 21 Nov).
+            if rc.switch != self.rc_switch {
+                self.rc_hold = true;
+            }
             self.rc_switch = rc.switch;
             if rc.brake && !self.rc_in_band {
                 self.band_since_ms = Some(i.now_ms);
@@ -1025,6 +1031,22 @@ mod tests {
             self.spine.step(&i)
         }
 
+        /// A person clears the RC (rc_hold, at power-up and after the mode switch moves):
+        /// a few ticks with the left stick in its brake band, the switch at `switch`.
+        fn clear_rc(&mut self, switch: RcSwitch) {
+            for _ in 0..3 {
+                self.tick(Inputs {
+                    rc: Some(RcInput {
+                        switch,
+                        throttle: 0.0,
+                        steering: 0.0,
+                        brake: true,
+                    }),
+                    ..Default::default()
+                });
+            }
+        }
+
         /// The computer's arming edge: `armed = 0`, then the caller sends `armed = 1`.
         fn arm(&mut self) {
             self.drive(0.0, 0.0, false, 2);
@@ -1310,14 +1332,41 @@ mod tests {
     }
 
     #[test]
-    fn rc_direct_from_via_ros_takes_over_at_once() {
+    fn rc_direct_from_via_ros_takes_over_but_waits_for_the_band() {
         let mut car = Car::new();
         let via_ros = Some(sticks(RcSwitch::ViaRos));
         car.drive_with_rc(0.0, false, via_ros, 2);
         car.drive_with_rc(0.0, true, via_ros, 20);
+        // Switched to manual with the stick pushed: RC has the car, braked.
+        let out = car.drive_with_rc(0.0, true, Some(sticks(RcSwitch::Direct)), 30);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+        // The stick to the band and out again: the sticks drive.
+        car.clear_rc(RcSwitch::Direct);
         let out = car.drive_with_rc(0.0, true, Some(sticks(RcSwitch::Direct)), 30);
         assert_eq!(out.mode, Mode::Rc);
         assert!(out.throttle > 0.0, "the sticks drive");
+    }
+
+    #[test]
+    fn rc_direct_waits_for_the_band_after_power_up() {
+        let mut car = Car::new();
+        let pushed = Some(sticks(RcSwitch::Direct));
+        let out = car.drive_with_rc(0.0, false, pushed, 50);
+        assert_eq!((out.mode, out.throttle, out.brake), (Mode::Rc, 0.0, 1.0));
+        car.clear_rc(RcSwitch::Direct);
+        assert!(car.drive_with_rc(0.0, false, pushed, 30).throttle > 0.0);
+    }
+
+    #[test]
+    fn moving_the_mode_switch_holds_rc_direct_again() {
+        let mut car = Car::new();
+        car.clear_rc(RcSwitch::Direct);
+        let pushed = Some(sticks(RcSwitch::Direct));
+        assert!(car.drive_with_rc(0.0, false, pushed, 30).throttle > 0.0);
+        // To normal and back, the stick still pushed: held until the band.
+        car.drive_with_rc(0.0, false, Some(sticks(RcSwitch::Computer)), 2);
+        let out = car.drive_with_rc(0.0, false, pushed, 30);
+        assert_eq!((out.throttle, out.brake), (0.0, 1.0));
     }
 
     #[test]
@@ -1338,6 +1387,7 @@ mod tests {
         assert!((car.spine.speed_setpoint() + MAX_REVERSE_SPEED).abs() < 1e-6);
         // Full reverse on the RC stick: the same cap.
         let mut car = Car::new();
+        car.clear_rc(RcSwitch::Direct);
         let rc = RcInput {
             switch: RcSwitch::Direct,
             throttle: -1.0,
@@ -2212,6 +2262,7 @@ mod tests {
             out.throttle
         );
         let mut car = Car::with_config(open_loop_config());
+        car.clear_rc(RcSwitch::Direct);
         let rc = RcInput {
             switch: RcSwitch::Direct,
             throttle: 1.0,
@@ -2544,6 +2595,7 @@ mod tests {
     #[test]
     fn rc_direct_stays_stopped_after_a_lost_signal_until_a_person_clears_it() {
         let mut car = Car::with_config(open_loop_config());
+        car.clear_rc(RcSwitch::Direct);
         let moving = Inputs {
             rc: Some(rc_direct(0.5, false)),
             ..Default::default()
@@ -2590,6 +2642,7 @@ mod tests {
             },
         ] {
             let mut car = Car::with_config(open_loop_config());
+            car.clear_rc(RcSwitch::Direct);
             for _ in 0..20 {
                 car.tick(moving);
             }
@@ -2616,6 +2669,7 @@ mod tests {
     #[test]
     fn a_lost_speed_stops_rc_direct_too() {
         let mut car = Car::with_config(open_loop_config());
+        car.clear_rc(RcSwitch::Direct);
         let inputs = |speed| Inputs {
             rc: Some(rc_direct(0.5, false)),
             speed_report: speed,
@@ -2639,6 +2693,7 @@ mod tests {
     #[test]
     fn overspeed_applies_to_rc_direct() {
         let mut car = Car::with_config(open_loop_config());
+        car.clear_rc(RcSwitch::Direct);
         let inputs = |speed| Inputs {
             rc: Some(rc_direct(1.0, false)),
             speed_report: Some(SpeedReport::Known(speed)),
