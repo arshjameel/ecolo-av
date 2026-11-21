@@ -182,7 +182,7 @@ fn config() -> Line<'static> {
                 overspeed: 0.5,
                 rc_band: 0.3,
                 rc_brake_ms: 1000,
-                rc_lost_below: 950,
+                rc_lost_below: 1050,
                 rc_fitted: true,
             },
             speed: SpeedSettings {
@@ -592,7 +592,7 @@ fn the_text_config_line_keeps_its_first_keys_and_appends_the_settings() {
                 steer_counts_per_rad=3100.0 steer_max_rad=0.500 steer_rate_rad_s=0.60 \
                 steer_cal_rate=300 steer_cal_timeout_ms=100 steer_on_stop=hold \
                 brake_stop=1.00 brake_overspeed=0.50 rc_band=0.30 rc_brake_ms=1000 \
-                rc_lost_below=950 rc_fitted=true max_speed=1.00 max_reverse_speed=0.50 throttle_cap_code=233 \
+                rc_lost_below=1050 rc_fitted=true max_speed=1.00 max_reverse_speed=0.50 throttle_cap_code=233 \
                 reverse_cap_code=117 frame_dac_cap=700 dac_rise_per_s=600 max_accel=1.50 \
                 max_decel=2.50 overspeed_margin=0.25 rc_lost_ms=100 speed_lost_ms=300 \
                 overspeed_ms=2000 estop_release_ms=50 bad_frames_ms=3000 uart_baud=115200 \

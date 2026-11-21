@@ -72,7 +72,7 @@ The speed is one more input; the state machine decides what it means.
 |---|---|
 | E-stop, driver fault, the RC's left stick in its brake band while the RC drives | hard stop |
 | Lost commands (100 ms), including frozen or corrupted frames | hard stop, latched |
-| Lost RC (silent, or the failsafe's CH6 under 950), in either RC position, and in normal with `rc_fitted` | hard stop, latched |
+| Lost RC (silent, or the failsafe's CH6 under 1050), in either RC position, and in normal with `rc_fitted` | hard stop, latched |
 | The RC changing between forward and reverse | braked until `RC_BRAKE_MS` (1 s) after the stick entered its band |
 | Lost wheel speed (300 ms, once a link has sent one) | hard stop, latched; `WHEEL_ENCODER` |
 | Past the trip speed: 1.25 m/s, or 0.75 backwards | throttle off and `overspeed_brake` (0.5) until under the limit, then it drives on; `OVERSPEED` |

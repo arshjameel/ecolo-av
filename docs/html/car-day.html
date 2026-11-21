@@ -1864,7 +1864,8 @@ agree. <strong>All of Day A: version 2.</strong></p>
 The Rust reads it differently from the C++:</p>
 <pre class="highlight"><code class="language-text">left stick:  pushed away ◄── forward ──┤ the middle ±30 %: BRAKE ├── reverse ──► pulled back
              (it doesn't spring back: put it in the middle to brake)
-CH6:         low = normal (computer; the RC can take over) · middle = RC via ROS · high = manual
+CH6:         low = normal (computer; the RC can take over) · high = manual
+             (the team's FS-i6X has two positions: RC via ROS, the middle, can't be picked)
 SwC (CH5):   does nothing. The left stick sideways: nothing</code></pre>
 <div class="table-wrap"><table>
 <thead>
@@ -1878,15 +1879,15 @@ SwC (CH5):   does nothing. The left stick sideways: nothing</code></pre>
 <tbody>
 <tr>
 <td>T1</td>
-<td>The transmitter's failsafe menu: CH6 set to <strong>900</strong> (the others as they are)</td>
-<td></td>
-<td><strong>don't drive</strong>: the spine can't tell a lost link otherwise</td>
+<td>Write down the old values first (21 Nov: CH3 55%, CH4 0%, the rest Off), for 6d. Then <strong>System setup → RX setup → Fail safe</strong>: CH6 saved at <strong>-100%</strong> with the switch low, CH3 <strong>0%</strong>, CH4 0%, the rest Off. <strong>Only then</strong> Functions setup → End points → CH6, low side <strong>80%</strong></td>
+<td>Fail safe shows CH6 -100%, CH3 0%, CH4 0%</td>
+<td><strong>don't drive</strong>: the spine can't tell a lost link otherwise. The order matters: the failsafe saves the switch's output as it is</td>
 </tr>
 <tr>
 <td>T2</td>
 <td>Its display or the ESP32's <code>STATUS</code> line (<code>ch=</code>): CH6 at each position</td>
-<td>about 1000, 1500, 2000</td>
-<td>write the numbers down</td>
+<td>about 1100 low, 2000 high</td>
+<td>low under 1050 reads as a lost RC: End points CH6 isn't 80%</td>
 </tr>
 <tr>
 <td>T3</td>
@@ -1897,19 +1898,19 @@ SwC (CH5):   does nothing. The left stick sideways: nothing</code></pre>
 <tr>
 <td>T4</td>
 <td>The transmitter off</td>
-<td>CH6 reads 900 for a moment, then <code>faults</code> has 256</td>
-<td>the failsafe isn't set: back to T1</td>
+<td>CH6 reads 1000 for a moment, then <code>faults</code> has 256</td>
+<td>the failsafe isn't set, or End points moved it: back to T1</td>
 </tr>
 <tr>
 <td>T5</td>
 <td>The ESP32's <code>CONFIG</code> line</td>
-<td><code>rc_band=0.30 rc_brake_ms=1000 rc_lost_below=950 rc_fitted=true</code></td>
+<td><code>rc_band=0.30 rc_brake_ms=1000 rc_lost_below=1050 rc_fitted=true</code></td>
 <td>the wrong build</td>
 </tr>
 </tbody>
 </table></div>
-<p>Write the values here, so the next person can check them: CH6 low <strong><em>_, middle </em></strong>_, high
-<strong><em>_, failsafe </em></strong>_. CH3 pushed away <strong><em>_, pulled back </em></strong>_.</p>
+<p>Write the values here, so the next person can check them: CH6 low <strong><em>_, high </em></strong>_,
+failsafe <strong><em>_. CH3 pushed away </em></strong>_, pulled back ____.</p>
 <p><strong>The transmitter must be on for every session with the Rust</strong>, CH6 low and the left stick
 in the middle: in normal mode a lost RC is a hard stop, so without it nothing drives.</p>
 <h3 id="6c-the-checks-wheels-off-the-ground">6c. The checks, wheels off the ground</h3>
@@ -2051,6 +2052,11 @@ fails, and roll back.</strong> Drive from the laptop: <code>export ROS_DOMAIN_ID
 <td>3</td>
 <td><code>sudo systemctl start aav_serial_bridge</code> (theirs), if that's the plan for the rest of the day</td>
 <td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>The transmitter as the C++ had it: End points CH6 low side back to 100%, and Fail safe back to the values T1 wrote down (21 Nov: CH3 55%, CH4 0%, the rest Off)</td>
+<td>CH6 low reads about 1000 again</td>
 </tr>
 </tbody>
 </table></div>

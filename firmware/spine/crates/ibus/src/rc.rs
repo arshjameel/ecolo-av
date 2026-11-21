@@ -26,9 +26,10 @@
 //! throttle below 1500); [`RcMap::throttle_reversed`] swaps them. TODO(Q7): check on
 //! the transmitter.
 //!
-//! **The failsafe (Arsh, 21 Nov).** The transmitter's failsafe sets CH6 to 900 µs, below
-//! anything the switch sends. A CH6 under [`RcMap::lost_below`] (950) means the radio link
-//! is gone, the same as a silent receiver: [`RcMap::rc_input`] gives `None`, and
+//! **The failsafe (Arsh, 21 Nov).** The transmitter's failsafe sets CH6 to 1000 µs, below
+//! anything the switch sends: the FS-i6X can't go past -100%, so the switch's low position
+//! is moved up to 1100 instead (End points CH6, low side 80%). A CH6 under
+//! [`RcMap::lost_below`] (1050) means the radio link is gone, the same as a silent receiver: [`RcMap::rc_input`] gives `None`, and
 //! `spine-core` makes a hard stop (`RC_SIGNAL_LOST`). The car day check is in
 //! `docs/car-day.md`, "The RC transmitter".
 //!
@@ -38,8 +39,8 @@
 //!
 //! | CH6 | `TODAY` | `THREE_POSITION` |
 //! |---|---|---|
-//! | under 950 | the failsafe: RC lost | the failsafe: RC lost |
-//! | 1000 (low) | normal (`RcSwitch::Computer`) | normal |
+//! | under 1050 | the failsafe (1000): RC lost | the failsafe (1000): RC lost |
+//! | 1100 (low) | normal (`RcSwitch::Computer`) | normal |
 //! | 1500 (middle) | normal | **RC via ROS** (1301..1700) |
 //! | 2000 (high) | manual (`RcSwitch::Direct`) | manual (above 1700) |
 //!
@@ -62,7 +63,8 @@ pub struct RcMap {
     /// The top of the usable range (µs).
     pub valid_below: u16,
     /// The mode switch below this is the transmitter's failsafe: the radio link is gone
-    /// (µs). The transmitter sets CH6 to 900 when it loses the link.
+    /// (µs). The transmitter sets CH6 to 1000 when it loses the link, and the switch's low
+    /// position sends 1100.
     pub lost_below: u16,
     /// RC direct while the mode switch reads above this.
     pub direct_above: u16,
@@ -100,7 +102,7 @@ impl RcMap {
         steering: 3,
         valid_above: 100,
         valid_below: 2200,
-        lost_below: 950,
+        lost_below: 1050,
         direct_above: 1500,
         via_ros_above: None,
         centre: 1500,
@@ -236,7 +238,7 @@ mod tests {
     }
 
     const MANUAL: u16 = 2000;
-    const NORMAL: u16 = 1000;
+    const NORMAL: u16 = 1100;
 
     #[test]
     fn switch_low_is_normal_and_high_is_manual() {
@@ -253,7 +255,7 @@ mod tests {
     fn three_positions_put_rc_via_ros_in_the_middle() {
         let m = RcMap::THREE_POSITION;
         let at = |v| m.rc_input(&ch(v, 1250, 1500)).unwrap().switch;
-        assert_eq!(at(1000), RcSwitch::Computer);
+        assert_eq!(at(1100), RcSwitch::Computer);
         assert_eq!(at(1300), RcSwitch::Computer);
         assert_eq!(at(1301), RcSwitch::ViaRos);
         assert_eq!(at(1500), RcSwitch::ViaRos);
@@ -261,7 +263,7 @@ mod tests {
         assert_eq!(at(1701), RcSwitch::Direct);
         assert_eq!(at(2000), RcSwitch::Direct);
         // A two-position switch reads the same with either map.
-        for v in [1000, 2000] {
+        for v in [1100, 2000] {
             assert_eq!(
                 at(v),
                 RcMap::TODAY.rc_input(&ch(v, 1250, 1500)).unwrap().switch
@@ -271,12 +273,16 @@ mod tests {
 
     #[test]
     fn the_failsafe_on_the_mode_switch_is_no_usable_rc() {
-        // The transmitter's failsafe puts CH6 at 900: under 950, the link is gone.
+        // The transmitter's failsafe puts CH6 at 1000: under 1050, the link is gone. The
+        // switch's low position sends 1100 (End points 80%).
         for map in [RcMap::TODAY, RcMap::THREE_POSITION] {
-            assert_eq!(map.rc_input(&ch(900, 1500, 1500)), None);
-            assert_eq!(map.rc_input(&ch(949, 1500, 1500)), None);
-            assert!(map.rc_input(&ch(950, 1500, 1500)).is_some());
-            assert!(map.rc_input(&ch(1000, 1500, 1500)).is_some());
+            assert_eq!(map.rc_input(&ch(1000, 1500, 1500)), None);
+            assert_eq!(map.rc_input(&ch(1049, 1500, 1500)), None);
+            assert!(map.rc_input(&ch(1050, 1500, 1500)).is_some());
+            assert_eq!(
+                map.rc_input(&ch(1100, 1500, 1500)).unwrap().switch,
+                RcSwitch::Computer
+            );
         }
     }
 

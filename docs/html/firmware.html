@@ -669,15 +669,15 @@ between the RC and the computer itself, so it still works with the Motor Pi or t
 </tr>
 <tr>
 <td>Middle: RC via ROS</td>
-<td>the computer, from the sticks sent up to ROS (unchanged)</td>
+<td>the computer, from the sticks sent up to ROS (unchanged). The team's FS-i6X has a two-position switch, so it can't pick this</td>
 </tr>
 <tr>
 <td>High: <strong>manual</strong> (RC direct)</td>
 <td>the RC only; the computer's commands count for nothing</td>
 </tr>
 <tr>
-<td>Under 950: the transmitter's failsafe (900)</td>
-<td>RC lost: a hard stop, latched</td>
+<td>Under 1050: the transmitter's failsafe (1000)</td>
+<td>RC lost: a hard stop, latched. The FS-i6X's failsafe can't go below -100% (1000), so the switch's low is moved to 1100 (End points CH6, low side 80%)</td>
 </tr>
 </tbody>
 </table></div>

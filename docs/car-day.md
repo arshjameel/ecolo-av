@@ -636,20 +636,21 @@ The Rust reads it differently from the C++:
 ```text
 left stick:  pushed away ◄── forward ──┤ the middle ±30 %: BRAKE ├── reverse ──► pulled back
              (it doesn't spring back: put it in the middle to brake)
-CH6:         low = normal (computer; the RC can take over) · middle = RC via ROS · high = manual
+CH6:         low = normal (computer; the RC can take over) · high = manual
+             (the team's FS-i6X has two positions: RC via ROS, the middle, can't be picked)
 SwC (CH5):   does nothing. The left stick sideways: nothing
 ```
 
 | # | Do | You should see | If not |
 |---|---|---|---|
-| T1 | The transmitter's failsafe menu: CH6 set to **900** (the others as they are) | | **don't drive**: the spine can't tell a lost link otherwise |
-| T2 | Its display or the ESP32's `STATUS` line (`ch=`): CH6 at each position | about 1000, 1500, 2000 | write the numbers down |
+| T1 | Write down the old values first (21 Nov: CH3 55%, CH4 0%, the rest Off), for 6d. Then **System setup → RX setup → Fail safe**: CH6 saved at **-100%** with the switch low, CH3 **0%**, CH4 0%, the rest Off. **Only then** Functions setup → End points → CH6, low side **80%** | Fail safe shows CH6 -100%, CH3 0%, CH4 0% | **don't drive**: the spine can't tell a lost link otherwise. The order matters: the failsafe saves the switch's output as it is |
+| T2 | Its display or the ESP32's `STATUS` line (`ch=`): CH6 at each position | about 1100 low, 2000 high | low under 1050 reads as a lost RC: End points CH6 isn't 80% |
 | T3 | The left stick pushed away, then pulled back | CH3 near **1000** pushed away, near 2000 pulled back | the other way round: `throttle_reversed: true` in `ibus::RcMap` (Q7), rebuild |
-| T4 | The transmitter off | CH6 reads 900 for a moment, then `faults` has 256 | the failsafe isn't set: back to T1 |
-| T5 | The ESP32's `CONFIG` line | `rc_band=0.30 rc_brake_ms=1000 rc_lost_below=950 rc_fitted=true` | the wrong build |
+| T4 | The transmitter off | CH6 reads 1000 for a moment, then `faults` has 256 | the failsafe isn't set, or End points moved it: back to T1 |
+| T5 | The ESP32's `CONFIG` line | `rc_band=0.30 rc_brake_ms=1000 rc_lost_below=1050 rc_fitted=true` | the wrong build |
 
-Write the values here, so the next person can check them: CH6 low ____, middle ____, high
-____, failsafe ____. CH3 pushed away ____, pulled back ____.
+Write the values here, so the next person can check them: CH6 low ____, high ____,
+failsafe ____. CH3 pushed away ____, pulled back ____.
 
 **The transmitter must be on for every session with the Rust**, CH6 low and the left stick
 in the middle: in normal mode a lost RC is a hard stop, so without it nothing drives.
@@ -691,6 +692,7 @@ Any time something is wrong: e-stop, Ctrl-C the bridge, then:
 | 1 | `vendor/cargo-tools/bin/espflash write-bin 0 car-day/esp32/backup-esp32-<date>.bin` | the board as it was: `=== ESP32: AAV Controller ===` in its log |
 | 2 | On the Motor Pi: `frame_version: 1` back, `~/aav-jazzy/aav.sh build` | the C++ reads only the 13-byte frame |
 | 3 | `sudo systemctl start aav_serial_bridge` (theirs), if that's the plan for the rest of the day | |
+| 4 | The transmitter as the C++ had it: End points CH6 low side back to 100%, and Fail safe back to the values T1 wrote down (21 Nov: CH3 55%, CH4 0%, the rest Off) | CH6 low reads about 1000 again |
 
 Or the C++ from source: `pixi run -e firmware legacy-esp32 -t upload` (`src/secrets.h` holds
 its WiFi; with the placeholders it can't join the WiFi). The Rust with 13-byte frames:

@@ -257,9 +257,9 @@ left stick (CH3):  1000 ◄── forward ──┤ brake band, ±30 % ├──
 | Mode switch (CH6) | Who drives |
 |---|---|
 | Low: **normal** | the computer, but the RC outranks it (below). The RC must stay: losing it is a hard stop |
-| Middle: RC via ROS | the computer, from the sticks sent up to ROS (unchanged) |
+| Middle: RC via ROS | the computer, from the sticks sent up to ROS (unchanged). The team's FS-i6X has a two-position switch, so it can't pick this |
 | High: **manual** (RC direct) | the RC only; the computer's commands count for nothing |
-| Under 950: the transmitter's failsafe (900) | RC lost: a hard stop, latched |
+| Under 1050: the transmitter's failsafe (1000) | RC lost: a hard stop, latched. The FS-i6X's failsafe can't go below -100% (1000), so the switch's low is moved to 1100 (End points CH6, low side 80%) |
 
 | Rule | The spine |
 |---|---|
