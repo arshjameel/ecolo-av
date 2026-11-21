@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-day-2026-11-21.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car day, 21 Nov: flash, calibrate, record</h1>
-<div class="meta">6 min read · 7 sections</div></header>
+<div class="meta">10 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -138,7 +138,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#bring">Bring</a><a href="#the-order">The order</a><a href="#the-hardware-screen">The hardware screen</a><a href="#the-lidar">The lidar</a><a href="#the-steering">The steering</a><a href="#recording">Recording</a><a href="#write-down">Write down</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#bring">Bring</a><a href="#the-order">The order</a><a href="#the-hardware-screen">The hardware screen</a><a href="#the-lidar">The lidar</a><a href="#the-steering">The steering</a><a href="#recording">Recording</a><a href="#the-sim-baseline-what-the-car-should-do-20-nov">The sim baseline: what the car should do (20 Nov)</a><a href="#write-down">Write down</a></nav>
 <div class="lead"><p>Ben, 20 Nov: flash the ESP32 and the Motor Pi (CORTEX), check the IMU, the cameras and
 the lidar, measure the steering lock to lock, set the RC's channel 6, then record drives
 with a laptop as the Orin, "so we record as much data as possible", to build better maps
@@ -377,6 +377,177 @@ move, buildings don't.</p>
 </tr>
 </tbody>
 </table></div>
+</section>
+<section class="card"><h2 id="the-sim-baseline-what-the-car-should-do-20-nov">The sim baseline: what the car should do (20 Nov)</h2>
+<p>Tonight's runs in Ravensim, the same commands as tomorrow's minus <code>--sim</code>. The sim car
+follows our car model with <code>vehicle.yaml</code>'s numbers, the ones the planners use too.
+Tomorrow's car runs go beside each graph; the gaps are the guesses to fix.</p>
+<p>How to read a graph: the <strong>input</strong> (black dotted, what ego sent) is a step; <strong>what
+happened</strong> (blue) follows it late and rounded. A model's answer to the same step is drawn
+over it: <strong>fitted</strong> (red, the best match: its numbers are what the car is) and
+<strong>vehicle.yaml</strong> (green, what the sim and the planners assume).</p>
+<h3 id="speed-a-step-up-then-a-brake-the-hallway">Speed: a step up, then a brake (the hallway)</h3>
+<p>In this run the sim car was given <strong>other</strong> numbers than <code>vehicle.yaml</code> (a slower
+throttle and brake), as the real car will have: the red finds them, the green misses.</p>
+<p><img alt="Speed-up pass: input, measured, fitted model, vehicle.yaml model" src="../img/baseline/02-hall-speed-up-there.png" /></p>
+<p><img alt="Brake pass" src="../img/baseline/03-hall-brake-there.png" /></p>
+<p><img alt="Coast pass: the pedals let go" src="../img/baseline/01-hall-coast-there.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>The sim car had</th>
+<th>The test found</th>
+<th>Trusted</th>
+<th><code>vehicle.yaml</code> now</th>
+<th>The car (21 Nov)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>throttle lag</td>
+<td>0.30 s</td>
+<td>0.30 ± 0.04 s</td>
+<td>yes</td>
+<td>0.10</td>
+<td></td>
+</tr>
+<tr>
+<td>throttle delay</td>
+<td>0.30 s</td>
+<td>0.33 ± 0.01 s</td>
+<td>yes</td>
+<td>-</td>
+<td></td>
+</tr>
+<tr>
+<td>max accel</td>
+<td>1.50 m/s²</td>
+<td>1.51 m/s²</td>
+<td>yes</td>
+<td>1.50</td>
+<td></td>
+</tr>
+<tr>
+<td>drag</td>
+<td>0.10 /s</td>
+<td>0.103 /s</td>
+<td>yes</td>
+<td>0.10</td>
+<td></td>
+</tr>
+<tr>
+<td>max brake</td>
+<td>3.0 m/s²</td>
+<td>2.8 ± 0.3 m/s²</td>
+<td>yes</td>
+<td>3.0</td>
+<td></td>
+</tr>
+<tr>
+<td>brake lag</td>
+<td>0.35 s</td>
+<td>0.27 ± 0.13 s</td>
+<td><strong>no</strong>: the 3 runs disagree</td>
+<td>0.20</td>
+<td></td>
+</tr>
+<tr>
+<td>stop from 1 m/s</td>
+<td>-</td>
+<td>1.17 m</td>
+<td>yes</td>
+<td>-</td>
+<td></td>
+</tr>
+<tr>
+<td>steering lag</td>
+<td>0.10 s</td>
+<td>0.100 s</td>
+<td>yes</td>
+<td>0.10</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>The fitted model matched <strong>12 of 12</strong> passes (speed within 10 %, the stop within 0.2 m).
+Where a number isn't trusted the report says why; more passes narrow it.</p>
+<h3 id="steering-steps-on-stands">Steering: steps on stands</h3>
+<p><img alt="Steering steps while moving" src="../img/baseline/04-hall-steer-there.png" /></p>
+<p><img alt="steer-rate: centre, full lock, centre, each way" src="../img/baseline/steer-rate.png" /></p>
+<p><img alt="steer-sweep: full left, centre, full right" src="../img/baseline/steer-sweep.png" /></p>
+<p><img alt="steer-centre: tiny steps each way, the dead band" src="../img/baseline/steer-centre.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Number</th>
+<th>The sim car had</th>
+<th>The test found</th>
+<th>The car (21 Nov)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>steering rate</td>
+<td>0.80 rad/s</td>
+<td>0.79 rad/s</td>
+<td></td>
+</tr>
+<tr>
+<td>steering lag</td>
+<td>0.10 s</td>
+<td>0.093 s</td>
+<td></td>
+</tr>
+<tr>
+<td>full lock</td>
+<td>0.50 rad</td>
+<td>0.495 rad</td>
+<td></td>
+</tr>
+<tr>
+<td>centre offset</td>
+<td>0</td>
+<td>0.0002 rad</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="throttle-on-free-wheels-stands">Throttle on free wheels (stands)</h3>
+<p><img alt="wheel-steps: 0.1, 0.2, 0.3, 0.15 m/s" src="../img/baseline/wheel-steps.png" /></p>
+<p>The sim's wheels take 2-3 s to reach each step and overshoot the 0.3 m/s one; asked to
+drop to 0.15 they coast down on drag alone. Does the car do the same?</p>
+<h3 id="the-pedal-and-3-m-and-stop">The pedal and "3 m and stop"</h3>
+<p><img alt="The pedal: half forward, let off, let go, pull back, reverse" src="../img/baseline/pedal.png" /></p>
+<p><img alt="3 m and stop: the scripted drive" src="../img/baseline/three.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Move</th>
+<th>Asked</th>
+<th>The sim</th>
+<th>The car (21 Nov)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3 m and stop (scripted)</td>
+<td>3.00 m</td>
+<td>3.16 m by the wheels, 3.11 by the EKF</td>
+<td></td>
+</tr>
+<tr>
+<td>drive to a point 3 m ahead</td>
+<td>stop on B</td>
+<td>0.07 m from B, 9.6 s</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="draw-the-cars-beside-these">Draw the car's beside these</h3>
+<pre class="highlight"><code class="language-sh">pixi run python3 tools/step_plots.py --hallway ~/aav-tests/&lt;car hallway session&gt; --out /tmp/car
+pixi run python3 tools/step_plots.py ~/aav-tests/&lt;sim stands&gt; ~/aav-tests/&lt;car stands&gt; \
+    --label sim car --out /tmp/compare</code></pre>
 </section>
 <section class="card"><h2 id="write-down">Write down</h2>
 <p>Everything seen goes into the repo afterwards: the versions (step 2), the steering sheet,
