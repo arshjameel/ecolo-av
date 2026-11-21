@@ -265,8 +265,8 @@ scored in stage 2): a parked obstacle on the lane is passed by a QP that holds t
 </tbody>
 </table></div>
 <p><code>mppi_lag</code> reverses (14 Nov); <code>aav_track</code>'s trackers too since 19 Nov (TODO 174: each
-backwards stretch of the plan mirrored, <code>gears.py</code>). Only <code>mpc_lag_rs</code> is still forward
-only: give it <code>reversing:=false</code>.
+backwards stretch of the plan mirrored, <code>gears.py</code>); <code>mpc_lag_rs</code> since 20 Nov (TODO 213,
+the same in Rust, <code>gears.rs</code>). Every tracker reverses.
 <code>steer:=mppi_lag_1k</code> (or <code>mppi_lag_batch:=1000</code>): <code>mppi_lag</code> with 1000 samples a tick, not
 2000: half the work, a challenger for the Orin (TODO 152).</p>
 <p><code>tracker:=mppi_lag mppi_lag_sampling:=smooth</code> (or <code>steer:=mppi_lag_smooth</code>; TODO 212, a
@@ -579,7 +579,7 @@ Sim column below. On 17 Nov Nav2 went: the bench and the car run ours too.</p>
 <td><code>mppi_lag</code></td>
 <td><code>mppi_lag</code></td>
 <td>it reads the costmap, so it steers round what the lidar sees; it reverses</td>
-<td>our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code>, <code>mpc_lag</code> (all reverse since 19 Nov), <code>mpc_lag_rs</code> (forward only); sim only: the bench and the car have no <code>tracker:=</code></td>
+<td>our pure pursuit, Stanley, LQR, MPC, <code>mpc_full</code>, <code>mpc_lag</code> (all reverse since 19 Nov), <code>mpc_lag_rs</code> (reverses since 20 Nov); sim only: the bench and the car have no <code>tracker:=</code></td>
 </tr>
 <tr>
 <td>The costmaps</td>

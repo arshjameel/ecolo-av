@@ -45,7 +45,7 @@ and is **scored on the same routes**. It becomes the default only once it wins.
 | MPC steering, within the steering's limits | our pure pursuit | `tracker:=mpc` |
 | MPC speed and steering together (sets its own speed) | MPC, MPPI | `tracker:=mpc_full` |
 | MPC through the car's lags (sets its own speed; lag-aware) | MPPI, RPP, MPC | `tracker:=mpc_lag` |
-| The same MPC in Rust (`aav_mpc_lag`, 15 Nov) | the Python `mpc_lag` | `tracker:=mpc_lag_rs` |
+| The same MPC in Rust (`aav_mpc_lag`, 15 Nov; reverses since 20 Nov, TODO 213) | the Python `mpc_lag` | `tracker:=mpc_lag_rs` |
 | our pure pursuit (the control) | `mppi_lag` (until 17 Nov, Nav2's RPP and MPPI) | `tracker:=pure_pursuit` |
 | AMCL | the global EKF | `amcl:=true` |
 | NDT on a saved lidar map | the global EKF, and AMCL | `ndt:=true` (after `pixi run ndt-map drive`) |
