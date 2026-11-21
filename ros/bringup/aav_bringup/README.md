@@ -55,6 +55,8 @@ detector's and camera streams' settings. Arguments win over the file (`gps:=fals
 | `motor_pi` | `legacy_uart` only: the Pi wired to the ESP32's UART |
 | `motor_pi_alone` | the first moves: mux, ego, stop_signs, teleop and `legacy_uart`, all on the Motor Pi, so the heartbeat is made there. Never with `car orin` too (docs/car-day.md, A9b) |
 | `laptop` | teleop and a detector |
+| `laptop_orin` | the laptop in the Orin's place: mux, ego, stop_signs and teleop, so the heartbeat is made on the laptop and crosses the WiFi; the Motor Pi runs `car motor_pi`. The hardware screen beside it. Never with `car orin` or `motor_pi_alone` too (docs/esp32-safety.md, section 7) |
+| `orin_sensors` | the Orin as eyes only, beside `laptop_orin`: description, lidar, camera_stream (no detector), localization, foxglove. Decides nothing: for recording a drive by hand |
 | `all` | everything on one computer |
 
 The parts are listed in `PARTS` in `car.launch.py` and its docstring.

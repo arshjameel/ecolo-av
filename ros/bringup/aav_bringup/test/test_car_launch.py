@@ -343,6 +343,29 @@ def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
         started(CAR, machine='motor_pi_alone', stop_sign_impl='c')
 
 
+def test_the_laptop_can_take_the_orins_place():
+    # Ben, 20 Nov: the joystick and the hardware screen on a laptop, the heartbeat made
+    # there; the Motor Pi runs only its bridge (car motor_pi).
+    sent = included(started(CAR, machine='laptop_orin'))
+    assert sent['io_mux.launch.py']['target'] == 'car'      # the output mux: the heartbeat
+    assert 'teleop.launch.py' in sent                       # the joystick, plugged in here
+    found = {exe for _, exe in nodes(started(CAR, machine='laptop_orin'))}
+    assert 'legacy_uart_bridge' not in found                # the Pi's, never two
+    pi = CAR.load_machine('motor_pi')['parts']
+    assert pi.get('legacy_uart') and not pi.get('mux') and not pi.get('ego')
+
+
+def test_the_orin_can_watch_while_the_laptop_drives():
+    # Ben, 20 Nov: record everything while the laptop drives (laptop_orin): the Orin reads
+    # its sensors and works out where the car is, and decides nothing.
+    parts = CAR.load_machine('orin_sensors')['parts']
+    for part in ('mux', 'ego', 'navigation', 'scripted', 'drive_to_point', 'teleop',
+                 'legacy_uart', 'spine', 'stop_signs'):
+        assert not parts.get(part), part
+    sent = included(started(CAR, machine='orin_sensors'))
+    assert 'io_mux.launch.py' not in sent
+
+
 def test_the_output_mux_runs_next_to_ego_for_the_real_car():
     # The real backends read only /control/car/actuator_cmd: the output mux, target car,
     # must run wherever ego does, and nowhere else (two would both judge the same ego).

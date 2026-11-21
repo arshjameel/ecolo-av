@@ -1,0 +1,24 @@
+# The Orin as eyes only (Ben, 20 Nov: record "the lidar, camera, stopping, steering,
+# acceleration, imu data ... how it all fits together"), beside `laptop_orin`: the laptop
+# drives and makes the heartbeat, the Orin reads its sensors, works out where the car is,
+# and decides nothing. No mux, no ego, no navigation, no programs: the drivers stay the
+# laptop's joystick, its hardware screen and the RC. The IMU and GPS come from the
+# localization Pi (`car localization`), the actuators from the Motor Pi (`car motor_pi`).
+#
+#   Orin: lidar, the front cameras, localization (the EKFs), the car's description (/tf)
+#   laptop (laptop_orin): joystick, mux, ego, output mux    Motor Pi: the bridge
+#   localization Pi: IMU, GPS                               record on the Orin: tools/record.sh --lidar
+parts:
+  description: true     # the car's frames on /tf: every recording needs them
+  lidar: true           # the roof Velodyne VLP-16: its UDP packets go to the Jetson only
+  camera_stream: true   # the two front cameras' streams from the camera Pi
+  localization: true    # the EKFs: where the car is, from the wheels, the IMU and the GPS
+  foxglove: true        # watch it live from a laptop (watch only on the car)
+
+# The camera streams: the same as orin.yaml's, with no detector (only the pictures are
+# wanted; nothing here acts on a stop sign).
+camera_stream:
+  host: 192.168.1.108       # CAM1-PI, the front camera Pi (orin.yaml)
+  cameras: front_left,front_right
+  decoder: gst-nvidia
+  detector: none

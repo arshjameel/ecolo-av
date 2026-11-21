@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">140 min read · 15 sections</div></header>
+<div class="meta">141 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -36,8 +36,9 @@
 <a href="audit-questions.html">Audit questions</a>
 <a href="car-evening.html">Tonight: drive as is</a>
 <a href="car-day.html">Car day</a>
-<a href="car-setup.html">Car setup</a>
+<a href="drive-and-record.html">Drive by hand and record</a>
 <span class="sep">Learn:</span>
+<a href="car-setup.html">Car setup</a>
 <a href="rollout.html">Rolling out on the car</a>
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
@@ -58,8 +59,8 @@
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
-<a href="learn-speed.html">Learn: speed</a>
 <span class="sep">Reference:</span>
+<a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
 <a href="learn-control.html">Learn: control</a>
 <a href="controllers.html">Controllers</a>
@@ -616,6 +617,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben, 1 Nov: "We do still need a way to move the vehicle to get to our first test": the joystick drives through mux, ego and the output mux all on the Pi, so the heartbeat is made beside the ESP32 and a dead Pi or wire brakes the car, with no Orin needed</td>
 <td>Ben</td>
 <td>2026-11-01</td>
+<td>built</td>
+</tr>
+<tr>
+<td><a href="esp32-safety.html#the-laptop-as-the-orin-20-nov">The laptop as the Orin</a> (<code>car.launch.py machine:=laptop_orin</code>)</td>
+<td>Ben, 20 Nov: "make the joystick and the remote control drive the car and the hardware screen ... provide the heartbeat". For days without the Orin: the safety driver's laptop runs the mux, ego and the output mux, with the joystick and the hardware screen, so the heartbeat is made there; the Motor Pi runs only its bridge. The heartbeat crosses the WiFi, so a WiFi hiccup brakes the car (Rust firmware). The RC's RC direct still needs neither. With it, <code>machine:=orin_sensors</code>: the Orin reads the lidar and cameras and works out where the car is, deciding nothing, so one bag holds every sensor, command and the heartbeat (<code>tools/record.sh</code> now also records the heartbeat, the gated command, the screen's buttons and the mux's choice; <a href="drive-and-record.html">drive and record</a>)</td>
+<td>Ben</td>
+<td>2026-11-20</td>
 <td>built</td>
 </tr>
 <tr>

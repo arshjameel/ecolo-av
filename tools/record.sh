@@ -9,7 +9,9 @@
 # The actuators' own reports and the go-to driver's feedback (hidden: its action topic)
 # let tools/atob_score.py score an A-to-B run from the bag; Gazebo's truth when in sim.
 # What the Motor Pi wrote to the ESP32 and how its uplink arrives let tools/link_check.py
-# say whether the frames got there (docs/hardware-debug.md).
+# say whether the frames got there (docs/hardware-debug.md). The Orin's heartbeat, the command after
+# the output mux, the hardware screen's buttons and the mux's choice show who drove and
+# whether the heartbeat ran (20 Nov: the laptop as the Orin).
 #
 # usage: tools/record.sh [--lidar] [name]   -> bags/<date>_<name>/ (MCAP, Jazzy's default)
 #   --lidar  also the lidar's cloud, to build the NDT map at home (pixi run ndt-map build):
@@ -43,7 +45,7 @@ exec tools/ros.sh ros2 bag record -o "$out" --include-hidden-topics --topics \
   /sensors/imu/data_raw /sensors/imu/data /sensors/imu/mag /sensors/gps/fix /sensors/gps/fix_velocity /vehicle/battery \
   /drivers/joy/joy /safety/estop /control/cmd_vel /drivers/joy/cmd_vel /drivers/keyboard/cmd_vel /drivers/scripted/cmd_vel /drivers/nav/cmd_vel \
   /drivers/point/cmd_vel /drivers/rc/cmd_vel /drivers/tests/cmd_vel /drive_to_point/_action/feedback /drive_to_point/_action/status \
-  /cmd_vel_nav /ego/actuator_cmd /can/tx /can/rx /control/car/link_frame /vehicle/esp32/uplink_health \
+  /cmd_vel_nav /ego/actuator_cmd /control/car/actuator_cmd /control/car/heartbeat /drivers/buttons/cmd_vel /control/command_mux/state /hud/heartbeat /safety/self_test/status /can/tx /can/rx /control/car/link_frame /vehicle/esp32/uplink_health \
   /localization/odom/local /localization/odom/global /localization/gps/odom /localization/gps/fix /localization/gps/heading \
   /tf /tf_static /robot_description /plan /goal_pose /clock \
   /sensors/camera/front_left/image_raw/compressed /sensors/camera/front_left/camera_info \

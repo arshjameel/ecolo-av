@@ -78,6 +78,8 @@ PAGES = [
     ('car-evening.md', 'Tonight: drive as is',
      'Nothing flashed: their stack drives, and we record everything'),
     ('car-day.md', 'Car day', 'The order: Day A changes nothing, Day B upgrades'),
+    ('drive-and-record.md', 'Drive by hand and record',
+     'The laptop as the Orin: joystick, screen, RC; record everything'),
     ('car-setup.md', 'Car setup', 'One car computer: back up, upgrade, install, start at boot'),
     ('rollout.md', 'Rolling out on the car',
      "The names, the order (ESP32 and Motor Pi first), each computer's upgrade"),
