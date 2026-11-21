@@ -161,7 +161,7 @@ A frozen screen stops the car: each screen sends a heartbeat, STALE within 1 s
 | What it does | Algorithms we built | Language | Status | Key number |
 |---|---|---|---|---|
 | Follow the path, knowing the actuators lag | ✅ **`mppi_lag_calm`** (MPPI with the car's lag) | Rust | sim | the calmest that reverses; a tick 3.4-5.3 ms |
-| The same, as an optimiser | ⚔️ lag-aware MPC (`mpc_lag_rs`) | Rust | sim | 2-7 times closer to the path, a tick 0.7-0.9 ms; sways, can't reverse yet |
+| The same, as an optimiser | ⚔️ lag-aware MPC (`mpc_lag_rs`) | Rust | sim | 2-7 times closer to the path, a tick 0.7-0.9 ms; reverses since 20 Nov (lot tour 4/4, 7.8 m backwards); sways |
 | Turn a wish into what the car can do | ✅ **ego**: Ackermann, jerk limit, body model, lag lead, the 2 s trace (Python twin kept) | Rust | sim | 2.4 % of a core against 17 % |
 | The pedal and the speed loop | ✅ `default` loop; ⚔️ `smooth`, `firm`, `lqi` | Rust (`spine-core`) | sim | `default` overshoots its command by 14 %; `firm` doesn't, but sways more |
 

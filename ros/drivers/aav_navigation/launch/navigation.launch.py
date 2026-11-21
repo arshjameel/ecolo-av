@@ -55,7 +55,8 @@ Switches:
                           the lattice's trial files and its smoother (docs/own-planner.md)
   tracker:=pure_pursuit|stanley|lqr|mpc|mpc_full|mpc_lag|mpc_lag_rs
                           another follower serves follow_path (aav_track's; mpc_lag_rs:
-                          aav_mpc_lag). aav_track's and mpc_lag_rs drive forwards only
+                          aav_mpc_lag). Each reverses with reversing:=true (TODO 174,
+                          213)
   mppi_lag_steer_gamma:=0.05  mppi_lag's steering control cost (TODO 168)
   mppi_lag_batch:=1000        mppi_lag's samples a tick (empty: 2000; TODO 152)
   mppi_lag_sampling:=smooth   mppi_lag samples the steering's change (TODO 212)
@@ -562,7 +563,7 @@ def nodes(context):
             package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs', namespace='/',
             output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
             parameters=[own, vehicle.mpc_lag_rs_params(nav2, cfg, ego, max_speed,
-                                                       speed_loop),
+                                                       speed_loop, reversing=reversing),
                         {'use_sim_time': use_sim_time,
                          'map_correction': slew['map_correction']}]))
     elif tracker == 'mppi_lag':

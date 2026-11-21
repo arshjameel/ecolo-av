@@ -64,8 +64,8 @@ scored in stage 2): a parked obstacle on the lane is passed by a QP that holds t
 | `tracker:=mppi_lag` (default; Nav2's MPPI and RPP went on 17 Nov) | ours: Nav2's MPPI in Rust, knowing the steering and pedals lag ([page](mppi-lag.md)) | Ravensim, 8 Nov, 3 runs: 11 of 12 (Nav2's MPPI 8; [trials](history/trials-log.md#results-our-simulator-8-nov-the-lot-tour-3-runs-each)). It passes a goal at 2.5 m/s and uses twice Nav2's MPPI's CPU ([our navigator](own-navigator.md#the-verdict)) |
 
 `mppi_lag` reverses (14 Nov); `aav_track`'s trackers too since 19 Nov (TODO 174: each
-backwards stretch of the plan mirrored, `gears.py`). Only `mpc_lag_rs` is still forward
-only: give it `reversing:=false`.
+backwards stretch of the plan mirrored, `gears.py`); `mpc_lag_rs` since 20 Nov (TODO 213,
+the same in Rust, `gears.rs`). Every tracker reverses.
 `steer:=mppi_lag_1k` (or `mppi_lag_batch:=1000`): `mppi_lag` with 1000 samples a tick, not
 2000: half the work, a challenger for the Orin (TODO 152).
 
@@ -181,7 +181,7 @@ Sim column below. On 17 Nov Nav2 went: the bench and the car run ours too.
 | System | Sim | Bench | Car | Why this default | On trial beside it |
 |---|---|---|---|---|---|
 | Who draws the route | `own` (ours) | `own` | `own` | Nav2's lattice ported; Nav2's went on 17 Nov | Hybrid-A* in ours (`planner_search:=hybrid`), `lattice32`, `diffusion` (8 Nov: 88 % from the model, still a trial) |
-| Who steers | `mppi_lag` (ours) | `mppi_lag` | `mppi_lag` | it reads the costmap, so it steers round what the lidar sees; it reverses | our pure pursuit, Stanley, LQR, MPC, `mpc_full`, `mpc_lag` (all reverse since 19 Nov), `mpc_lag_rs` (forward only); sim only: the bench and the car have no `tracker:=` |
+| Who steers | `mppi_lag` (ours) | `mppi_lag` | `mppi_lag` | it reads the costmap, so it steers round what the lidar sees; it reverses | our pure pursuit, Stanley, LQR, MPC, `mpc_full`, `mpc_lag` (all reverse since 19 Nov), `mpc_lag_rs` (reverses since 20 Nov); sim only: the bench and the car have no `tracker:=` |
 | The costmaps | ours | ours | ours | Nav2's went on 17 Nov | |
 | Who runs the goal | ours (`aav_navigator`) | ours | ours | Nav2's went on 17 Nov | |
 | The velocity smoother | ours | ours | ours | Nav2's went on 17 Nov (a tie, 16 Nov) | |

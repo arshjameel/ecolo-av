@@ -334,10 +334,11 @@ TUNED_CONTROLLERS = ('rpp', 'mppi')
 TRACKERS = ('pure_pursuit', 'stanley', 'lqr', 'mpc', 'mpc_full', 'mpc_lag', 'mppi_lag',
             'mpc_lag_rs')
 DEFAULT_TRACKER = 'mppi_lag'
-# The trackers that drive forwards only: refused with reversing:=true. mppi_lag reverses
-# as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse"); aav_track's since 19 Nov (TODO
-# 174: each backwards stretch mirrored, aav_track gears.py). mpc_lag_rs not yet.
-FORWARD_ONLY_TRACKERS = ('mpc_lag_rs',)
+# The trackers that drive forwards only: refused with reversing:=true. None since 20 Nov:
+# mppi_lag reverses as Nav2's MPPI does (Ben, 14 Nov: "The car can reverse"); aav_track's
+# since 19 Nov (TODO 174: each backwards stretch mirrored, aav_track gears.py); mpc_lag_rs
+# since 20 Nov (TODO 213, the same, in aav_mpc_lag's gears.rs). Kept for a challenger.
+FORWARD_ONLY_TRACKERS = ()
 
 
 def check_tracker(tracker, reversing=False):
@@ -1109,15 +1110,18 @@ MPPI_LAG_ACTUATORS = ('max_accel', 'throttle_deadband', 'throttle_lag', 'max_bra
 MPC_LAG_RS_UNUSED = ('lookahead_min', 'lookahead_max', 'lookahead_time')
 
 
-def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP):
+def mpc_lag_rs_params(nav2, cfg, ego=None, max_speed=None, speed_loop=DEFAULT_SPEED_LOOP,
+                      reversing=False):
     """
     Return aav_mpc_lag's parameters: aav_track's (track_params), and the car's actuators.
 
     The same speed, checks and steering limits as the Python mpc_lag gets, so the two race
     on the same terms; vehicle.yaml's actuators as actuators.<key> (MPPI_LAG_ACTUATORS, the
-    dead times 0 when unset), where aav_track reads the file itself.
+    dead times 0 when unset), where aav_track reads the file itself. `reversing`: it may
+    back up, at vehicle.yaml's max_reverse_speed (0: forward only; TODO 213).
     """
-    params = {k: v for k, v in track_params(nav2, cfg, ego, max_speed, speed_loop).items()
+    params = {k: v for k, v in track_params(nav2, cfg, ego, max_speed, speed_loop,
+                                            reversing=reversing).items()
               if k not in MPC_LAG_RS_UNUSED}
     act = cfg['actuators']
     params.update({f'actuators.{k}': float(act.get(k, 0.0)) for k in MPPI_LAG_ACTUATORS})

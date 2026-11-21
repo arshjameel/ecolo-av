@@ -489,12 +489,12 @@ def test_trackers_sit_beside_the_controllers_and_mppi_lag_is_the_default():
         vehicle.check_tracker('none')
     with pytest.raises(ValueError, match='pick one of'):
         vehicle.check_tracker('mppi')
-    with pytest.raises(ValueError, match='reversing:=false'):
-        vehicle.check_tracker('mpc_lag_rs', reversing=True)
-    # mppi_lag reverses (Ben, 14 Nov); aav_track's trackers too (TODO 174); mpc_lag_rs not.
+    # mppi_lag reverses (Ben, 14 Nov); aav_track's trackers too (TODO 174); mpc_lag_rs
+    # since 20 Nov (TODO 213).
     assert vehicle.check_tracker('mppi_lag', reversing=True) == 'mppi_lag'
     assert vehicle.check_tracker('stanley', reversing=True) == 'stanley'
-    assert set(vehicle.FORWARD_ONLY_TRACKERS) == {'mpc_lag_rs'}
+    assert vehicle.check_tracker('mpc_lag_rs', reversing=True) == 'mpc_lag_rs'
+    assert set(vehicle.FORWARD_ONLY_TRACKERS) == set()
 
 
 def test_track_params_are_nav2s_own_checks_and_speeds():
@@ -521,6 +521,10 @@ def test_track_params_are_nav2s_own_checks_and_speeds():
     assert p['max_reverse_speed'] == 0.0
     back = vehicle.track_params(nav2, cfg, ego, reversing=True)['max_reverse_speed']
     assert back == cfg['vehicle']['max_reverse_speed'] > 0
+    # TODO 213: mpc_lag_rs the same.
+    assert vehicle.mpc_lag_rs_params(nav2, cfg, ego)['max_reverse_speed'] == 0.0
+    back = vehicle.mpc_lag_rs_params(nav2, cfg, ego, reversing=True)['max_reverse_speed']
+    assert back == cfg['vehicle']['max_reverse_speed']
 
 
 def test_check_speed_loop_takes_spine_cores_names_and_refuses_the_rest():
