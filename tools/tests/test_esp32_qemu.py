@@ -308,7 +308,7 @@ def test_a_lost_rc_must_say_fault_256_and_brake():
 
 def test_the_failsafe_sends_ch6_under_the_spines_threshold():
     ch = q.rc_channels('failsafe', throttle=q.BAND)
-    assert ch[5] == 900 < 950 and ch[2] == 1500
+    assert ch[5] == 1000 < 1050 < q.rc_channels('computer')[5] == 1100 and ch[2] == 1500
     # The gear switch (CH5) is no longer set: it stays in the middle.
     assert q.rc_channels('direct')[4] == 1500
 

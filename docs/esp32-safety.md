@@ -301,7 +301,7 @@ two give the same frames, byte for byte: `legacy-bridge`'s `tests/vectors.rs`.
 | Bad CRC ignored | `link.rs:430-434` | `v2_bad_crc_frames_are_ignored_so_the_heartbeat_stops` |
 | 13-byte frames never drive this build | `link.rs:425-429` | `v2_ignores_version_1_frames_so_never_drives` |
 | E-stop flag at once; released by a new counter | `link.rs:450-469` | `v2_the_estop_flag_works_whatever_the_counter` |
-| RC lost: 100 ms silent, or the failsafe's CH6 under 950 at once; on every position with a receiver fitted | `calibration.rs:147`, `ibus/src/rc.rs` (`lost_below`), `spine.rs` (`rc_fitted`) | `a_silent_receiver_stops_rc`; `with_a_receiver_fitted_a_lost_rc_stops_the_computer_too`; `the_failsafe_on_the_mode_switch_is_no_usable_rc`; QEMU 117-119 ms (silence) |
+| RC lost: 100 ms silent, or the failsafe's CH6 under 1050 at once; on every position with a receiver fitted | `calibration.rs:147`, `ibus/src/rc.rs` (`lost_below`), `spine.rs` (`rc_fitted`) | `a_silent_receiver_stops_rc`; `with_a_receiver_fitted_a_lost_rc_stops_the_computer_too`; `the_failsafe_on_the_mode_switch_is_no_usable_rc`; QEMU 117-119 ms (silence) |
 | RC direct's own latch | `spine.rs:556-563`, `spine.rs:657` | `rc_direct_stays_stopped_after_a_lost_signal_until_a_person_clears_it` |
 | RC direct beats the computer; the computer still latches | `spine.rs:571-575`, `spine.rs:623-624` | `the_computer_stopping_while_rc_direct_drives_still_latches` |
 | The RC's brake band: full at once (21 Nov) | `ibus/src/rc.rs` (`brake_band`), `spine.rs` (`Authority::Rc`) | `rc_in_the_brake_band_stops_hard_with_no_light_stage`; `the_brake_band_is_the_full_brake_at_once` |

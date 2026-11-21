@@ -46,7 +46,7 @@ brake band (1500) so the computer may drive. Then, with the mode switch (CH6) in
 middle, RC via ROS: the sticks come up, and only the frames drive; at the top, RC direct
 (manual): the sticks drive, whatever the frames say; then silence in each: fault 256 and
 full brake within 100-250 ms; back on RC via ROS it stays braked until a stop; and in
-normal mode, the transmitter's failsafe (CH6 at 900): fault 256 and the full brake.
+normal mode, the transmitter's failsafe (CH6 at 1000): fault 256 and the full brake.
 
 Times: `t` is the firmware's clock (esp-hal's Instant, from QEMU's virtual clock, which
 follows the host's clock without -icount). The host notes when each line arrives;
@@ -97,8 +97,10 @@ UPLINK_LIMIT_MS = 400
 ECHO_WINDOW = 0.5           # s: an echo must be a counter sent this recently
 
 # The RC (TODO 48): the mode switch on CH6 (index 5), the proposal (RcMap::THREE_POSITION).
-# 'failsafe': what the transmitter's failsafe sends on CH6 when the link drops (under 950).
-SWITCH = {'computer': 1000, 'via_ros': 1500, 'direct': 2000, 'failsafe': 900}
+# 'failsafe': what the transmitter's failsafe sends on CH6 when the link drops (under 1050).
+# The switch's low position sends 1100 (End points CH6, low side 80%): the FS-i6X's
+# failsafe can't go below -100% (1000).
+SWITCH = {'computer': 1100, 'via_ros': 1500, 'direct': 2000, 'failsafe': 1000}
 FULL_STICK = 1000           # the left stick (CH3) all the way forward: below the middle
 BAND = 1500                 # the left stick in its brake band (the middle 30 % each way)
 RC_WINDOW = 1.2             # s: the RC's first second after boot or a stop, and a margin
@@ -450,7 +452,7 @@ RC_PHASES = {
     'direct_lost': 'RC direct, then the receiver goes silent',
     'via_ros_lost': 'RC via ROS, the frames driving, then the receiver goes silent',
     'via_ros_back': 'the receiver back on RC via ROS, the frames still driving, no stop',
-    'normal_failsafe': 'normal mode, the frames driving, then the failsafe: CH6 at 900',
+    'normal_failsafe': 'normal mode, the frames driving, then the failsafe: CH6 at 1000',
 }
 
 
@@ -819,7 +821,7 @@ def rc_run(fw: Firmware, orin: Orin, mapping: LegacyMapping) -> List[RcPhase]:
     fw.ibus.send(rc_channels('via_ros', throttle=BAND))
     phase('via_ros_back', drive, 0.6)
     # Normal mode, the stick in its band: a stop to re-arm, the RC's second, then the
-    # frames drive. The link drops: the failsafe puts CH6 at 900, and frames still come.
+    # frames drive. The link drops: the failsafe puts CH6 at 1000, and frames still come.
     fw.ibus.send(rc_channels('computer', throttle=BAND))
     fw.send_for(still, 0.5, orin.frames(still))
     fw.send_for(drive, RC_WINDOW + 0.5, orin.frames(drive))

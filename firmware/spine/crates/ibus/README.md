@@ -44,7 +44,7 @@ The 2025-26 firmware counted channels from 0, as its iBUS library does. So its
 
 | Index | Transmitter | Use | Switch points |
 |---|---|---|---|
-| 5 | CH6 | mode switch | normal; manual (RC direct) above 1500 (`THREE_POSITION`: RC via ROS 1301..1700, manual above); **under 950: the failsafe, RC lost** |
+| 5 | CH6 | mode switch | normal; manual (RC direct) above 1500 (`THREE_POSITION`: RC via ROS 1301..1700, manual above); **under 1050: the failsafe (1000), RC lost**; the switch's low sends 1100 (End points CH6, low side 80%) |
 | 2 | CH3 | the left stick, up and down | the middle ±30 % (1350..1650) is the brake band; below it forward, 1000 full; above it reverse, 2000 full |
 | 3 | CH4 | steering stick | 1000 is +1 (left?), 2000 is -1 |
 | 4 | CH5 | (SwC) not read since 21 Nov: its wiring is loose | |
@@ -53,7 +53,7 @@ Every channel must read between 100 and 2200, or it is out of range.
 
 Outside the band the throttle is rescaled: 0 at the band's edge, 1 at the stick's end, so
 the speed never jumps (Arsh, 21 Nov: the FS-i6X's left stick doesn't spring back, so where
-it rests is the driver's choice). The transmitter's failsafe must set CH6 to 900:
+it rests is the driver's choice). The transmitter's failsafe must set CH6 to 1000, and the switch's low must send 1100:
 [Car day, the RC transmitter](../../../../docs/car-day.md#the-rc-transmitter).
 
 TODO(Q7), to check on the transmitter:
@@ -61,7 +61,7 @@ TODO(Q7), to check on the transmitter:
 - which switch is CH6;
 - whether CH3 is reversed: the left stick pushed away from you should read near 1000.
   If it reads near 2000, set `throttle_reversed`;
-- that the failsafe really sends CH6 at 900 when the transmitter is switched off. The
+- that the failsafe really sends CH6 at 1000 when the transmitter is switched off, after End points moved the switch's low to 1100. The
   timeout here only catches a receiver that goes silent;
 - with Q2: whether +1 really steers left.
 
@@ -118,5 +118,5 @@ Changed on purpose:
 | Override on, a stick out of range | `jrkSafeStop()`: full brake, wheels straight, throttle off | the brake band (a full brake) and straight wheels |
 | Override switch out of range | read as off, so the computer drives | `None`: no usable RC; `spine-core` stops if RC was driving |
 | Forward, reverse and brake | the gear switch (CH5), the throttle on half the stick | the left stick's whole travel, a brake band in the middle; CH5 not read (21 Nov) |
-| The radio link drops | keeps the last values | the failsafe's CH6 under 950 is no usable RC |
+| The radio link drops | keeps the last values | the failsafe's CH6 under 1050 is no usable RC |
 | What the throttle means | a share of the DAC, open loop | a share of the top speed, for `spine-core`'s speed loop |
