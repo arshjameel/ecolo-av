@@ -244,6 +244,129 @@ def pi_figure():
     save(fig, 'pi.png')
 
 
+
+# --- the formulas, drawn (WeasyPrint draws no maths markup, and we have no LaTeX) ---------
+
+EQ_SIZE = 15        # pt
+EQ_DPI = 100
+
+
+def _measure(renderer, scratch, tex):
+    t = scratch.text(0, 0, f'${tex}$', fontsize=EQ_SIZE)
+    box = t.get_window_extent(renderer)
+    t.remove()
+    return box.width, box.height
+
+
+def _item_size(renderer, scratch, item):
+    """Return (width, height, layout) of a formula piece or a matrix (a list of rows)."""
+    if isinstance(item, str):
+        w, h = _measure(renderer, scratch, item)
+        return w, h, None
+    cells = [[_measure(renderer, scratch, c) for c in row] for row in item]
+    cols = [max(cells[r][c][0] for r in range(len(item))) for c in range(len(item[0]))]
+    row_h = max(h for row in cells for _, h in row) + 8
+    gap, bracket = 16, 8
+    width = sum(cols) + gap * (len(cols) - 1) + 2 * bracket + 8
+    return width, row_h * len(item), (cols, row_h, gap, bracket)
+
+
+def equation(name, rows):
+    """Draw rows of pieces (formula strings, or matrices as lists of rows) as an SVG."""
+    scratch = plt.figure(dpi=EQ_DPI)
+    renderer = scratch.canvas.get_renderer()
+    laid = []
+    for row in rows:
+        sizes = [_item_size(renderer, scratch, item) for item in row]
+        laid.append((row, sizes, max(h for _, h, _ in sizes)))
+    plt.close(scratch)
+    pad, item_gap, row_gap = 10, 8, 14
+    width = max(sum(w for w, _, _ in sizes) + item_gap * (len(sizes) - 1)
+                for _, sizes, _ in laid) + 2 * pad
+    height = sum(h for _, _, h in laid) + row_gap * (len(laid) - 1) + 2 * pad
+    fig = plt.figure(figsize=(width / EQ_DPI, height / EQ_DPI), dpi=EQ_DPI)
+    y_top = height - pad
+    for row, sizes, row_h in laid:
+        y_mid = y_top - row_h / 2
+        x = pad
+        for item, (w, h, layout) in zip(row, sizes):
+            if layout is None:
+                fig.text(x / width, y_mid / height, f'${item}$', fontsize=EQ_SIZE,
+                         va='center', ha='left')
+            else:
+                cols, cell_h, gap, bracket = layout
+                top, bottom = y_mid + h / 2, y_mid - h / 2
+                for left, sign in ((x + 2, 1), (x + w - 2, -1)):
+                    xs = [left + sign * bracket, left, left, left + sign * bracket]
+                    ys = [top, top, bottom, bottom]
+                    fig.add_artist(plt.Line2D([v / width for v in xs],
+                                              [v / height for v in ys], lw=1.3,
+                                              color='black'))
+                for r, cells in enumerate(item):
+                    cy = top - cell_h * (r + 0.5)
+                    cx = x + 4 + bracket
+                    for c, cell in enumerate(cells):
+                        fig.text((cx + cols[c] / 2) / width, cy / height, f'${cell}$',
+                                 fontsize=EQ_SIZE, va='center', ha='center')
+                        cx += cols[c] + gap
+            x += w + item_gap
+        y_top -= row_h + row_gap
+    fig.savefig(os.path.join(OUT, f'eq-{name}.svg'), transparent=True)
+    plt.close(fig)
+
+
+EQUATIONS = {
+    'bicycle': [[r'\dot{x} = v\,\cos\theta'], [r'\dot{y} = v\,\sin\theta'],
+                [r'\dot{\theta} = \frac{v\,\tan\delta}{L}']],
+    'lag': [[r'\tau\,\dot{a} + a = u']],
+    'state-space': [[r'\dot{\mathbf{x}} = A\,\mathbf{x} + B\,u'], [r'y = C\,\mathbf{x}']],
+    'lateral': [[r'\mathbf{x} =', [[r'e_y'], [r'e_\theta'], [r'\delta']], r',\quad u = \delta_{cmd}'],
+                [r'A =', [['0', 'v', '0'], ['0', '0', r'v/L'], ['0', '0', r'-1/\tau_s']],
+                 r'\qquad B =', [['0'], ['0'], [r'1/\tau_s']]]],
+    'feed-forward': [[r'\delta_{ff} = \arctan(L\,\kappa)'],
+                     [r'\delta_{cmd} = \delta_{ff} - K\,\mathbf{x}']],
+    'pi': [[r'e = v_{set} - v'],
+           [r'\mathrm{throttle} = k_p\,e + k_i \int e\,dt']],
+    'speed-plant': [[r'P(s) = \frac{K}{(\tau_v s + 1)(\tau_t s + 1)}', r'\qquad',
+                     r'C(s) = k_p + \frac{k_i}{s}']],
+    'final-value': [[r'e(\infty) = \frac{1}{1 + C(0)\,P(0)}', r'\qquad',
+                     r'k_i > 0 \;\Rightarrow\; C(0) = \infty \;\Rightarrow\; e(\infty) = 0']],
+    'setpoint-weight': [[r'\mathrm{throttle} = k_p\,(b\,v_{set} - v) + k_i \int e\,dt',
+                         r'\qquad b = 0.75']],
+    'lqr-cost': [[r'J = \int_0^\infty \left( \mathbf{x}^T Q\,\mathbf{x} + u^T R\,u \right) dt']],
+    'riccati': [[r'A^T P + P A - P B R^{-1} B^T P + Q = 0'],
+                [r'K = R^{-1} B^T P', r'\qquad', r'u = -K\,\mathbf{x}']],
+    'lqi': [[r'\dot{z} = v_{set} - v', r'\qquad',
+             r'\mathbf{x}_{aug} =', [['v'], [r'a_{throttle}'], ['z']]],
+            [r'u = -K\,\mathbf{x}_{aug} = -k_v v - k_a a_{throttle} - k_z z']],
+    'mpc-cost': [[r'J = \sum_{k=1}^{N} \left[ q_1 \left(e_y - \mathrm{clip}(e_y, \pm w)\right)^2'
+                  r' + q_2 e_\theta^2 + q_3 (\delta - \delta_{ff})^2'
+                  r' + q_v (v - v_{lim})^2 \right]'],
+                 [r'\quad + \sum_{k=1}^{N} \left[ r\,(u - \delta_{ff})^2 + r_\Delta\,\Delta u^2'
+                  r' + r_c\,\Delta c^2 \right] + w_s\,s^2'],
+                 [r'\mathrm{within}\quad |u| \leq \delta_{max},\quad'
+                  r' |\Delta u| \leq \dot{\delta}_{max}\,\Delta t,\quad 0 \leq c \leq v_{cruise}']],
+    'qp': [[r'X = \bar{X} + M\,\Delta U'],
+           [r'\min_{\Delta U}\; \frac{1}{2}\,\Delta U^T P\,\Delta U + q^T \Delta U'
+            r'\quad \mathrm{within\ the\ limits}']],
+    'tube': [[r'\mathrm{cost}(e_y) = q_1 \left(e_y - \mathrm{clip}(e_y, -w, w)\right)^2',
+              r'\qquad w = 0.2\ \mathrm{m}']],
+    'mppi': [[r'w_k = \frac{e^{-c_k/\lambda}}{\sum_j e^{-c_j/\lambda}}', r'\qquad',
+              r'u = u_{last} + \sum_k w_k\,\epsilon_k']],
+    'closed-loop': [[r'\dot{\mathbf{x}} = (A - B K)\,\mathbf{x}']],
+    'lyapunov': [[r'V(\mathbf{x}) > 0,\quad \dot{V}(\mathbf{x}) < 0'
+                  r'\;\Rightarrow\; \mathbf{x} \rightarrow 0', r'\qquad',
+                  r'\mathrm{e.g.}\ V = \mathbf{x}^T P\,\mathbf{x}']],
+    'ekf-predict': [[r'\hat{\mathbf{x}}^- = f(\hat{\mathbf{x}}, u)'],
+                    [r'P^- = F\,P\,F^T + Q']],
+    'ekf-update': [[r'K = P^- H^T \left(H P^- H^T + R\right)^{-1}'],
+                   [r'\hat{\mathbf{x}} = \hat{\mathbf{x}}^- + K\left(z - h(\hat{\mathbf{x}}^-)\right)'],
+                   [r'P = (I - K H)\,P^-']],
+    'speed-car': [[r'\tau_v\,\dot{v} + v = K\,u_a', r'\qquad',
+                   r'\tau_v = 1/d,\quad K = a_{max}/d']],
+}
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     feed_forward_figure()
@@ -253,6 +376,8 @@ def main():
     mppi_figure()
     kalman_figure()
     pi_figure()
+    for name, rows in EQUATIONS.items():
+        equation(name, rows)
     print('wrote', ', '.join(sorted(os.listdir(OUT))))
 
 

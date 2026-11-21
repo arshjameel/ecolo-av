@@ -7,7 +7,7 @@
 <!-- Generated from docs/control-explained.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Control, explained: the maths that drives our car</h1>
-<div class="meta">21 min read · 13 sections</div></header>
+<div class="meta">25 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -234,26 +234,42 @@ day's step tests measure it.</p></div>
 controller here, and the EKF, uses one.</p>
 <h3 id="the-maths-three-pieces">The maths: three pieces</h3>
 <p><strong>The bicycle.</strong> Two wheels instead of four, about the rear axle:</p>
-<pre class="highlight"><code class="language-text">x' = v cos θ           (the prime ' means "how fast it changes")
-y' = v sin θ
-θ' = v tan δ / L       δ = wheel angle, L = wheelbase 1.561 m</code></pre>
+<p><img alt="x dot = v cos theta, y dot = v sin theta, theta dot = v tan delta over L" src="../img/control/eq-bicycle.svg" /></p>
+<p>The dot means "how fast it changes". δ = the wheel angle, L = the wheelbase, 1.561 m.</p>
 <p><strong>A lag.</strong> An actuator doesn't jump: it creeps toward the command. A first-order lag:</p>
-<pre class="highlight"><code class="language-text">τ · a' + a = u         a = what the actuator does, u = what we asked, τ = time constant</code></pre>
+<p><img alt="tau a dot plus a equals u" src="../img/control/eq-lag.svg" /></p>
+<p>a = what the actuator does, u = what we asked, τ = its time constant.</p>
 <p>After τ seconds it has done 63 % of the change; after 3τ, 95 %.</p>
 <p><strong>A dead time.</strong> Nothing happens at all for T seconds, then the lag starts. The camera
 frame's age and the ROS chain add these.</p>
 <h3 id="state-space-the-matrix-form">State space: the matrix form</h3>
 <p>Ben, 20 Nov: "state space is the matrix form for x order derivatives right?" Yes. Any
 n-th order equation becomes n first-order ones, stacked as a vector:</p>
-<pre class="highlight"><code class="language-text">x' = A x + B u        x = the state (everything the future depends on)
-y  = C x              u = what we send;  y = what we measure</code></pre>
+<p><img alt="x dot = A x + B u, y = C x" src="../img/control/eq-state-space.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Letter</th>
+<th>Is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>x</strong></td>
+<td>the state: everything the future depends on</td>
+</tr>
+<tr>
+<td>u</td>
+<td>what we send</td>
+</tr>
+<tr>
+<td>y</td>
+<td>what we measure</td>
+</tr>
+</tbody>
+</table></div>
 <p><strong>The car's sideways motion</strong>, linearised for small errors (vehicle-model.md, section 3):</p>
-<pre class="highlight"><code class="language-text">x = [e_y, e_θ, δ]          off the path (m), heading off (rad), wheel angle (rad)
-u = δcmd                   the steering we ask for
-
-     [ 0   v    0     ]        [  0   ]
-A =  [ 0   0   v/L    ]    B = [  0   ]
-     [ 0   0  −1/τs   ]        [ 1/τs ]</code></pre>
+<p><img alt="the state e_y, e_theta, delta; A and B matrices" src="../img/control/eq-lateral.svg" /></p>
 <p>Read row by row:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -339,8 +355,8 @@ the model is wrong, it's wrong. <strong>Together:</strong> feedforward does most
 mops up what's left.</p>
 <h3 id="the-maths">The maths</h3>
 <p>For a bend of curvature κ (1/radius), the bicycle says the steering that holds it is</p>
-<pre class="highlight"><code class="language-text">δ_ff = atan(L · κ)          the bend's own steering
-δcmd = δ_ff − K x           feedforward + feedback</code></pre>
+<p><img alt="delta_ff = arctan(L kappa); delta_cmd = delta_ff minus K x" src="../img/control/eq-feed-forward.svg" /></p>
+<p>The first line is the bend's own steering (feedforward); the second adds the feedback.</p>
 <p><img alt="Feedback alone lags behind the bend; with feedforward it barely leaves the path" src="../img/control/feed-forward.png" /></p>
 <p><strong>What the figure shows</strong> (a 5 m bend at 1 m/s, pure pursuit's gains):</p>
 <div class="table-wrap"><table>
@@ -417,16 +433,19 @@ produce an output</strong>. Feedforward supplies the output, so no error is need
 </tbody>
 </table></div>
 <h3 id="the-maths_1">The maths</h3>
-<pre class="highlight"><code class="language-text">e = v_set − v
-throttle = kp · e  +  ki · ∫ e dt</code></pre>
-<p>The car (vehicle-model.md, section 1): <code>τv · v' + v = K · throttle</code>, with a lag on the
-throttle. In Laplace form (s ≈ "how fast"):</p>
-<pre class="highlight"><code class="language-text">car P(s) = K / ((τv s + 1)(τt s + 1))        controller C(s) = kp + ki/s</code></pre>
+<p><img alt="e = v_set minus v; throttle = kp e + ki integral of e" src="../img/control/eq-pi.svg" /></p>
+<p>The car (vehicle-model.md, section 1), with d its drag and a_max its full-throttle
+acceleration:</p>
+<p><img alt="tau_v v dot + v = K u_a" src="../img/control/eq-speed-car.svg" /></p>
+<p>With a lag on the throttle too, in Laplace form (s ≈ "how fast"):</p>
+<p><img alt="P(s) = K over (tau_v s + 1)(tau_t s + 1); C(s) = kp + ki over s" src="../img/control/eq-speed-plant.svg" /></p>
+<p>P is the car (throttle command to speed), C the controller.</p>
 <p><strong>Why the integral removes the error.</strong> The final value theorem: the error left at the end
 is 1 / (1 + C(0) P(0)). With ki &gt; 0, C(0) = ∞, so the error is 0.</p>
+<p><img alt="e at infinity = 1 over 1 + C(0) P(0)" src="../img/control/eq-final-value.svg" /></p>
 <p><strong>Why today's PI overshoots.</strong> The PI adds a "zero" at −ki/kp that sits near the car's
 slow pole, and kicks the response. The fix, a <strong>setpoint weight</strong> b:</p>
-<pre class="highlight"><code class="language-text">throttle = kp · (b · v_set − v)  +  ki · ∫ e dt         b = 0.75 in `smooth`</code></pre>
+<p><img alt="throttle = kp (b v_set minus v) + ki integral of e; b = 0.75" src="../img/control/eq-setpoint-weight.svg" /></p>
 <p>The P part reacts less to a new set speed, but still fully to the car's own speed.</p>
 <p><img alt="P only stops short; today's PI overshoots 15 %; smooth gets there with none" src="../img/control/pi.png" /></p>
 <div class="table-wrap"><table>
@@ -497,9 +516,8 @@ slow pole, and kicks the response. The fix, a <strong>setpoint weight</strong> b
 <h3 id="the-idea_3">The idea</h3>
 <p>PI's gains are picked by hand. LQR picks them <strong>from the model</strong>, by answering: what
 feedback u = −K x makes this cost as small as possible, forever?</p>
-<pre class="highlight"><code class="language-text">J = ∫ ( xᵀ Q x  +  uᵀ R u ) dt
-       ─────────    ───────
-       how far off   how hard we work</code></pre>
+<p><img alt="J = integral of x transpose Q x plus u transpose R u" src="../img/control/eq-lqr-cost.svg" /></p>
+<p>The first term is how far off we are; the second, how hard we work.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -523,7 +541,7 @@ feedback u = −K x makes this cost as small as possible, forever?</p>
 <li>Write the model: A, B (section 1).</li>
 <li>Choose Q and R.</li>
 <li>Solve the <strong>Riccati equation</strong> for P (a computer does this):
-   <pre class="highlight"><code class="language-text">Aᵀ P + P A − P B R⁻¹ Bᵀ P + Q = 0</code></pre></li>
+   <img alt="A transpose P + P A minus P B R inverse B transpose P + Q = 0; K = R inverse B transpose P; u = minus K x" src="../img/control/eq-riccati.svg" /></li>
 <li>The gain: <code>K = R⁻¹ Bᵀ P</code>. The controller: <code>u = −K x</code>.</li>
 </ol>
 <p><strong>What you get for free:</strong> the closed loop is always stable (if the model is right), with
@@ -591,10 +609,8 @@ has. That's what MPC fixes (section 6).</p>
 adds the <strong>integral of the error as one more state</strong>, so the LQR solves for the I gain
 too.</p>
 <h3 id="the-maths_3">The maths</h3>
-<pre class="highlight"><code class="language-text">new state:  z' = v_set − v          (the integral of the speed error)
-x_aug = [v, throttle_level, z]
-
-u = −K x_aug = −k_v v − k_t throttle_level − k_z z</code></pre>
+<p><img alt="z dot = v_set minus v; the state grows by z; u = minus K x_aug" src="../img/control/eq-lqi.svg" /></p>
+<p>z is the integral of the speed error, added as one more state.</p>
 <p>Solve the same Riccati equation for the bigger state. The k_z part is the integral gain,
 chosen by the maths rather than by hand. The ESP32 solves the <strong>discrete</strong> version (it runs
 in steps of 10 ms, not continuously).</p>
@@ -641,12 +657,7 @@ in steps of 10 ms, not continuously).</p>
 tick is the feedback; the plan along the bends ahead is the feedforward.</p>
 <h3 id="the-maths_4">The maths</h3>
 <p>The cost, summed over the 30 ticks (<code>tracker.rs</code>'s header):</p>
-<pre class="highlight"><code class="language-text">J = Σ  q₁ (e_y − tube(e_y))² + q₂ e_θ² + q₃ (δ − δ_ff)²     stay on the path
-     + q_speed (v − v_lim)²                                  go the speed limit
-     + r (u − δ_ff)² + r_rate (Δu)² + r_speed (Δc)²          smooth commands
-     + w_slack · slack²                                      a soft speed limit
-
-within   |u| ≤ full lock,   |Δu| ≤ steer rate · dt,   0 ≤ c ≤ cruise ...</code></pre>
+<p><img alt="the MPC cost: path, heading, steering, speed, smoothness, within the limits" src="../img/control/eq-mpc-cost.svg" /></p>
 <p><strong>How it's solved:</strong></p>
 <div class="table-wrap"><table>
 <thead>
@@ -674,6 +685,7 @@ within   |u| ≤ full lock,   |Δu| ≤ steer rate · dt,   0 ≤ c ≤ cruise .
 </tr>
 </tbody>
 </table></div>
+<p><img alt="X = X bar + M delta U; minimise half delta U transpose P delta U + q transpose delta U" src="../img/control/eq-qp.svg" /></p>
 <p>It is LQR's cost (section 4), with a finite horizon, limits, and the full lagged model.</p>
 <h3 id="the-tube-21-nov">The tube (21 Nov)</h3>
 <p>Ben: "It doesn't need to be super aggressive sticking to the line so that it doesn't
@@ -681,6 +693,7 @@ oscillate so much."</p>
 <p><img alt="The tube: no cost within ±0.2 m, so the car holds its line" src="../img/control/tube.png" /></p>
 <p>Inside ±0.2 m the target for e_y is where the plan already is, so there is no pull to the
 centre. Outside, the cost rises as before. Switch: <code>mpc_lag_tube:=0.2</code>.</p>
+<p><img alt="cost = q1 (e_y minus clip(e_y, minus w, w)) squared, w = 0.2 m" src="../img/control/eq-tube.svg" /></p>
 <h3 id="on-our-car_5">On our car</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -728,8 +741,8 @@ centre. Outside, the cost rises as before. Switch: <code>mpc_lag_tube:=0.2</code
 </ol>
 <p><img alt="MPPI's samples: darker means cheaper and weighs more; the blue mean is what it sends" src="../img/control/mppi.png" /></p>
 <h3 id="the-maths_5">The maths</h3>
-<pre class="highlight"><code class="language-text">weight_k = exp(−cost_k / λ) / Σ exp(−cost_j / λ)        λ = how picky
-u = u_last + Σ weight_k · noise_k</code></pre>
+<p><img alt="w_k = exp(minus c_k over lambda) over the sum; u = u_last + sum of w_k epsilon_k" src="../img/control/eq-mppi.svg" /></p>
+<p>c_k = sample k's cost, ε_k = its wiggle, λ = how picky.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -810,6 +823,7 @@ check:</p>
 </table></div>
 <h3 id="the-maths_6">The maths</h3>
 <p><strong>Poles.</strong> For u = −K x, the closed loop is <code>x' = (A − BK) x</code>. Its eigenvalues λ:</p>
+<p><img alt="x dot = (A minus B K) x" src="../img/control/eq-closed-loop.svg" /></p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -834,6 +848,7 @@ check:</p>
 </table></div>
 <p><strong>Lyapunov.</strong> Find V(x) &gt; 0 (like distance², or LQR's xᵀPx) that always falls:
 V' &lt; 0. Then x must go to 0. This is the "maths proof it will resolve".</p>
+<p><img alt="V &gt; 0 and V dot &lt; 0 means x goes to 0" src="../img/control/eq-lyapunov.svg" /></p>
 <p><strong>The final value theorem.</strong> Where does it end up? <code>lim s·E(s)</code> as s → 0 (section 3).</p>
 <h3 id="on-our-car_7">On our car</h3>
 <div class="table-wrap"><table>
@@ -901,14 +916,40 @@ V' &lt; 0. Then x must go to 0. This is the "maths proof it will resolve".</p>
 <p>The Kalman filter blends them: <strong>predict</strong> with the model, <strong>correct</strong> with each
 reading, trusting each by how noisy it is.</p>
 <h3 id="the-maths-predict-then-update">The maths: predict, then update</h3>
-<pre class="highlight"><code class="language-text">PREDICT (the model moves the guess; we get less sure)
-  x̂ = f(x̂, u)                    the bicycle
-  P = F P Fᵀ + Q                  P = how unsure;  Q = how wrong the model may be
-
-UPDATE (a reading pulls the guess; we get more sure)
-  K = P Hᵀ (H P Hᵀ + R)⁻¹         the Kalman gain: 0 = ignore the reading, 1 = trust it
-  x̂ = x̂ + K (z − h(x̂))           z = the reading;  R = how noisy it is
-  P = (I − K H) P</code></pre>
+<p><strong>Predict</strong> (the model moves the guess; we get less sure):</p>
+<p><img alt="x hat minus = f(x hat, u); P minus = F P F transpose + Q" src="../img/control/eq-ekf-predict.svg" /></p>
+<p><strong>Update</strong> (a reading pulls the guess; we get more sure):</p>
+<p><img alt="K = P minus H transpose (H P minus H transpose + R) inverse; x hat = x hat minus + K (z minus h); P = (I minus K H) P minus" src="../img/control/eq-ekf-update.svg" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Letter</th>
+<th>Is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P</td>
+<td>how unsure we are (the covariance)</td>
+</tr>
+<tr>
+<td>Q</td>
+<td>how wrong the model may be</td>
+</tr>
+<tr>
+<td>R</td>
+<td>how noisy the reading is</td>
+</tr>
+<tr>
+<td>K</td>
+<td>the Kalman gain: 0 = ignore the reading, 1 = trust it fully</td>
+</tr>
+<tr>
+<td>z</td>
+<td>the reading</td>
+</tr>
+</tbody>
+</table></div>
 <p><strong>The "E" (extended):</strong> the bicycle has sin and cos, so it isn't linear. The EKF
 linearises it at each step (F and H are Jacobians): the same trick as the MPC.</p>
 <p><img alt="One update: the fused guess sits between and is narrower; over time, predicting grows the doubt and each GPS fix shrinks it" src="../img/control/kalman.png" /></p>
