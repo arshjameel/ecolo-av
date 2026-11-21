@@ -14,6 +14,11 @@ and the IMU's forward acceleration. Each path is one line style, labelled by --l
 usage:
     pixi run python3 tools/step_plots.py <sim session> --label sim --out <folder>
     pixi run python3 tools/step_plots.py <sim> <car> --label sim car --out <folder>
+    pixi run python3 tools/step_plots.py --hallway <car-test --hallway session> --out <folder>
+
+--hallway draws each pass as in a system-identification talk: the step that went in, what
+the car did, and the car model's answer to the same step, with the fitted numbers (the
+best-matching curve) and with vehicle.yaml's (what the simulator and the planners assume).
 
 Only reads the runs; writes PNGs into --out. matplotlib (in the default environment).
 """
@@ -133,13 +138,99 @@ def plot_test(plt, test, runs, out):
     return path
 
 
+OVERLAY = (('input', 'input: what ego sent', 'k', ':'),
+           ('measured', 'what happened (measured)', 'C0', '-'),
+           ('wheels', 'the wheels', 'C0', '--'),
+           ('model_fitted', 'model, fitted (best match)', 'C3', '-'),
+           ('model_vehicle_yaml', 'model, vehicle.yaml (the sim)', 'C2', '-.'))
+
+
+def read_csv(path):
+    """Read a CSV file as columns of floats."""
+    with open(path, newline='') as f:
+        rows = list(csv.DictReader(f))
+    return {k: [number(r[k]) for r in rows] for k in (rows[0] if rows else ())}
+
+
+def hallway_passes(session):
+    """Find each pass of a hallway session: (name, its overlay CSV, its run's log.csv)."""
+    folder = os.path.expanduser(session)
+    overlays = os.path.join(folder, 'overlays')
+    found = []
+    for name in sorted(os.listdir(overlays)) if os.path.isdir(overlays) else ():
+        if not name.endswith('.csv'):
+            continue
+        stem = name[:-len('.csv')]
+        logs = [here
+                for here, _, files in os.walk(os.path.join(folder, stem)) if 'log.csv' in files]
+        found.append((stem, os.path.join(overlays, name), logs[0] if logs else None))
+    return found
+
+
+def plot_pass(plt, stem, overlay, log, out):
+    """
+    Draw one pass: the input, what happened, and the model's answers to the same input.
+
+    The overlay is always the speed (the hallway's model replays the pedals). A steering
+    pass adds a second panel from its run's log: the steering asked against the measured.
+    """
+    cols = read_csv(overlay)
+    run = read_run(log) if log else {}
+    if run:
+        by_time = dict(zip(run['t'], run.get('ego_speed', [])))
+        cols['input'] = [by_time.get(t, math.nan) for t in cols['t']]
+    steering = 'steer' in stem and not flat(run.get('steer', [math.nan]))
+    fig, axes = plt.subplots(2 if steering else 1, 1, figsize=(10, 6.5 if steering else 4),
+                             sharex=True, squeeze=False)
+    ax = axes[0, 0]
+    for column, words, colour, style in OVERLAY:
+        values = cols.get(column)
+        if values is None or flat(values):
+            continue
+        ax.plot(cols['t'], values, color=colour, linestyle=style, label=words)
+    ax.set_ylabel('speed (m/s)')
+    ax.grid(alpha=0.3)
+    ax.legend(loc='best', fontsize=8)
+    if steering:
+        low = axes[1, 0]
+        low.plot(run['t'], run['steer_cmd'], color='k', linestyle=':',
+                 label='input: the steering ego sent')
+        low.plot(run['t'], run['steer'], color='C0', label='what happened (measured)')
+        low.set_ylabel('steering (rad)')
+        low.grid(alpha=0.3)
+        low.legend(loc='best', fontsize=8)
+    axes[-1, 0].set_xlabel('time (s)')
+    fig.suptitle(stem)
+    fig.tight_layout()
+    path = os.path.join(out, f'{stem}.png')
+    fig.savefig(path, dpi=110)
+    plt.close(fig)
+    return path
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('paths', nargs='+', help='sessions or run folders, one per line style')
+    parser.add_argument('paths', nargs='*', help='sessions or run folders, one per line style')
+    parser.add_argument('--hallway', default=None,
+                        help='a car-test --hallway session: each pass, input, measured, models')
     parser.add_argument('--label', nargs='+', default=None,
                         help='a name for each path (default: its folder name)')
     parser.add_argument('--out', required=True, help='where the PNGs go')
     args = parser.parse_args(argv)
+    if args.hallway:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        passes = hallway_passes(args.hallway)
+        if not passes:
+            print(f'no overlays/ in {args.hallway}')
+            return 1
+        os.makedirs(args.out, exist_ok=True)
+        for stem, overlay, log in passes:
+            print(f'{stem}: {plot_pass(plt, stem, overlay, log, args.out)}')
+        return 0
+    if not args.paths:
+        parser.error('give sessions to draw, or --hallway SESSION')
     labels = args.label or [os.path.basename(os.path.normpath(p)) for p in args.paths]
     if len(labels) != len(args.paths):
         parser.error('give one --label per path')

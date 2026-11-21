@@ -216,6 +216,10 @@ def test_the_hallway_command_line():
     assert ct.sim_overrides('throttle_lag=0.3, drag=0.2') == {'throttle_lag': 0.3, 'drag': 0.2}
     launch = ct.sim_launch_args({'drag': 0.2}, 0.05, 0.02)
     assert 'actuators:=drag=0.2' in launch and 'wheel_noise:=0.05' in launch
+    # No numbers: no actuators:= at all (launch refuses an empty one; 20 Nov's baseline).
+    plain = ct.sim_launch_args({}, 0.0, 0.0)
+    assert not any(a.startswith('actuators:=') for a in plain)
+    assert all(':=' in a and a.split(':=', 1)[1] for a in plain)
 
 
 # --- the key evidence: known numbers found again ---------------------------------------

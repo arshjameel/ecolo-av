@@ -80,6 +80,15 @@ jobs:
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
+      # A cache from older code can hold rclrs's and rosidl_runtime_rs's build-script output
+      # (the libraries to link, where they were): then a Rust node fails to link (20 Nov,
+      # PR #34: aav_costmap, Linux and ARM, while the fork's own cache built it). Their
+      # build scripts are cheap: run them again every time.
+      - name: Drop the ROS Rust bindings' cached build-script output
+        run: |
+          rm -rf build/*/target/*/build/rclrs-* build/*/target/*/.fingerprint/rclrs-* \
+                 build/*/target/*/build/rosidl_runtime_rs-* \
+                 build/*/target/*/.fingerprint/rosidl_runtime_rs-*
       # The build on its own, with its own limit, so the tests keep their full 60 min.
       # pixi run test builds again first, but then nothing has changed (a minute or two).
       - name: pixi run build
@@ -111,6 +120,13 @@ jobs:
         if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
         # test.log, or build.log when the build step stopped first
         run: python3 tools/ci_annotate.py "$(if [[ -f test.log ]]; then echo test.log; else echo build.log; fi)" build
+      - name: The failed packages' errors in full
+        # colcon's console shows a linker's first line only; its log keeps the rest.
+        if: failure() && hashFiles('build.log') != ''
+        run: |
+          for f in log/latest_build/*/stderr.log; do
+            [ -s "$f" ] && { echo "== $f"; tail -n 80 "$f"; }
+          done; true
       - name: The MCP server, over stdio
         run: pixi run --locked -e mcp python3 tools/tests/mcp_smoke.py
 
@@ -156,6 +172,15 @@ jobs:
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
+      # A cache from older code can hold rclrs's and rosidl_runtime_rs's build-script output
+      # (the libraries to link, where they were): then a Rust node fails to link (20 Nov,
+      # PR #34: aav_costmap, Linux and ARM, while the fork's own cache built it). Their
+      # build scripts are cheap: run them again every time.
+      - name: Drop the ROS Rust bindings' cached build-script output
+        run: |
+          rm -rf build/*/target/*/build/rclrs-* build/*/target/*/.fingerprint/rclrs-* \
+                 build/*/target/*/build/rosidl_runtime_rs-* \
+                 build/*/target/*/.fingerprint/rosidl_runtime_rs-*
       # The build on its own, with its own limit, so the tests keep their full 60 min.
       # pixi run test builds again first, but then nothing has changed (a minute or two).
       - name: pixi run build
@@ -187,6 +212,13 @@ jobs:
         if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
         # test.log, or build.log when the build step stopped first
         run: python3 tools/ci_annotate.py "$(if [[ -f test.log ]]; then echo test.log; else echo build.log; fi)" build
+      - name: The failed packages' errors in full
+        # colcon's console shows a linker's first line only; its log keeps the rest.
+        if: failure() && hashFiles('build.log') != ''
+        run: |
+          for f in log/latest_build/*/stderr.log; do
+            [ -s "$f" ] && { echo "== $f"; tail -n 80 "$f"; }
+          done; true
       - name: The MCP server, over stdio
         run: pixi run --locked -e mcp python3 tools/tests/mcp_smoke.py
 
@@ -237,6 +269,15 @@ jobs:
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
+      # A cache from older code can hold rclrs's and rosidl_runtime_rs's build-script output
+      # (the libraries to link, where they were): then a Rust node fails to link (20 Nov,
+      # PR #34: aav_costmap, Linux and ARM, while the fork's own cache built it). Their
+      # build scripts are cheap: run them again every time.
+      - name: Drop the ROS Rust bindings' cached build-script output
+        run: |
+          rm -rf build/*/target/*/build/rclrs-* build/*/target/*/.fingerprint/rclrs-* \
+                 build/*/target/*/build/rosidl_runtime_rs-* \
+                 build/*/target/*/.fingerprint/rosidl_runtime_rs-*
       # The build on its own, with its own limit, so the tests keep their full 60 min.
       # pixi run test builds again first, but then nothing has changed (a minute or two).
       - name: pixi run build
@@ -264,6 +305,13 @@ jobs:
         if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
         # test.log, or build.log when the build step stopped first
         run: python3 tools/ci_annotate.py "$(if [[ -f test.log ]]; then echo test.log; else echo build.log; fi)" build
+      - name: The failed packages' errors in full
+        # colcon's console shows a linker's first line only; its log keeps the rest.
+        if: failure() && hashFiles('build.log') != ''
+        run: |
+          for f in log/latest_build/*/stderr.log; do
+            [ -s "$f" ] && { echo "== $f"; tail -n 80 "$f"; }
+          done; true
       # The HUD's CMake skips it, with only a warning, where X11's headers are missing: so
       # check that both programs were built, and for ARM.
       - name: The HUD and the map window, built for ARM

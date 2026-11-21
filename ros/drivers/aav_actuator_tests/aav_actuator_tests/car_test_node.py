@@ -149,7 +149,8 @@ class SimLaunch:
             self.proc.wait(timeout=30)
         except subprocess.TimeoutExpired:
             os.killpg(self.proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):
+            # Gone already (macOS says EPERM for a group whose leader has exited, 20 Nov).
             pass
 
 

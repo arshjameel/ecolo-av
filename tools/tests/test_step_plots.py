@@ -33,3 +33,16 @@ def test_runs_are_found_by_their_log(tmp_path):
     assert list(found) == ['brake']
     cols = step_plots.read_run(found['brake'][0])
     assert cols['speed'] == [0.0, 0.5] and cols['phase'] == ['go', 'go']
+
+
+def test_a_hallway_pass_is_found_with_its_run(tmp_path):
+    session = tmp_path / 'hall'
+    (session / 'overlays').mkdir(parents=True)
+    (session / 'overlays' / '01-hall-brake-there.csv').write_text(
+        't,measured,wheels,model_fitted,model_vehicle_yaml\n0,0,0,0,0\n')
+    run = session / '01-hall-brake-there' / '2026-11-21-101500-hall-brake'
+    run.mkdir(parents=True)
+    (run / 'log.csv').write_text('t,phase,ego_speed\n0,go,0\n')
+    passes = step_plots.hallway_passes(str(session))
+    assert [(stem, os.path.basename(log)) for stem, _, log in passes] == [
+        ('01-hall-brake-there', '2026-11-21-101500-hall-brake')]

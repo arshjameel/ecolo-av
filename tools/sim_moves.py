@@ -32,9 +32,10 @@ import time
 PEDAL = (
     (2.0, 0.0, 'still'),
     (8.0, 0.5, 'half forward, held'),
+    (5.0, 0.0, 'let go'),
+    (8.0, 0.5, 'half forward again'),
     (6.0, 0.25, 'let off to a quarter'),
-    (6.0, 0.0, 'let go'),
-    (3.0, -1.0, 'pulled back hard'),
+    (2.0, -1.0, 'pulled back hard, moving'),
     (6.0, -1.0, 'held back: reverses'),
     (4.0, 0.0, 'let go'),
 )
