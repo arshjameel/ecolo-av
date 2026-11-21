@@ -36,7 +36,7 @@ ROOT=$PWD
 ESPUP_VERSION=0.19.0
 ESPFLASH_VERSION=4.3.0          # 4.4 and later need rustc 1.95
 XTENSA_RUST_VERSION=1.97.0.0
-XTENSA_GCC_VERSION=16.2.0_20260914
+XTENSA_GCC_VERSION=16.2.0_20261109
 
 # Espressif's QEMU fork (GPL-2.0; a tool here, never linked in), from Espressif's
 # releases page (espressif/qemu), and the one library of its that Pixi's environment
