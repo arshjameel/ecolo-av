@@ -19,11 +19,12 @@ pub mod spine;
 pub mod watchdog;
 
 pub use fsm::{
-    Authority, Confidence, Lifecycle, Motion, Overspeed, Safety, State, TestRequest, TestStage,
-    OVERSPEED_WINDOW_MS, RC_BRAKE_MS, STANDSTILL_SPEED, TEST_MAX_SPEED, TEST_MAX_THROTTLE,
+    Asker, Authority, Confidence, Lifecycle, Motion, Overspeed, RcOwner, Safety, State,
+    TestRequest, TestStage, OVERSPEED_WINDOW_MS, RC_BRAKE_MS, STANDSTILL_SPEED, TEST_MAX_SPEED,
+    TEST_MAX_THROTTLE,
 };
 pub use spine::{
     faults, DirectCmd, EstopSteering, Inputs, Outputs, RcInput, RcSwitch, SpeedFeedback,
-    SpeedReport, Spine, SpineConfig, ESTOP_STEERING, IDLE_BRAKE, MAX_REVERSE_SPEED, MAX_SPEED,
-    MAX_STEERING_ANGLE,
+    SpeedReport, Spine, SpineConfig, COMPUTER_ASKS_SPEED, ESTOP_STEERING, IDLE_BRAKE,
+    MAX_REVERSE_SPEED, MAX_SPEED, MAX_STEERING_ANGLE,
 };
