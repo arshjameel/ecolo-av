@@ -305,11 +305,11 @@ What the car decides to do on the road: when to slow, stop, wait and go, and wha
 |---|---|---|---|---|
 | One workspace with Pixi and RoboStack, Macs included | ROS 2 Jazzy and Rust on any Linux or Mac, with no admin rights | Ben | 2026-10-09 | sim |
 | Cyclone DDS on every computer | Fast DDS delivered messages up to 0.48 s late beside Gazebo; Cyclone never over 0.05 s | Ben | 2026-10-23 | sim |
-| Launch profiles and machine files (`aav_bringup`) | One command per profile (turtle, sim, bench, replay, car), and each computer picks its own parts | Ben | 2026-10-09 | sim |
+| Launch profiles and machine files (`aav_bringup`) | One command per profile (turtle, sim, bench, replay, car), and each computer picks its own parts. 21 Nov: a file for each Pi too (`dash.yaml` with the new `hud` and `map` parts, `camera_pi.yaml`, `battery_pi.yaml`), so every computer on the car has one (Ben: "machine files for each pi") | Ben | 2026-10-09 | sim |
 | Topic contract and [topic names by area](naming.md) | Every topic's publisher, subscriber, type and QoS in one place, named so you see where it belongs | Ben | 2026-10-09 | built |
 | CI: Linux and 64-bit ARM on every push, a Mac and Ravensim nightly (Gazebo until 16 Nov) | A break shows on the push that made it, including on the car's ARM computers | Ben | 2026-10-10 | built |
 | Docs as HTML and PDF, with the Learn pages | Short pages with tables and pictures, for a dyslexic reader and new team members | Ben | 2026-10-09 | built |
 | [Getting-started guide](getting-started.md) | A new laptop goes from nothing to driving the turtle in under 30 minutes (T1.1) | Arsh (arshjameel) | 2026-10-24 | built |
 | The previous teams' 27 repos, imported with their history | All the older code and its history in one repo, to read and port from | Arsh (arshjameel) | 2026-10-24 | built |
 | One team repo: `AAV-2025-2026/ecolo-av` | The team's own repo, keeping the whole history of both workspaces | Ben | 2026-10-25 | built |
-| [CONTRIBUTING.md](../CONTRIBUTING.md) and the merge queue | One way into `main` for everyone: fork, branch, pull request, review, merge queue | Arsh (arshjameel) | 2026-10-25 | built |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) and the rules on `main` | One way into `main` for everyone: fork, branch, pull request, review, merge. The merge queue went on 21 Nov (Ben): it ran the whole CI again, an hour a pull request | Arsh (arshjameel) | 2026-10-25 | built |

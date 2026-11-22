@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">143 min read · 15 sections</div></header>
+<div class="meta">144 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1922,7 +1922,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Launch profiles and machine files (<code>aav_bringup</code>)</td>
-<td>One command per profile (turtle, sim, bench, replay, car), and each computer picks its own parts</td>
+<td>One command per profile (turtle, sim, bench, replay, car), and each computer picks its own parts. 21 Nov: a file for each Pi too (<code>dash.yaml</code> with the new <code>hud</code> and <code>map</code> parts, <code>camera_pi.yaml</code>, <code>battery_pi.yaml</code>), so every computer on the car has one (Ben: "machine files for each pi")</td>
 <td>Ben</td>
 <td>2026-10-09</td>
 <td>sim</td>
@@ -1970,8 +1970,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a> and the merge queue</td>
-<td>One way into <code>main</code> for everyone: fork, branch, pull request, review, merge queue</td>
+<td><a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a> and the rules on <code>main</code></td>
+<td>One way into <code>main</code> for everyone: fork, branch, pull request, review, merge. The merge queue went on 21 Nov (Ben): it ran the whole CI again, an hour a pull request</td>
 <td>Arsh (arshjameel)</td>
 <td>2026-10-25</td>
 <td>built</td>

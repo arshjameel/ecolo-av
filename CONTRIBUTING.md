@@ -16,10 +16,10 @@ New here? Set up your laptop first: [Getting started](docs/getting-started.md) (
 | 5 | Push the branch to your fork | your fork |
 | 6 | Open a pull request to `AAV-2025-2026/ecolo-av` | GitHub |
 | 7 | Get one approval and green CI | GitHub |
-| 8 | Add it to the merge queue | GitHub |
+| 8 | Merge it | GitHub |
 | 9 | Delete the branch, sync your fork | both |
 
-Nobody pushes to the team's `main`. The merge queue is the only way in.
+Nobody pushes to the team's `main`. An approved, green pull request is the only way in.
 
 ## 1. Fork and clone (once)
 
@@ -208,18 +208,19 @@ tests cover the change, that names and topics follow [Conventions](docs/conventi
 and that nothing secret or generated is committed. Ask questions as comments; approve
 only what you understand.
 
-## 8. The merge queue
+## 8. Merge it
 
-When the pull request is approved and green, click **Merge when ready**. The queue then:
+When the pull request is approved and green, click **Merge pull request**. It merges at
+once, with a merge commit: every commit of yours keeps its own message on `main`.
 
-1. puts your change on top of the latest `main` and the pull requests ahead of it;
-2. runs CI on that combination;
-3. merges it if CI passes, with a merge commit: every commit of yours keeps its own
-   message on `main`;
-4. takes it out of the queue if CI fails, and tells you. Fix it, push, and add it again.
+| | |
+|---|---|
+| Before you click | if `main` has moved a lot since your CI ran, rebase on `upstream/main` and push: CI runs again on the newer `main` |
+| After the merge | CI runs the full tests on `main` itself. Watch it: if it goes red, fix it or revert, first thing |
 
-So two changes that each pass alone, but break together, never reach `main`. Nobody
-needs to keep rebasing or wait for each other.
+There was a merge queue until 21 Nov. It ran the whole CI a second time, about an hour,
+on every pull request (Ben, 21 Nov: "sitting in a queue"). So now two changes that each
+pass alone, but break together, can reach `main`: the run on `main` is what catches them.
 
 ## 9. After the merge
 
@@ -241,6 +242,6 @@ branch has commits `main` doesn't: check the pull request says **Merged** first.
 
 | Rule | |
 |---|---|
-| No direct pushes, admins included | changes arrive through the merge queue |
+| No direct pushes, admins included | changes arrive through a pull request: one approval, and `linux`, `arm` and `car-kit` green |
 | No force pushes, no deletion | `main`'s history is never rewritten |
 | Tags can't be moved or deleted | `pre-aav-merge` stays a reliable backup |

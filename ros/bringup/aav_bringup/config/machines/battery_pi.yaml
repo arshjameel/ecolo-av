@@ -1,0 +1,6 @@
+# The voltage meter's Pi (Ben, 21 Nov; thought to be .211): the battery's voltage ->
+# /vehicle/battery (aav_sensors' battery part: aav_battery_victron, on /dev/aav/battery). NOT CHECKED: nobody has logged in to this
+# Pi yet, so which meter it has and how it is wired is the hardware lead's to confirm.
+# Until then this file only says where the part belongs. Parts not listed default off.
+parts:
+  battery: true   # TODO(hardware lead): the meter, its port, and that this is the Pi

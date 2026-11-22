@@ -714,7 +714,7 @@ changes.</p>
 </section>
 <section class="card"><h2 id="sharing-the-code">Sharing the code</h2>
 <p>The repo is on GitHub: <code>git@github.com:AAV-2025-2026/ecolo-av.git</code>, public: anyone can read it.
-Changes reach <code>main</code> only through a pull request from your own fork and the merge queue:
+Changes reach <code>main</code> only through a pull request from your own fork, approved and green:
 <a href="../../CONTRIBUTING.md">Contributing</a> has the steps.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -734,8 +734,8 @@ Changes reach <code>main</code> only through a pull request from your own fork a
 </tr>
 </tbody>
 </table></div>
-<p>CI (<code>.github/workflows/test.yml</code>) runs <code>pixi run test</code> on Linux (x86_64 and 64-bit ARM) for every push to <code>main</code>,
-every pull request and every merge-queue entry, and on a Mac every night. The results are
+<p>CI (<code>.github/workflows/test.yml</code>) runs <code>pixi run test</code> on Linux (x86_64 and 64-bit ARM) for every push to <code>main</code>
+and every pull request, and on a Mac every night. The results are
 on the repo's Actions tab.</p>
 <p><strong>In your fork too.</strong> Turn Actions on once in your fork (its Actions tab, then "I
 understand my workflows, go ahead and enable them"). From then on every push to a branch
@@ -754,7 +754,7 @@ request. The nightly <code>mac</code> and <code>sim</code> runs stay in the team
 <tr>
 <td><code>linux</code></td>
 <td>Ubuntu 24.04, x86_64</td>
-<td>every push to <code>main</code>, every pull request, the merge queue, a push to a fork's branch</td>
+<td>every push to <code>main</code>, every pull request, a push to a fork's branch</td>
 <td><code>pixi run test</code>, the MCP server</td>
 </tr>
 <tr>
