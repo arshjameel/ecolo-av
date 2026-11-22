@@ -255,7 +255,8 @@ import re
 import sys
 tasks = dict(re.findall(r'^([\w-]+) = \{ cmd = "([^"]*)"', open('pixi.toml').read(), re.M))
 bad = [t for t in ('turtle', 'sim', 'bench', 'bench-check', 'view', 'sim-check', 'sim-fault',
-                   'demo', 'ravensim', 'ndt-map', 'carla-car', 'laptop-bench')
+                   'demo', 'ravensim', 'ndt-map', 'carla-car', 'laptop-bench',
+                   'barrier-watch')
        if not tasks.get(t, '').startswith('tools/ros.sh --local ')]
 # The families that start Ravensim or drive it: each choice's line in its script.
 for script, choices in (('tools/screen.sh', ('hw-panel',)), ('tools/sim_cameras.sh', ('--ros',)),

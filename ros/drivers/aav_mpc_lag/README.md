@@ -101,7 +101,7 @@ Forward stretches only. The status gains `barrier_m`, `barrier_slack_m2`, `barri
 | Parameter | Default | Means |
 |---|---|---|
 | `barriers.topic` | empty: off | markers of the round things (the launch's switch sets the ghost's) |
-| `barriers.gamma` | 0.05 | the share of the room a tick may use |
+| `barriers.gamma` | 0.05 | the share of the room a tick may use; the launch's `mpc_barrier_gamma:=` sets it (1: a plain distance limit, the "step") |
 | `barriers.ahead` | 0.8 m | from base_link to the body's point |
 | `barriers.body_radius`, `barriers.margin` | 1.12 m, 0.2 m | the car's own radius from that point, and what is kept beyond it |
 | `barriers.stop_jerk` | 2.0 m/s³ | the stopping law's jerk (ego's) |

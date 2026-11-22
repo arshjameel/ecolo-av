@@ -134,6 +134,7 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `debug-hud` | the debug screen: the lidar's cubes, the localizers, every sensor |
 | `hw-panel` | the hardware panel: every sensor's number, and simple buttons (hold Space to drive) for Ravensim or the bench, beside `sim` or `demo --debug` (this computer only) |
 | `ravensim` | watch Ravensim: the sim and the developer window live on it, in one go; `world:=campus` or any sim switch (this computer only) |
+| `barrier-watch` | watch the barriers in Ravensim (Ben's research, outside the capstone's scope): one drive past a ghost with the follower `plain`, `step` (a hard distance limit) or `barrier`; `--speed 3`, `--offset 0.4`, `--side-by-side`, `--headless`; RViz from above and one line of result (this computer only; [Barriers](docs/barriers.md#watch-it-in-ravensim)) |
 | `dev-window` | the developer window (Bevy): Ben's layout. Pretend data; `--live` beside `demo` or `sim`; `--watch` listens only |
 | `sim-cameras` | Ravensim's cameras (Bevy, offscreen) on their own: the timing check; `--ros` publishes the car's camera topics (this computer only). `sim` starts them itself |
 | `rviz` | RViz with the driving layout: map, costmaps, path, car |

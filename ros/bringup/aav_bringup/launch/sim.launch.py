@@ -112,6 +112,8 @@ bench's argument names:
                       a challenger: half the work a tick (TODO 152; steer:=mppi_lag_1k)
                       mpc_barriers:=true: with tracker:=mpc_lag_rs ghost:=true, the
                       MPC keeps off the ghost (research, off by default)
+                      mpc_barrier_gamma:=1: with mpc_barriers, the share of the room
+                      a tick may use (empty: 0.05; 1: a plain distance limit)
                       mpc_lag_tube:=0: mpc_lag_rs's tube off (empty: 0.3 m, tuned
                       21 Nov: it leaves the car alone that near the path, less sway)
                       mppi_lag_sampling:=smooth: mppi_lag samples the steering's
@@ -705,6 +707,7 @@ def launch_setup(context):
                                mppi_lag_sampling=arg('mppi_lag_sampling'),
                                mpc_lag_tube=arg('mpc_lag_tube'),
                                mpc_barriers=arg('mpc_barriers'),
+                               mpc_barrier_gamma=arg('mpc_barrier_gamma'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
@@ -1146,6 +1149,10 @@ def generate_launch_description():
         DeclareLaunchArgument('mpc_barriers', default_value='false',
                               description='with tracker:=mpc_lag_rs ghost:=true: true, the '
                                           'MPC keeps off the ghost (research, off by default)'),
+        DeclareLaunchArgument('mpc_barrier_gamma', default_value='',
+                              description='with mpc_barriers:=true: the share of the room '
+                                          'a tick may use, above 0 up to 1 (empty: 0.05; '
+                                          '1: a plain distance limit; research)'),
         DeclareLaunchArgument('mpc_lag_tube', default_value='',
                               description='with tracker:=mpc_lag_rs: m each side of the '
                                           'path where being off it costs nothing (the '

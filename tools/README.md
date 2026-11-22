@@ -94,6 +94,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `sim_cameras.sh` | our simulator's cameras (Bevy, offscreen): the timing check, `--bench`, `--save`; `--ros` publishes the camera topics, here only | `sim-cameras` |
 | `screen.sh` | one of the four raylib screens, live or with pretend data (`--demo`) | `hud`, `map`, `debug-hud`, `hw-panel` |
 | `ravensim.sh` | Ravensim and the developer window live on it, one process group; sim switches pass through (`world:=campus` adds its RavenTiles and lanes) | `ravensim` |
+| `barrier_watch.py` | **outside the capstone's scope (Ben's research)**: one drive past a ghost in Ravensim with the follower plain, with a hard distance limit, or with the barrier; RViz from above (`rviz/barrier.rviz`), one line of result, a CSV in `/tmp/aav-barrier-watch/`; `--side-by-side`, `--headless` ([Barriers](../docs/barriers.md)). The maths: `barrier_run.py` (no ROS, tested) | `barrier-watch` |
 | `demo_all.sh` | Ravensim, RViz, the HUD and the map window in one go (`--debug`: the debug HUD too) | `demo` |
 | `pick.py` | a plain-words menu of the sim's switches (route, follower, where-am-I, speed loop): prints, saves and runs the command (`docs/switches.md`) | `pick` |
 | `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
@@ -200,7 +201,7 @@ Each lands outside git, checksum pinned where the script says.
 
 ## Invariants
 
-- **Stand-ins stay local.** turtle, sim, bench, view, demo, ravensim and their checks run through
+- **Stand-ins stay local.** turtle, sim, bench, view, demo, ravensim, barrier-watch and their checks run through
   `tools/ros.sh --local`; so do `hw-panel`, `sim-cameras --ros` and the simulator measurements, inside `screen.sh`
   and `measure.sh`. `test.sh` checks the list; give any new stand-in task the same.
 - **A family's script lists its choices** when run with no word or a wrong one, and
