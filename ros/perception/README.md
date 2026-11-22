@@ -10,8 +10,8 @@ commands the car itself, except through the stop-sign lock.
 
 | Package | What it does | Main output |
 |---|---|---|
-| [aav_detector](./aav_detector/README.md) | object detection (RF-DETR Nano; YOLO as an option), the stop-sign watcher, camera obstacles | `/perception/detections`, `/perception/stop_sign`, `/perception/camera_obstacles` |
-| [aav_stop_sign_rs](./aav_stop_sign_rs/README.md) | `stop_sign_watcher` in Rust, the default since 17 Nov (`stop_sign_impl:=python` falls back): the same lock and point | `/perception/stop_sign`, `/perception/stop_sign/distance` |
+| [aav_detector](./aav_detector/README.md) | object detection (RF-DETR Nano; YOLO as an option), camera obstacles, and the stop-sign watcher's rules in Python (`stop_sign.py`) | `/perception/detections`, `/perception/camera_obstacles` |
+| [aav_stop_sign_rs](./aav_stop_sign_rs/README.md) | `stop_sign_watcher` in Rust, the default since 17 Nov, the only one since 22 Nov (the Python removed): twist_mux's stop-sign lock and the sign's point | `/perception/stop_sign`, `/perception/stop_sign/distance` |
 | [aav_detector_rs](./aav_detector_rs/README.md) | the detector in Rust, a challenger (`detector_impl:=rust`): RF-DETR's ONNX through ONNX Runtime, Core ML on a Mac | the same as `aav_detector`'s `detector` |
 | [aav_lane_finder](./aav_lane_finder/README.md) | the lane finder's launch file, config and Python maths (classic OpenCV); its node was removed on 22 Nov | none (the launch file starts `aav_lane_finder_rs`'s node) |
 | [aav_lane_finder_rs](./aav_lane_finder_rs/README.md) | `lane_finder` in Rust, no OpenCV, the default since 18 Nov: the classic lane finder on the front left camera | `/perception/lane/geometry` |

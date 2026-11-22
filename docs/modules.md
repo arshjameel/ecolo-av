@@ -361,7 +361,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 
 | | |
 |---|---|
-| **Does** | three nodes: `object_detector` (RF-DETR Nano on camera pictures by default; YOLO with `detector:=yolo`), `stop_sign_watcher` (locks the mux at a close stop sign), `camera_obstacles` (boxes as points on the road for the costmap) |
+| **Does** | two nodes: `object_detector` (RF-DETR Nano on camera pictures by default; YOLO with `detector:=yolo`), `camera_obstacles` (boxes as points on the road for the costmap); and `stop_sign.py`, the rules of `stop_sign_watcher` (which locks the mux at a close stop sign; the node is `aav_stop_sign_rs`'s since 22 Nov) |
 | **Why** | the car must stop at stop signs, and see people and cars |
 | **Runs on** | the detector: the Orin (TensorRT, after the reflash) or a laptop (Core ML); the watcher: the Orin |
 | **In → out** | `/sensors/camera/front_left/image_raw` → `/perception/detections` → `/perception/stop_sign`, `/perception/camera_obstacles`, `/perception/camera_view` |
@@ -534,7 +534,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_joy_alive_rs` | `joy_alive` in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_joy_alive_rs/README.md` |
 | `aav_safety_rs` | `geofence`, `stop_hold`, `goal_leash` in Rust, the defaults (`*_impl:=python` falls back) | `ros/safety/aav_safety_rs/README.md` |
 | `aav_mux_state` | `command_mux_state` (Rust): who twist_mux passes on, on `/control/command_mux/state`, for the debug screen | `ros/command_mux/aav_mux_state/README.md` |
-| `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (`stop_sign_impl:=python` falls back) | `ros/perception/aav_stop_sign_rs/README.md` |
+| `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (the Python removed 22 Nov) | `ros/perception/aav_stop_sign_rs/README.md` |
 | `aav_lane_finder_rs` | `lane_finder` in Rust, the default (the Python removed 22 Nov) | `ros/perception/aav_lane_finder_rs/README.md` |
 | `aav_camera_stream_rs` | `camera_stream` in Rust, the default with no detector (`camera_stream_impl:=python` falls back) | `ros/sources/aav_camera_stream_rs/README.md`, then [Camera pipeline](camera-pipeline.md) |
 | `aav_drive_to_point_rs` | `point_driver` and `drive_to_point` in Rust, the default (`drive_to_point_impl:=python` falls back) | `ros/drivers/aav_drive_to_point_rs/README.md`, then [A to B](a-to-b.md) |

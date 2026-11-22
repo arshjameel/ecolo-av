@@ -329,7 +329,7 @@ def test_joy_alive_is_rust_by_default_and_python_one_switch_away():
         started(CAR, machine='motor_pi_alone', joy_alive_impl='python')
 
 
-def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
+def test_stop_sign_watcher_is_rust_and_the_python_is_refused():
     # Ben, 17 Nov: the Motor Pi alone's stop_signs part in Rust too (stop_sign_impl).
     def watcher(**args):
         actions = started(CAR, machine='motor_pi_alone', **args)
@@ -338,7 +338,9 @@ def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
         return found[0]
 
     assert watcher() == 'aav_stop_sign_rs'
-    assert watcher(stop_sign_impl='python') == 'aav_detector'
+    assert watcher(stop_sign_impl='Rust') == 'aav_stop_sign_rs'
+    with pytest.raises(ValueError, match='stop_sign_impl:=python'):   # removed 22 Nov
+        started(CAR, machine='motor_pi_alone', stop_sign_impl='python')
     with pytest.raises(ValueError, match='stop_sign_impl'):
         started(CAR, machine='motor_pi_alone', stop_sign_impl='c')
 

@@ -7,7 +7,7 @@ Bench mode: the real car's software on one computer, with stand-ins for the hard
       [camera_obstacles:=false] [reversing:=true] [lidar:=false] [plan_around:=true]
       [bridge:=rust|python] [speed_loop:=default|smooth|lqi|firm] [speed_loop_model:=]
       [geofence_radius:=100.0]
-      [stop_sign_impl:=rust|python]
+      [stop_sign_impl:=rust]
       [geofence_impl:=rust] [stop_hold_impl:=rust] [goal_leash_impl:=rust]
   pixi run bench                            (the same)
   pixi run bench bridge:=python             (aav_spine's Python spine_bridge, not the Rust one)
@@ -237,7 +237,7 @@ def generate_launch_description():
                                           'the pad (no joy_node)'),
         DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
-                              description='rust (aav_stop_sign_rs) or python (aav_detector): '
+                              description='rust (aav_stop_sign_rs; the Python removed 22 Nov): '
                                           'the stop-sign watcher, with perception'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher '

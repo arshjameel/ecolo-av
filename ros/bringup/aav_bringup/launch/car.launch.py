@@ -909,7 +909,7 @@ def generate_launch_description():
                               description='rust (aav_joy_alive_rs; the Python removed 20 Nov): '
                                           'joy_alive, between joy_node and teleop_twist_joy'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
-                              description='rust (aav_stop_sign_rs) or python (aav_detector): '
+                              description='rust (aav_stop_sign_rs; the Python removed 22 Nov): '
                                           'stop_sign_watcher, the stop_signs part'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,

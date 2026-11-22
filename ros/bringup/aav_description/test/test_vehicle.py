@@ -1148,10 +1148,12 @@ def test_joy_alive_impl_is_rust():
         vehicle.check_joy_alive_impl('c')
 
 
-def test_stop_sign_impl_is_python_or_rust():
+def test_stop_sign_impl_is_rust():
     assert vehicle.DEFAULT_STOP_SIGN_IMPL == 'rust'
-    assert vehicle.check_stop_sign_impl('PYTHON') == 'python'
-    assert vehicle.STOP_SIGN_IMPLS == {'python': 'aav_detector', 'rust': 'aav_stop_sign_rs'}
+    assert vehicle.check_stop_sign_impl(' RUST ') == 'rust'
+    assert vehicle.STOP_SIGN_IMPLS == {'rust': 'aav_stop_sign_rs'}
+    with pytest.raises(ValueError, match='stop_sign_impl:=python'):
+        vehicle.check_stop_sign_impl('python')
     with pytest.raises(ValueError, match='stop_sign_impl:=c'):
         vehicle.check_stop_sign_impl('c')
 

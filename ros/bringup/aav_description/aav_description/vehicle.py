@@ -743,9 +743,10 @@ def check_gps_heading_impl(impl):
 
 # Which stop_sign_watcher runs (car.launch.py's stop_signs, sim.launch.py and
 # bench.launch.py with perception; stop_sign_impl:=): rust (aav_stop_sign_rs, the default
-# since Ben, 17 Nov) or python (aav_detector's: the same node name, topics, parameters and
-# answers). Each one's package.
-STOP_SIGN_IMPLS = {'python': 'aav_detector', 'rust': 'aav_stop_sign_rs'}
+# since Ben, 17 Nov). The Python node (aav_detector's) went on 22 Nov (tag
+# save/python-fallbacks-1); its rules, stop_sign.py, stay there as the Rust's yardstick.
+# The switch stays, a hook.
+STOP_SIGN_IMPLS = {'rust': 'aav_stop_sign_rs'}
 DEFAULT_STOP_SIGN_IMPL = 'rust'
 
 

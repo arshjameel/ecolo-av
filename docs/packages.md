@@ -74,7 +74,7 @@ each one's README has its topics.
 | `aav_bringup` | bringup | the six profiles, `stack.launch.py`, Foxglove, the machine files, the RViz layouts | [[works]] turtle, sim, replay, bench | new |
 | `aav_run_info` | bringup | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | built 3 Nov | new |
 | `aav_detector` | perception | RF-DETR (the default) or YOLO on the camera's images, and the stop-sign watcher | [[works]] on the bench | 2024-25 `camera_ros2_ws` |
-| `aav_stop_sign_rs` | perception | `stop_sign_watcher` in Rust, the default (17 Nov; `stop_sign_impl:=python` falls back) | [[works]] against the Python's answers, and a process test | new: a port of `aav_detector`'s watcher |
+| `aav_stop_sign_rs` | perception | `stop_sign_watcher` in Rust, the default (17 Nov; the Python removed 22 Nov) | [[works]] against the Python's answers, and a process test | new: a port of `aav_detector`'s watcher |
 | `aav_radar_clusters` | perception | radar clustering (DBSCAN), with a box round each object (Rust) | [[works]] on the bench and in Gazebo | new: a rewrite of the 2025-26 `Nav_Radar` C++ node |
 | `aav_lidar` | perception | the flat scan's maths in Python (`scan.py`, `ground.py`), imported by launch files, `aav_voxels` and tools; its node removed 22 Nov | [[works]] its unit tests | new |
 | `aav_voxels` | perception | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for the costmap | built 30 Oct; a trial, off by default | new |
@@ -135,7 +135,7 @@ each one's README has its topics.
 | Package | Reads | Publishes | Notes |
 |---|---|---|---|
 | `aav_detector`: `object_detector` | `/sensors/camera/front_left/image_raw` | `/perception/detections`, `/perception/detections/image` | `detector:=rfdetr` (the default: a `.pth`, or its `rf-detr-*.mlpackage` or `.engine`) or `yolo` (a `.pt`, `.mlpackage` or `.engine`); needs the `ml` environment, or JetPack's PyTorch and TensorRT |
-| `aav_detector`: `stop_sign_watcher` | `/perception/detections` | `/perception/stop_sign` | twist_mux's stop-sign lock, priority 30 |
+| `aav_stop_sign_rs`: `stop_sign_watcher` | `/perception/detections` | `/perception/stop_sign` | twist_mux's stop-sign lock, priority 30 |
 | `aav_radar_clusters`: `radar_clusters` | `/sensors/radar/points` | `/perception/radar/clusters`, `/perception/radar/cluster_boxes` | DBSCAN, in Rust; eps 0.8 m, 15 points (5 on the bench and in Gazebo) |
 | `aav_lane_finder_rs`: `lane_finder` | `/sensors/camera/front_left/image_raw`, `/sensors/camera/front_left/camera_info` | `/perception/lane/geometry`, `/perception/lane/image` | a bird's-eye view, sliding windows, a curve per line; the camera's place from `vehicle.yaml` |
 

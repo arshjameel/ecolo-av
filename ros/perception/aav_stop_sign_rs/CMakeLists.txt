@@ -35,7 +35,7 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     TIMEOUT 300
     GENERATE_RESULT_FOR_RETURN_CODE_ZERO)
-  # The process, with each stop_sign_impl: a stop sign's boxes lock twist_mux's stop-sign
+  # The process: a stop sign's boxes lock twist_mux's stop-sign
   # lock, it lets go after hold_s, and the sign's point comes out.
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(stop_sign_node test/test_stop_sign_node.py TIMEOUT 180)

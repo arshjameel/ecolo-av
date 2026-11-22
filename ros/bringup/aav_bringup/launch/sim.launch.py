@@ -209,8 +209,8 @@ bench's argument names:
                       answers as the Python's had; the only one since 20 Nov (Ben, 16 Nov:
                       "watchdog in rust sure")
   stop_sign_impl:=rust  with perception:=true, stop_sign_watcher in Rust (aav_stop_sign_rs):
-                      the same node name, topics and answers; the default since 17 Nov
-                      (python: aav_detector's)
+                      the default since 17 Nov, the only one since 22 Nov (the Python,
+                      aav_detector's, removed; tag save/python-fallbacks-1)
   io_mux_impl:=rust  the sensor mux and the output mux in Rust (aav_io_mux_rs): the same
                       node names, topics and answers; the default on the car and here
                       since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
@@ -1083,9 +1083,9 @@ def generate_launch_description():
                               description='rust (aav_watchdog_rs): which sensor watchdog '
                                           'runs (the Python removed 20 Nov)'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
-                              description='python or rust: which stop_sign_watcher runs, '
-                                          'with perception:=true (aav_detector, or '
-                                          'aav_stop_sign_rs)'),
+                              description='rust (aav_stop_sign_rs; the Python removed 22 Nov): '
+                                          'which stop_sign_watcher runs, with '
+                                          'perception:=true'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
                               description='python or rust: which sensor mux and output mux '
                                           'run (aav_io_mux, or aav_io_mux_rs)'),

@@ -40,7 +40,7 @@ current): after adding, moving or removing a package, run
 
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
-| [aav_detector](../ros/perception/aav_detector/README.md) | Python | The object detector | `aav_detector/(6 modules)` | `aav_detector/camera_obstacles.py`, `aav_detector/detector.py`, `aav_detector/stop_sign_watcher.py` | `test/` | `config/`, `launch/` |
+| [aav_detector](../ros/perception/aav_detector/README.md) | Python | The object detector | `aav_detector/(6 modules)` | `aav_detector/camera_obstacles.py`, `aav_detector/detector.py` | `test/` | `config/`, `launch/` |
 | [aav_detector_rs](../ros/perception/aav_detector_rs/README.md) | Rust | The object detector in Rust (rclrs) | `crates/detector-core`, `crates/onnx-session` | `crates/detector-node` | - | - |
 | [aav_lane_finder](../ros/perception/aav_lane_finder/README.md) | Python | The lane finder's launch file (lane_finder.launch.py), its config (lane_finder.yaml) and its maths in Pytho... | `aav_lane_finder/(2 modules)` | - | `test/` | `config/`, `launch/` |
 | [aav_lane_finder_learned](../ros/perception/aav_lane_finder_learned/README.md) | Rust | The learned lane_finder (TODO 262b), a challenger (lane_finder_impl:=learned) | `crates/ufld-core` | `crates/ufld-node` | `test/` | - |
