@@ -180,6 +180,15 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 | *Initial D* (S. Shigeno) | - | idea | the red-and-black look of the screens; no art copied |
 | Tesla's driving display | - | idea | the "squiggly line" on the HUD and the developer window (Ben, 7 Nov) |
 
+## The safety filter
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| Ames, Coogan, Egerstedt, Notomista, Sreenath, Tabuada, *Control Barrier Functions: Theory and Applications*, ECC 2019 ([arXiv:1903.11199](https://arxiv.org/abs/1903.11199)) | paper | idea | the barrier condition `ḣ ≥ −α·h` and the minimum-change filter (`aav_safety_filter_rs`) |
+| Mhaskar, El-Farra, Christofides, *Stabilization of nonlinear systems with state and control constraints using Lyapunov-based predictive control*, Systems & Control Letters 2006 | paper | idea | a Lyapunov decrease asked of the applied command (the filter's Lyapunov term, with a slack) |
+| Shen, Shi, Buckham, *Trajectory Tracking Control of an Autonomous Underwater Vehicle Using Lyapunov-Based Model Predictive Control*, IEEE TIE 2018 | paper | idea | the same, on a vehicle |
+| The look-ahead point (the standard feedback-linearising output of the unicycle, from mobile-robot control) | textbook method | idea | `p = e_y + ℓ·sin e_ψ`: the lane barrier that the turn rate moves at once |
+
 ## Tools and the build
 
 | Source | Licence | Kind | Where we used it |

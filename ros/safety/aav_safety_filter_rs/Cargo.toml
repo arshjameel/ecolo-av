@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+# safety-filter: the filter's maths, no ROS (TODO 104): cargo test -p safety-filter.
+#   The speed barrier (the stopping law as a CBF), the lane barrier and the Lyapunov term,
+#   each a formula: no solver.
+# safety-filter-node: the ROS node (rclrs), binary `safety_filter`: in shadow by default,
+#   so it drives nothing until a launch file wires it in front of twist_mux (K1).
+members = ["crates/safety-filter", "crates/safety-filter-node"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "TODO"
+publish = false

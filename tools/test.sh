@@ -73,6 +73,8 @@ if command -v cargo >/dev/null; then
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   echo "== ros/can_bridge/aav_legacy_rs: the Rust UART bridge's logic, the Python modules' answers"
   (cd ros/can_bridge/aav_legacy_rs && cargo test -q --locked -p legacy-bridge)
+  echo "== ros/safety/aav_safety_filter_rs: the safety filter's maths and its guarantees (proptest)"
+  (cd ros/safety/aav_safety_filter_rs && cargo test -q --locked -p safety-filter)
   echo "== ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
   echo "== ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
@@ -174,6 +176,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/bringup/aav_description/map-edit
   rust_style ros/bringup/aav_description/lanelet-map
   rust_style ros/safety/aav_stop_zone -p stop-zone
+  rust_style ros/safety/aav_safety_filter_rs -p safety-filter
   rust_style ros/localization/aav_ndt -p ndt-core
   rust_style ros/localization/aav_pose_check -p pose-check-core
   rust_style ros/sim/aav_simulator -p sim-core --features shared
