@@ -73,7 +73,7 @@ The main ones. Every package: [Packages](packages.md).
 | `boards/pico2` | the spine's board program for a Pico 2 (Embassy): builds, never flashed | firmware |
 | `aav_lane_finder` | the lane finder: the camera's picture to `/perception/lane/geometry`, with OpenCV | perception |
 | `aav_detector` | RF-DETR Nano (the default) or YOLO (`detector:=yolo`) on the camera's images, and the stop-sign watcher | perception |
-| `aav_lidar` | the roof lidar's cloud as a 2D scan for the costmap and the stop zone | perception |
+| `aav_lidar_rs` | the roof lidar's cloud as a 2D scan for the costmap and the stop zone | perception |
 
 ### Trials: ours, beside the stock default
 

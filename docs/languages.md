@@ -36,7 +36,7 @@ programs only meet through messages.
 | The IMU driver, `aav_imu_yahboom` | Rust (`rclrs`) | Ben's rewrite of the 2025-26 C++ driver, which it replaced on 11 Oct |
 | The radar clustering, `aav_radar_clusters` | Rust (`rclrs`) | A rewrite of the 2025-26 C++ node, which it replaced on 15 Oct |
 | The lidar's cubes, `aav_voxels_rs` | Rust (`rclrs`) | A port of `aav_voxels`' Python node (TODO 185, 15 Nov): the same cubes, 8 times faster. Picked with `voxels_impl:=rust`; the Python stays the default until the Rust one has run on the car |
-| The flat scan and the things, `aav_lidar_rs`, `aav_things_rs` | Rust (`rclrs`) | Ports of `aav_lidar`'s and `aav_things`' Python nodes (TODO 185, 17 Nov): the same scan and things, at a third and a fifth of the CPU. The default in the simulator and on the car; `lidar_impl:=python` falls back; the Python things removed 20 Nov |
+| The flat scan and the things, `aav_lidar_rs`, `aav_things_rs` | Rust (`rclrs`) | Ports of `aav_lidar`'s and `aav_things`' Python nodes (TODO 185, 17 Nov): the same scan and things, at a third and a fifth of the CPU. The only ones, in the simulator and on the car: the Python things removed 20 Nov, the Python `lidar_scan` 22 Nov (`aav_lidar` keeps `scan.py` and `ground.py`) |
 | The CAN bridge, `aav_spine_bridge` | Rust (`rclrs`) | A port of `aav_spine`'s Python node (T1.8), on the firmware's own CAN code. The default since 23 Oct; the Python one stays until the Rust one has run on the car (no record of that yet) |
 | The spine firmware, `firmware/spine` | Rust, `no_std` | Memory-safe, and its logic is tested on a laptop |
 | The in-car HUD and the map window, `aav_hud` | Rust (`rclrs`, raylib) | One program that is also its ROS node (Ben, 11 Oct). They stay raylib, on the Pi (Ben, 5 Nov) |

@@ -76,10 +76,10 @@ each one's README has its topics.
 | `aav_detector` | perception | RF-DETR (the default) or YOLO on the camera's images, and the stop-sign watcher | [[works]] on the bench | 2024-25 `camera_ros2_ws` |
 | `aav_stop_sign_rs` | perception | `stop_sign_watcher` in Rust, the default (17 Nov; `stop_sign_impl:=python` falls back) | [[works]] against the Python's answers, and a process test | new: a port of `aav_detector`'s watcher |
 | `aav_radar_clusters` | perception | radar clustering (DBSCAN), with a box round each object (Rust) | [[works]] on the bench and in Gazebo | new: a rewrite of the 2025-26 `Nav_Radar` C++ node |
-| `aav_lidar` | perception | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | [[works]] in Gazebo and the bench | new |
+| `aav_lidar` | perception | the flat scan's maths in Python (`scan.py`, `ground.py`), imported by launch files, `aav_voxels` and tools; its node removed 22 Nov | [[works]] its unit tests | new |
 | `aav_voxels` | perception | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for the costmap | built 30 Oct; a trial, off by default | new |
 | `aav_voxels_rs` | perception | `voxels` in Rust: the lidar as 0.25 m cubes, a drop-in for `aav_voxels`' (`voxels_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_voxels` |
-| `aav_lidar_rs` | perception | `lidar_scan` in Rust: the lidar flattened to a 720-ray scan, a drop-in for `aav_lidar`'s (`lidar_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_lidar` |
+| `aav_lidar_rs` | perception | `lidar_scan` in Rust: the roof lidar's cloud flattened to a 720-ray scan for the costmap and the stop zone; the only one (the Python removed 22 Nov) | [[works]] against the Python's answers | new: a port of `aav_lidar` |
 | `aav_things_rs` | perception | `things` in Rust: the cubes as tracked things, a drop-in for `aav_things`' (`things_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_things` |
 | `aav_detector_rs` | perception | the detector in Rust, a challenger (`detector_impl:=rust`): RF-DETR's ONNX through ONNX Runtime ([ONNX](onnx.md)) | [[works]] in Ravensim (Core ML); TensorRT [[untested]] | new: a port of `aav_detector`'s `detector` |
 | `aav_lane_finder` | perception | the lane lines in the camera's pictures, as `/perception/lane/geometry` (OpenCV) | [[works]] on the bench | new |

@@ -854,8 +854,8 @@ def generate_launch_description():
                               description='true (with the lidar): the costmap reads the lidar as '
                                           '0.25 m cubes (aav_voxels) instead of the flat scan'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
-                              description='python or rust: which lidar_scan flattens the '
-                                          'lidar (aav_lidar, or aav_lidar_rs)'),
+                              description='rust (aav_lidar_rs; the Python removed 22 Nov): '
+                                          'which lidar_scan flattens the lidar'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
                               description='rust or python: which point_driver drives to a '

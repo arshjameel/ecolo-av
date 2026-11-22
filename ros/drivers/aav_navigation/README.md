@@ -35,10 +35,10 @@ Launch: `ros2 launch aav_navigation navigation.launch.py [args]`
 |---|---|---|
 | `map` | `maps/empty.yaml` | the map YAML (`maps/README.md`) |
 | `radar` | false | the local costmap's obstacle layer reads `/sensors/radar/points` |
-| `lidar` | false | `lidar_scan` (aav_lidar) flattens `/sensors/lidar/points` to `/sensors/lidar/scan`, for the costmap and the stop zone |
+| `lidar` | false | `lidar_scan` (aav_lidar_rs) flattens `/sensors/lidar/points` to `/sensors/lidar/scan`, for the costmap and the stop zone |
 | `voxels` | false | with `lidar`: a trial, `aav_voxels`' `voxels` cuts the cloud into 0.25 m cubes; the costmap's lidar_layer and the stop zone read those instead of the scan, and `lidar_scan` runs only for `amcl` ([design](../../../docs/designs/2026-10-30_voxels.md)) |
 | `voxels_impl` | `python` | with `voxels` or `screen_cubes`: `python` (`aav_voxels`) or `rust` (`aav_voxels_rs`: the same node, topics and cubes; the launch file passes it `vehicle.yaml`'s lidar mount and the car's outline) |
-| `lidar_impl` | `rust` | with `lidar`: `rust` (`aav_lidar_rs`, the default since 17 Nov: the same scan; the launch file passes it `vehicle.yaml`'s lidar mount and the car's outline) or `python` (`aav_lidar`) |
+| `lidar_impl` | `rust` | with `lidar`: `rust` (`aav_lidar_rs`, the default since 17 Nov: the same scan; the launch file passes it `vehicle.yaml`'s lidar mount and the car's outline). The Python was removed on 22 Nov |
 | `things_impl` | `rust` | with `things`: `rust` (`aav_things_rs`; the Python removed 20 Nov) |
 | `kerbs` | false | with `lidar` (ignored without): the kerbs (TODO 119, [kerbs](../../../docs/kerbs.md)). The Rust `voxels` node (`aav_voxels_rs`, whatever `voxels_impl` says) runs with `steps:=true`, and the local costmap's `kerb_layer` marks `/perception/voxels/steps`: marks only, kept until the window rolls past; the stop zone's `steps` source stops for them |
 | `stop_zone` | empty | the stop zone (`aav_stop_zone`); empty: on wherever radar, lidar, ghost or camera guard runs |
@@ -89,7 +89,7 @@ Nodes started (all ours):
 | `stop_hold` (`aav_safety_rs`) | with the stop zone: holds its stops 1 s (`/safety/stop_hold/lock`) |
 | `behaviour` (`aav_behaviour_rs`) | with `behaviour:=true`: the road ahead, the speed cap |
 | `diffusion_planner` | with `planner:=diffusion` |
-| `lidar_scan` (`aav_lidar_rs`, or `aav_lidar` with `lidar_impl:=python`), `ghost_obstacle` | with `lidar:=true`, `ghost:=true` |
+| `lidar_scan` (`aav_lidar_rs`), `ghost_obstacle` | with `lidar:=true`, `ghost:=true` |
 | `things` (`aav_things_rs`) | with `lidar:=true things:=true` |
 | `voxels` (`aav_voxels`, or `aav_voxels_rs` with `voxels_impl:=rust`) | with `voxels:=true` or `screen_cubes:=true`; `aav_voxels_rs` with `kerbs:=true` |
 | `amcl` (`aav_amcl_rs`), `amcl_map_server` | with `amcl:=true`: our AMCL; with `amcl_map:=`, our map server for its map |

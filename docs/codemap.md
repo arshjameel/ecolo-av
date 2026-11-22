@@ -46,7 +46,7 @@ current): after adding, moving or removing a package, run
 | [aav_lane_finder_learned](../ros/perception/aav_lane_finder_learned/README.md) | Rust | The learned lane_finder (TODO 262b), a challenger (lane_finder_impl:=learned) | `crates/ufld-core` | `crates/ufld-node` | `test/` | - |
 | [aav_lane_finder_rs](../ros/perception/aav_lane_finder_rs/README.md) | Rust | lane_finder in Rust (rclrs) | `crates/lane-core` | `crates/lane-node` | `test/` | - |
 | [aav_lane_geometry](../ros/perception/aav_lane_geometry/README.md) | messages | The LaneGeometry message | - | - | - | - |
-| [aav_lidar](../ros/perception/aav_lidar/README.md) | Python | The roof lidar for Nav2 | `aav_lidar/(2 modules)` | `aav_lidar/lidar_scan.py` | `test/` | - |
+| [aav_lidar](../ros/perception/aav_lidar/README.md) | Python | The flat lidar scan's maths, no ROS | `aav_lidar/(2 modules)` | - | `test/` | - |
 | [aav_lidar_rs](../ros/perception/aav_lidar_rs/README.md) | Rust | lidar_scan in Rust (rclrs) | `crates/lidar-scan` | `crates/lidar-scan-node` | `test/` | - |
 | [aav_radar_clusters](../ros/perception/aav_radar_clusters/README.md) | Rust | radar_clusters in Rust (rclrs) | `crates/radar-clustering` | `crates/clusters-node` | `test/` | `launch/` |
 | [aav_stop_sign_rs](../ros/perception/aav_stop_sign_rs/README.md) | Rust | stop_sign_watcher in Rust (rclrs) | `crates/stop-sign-core` | `crates/stop-sign-node` | `test/` | - |

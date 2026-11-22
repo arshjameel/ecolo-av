@@ -418,9 +418,10 @@ def check_voxels_impl(impl):
 
 
 # Which lidar_scan flattens the lidar (lidar:=true, lidar_impl:=): rust (aav_lidar_rs, the
-# default since 17 Nov: the same node name, topics and ranges, 2 % of a core against 5 %)
-# or python (aav_lidar, the fallback). Each one's package.
-LIDAR_IMPLS = {'python': 'aav_lidar', 'rust': 'aav_lidar_rs'}
+# default since 17 Nov: the same node name, topics and ranges, 2 % of a core against 5 %).
+# The Python node (aav_lidar's) went on 22 Nov (tag save/python-fallbacks-1); aav_lidar
+# keeps scan.py and ground.py, which other code imports. The switch stays, a hook.
+LIDAR_IMPLS = {'rust': 'aav_lidar_rs'}
 DEFAULT_LIDAR_IMPL = 'rust'
 
 

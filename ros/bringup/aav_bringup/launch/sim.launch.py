@@ -189,8 +189,8 @@ bench's argument names:
   voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
-  lidar_impl:=python  the Python lidar_scan (aav_lidar) in the Rust one's place (the
-                      default since 17 Nov): the same scan
+  lidar_impl:=rust    lidar_scan is aav_lidar_rs's (the default since 17 Nov; the Python
+                      one went on 22 Nov, tag save/python-fallbacks-1)
   lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
                       one's place (the default since 18 Nov), with lane:=true or
                       lane_pose:=true: the same topics and lanes
@@ -1044,8 +1044,8 @@ def generate_launch_description():
                               description='true: the costmap reads the lidar as 0.25 m cubes '
                                           '(aav_voxels, a trial) instead of the flat scan'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
-                              description='python or rust: which lidar_scan flattens the '
-                                          'lidar (aav_lidar, or aav_lidar_rs)'),
+                              description='rust (aav_lidar_rs; the Python removed 22 Nov): '
+                                          'which lidar_scan flattens the lidar'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
                               description='rust or python: which point_driver drives to a '

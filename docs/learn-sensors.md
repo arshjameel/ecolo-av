@@ -129,7 +129,7 @@ All about it: [Learn: GPS](learn-gps.md).
 | **Good at** | exact distances, day or night |
 | **Bad at** | rain and snow; expensive; lots of data; blind close to the car, low down ([Perception](perception.md#the-roof-lidar)) |
 | **On the car** | a VLP-16 on a printed tripod, 192.168.1.201, sending UDP to the Jetson (the 16 Oct audit) |
-| **Driver** | the stock `velodyne` package (`aav_sensors lidar:=true`), then `lidar_scan` (`aav_lidar`) for the costmap and the stop zone. On by default on the car. Tested against `tools/fake_vlp16.py`; [[untested]] with the real lidar |
+| **Driver** | the stock `velodyne` package (`aav_sensors lidar:=true`), then `lidar_scan` (`aav_lidar_rs`) for the costmap and the stop zone. On by default on the car. Tested against `tools/fake_vlp16.py`; [[untested]] with the real lidar |
 | **Used by** | the local costmap's lidar layer, and the stop zone |
 | **Ravensim** | a generic 16-beam one, on by default (`lidar:=false` to drop it) |
 | **Bench** | `pixi run bench lidar:=true`: `mock_lidar` sends VLP-16 packets of the bench world |
@@ -157,7 +157,7 @@ All about it: [Learn: GPS](learn-gps.md).
 | Battery | `ros/sources/aav_battery_victron` |
 | Wheel speed | `ros/can_bridge/aav_spine_bridge` (Rust, the default) or `aav_spine` (Python): `spine_bridge role:=sensors`; `ros/can_bridge/aav_legacy` (the 2025-26 encoder) |
 | The front cameras | `ros/sources/aav_camera_stream` |
-| The lidar's scan for the costmap | `ros/perception/aav_lidar` |
+| The lidar's scan for the costmap | `ros/perception/aav_lidar_rs` |
 | Sensor positions | `ros/bringup/aav_description/config/vehicle.yaml` |
 | Ravensim's sensors | `ros/sim/aav_simulator` (`sim-core`), `ros/sim/aav_sim_models` |
 | The bench's pretend sensors | `ros/sim/aav_bench/aav_bench/sensors.py` |

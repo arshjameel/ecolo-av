@@ -37,8 +37,8 @@ lifecycle node: each respawns 1 s after it dies, and while one is down the car s
   stop_hold         with the stop zone (aav_safety_rs): holds its stops until the zone
                     stays clear for 1 s, through twist_mux's stop_zone lock
   lidar_scan        with lidar:=true (aav_lidar_rs): the roof lidar's cloud ->
-                    /sensors/lidar/scan, for the costmap and the stop zone;
-                    lidar_impl:=python for the Python node (aav_lidar)
+                    /sensors/lidar/scan, for the costmap and the stop zone (the
+                    Python node, aav_lidar's, went on 22 Nov)
 
 The settings are config/nav2.yaml's, in Nav2's layout: our ports read the blocks they were
 tuned with (vehicle.nav2_tuned writes the car into a temporary copy; vehicle.rewrite the
@@ -409,9 +409,9 @@ def nodes(context):
     if lidar and (amcl or not voxels):
         # Not a lifecycle node: it runs from the start. With voxels:=true only AMCL still
         # reads its scan.
-        # lidar_impl:=rust: the Rust port, the same name and topics; it reads no
-        # vehicle.yaml, so the lidar's mount and the car's outline come with it.
-        car = voxels_car(cfg) if lidar_impl == 'rust' else {}
+        # The Rust node (the only one since 22 Nov) reads no vehicle.yaml, so the
+        # lidar's mount and the car's outline come with it.
+        car = voxels_car(cfg)
         actions.append(Node(package=vehicle.LIDAR_IMPLS[lidar_impl], executable='lidar_scan',
                             name='lidar_scan', namespace='/', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
@@ -730,9 +730,8 @@ def generate_launch_description():
                               description='rust (aav_safety_rs, the default) or python '
                                           '(aav_safety): which stop_hold runs'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
-                              description='python (aav_lidar) or rust (aav_lidar_rs, the same '
-                                          'node in Rust): which lidar_scan runs, with '
-                                          'lidar:=true'),
+                              description='rust (aav_lidar_rs; the Python removed 22 Nov): '
+                                          'which lidar_scan runs, with lidar:=true'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='rust (aav_things_rs; the Python removed 20 Nov): '
                                           'which things node runs, with things:=true'),

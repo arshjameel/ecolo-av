@@ -26,7 +26,7 @@ a person can still look at it in RViz or Lichtblick.
 
 | Sensor | Node | Topic | Read by |
 |---|---|---|---|
-| Roof lidar | `lidar_scan` (`aav_lidar_rs`; `aav_lidar` with `lidar_impl:=python`) | `/sensors/lidar/scan` | the local costmap's `lidar_layer`; the stop zone; AMCL (`amcl:=true`); `behaviour` (`behaviour:=true`) |
+| Roof lidar | `lidar_scan` (`aav_lidar_rs`, Rust; the Python removed 22 Nov) | `/sensors/lidar/scan` | the local costmap's `lidar_layer`; the stop zone; AMCL (`amcl:=true`); `behaviour` (`behaviour:=true`) |
 | Roof lidar | `voxels` (`aav_voxels`), only with `voxels:=true` | `/perception/voxels/cubes`, `/ground` | then the `lidar_layer` and `collision_monitor`, instead of the scan; the debug HUD and the developer window draw them |
 | Radar | the driver, or a stand-in | `/sensors/radar/points` | the local costmap's `obstacle_layer`; `collision_monitor`; the sensor watchdog (all with `radar:=true`: the bench and the simulators. Off on the car: no radar part yet) |
 | Radar | `radar_clusters` | `/perception/radar/clusters`, `/cluster_boxes` | `things` (`things:=true`, a trial: each cluster's speed); else **nobody**: for RViz only |
@@ -67,7 +67,7 @@ a person can still look at it in RViz or Lichtblick.
 | `aav_camera_stream` | ours | the front cameras: MediaMTX's H.264 stream from the camera Pi in, RF-DETR inside each stream ([camera pipeline](camera-pipeline.md)) | [[works]] on a Mac; [[untested]] on the Orin |
 | `aav_lane_finder` | ours | lane keeping's seeing half: finds the lane lines (below) | [[works]] on the bench |
 | `aav_lane_geometry` | 2025-26 `Lane_Detection_ROS2` | lane keeping's steering half, as a driver on `/drivers/ai/cmd_vel` | [[works]] on the bench |
-| `aav_lidar` | ours | the roof lidar's points into a scan for the costmap and the stop zone ([below](#the-roof-lidar)) | [[works]] against a fake lidar |
+| `aav_lidar_rs` (maths also in Python: `aav_lidar`) | ours | the roof lidar's points into a scan for the costmap and the stop zone ([below](#the-roof-lidar)) | [[works]] against a fake lidar |
 | `aav_voxels` | ours | a trial (`voxels:=true`): the lidar's cloud as 0.25 m cubes over the fitted road, for the costmap instead of the scan ([design](designs/2026-10-30_voxels.md)) | a trial, off by default |
 | `aav_voxels_rs` | ours (Rust): a port of `aav_voxels`' Python node | the lidar as 0.25 m cubes over the fitted road, the same as the Python's, 8 times faster (`voxels_impl:=rust`) | [[works]] against the Python's recorded clouds |
 | `aav_sensors` `cameras.launch.py` | 2024-25 `cameras` (the calibrations) | `usb_cam` with `left.ini` and `right.ini`: for a USB camera only, not the front ribbon cameras | [[untested]] Linux only |
@@ -494,7 +494,7 @@ the same topic.
 
 ```
 VLP-16 --UDP 2368--> lidar_driver --/sensors/lidar/packets--> lidar_cloud --/sensors/lidar/points-->
-    lidar_scan (aav_lidar) --/sensors/lidar/scan--> the costmap's lidar_layer and the stop zone
+    lidar_scan (aav_lidar_rs) --/sensors/lidar/scan--> the costmap's lidar_layer and the stop zone
 ```
 
 | Part | Where |
