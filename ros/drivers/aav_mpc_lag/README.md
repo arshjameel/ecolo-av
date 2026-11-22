@@ -73,9 +73,9 @@ oscillate so much."
 Tested: `closed_loop.rs` `in_the_tube_it_holds_its_line_and_outside_it_comes_back` (0.15 m
 off: it keeps its line and steers less; 1 m off: back inside 0.25 m, at 1 and 3 m/s).
 
-### Barriers (research, separate from the capstone; 22 Nov)
+### Barriers (outside the capstone's scope: Ben's MASc research; 22 Nov)
 
-> Research, separate from the capstone: Ben's own work, not a team deliverable, and nothing in the stack turns it on.
+> Outside the capstone's scope: Ben Woodhead's own research, toward his MASc thesis. Not a team deliverable, and nothing in the stack turns it on.
 
 The tracker follows its path, even into an object. With keep-out circles set, the plan
 may only creep up to them. The idea: Ali, Shen and Hashim's linear MPC with control

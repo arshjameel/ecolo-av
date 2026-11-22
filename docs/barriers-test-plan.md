@@ -1,6 +1,6 @@
 # Barriers: the test plan
 
-**Research, separate from the capstone.** How we test the barriers in the MPC
+**Outside the capstone's scope (Ben's own research, toward his MASc thesis).** How we test the barriers in the MPC
 ([the page](barriers.md)) step by step, so a result is a number against a mark set
 beforehand, not a feeling. Written 22 November 2026 by Ben Woodhead. The car's own ladder
 (bench, stands, hallway, lot) is [the testing plan](testing-plan.md): this page hangs on it.

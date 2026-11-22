@@ -565,7 +565,7 @@ def nodes(context):
         tube = LaunchConfiguration('mpc_lag_tube').perform(context).strip()
         extra = {'mpc_lag.tube': vehicle.check_mpc_lag_tube(tube) if tube
                  else vehicle.MPC_LAG_TUBE}
-        # Barriers (research, separate from the capstone; off by default): the plan may
+        # Barriers (outside the capstone's scope: Ben's MASc research; off by default): the plan may
         # only creep up to the ghost's keep-out circle, and goes round it where it can.
         if LaunchConfiguration('mpc_barriers').perform(context).strip().lower() == 'true':
             extra['barriers.topic'] = '/safety/ghost/marker'

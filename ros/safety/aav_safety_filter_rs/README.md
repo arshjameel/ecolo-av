@@ -2,6 +2,8 @@
 
 ## Overview
 
+> **Outside the capstone's scope.** Ben Woodhead's own research, toward his MASc thesis. Not a team deliverable. Nothing in the stack turns it on.
+
 The **safety filter** for the automatic drivers (TODO 104; the design "How the car stops",
 its filter and K1). An untrusted driver (navigation, the point driver, the AI or LLM slot)
 sends `(v, w)`; the filter sends on the **nearest** command that keeps three things true.

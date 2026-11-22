@@ -1,5 +1,7 @@
 # From "bad things can happen" to a proof: a survey
 
+**Outside the capstone's scope.** Ben Woodhead's own research, toward his MASc thesis. Not a team deliverable.
+
 A map of the whole problem behind [the barriers in the MPC](barriers.md), simplest first.
 
 **How to use it.** Each topic is one small card:

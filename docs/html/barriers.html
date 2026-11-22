@@ -7,7 +7,7 @@
 <!-- Generated from docs/barriers.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Barriers in the MPC: keeping the car off things</h1>
-<div class="meta">12 min read · 7 sections</div></header>
+<div class="meta">13 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -143,9 +143,9 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#1-the-rule">1. The rule</a><a href="#2-the-stop-rule-behind-it">2. The stop rule behind it</a><a href="#3-two-forms-of-one-idea">3. Two forms of one idea</a><a href="#4-how-to-run-it">4. How to run it</a><a href="#5-what-happened-on-the-pretend-car">5. What happened on the pretend car</a><a href="#6-what-it-assumes">6. What it assumes</a><a href="#7-not-done">7. Not done</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#scope-what-is-the-capstones-and-what-is-not">Scope: what is the capstone&#x27;s and what is not</a><a href="#1-the-rule">1. The rule</a><a href="#2-the-stop-rule-behind-it">2. The stop rule behind it</a><a href="#3-two-forms-of-one-idea">3. Two forms of one idea</a><a href="#4-how-to-run-it">4. How to run it</a><a href="#5-what-happened-on-the-pretend-car">5. What happened on the pretend car</a><a href="#6-what-it-assumes">6. What it assumes</a><a href="#7-not-done">7. Not done</a></nav>
 <div class="lead"><div class="admonition warning">
-<p class="admonition-title">Research, separate from the capstone</p>
+<p class="admonition-title">Outside the capstone's scope (Ben's own research, toward his MASc thesis)</p>
 <p>Ben's own work, not a team deliverable. Off by default: nothing in the stack turns
 it on, and no safety lock depends on it. Tested on a pretend car and compiled
 against ROS. <strong>Not yet run in Ravensim, and never on the car.</strong></p>
@@ -165,6 +165,50 @@ against ROS. <strong>Not yet run in Ravensim, and never on the car.</strong></p>
 </div>
 <p>To learn the idea from nothing: <a href="barriers-guide.html">the walk-through</a>, then
 <a href="barriers-survey.html">the survey</a>.</p></div>
+<section class="card"><h2 id="scope-what-is-the-capstones-and-what-is-not">Scope: what is the capstone's and what is not</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>The capstone</th>
+<th>Ben's MASc research</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The path follower <code>mpc_lag_rs</code>, the stop zone, the locks</td>
+<td>✔</td>
+<td>uses them</td>
+</tr>
+<tr>
+<td>The barrier code here, off by default (<code>mpc_barriers:=false</code>)</td>
+<td>carried in the stack, not a deliverable, not maintained by the team</td>
+<td>✔</td>
+</tr>
+<tr>
+<td>The safety filter (<code>aav_safety_filter_rs</code>), in shadow by default</td>
+<td>the same</td>
+<td>✔</td>
+</tr>
+<tr>
+<td>Showing it is safe: the proofs</td>
+<td>no</td>
+<td>✔ kept outside this repository</td>
+</tr>
+<tr>
+<td>The tests of the method (<a href="barriers-test-plan.html">the test plan</a>)</td>
+<td>no</td>
+<td>✔</td>
+</tr>
+<tr>
+<td>The car's own tests (<a href="testing-plan.html">the testing plan</a>)</td>
+<td>✔</td>
+<td>uses their data</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every file of it says "outside the capstone's scope" at its top.</p>
+</section>
 <section class="card"><h2 id="1-the-rule">1. The rule</h2>
 <p>A <strong>keep-out circle</strong> round the object: its radius, the car's own (1.12 m from the
 body's middle to a corner), and a margin (0.2 m).</p>

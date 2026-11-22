@@ -1,8 +1,8 @@
 //! Control barrier functions for the plan: a keep-out circle the car may come near, and
 //! never enter (22 Nov; the package's README, "Barriers").
 //!
-//! Research, separate from the capstone: Ben's own work, not a team deliverable, and
-//! nothing in the stack turns it on.
+//! Outside the capstone's scope: Ben Woodhead's own research, toward his MASc thesis. Not a
+//! team deliverable, and nothing in the stack turns it on.
 //!
 //! The idea is A. M. Ali, C. Shen and H. A. Hashim's ("A linear MPC with control barrier
 //! functions for differential drive robots", IET Control Theory & Applications, 2024):

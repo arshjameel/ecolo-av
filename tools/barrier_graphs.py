@@ -1,5 +1,5 @@
 """
-Draw the barriers' runs as one HTML page of graphs (research, separate from the capstone).
+Draw the barriers' runs as one HTML page of graphs (outside the capstone's scope: Ben's MASc research).
 
     AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barrier \
         the_traces -- --ignored          (in ros/drivers/aav_mpc_lag: writes the CSVs)

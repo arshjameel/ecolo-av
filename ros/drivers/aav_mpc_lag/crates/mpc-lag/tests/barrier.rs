@@ -1,4 +1,4 @@
-//! The barriers on a pretend car (research, separate from the capstone; 22 Nov; the
+//! The barriers on a pretend car (outside the capstone's scope: Ben's MASc research; 22 Nov; the
 //! package's README, "Barriers"): the
 //! tracker at 20 Hz, ego's ramps and the shared car model at 100 Hz in between, as
 //! `closed_loop.rs`. Each test asks one thing of the car itself, not of the plan: did its

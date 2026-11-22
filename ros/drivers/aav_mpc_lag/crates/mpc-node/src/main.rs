@@ -877,7 +877,8 @@ impl Config {
             snap_angle: d.number("map_correction_snap_angle", m.snap_angle)?,
         };
         // The barriers: off unless barriers.topic is set (navigation.launch.py's
-        // mpc_barriers:=true sets the ghost's marker). Research, separate from the capstone.
+        // mpc_barriers:=true sets the ghost's marker).
+        // Outside the capstone's scope: Ben's MASc research.
         let topic = d.text("barriers.topic", "")?;
         let gamma = d.number("barriers.gamma", 0.05)?;
         let ahead = d.number("barriers.ahead", 0.8)?;

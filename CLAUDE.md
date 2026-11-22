@@ -93,6 +93,12 @@ These are the conventions decided so far. They apply to people and to Claude ses
     (`docs/designs/2026-11-05_own-simulator.md`);
   - Rust ROS nodes use rclrs from crates.io (such as `aav_imu_yahboom`, `aav_spine_bridge`,
     `aav_ego_rs`); the HUD is Rust with raylib (Ben, 11 Oct).
+- **Outside the capstone's scope** (Ben, 22 Nov): Ben's own research toward his MASc
+  thesis lives in the stack as code that is **off by default**: the barriers in the MPC
+  (`aav_mpc_lag`'s `barrier.rs`, `mpc_barriers:=`, `docs/barriers*.md`,
+  `tools/barrier_graphs.py`) and the safety filter (`aav_safety_filter_rs`). Each file says
+  so at its top. It is not a team deliverable: don't count it in the capstone's status or
+  reports, don't turn it on by default, and keep its proofs out of the repository.
 - **Keep the maths out of ROS.** A node's logic lives in a module with no ROS imports
   and has its own tests. Examples: `ackermann.py`, `can_codec.py`, `speed_profile.py`,
   `legacy_protocol.py` and `vehicle.py`; in Rust, `spine-core`.

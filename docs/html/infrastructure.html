@@ -7,7 +7,7 @@
 <!-- Generated from docs/infrastructure.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Infrastructure: how the project is put together</h1>
-<div class="meta">18 min read · 11 sections</div></header>
+<div class="meta">20 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -826,6 +826,46 @@ failure there doesn't fail the night yet (<code>continue-on-error</code>).</p>
 </table></div>
 <p>Gazebo's step went with Gazebo (16 Nov): its last nights in <a href="../history/gazebo-as-it-was.md">Gazebo, as it
 was</a>.</p>
+<h3 id="cis-caches">CI's caches</h3>
+<p>Every run starts on a clean computer. Three caches carry builds from one run to the next,
+each saved under a key made from <code>pixi.lock</code> (and every <code>Cargo.lock</code> for the Rust two):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Cache</th>
+<th>Holds</th>
+<th>Saved</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi-pkgs-*</code></td>
+<td>the packages Pixi installs: ROS, Python, the compilers</td>
+<td>after a run that passes</td>
+</tr>
+<tr>
+<td><code>rust-*</code></td>
+<td>cargo's downloads; what <code>pixi run build</code> compiles (<code>build/*/target</code>)</td>
+<td>straight after the build, even if a test fails later</td>
+</tr>
+<tr>
+<td><code>rust-tests-*</code></td>
+<td>what <code>tools/test.sh</code> compiles: every Rust workspace in one folder, <code>target/tests</code>, so their libraries compile once; with no debug info (<code>CARGO_PROFILE_DEV_DEBUG=0</code>), to keep it small</td>
+<td>after the tests, even if one fails</td>
+</tr>
+</tbody>
+</table></div>
+<p>A key is saved once: a new <code>Cargo.lock</code> or <code>pixi.lock</code> starts a new cache, from the newest
+older one. A pull request reads <code>main</code>'s caches, but what it saves only its own later runs
+see. GitHub keeps 10 GB for the repo and drops the oldest past that.</p>
+<p>The cache only saves compiling: every test still runs, every time. cargo rebuilds what
+changed by itself. <strong>To clear one</strong>, when CI fails with a link error a laptop doesn't
+have (a build script's saved answer gone stale, like <code>rclrs</code>'s on 20 Nov):
+<code>gh cache list --repo AAV-2025-2026/ecolo-av</code>, then <code>gh cache delete &lt;key&gt;</code>, or the
+repo's Actions tab, Caches. The next run builds that part cold.</p>
+<p>On a laptop, <code>tools/test.sh</code> uses <code>target/tests</code> too (set <code>CARGO_TARGET_DIR</code> to put it
+elsewhere). The <code>target/</code> folders it used before, inside each <code>ros/</code> workspace and in
+<code>firmware/spine/</code>, can be deleted by hand.</p>
 <h3 id="reading-a-ci-failure-without-signing-in">Reading a CI failure without signing in</h3>
 <p>A job's log needs a GitHub sign-in. Its <strong>annotations</strong> don't: when the test step fails,
 <code>tools/ci_annotate.py</code> prints one annotation per failing test, with its error message.</p>

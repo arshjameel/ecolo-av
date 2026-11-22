@@ -1,6 +1,6 @@
 # Barriers in the MPC: keeping the car off things
 
-!!! warning "Research, separate from the capstone"
+!!! warning "Outside the capstone's scope (Ben's own research, toward his MASc thesis)"
     Ben's own work, not a team deliverable. Off by default: nothing in the stack turns
     it on, and no safety lock depends on it. Tested on a pretend car and compiled
     against ROS. **Not yet run in Ravensim, and never on the car.**
@@ -17,6 +17,19 @@
 
 To learn the idea from nothing: [the walk-through](barriers-guide.md), then
 [the survey](barriers-survey.md).
+
+## Scope: what is the capstone's and what is not
+
+| | The capstone | Ben's MASc research |
+|---|---|---|
+| The path follower `mpc_lag_rs`, the stop zone, the locks | ✔ | uses them |
+| The barrier code here, off by default (`mpc_barriers:=false`) | carried in the stack, not a deliverable, not maintained by the team | ✔ |
+| The safety filter (`aav_safety_filter_rs`), in shadow by default | the same | ✔ |
+| Showing it is safe: the proofs | no | ✔ kept outside this repository |
+| The tests of the method ([the test plan](barriers-test-plan.md)) | no | ✔ |
+| The car's own tests ([the testing plan](testing-plan.md)) | ✔ | uses their data |
+
+Every file of it says "outside the capstone's scope" at its top.
 
 ## 1. The rule
 

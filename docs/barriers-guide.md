@@ -1,5 +1,7 @@
 # Keeping a car off things: a walk-through
 
+**Outside the capstone's scope.** Ben Woodhead's own research, toward his MASc thesis. Not a team deliverable.
+
 A study guide to [the barriers in the MPC](barriers.md): the idea worked through by hand.
 The map of the whole area is [the survey](barriers-survey.md).
 
