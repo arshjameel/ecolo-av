@@ -2,11 +2,11 @@
 import os
 import sys
 
-import pytest
-import yaml
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import ladder  # noqa: E402
+import pytest  # noqa: E402
+import yaml  # noqa: E402
 
 
 @pytest.fixture
