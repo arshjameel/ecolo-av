@@ -331,7 +331,7 @@ impl<U: Read + ReadReady, T: Write> LegacyLink<U, T> {
                 Sticks {
                     throttle: rc.throttle,
                     steering: rc.steering,
-                    brake: rc.brake,
+                    brake: rc.middle,
                 },
             ),
         };
@@ -863,7 +863,8 @@ mod tests {
             switch: RcSwitch::ViaRos,
             throttle: 0.5,
             steering: -0.25,
-            brake: false,
+            middle: false,
+            ..RcInput::default()
         };
         l.report(&mut FakeBoard::new(), &report(0, Some(rc)));
         let u = frames(&tx)[0];

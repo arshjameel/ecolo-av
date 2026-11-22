@@ -20,20 +20,26 @@ Who drives, highest first:
 | # | Who | When |
 |---|---|---|
 | 1 | nobody: throttle off, full brake | any e-stop (the hardware input or ESTOP_CMD) |
-| 2 | the RC transmitter | its mode switch is on manual (RC direct); or on normal, while normal mode's arbiter gives it the car (below) |
+| 2 | the RC transmitter | its mode switch is on manual (RC direct); or on normal, while normal mode's owner gives it the car (below) |
 | 3 | the hardware test mode | entered with `Exit`, then `Enter`: one actuator at a time |
 | 4 | the computer | armed, and sending fresh commands (RC via ROS counts here) |
 | 5 | nobody: the actuators idle | otherwise (`Mode::Manual` on the wire) |
 
-**Normal mode's arbiter** (`RcOwner`, Arsh, 21 Nov): with the mode switch on normal, the RC
-outranks the computer, decided here so it works with the computer dead.
+**The RC** (`RcOwner`, `RcHold`, Arsh and Ben, 21 Nov;
+[the design](../../../../docs/designs/2026-11-22_rc-right-stick.md)): the right stick's up
+and down hands the car over, the left stick is one pedal. Decided here, so it works with
+the computer dead.
 
 | When | Then |
 |---|---|
-| The computer has the car; the left stick leaves its brake band (not held) | the RC takes it: braked `RC_BRAKE_MS` (1 s), then it drives |
-| The RC has it; the stick enters the band | braked, and a new 1 s window. When it ends, the first to ask has the car: the stick leaving the band (the RC wins a tie), or the computer asking to move (armed, over `COMPUTER_ASKS_SPEED`, 0.05 m/s, or any throttle on the UART link) |
-| The computer won with the stick still out | `rc_hold`: the stick must come back to the band first |
-| Nobody asked | the RC keeps it, fully braked, until one does; the test mode may start |
+| The right stick down (`RightStick::Stop`) | the hard brake while held; in normal mode the RC takes the car |
+| The right stick up, steering centred (`RightStick::Give`), for `RC_GIVE_MS` (0.5 s) | normal mode: the computer has the car (it still needs arming). Manual: nothing |
+| After the stop, any other stop, at power-up, after the mode switch moves | the RC holds the car braked at least `RC_BRAKE_MS` (1 s), until the left stick leaves the zone it was in (`RcHold`); in normal mode the RC has the car |
+| The left stick up or back (`Pedal`) | drive that way at `max_speed` (1.0 m/s) or `max_reverse_speed` (0.5), ramped at `RC_ACCEL` (0.5 m/s²) |
+| The left stick in its middle | throttle off, no brake: the motor's own braking |
+| The left stick the other way while the car moves | throttle off; past 88 % (`RcInput::full`) the stop brake too. The new way once stopped: under `STANDSTILL_SPEED` for `RC_STOPPED_MS` (0.5 s); with no speed, the stop brake held `RC_BRAKE_MS` |
+| Normal mode, the left stick alone | never takes the car from the computer |
+| The RC has the car and asks nothing (held, or the left stick in its middle) | the test mode may start |
 
 ## The state machine (`fsm`)
 
@@ -56,7 +62,7 @@ The test mode (proposal 6.5): `Inputs::test_cmd` carries a `TestRequest`:
 
 | Rule | |
 |---|---|
-| Enter | `Exit`, then `Enter`; only while running, with no e-stop, no fault, no RC driving (manual, or normal's arbiter mid-window), the computer neither driving nor arming that tick, and the car still. An e-stop, a fault or a lost RC forgets the `Exit`: send it again |
+| Enter | `Exit`, then `Enter`; only while running, with no e-stop, no fault, no RC driving (manual, or the RC asking to move in normal mode), the computer neither driving nor arming that tick, and the car still. An e-stop, a fault or a lost RC forgets the `Exit`: send it again |
 | In it | one actuator per request, inside the limits; the throttle forward only, at most `TEST_MAX_THROTTLE` (0.15), with the brake off; otherwise throttle 0 and the stop brake |
 | No wheel speed | `Confidence::Degraded` (`SpeedFeedback::None`, today's `esp32-umod`): `Throttle` is refused and the car holds still, since the speed exit can never fire. `Brake` and `Steering` still work (`TestRequest::allowed`) |
 | Leave | on an `Exit`, an e-stop, a fault, a lost RC, the RC taking the car, faster than `TEST_MAX_SPEED` (0.5 m/s), or no request for 100 ms (`CMD_TIMEOUT`). Leaving always latches |
@@ -70,20 +76,19 @@ The speed is one more input; the state machine decides what it means.
 
 | What happens | The spine |
 |---|---|
-| E-stop, driver fault, the RC's left stick in its brake band while the RC drives | hard stop |
+| E-stop, driver fault, the RC's right stick pulled down | hard stop |
 | Lost commands (100 ms), including frozen or corrupted frames | hard stop, latched |
 | Lost RC (silent, or the failsafe's CH6 under 1050), in either RC position, and in normal with `rc_fitted` | hard stop, latched |
-| The RC changing between forward and reverse | braked until `RC_BRAKE_MS` (1 s) after the stick entered its band |
+| The RC changing between forward and reverse | throttle off until the car has stopped; past 88 % the stop brake too |
 | Lost wheel speed (300 ms, once a link has sent one) | hard stop, latched; `WHEEL_ENCODER` |
 | Past the trip speed: 1.25 m/s, or 0.75 backwards | throttle off and `overspeed_brake` (0.5) until under the limit, then it drives on; `OVERSPEED` |
 | Still over the limit `OVERSPEED_WINDOW_MS` (2 s) after tripping, speeding up or steady | hard stop, latched |
 
-Latched: the computer must disarm, then arm. RC direct has no arming, so after any stop
-(an e-stop, a driver fault, a lost RC or speed, an overspeed), at power-up and whenever the
-mode switch moves, it stays stopped until the stop is gone and the left stick is in its
-brake band (`rc_hold`; the e-stop and the driver fault since 7 Nov, the band and the mode
-switch since 21 Nov). The computer going silent still lets RC direct keep driving: its
-own input is fine.
+Latched: the computer must disarm, then arm. The RC has no arming, so after any stop
+(an e-stop, a driver fault, a lost RC or speed, an overspeed, the right stick's stop), at
+power-up and whenever the mode switch moves, it stays braked until the stop is gone, a
+second has passed and the left stick has left the zone it was in (`RcHold`, 22 Nov). The
+computer going silent still lets RC direct keep driving: its own input is fine.
 
 A link that has never sent a speed leaves the overspeed and lost-speed rules off
 (`SpeedReport`), as a Motor-Pi on an older frame version does. The speed only feeds these
@@ -101,7 +106,7 @@ rules: on `SpeedFeedback::None` the throttle stays open loop. `0.5` is a guess, 
 | | `SpineConfig` (and `default()`) | timeout 100 ms, `MAX_SPEED` (1.0 m/s), accel 1.5, decel 2.5 m/s², steering 0.6 rad/s... |
 | | `SpeedReport` | the speed a link sends: `Known(m/s)`, or `Unknown` |
 | | `DirectCmd` | an open-loop command (throttle, brake, steering), from the UART link |
-| | `RcInput`, `RcSwitch` | the sticks, -1..1; the mode switch: `Computer`, `ViaRos`, `Direct` |
+| | `RcInput`, `RcSwitch` | the sticks: throttle and steering -1..1, the left stick's `middle` and `full`, the right stick (`right`), `pedal()`; the mode switch: `Computer`, `ViaRos`, `Direct` |
 | | `SpeedFeedback` | `Wheel` (closed loop) or `None { full_throttle_speed }` (open loop) |
 | | `EstopSteering`, `RcGearBrake` | the types of two of the choices below: `Hold`, `Centre`; `SpeedZero`, `FullBrake` |
 | | `faults::*` | the fault bits, as `VehicleStatus.FAULT_*`; `faults::STOP` latches |
@@ -111,6 +116,7 @@ rules: on `SpeedFeedback::None` the throttle stays open loop. `0.5` is a guess, 
 | `fsm` | `Lifecycle`, `Safety`, `Authority`, `TestStage`, `Motion`, `Confidence`, `State` | the five regions above |
 | | `Overspeed`, `OVERSPEED_WINDOW_MS` | `Clear`, or `Slowing` since when; the 2 s it has |
 | | `Latch`, `TestRequest` (`allowed(confidence)`), `TEST_MAX_THROTTLE`, `TEST_MAX_SPEED`, `STANDSTILL_SPEED` | what Safety remembers; a test mode request, and whether this confidence lets it run; its limits |
+| | `RcOwner`, `RcHold`, `Pedal`, `RightStick`, `RC_BRAKE_MS`, `RC_GIVE_MS`, `RC_STOPPED_MS`, `RC_ACCEL` | the RC: who has the car in normal mode; the hold after a stop; the left stick's zones; the right stick; their times and the ramp |
 | | `Confidence::measures_speed()` | a wheel speed: the overspeed check and the test mode's speed exit work |
 | | `Incoming`, `Report` | what `decode_incoming` gives (`Estop`, `Drive`); what `decode_report` gives (`Feedback`, `Status`, `WheelSpeed`) |
 | | `FrameError` | `WrongLength`, `BadChecksum`, `UnknownId` |
@@ -145,7 +151,7 @@ Change one only with the team.
 | `ESTOP_STEERING` | `Hold`: on any stop, the wheels stay where they are | `Centre` |
 | `IDLE_BRAKE` | `0.0`: the brake lets go once the e-stop input clears | `1.0` |
 
-`RC_GEAR_BRAKE` went on 21 Nov, with the gear switch: the left stick's band is a hard stop.
+`RC_GEAR_BRAKE` went on 21 Nov, with the gear switch: the right stick's stop is the RC's hard stop (22 Nov).
 
 ## Invariants
 
@@ -169,8 +175,8 @@ Change one only with the team.
 - A lost RC signal in either RC position is a hard stop and latches (`RC_SIGNAL_LOST`). On
   normal, it is too when `SpineConfig::rc_fitted` (the ESP32); without a receiver (the
   bench, the simulators) a lost RC on normal changes nothing.
-- The RC never drives until its left stick has been in the brake band since the latest
-  stop, power-up or mode switch change (`rc_hold`).
+- The RC never drives until a second after the latest stop, power-up or mode switch
+  change, and until its left stick has left the zone it was in then (`RcHold`).
 - Throttle and brake are never both above zero.
 - Reverse never faster than `MAX_REVERSE_SPEED` (0.5 m/s), whoever drives.
   Open-loop UART commands too: with no wheel speed their reverse throttle is capped at
