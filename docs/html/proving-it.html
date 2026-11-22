@@ -7,7 +7,7 @@
 <!-- Generated from docs/proving-it.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Proving it: how the tests fit together</h1>
-<div class="meta">8 min read · 6 sections</div></header>
+<div class="meta">10 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -205,7 +205,75 @@ pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by h
 </tr>
 </tbody>
 </table></div>
-<p>The rungs are <code>tools/ladder/rungs.yaml</code>. A window for it is next (TODO 271).</p>
+<p>The rungs are <code>tools/ladder/rungs.yaml</code>.</p>
+<h3 id="the-window-pixi-run-ladder-window">The window: <code>pixi run ladder-window</code></h3>
+<pre class="highlight"><code class="language-bash">pixi run ladder-window               # the ladder, in a window (the first time: cargo builds Bevy)
+pixi run ladder-window --pretend     # sample data: nothing runs, nothing is recorded</code></pre>
+<p><img alt="The test ladder's window, pretend data" src="../img/ladder-window.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Shows</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>left: the ladder</td>
+<td>the top rung at the top; <strong>Simulator</strong> and <strong>The car</strong> side by side; each cell in words: PASS or FAIL with the date, not run, shut</td>
+<td>click a rung; hover a shut cell for why</td>
+</tr>
+<tr>
+<td>right: the rung</td>
+<td>what it measures, when it passes, the last result (date, commit, report, override), what shuts it</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Run in the simulator</strong></td>
+<td>on only when the simulator's side is open and has a command; else it says why</td>
+<td><code>pixi run ladder run &lt;rung&gt;</code>; one run at a time</td>
+</tr>
+<tr>
+<td>the console</td>
+<td>the run's last lines, "running...", how it ended</td>
+<td><strong>Stop</strong> ends the run and all it started</td>
+</tr>
+<tr>
+<td><strong>The car</strong></td>
+<td>its command as text, and "A person starts a car test from the terminal"</td>
+<td><strong>Copy</strong> only</td>
+</tr>
+<tr>
+<td><strong>Record by hand</strong></td>
+<td>pass or fail, simulator or car, a note, an override reason</td>
+<td><code>pixi run ladder record ...</code>; a refusal is shown in the tool's words</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The window never moves the car</td>
+<td>it has no control that starts a car test</td>
+</tr>
+<tr>
+<td>The tool is the only writer</td>
+<td>the window reads <code>ladder --json</code> every 2 s and after each action; every rule stays in <code>tools/ladder.py</code></td>
+</tr>
+<tr>
+<td>Closing the window stops its run</td>
+<td>no simulator is left behind</td>
+</tr>
+</tbody>
+</table></div>
+<p>The code: <code>ros/hud/aav_dev_window</code> (<code>src/ladder_window/</code>, and the logic in <code>crates/ladder-core</code>).</p>
 </section>
 <section class="card"><h2 id="the-rules-of-evidence">The rules of evidence</h2>
 <div class="table-wrap"><table>

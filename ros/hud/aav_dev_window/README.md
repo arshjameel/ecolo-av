@@ -35,6 +35,9 @@ simulator; the other choices are made at launch. The plan:
 | `src/map_edit/main.rs` | the map editor (`pixi run map-edit`, TODO 251): its own binary, `map_edit`; no ROS. The edits are the `map-edit` crate's ([docs/map-editor.md](../../../docs/map-editor.md)) |
 | `src/map_edit/tool.rs` | its tools: a drag into a box, an align drag or key: no Bevy, no egui, tested |
 | `src/map_edit/streets.rs` | its street map: the tiles round the map, read once (`map-core`) |
+| `src/ladder_window/main.rs` | the test ladder's window (`pixi run ladder-window`, TODO 271): its own binary, `ladder_window`; no ROS ([Proving it](../../../docs/proving-it.md#the-window-pixi-run-ladder-window)) |
+| `src/ladder_window/draw.rs` | its drawing, in egui: the ladder, the chosen rung, the console |
+| [`crates/ladder-core`](./crates/ladder-core/README.md) | its logic: the tool's JSON as types, each cell and button, the tool's commands, the run as a child: no Bevy, no egui, tested by `tools/test.sh` |
 
 It shares logic with the raylib screens: `debug-core` (the cubes' bands, the camera),
 `map-core` (map to screen and back), `hud-core` (a picture message into RGBA).
@@ -52,6 +55,8 @@ pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
 pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
 pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, their saved map
 pixi run map-edit bags/<drive>/map                         # the map editor: no ROS (docs/map-editor.md)
+pixi run ladder-window                                     # the test ladder: no ROS (docs/proving-it.md)
+pixi run ladder-window --pretend --seconds 5 --screenshot /tmp/ladder.png   # sample data, seen without a person
 ```
 
 The status strip says who is driving (19 Nov, TODO 247): **DRIVING: keyboard (90)**, from
@@ -175,6 +180,9 @@ from behind the car. The live window [before](../../../docs/img/dev-window-rings
 
 - `--live` also publishes `/hud/dev_window/heartbeat`: frames drawn, 10 Hz. Only sim's
   `watch_screens:=` reads it.
+- `ladder_window` starts `python3 tools/ladder.py` (`--json` every 2 s; `run <rung>`, the
+  simulator's twin only, and `record` on a press). It never writes the progress file, and
+  it has no control that starts a car test.
 - Opens a window. `--live` publishes `/goal_pose` and `/safety/estop` (only ever true), after
   every gate: developer mode, ROS kept on this computer, every sensor SIM. Behind the same
   gates it calls `/navigate_to_pose/_action/cancel_goal` (CANCEL THE GOAL: every goal, the navigator's or
@@ -190,4 +198,5 @@ pixi run dev-window --all-layers --seconds 12                # needs a screen
 pixi run dev-window --live --click-goal 14,0 --seconds 60    # a click and two presses, scripted
 ```
 
-`tools/test.sh` skips this folder, so Bevy doesn't slow every test run.
+`tools/test.sh` tests only `ladder-core` here (`cargo test -p ladder-core`), so Bevy
+doesn't slow every test run.
