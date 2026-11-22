@@ -221,7 +221,8 @@ document.querySelectorAll('svg[data-chart]').forEach(svg=>{
     let h='<b>'+c.x+': '+v.toFixed(1)+'</b>';
     c.series.forEach(s=>{const p=s.points.reduce((a,q)=>Math.abs(q[0]-v)<Math.abs(a[0]-v)?q:a);
       if(Math.abs(p[0]-v)<(c.x1-c.x0)/40)
-        h+='<br><i class="key" style="background:var(--'+s.key+')"></i>'+NAMES[s.key]+': '+p[1].toFixed(2)});
+        h+='<br><i class="key" style="background:var(--'+s.key+')"></i>'
+          +NAMES[s.key]+': '+p[1].toFixed(2)});
     tip.innerHTML=h;tip.style.display='block';tip.style.left=(e.pageX+14)+'px';tip.style.top=(e.pageY+10)+'px'});
   svg.addEventListener('mouseleave',off)});
 </script>
