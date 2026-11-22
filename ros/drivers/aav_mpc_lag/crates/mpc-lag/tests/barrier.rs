@@ -468,3 +468,55 @@ fn a_tick_with_a_barrier_fits_well_inside_the_period() {
     println!("a tick with a barrier: {mean:.2} ms mean, {worst:.1} ms worst");
     assert!(mean < 25.0, "{mean} ms");
 }
+
+/// Every tick of a few runs as CSV, for the graphs (`tools/barrier_graphs.py`):
+/// `AAV_BARRIER_OUT=<folder> cargo test --release -p mpc-lag --test barrier the_traces -- --ignored`.
+#[test]
+#[ignore = "writes CSV traces to $AAV_BARRIER_OUT"]
+fn the_traces() {
+    let Ok(out) = std::env::var("AAV_BARRIER_OUT") else {
+        println!("set AAV_BARRIER_OUT to a folder");
+        return;
+    };
+    let line = straight(40.0);
+    let cases = [
+        ("plain", None),
+        ("limit", with_gamma(1.0)),
+        ("g005", with_gamma(0.05)),
+        ("g002", with_gamma(0.02)),
+    ];
+    for (scene, object, cruise) in [
+        ("left_fast", OBJECTS[0], 3.0),
+        ("centre_slow", OBJECTS[1], 1.0),
+        ("centre_fast", OBJECTS[1], 3.0),
+    ] {
+        for (name, rules) in cases {
+            let run = drive(&line, object, rules, cruise, 0.0, 40.0);
+            let mut text = String::from("t,x,y,yaw,v,cross,h,gap\n");
+            for r in &run.rows {
+                let row: Vec<String> = r.iter().map(|v| format!("{v:.4}")).collect();
+                text.push_str(&row.join(","));
+                text.push('\n');
+            }
+            std::fs::write(format!("{out}/{scene}_{name}.csv"), text).expect("a file");
+        }
+    }
+    // A step: the car starts 1 m off the path, the object far away. With barriers on and
+    // nothing near, the answer to the step is the plain tracker's.
+    let far = Object {
+        x: 15.0,
+        y: 9.0,
+        radius: 0.5,
+    };
+    for (name, rules) in [("plain", None), ("g005", with_gamma(0.05))] {
+        let path: Vec<_> = line.iter().map(|&(x, _, h)| (x, 1.0, h)).collect();
+        let run = drive(&path, far, rules, 3.0, 0.0, 40.0);
+        let mut text = String::from("t,x,y,yaw,v,cross,h,gap\n");
+        for r in &run.rows {
+            let row: Vec<String> = r.iter().map(|v| format!("{v:.4}")).collect();
+            text.push_str(&row.join(","));
+            text.push('\n');
+        }
+        std::fs::write(format!("{out}/step_{name}.csv"), text).expect("a file");
+    }
+}
