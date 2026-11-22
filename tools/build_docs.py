@@ -183,6 +183,8 @@ PAGES = [
      'Models, feedforward, PI, LQR, LQI, MPC, MPPI, stability, the EKF: to learn from'),
     ('barriers.md', 'Barriers in the MPC',
      'Research: a control barrier function in the path follower, what it did, what it assumes'),
+    ('barriers-test-plan.md', 'Barriers: the test plan',
+     'Research: the claims, baselines, pass marks and repeats, rung by rung'),
     ('barriers-guide.md', 'Barriers: a walk-through',
      'Twelve steps with a pencil: a car, a wall, the rule, its proof, where it breaks'),
     ('barriers-survey.md', 'Barriers: the survey',
