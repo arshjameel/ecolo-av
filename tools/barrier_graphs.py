@@ -36,6 +36,7 @@ def load(folder, scene, every=2):
 
 
 def series(runs, x, y, keep=lambda r: True):
+    """Return each run as a line: column y against column x, the rows `keep` passes."""
     return [{'key': k, 'points': [[round(r[x], 3), round(r[y], 3)] for r in rows if keep(r)]}
             for k, rows in runs.items()]
 
@@ -53,6 +54,7 @@ def summary(runs):
 
 
 def build(folder):
+    """Return the page's graphs, from the CSVs in `folder`."""
     left, slow, fast = (load(folder, s) for s in ('left_fast', 'centre_slow', 'centre_fast'))
     step = load(folder, 'step', every=1)
     near = lambda r: 4.0 <= r['x'] <= 28.0  # noqa: E731
@@ -86,12 +88,12 @@ def build(folder):
     if len(step) == 2:
         a, b = step['plain'], step['g005']
         worst = max(abs(p['cross'] - q['cross']) for p, q in zip(a, b))
-        settle = next((r['t'] for r in a if all(abs(q['cross']) < 0.05 for q in a
-                                               if q['t'] >= r['t'])), None)
+        calm = [abs(r['cross']) < 0.05 for r in a]
+        settle = next((r['t'] for i, r in enumerate(a) if all(calm[i:])), None)
         charts.append(
             {'title': 'A step: the car starts 1 m off the path, nothing near',
              'note': f'With barriers on and no object near, the answer to a step is the '
-                     f'plain tracker\'s: the two differ by at most {worst * 1000:.0f} mm. '
+                     f"plain tracker's: the two differ by at most {worst * 1000:.0f} mm. "
                      f'Within 5 cm of the path after {settle:.1f} s.',
              'x': 'time (s)', 'y': 'off the path (m)',
              'series': series({'plain': a}, 't', 'cross', lambda r: r['t'] <= 15.0),
@@ -199,6 +201,7 @@ h2{font-size:1.15em;margin:0 0 .2em}p.note{color:var(--ink2);margin:.2em 0 .6em}
 svg{width:100%;height:auto;display:block}text{fill:var(--ink2);font-size:13px}
 .tip{position:absolute;background:var(--surface);border:1px solid var(--grid);padding:.3em .6em;
 border-radius:6px;font-size:14px;pointer-events:none;display:none;white-space:nowrap}
+.key{display:inline-block;width:.8em;height:.8em;margin-right:.4em}
 table{border-collapse:collapse;margin:.6em 0}td,th{border:1px solid var(--grid);
 padding:.3em .7em;text-align:left}details{margin-top:.4em}
 </style>
@@ -217,7 +220,8 @@ document.querySelectorAll('svg[data-chart]').forEach(svg=>{
     hair.setAttribute('x1',px);hair.setAttribute('x2',px);hair.setAttribute('visibility','visible');
     let h='<b>'+c.x+': '+v.toFixed(1)+'</b>';
     c.series.forEach(s=>{const p=s.points.reduce((a,q)=>Math.abs(q[0]-v)<Math.abs(a[0]-v)?q:a);
-      if(Math.abs(p[0]-v)<(c.x1-c.x0)/40)h+='<br><i style="display:inline-block;width:.8em;height:.8em;background:var(--'+s.key+');margin-right:.4em"></i>'+NAMES[s.key]+': '+p[1].toFixed(2)});
+      if(Math.abs(p[0]-v)<(c.x1-c.x0)/40)
+        h+='<br><i class="key" style="background:var(--'+s.key+')"></i>'+NAMES[s.key]+': '+p[1].toFixed(2)});
     tip.innerHTML=h;tip.style.display='block';tip.style.left=(e.pageX+14)+'px';tip.style.top=(e.pageY+10)+'px'});
   svg.addEventListener('mouseleave',off)});
 </script>
@@ -225,6 +229,7 @@ document.querySelectorAll('svg[data-chart]').forEach(svg=>{
 
 
 def main(argv):
+    """Write the page: `barrier_graphs.py <the CSVs' folder> <out.html>`."""
     if len(argv) != 3:
         print(__doc__)
         return 2
