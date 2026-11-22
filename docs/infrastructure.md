@@ -237,6 +237,31 @@ failure there doesn't fail the night yet (`continue-on-error`).
 Gazebo's step went with Gazebo (16 Nov): its last nights in [Gazebo, as it
 was](history/gazebo-as-it-was.md).
 
+### CI's caches
+
+Every run starts on a clean computer. Three caches carry builds from one run to the next,
+each saved under a key made from `pixi.lock` (and every `Cargo.lock` for the Rust two):
+
+| Cache | Holds | Saved |
+|---|---|---|
+| `pixi-pkgs-*` | the packages Pixi installs: ROS, Python, the compilers | after a run that passes |
+| `rust-*` | cargo's downloads; what `pixi run build` compiles (`build/*/target`) | straight after the build, even if a test fails later |
+| `rust-tests-*` | what `tools/test.sh` compiles: every Rust workspace in one folder, `target/tests`, so their libraries compile once; with no debug info (`CARGO_PROFILE_DEV_DEBUG=0`), to keep it small | after the tests, even if one fails |
+
+A key is saved once: a new `Cargo.lock` or `pixi.lock` starts a new cache, from the newest
+older one. A pull request reads `main`'s caches, but what it saves only its own later runs
+see. GitHub keeps 10 GB for the repo and drops the oldest past that.
+
+The cache only saves compiling: every test still runs, every time. cargo rebuilds what
+changed by itself. **To clear one**, when CI fails with a link error a laptop doesn't
+have (a build script's saved answer gone stale, like `rclrs`'s on 20 Nov):
+`gh cache list --repo AAV-2025-2026/ecolo-av`, then `gh cache delete <key>`, or the
+repo's Actions tab, Caches. The next run builds that part cold.
+
+On a laptop, `tools/test.sh` uses `target/tests` too (set `CARGO_TARGET_DIR` to put it
+elsewhere). The `target/` folders it used before, inside each `ros/` workspace and in
+`firmware/spine/`, can be deleted by hand.
+
 ### Reading a CI failure without signing in
 
 A job's log needs a GitHub sign-in. Its **annotations** don't: when the test step fails,
