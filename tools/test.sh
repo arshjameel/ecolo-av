@@ -10,6 +10,27 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTHONDONTWRITEBYTECODE=1
+# The Rust: every workspace below with no cargo settings of its own builds in one folder,
+# target/tests, so the libraries they share compile once, not once each (CI caches it:
+# rust-tests-* in .github/workflows/test.yml). A CARGO_TARGET_DIR already set wins. The
+# board programs keep their own folders (below): they cross-compile, with settings of their
+# own, and their programs are read from there.
+export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$PWD/target/tests}
+
+# Each section's time, in the log, so it shows where the minutes go (bash 3.2's SECONDS).
+section_name=''
+section_start=0
+section_time() {
+  if [[ -n $section_name ]]; then
+    echo "   ($section_name: $((SECONDS - section_start)) s)"
+  fi
+}
+section() {
+  section_time
+  section_name=${1%%:*}
+  section_start=$SECONDS
+  echo "== $1"
+}
 # Tests never reach the network: no car on the same WiFi hears them, and on GitHub's Macs
 # a test's ROS program that used multicast never ended (Cyclone DDS, TODO 42).
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
@@ -27,119 +48,119 @@ for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/ca
            ros/perception/aav_voxels \
            ros/safety/aav_safety ros/safety/aav_ghost \
            ros/sim/aav_bench; do
-  echo "== $pkg"
+  section "$pkg"
   (cd "$pkg" && python3 -m pytest -q -p no:cacheprovider)
 done
 
-echo "== tools: the MCP server's parts, the Pico 2's UF2 converter, CI's annotations"
+section "tools: the MCP server's parts, the Pico 2's UF2 converter, CI's annotations"
 python3 -m pytest -q -p no:cacheprovider tools/tests
 
-echo "== firmware/spine"
+section "firmware/spine"
 if command -v cargo >/dev/null; then
   (cd firmware/spine && cargo test -q)
-  echo "== ros/sources/aav_imu_yahboom: the IMU's serial frames"
+  section "ros/sources/aav_imu_yahboom: the IMU's serial frames"
   (cd ros/sources/aav_imu_yahboom && cargo test -q -p yahboom-protocol)
-  echo "== ros/perception/aav_radar_clusters: DBSCAN, the boxes, the C++ node's answers"
+  section "ros/perception/aav_radar_clusters: DBSCAN, the boxes, the C++ node's answers"
   (cd ros/perception/aav_radar_clusters && cargo test -q --locked -p radar-clustering)
-  echo "== ros/perception/aav_voxels_rs: the cubes in Rust, the Python's answers"
+  section "ros/perception/aav_voxels_rs: the cubes in Rust, the Python's answers"
   (cd ros/perception/aav_voxels_rs && cargo test -q --locked -p voxels)
-  echo "== ros/perception/aav_lidar_rs: the flat scan in Rust, the Python's ranges"
+  section "ros/perception/aav_lidar_rs: the flat scan in Rust, the Python's ranges"
   (cd ros/perception/aav_lidar_rs && cargo test -q --locked -p lidar-scan)
-  echo "== ros/perception/aav_things_rs: the things in Rust, the Python modules' answers"
+  section "ros/perception/aav_things_rs: the things in Rust, the Python modules' answers"
   (cd ros/perception/aav_things_rs && cargo test -q --locked -p things-core)
-  echo "== ros/perception/aav_lane_finder_rs: the lane finder in Rust, the Python's lanes on the same pictures"
+  section "ros/perception/aav_lane_finder_rs: the lane finder in Rust, the Python's lanes on the same pictures"
   (cd ros/perception/aav_lane_finder_rs && cargo test -q --locked -p lane-core)
-  echo "== ros/perception/aav_lane_finder_learned: the learned lane finder's maths (crop as Pillow, decode, ground, lane)"
+  section "ros/perception/aav_lane_finder_learned: the learned lane finder's maths (crop as Pillow, decode, ground, lane)"
   (cd ros/perception/aav_lane_finder_learned && cargo test -q --locked -p ufld-core)
-  echo "== ros/sources/aav_camera_stream_rs: the camera stream in Rust, the Python modules' answers"
+  section "ros/sources/aav_camera_stream_rs: the camera stream in Rust, the Python modules' answers"
   (cd ros/sources/aav_camera_stream_rs && cargo test -q --locked -p stream-core)
-  echo "== ros/perception/aav_detector_rs: the detector's maths in Rust (resize, decode, labels)"
+  section "ros/perception/aav_detector_rs: the detector's maths in Rust (resize, decode, labels)"
   (cd ros/perception/aav_detector_rs && cargo test -q --locked -p detector-core)
-  echo "== ros/ego/aav_ego_rs: ego and look_ahead in Rust, the Python modules' answers"
+  section "ros/ego/aav_ego_rs: ego and look_ahead in Rust, the Python modules' answers"
   (cd ros/ego/aav_ego_rs && cargo test -q --locked -p ego-core)
-  echo "== ros/drivers/aav_behaviour_rs: the behaviour planner in Rust, the Python modules' answers"
+  section "ros/drivers/aav_behaviour_rs: the behaviour planner in Rust, the Python modules' answers"
   (cd ros/drivers/aav_behaviour_rs && cargo test -q --locked -p behaviour-core)
-  echo "== ros/safety/aav_watchdog_rs: the sensor watchdog in Rust, the Python node's answers"
+  section "ros/safety/aav_watchdog_rs: the sensor watchdog in Rust, the Python node's answers"
   (cd ros/safety/aav_watchdog_rs && cargo test -q --locked -p watchdog-core)
-  echo "== ros/safety/aav_self_test_rs: the boot self-test's checks and verdict (TODO 255)"
+  section "ros/safety/aav_self_test_rs: the boot self-test's checks and verdict (TODO 255)"
   (cd ros/safety/aav_self_test_rs && cargo test -q --locked -p self-test-core)
-  echo "== ros/io_mux/aav_io_mux_rs: the sensor mux and the output mux in Rust, the Python's answers"
+  section "ros/io_mux/aav_io_mux_rs: the sensor mux and the output mux in Rust, the Python's answers"
   (cd ros/io_mux/aav_io_mux_rs && cargo test -q --locked -p io-mux-core)
-  echo "== ros/localization/aav_localization_health_rs: localization_health in Rust, the Python's answers"
+  section "ros/localization/aav_localization_health_rs: localization_health in Rust, the Python's answers"
   (cd ros/localization/aav_localization_health_rs && cargo test -q --locked -p health-core)
-  echo "== ros/localization/aav_kinematic_icp: lidar odometry for a car, synthetic scans"
+  section "ros/localization/aav_kinematic_icp: lidar odometry for a car, synthetic scans"
   (cd ros/localization/aav_kinematic_icp && cargo test -q --locked -p kinematic-icp)
-  echo "== ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
+  section "ros/can_bridge/aav_spine_bridge: the Rust CAN bridge's logic, the shared CAN vectors"
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
-  echo "== ros/can_bridge/aav_legacy_rs: the Rust UART bridge's logic, the Python modules' answers"
+  section "ros/can_bridge/aav_legacy_rs: the Rust UART bridge's logic, the Python modules' answers"
   (cd ros/can_bridge/aav_legacy_rs && cargo test -q --locked -p legacy-bridge)
-  echo "== ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
+  section "ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
-  echo "== ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
+  section "ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
   (cd ros/safety/aav_joy_alive_rs && cargo test -q --locked -p joy-alive-core)
-  echo "== ros/safety/aav_safety_rs: the geofence, stop hold and leash in Rust, the Python's answers"
+  section "ros/safety/aav_safety_rs: the geofence, stop hold and leash in Rust, the Python's answers"
   (cd ros/safety/aav_safety_rs && cargo test -q --locked -p safety-core)
-  echo "== ros/localization/aav_gps_heading_rs: the GPS heading in Rust, course.py's answers"
+  section "ros/localization/aav_gps_heading_rs: the GPS heading in Rust, course.py's answers"
   (cd ros/localization/aav_gps_heading_rs && cargo test -q --locked -p gps-heading-core)
-  echo "== ros/command_mux/aav_mux_state: who is driving, by twist_mux's rule and files"
+  section "ros/command_mux/aav_mux_state: who is driving, by twist_mux's rule and files"
   (cd ros/command_mux/aav_mux_state && cargo test -q --locked -p mux-state-core)
-  echo "== ros/perception/aav_stop_sign_rs: stop_sign_watcher's rules in Rust, stop_sign.py's answers"
+  section "ros/perception/aav_stop_sign_rs: stop_sign_watcher's rules in Rust, stop_sign.py's answers"
   (cd ros/perception/aav_stop_sign_rs && cargo test -q --locked -p stop-sign-core)
-  echo "== ros/drivers/aav_drive_to_point_rs: the point driver in Rust, the Python modules' answers"
+  section "ros/drivers/aav_drive_to_point_rs: the point driver in Rust, the Python modules' answers"
   (cd ros/drivers/aav_drive_to_point_rs && cargo test -q --locked -p point-core)
-  echo "== ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
+  section "ros/bringup/aav_description/car-model: the car model's Rust twin, the shared vectors"
   (cd ros/bringup/aav_description/car-model && cargo test -q --locked)
-  echo "== ros/bringup/aav_description/cloud-view: a PointCloud2's bytes, shared (TODO 176)"
+  section "ros/bringup/aav_description/cloud-view: a PointCloud2's bytes, shared (TODO 176)"
   (cd ros/bringup/aav_description/cloud-view && cargo test -q --locked)
-  echo "== ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
+  section "ros/bringup/aav_description/map-chunks: the map's fixed 64 m chunks (TODO 175)"
   (cd ros/bringup/aav_description/map-chunks && cargo test -q --locked)
-  echo "== ros/bringup/aav_description/map-edit: the map editor's edits, saves and layers (TODO 251)"
+  section "ros/bringup/aav_description/map-edit: the map editor's edits, saves and layers (TODO 251)"
   (cd ros/bringup/aav_description/map-edit && cargo test -q --locked)
-  echo "== ros/bringup/aav_description/lanelet-map: Lanelet2 maps in Rust (TODO 175)"
+  section "ros/bringup/aav_description/lanelet-map: Lanelet2 maps in Rust (TODO 175)"
   (cd ros/bringup/aav_description/lanelet-map && cargo test -q --locked)
-  echo "== ros/safety/aav_stop_zone: the stop zone's decision in Rust (TODO 182)"
+  section "ros/safety/aav_stop_zone: the stop zone's decision in Rust (TODO 182)"
   (cd ros/safety/aav_stop_zone && cargo test -q --locked -p stop-zone)
-  echo "== ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
+  section "ros/localization/aav_ndt: NDT's maths, the filters, LOST; the design's checks"
   (cd ros/localization/aav_ndt && cargo test -q --locked -p ndt-core)
-  echo "== ros/localization/aav_pose_check: NDT leads, the GPS checks; who is wrong; the seed"
+  section "ros/localization/aav_pose_check: NDT leads, the GPS checks; who is wrong; the seed"
   (cd ros/localization/aav_pose_check && cargo test -q --locked -p pose-check-core)
-  echo "== ros/localization/aav_amcl_rs: AMCL's filter: a near guess, a kidnap, KLD's bounds"
+  section "ros/localization/aav_amcl_rs: AMCL's filter: a near guess, a kidnap, KLD's bounds"
   (cd ros/localization/aav_amcl_rs && cargo test -q --locked -p amcl-core)
-  echo "== ros/sim/aav_simulator: Ravensim's core: the car, the rays, the worlds, the camera lockstep"
+  section "ros/sim/aav_simulator: Ravensim's core: the car, the rays, the worlds, the camera lockstep"
   (cd ros/sim/aav_simulator && cargo test -q --locked -p sim-core --features shared)
-  echo "== ros/sim/aav_spine_sim: bench mode's car: the spine's real logic on a model car"
+  section "ros/sim/aav_spine_sim: bench mode's car: the spine's real logic on a model car"
   (cd ros/sim/aav_spine_sim && cargo test -q --locked -p bench-car)
   # The closed-loop runs (tests/closed_loop.rs) are the slowest Rust tests we have. Inside
   # `pixi run test` (AAV_COLCON_TEST_FOLLOWS=1), colcon test runs the whole crate again in
   # release, so they run once, there; alone, tools/test.sh runs them too (TODO 209).
   if [[ ${AAV_COLCON_TEST_FOLLOWS:-0} == 1 ]]; then
-    echo "== ros/drivers/aav_mppi_lag: MPPI with the lag, its critics (closed loop: in colcon test)"
+    section "ros/drivers/aav_mppi_lag: MPPI with the lag, its critics (closed loop: in colcon test)"
     (cd ros/drivers/aav_mppi_lag && cargo test -q --locked -p mppi-lag --features shared \
        --lib --test bag --test map_correction)
   else
-    echo "== ros/drivers/aav_mppi_lag: MPPI with the lag, its critics, the closed-loop runs"
+    section "ros/drivers/aav_mppi_lag: MPPI with the lag, its critics, the closed-loop runs"
     (cd ros/drivers/aav_mppi_lag && cargo test -q --locked -p mppi-lag --features shared)
   fi
-  echo "== ros/drivers/aav_mpc_lag: the lag-aware MPC in Rust, against the Python's vectors; closed loop"
+  section "ros/drivers/aav_mpc_lag: the lag-aware MPC in Rust, against the Python's vectors; closed loop"
   (cd ros/drivers/aav_mpc_lag && cargo test -q --locked -p mpc-lag)
-  echo "== ros/drivers/aav_costmap: our own costmap's layers and hand-made scenes"
+  section "ros/drivers/aav_costmap: our own costmap's layers and hand-made scenes"
   (cd ros/drivers/aav_costmap && cargo test -q --locked -p costmap)
-  echo "== ros/drivers/aav_planner: our own planner's curves and hand-made maps"
+  section "ros/drivers/aav_planner: our own planner's curves and hand-made maps"
   (cd ros/drivers/aav_planner && cargo test -q --locked -p lattice-planner)
-  echo "== ros/drivers/aav_navigator: our own navigator's goals against a pretend planner and follower"
+  section "ros/drivers/aav_navigator: our own navigator's goals against a pretend planner and follower"
   (cd ros/drivers/aav_navigator && cargo test -q --locked -p navigator)
-  echo "== ros/drivers/aav_smoother: our own velocity smoother, for a car"
+  section "ros/drivers/aav_smoother: our own velocity smoother, for a car"
   (cd ros/drivers/aav_smoother && cargo test -q --locked -p car-smoother)
   # Only the logic: the window (raylib) needs a screen's libraries, and colcon builds it.
-  echo "== ros/hud/aav_hud: the HUD's state, GPS, e-stop and formatting; the map's maths; the hardware panel's buttons"
+  section "ros/hud/aav_hud: the HUD's state, GPS, e-stop and formatting; the map's maths; the hardware panel's buttons"
   (cd ros/hud/aav_hud && cargo test -q --locked -p hud-core -p map-core -p debug-core -p panel-core)
   # Only the logic: the pictures need Bevy and a GPU (cargo test --release there).
-  echo "== ros/sim/aav_sim_cameras: the simulator's cameras: lenses, camera_info, mounts, rates"
+  section "ros/sim/aav_sim_cameras: the simulator's cameras: lenses, camera_info, mounts, rates"
   (cd ros/sim/aav_sim_cameras && cargo test -q --locked -p camera-core)
   # The Rust API Guidelines' tools: rustfmt on every crate (the ROS nodes too: it needs no
   # build), clippy with warnings as errors on the crates above. The rclrs node crates need
   # ROS's generated messages, so clippy can't build them here.
-  echo "== Rust style: cargo fmt --check everywhere, cargo clippy -D warnings on the logic"
+  section "Rust style: cargo fmt --check everywhere, cargo clippy -D warnings on the logic"
   rust_style() {
     local dir=$1; shift
     (cd "$dir" && cargo fmt --all --check \
@@ -192,7 +213,7 @@ if command -v cargo >/dev/null; then
   echo "clean"
   # Every firmware crate must build without the standard library, for the Pico 2's chip.
   if [[ -d "$(rustc --print target-libdir --target thumbv8m.main-none-eabihf 2>/dev/null)" ]]; then
-    echo "== firmware/spine, no_std, for the Pico 2 (thumbv8m.main-none-eabihf)"
+    section "firmware/spine, no_std, for the Pico 2 (thumbv8m.main-none-eabihf)"
     (cd firmware/spine && cargo build -q --target thumbv8m.main-none-eabihf -p spine-core \
        -p aav-inputs -p wheel-encoder -p sentinel -p wheel-core -p legacy-link -p jrk-g2 \
        -p ad5311 -p pca9555 -p mcp2515 -p ibus -p hd44780 -p spine-board -p adaptive-brake \
@@ -203,23 +224,24 @@ if command -v cargo >/dev/null; then
     for board in pico2:spine-pico2 wheel-encoder-pico2:wheel-encoder-pico2 \
                  sentinel-pico2:sentinel-pico2; do
       dir=${board%%:*} bin=${board##*:}
-      echo "== firmware/spine/boards/$dir: a board program, for the Pico 2"
-      (cd "firmware/spine/boards/$dir" && cargo build -q --release --locked && echo "builds")
+      section "firmware/spine/boards/$dir: a board program, for the Pico 2"
+      (unset CARGO_TARGET_DIR; cd "firmware/spine/boards/$dir" \
+         && cargo build -q --release --locked && echo "builds")
       python3 tools/elf2uf2.py \
         "firmware/spine/boards/$dir/target/thumbv8m.main-none-eabihf/release/$bin"
     done
   fi
   # Today's ESP32 control board: only with Espressif's Xtensa Rust (pixi run esp tools).
-  echo "== firmware/spine/boards/esp32-umod: the spine on today's ESP32 control board"
-  tools/esp32.sh check
+  section "firmware/spine/boards/esp32-umod: the spine on today's ESP32 control board"
+  (unset CARGO_TARGET_DIR; tools/esp32.sh check)
   # The same firmware in Espressif's QEMU (pixi run esp qemu-tools): the heartbeat check.
-  echo "== the ESP32 firmware in QEMU: it brakes when the Orin's heartbeat stops"
-  tools/esp32.sh qemu-check
+  section "the ESP32 firmware in QEMU: it brakes when the Orin's heartbeat stops"
+  (unset CARGO_TARGET_DIR; tools/esp32.sh qemu-check)
 else
   echo "skipped: no cargo here (pixi run test has it; or install Rust with rustup)"
 fi
 
-echo "== the stand-ins stay on this computer"
+section "the stand-ins stay on this computer"
 # turtle, sim, bench and view must never meet a real car on the same network and domain.
 python3 - <<'PY'
 import re
@@ -271,7 +293,7 @@ got=$(ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET PATH="$stub:$PATH" tools/actuator_tes
 [[ "$got" == SUBNET* ]] || { echo "tools/actuator_test.sh (the car) went local: $got"; exit 1; }
 echo "they do"
 
-echo "== the car kit's scripts (docs/car-install.md)"
+section "the car kit's scripts (docs/car-install.md)"
 for s in tools/car_kit.sh tools/car_install.sh tools/car_listen.sh tools/car_screen.sh \
          tools/car_screens_install.sh; do bash -n "$s"; done
 # Away from a kit, the installer must stop at its checks, and say it changed nothing.
@@ -282,21 +304,23 @@ fi
 AAV_PREFIX=/nonexistent bash tools/car_listen.sh > /dev/null
 echo "they parse, the installer refuses cleanly, and car_listen runs"
 
-echo "== vendor/ stays out of the build"
+section "vendor/ stays out of the build"
 # Without COLCON_IGNORE, pixi run build would try to build all of ROS 2's source.
 [[ -f vendor/COLCON_IGNORE ]] || { echo "vendor/COLCON_IGNORE is missing"; exit 1; }
 python3 -c "import glob, yaml; [yaml.safe_load(open(f))['repositories'] for f in glob.glob('vendor/*.repos')]"
 echo "it does"
 
-echo "== the MCP server, over stdio, as an AI app starts it"
+section "the MCP server, over stdio, as an AI app starts it"
 if [[ -d .pixi/envs/mcp ]] && command -v pixi >/dev/null; then
   pixi run --frozen -e mcp python3 tools/tests/mcp_smoke.py
 else
   echo "skipped: the mcp environment isn't installed (pixi install -e mcp)"
 fi
 
-echo "== docs/interfaces.md"
+section "docs/interfaces.md"
 python3 tools/gen_interfaces_md.py --check && echo "in sync"
 
-echo "== docs/codemap.md"
+section "docs/codemap.md"
 python3 tools/codemap.py --check && echo "in sync"
+section_time
+echo "tools/test.sh: $SECONDS s in all"
