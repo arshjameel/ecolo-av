@@ -4,7 +4,9 @@
 
 `point_driver` and `drive_to_point` in Rust (rclrs): the **default** since 18 Nov, in
 place of `aav_drive_to_point`'s Python ones. The same node name, action, topics, QoS and
-parameters. `drive_to_point_impl:=python` falls back.
+parameters. The only ones since 22 Nov, when the Python node and client were removed
+(tag `save/python-fallbacks-1`); `aav_drive_to_point` keeps the launch file, the config and
+the Python maths.
 
 ```
 pixi run drive-to-point ─/drive_to_point─> point_driver ─/drivers/point/cmd_vel─> twist_mux (25)
@@ -20,12 +22,8 @@ pixi run drive-to-point ─/drive_to_point─> point_driver ─/drivers/point/cm
 
 The node, its parameters and rules: `aav_drive_to_point`'s README. `drive_to_point.launch.py`
 starts it (`drive_to_point_impl:=rust`, the default); `sim.launch.py`, `bench.launch.py` and
-`car.launch.py` pass the switch on. `tools/drive_to_point.sh` runs this client
-(`--python` for the Python one).
-
-| Switch | `rust` (the default) | `python` (the fall-back) |
-|---|---|---|
-| `drive_to_point_impl` | this package's `point_driver` | `aav_drive_to_point`'s |
+`car.launch.py` pass the switch on (`rust` only: a challenger's hook).
+`tools/drive_to_point.sh` runs this client.
 
 ## Invariants
 

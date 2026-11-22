@@ -2,7 +2,19 @@
 
 Drive to one point B and stop there smoothly (`docs/a-to-b.md`). `point_driver` is an
 action server (`/drive_to_point`); `drive_to_point` is its command-line client
-(`pixi run drive-to-point`). B is a GPS point (lat/lon) or a map point (x, y). B is where
+(`pixi run drive-to-point`). Both run in Rust:
+[`aav_drive_to_point_rs`](../aav_drive_to_point_rs/README.md). This package holds the
+launch file, the config and the maths in Python. Its Python node and client were removed
+on 22 Nov 2026 (Ben: "lets start removing the python fall back after being tested enough times"; git tag `save/python-fallbacks-1`).
+
+| Here | What |
+|---|---|
+| `launch/drive_to_point.launch.py` | starts the Rust `point_driver` |
+| `config/drive_to_point.yaml` | its parameters |
+| `approach.py`, `line.py` | maths `aav_track` imports |
+| `drive.py`, `rules.py`, `run.py` | the rest of the maths: the Rust's yardstick (`gen_vectors.py`) |
+
+ B is a GPS point (lat/lon) or a map point (x, y). B is where
 `base_link`, the ground under the rear axle, stops. Forward only. Called `aav_goto`
 (node `goto_driver`, action `/goto`, slot `goto`) until 26 Oct 2026.
 
@@ -28,12 +40,9 @@ pixi run drive-to-point --lat 45.38630 --lon -75.69580  # the real car: asks you
 
 **`point_driver`**: `ros2 launch aav_drive_to_point drive_to_point.launch.py [use_sim_time:=false] [watchdog:=true] [drive_to_point_impl:=rust]`
 
-| Switch | `rust` (the default since 18 Nov) | `python` (the fall-back) |
-|---|---|---|
-| `drive_to_point_impl` | [`aav_drive_to_point_rs`](../aav_drive_to_point_rs/README.md)'s `point_driver` | this package's |
-| `tools/drive_to_point.sh` (`pixi run drive-to-point`) | its `drive_to_point` | `--python`: this package's `point_cli` |
-
-The same node name, action, topics, parameters and answers: the Rust replays this package's modules' vectors.
+`drive_to_point_impl:=` takes `rust` only (a challenger's hook). `tools/drive_to_point.sh`
+(`pixi run drive-to-point`) runs the Rust client. The Rust replays this package's modules'
+vectors.
 
 | Item | What |
 |---|---|
@@ -68,11 +77,11 @@ Parameters (`config/drive_to_point.yaml`; `max_brake`, `wheelbase`, `max_steerin
 | `max_off_line`, `max_overrun` | 3.0 m, 2.0 m | the drive's corridor (`line.Fence`): either side of the line to B; past B |
 | `rate_hz` | 50 Hz | command rate |
 
-**`drive_to_point`** (`point_cli.py`; `tools/drive_to_point.sh`): `--lat/--lon`, `--x/--y`, or `--ahead [--left]`;
+**`drive_to_point`** (`aav_drive_to_point_rs`; `tools/drive_to_point.sh`): `--lat/--lon`, `--x/--y`, or `--ahead [--left]`;
 `--speed`; `--sim` (this computer only, the simulator's clock). Reads `/system/source` and
 `/localization/odom/global`; calls `/drive_to_point`. Ctrl-C cancels the goal.
 
-Modules (all but the two nodes have no ROS):
+Modules (none has ROS):
 
 | Module | Holds |
 |---|---|
@@ -81,7 +90,6 @@ Modules (all but the two nodes have no ROS):
 | `drive.py` | `Drive`, `Steering`, `Command`: speed and steering together, one tick |
 | `rules.py` | `check_numbers`, `refuse_start`, `refuse_target`, `refuse_outside` (the geofence), `stop_reason`, `not_moving`, `tolerance`, `confirmed` |
 | `run.py` | `plan` (ego's caps), `Run.tick` (one tick: stops, limits, the corridor, the end), `Run.outcome` (the result) |
-| `point_driver.py`, `point_cli.py` | the action server and its client |
 
 ## Invariants
 
@@ -109,6 +117,8 @@ Modules (all but the two nodes have no ROS):
 - Map frame: x east, y north; metres, radians, seconds; + left.
 
 ## Side Effects
+
+The Rust node's:
 
 - Publishes `/drivers/point/cmd_vel` while a goal runs; action feedback and result.
 - Calls `/fromLL` and ego's parameter service. No files, no hardware.

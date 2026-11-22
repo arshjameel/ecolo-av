@@ -3,23 +3,13 @@
 <package format="3">
   <name>aav_drive_to_point</name>
   <version>0.1.0</version>
-  <description>Drive-to-point driver: a DriveToPoint action server that drives to one GPS or map point and stops there, slowing down by the distance left at half the measured braking, publishing /drivers/point/cmd_vel. And its command line client.</description>
+  <description>Drive to one GPS or map point and stop there: the launch file (drive_to_point.launch.py), the config (drive_to_point.yaml) and the maths in Python with no ROS (approach.py, line.py, drive.py, rules.py, run.py; aav_track imports the first two). The action server point_driver and its client are aav_drive_to_point_rs's; the Python ones were removed on 22 Nov 2026.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>rcl_interfaces</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>geographic_msgs</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>robot_localization</exec_depend>
-  <exec_depend>aav_interfaces</exec_depend>
   <exec_depend>aav_description</exec_depend>
   <exec_depend>aav_actuator_tests</exec_depend>
-  <exec_depend>aav_safety</exec_depend>
-  <!-- drive_to_point.launch.py starts the Rust point_driver by default. -->
+  <!-- drive_to_point.launch.py starts the Rust point_driver (the only one). -->
   <exec_depend>aav_drive_to_point_rs</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>launch</exec_depend>

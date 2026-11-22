@@ -253,8 +253,9 @@ def generate_launch_description():
                                           'the goal leash'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
-                              description='rust or python: which point_driver drives to a '
-                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
+                              description='rust (aav_drive_to_point_rs; the Python '
+                                          'removed 22 Nov): which point_driver drives to '
+                                          'a point'),
         DeclareLaunchArgument('arm_when_open_impl',
                               default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
                               description='rust: arm_when_open, which arms the spine '

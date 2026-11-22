@@ -858,8 +858,9 @@ def generate_launch_description():
                                           'which lidar_scan flattens the lidar'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
-                              description='rust or python: which point_driver drives to a '
-                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
+                              description='rust (aav_drive_to_point_rs; the Python '
+                                          'removed 22 Nov): which point_driver drives to '
+                                          'a point'),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust (aav_lane_finder_rs; the Python removed '

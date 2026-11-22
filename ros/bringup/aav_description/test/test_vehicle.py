@@ -1158,12 +1158,13 @@ def test_stop_sign_impl_is_rust():
         vehicle.check_stop_sign_impl('c')
 
 
-def test_drive_to_point_and_arm_when_open_impls_are_python_or_rust():
+def test_drive_to_point_and_arm_when_open_impls_are_rust():
     assert vehicle.DEFAULT_DRIVE_TO_POINT_IMPL == vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL == 'rust'
-    assert vehicle.DRIVE_TO_POINT_IMPLS == {'python': 'aav_drive_to_point',
-                                            'rust': 'aav_drive_to_point_rs'}
+    assert vehicle.DRIVE_TO_POINT_IMPLS == {'rust': 'aav_drive_to_point_rs'}
     assert vehicle.ARM_WHEN_OPEN_IMPLS == {'rust': 'aav_spine_bridge'}
-    assert vehicle.check_drive_to_point_impl(' Python ') == 'python'
+    assert vehicle.check_drive_to_point_impl(' Rust ') == 'rust'
+    with pytest.raises(ValueError, match='drive_to_point_impl:=python'):
+        vehicle.check_drive_to_point_impl('python')
     assert vehicle.check_arm_when_open_impl('rust') == 'rust'
     with pytest.raises(ValueError, match='drive_to_point_impl:=c'):
         vehicle.check_drive_to_point_impl('c')

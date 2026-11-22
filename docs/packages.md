@@ -32,8 +32,8 @@ each one's README has its topics.
 | `aav_rc` | drivers | the RC transmitter, on "RC via ROS", as a driver (priority 95, proposed) | built 24 Oct; off until the hardware lead confirms the wire (H9) | new |
 | `aav_actuator_tests` | drivers | the stage 3-4 tests, as a driver (priority 60) | [[works]] Gazebo; [[untested]] on the car | new |
 | `aav_scripted` | drivers | scripted drives: speed up, hold, slow down | [[works]] turtle and the bench | new |
-| `aav_drive_to_point` | drivers | drive to one GPS or map point B, and stop there smoothly | [[works]] in Gazebo (15 Oct); [[untested]] on the car | new |
-| `aav_drive_to_point_rs` | drivers | `point_driver` and `drive_to_point` in Rust, the default (18 Nov; `drive_to_point_impl:=python` falls back) | [[works]] the Python's numbers on shared vectors; [[untested]] on the car | new: a port of `aav_drive_to_point` |
+| `aav_drive_to_point` | drivers | the point driver's launch file, config and Python maths (its Python node and client removed 22 Nov) | [[works]] in Gazebo (15 Oct); [[untested]] on the car | new |
+| `aav_drive_to_point_rs` | drivers | `point_driver` and `drive_to_point` in Rust, the default (18 Nov; the Python removed 22 Nov): drive to one GPS or map point B, and stop there smoothly | [[works]] the Python's numbers on shared vectors; [[untested]] on the car | new: a port of `aav_drive_to_point` |
 | `aav_language` | drivers | plain English: a local model plans drive tools, you say yes | [[works]] Gazebo and the turtle | new |
 | `aav_navigation` | drivers | our navigation, set up for a car (each node a port of a Nav2 server), and the maps | [[works]] goals reached in Ravensim | new |
 | `aav_routes` | drivers | street routes (Valhalla) as GPS waypoints for the navigator; directions on the campus (`router:=campus`) | [[works]] in Gazebo | new |
@@ -121,7 +121,7 @@ each one's README has its topics.
 | keyboard (`tools/keyboard.sh`) | your keys | `/drivers/keyboard/cmd_vel` | `pixi run keyboard` |
 | `aav_actuator_tests` | `/vehicle/odom`, `/vehicle/steering`, `/throttle`, `/brake`, `/wheels`, the IMU, `/localization/odom/local`, GPS, `/safety/estop`, `/control/cmd_vel`, `/system/source` | `/drivers/tests/cmd_vel` | `pixi run actuator-test`: the stage 3-4 tests; prints `vehicle.yaml` lines ([Actuator tests](actuator-tests.md)) |
 | `aav_scripted` | `/localization/odom/local` | `/drivers/scripted/cmd_vel` | the action `/scripted_drive` |
-| `aav_drive_to_point` | `/localization/odom/global`, `/sensors/gps/fix`, `/safety/estop`, the watchdog's lock, `/system/source`, `/control/cmd_vel` | `/drivers/point/cmd_vel` | the action `/drive_to_point`; calls `/fromLL` for a lat/lon B. `pixi run drive-to-point` ([A to B](a-to-b.md)) |
+| `aav_drive_to_point_rs`: `point_driver` | `/localization/odom/global`, `/sensors/gps/fix`, `/safety/estop`, the watchdog's lock, `/system/source`, `/control/cmd_vel` | `/drivers/point/cmd_vel` | the action `/drive_to_point`; calls `/fromLL` for a lat/lon B. `pixi run drive-to-point` ([A to B](a-to-b.md)) |
 | `aav_language` | your words; odometry, GPS, `/diagnostics`, `/vehicle/status` | `/safety/estop` (true only) | calls `/scripted_drive` and `/follow_gps_waypoints`; never publishes a velocity |
 | `aav_navigation` | `/localization/odom/local`, `/map`, `/goal_pose` | `/drivers/nav/cmd_vel`, `/plan` | Smac State Lattice (Hybrid-A* if forward only) and MPPI (or Regulated Pure Pursuit); GPS waypoints through `/follow_gps_waypoints` |
 | `aav_command_mux` (twist_mux) | every `/drivers/<driver>/cmd_vel`, `/safety/estop` | `/control/cmd_vel` | priorities: [Build a driver](howto-driver.md) |

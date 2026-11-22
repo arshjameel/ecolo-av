@@ -589,9 +589,10 @@ def check_rc_impl(impl):
 
 # Which point_driver drives to one point (drive_to_point.launch.py, and the sim, bench and car
 # profiles that start it; drive_to_point_impl:=): rust (aav_drive_to_point_rs, the default
-# since 18 Nov: the same node name, action, topics and answers) or python
-# (aav_drive_to_point, the fall-back). Each one's package.
-DRIVE_TO_POINT_IMPLS = {'python': 'aav_drive_to_point', 'rust': 'aav_drive_to_point_rs'}
+# since 18 Nov). The Python node and client (aav_drive_to_point's) went on 22 Nov (tag
+# save/python-fallbacks-1); that package keeps the launch file, the config and the maths.
+# The switch stays, a hook.
+DRIVE_TO_POINT_IMPLS = {'rust': 'aav_drive_to_point_rs'}
 DEFAULT_DRIVE_TO_POINT_IMPL = 'rust'
 
 

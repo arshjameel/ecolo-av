@@ -195,7 +195,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 
 | | |
 |---|---|
-| **Does** | an action that drives to one point B (lat/lon or map x/y) and stops there: speed up gently, hold, slow down by the distance left at half the measured braking |
+| **Does** | an action that drives to one point B (lat/lon or map x/y) and stops there: speed up gently, hold, slow down by the distance left at half the measured braking. The node and client are Rust (`aav_drive_to_point_rs`; the Python ones removed 22 Nov); this package holds the launch file, config and Python maths |
 | **Why** | the main goal (Ben, 15 Oct): GPS A to B with a smooth stop, tests.md 5.2 |
 | **Runs on** | the Orin, next to the mux |
 | **In → out** | the action `/drive_to_point`, `/localization/odom/global`, `/sensors/gps/fix` → `/drivers/point/cmd_vel` (twist_mux priority 25) |
@@ -537,7 +537,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (the Python removed 22 Nov) | `ros/perception/aav_stop_sign_rs/README.md` |
 | `aav_lane_finder_rs` | `lane_finder` in Rust, the default (the Python removed 22 Nov) | `ros/perception/aav_lane_finder_rs/README.md` |
 | `aav_camera_stream_rs` | `camera_stream` in Rust, the default with no detector (`camera_stream_impl:=python` falls back) | `ros/sources/aav_camera_stream_rs/README.md`, then [Camera pipeline](camera-pipeline.md) |
-| `aav_drive_to_point_rs` | `point_driver` and `drive_to_point` in Rust, the default (`drive_to_point_impl:=python` falls back) | `ros/drivers/aav_drive_to_point_rs/README.md`, then [A to B](a-to-b.md) |
+| `aav_drive_to_point_rs` | `point_driver` and `drive_to_point` in Rust, the default (the Python removed 22 Nov) | `ros/drivers/aav_drive_to_point_rs/README.md`, then [A to B](a-to-b.md) |
 | `aav_detector_rs` | the detector in Rust through ONNX Runtime, a challenger (`detector_impl:=rust`) | `ros/perception/aav_detector_rs/README.md`, then [ONNX](onnx.md) |
 | `aav_amcl_rs` | AMCL in Rust, the default AMCL (stock `nav2_amcl` removed 20 Nov); a trial, `amcl:=true` | `ros/localization/aav_amcl_rs/README.md`, then [Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock) |
 | `aav_lane_pose` | `lane_pose`: the lane finder's offset as a sideways pose for the global EKF (`stack:=ours`) | `ros/localization/aav_lane_pose/README.md` |

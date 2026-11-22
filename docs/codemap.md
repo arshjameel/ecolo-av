@@ -63,7 +63,7 @@ current): after adding, moving or removing a package, run
 | [aav_costmap](../ros/drivers/aav_costmap/README.md) | Rust | Our own costmap in Rust (rclrs) | `crates/costmap` | `crates/costmap-node` | - | - |
 | [aav_diffusion_planner](../ros/drivers/aav_diffusion_planner/README.md) | Python | diffusion_planner | `aav_diffusion_planner/(4 modules)` | `aav_diffusion_planner/planner_node.py`, `aav_diffusion_planner/worker.py` | `test/` | - |
 | [aav_diffusion_rs](../ros/drivers/aav_diffusion_rs/README.md) | Rust | The diffusion planner's model worker in Rust | `crates/diffusion-core` | - | - | - |
-| [aav_drive_to_point](../ros/drivers/aav_drive_to_point/README.md) | Python | Drive-to-point driver | `aav_drive_to_point/(5 modules)` | `aav_drive_to_point/point_cli.py`, `aav_drive_to_point/point_driver.py` | `test/` | `config/`, `launch/` |
+| [aav_drive_to_point](../ros/drivers/aav_drive_to_point/README.md) | Python | Drive to one GPS or map point and stop there | `aav_drive_to_point/(5 modules)` | - | `test/` | `config/`, `launch/` |
 | [aav_drive_to_point_rs](../ros/drivers/aav_drive_to_point_rs/README.md) | Rust | point_driver and drive_to_point in Rust (rclrs) | `crates/point-core` | `crates/point-node` | - | - |
 | [aav_language](../ros/drivers/aav_language/README.md) | Python | Plain-English driving | `aav_language/(9 modules)` | `aav_language/agent.py`, `aav_language/drive_server.py`, `aav_language/run_eval.py` | `test/` | - |
 | [aav_mpc_lag](../ros/drivers/aav_mpc_lag/README.md) | Rust | mpc_lag_rs in Rust (rclrs) | `crates/mpc-lag` | `crates/mpc-node` | - | `config/` |
