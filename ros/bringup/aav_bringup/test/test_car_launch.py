@@ -851,3 +851,11 @@ def test_the_dash_starts_the_two_screens_and_nothing_that_drives():
 def test_a_camera_pi_starts_nothing_in_ros_and_the_battery_pi_only_the_sensors():
     assert not included(started(CAR, machine='camera_pi'))
     assert set(included(started(CAR, machine='battery_pi'))) == {'sensors.launch.py'}
+
+
+def test_the_joystick_runs_on_the_motor_pi_where_it_is_plugged_in():
+    # Seen on the car, 21 Oct and 21 Nov: /dev/input/js0 on the Motor Pi. The Orin has
+    # the mux and no joystick; the localization Pi has neither.
+    assert 'teleop.launch.py' in included(started(CAR, machine='motor_pi'))
+    assert 'teleop.launch.py' not in included(started(CAR, machine='orin'))
+    assert 'teleop.launch.py' not in included(started(CAR, machine='localization'))

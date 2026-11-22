@@ -3,6 +3,13 @@
 # from the Orin over the network. With actuators:=can (the CAN spine) it doesn't start.
 parts:
   legacy_uart: true
+  # The joystick (a Logitech Extreme 3D Pro) is plugged into this Pi (/dev/input/js0: the
+  # 21 Oct audit, seen again 21 Nov), so its driver runs here and the Orin's mux hears
+  # /drivers/joy/cmd_vel over the network. One joystick per car: a laptop with its own
+  # (laptop.yaml, laptop_orin.yaml) is instead of this, never beside it: set this false
+  # then. This Pi is on WiFi today (21 Nov): a dropout is 0.5 s of no commands, and the
+  # mux stops the car.
+  teleop: true
   # The 2025-26 wheel encoder (a Pico 2) sent UDP packets only to this Pi (192.168.1.193).
   # Off: the wheel sensors are on the Orin's CAN bus now, through an Arduino (Ben, 23 Oct;
   # orin.yaml's spine part). The Pico wasn't seen on 21 Oct. Turn it back on only with

@@ -82,7 +82,7 @@ the ESP32, and the CAN bus goes to the Orin with the wheel sensors on it
 | Machine file | Runs |
 |---|---|
 | `orin.yaml` | description, mux, ego, scripted, drive_to_point, the roof lidar (Velodyne), localization, navigation, Foxglove; the two front camera streams (`camera_stream`, RF-DETR inside each) and the stop-sign watcher; the CAN bus (`spine_bridge role:=sensors`: the wheels) |
-| `motor_pi.yaml` | `legacy_uart_bridge`: the ESP32 is wired to it. The 2025-26 UDP encoder (`encoder_udp`) is off: the wheels are on CAN now |
+| `motor_pi.yaml` | `legacy_uart_bridge`: the ESP32 is wired to it. The joystick too (`teleop`): it is plugged into this Pi (seen 21 Nov); a laptop's own joystick is instead of it, never beside it. The 2025-26 UDP encoder (`encoder_udp`) is off: the wheels are on CAN now |
 | `motor_pi_alone.yaml` | the Motor Pi without the Orin, for the stands: mux, ego, the stop-sign watcher, the joystick, `legacy_uart_bridge`. Never beside the Orin's stack ([Rolling out](rollout.md)) |
 | `localization.yaml` | the IMU and GPS drivers only, on the localization Pi they are plugged into; the Orin does the maths |
 | `dash.yaml` | the two screens, the HUD and the street map (`hud`, `map`), on the dash Pi. At boot its `aav-hud` and `aav-map` units start them ([The two screens](car-screens.md)); the file is the same by hand. Never both at once |
