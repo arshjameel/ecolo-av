@@ -59,8 +59,7 @@ jobs:
           key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-${{ runner.os }}-
       # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
-      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
-      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # (build/<package>/target), so a run rebuilds only our crates, not every dependency (the colcon build went from
       # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
       # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
       # Restored here, saved right after the build (below), so a run whose tests fail or
@@ -75,8 +74,6 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             build/*/target
-            ros/*/*/target
-            firmware/*/target
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
@@ -103,10 +100,20 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             build/*/target
-            ros/*/*/target
-            firmware/*/target
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+      # tools/test.sh's Rust builds in one folder, target/tests (every workspace with no
+      # cargo settings of its own: the board programs keep theirs), so the libraries they
+      # share compile once. The build's cache above is saved before the tests, and a cache
+      # key can't be saved twice, so this folder has a cache of its own, saved after them.
+      - uses: actions/cache/restore@v5
+        id: rust-test-cache
+        with:
+          path: |
+            target/tests
+            !target/tests/**/incremental
+          key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-tests-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
@@ -114,7 +121,19 @@ jobs:
         timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
+          # No debug info in the tests' debug builds: a smaller cache, faster links. The
+          # same checks: overflow and debug_assert! stay on.
+          CARGO_PROFILE_DEV_DEBUG: "0"
         run: pixi run --locked test 2>&1 | tee test.log
+      - name: Save the Rust test cache, even if a test failed
+        # Only once the tests ran (test.log): a run stopped in the build has nothing new.
+        if: always() && steps.rust-test-cache.outputs.cache-hit != 'true' && hashFiles('test.log') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            target/tests
+            !target/tests/**/incremental
+          key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
       - name: Failures as annotations (readable without signing in)
         # Not when the run failed before the build (GitHub down, say): no log.
         if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
@@ -151,8 +170,7 @@ jobs:
           key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-${{ runner.os }}-
       # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
-      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
-      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # (build/<package>/target), so a run rebuilds only our crates, not every dependency (the colcon build went from
       # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
       # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
       # Restored here, saved right after the build (below), so a run whose tests fail or
@@ -167,8 +185,6 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             build/*/target
-            ros/*/*/target
-            firmware/*/target
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
@@ -195,10 +211,20 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             build/*/target
-            ros/*/*/target
-            firmware/*/target
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+      # tools/test.sh's Rust builds in one folder, target/tests (every workspace with no
+      # cargo settings of its own: the board programs keep theirs), so the libraries they
+      # share compile once. The build's cache above is saved before the tests, and a cache
+      # key can't be saved twice, so this folder has a cache of its own, saved after them.
+      - uses: actions/cache/restore@v5
+        id: rust-test-cache
+        with:
+          path: |
+            target/tests
+            !target/tests/**/incremental
+          key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-tests-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
@@ -206,7 +232,19 @@ jobs:
         timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
+          # No debug info in the tests' debug builds: a smaller cache, faster links. The
+          # same checks: overflow and debug_assert! stay on.
+          CARGO_PROFILE_DEV_DEBUG: "0"
         run: pixi run --locked test 2>&1 | tee test.log
+      - name: Save the Rust test cache, even if a test failed
+        # Only once the tests ran (test.log): a run stopped in the build has nothing new.
+        if: always() && steps.rust-test-cache.outputs.cache-hit != 'true' && hashFiles('test.log') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            target/tests
+            !target/tests/**/incremental
+          key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
       - name: Failures as annotations (readable without signing in)
         # Not when the run failed before the build (GitHub down, say): no log.
         if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
@@ -248,8 +286,7 @@ jobs:
           key: pixi-pkgs-arm64-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
           restore-keys: pixi-pkgs-arm64-${{ runner.os }}-
       # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
-      # (build/<package>/target), and tools/test.sh's own (ros/.../target, firmware/.../target),
-      # so a run rebuilds only our crates, not every dependency (the colcon build went from
+      # (build/<package>/target), so a run rebuilds only our crates, not every dependency (the colcon build went from
       # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
       # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
       # Restored here, saved right after the build (below), so a run whose tests fail or
@@ -264,8 +301,6 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             build/*/target
-            ros/*/*/target
-            firmware/*/target
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
@@ -292,15 +327,37 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             build/*/target
-            ros/*/*/target
-            firmware/*/target
             !**/target/*/incremental
           key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+      # tools/test.sh's Rust builds in one folder, target/tests (every workspace with no
+      # cargo settings of its own: the board programs keep theirs), so the libraries they
+      # share compile once. The build's cache above is saved before the tests, and a cache
+      # key can't be saved twice, so this folder has a cache of its own, saved after them.
+      - uses: actions/cache/restore@v5
+        id: rust-test-cache
+        with:
+          path: |
+            target/tests
+            !target/tests/**/incremental
+          key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+          restore-keys: rust-tests-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
+          # No debug info in the tests' debug builds: a smaller cache, faster links. The
+          # same checks: overflow and debug_assert! stay on.
+          CARGO_PROFILE_DEV_DEBUG: "0"
         run: pixi run --locked test 2>&1 | tee test.log
+      - name: Save the Rust test cache, even if a test failed
+        # Only once the tests ran (test.log): a run stopped in the build has nothing new.
+        if: always() && steps.rust-test-cache.outputs.cache-hit != 'true' && hashFiles('test.log') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            target/tests
+            !target/tests/**/incremental
+          key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
       - name: Failures as annotations (readable without signing in)
         if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
         # test.log, or build.log when the build step stopped first
