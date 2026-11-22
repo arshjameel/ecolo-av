@@ -57,8 +57,8 @@ programs drive as on a supervised stand: there is no car to run away.
 Still one backend: spine_bridge alone reads ego's commands (/control/sim/actuator_cmd,
 from the output mux); bridge:= picks its language, rust (aav_spine_bridge, the default)
 or python (aav_spine). arm:=true (the default) arms the spine 12 s after start-up, as
-the bench does, once the output mux says OPEN (aav_spine's arm_when_open: spine_bridge
-refuses while the safety gate is shut); /spine/arm arms it again after a stop. The
+the bench does, once the output mux says OPEN (aav_spine_bridge's arm_when_open:
+spine_bridge refuses while the safety gate is shut); /spine/arm arms it again after a stop. The
 hardware e-stop and driver faults are the bench's: /vehicle/bench/hw_estop and
 /vehicle/bench/driver_faults.
 
@@ -393,8 +393,8 @@ def generate_launch_description():
                                           'pi or open'),
         DeclareLaunchArgument('arm_when_open_impl',
                               default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
-                              description='rust or python: which arm_when_open arms the spine '
-                                          "(aav_spine_bridge's, or aav_spine's)"),
+                              description='rust: arm_when_open, which arms the spine '
+                                          "(aav_spine_bridge's; the Python removed 22 Nov)"),
         DeclareLaunchArgument('arm', default_value='true',
                               description='with spine:=true: arm the spine after 12 s'),
         DeclareLaunchArgument('legacy_impl', default_value=vehicle.DEFAULT_LEGACY_IMPL,

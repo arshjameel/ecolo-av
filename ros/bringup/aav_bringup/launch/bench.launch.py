@@ -45,8 +45,8 @@ lane follower that steered by it went on 19 Nov, TODO 264: the costmap draws the
 lane_finder_impl:=python runs the Python lane_finder in the Rust one's place (the default).
 
 arm:=true arms the spine after 12 s, once navigation is up, the way `ros2 service call
-/spine/arm std_srvs/srv/SetBool "{data: true}"` does: aav_spine's arm_when_open asks
-each second until the output mux says OPEN, since spine_bridge refuses to arm while the
+/spine/arm std_srvs/srv/SetBool "{data: true}"` does: aav_spine_bridge's arm_when_open
+asks each second until the output mux says OPEN, since spine_bridge refuses to arm while the
 safety gate is shut (Ben, 24 Oct). Arming earlier, while everything starts, risks a gap
 in commands that latches the spine again: its 200 ms watchdog doing its job.
 
@@ -256,8 +256,8 @@ def generate_launch_description():
                                           'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
         DeclareLaunchArgument('arm_when_open_impl',
                               default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
-                              description='rust or python: which arm_when_open arms the spine '
-                                          "(aav_spine_bridge's, or aav_spine's)"),
+                              description='rust: arm_when_open, which arms the spine '
+                                          "(aav_spine_bridge's; the Python removed 22 Nov)"),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='rust or python: which lane_finder finds the lane '

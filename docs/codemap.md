@@ -106,7 +106,7 @@ current): after adding, moving or removing a package, run
 |---|---|---|---|---|---|---|
 | [aav_legacy](../ros/can_bridge/aav_legacy/README.md) | Python | Interim backend for the 2025-26 hardware | `aav_legacy/(5 modules)` | `aav_legacy/encoder_udp.py`, `aav_legacy/legacy_uart_bridge.py`, `aav_legacy/steering_limits.py` | `test/` | `config/`, `launch/` |
 | [aav_legacy_rs](../ros/can_bridge/aav_legacy_rs/README.md) | Rust | legacy_uart_bridge in Rust (rclrs) | `crates/legacy-bridge` | `crates/legacy-node` | - | - |
-| [aav_spine](../ros/can_bridge/aav_spine/README.md) | Python | Backend for the real car on the CAN spine | `aav_spine/(4 modules)` | `aav_spine/arm_when_open.py`, `aav_spine/spine_bridge.py` | `test/` | `config/`, `launch/` |
+| [aav_spine](../ros/can_bridge/aav_spine/README.md) | Python | Backend for the real car on the CAN spine | `aav_spine/(4 modules)` | `aav_spine/spine_bridge.py` | `test/` | `config/`, `launch/` |
 | [aav_spine_bridge](../ros/can_bridge/aav_spine_bridge/README.md) | Rust | spine_bridge in Rust (rclrs) | `crates/spine-bridge` | `crates/bridge-node` | - | - |
 
 ## ros/safety

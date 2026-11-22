@@ -605,8 +605,9 @@ def check_drive_to_point_impl(impl):
 
 # Which arm_when_open arms the stand-ins' spine (bench.launch.py arm:=true, ravensim.launch.py
 # spine:=true; arm_when_open_impl:=): rust (aav_spine_bridge's, beside the Rust bridge, the
-# default since 18 Nov) or python (aav_spine's). Each one's package.
-ARM_WHEN_OPEN_IMPLS = {'python': 'aav_spine', 'rust': 'aav_spine_bridge'}
+# default since 18 Nov). The Python (aav_spine's) went on 22 Nov (tag
+# save/python-fallbacks-1); the switch stays, a hook.
+ARM_WHEN_OPEN_IMPLS = {'rust': 'aav_spine_bridge'}
 DEFAULT_ARM_WHEN_OPEN_IMPL = 'rust'
 
 

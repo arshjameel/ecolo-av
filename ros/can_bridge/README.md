@@ -18,7 +18,7 @@ feedback comes back as `/vehicle/*`. Only one of these runs at a time.
 | Package | What it is |
 |---|---|
 | [aav_spine_bridge](./aav_spine_bridge/README.md) | the default `spine_bridge`, in Rust (rclrs); packs frames with the firmware's `spine-core`. Logic crate: [spine-bridge](./aav_spine_bridge/crates/spine-bridge/README.md) |
-| [aav_spine](./aav_spine/README.md) | the Python twin of `spine_bridge`, `arm_when_open`, and `spine.launch.py` (`bridge:=rust|python`) |
+| [aav_spine](./aav_spine/README.md) | the Python twin of `spine_bridge`, and `spine.launch.py` (`bridge:=rust|python`) |
 | [aav_legacy](./aav_legacy/README.md) | the interim backend for the 2025-26 hardware: `legacy_uart_bridge` (ESP32 over UART; the Python fall-back, `legacy_impl:=python`), `encoder_udp` (UDP wheel encoder) and `legacy.launch.py` |
 | [aav_legacy_rs](./aav_legacy_rs/README.md) | the default `legacy_uart_bridge`, in Rust (rclrs, since 17 Nov); packs frames with the firmware's `legacy-link` |
 

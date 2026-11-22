@@ -89,7 +89,7 @@ gate is shut (Ben, 24 Oct), and says why.
 - `role:=sensors` has no `/spine/arm`, so nothing to refuse.
 - `legacy_uart_bridge` (today's car, through the Motor Pi) has no arm step: the output
   mux's silence makes it brake after 0.3 s.
-- The bench and Ravensim (`arm:=true`) start `arm_when_open` (`aav_spine`) after 12 s. It
+- The bench and Ravensim (`arm:=true`) start `arm_when_open` (`aav_spine_bridge`) after 12 s. It
   asks each second until the gate opens, then exits. It gives up after 120 s, or at once
   on an e-stop. `bench_check.py` and `sim_check.py` also wait for OPEN before they arm.
 
