@@ -383,8 +383,29 @@ impl MpcLag {
         }
         self.rules = rules;
         self.barriers = circles.to_vec();
-        self.warm_y = None;
         Ok(())
+    }
+
+    /// Hold round things of the world, each (x, y, radius) in the path's own frame of
+    /// reference (odom), put on the path now running ([`Circle::from_world`]); with no
+    /// path, none. Call it again when the path changes or moves.
+    ///
+    /// # Errors
+    ///
+    /// As [`MpcLag::set_barriers`].
+    pub fn fence(&mut self, rules: Rules, things: &[(f64, f64, f64)]) -> Result<(), TrackError> {
+        let circles: Vec<Circle> = self.path.as_ref().map_or_else(Vec::new, |path| {
+            things
+                .iter()
+                .map(|&(x, y, radius)| Circle::from_world(path, x, y, radius))
+                .collect()
+        });
+        self.set_barriers(rules, &circles)
+    }
+
+    /// Hold no barriers: the tracker as it always was.
+    pub fn clear_barriers(&mut self) {
+        self.barriers.clear();
     }
 
     /// The keep-out circles held now.

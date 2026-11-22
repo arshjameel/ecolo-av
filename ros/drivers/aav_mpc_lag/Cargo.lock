@@ -565,6 +565,7 @@ dependencies = [
  "anyhow",
  "car-model",
  "ctrlc",
+ "ego-core",
  "futures",
  "mpc-lag",
  "mppi-lag",

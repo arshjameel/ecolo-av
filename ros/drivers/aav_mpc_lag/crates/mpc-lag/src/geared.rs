@@ -17,9 +17,13 @@
 //! A path with no cusp is one forward stretch: the MPC gets it as it is, and every
 //! command is the same as without this.
 
+use crate::barrier::Rules;
 use crate::gears::{mirror, CuspRules, Direction, Gears, Pose};
 use crate::path::PathError;
 use crate::tracker::{Command, MpcLag, Observed, TrackError};
+
+/// The barriers' rules, and the round things: each (x, y, radius), m.
+type Fence = (Rules, Vec<(f64, f64, f64)>);
 
 /// Why a path can't be followed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +59,8 @@ pub struct Geared {
     mpc: MpcLag,
     gears: Option<Gears>,
     rules: CuspRules,
+    /// Round things to keep off, (x, y, radius) in the path's frame, and how (`barrier`).
+    fence: Option<Fence>,
     /// m/s: the MPC's cruise forwards (its settings' when made).
     forward: f64,
     /// m/s: the most backwards (0: never).
@@ -70,6 +76,7 @@ impl Geared {
             mpc,
             gears: None,
             rules,
+            fence: None,
             reverse: reverse_speed.max(0.0),
         }
     }
@@ -84,6 +91,13 @@ impl Geared {
     #[must_use]
     pub fn gears(&self) -> Option<&Gears> {
         self.gears.as_ref()
+    }
+
+    /// Keep the car off these round things from the next tick on: each (x, y, radius) in
+    /// the path's frame, the radius with the car's own and a margin in it. None: no
+    /// barriers. Forward stretches only.
+    pub fn set_things(&mut self, rules: Rules, things: &[(f64, f64, f64)]) {
+        self.fence = (!things.is_empty()).then(|| (rules, things.to_vec()));
     }
 
     /// Forget the MPC's estimate and plan ([`MpcLag::forget`]).
@@ -205,6 +219,12 @@ impl Geared {
     /// As [`MpcLag::step`].
     pub fn step(&mut self, seen: &Observed, dt: f64) -> Result<Command, TrackError> {
         let direction = self.direction();
+        // The barriers on the stretch now running, where the things are now. Forwards
+        // only: backwards the MPC sees the car turned round, and its body's point with it.
+        match (&self.fence, direction) {
+            (Some((rules, things)), Direction::Forward) => self.mpc.fence(*rules, things)?,
+            _ => self.mpc.clear_barriers(),
+        }
         // At a cusp not yet taken: stand for the change of gear.
         let at_cusp = !self.on_last()
             && self
@@ -236,6 +256,51 @@ mod tests {
     fn geared(reverse: f64) -> Geared {
         let mpc = MpcLag::new(LIMITS, Default::default(), Settings::default()).expect("an MPC");
         Geared::new(mpc, reverse, CuspRules::default())
+    }
+
+    #[test]
+    fn a_thing_is_fenced_forwards_and_not_backwards() {
+        use ego_core::stop_law::StopCurve;
+        let rules = Rules::new(StopCurve::from_numbers(3.0, 2.0, 2.0).expect("a curve"));
+        let seen = Observed::default();
+        let mut g = geared(0.5);
+        g.follow(&forward_then_back()).expect("a path");
+        // No things: no barrier in the report.
+        assert!(g
+            .step(&seen, 0.05)
+            .expect("a tick")
+            .report
+            .barrier
+            .is_none());
+        // A thing 3 m ahead, 2 m across with the car's own: 1.2 m from the body's point.
+        g.set_things(rules, &[(3.0, 0.0, 1.0)]);
+        let gap = g
+            .step(&seen, 0.05)
+            .expect("a tick")
+            .report
+            .barrier
+            .expect("fenced");
+        assert!((gap - 1.2).abs() < 1e-6, "{gap}");
+        // Taken away again.
+        g.set_things(rules, &[]);
+        assert!(g
+            .step(&seen, 0.05)
+            .expect("a tick")
+            .report
+            .barrier
+            .is_none());
+        // On the backwards stretch: none, whatever is set.
+        let mut back = geared(0.5);
+        let behind: Vec<Pose> = (0..=40).map(|i| (-f64::from(i) * 0.1, 0.0, 0.0)).collect();
+        back.follow(&behind).expect("a path");
+        back.set_things(rules, &[(-3.0, 0.0, 1.0)]);
+        assert_eq!(back.direction(), Direction::Backward);
+        assert!(back
+            .step(&seen, 0.05)
+            .expect("a tick")
+            .report
+            .barrier
+            .is_none());
     }
 
     fn forward_then_back() -> Vec<Pose> {

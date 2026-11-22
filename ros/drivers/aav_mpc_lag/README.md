@@ -93,8 +93,26 @@ barrier functions (`docs/acknowledgements.md`).
 | The stop rule | holding its steering, the car would meet the circle within S(v) and its own wait: the set speed ramps to 0. S(v) is the one stopping law (`ego_core::stop_law::StopCurve`), ego's, the behaviour planner's and the safety filter's (`ros/safety/aav_safety_filter_rs`) |
 | `Report` | `barrier` (m to the nearest edge), `barrier_slack` (m², the rule broken in the plan), `barrier_stop` |
 
-Not in the node yet: no topic brings circles in (`docs/interfaces.yaml` first). Rust
-only: the Python `mpc_lag` has none. A tick with a barrier near: 3 to 13 ms (0.5 without).
+In the node (`mpc_lag_rs`), with `navigation.launch.py mpc_barriers:=true ghost:=true`
+(`sim.launch.py` passes both): it reads the ghost's marker (`/safety/ghost/marker`), and
+its centre and width, with the car's own radius and a margin, are the keep-out circle.
+Forward stretches only. The status gains `barrier_m`, `barrier_slack_m2`, `barrier_stop`.
+
+| Parameter | Default | Means |
+|---|---|---|
+| `barriers.topic` | empty: off | markers of the round things (the launch's switch sets the ghost's) |
+| `barriers.gamma` | 0.05 | the share of the room a tick may use |
+| `barriers.ahead` | 0.8 m | from base_link to the body's point |
+| `barriers.body_radius`, `barriers.margin` | 1.12 m, 0.2 m | the car's own radius from that point, and what is kept beyond it |
+| `barriers.stop_jerk` | 2.0 m/s³ | the stopping law's jerk (ego's) |
+
+```sh
+pixi run sim world:=test_lot tracker:=mpc_lag_rs ghost:=true mpc_barriers:=true
+pixi run ghost --local ahead 10
+```
+
+Rust only: the Python `mpc_lag` has none. A tick with a barrier near: 3 to 13 ms (0.5
+without). Compiled against ROS; **not yet run in the simulator**.
 
 ### Why our own QP, not clarabel
 

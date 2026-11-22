@@ -61,6 +61,7 @@ Switches:
   mppi_lag_batch:=1000        mppi_lag's samples a tick (empty: 2000; TODO 152)
   mppi_lag_sampling:=smooth   mppi_lag samples the steering's change (TODO 212)
   mpc_lag_tube:=0             mpc_lag_rs's tube off (empty: 0.3 m, tuned 21 Nov)
+  mpc_barriers:=true          mpc_lag_rs keeps off the ghost (research: off by default)
   live_swap:=true         aav_track's tracker can change while it runs
   map_correction:=slow    the follower's held map -> odom moves toward the newest slowly
                           (TODO 186)
@@ -564,6 +565,10 @@ def nodes(context):
         tube = LaunchConfiguration('mpc_lag_tube').perform(context).strip()
         extra = {'mpc_lag.tube': vehicle.check_mpc_lag_tube(tube) if tube
                  else vehicle.MPC_LAG_TUBE}
+        # Barriers (research, separate from the capstone; off by default): the plan may
+        # only creep up to the ghost's keep-out circle, and goes round it where it can.
+        if LaunchConfiguration('mpc_barriers').perform(context).strip().lower() == 'true':
+            extra['barriers.topic'] = '/safety/ghost/marker'
         actions.append(Node(
             package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs', namespace='/',
             output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
@@ -786,6 +791,10 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           "(batch_size); empty: nav2.yaml's 2000. 1000, a "
                                           'challenger: half the work a tick (TODO 152)'),
+        DeclareLaunchArgument('mpc_barriers', default_value='false',
+                              description='with tracker:=mpc_lag_rs and ghost:=true: true, '
+                                          'the MPC keeps off the ghost by a control '
+                                          'barrier function (research, off by default)'),
         DeclareLaunchArgument('mpc_lag_tube', default_value='',
                               description='with tracker:=mpc_lag_rs: m each side of the '
                                           'path where being off it costs nothing; empty: '

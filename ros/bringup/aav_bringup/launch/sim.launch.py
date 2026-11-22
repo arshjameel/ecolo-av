@@ -110,6 +110,8 @@ bench's argument names:
                       jitter (TODO 168)
                       mppi_lag_batch:=1000: mppi_lag's samples a tick (empty: 2000),
                       a challenger: half the work a tick (TODO 152; steer:=mppi_lag_1k)
+                      mpc_barriers:=true: with tracker:=mpc_lag_rs ghost:=true, the
+                      MPC keeps off the ghost (research, off by default)
                       mpc_lag_tube:=0: mpc_lag_rs's tube off (empty: 0.3 m, tuned
                       21 Nov: it leaves the car alone that near the path, less sway)
                       mppi_lag_sampling:=smooth: mppi_lag samples the steering's
@@ -702,6 +704,7 @@ def launch_setup(context):
                                mppi_lag_batch=arg('mppi_lag_batch'),
                                mppi_lag_sampling=arg('mppi_lag_sampling'),
                                mpc_lag_tube=arg('mpc_lag_tube'),
+                               mpc_barriers=arg('mpc_barriers'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
@@ -1140,6 +1143,9 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           '(TODO 152): 1000 (steer:=mppi_lag_1k); '
                                           "nav2.yaml's 2000 when nothing sets it"),
+        DeclareLaunchArgument('mpc_barriers', default_value='false',
+                              description='with tracker:=mpc_lag_rs ghost:=true: true, the '
+                                          'MPC keeps off the ghost (research, off by default)'),
         DeclareLaunchArgument('mpc_lag_tube', default_value='',
                               description='with tracker:=mpc_lag_rs: m each side of the '
                                           'path where being off it costs nothing (the '

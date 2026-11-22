@@ -50,9 +50,11 @@ use std::{
 
 use anyhow::{bail, Context as _, Result};
 use car_model::ActuatorConfig;
+use ego_core::stop_law::{StopCurve, INPUT_DELAY};
 use futures::channel::oneshot;
 use mpc_lag::{
-    wrap, Command as MpcCommand, CuspRules, Direction, Geared, Limits, MpcLag, Observed, Settings,
+    wrap, Command as MpcCommand, CuspRules, Direction, Geared, Limits, MpcLag, Observed, Rules,
+    Settings,
 };
 use mppi_lag::follower::{GoalCheck, ProgressCheck};
 use mppi_lag::map_correction::{into_map, into_odom, Correction};
@@ -65,6 +67,7 @@ use ros_env::nav2_msgs::action::{FollowPath, FollowPath_Feedback, FollowPath_Res
 use ros_env::nav_msgs::msg::{Odometry, Path as PathMsg};
 use ros_env::std_msgs::msg::{Bool, Header};
 use ros_env::tf2_msgs::msg::TFMessage;
+use ros_env::visualization_msgs::msg::Marker;
 use spine_core::speed_loop::SpeedLoopProfile;
 
 /// The name on the status topic and in the launch's `tracker:=`.
@@ -127,6 +130,7 @@ fn main() -> Result<()> {
         map_to_odom: None,
         correction: MapCorrection::new(config.map_correction),
         corrected: None,
+        things: Vec::new(),
         job: None,
         next_id: 0,
         last_tick: None,
@@ -141,6 +145,15 @@ fn main() -> Result<()> {
             s.on_odom(&msg)
         })?;
     let _tf = worker.create_subscription("/tf", |s: &mut Core, msg: TFMessage| s.on_tf(&msg))?;
+    // The round things to keep off (barriers.topic; empty: none, the tracker as it was).
+    let _things = match config.barriers.as_ref() {
+        Some(b) => Some(
+            worker.create_subscription(b.topic.as_str(), |s: &mut Core, msg: Marker| {
+                s.on_marker(&msg)
+            })?,
+        ),
+        None => None,
+    };
     let period = Duration::from_secs_f64(1.0 / config.rate_hz);
     let _tick = worker.create_timer_repeating(period.node_time(), |s: &mut Core| s.tick())?;
 
@@ -196,6 +209,17 @@ enum Finish {
 }
 
 /// One FollowPath goal.
+/// A round thing to keep off, as its marker said it.
+struct Thing {
+    key: (String, i32),
+    /// It stands in the map (moved into odom by the held map -> odom) or in odom.
+    in_map: bool,
+    x: f64,
+    y: f64,
+    /// m across.
+    width: f64,
+}
+
 struct Job {
     id: u64,
     done: oneshot::Sender<Finish>,
@@ -229,6 +253,8 @@ struct Core {
     correction: MapCorrection,
     /// When the held map -> odom last moved on (this node's clock).
     corrected: Option<f64>,
+    /// The round things heard on barriers.topic: (namespace, id), the frame, x, y, m across.
+    things: Vec<Thing>,
     job: Option<Job>,
     next_id: u64,
     last_tick: Option<f64>,
@@ -273,6 +299,65 @@ impl Core {
         {
             self.odom = Some((pose, speed, self.now()));
         }
+    }
+
+    /// A marker on barriers.topic: a thing placed, moved or taken away.
+    fn on_marker(&mut self, msg: &Marker) {
+        let key = (msg.ns.clone(), msg.id);
+        self.things.retain(|t| t.key != key);
+        if msg.action == Marker::DELETEALL {
+            self.things.clear();
+        }
+        // ADD is MODIFY too (both 0).
+        if msg.action != Marker::ADD {
+            return;
+        }
+        let frame = msg.header.frame_id.trim_start_matches('/');
+        let in_map = frame == self.config.map_frame;
+        let (p, width) = (&msg.pose.position, msg.scale.x.max(msg.scale.y));
+        if !(in_map || frame == self.config.odom_frame)
+            || !(p.x.is_finite() && p.y.is_finite() && width.is_finite() && width > 0.0)
+        {
+            log_warn!(
+                &self.logger,
+                "a thing in frame '{frame}', {width} m across: not kept (only {} or {})",
+                self.config.map_frame,
+                self.config.odom_frame
+            );
+            return;
+        }
+        self.things.push(Thing {
+            key,
+            in_map,
+            x: p.x,
+            y: p.y,
+            width,
+        });
+    }
+
+    /// The things in odom now, each with the car's own radius and the margin: for the MPC.
+    fn fence(&mut self) {
+        let Some(b) = self.config.barriers.as_ref() else {
+            return;
+        };
+        let held = self
+            .correction
+            .held()
+            .or(self.map_to_odom.map(|(pose, _)| pose));
+        let things: Vec<(f64, f64, f64)> = self
+            .things
+            .iter()
+            .filter_map(|t| {
+                let radius = t.width / 2.0 + b.body_radius + b.margin;
+                if !t.in_map {
+                    return Some((t.x, t.y, radius));
+                }
+                // No map -> odom yet: a thing of the map can't be placed.
+                let p = into_odom(&Pose::new(t.x, t.y, 0.0), &held?);
+                Some((p.x, p.y, radius))
+            })
+            .collect();
+        self.mpc.set_things(b.rules, &things);
     }
 
     fn on_tf(&mut self, msg: &TFMessage) {
@@ -452,6 +537,7 @@ impl Core {
             v: speed,
             steer: self.steer,
         };
+        self.fence();
         let cmd = match self.mpc.step(&seen, period) {
             Ok(cmd) => cmd,
             Err(e) => {
@@ -567,6 +653,11 @@ impl Core {
             ("feed_forward_rad", format!("{:.4}", r.feed_forward)),
             ("map_gap_m", format!("{:.3}", self.map_gap())),
             ("backwards", u8::from(backward).to_string()),
+            // The barriers: m to the nearest thing's keep-out edge (nan: none), the rule
+            // broken in the plan (m²), and whether the stop rule asked a stop.
+            ("barrier_m", format!("{:.3}", r.barrier.unwrap_or(f64::NAN))),
+            ("barrier_slack_m2", format!("{:.4}", r.barrier_slack)),
+            ("barrier_stop", u8::from(r.barrier_stop).to_string()),
         ];
         let msg = DiagnosticStatus {
             level: if loop_ms > period_ms {
@@ -613,6 +704,20 @@ struct Config {
     settings: Settings,
     /// How fast the held map -> odom follows the newest (TODO 186).
     map_correction: SlewLimits,
+    /// The barriers (barriers.topic set): `None`, the tracker as it always was.
+    barriers: Option<Barriers>,
+}
+
+/// The barriers' settings (`mpc-lag`'s `barrier`).
+#[derive(Debug, Clone)]
+struct Barriers {
+    /// Markers of the round things to keep off (the ghost's: /safety/ghost/marker).
+    topic: String,
+    rules: Rules,
+    /// m from the body's point to its farthest corner.
+    body_radius: f64,
+    /// m kept clear beyond that.
+    margin: f64,
 }
 
 /// The parameters' handles: rclrs undeclares a parameter when its handle drops.
@@ -771,6 +876,41 @@ impl Config {
             snap_distance: d.number("map_correction_snap_distance", m.snap_distance)?,
             snap_angle: d.number("map_correction_snap_angle", m.snap_angle)?,
         };
+        // The barriers: off unless barriers.topic is set (navigation.launch.py's
+        // mpc_barriers:=true sets the ghost's marker). Research, separate from the capstone.
+        let topic = d.text("barriers.topic", "")?;
+        let gamma = d.number("barriers.gamma", 0.05)?;
+        let ahead = d.number("barriers.ahead", 0.8)?;
+        let body_radius = d.number("barriers.body_radius", 1.12)?;
+        let margin = d.number("barriers.margin", 0.2)?;
+        let jerk = d.number("barriers.stop_jerk", 2.0)?;
+        let barriers = if topic.is_empty() {
+            None
+        } else {
+            // The one stopping law, as ego builds it: this car's brake and speed loop.
+            let stop = StopCurve::from_car_model(
+                &car,
+                settings.decel,
+                jerk,
+                INPUT_DELAY,
+                Some(&speed_loop.config()),
+            )
+            .map_err(|e| anyhow::anyhow!("barriers: the stopping law: {e}"))?;
+            let rules = Rules {
+                gamma,
+                ahead,
+                ..Rules::new(stop)
+            };
+            if !(rules.valid() && body_radius > 0.0 && margin >= 0.0) {
+                bail!("barriers: gamma in (0, 1], body_radius above 0, margin 0 or more");
+            }
+            Some(Barriers {
+                topic,
+                rules,
+                body_radius,
+                margin,
+            })
+        };
         let config = Self {
             rate_hz,
             odom_topic: d.text("odom_topic", "/localization/odom/local")?,
@@ -791,6 +931,7 @@ impl Config {
             car,
             settings,
             map_correction,
+            barriers,
         };
         Ok((
             config,

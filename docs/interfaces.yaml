@@ -199,8 +199,8 @@ topics:
   /safety/ghost/marker:
     type: visualization_msgs/msg/Marker
     pub: [ghost_obstacle]
-    sub: []
-    note: The ghost as a purple cylinder in the map frame, for RViz and Lichtblick; DELETE when it goes.
+    sub: [mpc_lag_rs]
+    note: The ghost as a purple cylinder in the map frame, for RViz and Lichtblick; DELETE when it goes. mpc_lag_rs reads it only with navigation.launch.py mpc_barriers:=true (research, off by default) - the cylinder's centre and width become a keep-out circle its plan may only creep up to.
   /drivers/scripted/lag_aware:
     type: std_msgs/msg/Bool
     pub: []
