@@ -291,14 +291,14 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_drive_to_point</code></td>
 <td>drivers</td>
-<td>drive to one GPS or map point B, and stop there smoothly</td>
+<td>the point driver's launch file, config and Python maths (its Python node and client removed 22 Nov)</td>
 <td><span class="badge b-works">works</span> in Gazebo (15 Oct); <span class="badge b-untested">untested</span> on the car</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_drive_to_point_rs</code></td>
 <td>drivers</td>
-<td><code>point_driver</code> and <code>drive_to_point</code> in Rust, the default (18 Nov; <code>drive_to_point_impl:=python</code> falls back)</td>
+<td><code>point_driver</code> and <code>drive_to_point</code> in Rust, the default (18 Nov; the Python removed 22 Nov): drive to one GPS or map point B, and stop there smoothly</td>
 <td><span class="badge b-works">works</span> the Python's numbers on shared vectors; <span class="badge b-untested">untested</span> on the car</td>
 <td>new: a port of <code>aav_drive_to_point</code></td>
 </tr>
@@ -403,28 +403,28 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_io_mux</code></td>
 <td>io_mux</td>
-<td>the sensor mux and the output mux: simulated data never drives the real car</td>
+<td>the muxes' launch file, their rules in Python and the real-backend guard test (its Python nodes removed 22 Nov)</td>
 <td><span class="badge b-works">works</span> turtle, Gazebo and the bench; <span class="badge b-untested">untested</span> on the car</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_io_mux_rs</code></td>
 <td>io_mux</td>
-<td><code>sensor_mux</code> and <code>output_mux</code> in Rust, the default (Ben, 17 Nov) beside <code>aav_io_mux</code>'s (<code>io_mux_impl:=python</code>): the same topics and answers</td>
+<td><code>sensor_mux</code> and <code>output_mux</code> in Rust, the default (Ben, 17 Nov; the Python removed 22 Nov): simulated data never drives the real car</td>
 <td><span class="badge b-works">works</span> against the Python's answers, step by step; sim-check; <span class="badge b-untested">untested</span> on the car</td>
 <td>new: a port of <code>aav_io_mux</code></td>
 </tr>
 <tr>
 <td><code>aav_ego</code></td>
 <td>ego</td>
-<td>one command → speed and steering the car can do</td>
-<td><span class="badge b-works">works</span></td>
+<td>ego's launch file, config and maths in Python (its Python nodes removed 22 Nov)</td>
+<td><span class="badge b-works">works</span> its unit tests</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_ego_rs</code></td>
 <td>ego</td>
-<td><code>ego</code> and <code>look_ahead</code> in Rust, the default (16 Nov; <code>ego_impl:=python</code> falls back): the same topics and answers</td>
+<td><code>ego</code> and <code>look_ahead</code> in Rust, the default (16 Nov; the Python removed 22 Nov): one command → speed and steering the car can do</td>
 <td><span class="badge b-works">works</span> against the Python's answers; Ravensim; <span class="badge b-untested">untested</span> on the car</td>
 <td>new: a port of <code>aav_ego</code></td>
 </tr>
@@ -529,7 +529,7 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_safety_rs</code></td>
 <td>safety</td>
-<td><code>geofence</code>, <code>stop_hold</code> and <code>goal_leash</code> in Rust, the defaults (19 Nov; <code>*_impl:=python</code> falls back)</td>
+<td><code>geofence</code>, <code>stop_hold</code> and <code>goal_leash</code> in Rust, the defaults (19 Nov; the Python removed 20 Nov)</td>
 <td><span class="badge b-works">works</span> against the Python's answers, to the bit; <span class="badge b-untested">untested</span> on the car</td>
 <td>new: a port of <code>aav_safety</code>'s three nodes</td>
 </tr>
@@ -585,7 +585,7 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_stop_sign_rs</code></td>
 <td>perception</td>
-<td><code>stop_sign_watcher</code> in Rust, the default (17 Nov; <code>stop_sign_impl:=python</code> falls back)</td>
+<td><code>stop_sign_watcher</code> in Rust, the default (17 Nov; the Python removed 22 Nov)</td>
 <td><span class="badge b-works">works</span> against the Python's answers, and a process test</td>
 <td>new: a port of <code>aav_detector</code>'s watcher</td>
 </tr>
@@ -599,8 +599,8 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_lidar</code></td>
 <td>perception</td>
-<td><code>lidar_scan</code>: the roof lidar's cloud as a 2D scan for the costmap and the stop zone</td>
-<td><span class="badge b-works">works</span> in Gazebo and the bench</td>
+<td>the flat scan's maths in Python (<code>scan.py</code>, <code>ground.py</code>), imported by launch files, <code>aav_voxels</code> and tools; its node removed 22 Nov</td>
+<td><span class="badge b-works">works</span> its unit tests</td>
 <td>new</td>
 </tr>
 <tr>
@@ -620,7 +620,7 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_lidar_rs</code></td>
 <td>perception</td>
-<td><code>lidar_scan</code> in Rust: the lidar flattened to a 720-ray scan, a drop-in for <code>aav_lidar</code>'s (<code>lidar_impl:=rust</code>)</td>
+<td><code>lidar_scan</code> in Rust: the roof lidar's cloud flattened to a 720-ray scan for the costmap and the stop zone; the only one (the Python removed 22 Nov)</td>
 <td><span class="badge b-works">works</span> against the Python's answers</td>
 <td>new: a port of <code>aav_lidar</code></td>
 </tr>
@@ -641,14 +641,14 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <tr>
 <td><code>aav_lane_finder</code></td>
 <td>perception</td>
-<td>the lane lines in the camera's pictures, as <code>/perception/lane/geometry</code> (OpenCV)</td>
+<td>the lane finder's launch file, config and Python maths (OpenCV); its node removed 22 Nov</td>
 <td><span class="badge b-works">works</span> on the bench</td>
 <td>new</td>
 </tr>
 <tr>
 <td><code>aav_lane_finder_rs</code></td>
 <td>perception</td>
-<td><code>lane_finder</code> in Rust, the default (18 Nov; <code>lane_finder_impl:=python</code> falls back): no OpenCV</td>
+<td><code>lane_finder</code> in Rust, the default (18 Nov; the Python removed 22 Nov): the lane lines in the camera's pictures, as <code>/perception/lane/geometry</code>; no OpenCV</td>
 <td><span class="badge b-works">works</span> the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 % in Ravensim</td>
 <td>new: a port of <code>aav_lane_finder</code></td>
 </tr>
@@ -830,7 +830,7 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td>the action <code>/scripted_drive</code></td>
 </tr>
 <tr>
-<td><code>aav_drive_to_point</code></td>
+<td><code>aav_drive_to_point_rs</code>: <code>point_driver</code></td>
 <td><code>/localization/odom/global</code>, <code>/sensors/gps/fix</code>, <code>/safety/estop</code>, the watchdog's lock, <code>/system/source</code>, <code>/control/cmd_vel</code></td>
 <td><code>/drivers/point/cmd_vel</code></td>
 <td>the action <code>/drive_to_point</code>; calls <code>/fromLL</code> for a lat/lon B. <code>pixi run drive-to-point</code> (<a href="a-to-b.html">A to B</a>)</td>
@@ -854,13 +854,13 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td>priorities: <a href="howto-driver.html">Build a driver</a></td>
 </tr>
 <tr>
-<td><code>aav_ego</code></td>
+<td><code>aav_ego_rs</code>: <code>ego</code></td>
 <td><code>/control/cmd_vel</code></td>
 <td><code>/ego/actuator_cmd</code>, 50 times a second</td>
 <td>1.0 m/s top speed, ±0.5 rad, brakes after 0.3 s without a command</td>
 </tr>
 <tr>
-<td><code>aav_io_mux</code></td>
+<td><code>aav_io_mux_rs</code></td>
 <td><code>/ego/actuator_cmd</code>, <code>/system/source</code>, who publishes each sensor</td>
 <td><code>/control/&lt;target&gt;/actuator_cmd</code>, <code>/system/sensor_mux/state</code>, <code>/safety/output_mux/state</code></td>
 <td>the real car's commands only while every source is REAL: <a href="sources-and-targets.html">Sources and targets</a></td>
@@ -887,7 +887,7 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td><code>detector:=rfdetr</code> (the default: a <code>.pth</code>, or its <code>rf-detr-*.mlpackage</code> or <code>.engine</code>) or <code>yolo</code> (a <code>.pt</code>, <code>.mlpackage</code> or <code>.engine</code>); needs the <code>ml</code> environment, or JetPack's PyTorch and TensorRT</td>
 </tr>
 <tr>
-<td><code>aav_detector</code>: <code>stop_sign_watcher</code></td>
+<td><code>aav_stop_sign_rs</code>: <code>stop_sign_watcher</code></td>
 <td><code>/perception/detections</code></td>
 <td><code>/perception/stop_sign</code></td>
 <td>twist_mux's stop-sign lock, priority 30</td>
@@ -899,7 +899,7 @@ Ravensim, our simulator, has the same topics; a status says "Ravensim" once re-r
 <td>DBSCAN, in Rust; eps 0.8 m, 15 points (5 on the bench and in Gazebo)</td>
 </tr>
 <tr>
-<td><code>aav_lane_finder</code>: <code>lane_finder</code></td>
+<td><code>aav_lane_finder_rs</code>: <code>lane_finder</code></td>
 <td><code>/sensors/camera/front_left/image_raw</code>, <code>/sensors/camera/front_left/camera_info</code></td>
 <td><code>/perception/lane/geometry</code>, <code>/perception/lane/image</code></td>
 <td>a bird's-eye view, sliding windows, a curve per line; the camera's place from <code>vehicle.yaml</code></td>

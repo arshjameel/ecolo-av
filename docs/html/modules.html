@@ -7,7 +7,7 @@
 <!-- Generated from docs/modules.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Every module, explained</h1>
-<div class="meta">45 min read · 16 sections</div></header>
+<div class="meta">46 min read · 16 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -748,7 +748,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>an action that drives to one point B (lat/lon or map x/y) and stops there: speed up gently, hold, slow down by the distance left at half the measured braking</td>
+<td>an action that drives to one point B (lat/lon or map x/y) and stops there: speed up gently, hold, slow down by the distance left at half the measured braking. The node and client are Rust (<code>aav_drive_to_point_rs</code>; the Python ones removed 22 Nov); this package holds the launch file, config and Python maths</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -962,7 +962,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><strong>Run alone</strong></td>
-<td><code>ros2 launch aav_io_mux io_mux.launch.py target:=car</code> (Rust, <code>aav_io_mux_rs</code>, the default since 17 Nov; <code>io_mux_impl:=python</code> for these)</td>
+<td><code>ros2 launch aav_io_mux io_mux.launch.py target:=car</code> (Rust, <code>aav_io_mux_rs</code>: the only muxes since 22 Nov, when this package's Python nodes were removed)</td>
 </tr>
 <tr>
 <td><strong>Test</strong></td>
@@ -985,7 +985,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>turns the chosen speed and turn rate into a speed and steering angle the car can do, with limits, ramps and a timeout</td>
+<td>turns the chosen speed and turn rate into a speed and steering angle the car can do, with limits, ramps and a timeout. The nodes are Rust (<code>aav_ego_rs</code>; the Python ones removed 22 Nov); this package holds the launch file, config and Python maths</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -1278,7 +1278,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>three nodes: <code>object_detector</code> (RF-DETR Nano on camera pictures by default; YOLO with <code>detector:=yolo</code>), <code>stop_sign_watcher</code> (locks the mux at a close stop sign), <code>camera_obstacles</code> (boxes as points on the road for the costmap)</td>
+<td>two nodes: <code>object_detector</code> (RF-DETR Nano on camera pictures by default; YOLO with <code>detector:=yolo</code>), <code>camera_obstacles</code> (boxes as points on the road for the costmap); and <code>stop_sign.py</code>, the rules of <code>stop_sign_watcher</code> (which locks the mux at a close stop sign; the node is <code>aav_stop_sign_rs</code>'s since 22 Nov)</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -1372,7 +1372,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 <tbody>
 <tr>
 <td><strong>Does</strong></td>
-<td>finds the lane lines in the front camera's picture (classic OpenCV, no model)</td>
+<td>the lane finder's launch file, config and Python maths (classic OpenCV, no model); the node that finds the lane lines is <code>aav_lane_finder_rs</code>'s (the Python node removed 22 Nov)</td>
 </tr>
 <tr>
 <td><strong>Why</strong></td>
@@ -1742,12 +1742,12 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_lidar</code></td>
-<td><code>lidar_scan</code>: the roof lidar's cloud as a 2D scan for the costmap and the stop zone</td>
+<td>the flat scan's maths in Python (<code>scan.py</code>, <code>ground.py</code>); its node removed 22 Nov</td>
 <td><code>ros/perception/aav_lidar/README.md</code></td>
 </tr>
 <tr>
 <td><code>aav_lidar_rs</code></td>
-<td><code>lidar_scan</code> in Rust, the default (<code>lidar_impl:=</code>): the same scan</td>
+<td><code>lidar_scan</code> in Rust, the only one (the Python removed 22 Nov): the roof lidar's cloud as a 2D scan for the costmap and the stop zone</td>
 <td><code>ros/perception/aav_lidar_rs/README.md</code></td>
 </tr>
 <tr>
@@ -1847,7 +1847,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_ego_rs</code></td>
-<td><code>ego</code> and <code>look_ahead</code> in Rust, the default (<code>ego_impl:=python</code> falls back)</td>
+<td><code>ego</code> and <code>look_ahead</code> in Rust, the default (the Python removed 22 Nov)</td>
 <td><code>ros/ego/aav_ego_rs/README.md</code></td>
 </tr>
 <tr>
@@ -1857,7 +1857,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_io_mux_rs</code></td>
-<td>the sensor mux and the output mux in Rust, the default (<code>io_mux_impl:=python</code> falls back)</td>
+<td>the sensor mux and the output mux in Rust, the default (the Python removed 22 Nov)</td>
 <td><code>ros/io_mux/aav_io_mux_rs/README.md</code>, then <a href="sources-and-targets.html">Sources and targets</a></td>
 </tr>
 <tr>
@@ -1877,7 +1877,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_safety_rs</code></td>
-<td><code>geofence</code>, <code>stop_hold</code>, <code>goal_leash</code> in Rust, the defaults (<code>*_impl:=python</code> falls back)</td>
+<td><code>geofence</code>, <code>stop_hold</code>, <code>goal_leash</code> in Rust, the defaults (the Python removed 20 Nov)</td>
 <td><code>ros/safety/aav_safety_rs/README.md</code></td>
 </tr>
 <tr>
@@ -1887,12 +1887,12 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_stop_sign_rs</code></td>
-<td><code>stop_sign_watcher</code> in Rust, the default (<code>stop_sign_impl:=python</code> falls back)</td>
+<td><code>stop_sign_watcher</code> in Rust, the default (the Python removed 22 Nov)</td>
 <td><code>ros/perception/aav_stop_sign_rs/README.md</code></td>
 </tr>
 <tr>
 <td><code>aav_lane_finder_rs</code></td>
-<td><code>lane_finder</code> in Rust, the default (<code>lane_finder_impl:=python</code> falls back)</td>
+<td><code>lane_finder</code> in Rust, the default (the Python removed 22 Nov)</td>
 <td><code>ros/perception/aav_lane_finder_rs/README.md</code></td>
 </tr>
 <tr>
@@ -1902,7 +1902,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 </tr>
 <tr>
 <td><code>aav_drive_to_point_rs</code></td>
-<td><code>point_driver</code> and <code>drive_to_point</code> in Rust, the default (<code>drive_to_point_impl:=python</code> falls back)</td>
+<td><code>point_driver</code> and <code>drive_to_point</code> in Rust, the default (the Python removed 22 Nov)</td>
 <td><code>ros/drivers/aav_drive_to_point_rs/README.md</code>, then <a href="a-to-b.html">A to B</a></td>
 </tr>
 <tr>

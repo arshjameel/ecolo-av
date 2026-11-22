@@ -7,7 +7,7 @@
 <!-- Generated from docs/decisions.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Decisions and open questions</h1>
-<div class="meta">63 min read · 18 sections</div></header>
+<div class="meta">64 min read · 19 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -139,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#decided-from-26-october-to-14-november">Decided from 26 October to 14 November</a><a href="#decided-on-17-november">Decided on 17 November</a><a href="#decided-on-18-19-november">Decided on 18-19 November</a><a href="#proposed-in-november-bens-to-decide">Proposed in November: Ben&#x27;s to decide</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#how-to-read-the-labels">How to read the labels</a><a href="#decided">Decided</a><a href="#tentative">Tentative</a><a href="#proposed-for-the-next-team-meeting">Proposed: for the next team meeting</a><a href="#ground-rules">Ground rules</a><a href="#decided-on-10-october-on-the-mac">Decided on 10 October, on the Mac</a><a href="#decided-on-11-october">Decided on 11 October</a><a href="#decided-on-15-october">Decided on 15 October</a><a href="#decided-on-22-and-23-october">Decided on 22 and 23 October</a><a href="#decided-on-24-october">Decided on 24 October</a><a href="#decided-on-25-october">Decided on 25 October</a><a href="#decided-on-29-october">Decided on 29 October</a><a href="#decided-from-26-october-to-14-november">Decided from 26 October to 14 November</a><a href="#decided-on-17-november">Decided on 17 November</a><a href="#decided-on-18-19-november">Decided on 18-19 November</a><a href="#decided-on-22-november">Decided on 22 November</a><a href="#proposed-in-november-bens-to-decide">Proposed in November: Ben&#x27;s to decide</a><a href="#open-questions">Open questions</a><a href="#also-waiting-on-the-team">Also waiting on the team</a></nav>
 <div class="lead"><p>What the team has decided, what's still open, and the 34 numbered questions. The source
 is the team design doc, <em>AAV 2026–27 Autonomy Stack — Architecture &amp; Plan</em> (a Claude Doc,
 revision 61 on 10 October 2026). This page is a short copy, so you don't have to hunt.
@@ -1080,6 +1080,24 @@ answer.</p>
 <tr>
 <td><strong>Lanes are perception; the costmap prices them; navigation drives.</strong> The separate lane-follower drivers (the 2025-26 PID and ours) are removed once the camera's lanes are in the lanes layer (TODO 264). "Every algorithm stays" now means: not too early; strip what we know won't work (Ben, 19 Nov)</td>
 <td>Ben, 19 Nov: "drop there code all together". One driver (MPPI) with its lag and the obstacles, not a second steering loop beside it</td>
+<td>Ben</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="decided-on-22-november">Decided on 22 November</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Why</th>
+<th>By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Start removing the Python fall-backs: batch 1.</strong> The Python nodes whose Rust twin is already the default go: ego + look_ahead, the sensor mux and output mux, <code>lidar_scan</code>, <code>lane_finder</code>, <code>stop_sign_watcher</code>, <code>point_driver</code> and its client, <code>arm_when_open</code> (the watchdog, localization_health, <code>joy_alive</code> and things went on 20 Nov). Their <code>*_impl:=</code> switches take <code>rust</code> only. Kept: the hardware-facing fall-backs (<code>legacy_uart_bridge</code>, <code>rc_driver</code>, the Python <code>spine_bridge</code>), everything ML, voxels, and the Python maths other code imports or the Rust is checked against. Git tag <code>save/python-fallbacks-1</code></td>
+<td>"lets start removing the python fall back after being tested enough times": one node per job to keep right, Rust where possible (16 Nov)</td>
 <td>Ben</td>
 </tr>
 </tbody>

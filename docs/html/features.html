@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">143 min read · 15 sections</div></header>
+<div class="meta">145 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -453,7 +453,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td>Lane finder (<code>aav_lane_finder</code>)</td>
+<td>Lane finder (<code>aav_lane_finder</code>: the launch file, config and Python maths; the node is <code>aav_lane_finder_rs</code>'s since 22 Nov)</td>
 <td>Classic OpenCV finds the lane in 0.78 ms a picture, with no model to train</td>
 <td>Ben</td>
 <td>2026-10-10</td>
@@ -502,15 +502,15 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td>Lidar to a 2D scan (<code>aav_lidar</code> <code>lidar_scan</code>)</td>
+<td>Lidar to a 2D scan (<code>lidar_scan</code>: <code>aav_lidar_rs</code> since 17 Nov; <code>aav_lidar</code>'s Python node removed 22 Nov, its maths kept)</td>
 <td>The costmap and the stop zone need a flat scan, without the car's own body in it</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/perception/aav_lidar_rs/README.md">The flat scan in Rust</a> (<code>aav_lidar_rs</code> <code>lidar_scan</code>, <code>lidar_impl:=</code>), the default</td>
-<td>Ben, 17 Nov: "lets port the 4 expensive things to rust ... so we get our performance under control" (TODO 185). The same ranges as the Python, all 6,600 (7 made-up and 3 Ravensim clouds); the same node, topics and QoS. Ravensim, <code>/clock</code> 100 Hz: 2.0 % of a core and 46-53 MB against 4.8-5.1 % and 152-162 MB, road and campus. Since 17 Nov the default in the simulator and on the car; <code>lidar_impl:=python</code> falls back</td>
+<td><a href="../../ros/perception/aav_lidar_rs/README.md">The flat scan in Rust</a> (<code>aav_lidar_rs</code> <code>lidar_scan</code>), the only one</td>
+<td>Ben, 17 Nov: "lets port the 4 expensive things to rust ... so we get our performance under control" (TODO 185). The same ranges as the Python, all 6,600 (7 made-up and 3 Ravensim clouds); the same node, topics and QoS. Ravensim, <code>/clock</code> 100 Hz: 2.0 % of a core and 46-53 MB against 4.8-5.1 % and 152-162 MB, road and campus. Since 17 Nov the default in the simulator and on the car; the only one since 22 Nov, when the Python node was removed (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>)</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>
@@ -537,8 +537,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../../ros/perception/aav_lane_finder_rs/README.md">The lane finder in Rust</a> (<code>aav_lane_finder_rs</code> <code>lane_finder</code>, <code>lane_finder_impl:=</code>), the default</td>
-<td>Ben, 18 Nov: "the aav_lane_finder might be nice to have since it helps the car stay on the correct side"; Rust where possible, for trust and speed on the car's ARM computers. The bird's-eye warp, the paint mask, the sliding windows and the fits ported with no OpenCV (its fixed-point remap and lens model rewritten, so the masks are the same pixels; numpy's polyfit through nalgebra): the same lanes as the Python on 50 pictures (made up: straight, curved, dashed, one line, none, noise, night, tilted and distorted lenses; and 5 Ravensim frames), within 2e-14 m. Ravensim, University Drive, both side by side on the same 1,535 pictures: the same lanes to float32, 3.7 % of a core and 37 MB against 17.4 % and 175 MB. Since 18 Nov the default wherever the lane finder runs (<code>lane:=true</code>, the lane pose, the car's lane part, the bench); <code>lane_finder_impl:=python</code> falls back. Since 19 Nov (TODO 264) both twins also say each line's paint, white or yellow, from its pixels' colour (<code>left_paint</code>, <code>right_paint</code> in <code>LaneGeometry</code>), so the costmap can price a yellow centre line apart from a white edge line</td>
+<td><a href="../../ros/perception/aav_lane_finder_rs/README.md">The lane finder in Rust</a> (<code>aav_lane_finder_rs</code> <code>lane_finder</code>), the default (<code>lane_finder_impl:=learned</code> for the challenger)</td>
+<td>Ben, 18 Nov: "the aav_lane_finder might be nice to have since it helps the car stay on the correct side"; Rust where possible, for trust and speed on the car's ARM computers. The bird's-eye warp, the paint mask, the sliding windows and the fits ported with no OpenCV (its fixed-point remap and lens model rewritten, so the masks are the same pixels; numpy's polyfit through nalgebra): the same lanes as the Python on 50 pictures (made up: straight, curved, dashed, one line, none, noise, night, tilted and distorted lenses; and 5 Ravensim frames), within 2e-14 m. Ravensim, University Drive, both side by side on the same 1,535 pictures: the same lanes to float32, 3.7 % of a core and 37 MB against 17.4 % and 175 MB. Since 18 Nov the default wherever the lane finder runs (<code>lane:=true</code>, the lane pose, the car's lane part, the bench); the Python node was removed on 22 Nov (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>), its maths kept as the yardstick. Since 19 Nov (TODO 264) both twins also say each line's paint, white or yellow, from its pixels' colour (<code>left_paint</code>, <code>right_paint</code> in <code>LaneGeometry</code>), so the costmap can price a yellow centre line apart from a white edge line</td>
 <td>Ben</td>
 <td>2026-11-19</td>
 <td>sim</td>
@@ -601,8 +601,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/drivers/aav_drive_to_point_rs/README.md">Drive to point in Rust</a> (<code>aav_drive_to_point_rs</code> <code>point_driver</code> and <code>drive_to_point</code>, <code>drive_to_point_impl:=</code>) and <code>arm_when_open</code> in Rust (<code>aav_spine_bridge</code>, <code>arm_when_open_impl:=</code>), the defaults</td>
-<td>Rust where possible (Ben, 16 Nov), for trust on the car's ARM computers. The speed plan, pure pursuit, the corridor, every refusal and stop, and whole drives (to B, an e-stop, a cancel, a stuck car, speeding, a GPS jump, the stopping law, a turn round) give the Python's numbers to 1e-12 and its words exactly (shared vectors; the drive's ticks moved into <code>run.py</code>, no ROS, so both share them). TODO 94 kept as it is. <code>drive_to_point_impl:=python</code>, <code>arm_when_open_impl:=python</code> and <code>pixi run drive-to-point --python</code> fall back</td>
+<td><a href="../../ros/drivers/aav_drive_to_point_rs/README.md">Drive to point in Rust</a> (<code>aav_drive_to_point_rs</code> <code>point_driver</code> and <code>drive_to_point</code>) and <code>arm_when_open</code> in Rust (<code>aav_spine_bridge</code>), the only ones</td>
+<td>Rust where possible (Ben, 16 Nov), for trust on the car's ARM computers. The speed plan, pure pursuit, the corridor, every refusal and stop, and whole drives (to B, an e-stop, a cancel, a stuck car, speeding, a GPS jump, the stopping law, a turn round) give the Python's numbers to 1e-12 and its words exactly (shared vectors; the drive's ticks moved into <code>run.py</code>, no ROS, so both share them). TODO 94 kept as it is. The Python nodes (<code>point_driver</code>, its client, <code>arm_when_open</code>) were removed on 22 Nov (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>); <code>aav_drive_to_point</code>'s maths stays, the yardstick</td>
 <td>Ben</td>
 <td>2026-11-18</td>
 <td>sim</td>
@@ -941,7 +941,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </thead>
 <tbody>
 <tr>
-<td>ego, the virtual car (<code>aav_ego</code>), with Ackermann output</td>
+<td>ego, the virtual car (<code>aav_ego_rs</code> since 22 Nov; <code>aav_ego</code> keeps the launch file, config and maths), with Ackermann output</td>
 <td>Only ego talks to a backend, and every backend takes the same Ackermann message</td>
 <td>Ben</td>
 <td>2026-10-09</td>
@@ -1018,8 +1018,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../../ros/ego/aav_ego_rs/README.md">ego and look_ahead in Rust</a> (<code>aav_ego_rs</code>, <code>ego_impl:=rust</code>): both nodes in one process, the default</td>
-<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust". The same answers as the Python modules (0 difference, but the trace's f32 speed loop: 4e-8); our simulator's road world, /clock at 100 Hz: 2.4 % of a core against 17 % (ego 10.5, look_ahead 6.5); at 1000 Hz 4 % against 58 %; the same scripted drive (5.83 m, 0.00 m to the side). 16 Nov: the simulator's default (sim-check and the scores on lot and university_box no worse than the Python's); the car's default too (Ben, 16 Nov), <code>ego_impl:=python</code> falls back</td>
+<td><a href="../../ros/ego/aav_ego_rs/README.md">ego and look_ahead in Rust</a> (<code>aav_ego_rs</code>): both nodes in one process, the only ego</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust". The same answers as the Python modules (0 difference, but the trace's f32 speed loop: 4e-8); our simulator's road world, /clock at 100 Hz: 2.4 % of a core against 17 % (ego 10.5, look_ahead 6.5); at 1000 Hz 4 % against 58 %; the same scripted drive (5.83 m, 0.00 m to the side). 16 Nov: the simulator's default (sim-check and the scores on lot and university_box no worse than the Python's); the car's default too (Ben, 16 Nov). The only ego since 22 Nov: the Python nodes were removed (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>), the maths kept as the yardstick</td>
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>sim</td>
@@ -1103,22 +1103,22 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="sources-and-targets.html">Sensor mux and output mux</a> (<code>aav_io_mux</code>)</td>
+<td><a href="sources-and-targets.html">Sensor mux and output mux</a> (<code>aav_io_mux_rs</code>; <code>aav_io_mux</code> keeps the launch file and the rules in Python)</td>
 <td>Simulated data can never drive the real car, and the spine won't arm while the gate is shut</td>
 <td>Ben</td>
 <td>2026-10-23</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/io_mux/aav_io_mux_rs/README.md">The sensor mux and output mux in Rust</a> (<code>aav_io_mux_rs</code>, <code>io_mux_impl:=rust</code>), the default</td>
-<td>Ben, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later": the Motor Pi alone runs the safety path that makes the ESP32's heartbeat, so it goes to Rust before the Rust ESP32 is flashed. A safety lock, so it answers exactly as the Python: 6,500 steps of shared vectors (every SourceCheck and log line, every state line, each command passed or held with its heartbeat counter, each clear; the latches, NOT SIM / WAIT, the 30 s start-up grace, the screens refused for the car, each limit exactly). sim-check's road world passes with both; 4-5 % of a core each against 17-22 % for the Python. The default on the car and in the simulator; <code>io_mux_impl:=python</code> falls back until a car day proves it</td>
+<td><a href="../../ros/io_mux/aav_io_mux_rs/README.md">The sensor mux and output mux in Rust</a> (<code>aav_io_mux_rs</code>), the only ones</td>
+<td>Ben, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later": the Motor Pi alone runs the safety path that makes the ESP32's heartbeat, so it goes to Rust before the Rust ESP32 is flashed. A safety lock, so it answers exactly as the Python: 6,500 steps of shared vectors (every SourceCheck and log line, every state line, each command passed or held with its heartbeat counter, each clear; the latches, NOT SIM / WAIT, the 30 s start-up grace, the screens refused for the car, each limit exactly). sim-check's road world passes with both; 4-5 % of a core each against 17-22 % for the Python. The default on the car and in the simulator since 17 Nov; the only ones since 22 Nov, when the Python nodes were removed (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>). Not yet run on the car</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/perception/aav_stop_sign_rs/README.md"><code>joy_alive</code> and <code>stop_sign_watcher</code> in Rust</a> (<code>aav_joy_alive_rs</code>, <code>joy_alive_impl:=rust</code>; <code>aav_stop_sign_rs</code>, <code>stop_sign_impl:=rust</code>), the defaults</td>
-<td>Ben, 17 Nov: the Motor Pi alone's Python nodes become Rust by default ("I don't think we want to do this again later"): the joystick's check and the stop-sign lock. Each gives the Python's answers on shared vectors (6,982 joystick events; 2,400 watcher steps, sign points, lidar matches); a chain test drives ego through each joy_alive, a process test locks and lets go with each watcher. the Python nodes removed 20 Nov (<code>save/python-safety-nodes</code>). Rust; the Python removed 20 Nov (<code>save/</code> tags in the package READMEs)</td>
+<td><a href="../../ros/perception/aav_stop_sign_rs/README.md"><code>joy_alive</code> and <code>stop_sign_watcher</code> in Rust</a> (<code>aav_joy_alive_rs</code>, <code>aav_stop_sign_rs</code>), the only ones</td>
+<td>Ben, 17 Nov: the Motor Pi alone's Python nodes become Rust by default ("I don't think we want to do this again later"): the joystick's check and the stop-sign lock. Each gives the Python's answers on shared vectors (6,982 joystick events; 2,400 watcher steps, sign points, lidar matches); a chain test drives ego through each joy_alive, a process test locks and lets go with the watcher. The Python <code>joy_alive</code> was removed on 20 Nov (<code>save/python-safety-nodes</code>), the Python <code>stop_sign_watcher</code> on 22 Nov (<code>save/python-fallbacks-1</code>; Ben: "lets start removing the python fall back after being tested enough times")</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>

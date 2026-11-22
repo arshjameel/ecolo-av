@@ -249,6 +249,12 @@ The whole story, to explain to someone else: [What we decided, 18-19 Nov](decisi
 | **One ONNX file per model**: Core ML on the Mac, TensorRT on the Orin (JetPack 7.2+); moved up (TODO 243) | one export for every computer; proven on the Mac before the car | Ben |
 | **Lanes are perception; the costmap prices them; navigation drives.** The separate lane-follower drivers (the 2025-26 PID and ours) are removed once the camera's lanes are in the lanes layer (TODO 264). "Every algorithm stays" now means: not too early; strip what we know won't work (Ben, 19 Nov) | Ben, 19 Nov: "drop there code all together". One driver (MPPI) with its lag and the obstacles, not a second steering loop beside it | Ben |
 
+## Decided on 22 November
+
+| Decision | Why | By |
+|---|---|---|
+| **Start removing the Python fall-backs: batch 1.** The Python nodes whose Rust twin is already the default go: ego + look_ahead, the sensor mux and output mux, `lidar_scan`, `lane_finder`, `stop_sign_watcher`, `point_driver` and its client, `arm_when_open` (the watchdog, localization_health, `joy_alive` and things went on 20 Nov). Their `*_impl:=` switches take `rust` only. Kept: the hardware-facing fall-backs (`legacy_uart_bridge`, `rc_driver`, the Python `spine_bridge`), everything ML, voxels, and the Python maths other code imports or the Rust is checked against. Git tag `save/python-fallbacks-1` | "lets start removing the python fall back after being tested enough times": one node per job to keep right, Rust where possible (16 Nov) | Ben |
+
 ## Proposed in November: Ben's to decide
 
 Designs, **nothing of them built**.

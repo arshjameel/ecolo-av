@@ -427,8 +427,8 @@ blocked (<a href="learn-nav2.html">Learn: navigation</a>). To get there, look <s
 <p>The band comes from <code>vehicle.yaml</code>: the body is 1.5 m tall, plus a 0.5 m margin
 (<code>aav_description</code> <code>obstacle_heights</code>). Both are guesses until measured.</p>
 <h3 id="the-plain-way-lidar_scan-no-cubes">The plain way: <code>lidar_scan</code>, no cubes</h3>
-<p>Without cubes (<code>voxels:=false</code>, the car's default), <code>lidar_scan</code> (<code>aav_lidar_rs</code>; Python:
-<code>aav_lidar</code>) does the same job a simpler way: in each of <strong>720 directions</strong> (every 0.5°), it keeps the <strong>nearest point
+<p>Without cubes (<code>voxels:=false</code>, the car's default), <code>lidar_scan</code> (<code>aav_lidar_rs</code>; the same sums in Python:
+<code>aav_lidar</code>'s <code>scan.py</code>) does the same job a simpler way: in each of <strong>720 directions</strong> (every 0.5°), it keeps the <strong>nearest point
 inside the band</strong>.</p>
 <div class="table-wrap"><table>
 <thead>
@@ -736,7 +736,7 @@ it starts. Built on the raylib HUD (<code>ros/hud/aav_hud</code>).</p>
 <tr>
 <td>Points → 2D scan → costmap and the stop zone</td>
 <td>✅ built; the simulator</td>
-<td><code>aav_lidar_rs</code> (<code>aav_lidar</code> in Python) <code>lidar_scan</code>, <code>nav2.yaml</code></td>
+<td><code>aav_lidar_rs</code> <code>lidar_scan</code>, <code>nav2.yaml</code></td>
 </tr>
 <tr>
 <td>Cubes from the lidar</td>
@@ -810,7 +810,7 @@ it starts. Built on the raylib HUD (<code>ros/hud/aav_hud</code>).</p>
 </tr>
 <tr>
 <td>Points into a scan</td>
-<td><code>ros/perception/aav_lidar</code> (<code>scan.py</code>: the sums, no ROS)</td>
+<td><code>ros/perception/aav_lidar_rs</code> (the node); <code>ros/perception/aav_lidar</code> (<code>scan.py</code>: the sums in Python, no ROS)</td>
 </tr>
 <tr>
 <td>The lowest rings and body roll</td>

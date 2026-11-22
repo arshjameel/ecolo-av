@@ -40,8 +40,9 @@ against the code; the proofs are in the last table.
 | iBUS | the RC sticks and switches | the RC receiver |
 
 **Rust by default** (Ben, 17 Nov: "Rust tomorrow"): the output mux (`aav_io_mux_rs`),
-the bridge (`aav_legacy_rs`) and `rc_driver` (`aav_rc_rs`) run in Rust; each
-`*_impl:=python` falls back. The bridge packs its frames with the firmware's own
+the bridge (`aav_legacy_rs`) and `rc_driver` (`aav_rc_rs`) run in Rust. The bridge and
+`rc_driver` fall back (`legacy_impl:=python`, `rc_impl:=python`); the Python muxes were
+removed on 22 Nov. The bridge packs its frames with the firmware's own
 `legacy-link`, so the Pi and the ESP32 share one copy of the bytes.
 
 **The heartbeat is the output mux's counter.** Wherever the output mux runs (the Orin,

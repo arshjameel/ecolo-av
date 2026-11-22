@@ -7,7 +7,7 @@
 <!-- Generated from docs/status.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Status: what works and what doesn&#x27;t yet</h1>
-<div class="meta">38 min read · 7 sections</div></header>
+<div class="meta">39 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -756,7 +756,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 </tr>
 <tr>
 <td>Rust by default (16-18 Nov)</td>
-<td>ego, behaviour, the watchdog, localization_health, the muxes, the Motor Pi's bridge and RC, <code>lidar_scan</code>, things, <code>joy_alive</code>, the stop-sign watcher, the lane finder, the point driver, <code>arm_when_open</code>, <code>camera_stream</code>, AMCL; <code>*_impl:=python</code> falls back</td>
+<td>ego, behaviour, the watchdog, localization_health, the muxes, the Motor Pi's bridge and RC, <code>lidar_scan</code>, things, <code>joy_alive</code>, the stop-sign watcher, the lane finder, the point driver, <code>arm_when_open</code>, <code>camera_stream</code>, AMCL. Only three Python fall-backs are left since 22 Nov: the Motor Pi's bridge (<code>legacy_impl:=python</code>), RC (<code>rc_impl:=python</code>) and <code>camera_stream</code> (<code>camera_stream_impl:=python</code>); the other Python nodes were removed on 20 and 22 Nov</td>
 <td><span class="badge b-works">works</span> against the Python's answers (shared vectors) and in Ravensim; <span class="badge b-untested">untested</span> on the car (<a href="languages.html">Languages</a>)</td>
 </tr>
 <tr>
