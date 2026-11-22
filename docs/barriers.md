@@ -113,6 +113,39 @@ object and the nearest point of the car's body.
 | 4 | **A straight look ahead stops a car that is turning away** | with the real stopping law it stood still mid-swerve; the rule now looks along the bend |
 | 5 | **The solver works harder**: a tick 0.3 to 0.5 ms without, 3 to 15 ms with a barrier near; it often ends at its iteration limit | inside the 50 ms tick; a better solver setting is to do |
 
+### The sweep: 420 runs (22 Nov)
+
+Five sweeps, each for four trackers: the cruise speed (0.5 to 4 m/s) on the straight and
+on a 25 m bend, where the object stands (1.6 m right to 1.6 m left) at 3 m/s and at
+1 m/s, and the car's dead time (0 to 0.4 s). "Distance limit" is the same rule with γ = 1:
+a wall at the circle's edge and nothing before it, a step.
+
+| Tracker (105 runs each) | Touched | Stopped short | Reached the end | Least gap |
+|---|---|---|---|---|
+| Plain | **77** | 0 | 28 | −0.50 m |
+| Distance limit only (γ 1) | **1** | 104 | 0 | −0.06 m |
+| Barrier, γ 0.05 | 0 | 41 | 64 | 0.21 m |
+| Barrier, γ 0.02 | 0 | 39 | 66 | 0.22 m |
+
+| # | What the sweep showed | Where |
+|---|---|---|
+| 6 | **The barriers never touched**, in 210 runs; the least gap was 0.21 m | every sweep |
+| 7 | **The step never gets round, and once it touched**: at 3 m/s with 0.35 s of dead time it met the object (−0.06 m) | dead time |
+| 8 | **Going round starts near 3 m/s** head on (γ 0.05: from 3.0; γ 0.02: from 2.75). Below that the car stops, safe and stuck | speed, bend |
+| 9 | **A bend changes little**: the same gaps and the same speed where it starts to go round | bend |
+| 10 | **Dead time costs the barrier 0.1 to 0.3 m of gap**, never the object | dead time |
+| 11 | **At 1 m/s it stops for an object the plain tracker would pass**: one 1.0 to 1.1 m aside, with 0 to 0.1 m to spare | offset, slow |
+| 12 | **The solver ran out of turns on 57 to 82 % of the ticks** with a rule on (3 % without) | all: finding 5, measured |
+
+The graphs: `tools/barrier_graphs.py` draws them from the tests' CSVs.
+
+```sh
+cd ros/drivers/aav_mpc_lag
+AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barrier the_traces -- --ignored
+AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barrier the_sweep -- --ignored
+python3 ../../../tools/barrier_graphs.py /tmp/barrier-traces /tmp/barrier-graphs.html
+```
+
 ## 6. What it assumes
 
 | Assumption | True on the car? |

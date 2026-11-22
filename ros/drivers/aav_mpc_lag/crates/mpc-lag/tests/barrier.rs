@@ -520,3 +520,172 @@ fn the_traces() {
         std::fs::write(format!("{out}/step_{name}.csv"), text).expect("a file");
     }
 }
+
+/// A left bend of `radius` m, `length` m long.
+fn bend(radius: f64, length: f64) -> Vec<(f64, f64, f64)> {
+    (0..=(length / 0.1) as usize)
+        .map(|i| {
+            let turn = i as f64 * 0.1 / radius;
+            (radius * turn.sin(), radius * (1.0 - turn.cos()), turn)
+        })
+        .collect()
+}
+
+/// One run of the sweep: which set it belongs to, the road, the object, the numbers.
+#[derive(Clone, Copy)]
+struct Job {
+    set: &'static str,
+    case: &'static str,
+    rules: Option<Rules>,
+    bend: bool,
+    speed: f64,
+    offset: f64,
+    dead_time: f64,
+}
+
+impl Job {
+    /// The line of `sweep.csv` this run makes.
+    fn run(&self) -> String {
+        const RADIUS: f64 = 25.0;
+        let (poses, object) = if self.bend {
+            // The object 15 m along the bend, `offset` to the left of it.
+            let turn = 15.0 / RADIUS;
+            let from_centre = RADIUS - self.offset;
+            let object = Object {
+                x: from_centre * turn.sin(),
+                y: RADIUS - from_centre * turn.cos(),
+                radius: 0.5,
+            };
+            (bend(RADIUS, 40.0), object)
+        } else {
+            let object = Object {
+                x: 15.0,
+                y: self.offset,
+                radius: 0.5,
+            };
+            (straight(40.0), object)
+        };
+        // Time for the whole road at this speed and half as much again: a run that is
+        // still short of the end then has stopped, not run out of time.
+        let seconds = 60.0 / self.speed + 15.0;
+        let run = drive(
+            &poses,
+            object,
+            self.rules,
+            self.speed,
+            self.dead_time,
+            seconds,
+        );
+        let gap = run.least_gap();
+        let ended = match (gap < 0.0, run.reached) {
+            (true, _) => "touched",
+            (false, true) => "reached",
+            (false, false) if run.last()[4] < 0.05 => "stopped",
+            (false, false) => "moving",
+        };
+        let mut ms = run.step_ms.clone();
+        ms.sort_by(f64::total_cmp);
+        format!(
+            "{},{},{:.2},{:.2},{:.2},{:.4},{},{:.2},{:.3},{},{},{:.4},{:.3},{:.3}\n",
+            self.set,
+            self.case,
+            self.speed,
+            self.offset,
+            self.dead_time,
+            gap,
+            ended,
+            run.last()[0],
+            run.widest(),
+            run.unsolved,
+            run.rows.len(),
+            run.worst_slack,
+            ms[ms.len() / 2],
+            ms[ms.len() - 1],
+        )
+    }
+}
+
+/// Hundreds of runs, one line each, for the graphs' second half: the cruise speed, where
+/// the object stands, the car's dead time and a bend, each swept for the plain tracker, a
+/// distance limit alone (share 1: the step) and two barriers.
+/// `AAV_BARRIER_OUT=<folder> cargo test --release -p mpc-lag --test barrier the_sweep -- --ignored`.
+#[test]
+#[ignore = "writes sweep.csv to $AAV_BARRIER_OUT"]
+fn the_sweep() {
+    let Ok(out) = std::env::var("AAV_BARRIER_OUT") else {
+        println!("set AAV_BARRIER_OUT to a folder");
+        return;
+    };
+    let cases = [
+        ("plain", None),
+        ("limit", with_gamma(1.0)),
+        ("g005", with_gamma(0.05)),
+        ("g002", with_gamma(0.02)),
+    ];
+    let steps = |from: f64, by: f64, count: usize| (0..count).map(move |i| from + by * i as f64);
+    let mut jobs = Vec::new();
+    for (case, rules) in cases {
+        let job = Job {
+            set: "",
+            case,
+            rules,
+            bend: false,
+            speed: 3.0,
+            offset: 0.0,
+            dead_time: 0.0,
+        };
+        jobs.extend(steps(0.5, 0.25, 15).map(|speed| Job {
+            set: "speed",
+            speed,
+            ..job
+        }));
+        jobs.extend(steps(0.5, 0.25, 15).map(|speed| Job {
+            set: "bend",
+            bend: true,
+            speed,
+            ..job
+        }));
+        for (set, speed) in [("offset_fast", 3.0), ("offset_slow", 1.0)] {
+            jobs.extend(steps(-1.6, 0.1, 33).map(|offset| Job {
+                set,
+                speed,
+                offset,
+                ..job
+            }));
+        }
+        jobs.extend(steps(0.0, 0.05, 9).map(|dead_time| Job {
+            set: "dead_time",
+            dead_time,
+            ..job
+        }));
+    }
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let workers = std::thread::available_parallelism().map_or(4, |n| usize::from(n) / 2 + 1);
+    let lines: Vec<(usize, String)> = std::thread::scope(|scope| {
+        let hands: Vec<_> = (0..workers)
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut mine = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(job) = jobs.get(i) else { break };
+                        mine.push((i, job.run()));
+                    }
+                    mine
+                })
+            })
+            .collect();
+        hands
+            .into_iter()
+            .flat_map(|h| h.join().expect("a worker"))
+            .collect()
+    });
+    let mut lines = lines;
+    lines.sort_by_key(|(i, _)| *i);
+    let mut text = String::from(
+        "set,case,speed,offset,dead_time,gap,ended,seconds,widest,unsolved,ticks,slack,ms_median,ms_worst\n",
+    );
+    text.extend(lines.into_iter().map(|(_, line)| line));
+    std::fs::write(format!("{out}/sweep.csv"), text).expect("a file");
+    println!("{} runs", jobs.len());
+}

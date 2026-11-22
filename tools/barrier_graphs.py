@@ -3,6 +3,7 @@ Draw the barriers' runs as one HTML page of graphs (research, separate from the 
 
     AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barrier \
         the_traces -- --ignored          (in ros/drivers/aav_mpc_lag: writes the CSVs)
+    (the same with the_sweep: 420 runs into sweep.csv, a few minutes on every core)
     python3 tools/barrier_graphs.py /tmp/barrier-traces out.html
 
 No ROS, the standard library only. The page draws itself (inline SVG, a hover read-out, a
@@ -100,6 +101,64 @@ def build(folder):
              'zero': True, 'head': ['Run', 'Largest difference (mm)', 'Settled within 5 cm (s)'],
              'rows': [['plain', '0', f'{settle:.1f}'], ['g005', f'{worst * 1000:.0f}', '']]})
     return charts
+
+
+# set in sweep.csv -> (the column swept, title, note, x label)
+SWEEPS = [
+    ('speed', 'speed', 'Every cruise speed: the least gap, object dead on the path',
+     'Straight road, no dead time. Below zero the car touched the object.', 'cruise speed (m/s)'),
+    ('bend', 'speed', 'The same on a bend (25 m radius)',
+     'The object stands on the path, 15 m along a left bend.', 'cruise speed (m/s)'),
+    ('offset_fast', 'offset', 'Every place the object can stand, at 3 m/s',
+     'From 1.6 m right of the path to 1.6 m left of it.', 'object left of the path (m)'),
+    ('offset_slow', 'offset', 'Every place the object can stand, at 1 m/s',
+     'Slow: it stops for an object within 1.1 m of the path, and passes one further out.',
+     'object left of the path (m)'),
+    ('dead_time', 'dead_time', 'A slower car: dead time on steering and pedals, 3 m/s',
+     'Object dead on the path. The tracker is told the dead time.', 'dead time (s)'),
+]
+ENDED = ['touched', 'stopped', 'moving', 'reached']
+
+
+def sweep(folder):
+    """Return (graphs, tally) from sweep.csv: the least gap across each sweep."""
+    path = folder / 'sweep.csv'
+    if not path.exists():
+        return [], ''
+    with path.open() as f:
+        rows = list(csv.DictReader(f))
+    keys = [k for k, *_ in SERIES]
+    charts = []
+    for name, column, title, note, label in SWEEPS:
+        mine = [r for r in rows if r['set'] == name]
+        lines = [{'key': k, 'points': [[float(r[column]), round(float(r['gap']), 3)]
+                                       for r in mine if r['case'] == k]} for k in keys]
+        table = [[k] + [f"{sum(r['case'] == k and r['ended'] == e for r in mine)}"
+                        for e in ENDED]
+                 + [f"{min(float(r['gap']) for r in mine if r['case'] == k):.2f}"]
+                 for k in keys]
+        charts.append({'title': title, 'note': note, 'x': label,
+                       'y': 'least gap to the object (m)', 'series': lines, 'zero': True,
+                       'head': ['Run'] + [e.capitalize() for e in ENDED] + ['Least gap (m)'],
+                       'rows': table})
+    names = {k: n for k, n, _, _ in SERIES}
+    body = ''
+    for k in keys:
+        mine = [r for r in rows if r['case'] == k]
+        late = sum(int(r['unsolved']) for r in mine) / sum(int(r['ticks']) for r in mine)
+        body += (f'<tr><td>{names[k]}</td><td>{len(mine)}</td>'
+                 + ''.join(f"<td>{sum(r['ended'] == e for r in mine)}</td>" for e in ENDED)
+                 + f"<td>{min(float(r['gap']) for r in mine):.2f}</td>"
+                 f'<td>{late * 100:.0f}%</td></tr>')
+    tally = ('<figure><h2>All the runs of the sweep, counted</h2><p class="note">Touched: '
+             'the body met the object. Stopped: safe, and stuck short of the end. Moving: '
+             'still creeping when the time ran out. Reached: got to the end of the road. '
+             'Last column: ticks where the solver ran out of turns before it settled.</p>'
+             '<table><tr><th>Run</th><th>Runs</th>'
+             + ''.join(f'<th>{e.capitalize()}</th>' for e in ENDED)
+             + '<th>Least gap (m)</th><th>Unsettled ticks</th></tr>' + body
+             + '</table></figure>')
+    return charts, tally
 
 
 W, H, L, R, T, B = 860, 340, 56, 16, 14, 44
@@ -235,11 +294,13 @@ def main(argv):
         print(__doc__)
         return 2
     charts = build(Path(argv[1]))
+    swept, tally = sweep(Path(argv[1]))
+    charts += swept
     names = {k: n for k, n, _, _ in SERIES}
     page = (PAGE.replace('__LIGHT__', ''.join(f'--{k}:{c};' for k, _, c, _ in SERIES))
             .replace('__DARK__', ''.join(f'--{k}:{c};' for k, _, _, c in SERIES))
             .replace('__NAMES__', json.dumps(names))
-            .replace('__FIGURES__', ''.join(draw(c, names) for c in charts)))
+            .replace('__FIGURES__', ''.join(draw(c, names) for c in charts) + tally))
     Path(argv[2]).write_text(page)
     print(f'{len(charts)} graphs in {argv[2]}')
     return 0

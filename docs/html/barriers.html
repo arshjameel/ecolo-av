@@ -7,7 +7,7 @@
 <!-- Generated from docs/barriers.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Barriers in the MPC: keeping the car off things</h1>
-<div class="meta">8 min read · 7 sections</div></header>
+<div class="meta">10 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -425,6 +425,103 @@ object and the nearest point of the car's body.</p>
 </tr>
 </tbody>
 </table></div>
+<h3 id="the-sweep-420-runs-22-nov">The sweep: 420 runs (22 Nov)</h3>
+<p>Five sweeps, each for four trackers: the cruise speed (0.5 to 4 m/s) on the straight and
+on a 25 m bend, where the object stands (1.6 m right to 1.6 m left) at 3 m/s and at
+1 m/s, and the car's dead time (0 to 0.4 s). "Distance limit" is the same rule with γ = 1:
+a wall at the circle's edge and nothing before it, a step.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tracker (105 runs each)</th>
+<th>Touched</th>
+<th>Stopped short</th>
+<th>Reached the end</th>
+<th>Least gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plain</td>
+<td><strong>77</strong></td>
+<td>0</td>
+<td>28</td>
+<td>−0.50 m</td>
+</tr>
+<tr>
+<td>Distance limit only (γ 1)</td>
+<td><strong>1</strong></td>
+<td>104</td>
+<td>0</td>
+<td>−0.06 m</td>
+</tr>
+<tr>
+<td>Barrier, γ 0.05</td>
+<td>0</td>
+<td>41</td>
+<td>64</td>
+<td>0.21 m</td>
+</tr>
+<tr>
+<td>Barrier, γ 0.02</td>
+<td>0</td>
+<td>39</td>
+<td>66</td>
+<td>0.22 m</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>What the sweep showed</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>6</td>
+<td><strong>The barriers never touched</strong>, in 210 runs; the least gap was 0.21 m</td>
+<td>every sweep</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>The step never gets round, and once it touched</strong>: at 3 m/s with 0.35 s of dead time it met the object (−0.06 m)</td>
+<td>dead time</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Going round starts near 3 m/s</strong> head on (γ 0.05: from 3.0; γ 0.02: from 2.75). Below that the car stops, safe and stuck</td>
+<td>speed, bend</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>A bend changes little</strong>: the same gaps and the same speed where it starts to go round</td>
+<td>bend</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Dead time costs the barrier 0.1 to 0.3 m of gap</strong>, never the object</td>
+<td>dead time</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>At 1 m/s it stops for an object the plain tracker would pass</strong>: one 1.0 to 1.1 m aside, with 0 to 0.1 m to spare</td>
+<td>offset, slow</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>The solver ran out of turns on 57 to 82 % of the ticks</strong> with a rule on (3 % without)</td>
+<td>all: finding 5, measured</td>
+</tr>
+</tbody>
+</table></div>
+<p>The graphs: <code>tools/barrier_graphs.py</code> draws them from the tests' CSVs.</p>
+<pre class="highlight"><code class="language-sh">cd ros/drivers/aav_mpc_lag
+AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barrier the_traces -- --ignored
+AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barrier the_sweep -- --ignored
+python3 ../../../tools/barrier_graphs.py /tmp/barrier-traces /tmp/barrier-graphs.html</code></pre>
 </section>
 <section class="card"><h2 id="6-what-it-assumes">6. What it assumes</h2>
 <div class="table-wrap"><table>
