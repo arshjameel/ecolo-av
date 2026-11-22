@@ -159,7 +159,7 @@ What we changed, and why.
 | **A features list, `docs/features.md`**: each feature's type, why, who and status, updated in the feature's own commit | The team's report must say what each person built and why; a rule in CLAUDE.md and a checklist on pull requests keep it current | Ben, 25 Oct |
 | **ROS packages live in `ros/<area>/`**: sources, localization, perception, drivers, command_mux, ego, io_mux, can_bridge, sim, safety, hud, bringup, ecolo_msgs (was `src/<layer>/`) | Each folder matches a box in the picture, so you find a package where its data flows | Arsh, 25 Oct |
 | **The Flutter HUD and its Flask back end are archived** (`archive/2026-27-flutter-hud/`); the raylib package takes the name `aav_hud`; the route maths moves to `aav_routes` | Q29: the raylib HUD replaced the app on 15 Oct. Nothing built, tested or started the old one any more | Ben, 25 Oct |
-| **[CONTRIBUTING.md](../CONTRIBUTING.md) is the git rule**: fork, branch, pull request, one approval and green CI, then the merge queue | One way into `main` for everyone, maintainers included | Arsh, 25 Oct |
+| **[CONTRIBUTING.md](../CONTRIBUTING.md) is the git rule**: fork, branch, pull request, one approval and green CI, then merge. No merge queue since 21 Nov | One way into `main` for everyone, maintainers included. The queue ran the whole CI a second time, about an hour a pull request; the run on `main` after each merge now catches two changes that break together | Arsh, 25 Oct; Ben, 21 Nov |
 
 ## Decided on 29 October
 

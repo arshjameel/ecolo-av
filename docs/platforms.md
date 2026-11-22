@@ -85,6 +85,9 @@ the ESP32, and the CAN bus goes to the Orin with the wheel sensors on it
 | `motor_pi.yaml` | `legacy_uart_bridge`: the ESP32 is wired to it. The 2025-26 UDP encoder (`encoder_udp`) is off: the wheels are on CAN now |
 | `motor_pi_alone.yaml` | the Motor Pi without the Orin, for the stands: mux, ego, the stop-sign watcher, the joystick, `legacy_uart_bridge`. Never beside the Orin's stack ([Rolling out](rollout.md)) |
 | `localization.yaml` | the IMU and GPS drivers only, on the localization Pi they are plugged into; the Orin does the maths |
+| `dash.yaml` | the two screens, the HUD and the street map (`hud`, `map`), on the dash Pi. At boot its `aav-hud` and `aav-map` units start them ([The two screens](car-screens.md)); the file is the same by hand. Never both at once |
+| `camera_pi.yaml` | nothing in ROS: a camera Pi sends its cameras with MediaMTX, and the Orin reads the streams. The file says so, and keeps `camera` (usb_cam) for a test |
+| `battery_pi.yaml` | the battery monitor (`battery`), on the voltage meter's Pi. **Not checked on the car**: nobody has logged in to that Pi yet; the hardware lead confirms |
 | `laptop.yaml` | the joystick, on the safety driver's laptop, and its own detector (`object_detector_laptop`, RF-DETR Nano) on the compressed pictures: `pixi run -e ml car laptop` |
 | `all.yaml` | everything on one computer, for the bench. Its detector is `object_detector_all` |
 
@@ -116,6 +119,7 @@ hardware: the cameras (Q22), the radar, or which USB port a device is on.
 | `stop_signs` | the stop-sign watcher: one per car, next to the mux |
 | `radar_clusters` | the radar's clustering |
 | `lane` | lane keeping with the camera; off in every car machine file |
+| `hud`, `map` | the two screens (`aav_hud`), full screen: `dash.yaml`. Skipped, with a warning, where `aav_hud` isn't built |
 | `camera_obstacles` | the detectors' boxes as points on the road, for the costmap ([Costmaps](costmaps.md)) |
 | `localization`, `navigation` | the two EKFs and `navsat_transform`; navigation (ours). Its costmap reads the `radar` and `camera_obstacles` parts on the same computer, and the stop zone comes with the radar |
 | `spine` | the CAN bus (Linux only): with `actuators:=uart`, the wheel sensors only (`spine_bridge role:=sensors`, no CAN sender); with `actuators:=can`, the CAN spine backend |
