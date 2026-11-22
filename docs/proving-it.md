@@ -37,7 +37,33 @@ pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by h
 | A pass on a shut rung needs `--override "why"` | and the why is kept |
 | It never moves the car | for a car rung it prints the command; a person runs it |
 
-The rungs are `tools/ladder/rungs.yaml`. A window for it is next (TODO 271).
+The rungs are `tools/ladder/rungs.yaml`.
+
+### The window: `pixi run ladder-window`
+
+```bash
+pixi run ladder-window               # the ladder, in a window (the first time: cargo builds Bevy)
+pixi run ladder-window --pretend     # sample data: nothing runs, nothing is recorded
+```
+
+![The test ladder's window, pretend data](img/ladder-window.png)
+
+| Part | Shows | Does |
+|---|---|---|
+| left: the ladder | the top rung at the top; **Simulator** and **The car** side by side; each cell in words: PASS or FAIL with the date, not run, shut | click a rung; hover a shut cell for why |
+| right: the rung | what it measures, when it passes, the last result (date, commit, report, override), what shuts it | |
+| **Run in the simulator** | on only when the simulator's side is open and has a command; else it says why | `pixi run ladder run <rung>`; one run at a time |
+| the console | the run's last lines, "running...", how it ended | **Stop** ends the run and all it started |
+| **The car** | its command as text, and "A person starts a car test from the terminal" | **Copy** only |
+| **Record by hand** | pass or fail, simulator or car, a note, an override reason | `pixi run ladder record ...`; a refusal is shown in the tool's words |
+
+| Rule | |
+|---|---|
+| The window never moves the car | it has no control that starts a car test |
+| The tool is the only writer | the window reads `ladder --json` every 2 s and after each action; every rule stays in `tools/ladder.py` |
+| Closing the window stops its run | no simulator is left behind |
+
+The code: `ros/hud/aav_dev_window` (`src/ladder_window/`, and the logic in `crates/ladder-core`).
 
 ## The rules of evidence
 

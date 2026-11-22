@@ -1,0 +1,212 @@
+{
+ "file": "/tmp/ladder-fixture/ladder.yaml",
+ "rungs": [
+  {
+   "id": "code",
+   "title": "The code against the maths",
+   "where": "laptop",
+   "measures": "nothing; every unit test, the pretend car",
+   "passes": "tools/test.sh exits 0",
+   "how": "docs/proving-it.md",
+   "sim": {
+    "state": "pass",
+    "when": "2026-11-22 16:56",
+    "commit": "e719f405+",
+    "report": "",
+    "override": "",
+    "command": "pixi run bash tools/test.sh",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "pass",
+    "when": "2026-11-22 16:56",
+    "commit": "e719f405+",
+    "report": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "stack",
+   "title": "The whole stack drives in Ravensim",
+   "where": "Ravensim",
+   "measures": "the graph, a drive, a stop",
+   "passes": "every line of sim-check PASS",
+   "how": "docs/tests.md",
+   "sim": {
+    "state": "fail",
+    "when": "2026-11-22 16:56",
+    "commit": "e719f405+",
+    "report": "",
+    "override": "",
+    "command": "pixi run sim-check",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "fail",
+    "when": "2026-11-22 16:56",
+    "commit": "e719f405+",
+    "report": "",
+    "override": "",
+    "command": "",
+    "blocked_by": [
+     "stack has not passed in the simulator"
+    ]
+   }
+  },
+  {
+   "id": "bench",
+   "title": "The bench, the real boards and no car",
+   "where": "bench",
+   "measures": "messages, timing, the locks",
+   "passes": "every line of bench-check PASS; on the car, every box of After the install",
+   "how": "docs/after-install.md",
+   "sim": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "pixi run bench-check",
+    "blocked_by": [
+     "stack has not passed (sim)"
+    ]
+   },
+   "car": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "",
+    "blocked_by": [
+     "stack has not passed (car)",
+     "bench has not passed in the simulator"
+    ]
+   }
+  },
+  {
+   "id": "stands",
+   "title": "Stands, wheels off the ground (phase A)",
+   "where": "stands",
+   "measures": "steering: angle, rate, centre; the wheels follow a speed; faults on purpose",
+   "passes": "car-test --stands, every step PASS",
+   "how": "docs/actuator-tests.md",
+   "sim": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "pixi run car-test --stands --sim --no-manual",
+    "blocked_by": [
+     "bench has not passed (sim)"
+    ]
+   },
+   "car": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "pixi run car-test --stands",
+    "blocked_by": [
+     "bench has not passed (car)",
+     "stands has not passed in the simulator"
+    ]
+   }
+  },
+  {
+   "id": "hallway",
+   "title": "Hallway, the transfer functions (phase B)",
+   "where": "hallway",
+   "measures": "speed up, coast, brake: dead time, lag, stopping distance, with error bars",
+   "passes": "the model's speed within 10 % of the car's, its stop within 0.2 m",
+   "how": "docs/actuator-tests.md",
+   "sim": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "pixi run car-test --hallway --sim --no-manual",
+    "blocked_by": [
+     "stands has not passed (sim)"
+    ]
+   },
+   "car": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "pixi run car-test --hallway",
+    "blocked_by": [
+     "stands has not passed (car)",
+     "hallway has not passed in the simulator"
+    ]
+   }
+  },
+  {
+   "id": "lot",
+   "title": "The lot, the same at 2 to 3 m/s",
+   "where": "lot",
+   "measures": "speed-up, brake, circles and a straight line, at speed",
+   "passes": "the hallway's pass rule, at the higher speeds",
+   "how": "docs/actuator-tests.md",
+   "sim": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "",
+    "blocked_by": [
+     "hallway has not passed (sim)"
+    ]
+   },
+   "car": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "",
+    "blocked_by": [
+     "hallway has not passed (car)"
+    ]
+   }
+  },
+  {
+   "id": "route",
+   "title": "A route, the car driving itself",
+   "where": "route",
+   "measures": "the scorecard: time, metres off the plan, sway, holds",
+   "passes": "the route done at low speed, no takeover needed for safety",
+   "how": "docs/league.md",
+   "sim": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "",
+    "blocked_by": [
+     "lot has not passed (sim)"
+    ]
+   },
+   "car": {
+    "state": "not run",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "override": "",
+    "command": "",
+    "blocked_by": [
+     "lot has not passed (car)"
+    ]
+   }
+  }
+ ]
+}

@@ -1,4 +1,5 @@
 """The test ladder's rules (tools/ladder.py): what opens a rung, and what is kept."""
+import json
 import os
 import sys
 
@@ -89,3 +90,21 @@ def test_the_table_has_both_places_and_says_what_blocks(progress):
     assert rows[0]['sim']['state'] == 'pass' and rows[0]['car']['state'] == 'pass'
     assert rows[3]['id'] == 'stands' and rows[3]['car']['state'] == 'not run'
     assert rows[1]['sim']['blocked_by'] == [] and rows[2]['sim']['blocked_by']
+
+
+def test_the_json_keeps_the_shape_the_window_reads(progress, capsys):
+    """The window (ladder-core) parses --json: a field renamed here breaks it there."""
+    fixture = os.path.join(ladder.ROOT, 'ros', 'hud', 'aav_dev_window', 'crates',
+                           'ladder-core', 'tests', 'ladder.json')
+    with open(fixture) as f:
+        want = json.load(f)
+    assert ladder.main(['--json']) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert set(got) == set(want) == {'file', 'rungs'}
+    assert [r['id'] for r in got['rungs']] == [r['id'] for r in want['rungs']]
+    for mine, theirs in zip(got['rungs'], want['rungs']):
+        assert set(mine) == set(theirs)
+        for place in ladder.PLACES:
+            assert set(mine[place]) == set(theirs[place])
+            assert mine[place]['state'] in ('pass', 'fail', 'not run')
+            assert isinstance(mine[place]['blocked_by'], list)
