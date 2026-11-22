@@ -158,6 +158,12 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 | **ALVINN**: D. Pomerleau, NIPS 1989; **ChauffeurNet**: M. Bansal et al., RSS 2019; **DAgger**: S. Ross, G. Gordon, D. Bagnell, AISTATS 2011 | paper | idea | the guide's learned behaviour: studied |
 | matplotlib; NumPy | PSF-based; BSD-3 | runs | drawing the guide's pictures (`tools/teach_figures.py`) |
 
+## Barriers in the path follower (22 Nov)
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| A. M. Ali, C. Shen, H. A. Hashim, "A linear MPC with control barrier functions for differential drive robots", IET Control Theory & Applications, 2024 | paper (open access) | idea | the barrier's rule in `aav_mpc_lag`'s plan (`barrier.rs`); our model differs, and its proofs don't carry over as they are |
+
 ## Simulators and screens
 
 | Source | Licence | Kind | Where we used it |

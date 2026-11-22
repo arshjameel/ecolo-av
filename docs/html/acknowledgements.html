@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">31 min read · 9 sections</div></header>
+<div class="meta">31 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -139,7 +139,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#taught-in-the-guide-19-nov">Taught in the guide (19 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#taught-in-the-guide-19-nov">Taught in the guide (19 Nov)</a><a href="#barriers-in-the-path-follower-22-nov">Barriers in the path follower (22 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
 <div class="lead"><p>Everything we copied, ported, or took an idea from, with its licence and where we used it.
 Ben, 14 Nov: "give acknowlegement to stuff we have looked at or used as insperation".
 Add a row in the same commit as the work (<code>CLAUDE.md</code>). Copied or ported code also keeps
@@ -882,6 +882,26 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 <td>PSF-based; BSD-3</td>
 <td>runs</td>
 <td>drawing the guide's pictures (<code>tools/teach_figures.py</code>)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="barriers-in-the-path-follower-22-nov">Barriers in the path follower (22 Nov)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A. M. Ali, C. Shen, H. A. Hashim, "A linear MPC with control barrier functions for differential drive robots", IET Control Theory &amp; Applications, 2024</td>
+<td>paper (open access)</td>
+<td>idea</td>
+<td>the barrier's rule in <code>aav_mpc_lag</code>'s plan (<code>barrier.rs</code>); our model differs, and its proofs don't carry over as they are</td>
 </tr>
 </tbody>
 </table></div>

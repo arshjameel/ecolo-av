@@ -73,6 +73,29 @@ oscillate so much."
 Tested: `closed_loop.rs` `in_the_tube_it_holds_its_line_and_outside_it_comes_back` (0.15 m
 off: it keeps its line and steers less; 1 m off: back inside 0.25 m, at 1 and 3 m/s).
 
+### Barriers (research, separate from the capstone; 22 Nov)
+
+> Research, separate from the capstone: Ben's own work, not a team deliverable, and nothing in the stack turns it on.
+
+The tracker follows its path, even into an object. With keep-out circles set, the plan
+may only creep up to them. The idea: Ali, Shen and Hashim's linear MPC with control
+barrier functions (`docs/acknowledgements.md`).
+
+```text
+   H = (the body's middle to the circle's centre)² − radius²
+   the rule, each tick of the plan:   H(next) ≥ (1 − gamma) · H(now)
+```
+
+| Part | What |
+|---|---|
+| `barrier.rs` | `Circle` (in the path's frame; `from_world`), H, its slope, `reach`, `stop_distance`, `Rules` (`gamma` 0.05, `ahead` 0.8 m, `weight`, `stop_decel` 0.8 m/s²) |
+| `MpcLag::set_barriers(rules, circles)` | the rule as rows of the QP, linear in the plan's change, with a slack a tick; none set: the tracker as it was |
+| The stop rule | straight on, the circle nearer than the stop distance and a tick's travel: the set speed ramps to 0 |
+| `Report` | `barrier` (m to the nearest edge), `barrier_slack` (m², the rule broken in the plan), `barrier_stop` |
+
+Not in the node yet: no topic brings circles in (`docs/interfaces.yaml` first). Rust
+only: the Python `mpc_lag` has none. A tick with a barrier near: 3 to 13 ms (0.5 without).
+
 ### Why our own QP, not clarabel
 
 `clarabel` (Apache-2.0, pure Rust) was the first choice. We kept a port of `qp.py`'s ADMM:
@@ -129,6 +152,7 @@ Python's defaults). `aav_navigation`'s `test_launch_params.py` checks they match
 | `qp.rs` | `solve`: OSQP's ADMM; `RowMatrix` (sparse rows) | `qp.py` |
 | `tracker.rs` | `MpcLag`: the estimate, the nominal plan, linearise, condense, one QP, the command | `trackers/mpc_lag.py` |
 | `gears.rs` | `Gears`: the path cut at its cusps, which stretch the car is on; `mirror` | `gears.py` |
+| `barrier.rs` | `Circle`, `Rules`: keep-out circles and their rule (a trial) | none |
 | `geared.rs` | `Geared`: the MPC forward and back, a stretch at a time | `track_node.py`'s gears |
 
 ## Invariants
@@ -142,6 +166,8 @@ Python's defaults). `aav_navigation`'s `test_launch_params.py` checks they match
   0..cruise forwards, 0..-max_reverse_speed backwards, and the smoother's ramps.
 - Nothing in the safety path changes: the smoother, the stop zone, twist_mux's slot,
   the locks and e-stops all sit after `cmd_vel_nav`. It doesn't read the costmap.
+- Barriers change nothing unless circles are set; they are not a safety lock, and none
+  of the locks depends on them.
 - The maths has no ROS; the node has no maths. Rust API Guidelines; `cargo fmt` and
   `cargo clippy` clean.
 
@@ -163,6 +189,7 @@ pixi run python3 ros/drivers/aav_mpc_lag/crates/mpc-lag/gen_vectors.py   # after
 | `qp.rs` | hand answers: free, a box, an equality, a coupling row; the warm start (the same 400 and 50 iterations as `qp.py`); bad problems |
 | `path.rs`, `model.rs`, `tracker.rs` | the foot past the ends, a circle's curvature; the motor's rate, the brake never reversing, the drift on a bend; `interp`, `D'D`, the queues |
 | `gears.rs`, `geared.rs` | the cut at each cusp, the mirror, when the next stretch is taken (and not while rolling); a reversing path refused forward only; backwards within the reverse limit; a forward path gives `MpcLag`'s own commands |
+| `barrier.rs`, `tests/barrier.rs` | H's sign and slope, the reach, the stop distance, the rule's induction; on the pretend car: through the object without barriers and never touching with (3 objects, 1 and 3 m/s, with 0.2 s of dead time), round it at speed and back on the path, stopped short when slow and head on, a smaller gamma turning sooner, the stop rule alone, a far object changing nothing, bad rules refused |
 | `tests/closed_loop.rs` | a pretend car (ego's ramps, the shared car model at 100 Hz): straight at 1 and 3 m/s, no speed overshoot, a 1 m offset, an 8 m bend, the U-turn at 2 m/s with vehicle.yaml's lags (0.10 m) and doubled (0.18 m), the stop at the end, the dead-time queues, the tick time, bad numbers. Forward and back (a pretend ego both ways): 8 m straight back (under 0.05 m off), 6 m on, a stop at the cusp (0.02 m short, 0.03 m/s), back round a 5 m bend (0.007 m off); forward, back, forward (each gear changed within 0.11 m of its cusp, standing) |
 
 `colcon test --packages-select aav_mpc_lag` runs the same; `pixi run test` everything.
