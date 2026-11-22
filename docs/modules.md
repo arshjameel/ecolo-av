@@ -259,7 +259,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | **In → out** | `/ego/actuator_cmd`, `/system/source`, the ROS graph → `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` |
 | **Origin** | ours (the proposal's sensor and output muxes) |
 | **Status** | [[works]] in its tests and in every profile; [[untested]] on the car |
-| **Run alone** | `ros2 launch aav_io_mux io_mux.launch.py target:=car` (Rust, `aav_io_mux_rs`, the default since 17 Nov; `io_mux_impl:=python` for these) |
+| **Run alone** | `ros2 launch aav_io_mux io_mux.launch.py target:=car` (Rust, `aav_io_mux_rs`: the only muxes since 22 Nov, when this package's Python nodes were removed) |
 | **Test** | `test/test_provenance.py`, `test_vectors.py` (in `tools/test.sh`), `test/test_real_backend_guard.py` (`pixi run test`); the Rust: `cargo test -p io-mux-core` (the shared vectors) |
 | **Read first** | `aav_io_mux/provenance.py`, then [Sources and targets](sources-and-targets.md) |
 
@@ -528,7 +528,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |
 | `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (`ego_impl:=python` falls back) | `ros/ego/aav_ego_rs/README.md` |
 | `aav_watchdog_rs` | the sensor watchdog in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_watchdog_rs/README.md` |
-| `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (`io_mux_impl:=python` falls back) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
+| `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (the Python removed 22 Nov) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
 | `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |
 | `aav_joy_alive_rs` | `joy_alive` in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_joy_alive_rs/README.md` |

@@ -2,7 +2,7 @@
 //! that target's. A drop-in for aav_io_mux's output_mux.py: the same node name, topics,
 //! QoS, parameters, service and answers. The logic is `io-mux-core`, with no ROS.
 //! **A safety lock** (it makes the heartbeat the ESP32 brakes without): the default since
-//! Ben, 17 Nov; `io_mux_impl:=python` falls back.
+//! Ben, 17 Nov; the Python one was removed on 22 Nov.
 //!
 //! Subscribes  ego/actuator_cmd          ackermann_msgs/AckermannDriveStamped (ego, 50 Hz)
 //!             system/sensor_mux/state   aav_interfaces/SourceCheck (the sensor mux, 2 Hz)

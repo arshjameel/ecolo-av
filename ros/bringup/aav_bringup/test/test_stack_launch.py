@@ -101,13 +101,14 @@ def test_the_io_mux_starts_both_or_only_the_sensor_mux():
         started(IO_MUX, target='car', source='replay')
 
 
-def test_the_muxes_are_rust_by_default_and_python_one_switch_away():
-    # Ben, 17 Nov: "Rust tomorrow": both muxes, together; io_mux_impl:=python falls back.
-    for impl, package in (('', 'aav_io_mux_rs'), ('rust', 'aav_io_mux_rs'),
-                          ('python', 'aav_io_mux')):
+def test_the_muxes_are_rust_and_the_python_is_refused():
+    # Ben, 17 Nov: "Rust tomorrow": both muxes, together. The Python went on 22 Nov.
+    for impl, package in (('', 'aav_io_mux_rs'), ('rust', 'aav_io_mux_rs')):
         args = {'io_mux_impl': impl} if impl else {}
         nodes = [n for n in started(IO_MUX, target='car', source='', **args)
                  if isinstance(n, Node)]
         assert [n.node_package for n in nodes] == [package, package], impl
+    with pytest.raises(ValueError, match='io_mux_impl:=python'):
+        started(IO_MUX, target='car', source='', io_mux_impl='python')
     with pytest.raises(ValueError, match='io_mux_impl:=c'):
         started(IO_MUX, target='car', source='', io_mux_impl='c')

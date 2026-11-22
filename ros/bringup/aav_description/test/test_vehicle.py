@@ -1020,11 +1020,12 @@ def test_watchdog_impl_is_rust():
         vehicle.check_watchdog_impl('c')
 
 
-def test_io_mux_impl_is_python_or_rust():
+def test_io_mux_impl_is_rust():
     assert vehicle.DEFAULT_IO_MUX_IMPL == 'rust'
-    assert vehicle.check_io_mux_impl('python') == 'python'
     assert vehicle.check_io_mux_impl(' Rust ') == 'rust'
-    assert vehicle.IO_MUX_IMPLS == {'python': 'aav_io_mux', 'rust': 'aav_io_mux_rs'}
+    assert vehicle.IO_MUX_IMPLS == {'rust': 'aav_io_mux_rs'}
+    with pytest.raises(ValueError, match='io_mux_impl:=python'):
+        vehicle.check_io_mux_impl('python')
     with pytest.raises(ValueError, match='io_mux_impl:=c'):
         vehicle.check_io_mux_impl('c')
 

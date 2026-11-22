@@ -542,10 +542,11 @@ def check_watchdog_impl(impl):
 
 # Which sensor mux and output mux run (io_mux.launch.py, car.launch.py, sim.launch.py
 # io_mux_impl:=): rust (aav_io_mux_rs, the default on the car and in the simulator since
-# Ben decided, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later")
-# or python (aav_io_mux: the same node names, topics and answers; kept selectable until a
-# car day proves the Rust). Both muxes switch together. Each one's package.
-IO_MUX_IMPLS = {'python': 'aav_io_mux', 'rust': 'aav_io_mux_rs'}
+# Ben decided, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later").
+# The Python nodes (aav_io_mux's) went on 22 Nov (tag save/python-fallbacks-1); that
+# package keeps the launch file and the rules. Both muxes switch together; the switch
+# stays, a hook.
+IO_MUX_IMPLS = {'rust': 'aav_io_mux_rs'}
 DEFAULT_IO_MUX_IMPL = 'rust'
 
 

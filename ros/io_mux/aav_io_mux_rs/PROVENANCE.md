@@ -3,8 +3,12 @@
 Ported for `ecolo-av` on 2026-11-17 (Ben: "Rust tomorrow"): a Rust rewrite of our own
 Python nodes and modules (Ben's code): `ros/io_mux/aav_io_mux`'s `sensor_mux.py`,
 `output_mux.py`, `provenance.py` and `heartbeat.py` at commit `3cd39dc8`. No outside code:
-nothing new for `docs/acknowledgements.md` (Python's `%g` is ego-core's, reused). The
-Python stays, as the fall-back (`io_mux_impl:=python`).
+nothing new for `docs/acknowledgements.md` (Python's `%g` is ego-core's, reused).
+
+**22 Nov:** the Python nodes (`sensor_mux.py`, `output_mux.py`) were removed
+(Ben: "lets start removing the python fall back after being tested enough times"; git tag `save/python-fallbacks-1`).
+`provenance.py`, `heartbeat.py` and `muxes.py` stay in `aav_io_mux`, so `gen_vectors.py`
+still runs.
 
 | Part | From the Python |
 |---|---|

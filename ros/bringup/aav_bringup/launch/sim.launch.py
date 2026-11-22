@@ -213,7 +213,8 @@ bench's argument names:
                       aav_detector's, removed; tag save/python-fallbacks-1)
   io_mux_impl:=rust  the sensor mux and the output mux in Rust (aav_io_mux_rs): the same
                       node names, topics and answers; the default on the car and here
-                      since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
+                      since 17 Nov (Ben: "Rust tomorrow"); the only ones since 22 Nov
+                      (the Python, aav_io_mux's, removed)
   localization_health_impl:=rust  localization_health in Rust
                       (aav_localization_health_rs): warn only (TODO 185); the only one
                       since the Python went on 20 Nov
@@ -1088,8 +1089,8 @@ def generate_launch_description():
                                           'which stop_sign_watcher runs, with '
                                           'perception:=true'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
-                              description='python or rust: which sensor mux and output mux '
-                                          'run (aav_io_mux, or aav_io_mux_rs)'),
+                              description='rust (aav_io_mux_rs; the Python removed 22 Nov): '
+                                          'which sensor mux and output mux run'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL,
                               description='rust (aav_localization_health_rs): which '

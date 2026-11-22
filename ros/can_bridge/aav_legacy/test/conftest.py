@@ -1,11 +1,11 @@
 """
-The chain tests' bridge (and rc_driver, and muxes) in either language.
+The chain tests' bridge (and rc_driver) in either language, and the Rust muxes.
 
-Python (aav_legacy, aav_rc, aav_io_mux): the node in the test's own process, spun with it.
-Rust (aav_legacy_rs, aav_rc_rs, aav_io_mux_rs, the defaults since 17 Nov): the built binary
-in its own process group, on the test's ROS domain and this computer only, stopped by its
-process group. The `impl` fixture runs a test once with each; Rust is skipped where its
-packages aren't built.
+Python (aav_legacy, aav_rc): the node in the test's own process, spun with it.
+Rust (aav_legacy_rs, aav_rc_rs, the defaults since 17 Nov; aav_io_mux_rs, the only muxes
+since 22 Nov): the built binary in its own process group, on the test's ROS domain and this
+computer only, stopped by its process group. The `impl` fixture runs a test once with each;
+Rust is skipped where its packages aren't built.
 """
 
 import os

@@ -3,8 +3,9 @@ A simulated source can't drive the real car's backend (docs/plan.md S-4).
 
 The real nodes, on a private ROS domain on this computer: sensor_mux (source real),
 output_mux (target car) and spine_bridge (source real: the real car's CAN backend), in
-each of its two languages. The Python one runs in this process with the muxes; the Rust
-one (aav_spine_bridge, the default) as its own program. Ego's commands go in on
+each of its two languages. The muxes are aav_io_mux_rs's (Rust, the only ones since
+22 Nov), each its own program. The Python bridge runs in this process; the Rust one
+(aav_spine_bridge, the default) as its own program. Ego's commands go in on
 /ego/actuator_cmd; what reaches the car is spine_bridge's DRIVE_CMD frames on /can/tx.
 
   all REAL                      -> DRIVE_CMD frames flow
@@ -26,8 +27,6 @@ import pytest
 try:
     from aav_interfaces.msg import DataSource, SensorSource
     from aav_io_mux.domains import free_domain
-    from aav_io_mux.output_mux import OutputMux
-    from aav_io_mux.sensor_mux import SensorMux
     from aav_spine import can_codec as cc
     from aav_spine.spine_bridge import SpineBridge
     from ackermann_msgs.msg import AckermannDriveStamped
@@ -49,7 +48,7 @@ LATCHED = None if not HAVE_ROS else QoSProfile(
 ARGS = ['--ros-args', '-p', 'sensor_mux:startup:=0.0', '-p', 'sensor_mux:source:=real',
         '-p', 'output_mux:target:=car', '-p', 'output_mux:settle:=0.5',
         '-p', 'spine_bridge:source:=real']
-# How long the Rust bridge may take to start and be seen listening.
+# How long the Rust programs may take to start and be seen.
 START = 20.0
 # Our own nodes. Any other on the domain is another run's (cross-talk): its frames on
 # /can/tx, or its announcements, would make this test's counts meaningless. The domain is
@@ -57,24 +56,42 @@ START = 20.0
 OURS = {'sensor_mux', 'output_mux', 'spine_bridge', 'guard_test', 'sim_adapter'}
 
 
+def program(package, executable, args, domain):
+    """Start a built Rust node in its own process group, on this run's domain."""
+    path = os.path.join(get_package_prefix(package), 'lib', package, executable)
+    env = dict(os.environ, ROS_DOMAIN_ID=str(domain), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
+    return subprocess.Popen([path, *args], env=env, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def stop(process):
+    """Stop a program by its process group: Ctrl-C, then a kill if it stays."""
+    if process.poll() is None:
+        os.killpg(process.pid, signal.SIGINT)
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait()
+
+
 class Run:
-    """The muxes, a spine_bridge and a test node, spun together."""
+    """The muxes (Rust programs), a spine_bridge and a test node, spun together."""
 
     def __init__(self, gazebo=False, bridge='python', role='spine', gazebo_after=0.0):
         domain = free_domain()
         rclpy.init(args=ARGS + ['-p', f'spine_bridge:role:={role}'], domain_id=domain)
         self.executor = SingleThreadedExecutor()
-        self.nodes = [SensorMux(), OutputMux()]
+        self.muxes = [program('aav_io_mux_rs', 'sensor_mux', ARGS, domain),
+                      program('aav_io_mux_rs', 'output_mux', ARGS, domain)]
+        self.nodes = []
         self.process = None
         if bridge == 'python':
             self.nodes.append(SpineBridge())
         else:
-            program = os.path.join(get_package_prefix('aav_spine_bridge'), 'lib',
-                                   'aav_spine_bridge', 'spine_bridge')
-            env = dict(os.environ, ROS_DOMAIN_ID=str(domain))
-            self.process = subprocess.Popen(
-                [program, '--ros-args', '-p', 'source:=real', '-p', f'role:={role}'], env=env,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            self.process = program(
+                'aav_spine_bridge', 'spine_bridge',
+                ['--ros-args', '-p', 'source:=real', '-p', f'role:={role}'], domain)
         self.test = rclpy.create_node('guard_test')
         self.nodes.append(self.test)
         self.drive_frames = 0
@@ -99,6 +116,7 @@ class Run:
             self.start_gazebo()
         if self.process:
             self.wait_for_bridge()
+        self.wait_for_muxes()
         if gazebo and gazebo_after:
             self.drive(gazebo_after)
             self.start_gazebo()
@@ -132,6 +150,14 @@ class Run:
         while time.monotonic() < end and '/control/car/actuator_cmd' not in self.bridge_topics():
             assert self.process.poll() is None, 'the Rust spine_bridge stopped'
             self.executor.spin_once(timeout_sec=0.1)
+
+    def wait_for_muxes(self):
+        """Spin until the output mux has said its state once: both muxes are programs."""
+        end = time.monotonic() + START
+        while time.monotonic() < end and not self.state:
+            assert all(m.poll() is None for m in self.muxes), 'a mux stopped'
+            self.executor.spin_once(timeout_sec=0.1)
+        assert self.state, 'the output mux never said its state'
 
     def bridge_publishers(self):
         try:
@@ -186,13 +212,9 @@ class Run:
         return self.call(self.clear_client, Trigger.Request())
 
     def close(self):
-        if self.process:
-            os.killpg(self.process.pid, signal.SIGINT)
-            try:
-                self.process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                os.killpg(self.process.pid, signal.SIGKILL)
-                self.process.wait()
+        for process in [self.process, *self.muxes]:
+            if process:
+                stop(process)
         for n in self.nodes:
             n.destroy_node()
         self.executor.shutdown()

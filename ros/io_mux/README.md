@@ -14,8 +14,8 @@ Makes sure **exactly one backend** plays the car, and the real car moves only on
 
 | Package | What it is |
 |---|---|
-| [aav_io_mux](./aav_io_mux/README.md) | `sensor_mux` (checks each sensor's source) and `output_mux` (one target: car, sim, bench, turtle or carla), in Python: the fall-back (`io_mux_impl:=python`) |
-| [aav_io_mux_rs](./aav_io_mux_rs/README.md) | the same two nodes in Rust, the default (Ben, 17 Nov): the same names, topics and answers |
+| [aav_io_mux](./aav_io_mux/README.md) | the muxes' launch file, their rules in Python (the Rust's yardstick), `free_domain()` and the real-backend guard test; its Python nodes were removed on 22 Nov |
+| [aav_io_mux_rs](./aav_io_mux_rs/README.md) | `sensor_mux` (checks each sensor's source) and `output_mux` (one target: car, sim, bench, turtle or carla) in Rust: the default since Ben, 17 Nov, the only ones since 22 Nov |
 
 ## Invariants
 

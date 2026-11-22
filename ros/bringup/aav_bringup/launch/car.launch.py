@@ -888,7 +888,7 @@ def generate_launch_description():
                               description='rust (aav_watchdog_rs; the Python removed 20 Nov): '
                                           'the sensor watchdog'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
-                              description='rust (aav_io_mux_rs) or python (aav_io_mux): '
+                              description='rust (aav_io_mux_rs; the Python removed 22 Nov): '
                                           'the sensor mux and the output mux'),
         # Ben, 17 Nov ("Rust tomorrow"): the ESP32's UART bridge and rc_driver too.
         DeclareLaunchArgument('legacy_impl', default_value=vehicle.DEFAULT_LEGACY_IMPL,

@@ -48,8 +48,8 @@ each one's README has its topics.
 | `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_mux_state` | command_mux | `command_mux_state` (Rust): who twist_mux passes on, its age, the locks on and whom they hold (TODO 247) | [[works]] beside a real twist_mux (its colcon test) and in the sim; [[untested]] on the car | new: twist_mux's rule, rewritten in Rust |
-| `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
-| `aav_io_mux_rs` | io_mux | `sensor_mux` and `output_mux` in Rust, the default (Ben, 17 Nov) beside `aav_io_mux`'s (`io_mux_impl:=python`): the same topics and answers | [[works]] against the Python's answers, step by step; sim-check; [[untested]] on the car | new: a port of `aav_io_mux` |
+| `aav_io_mux` | io_mux | the muxes' launch file, their rules in Python and the real-backend guard test (its Python nodes removed 22 Nov) | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
+| `aav_io_mux_rs` | io_mux | `sensor_mux` and `output_mux` in Rust, the default (Ben, 17 Nov; the Python removed 22 Nov): simulated data never drives the real car | [[works]] against the Python's answers, step by step; sim-check; [[untested]] on the car | new: a port of `aav_io_mux` |
 | `aav_ego` | ego | one command → speed and steering the car can do | [[works]] | new |
 | `aav_ego_rs` | ego | `ego` and `look_ahead` in Rust, the default (16 Nov; `ego_impl:=python` falls back): the same topics and answers | [[works]] against the Python's answers; Ravensim; [[untested]] on the car | new: a port of `aav_ego` |
 | `aav_spine` | can_bridge | the CAN spine: ego's commands as CAN frames. Its Python `spine_bridge`, the config and the launch file | [[works]] on the bench, against `spine_sim`; no spine board yet | new |
@@ -126,7 +126,7 @@ each one's README has its topics.
 | `aav_navigation` | `/localization/odom/local`, `/map`, `/goal_pose` | `/drivers/nav/cmd_vel`, `/plan` | Smac State Lattice (Hybrid-A* if forward only) and MPPI (or Regulated Pure Pursuit); GPS waypoints through `/follow_gps_waypoints` |
 | `aav_command_mux` (twist_mux) | every `/drivers/<driver>/cmd_vel`, `/safety/estop` | `/control/cmd_vel` | priorities: [Build a driver](howto-driver.md) |
 | `aav_ego` | `/control/cmd_vel` | `/ego/actuator_cmd`, 50 times a second | 1.0 m/s top speed, ±0.5 rad, brakes after 0.3 s without a command |
-| `aav_io_mux` | `/ego/actuator_cmd`, `/system/source`, who publishes each sensor | `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` | the real car's commands only while every source is REAL: [Sources and targets](sources-and-targets.md) |
+| `aav_io_mux_rs` | `/ego/actuator_cmd`, `/system/source`, who publishes each sensor | `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` | the real car's commands only while every source is REAL: [Sources and targets](sources-and-targets.md) |
 
 ## Perception
 

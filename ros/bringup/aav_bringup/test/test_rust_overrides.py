@@ -124,7 +124,7 @@ def test_legacy_port_frame_and_steering_reach_the_bridge(ros, impl):
     assert got == {'port': port, 'frame_version': 2, 'max_steering_angle': steering}
 
 
-@IMPLS
+@pytest.mark.parametrize('impl', ['rust'])   # the Python muxes went on 22 Nov
 def test_output_mux_target_reaches_the_mux(ros, impl):
     run = Launched('aav_io_mux', 'io_mux.launch.py', f'io_mux_impl:={impl}', 'target:=bench',
                    'source:=bench')

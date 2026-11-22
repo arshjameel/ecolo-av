@@ -97,7 +97,7 @@ current): after adding, moving or removing a package, run
 
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
-| [aav_io_mux](../ros/io_mux/aav_io_mux/README.md) | Python | The muxes at the two edges of the stack | `aav_io_mux/(4 modules)` | `aav_io_mux/output_mux.py`, `aav_io_mux/sensor_mux.py` | `test/` | `launch/` |
+| [aav_io_mux](../ros/io_mux/aav_io_mux/README.md) | Python | The muxes at the two edges of the stack | `aav_io_mux/(4 modules)` | - | `test/` | `launch/` |
 | [aav_io_mux_rs](../ros/io_mux/aav_io_mux_rs/README.md) | Rust | The sensor mux and the output mux in Rust (rclrs) | `crates/io-mux-core` | `crates/io-mux-node` | `test/` | - |
 
 ## ros/can_bridge
