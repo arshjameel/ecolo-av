@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">145 min read · 15 sections</div></header>
+<div class="meta">146 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -44,6 +44,7 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -58,8 +59,8 @@
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
 <a href="learn-sensors.html">Learn: sensors</a>
-<a href="learn-gps.html">Learn: GPS</a>
 <span class="sep">Reference:</span>
+<a href="learn-gps.html">Learn: GPS</a>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -666,6 +667,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben Woodhead</td>
 <td>2026-11-19</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="proving-it.html#where-we-are-pixi-run-ladder">The test ladder, with saved progress</a> (<code>pixi run ladder</code>, <code>tools/ladder.py</code>, <code>tools/ladder/rungs.yaml</code>; <a href="proving-it.html#the-window-pixi-run-ladder-window">the window</a>: <code>pixi run ladder-window</code>, <code>ros/hud/aav_dev_window</code>)</td>
+<td>Ben, 22 Nov: "spin up the testing and then start working through the rungs saving our progress as we go". The rungs from the laptop to a route, the simulator's side and the car's kept apart; a rung is shut until the ones under it pass; every result kept with its commit. It never moves the car. The window (Ben, 22 Nov: "an actual window"): every rung, Run in the simulator with its console and Stop, Record by hand; the car's command is only shown; the tool stays the only writer</td>
+<td>Ben Woodhead</td>
+<td>2026-11-22</td>
+<td>built</td>
 </tr>
 </tbody>
 </table></div>

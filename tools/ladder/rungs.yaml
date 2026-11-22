@@ -1,0 +1,72 @@
+# The test ladder's rungs (docs/proving-it.md): one entry a rung, bottom first.
+#   needs: the rungs that must have passed in the same place before this one opens.
+#   sim, car: the command that runs it there ('' = by hand: see `how`).
+#   on_car: false for a rung with no car side (it counts for the car once the simulator's passes).
+# A car rung also needs its own simulator twin to have passed. tools/ladder.py reads this;
+# progress is saved outside git (~/aav-tests/ladder.yaml).
+rungs:
+  - id: code
+    on_car: false
+    title: The code against the maths
+    where: laptop
+    measures: nothing; every unit test, the pretend car
+    passes: tools/test.sh exits 0
+    needs: []
+    sim: pixi run bash tools/test.sh
+    car: ''
+    how: docs/proving-it.md
+  - id: stack
+    on_car: false
+    title: The whole stack drives in Ravensim
+    where: Ravensim
+    measures: the graph, a drive, a stop
+    passes: every line of sim-check PASS
+    needs: [code]
+    sim: pixi run sim-check
+    car: ''
+    how: docs/tests.md
+  - id: bench
+    title: The bench, the real boards and no car
+    where: bench
+    measures: messages, timing, the locks
+    passes: every line of bench-check PASS; on the car, every box of After the install
+    needs: [stack]
+    sim: pixi run bench-check
+    car: ''
+    how: docs/after-install.md
+  - id: stands
+    title: Stands, wheels off the ground (phase A)
+    where: stands
+    measures: 'steering: angle, rate, centre; the wheels follow a speed; faults on purpose'
+    passes: car-test --stands, every step PASS
+    needs: [bench]
+    sim: pixi run car-test --stands --sim --no-manual
+    car: pixi run car-test --stands
+    how: docs/actuator-tests.md
+  - id: hallway
+    title: Hallway, the transfer functions (phase B)
+    where: hallway
+    measures: 'speed up, coast, brake: dead time, lag, stopping distance, with error bars'
+    passes: the model's speed within 10 % of the car's, its stop within 0.2 m
+    needs: [stands]
+    sim: pixi run car-test --hallway --sim --no-manual
+    car: pixi run car-test --hallway
+    how: docs/actuator-tests.md
+  - id: lot
+    title: The lot, the same at 2 to 3 m/s
+    where: lot
+    measures: speed-up, brake, circles and a straight line, at speed
+    passes: the hallway's pass rule, at the higher speeds
+    needs: [hallway]
+    sim: ''
+    car: ''
+    how: docs/actuator-tests.md
+  - id: route
+    title: A route, the car driving itself
+    where: route
+    measures: 'the scorecard: time, metres off the plan, sway, holds'
+    passes: the route done at low speed, no takeover needed for safety
+    needs: [lot]
+    sim: ''
+    car: ''
+    how: docs/league.md

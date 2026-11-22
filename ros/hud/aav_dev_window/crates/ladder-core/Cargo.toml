@@ -1,0 +1,11 @@
+[package]
+name = "ladder-core"
+description = "The test ladder's window, without the window: the tool's JSON as types, what each cell and button shows, the tool's commands"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
