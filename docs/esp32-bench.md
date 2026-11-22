@@ -281,7 +281,7 @@ roll back.
 | 9a | While driving, stop the Orin's output mux (or unplug the Orin's network), the bridge still running | within 0.2 s: brake full, throttle 0, `faults` has 1, though `LINK frames=` still rises; `repeats=` rises instead. The heartbeat (TODO 50) |
 | 9b | Bring the Orin back | stays braked until ego stands still (a stop with a new counter), then drives |
 | 9c | `/safety/estop` true while driving | `estop=true` at once, brake full |
-| 10 | CH6 high (manual). **First the left stick in the middle** (its brake band: RC direct waits for this after power-up, any stop and any move of CH6), then pushed away a little | `mode=Rc`, blue LED, wheels turn; ROS commands ignored. Without the first step: nothing moves, as it should |
+| 10 | CH6 high (manual). **First the left stick in the middle for a second** (RC direct waits for the stick to move, a second after power-up, any stop and any move of CH6), then pushed away a little | `mode=Rc`, blue LED, wheels turn; ROS commands ignored. Without the first step: nothing moves, as it should |
 | 11 | RC: switch the transmitter off | within 0.1 s: brake full, `faults` has 256 (RC lost) |
 | 12 | RC override off | back to the computer, or Manual |
 | 13 | The red e-stop button | the car stops by itself, as today |

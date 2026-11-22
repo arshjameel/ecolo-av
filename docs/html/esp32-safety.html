@@ -386,7 +386,7 @@ by themselves once ROS runs. After any timeout: the same, from step 3.</p>
 <td>arming</td>
 </tr>
 <tr>
-<td>After any stop, after power-up and after CH6 moves: signal back, the left stick in its brake band (21 Nov)</td>
+<td>After any stop, after power-up and after CH6 moves: signal back, a second, and the left stick moved from where it was (22 Nov)</td>
 <td></td>
 </tr>
 </tbody>
@@ -1006,9 +1006,9 @@ two give the same frames, byte for byte: <code>legacy-bridge</code>'s <code>test
 <td><code>the_computer_stopping_while_rc_direct_drives_still_latches</code></td>
 </tr>
 <tr>
-<td>The RC's brake band: full at once (21 Nov)</td>
-<td><code>ibus/src/rc.rs</code> (<code>brake_band</code>), <code>spine.rs</code> (<code>Authority::Rc</code>)</td>
-<td><code>rc_in_the_brake_band_stops_hard_with_no_light_stage</code>; <code>the_brake_band_is_the_full_brake_at_once</code></td>
+<td>The RC's right stick stop: full at once (22 Nov)</td>
+<td><code>ibus/src/rc.rs</code> (<code>full</code>, <code>RightStick</code>), <code>spine.rs</code> (<code>Spine::rc</code>)</td>
+<td><code>the_right_stick_down_is_the_full_brake_at_once_and_still_steers</code>; <code>the_right_stick_down_past_88_percent_is_the_stop</code></td>
 </tr>
 <tr>
 <td>Forward and reverse change 1 s after the band</td>
@@ -1016,9 +1016,9 @@ two give the same frames, byte for byte: <code>legacy-bridge</code>'s <code>test
 <td><code>rc_changes_to_reverse_only_a_second_after_entering_the_band</code></td>
 </tr>
 <tr>
-<td>Normal mode: the RC outranks the computer</td>
-<td><code>fsm.rs</code> (<code>RcOwner</code>)</td>
-<td><code>the_rc_takes_over_from_the_computer_after_a_second_braked</code>; <code>a_stick_that_lost_the_race_must_come_back_to_the_band</code></td>
+<td>Normal mode: the RC outranks the computer, the right stick takes and gives (22 Nov)</td>
+<td><code>fsm.rs</code> (<code>RcOwner</code>, <code>RcHold</code>)</td>
+<td><code>the_right_stick_down_takes_the_car_from_the_computer_at_once</code>; <code>the_left_stick_alone_never_takes_the_car_from_the_computer</code>; <code>at_power_up_the_rc_has_the_car_until_the_right_stick_gives_it</code></td>
 </tr>
 <tr>
 <td>Wheel speed rules off until a speed comes</td>
