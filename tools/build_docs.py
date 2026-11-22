@@ -89,6 +89,8 @@ PAGES = [
     ('after-install.md', 'After the install',
      'Every laptop and car computer checked, before the stands'),
     ('testing-plan.md', 'The testing plan', 'Seven phases, stands to campus twin, each automated'),
+    ('proving-it.md', 'Proving it',
+     'How the tests fit together: the ladder, the algorithm tests, the same test in the sim'),
     ('know-the-car.md', 'Know the car', 'The car tests: the order, and when to stop'),
     ('recording.md', 'Recording a mapping drive',
      'Every sensor at full rate: checks before, a summary after'),

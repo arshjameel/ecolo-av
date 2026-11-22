@@ -78,6 +78,11 @@ and will do".
 | 259 | **Occupancy across passes**: 3+ drives of an area, each ray traced; a cell hit in some passes and free in others (a parked car, a person) removed; never-seen-free kept; then camera labels (252) for cars parked every time. Learn from Removert, ERASOR, DUFOMap (licences to check) | ✅ built 19 Nov (`tools/passes.py`; ideas only: Removert CC BY-NC-SA, ERASOR GPL-3.0, DUFOMap BSD-3); proved on 3 Ravensim drives, a parked box in one removed, the walls kept; ⬜ real drives; ⬜ camera labels (252) |
 | 260 | **The offline pipeline as one command**: a campus area from its drives: `map-drive` each, merge, occupancy, chunks, one report | ✅ built 19 Nov: `pixi run map-area <area> <drives...>` into `maps/<area>/`, opens in `map-edit`; ⬜ a campus area |
 | 261 | **NDT on the car**: `car.launch.py` has no `ndt:=` / `ndt_map:=` (only the sim launch has); needed for the hallway (256) and `pose_source:=ndt` (210) | 🟡 built 19 Nov; untested on the car: `ndt:=true ndt_map:=` (the Orin's `ndt` part, off by default); `pose_source:=ndt` only with both, wired as the sim |
+| 266 | **Three step tests still missing** ([Proving it](docs/proving-it.md)): hold a speed (how far it wanders), a steering step on the ground (yaw rate: delay, overshoot, settling), a lane change (sway); each with `--sim`, the same report both ways | ⬜ |
+| 267 | **One step-test harness for every path follower**: a sideways step and a speed step, the same for each `tracker:=`, one table (today only `mpc_lag_rs`'s own crate test has the sideways step) | ⬜ |
+| 268 | `sim-check --ghost` listens for the local costmap on its old name (`/local_costmap/costmap`; ours is `/drivers/nav/costmap/local`), so the leg reports FAIL for every follower | ⬜ |
+| 269 | **A run log**: every test run's commit, command, settings and result in one place, so a number can be traced | ⬜ |
+| 270 | **The car's scores beside the simulator's** for the same route: the last step of the ladder against the first | ⬜ after the car drives |
 
 ## 2. Maps and position
 
