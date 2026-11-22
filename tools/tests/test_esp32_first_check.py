@@ -287,3 +287,48 @@ def test_the_recorded_qemu_logs_are_safe_to_go_on():
         assert 'NO FRAMES' in rows['Pi link'].detail
     rows, final = run(QEMU_TEXT.read_text().splitlines(), build='216ca6b')
     assert rows['Features'].result == 'FAIL', 'a QEMU build is never for the car'
+
+
+# --- With a receiver fitted (21 Nov: the RC rework, #35 and #36) ---------------------
+
+def with_receiver(lines):
+    """Return the log of a board whose CONFIG line says rc_fitted=true, as the car's does."""
+    return [ln + ' rc_fitted=true rc_lost_below=1050' if 'CONFIG' in ln else ln for ln in lines]
+
+
+def test_the_rc_holding_the_car_braked_at_power_up_is_safe_to_go_on():
+    # Normal mode's arbiter: the transmitter on, nobody asking: mode Rc, throttle off,
+    # brake on. The first check said STOP here until 21 Nov, so the walk rolled back.
+    rows, final = run(with_receiver(text_log(mode='Rc')))
+    assert final == 'SAFE TO GO ON to the next step', fc.table(list(rows.values()))
+    assert rows['Mode'].result == 'PASS' and 'the RC holds the car' in rows['Mode'].detail
+
+
+def test_mode_rc_is_still_a_stop_without_a_receiver_or_with_any_throttle():
+    rows, final = run(text_log(mode='Rc'))
+    assert rows['Mode'].result == 'FAIL' and final.startswith('STOP: Mode')
+    rows, final = run(with_receiver(text_log(mode='Rc', throttle='0.20')))
+    assert rows['Mode'].result == 'FAIL' and final.startswith('STOP')
+
+
+def test_a_lost_rc_alone_waits_and_does_not_roll_back():
+    # The transmitter off, or CH6's End points not set: safety Degraded, fault 256, braked.
+    lines = [ln.replace('safety=Latched', 'safety=Degraded')
+             for ln in with_receiver(text_log(faults='0x0100'))]
+    rows, final = run(lines)
+    assert rows['Mode'].result == 'WAIT', rows['Mode']
+    assert final.startswith('NOT YET') and 'No roll back' in final
+    assert 'roll back (docs' not in final
+
+
+def test_degraded_without_the_rc_lost_bit_is_a_stop():
+    lines = [ln.replace('safety=Latched', 'safety=Degraded') for ln in with_receiver(text_log())]
+    rows, final = run(lines)
+    assert rows['Mode'].result == 'FAIL' and final.startswith('STOP: Mode')
+
+
+def test_a_failure_beside_a_lost_rc_is_still_a_stop():
+    lines = [ln.replace('safety=Latched', 'safety=Degraded')
+             for ln in with_receiver(text_log(faults='0x0100', brake='0.00'))]
+    _, final = run(lines)
+    assert final.startswith('STOP: Brake')

@@ -8,6 +8,7 @@
 #                                           three-position RC switch: only once H9 and H10
 #                                           say yes (docs/esp32-bench.md)
 #   car-day/esp32/qemu-check.log            esp qemu-check: it brakes when the heartbeat stops
+#   car-day/esp32/first-check-qemu.log      esp first-check --qemu: SAFE TO GO ON on that build
 #   car-day/esp32/legacy-esp32.log          the 2025-26 C++ still builds: the way back
 #   car-day/esp32/BUILD.txt, SHA256SUMS     when, from which commit, each step's result
 # and the docs (pixi run docs: the PDF, to read with no internet).
@@ -78,6 +79,16 @@ if grep -q '^skipped' "$OUT/qemu-check.log"; then
 else
   result $rc
   QEMU=$RESULT
+  # The walk's own first check, on the same firmware in QEMU with the transmitter on: it
+  # must say SAFE TO GO ON, or the walk rolls a good flash back at the car (21 Nov: the
+  # check lagged the RC rework, and nothing ran the two together).
+  step "esp first-check --qemu: the check the walk runs right after the flash"
+  tools/esp32.sh first-check --qemu > "$OUT/first-check-qemu.log" 2>&1
+  tail -1 "$OUT/first-check-qemu.log"
+  if [[ $QEMU == PASS* ]] && ! grep -q '^SAFE TO GO ON' "$OUT/first-check-qemu.log"; then
+    QEMU="FAIL: first-check --qemu: $(tail -1 "$OUT/first-check-qemu.log")"
+    FAILED=1
+  fi
 fi
 
 step "The 2025-26 C++ firmware builds: the way back (PlatformIO)"

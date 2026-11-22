@@ -363,3 +363,38 @@ def test_esp32_sh_walk_dry_run(tmp_path):
     assert 'Brake: pass. The brake is on.' in out.stdout
     assert '\x1b[' not in out.stdout
     assert len(list(tmp_path.glob('*-esp32-first-flash-dry-run.md'))) == 1
+
+
+def test_a_lost_rc_is_said_as_not_yet_and_never_as_a_roll_back():
+    rows = [fc.Row('Log', 'PASS', ''), fc.Row('Mode', 'WAIT', 'the RC is lost')]
+    safe, sentence = ws.verdict_sentence(rows)
+    assert not safe and sentence.startswith('Not yet.') and 'no roll back' in sentence
+    assert fc.verdict_line(rows).startswith('NOT YET')
+    # A real failure beside it wins.
+    rows.append(fc.Row('Brake', 'FAIL', ''))
+    assert ws.verdict_sentence(rows) == (False, 'Stop. Brake failed. We roll back now.')
+
+
+def test_the_rc_step_says_the_transmitter_must_be_set_up():
+    step = next(s for s in ws.MAIN if s.key == 'rc')
+    assert '1100' in step.detail and 'T1 to T4' in step.detail
+
+
+def test_a_lost_rc_after_the_flash_reads_again_and_does_not_roll_back(tmp_path):
+    good = TEXT_LOG.read_text().splitlines()
+    lost = [ln.replace('safety=Latched', 'safety=Degraded').replace('faults=0x0000',
+                                                                    'faults=0x0100')
+            + (' rc_fitted=true' if 'CONFIG' in ln else '') for ln in good]
+
+    class Io(FakeIo):
+        def read_port(self, port, seconds, save):
+            self.port_reads.append((port, seconds))
+            return lost if len(self.port_reads) == 1 else good
+
+    # The flash, the first check (the RC lost), Enter to check again, then stop.
+    io = Io([''] * BEFORE_FLASH + ['flash', '', 'stop', 'no'], port_lines=good)
+    walk.main(['--out', str(tmp_path), '/dev/cu.fake', *QEMU], io=io)
+    assert len(io.port_reads) == 2
+    assert 'NOT YET' in io.screen and 'Not yet.' in ' '.join(io.said)
+    assert 'write-bin' not in [c[1] for c in io.runs]
+    assert 'Roll back to the C++.' not in io.said

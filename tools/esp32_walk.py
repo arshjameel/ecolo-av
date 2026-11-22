@@ -43,7 +43,7 @@ import esp32_walk_steps as ws  # noqa: E402
 ROOT = fc.ROOT
 COLOURS = {'ask': '\x1b[1;38;5;214m', 'go': '\x1b[1;32m', 'stop': '\x1b[1;31m'}
 BOLD, DIM, RESET = '\x1b[1m', '\x1b[2m', '\x1b[0m'
-MARK = {'PASS': 'go', 'FAIL': 'stop', 'WARN': 'ask', 'INFO': 'ask'}
+MARK = {'PASS': 'go', 'FAIL': 'stop', 'WAIT': 'ask', 'WARN': 'ask', 'INFO': 'ask'}
 
 
 class Speaker:
@@ -344,11 +344,21 @@ class Walk:
         for row in rows:
             self.tell(ws.row_sentence(row), MARK.get(row.result, 'ask'), wait=True)
         safe, sentence = ws.verdict_sentence(rows)
-        self.banner(verdict, 'go' if safe else 'stop')
+        waiting = not safe and verdict.startswith('NOT YET')
+        self.banner(verdict.split(':')[0] if waiting else verdict,
+                    'go' if safe else 'ask' if waiting else 'stop')
         self.io.out('')
-        self.tell(sentence, 'go' if safe else 'stop', wait=True)
+        self.tell(sentence, 'go' if safe else 'ask' if waiting else 'stop', wait=True)
         self.rec.add(step, 'SAFE TO GO ON' if safe else verdict, source, self.now())
-        return 'go' if safe else 'fail'
+        if waiting and not self.a.file:
+            # Only the RC is lost: the board is braked and the firmware is fine. Rolling
+            # back would throw a good flash away (21 Nov), so read again once it is set.
+            self.tell('Transmitter on, CH6 low at about 1100, the left stick in the middle. '
+                      'Enter to check again, or stop.')
+            if ws.answer_go(self.io.ask('  Enter to check again.  stop to stop.  > ')) == 'go':
+                return self.first_check(step)
+            return 'stop'
+        return 'go' if safe else 'stop' if waiting else 'fail'
 
     # --- the whole walk -----------------------------------------------------------------
 
@@ -444,8 +454,12 @@ def main(argv=None, io: Optional[Io] = None) -> int:
         code = 1
     path = w.save()
     io.out('')
-    w.tell(f'The record is in {shown(path)}.', 'go', wait=True,
-           spoken='The record is in the bench logs folder.')
+    try:
+        w.tell(f'The record is in {shown(path)}.', 'go', wait=True,
+               spoken='The record is in the bench logs folder.')
+    except KeyboardInterrupt:
+        # A second Ctrl-C, during that last sentence: the record is saved; just be quiet.
+        io.speaker.hush()
     return code
 
 

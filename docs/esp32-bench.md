@@ -202,7 +202,7 @@ on, nothing else.
 | Step | Command | Check |
 |---|---|---|
 | 1 | `pixi run esp first-check` (or `pixi run esp first-check /dev/cu.usbserial-…`) | it reads the log for 30 s; it sends nothing |
-| 2 | read the last line | `SAFE TO GO ON to the next step`: go to 3. `STOP: <check>, roll back`: section 4 |
+| 2 | read the last line | `SAFE TO GO ON to the next step`: go to 3. `NOT YET: the RC is lost`: **no roll back**: set the transmitter ([car day](car-day.md), T1-T4), then step 1 again. `STOP: <check>, roll back`: section 4 |
 
 Opening the port can restart the board (its reset wiring): that is fine, the check sees
 the boot. `--save board.log` keeps what it read; `--pi on` once the bridge runs (then the
@@ -217,8 +217,8 @@ link must say OK); `--json` for a machine.
 | Brake | at `IDLE_BRAKE` (1.0: full on) | roll back |
 | Throttle | 0 | **e-stop**, roll back |
 | Steering | centred (1950) | roll back |
-| Mode | stopped, not armed, latched | roll back |
-| Faults | none, or only 1 (command timeout) and 256 (RC lost: the transmitter is off) | the fault names the device |
+| Mode | stopped, not armed, latched. With a receiver fitted (the car): `rc` too, the RC holding the car braked until the stick or the computer asks | **WAIT** when only the RC is lost (safety `Degraded`, fault 256): the board is braked; the transmitter on, CH6 low at about 1100, the left stick in the middle, then check again. Anything else: roll back |
+| Faults | none, or only 1 (command timeout) and 256 (RC lost: the transmitter is off, or CH6's End points aren't set) | the fault names the device |
 | Tick | the worst gap under 50 ms, half the watchdog | roll back |
 | Restarts | none in the 30 s | roll back |
 | Pi link | INFO only: says what the board sees. NO FRAMES is right with the bridge off | |
@@ -236,7 +236,16 @@ The Pi link, judged on the board by the spine's own 100 ms rule (`spine_board::L
 The board also says it once a second on the cable (`HEALTH link=… age_ms=… counter_moving=…
 devices=4/4 faults=…`), and with `wifi-status` at `/health` and in big words on its page.
 
-The QEMU build, booted idle (`pixi run esp first-check --qemu`, 7 Nov, Ben's Mac):
+!!! warning "21 Nov: the check lagged the RC rework"
+  With the RC rework (#35, #36) the board, idle with its transmitter on, says `mode=Rc`,
+  and with the transmitter off or not set up it says safety `Degraded`. Until the evening
+  of 21 Nov this check called both a failure, so the walk rolled a good flash back. Now
+  the first is PASS and the second is NOT YET. `pixi run car-day-build` runs this check
+  in QEMU too, so the firmware and the check can't drift apart unseen again.
+
+The QEMU build, booted idle with the transmitter on (`pixi run esp first-check --qemu`;
+the table below is 7 Nov's, Ben's Mac; since 21 Nov its Mode row reads `rc, not armed,
+latched: the RC holds the car, braked, until the stick or the computer asks`):
 
 ```text
 Check       Result  What it saw

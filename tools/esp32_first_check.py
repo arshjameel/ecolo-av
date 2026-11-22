@@ -7,6 +7,7 @@ the USB cable for 30 s, and prints a short table: PASS, FAIL, WARN or INFO for e
 then one last line:
 
     SAFE TO GO ON to the next step
+    NOT YET: the RC is lost; no roll back: the transmitter, then this check again
     STOP: <the check>, roll back (docs/esp32-bench.md)
 
 It only reads: it sends nothing to the board. It reads both kinds of log the firmware
@@ -23,7 +24,7 @@ firmware/status/README.md).
 | Brake | at IDLE_BRAKE, as the CONFIG line says, in every status line |
 | Throttle | 0 in every status line |
 | Steering | centred in every status line |
-| Mode | stopped, not armed (and latched, in the text FSM line) |
+| Mode | stopped, not armed (and latched, in the text FSM line). Braked with only the RC lost (safety Degraded, fault 256): WAIT, not a failure |
 | Faults | none but 1 (command timeout) and 256 (RC lost: the transmitter is off) |
 | Tick | the worst gap between ticks under 50 ms: half the watchdog's 100 ms |
 | Restarts | none in the window (a second boot, a new boot_id, the uptime going back) |
@@ -112,6 +113,7 @@ class Log:
     devices: Optional[dict] = None          # {'answered', 'expected', 'list': [...]}
     statuses: List[Status] = field(default_factory=list)
     latched: List[bool] = field(default_factory=list)    # text FSM, once Running: Latched?
+    safety: List[str] = field(default_factory=list)      # text FSM, once Running: its safety
     lifecycle: Optional[str] = None                      # text FSM: the last one
     ticks: List[tuple] = field(default_factory=list)     # (t, worst_gap_us, overruns)
     link: List[str] = field(default_factory=list)        # the verdicts, in order
@@ -192,6 +194,7 @@ def read_text(log: Log, text: str):
             log.lifecycle = str(fields.get('lifecycle'))
             if log.lifecycle == 'Running':
                 log.latched.append(fields['safety'] == 'Latched')
+                log.safety.append(str(fields['safety']))
         elif kind == 'TICK' and 'overruns' in fields:
             log.ticks.append((t, fields['worst_gap_us'], fields['overruns']))
         elif kind == 'HEALTH' and 'link' in fields:
@@ -222,7 +225,8 @@ def read_json(log: Log, line: dict):
             'last_reset': c.get('last_reset'), 'idle_brake': float(c.get('idle_brake', -1)),
             'steer_centre': c.get('steering', {}).get('centre'),
             'brake_released': c.get('brake', {}).get('released'),
-            'brake_full': c.get('brake', {}).get('full')})
+            'brake_full': c.get('brake', {}).get('full'),
+            'rc_fitted': c.get('brake', {}).get('rc_fitted')})
     elif kind == 'devices':
         found = [{'name': d.get('name'), 'address': d.get('address'),
                   'answered': d.get('answered'), 'feedback': d.get('feedback')}
@@ -270,7 +274,7 @@ def parse(lines: Iterable[str]) -> Log:
 @dataclass
 class Row:
     check: str
-    result: str         # PASS, FAIL, WARN, INFO
+    result: str         # PASS, FAIL, WAIT, WARN, INFO
     detail: str
 
 
@@ -362,6 +366,7 @@ def judge(log: Log, build: Optional[str], features: Optional[str], pi: str) -> L
         row('Steering', got == [centre], f'counts {got} (centre {centre})')
 
     modes = sorted({s.mode for s in st})
+    rc_fitted = str(log.config.get('rc_fitted', '')).lower() == 'true'
     armed = any(s.armed for s in st)
     latched = all(log.latched) if log.latched else None
     detail = f"{', '.join(modes)}, {'ARMED' if armed else 'not armed'}" + (
@@ -371,6 +376,22 @@ def judge(log: Log, build: Optional[str], features: Optional[str], pi: str) -> L
                         'never passed (a device?)'))
     elif modes == ['stopped'] and not armed and latched is not False:
         rows.append(Row('Mode', 'PASS', detail))
+    elif (set(modes) <= {'stopped', 'rc'} and not armed and latched is not False
+          and rc_fitted and all(s.throttle_zero for s in st)):
+        # With a receiver fitted, normal mode's arbiter gives the RC the car at power-up,
+        # braked, until the stick or the computer asks (spine-core RcOwner, Arsh, 21 Nov):
+        # the mode says Rc while the throttle is off and the brake on (the rows above).
+        rows.append(Row('Mode', 'PASS', detail + ': the RC holds the car, braked, until '
+                        'the stick or the computer asks'))
+    elif (modes == ['stopped'] and not armed and set(log.safety) <= {'Latched', 'Degraded'}
+          and any(s.faults & RC_SIGNAL_LOST for s in st)):
+        # A lost RC outranks the latch in the FSM line (Safety::of): the board is braked,
+        # and nothing is wrong with the firmware. With a receiver fitted (21 Nov) this is
+        # what a transmitter that is off, or not set up, looks like.
+        rows.append(Row('Mode', 'WAIT', 'stopped, not armed, braked: the RC is lost (safety '
+                        'Degraded). The transmitter on, CH6 low reading about 1100 (End '
+                        'points CH6 80 %: docs/car-day.md T1-T4), the left stick in the '
+                        'middle; then this check again'))
     elif set(modes) <= {'stopped', 'computer'} and 'ok' in log.link:
         rows.append(Row('Mode', 'WARN', detail + ": the Pi's frames armed it. For this "
                         "check, start with the Pi's bridge off"))
@@ -429,6 +450,9 @@ def verdict_line(rows: List[Row]) -> str:
     failed = next((r.check for r in rows if r.result == 'FAIL'), None)
     if failed:
         return f'STOP: {failed}, roll back (docs/esp32-bench.md)'
+    if any(r.result == 'WAIT' for r in rows):
+        return ('NOT YET: the RC is lost, so the board holds its brake. No roll back: set the '
+                'transmitter (docs/car-day.md T1-T4), then run this check again')
     return 'SAFE TO GO ON to the next step'
 
 

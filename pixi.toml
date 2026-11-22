@@ -85,6 +85,7 @@ diffusion = { cmd = "tools/diffusion.sh", description = "The diffusion planner t
 get = { cmd = "tools/get.sh", description = "Download what git doesn't keep: pixi run get vendor (ROS source, 560 MB), models, mediamtx, places, street-map, carla-osm, routes, or all" }
 pico = { cmd = "tools/pico.sh", description = "Our Rust Pico 2 boards: pixi run pico <spine|wheel|sentinel> <tools|build|flash>. tools: probe-rs (once); build: the .uf2 to drag on; flash: through a debug probe, then its logs" }
 esp = { cmd = "tools/esp32.sh", description = "The Rust firmware for today's ESP32 control board: pixi run esp tools (Espressif's Rust, once), build, flash (on the USB cable, bench only), qemu-tools (QEMU, once), qemu-check (it brakes when the heartbeat stops; docs/esp32-bench.md), first-check [port] (right after a flash: SAFE TO GO ON or STOP; --qemu on the QEMU build), walk [port] (walks the whole first flash, one step at a time, shown and spoken)" }
+espflash = { cmd = "vendor/cargo-tools/bin/espflash", description = "Espressif's flashing tool, the copy pixi run esp tools installed: pixi run espflash list-ports (is a board seen?), board-info, read-flash, flash. Anything after it goes to espflash" }
 
 [dependencies]
 # Python 3.12, as Jazzy on Ubuntu 24.04 (the car) and the ml environment: the build's
@@ -375,6 +376,7 @@ PLATFORMIO_CORE_DIR = "$PIXI_PROJECT_ROOT/vendor/platformio"
 
 [feature.firmware.tasks]
 legacy-esp32 = { cmd = "tools/legacy_firmware.sh", description = "Build today's ESP32 firmware with PlatformIO: pixi run -e firmware legacy-esp32 (add -t upload to flash it)" }
+esptool = { cmd = "python3 vendor/platformio/packages/tool-esptoolpy/esptool.py", description = "Espressif's esptool.py, the copy PlatformIO downloaded (after one pixi run -e firmware legacy-esp32): pixi run -e firmware esptool --chip esp32 chip_id" }
 
 [environments]
 docs = { features = ["docs"], no-default-feature = true }
