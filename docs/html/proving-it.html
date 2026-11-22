@@ -7,7 +7,7 @@
 <!-- Generated from docs/proving-it.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Proving it: how the tests fit together</h1>
-<div class="meta">8 min read · 5 sections</div></header>
+<div class="meta">8 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -140,7 +140,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-rules-of-evidence">The rules of evidence</a><a href="#set-1-the-ladder">Set 1: the ladder</a><a href="#the-same-test-on-the-car-and-in-the-simulator">The same test, on the car and in the simulator</a><a href="#set-2-the-algorithm-tests">Set 2: the algorithm tests</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#where-we-are-pixi-run-ladder">Where we are: pixi run ladder</a><a href="#the-rules-of-evidence">The rules of evidence</a><a href="#set-1-the-ladder">Set 1: the ladder</a><a href="#the-same-test-on-the-car-and-in-the-simulator">The same test, on the car and in the simulator</a><a href="#set-2-the-algorithm-tests">Set 2: the algorithm tests</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p><strong>One page for the question "how do we know?"</strong> We have two sets of tests. This page says
 what each is for, how one step proves the step before, and how the same test runs on the
 car and in the simulator. Written 22 November 2026 by Ben Woodhead (Ben: "Testing. Proofs.
@@ -169,6 +169,44 @@ run: it is the map, and the list of what is missing.</p>
 <li>Nothing here has run on the car yet. "Built" means it passes in Ravensim.</li>
 </ol>
 </blockquote></div>
+<section class="card"><h2 id="where-we-are-pixi-run-ladder">Where we are: <code>pixi run ladder</code></h2>
+<pre class="highlight"><code class="language-bash">pixi run ladder                      # every rung: the simulator's side and the car's
+pixi run ladder next                 # the next open rung and its command (--car: the car's)
+pixi run ladder run stands           # run a rung's simulator twin; the result is recorded
+pixi run ladder record --from-report ~/aav-tests/&lt;session&gt;    # a car-test session
+pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by hand</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Progress is one file, <code>~/aav-tests/ladder.yaml</code></td>
+<td>a line a result, with its date, commit and who; never rewritten</td>
+</tr>
+<tr>
+<td>The simulator and the car are kept apart</td>
+<td>a pass in Ravensim never marks the car's rung</td>
+</tr>
+<tr>
+<td>A rung is shut until the rungs under it have passed</td>
+<td>a car rung also needs its own simulator twin</td>
+</tr>
+<tr>
+<td>A pass on a shut rung needs <code>--override "why"</code></td>
+<td>and the why is kept</td>
+</tr>
+<tr>
+<td>It never moves the car</td>
+<td>for a car rung it prints the command; a person runs it</td>
+</tr>
+</tbody>
+</table></div>
+<p>The rungs are <code>tools/ladder/rungs.yaml</code>. A window for it is next (TODO 271).</p>
+</section>
 <section class="card"><h2 id="the-rules-of-evidence">The rules of evidence</h2>
 <div class="table-wrap"><table>
 <thead>

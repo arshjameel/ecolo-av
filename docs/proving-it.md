@@ -19,6 +19,26 @@ run: it is the map, and the list of what is missing.
 > 4. **The rules of evidence** (below) apply to both sets.
 > 5. Nothing here has run on the car yet. "Built" means it passes in Ravensim.
 
+## Where we are: `pixi run ladder`
+
+```bash
+pixi run ladder                      # every rung: the simulator's side and the car's
+pixi run ladder next                 # the next open rung and its command (--car: the car's)
+pixi run ladder run stands           # run a rung's simulator twin; the result is recorded
+pixi run ladder record --from-report ~/aav-tests/<session>    # a car-test session
+pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by hand
+```
+
+| Rule | |
+|---|---|
+| Progress is one file, `~/aav-tests/ladder.yaml` | a line a result, with its date, commit and who; never rewritten |
+| The simulator and the car are kept apart | a pass in Ravensim never marks the car's rung |
+| A rung is shut until the rungs under it have passed | a car rung also needs its own simulator twin |
+| A pass on a shut rung needs `--override "why"` | and the why is kept |
+| It never moves the car | for a car rung it prints the command; a person runs it |
+
+The rungs are `tools/ladder/rungs.yaml`. A window for it is next (TODO 271).
+
 ## The rules of evidence
 
 | Rule | Means |

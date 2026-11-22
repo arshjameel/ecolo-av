@@ -83,6 +83,7 @@ and will do".
 | 268 | `sim-check --ghost` listens for the local costmap on its old name (`/local_costmap/costmap`; ours is `/drivers/nav/costmap/local`), so the leg reports FAIL for every follower | ⬜ |
 | 269 | **A run log**: every test run's commit, command, settings and result in one place, so a number can be traced | ⬜ |
 | 270 | **The car's scores beside the simulator's** for the same route: the last step of the ladder against the first | ⬜ after the car drives |
+| 271 | **The test ladder with saved progress** (Ben, 22 Nov: "spin up the testing and then start working through the rungs saving our progress as we go"): `pixi run ladder` ([Proving it](docs/proving-it.md)); then a LADDER page in the developer window (`aav_dev_window`) reading the same file | ✅ the tool, 22 Nov; ⬜ the window |
 
 ## 2. Maps and position
 
