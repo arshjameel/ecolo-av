@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_io_mux_rs</name>
   <version>0.1.0</version>
-  <description>The sensor mux and the output mux in Rust (rclrs): the default since 17 Nov (Ben), beside aav_io_mux's Python (io_mux.launch.py io_mux_impl:=rust). The same node names, topics, QoS, parameters, service and answers: /system/source in, /system/sensor_mux/state out; ego's /ego/actuator_cmd on to /control/target/actuator_cmd with its heartbeat, only while every source is the target's; /safety/output_mux/state and the clear service. A safety lock (the ESP32's heartbeat); the Python is one switch away (io_mux_impl:=python). The logic is the io-mux-core crate, with no ROS, checked step by step against the Python's answers.</description>
+  <description>The sensor mux and the output mux in Rust (rclrs): the default since 17 Nov (Ben), in place of aav_io_mux's Python nodes (removed 22 Nov 2026). The same node names, topics, QoS, parameters, service and answers: /system/source in, /system/sensor_mux/state out; ego's /ego/actuator_cmd on to /control/target/actuator_cmd with its heartbeat, only while every source is the target's; /safety/output_mux/state and the clear service. A safety lock (the ESP32's heartbeat); the Python is one switch away (io_mux_impl:=python). The logic is the io-mux-core crate, with no ROS, checked step by step against the Python's answers.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

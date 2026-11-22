@@ -877,10 +877,11 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
-        # Rust by default on the car too (Ben, 16 Nov); python falls back, one switch each.
+        # Rust on the car too (Ben, 16 Nov). The Python twins went on 20 and 22 Nov; the
+        # ESP32's bridge and rc_driver still fall back (legacy_impl, rc_impl).
         DeclareLaunchArgument('ego_impl', default_value=vehicle.DEFAULT_EGO_IMPL,
                               description='rust (aav_ego_rs, ego and look_ahead in one '
-                                          'process) or python (aav_ego)'),
+                                          'process; the Python removed 22 Nov)'),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
                               description='rust (aav_behaviour_rs; the Python removed 20 Nov), '
                                           'where navigation runs with behaviour:=true'),

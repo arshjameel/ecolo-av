@@ -990,12 +990,13 @@ def test_the_stop_zone_reads_the_collision_monitor_block():
     assert p['sources'][1]['kind'] == 'scan' and p['sources'][1]['mount'] == [0.0] * 4
 
 
-def test_ego_impl_is_python_or_rust():
-    # Rust on the car and in the simulator (Ben, 16 Nov); the Python stays selectable.
+def test_ego_impl_is_rust():
+    # Rust on the car and in the simulator (Ben, 16 Nov); the Python went on 22 Nov.
     assert vehicle.DEFAULT_EGO_IMPL == vehicle.SIM_DEFAULT_EGO_IMPL == 'rust'
-    assert vehicle.check_ego_impl('python') == 'python'
     assert vehicle.check_ego_impl(' Rust ') == 'rust'
-    assert vehicle.EGO_IMPLS['rust'] == 'aav_ego_rs'
+    assert vehicle.EGO_IMPLS == {'rust': 'aav_ego_rs'}
+    with pytest.raises(ValueError, match='ego_impl:=python'):
+        vehicle.check_ego_impl('python')
     with pytest.raises(ValueError, match='ego_impl:=c'):
         vehicle.check_ego_impl('c')
 

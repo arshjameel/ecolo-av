@@ -1,7 +1,7 @@
 """
 The squiggly line's maths: the plan beside the trace, and the room left at the stop point.
 
-No ROS imports, so the tests run anywhere. The node look_ahead (look_ahead_node.py) turns
+No ROS imports, so the tests run anywhere. The node look_ahead (aav_ego_rs) turns
 these into /ego/plan_ahead and /ego/ahead for every screen (docs/hud.md, "The squiggly
 line"). Every point here is (x, y) in base_link: the car at (0, 0), facing +x.
 

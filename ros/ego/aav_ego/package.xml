@@ -3,21 +3,12 @@
 <package format="3">
   <name>aav_ego</name>
   <version>0.1.0</version>
-  <description>ego: turns the muxed /control/cmd_vel Twist into /ego/actuator_cmd Ackermann commands with limits, ramps and a stale-command stop.</description>
+  <description>ego's launch file (ego.launch.py), config (ego.yaml) and maths in Python with no ROS (ackermann.py, dynamics.py, vehicle_model.py and the rest: limits, ramps, the lead, the trace). The nodes ego and look_ahead, which turn the muxed /control/cmd_vel Twist into /ego/actuator_cmd Ackermann commands, are aav_ego_rs's (Rust); the Python nodes were removed on 22 Nov 2026.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>rcl_interfaces</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>ackermann_msgs</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>diagnostic_msgs</exec_depend>
-  <exec_depend>tf2_ros</exec_depend>
   <exec_depend>aav_description</exec_depend>
-  <exec_depend>aav_interfaces</exec_depend>
-  <!-- ego.launch.py ego_impl:=rust: the Rust challenger, ego and look_ahead in one process. -->
+  <!-- ego.launch.py starts the Rust nodes: ego and look_ahead in one process. -->
   <exec_depend>aav_ego_rs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>

@@ -90,7 +90,7 @@ current): after adding, moving or removing a package, run
 
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
-| [aav_ego](../ros/ego/aav_ego/README.md) | Python | ego | `aav_ego/(9 modules)` | `aav_ego/ego_node.py`, `aav_ego/look_ahead_node.py` | `test/` | `config/`, `launch/` |
+| [aav_ego](../ros/ego/aav_ego/README.md) | Python | ego's launch file (ego.launch.py), config (ego.yaml) and maths in Python with no ROS (ackermann.py, dynamic... | `aav_ego/(9 modules)` | - | `test/` | `config/`, `launch/` |
 | [aav_ego_rs](../ros/ego/aav_ego_rs/README.md) | Rust | ego and look_ahead in Rust (rclrs), one process with both nodes | `crates/ego-core` | `crates/ego-node` | `test/` | - |
 
 ## ros/io_mux

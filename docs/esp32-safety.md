@@ -318,7 +318,7 @@ two give the same frames, byte for byte: `legacy-bridge`'s `tests/vectors.rs`.
 | The bridge copies, never makes, the counter | `relay.rs` (`heartbeat`, `frame`); `ros/can_bridge/aav_legacy/aav_legacy/uart_relay.py:93`, `:164-185` | `the_counter_is_relayed_never_made_up`; `test_the_counter_moves_only_when_the_orin_sends_one`; `test_when_ego_goes_quiet_it_sends_stops_with_the_last_counter` |
 | The bridge reads only `/control/car/heartbeat` | `main.rs` (`control/car/heartbeat`); `legacy_uart_bridge.py:150` | `test_heartbeat_chain.py` (both bridges; the Rust one with the Rust muxes) |
 | The car refuses `screens:=` | `ros/io_mux/aav_io_mux/aav_io_mux/provenance.py:278-281` | `test_the_real_car_refuses_the_screens_rule` |
-| ego sends at 50 Hz and stops on 0.3 s of quiet | `ros/ego/aav_ego/aav_ego/ego_node.py:112-130`, `ego.yaml:19` | |
+| ego sends at 50 Hz and stops on 0.3 s of quiet | `ros/ego/aav_ego_rs/crates/ego-node/src/ego.rs` (`cmd_timeout`), `ego.yaml:19` | |
 | twist_mux: 0.5 s per slot, hw_panel at 45 | `ros/command_mux/aav_command_mux/config/twist_mux.yaml` | |
 | hw_panel sends only while it draws | `ros/hud/aav_hud/crates/panel-app/src/ros.rs:1-13` | `sends_only_while_the_window_draws_and_the_estop_is_five_trues` |
 | hw_panel speed buttons off on the real car | `ros/hud/aav_hud/crates/panel-core/src/gate.rs:1-8` | `the_preflight_refuses_the_real_car_without_a_driven_wheel_speed` |

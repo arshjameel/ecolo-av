@@ -498,9 +498,10 @@ def check_detector_impl(impl):
 
 # Which ego runs (ego.launch.py, car.launch.py, sim.launch.py ego_impl:=): rust
 # (aav_ego_rs: ego and look_ahead in one process; the default on the car and in the
-# simulator, Ben, 16 Nov) or python (aav_ego's two nodes: the same node names, topics and
-# answers; kept selectable until a car day proves the Rust). Each one's package.
-EGO_IMPLS = {'python': 'aav_ego', 'rust': 'aav_ego_rs'}
+# simulator, Ben, 16 Nov). The Python nodes (aav_ego's two) went on 22 Nov (tag
+# save/python-fallbacks-1); aav_ego keeps the launch file, the config and the maths.
+# The switch stays, a hook.
+EGO_IMPLS = {'rust': 'aav_ego_rs'}
 DEFAULT_EGO_IMPL = 'rust'
 # The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
 SIM_DEFAULT_EGO_IMPL = DEFAULT_EGO_IMPL

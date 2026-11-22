@@ -267,7 +267,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 
 | | |
 |---|---|
-| **Does** | turns the chosen speed and turn rate into a speed and steering angle the car can do, with limits, ramps and a timeout |
+| **Does** | turns the chosen speed and turn rate into a speed and steering angle the car can do, with limits, ramps and a timeout. The nodes are Rust (`aav_ego_rs`; the Python ones removed 22 Nov); this package holds the launch file, config and Python maths |
 | **Why** | the drivers never need to know which car they drive |
 | **Runs on** | the Orin |
 | **In → out** | `/control/cmd_vel` → `/ego/actuator_cmd` (AckermannDriveStamped, 50 Hz) |
@@ -526,7 +526,7 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_simulator` | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | `ros/sim/aav_simulator/README.md`, then [Ravensim](own-simulator.md) |
 | `aav_sim_cameras` | Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
 | `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |
-| `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (`ego_impl:=python` falls back) | `ros/ego/aav_ego_rs/README.md` |
+| `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (the Python removed 22 Nov) | `ros/ego/aav_ego_rs/README.md` |
 | `aav_watchdog_rs` | the sensor watchdog in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_watchdog_rs/README.md` |
 | `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (the Python removed 22 Nov) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |

@@ -289,9 +289,10 @@ def test_the_sensor_watchdog_runs_wherever_the_mux_does():
             assert sent['mux.launch.py'].get('sensor_lock', 'true') == 'true', machine
 
 
-def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
+def test_the_rust_nodes_are_the_cars_and_only_the_esp32s_python_is_a_switch_away():
     # Ben, 16 Nov: ego, behaviour, the watchdog and localization_health in Rust on the car
-    # too; each *_impl:=python falls back, one switch each (docs/car-day.md).
+    # too. Their Python twins went on 20 and 22 Nov: each *_impl:=python is refused. The
+    # ESP32's bridge and rc_driver still fall back (docs/car-day.md).
     switches = {'ego.launch.py': 'ego_impl', 'navigation.launch.py': 'behaviour_impl',
                 'watchdog.launch.py': 'watchdog_impl',
                 'localization.launch.py': 'localization_health_impl',
@@ -302,12 +303,7 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
     sent = included(started(CAR, machine='all'))
     for name, switch in switches.items():
         assert sent[name][switch] == 'rust', name
-    # Still one switch away: ego. The others' Python went on 20 and 22 Nov.
-    still = ('ego_impl',)
-    back = included(started(CAR, machine='all', **dict.fromkeys(still, 'python')))
-    for name, switch in switches.items():
-        assert back[name][switch] == ('python' if switch in still else 'rust'), name
-    for gone in ('behaviour_impl', 'watchdog_impl', 'localization_health_impl',
+    for gone in ('ego_impl', 'behaviour_impl', 'watchdog_impl', 'localization_health_impl',
                  'io_mux_impl'):
         with pytest.raises(ValueError, match=gone):
             started(CAR, machine='all', **{gone: 'python'})
