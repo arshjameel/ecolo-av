@@ -1,0 +1,8 @@
+# A camera Pi (CAM1-PI, CAM2-PI .118; Pi OS): it sends its cameras as H.264 with MediaMTX
+# (RTSP, port 8554). MediaMTX is not a ROS program, so no part runs here today: the Orin
+# reads the streams (orin.yaml's camera_stream part; docs/camera-pipeline.md).
+# `car_setup.sh camera_pi services` turns MediaMTX on at boot.
+parts:
+  camera: false         # usb_cam on this Pi, as raw ROS pictures: too big for the network.
+                        # true only for a test with a USB camera and nothing else running
+  camera_stream: false  # the reader of the streams: on the Orin

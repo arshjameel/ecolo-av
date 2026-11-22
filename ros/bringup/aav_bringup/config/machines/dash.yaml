@@ -1,0 +1,9 @@
+# The dash Pi (aav-desktop, .196): the car's two screens, the HUD and the street map
+# (aav_hud). They only listen to the car's topics; nothing here drives. Parts not listed
+# default off.
+# At boot the screens start by aav-hud.service and aav-map.service (tools/screens;
+# car_setup.sh dash services), which pick each one's monitor. This file is the same two
+# windows by hand: `~/aav-jazzy/aav.sh car dash`. Never both ways at once.
+parts:
+  hud: true    # the instrument cluster (hud.launch.py), full screen
+  map: true    # the street map and the route (map.launch.py), full screen

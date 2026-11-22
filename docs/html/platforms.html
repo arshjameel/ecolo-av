@@ -7,7 +7,7 @@
 <!-- Generated from docs/platforms.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Platforms: Ubuntu, the car&#x27;s computers, networking</h1>
-<div class="meta">11 min read · 7 sections</div></header>
+<div class="meta">12 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -293,6 +293,18 @@ the ESP32, and the CAN bus goes to the Orin with the wheel sensors on it
 <td>the IMU and GPS drivers only, on the localization Pi they are plugged into; the Orin does the maths</td>
 </tr>
 <tr>
+<td><code>dash.yaml</code></td>
+<td>the two screens, the HUD and the street map (<code>hud</code>, <code>map</code>), on the dash Pi. At boot its <code>aav-hud</code> and <code>aav-map</code> units start them (<a href="car-screens.html">The two screens</a>); the file is the same by hand. Never both at once</td>
+</tr>
+<tr>
+<td><code>camera_pi.yaml</code></td>
+<td>nothing in ROS: a camera Pi sends its cameras with MediaMTX, and the Orin reads the streams. The file says so, and keeps <code>camera</code> (usb_cam) for a test</td>
+</tr>
+<tr>
+<td><code>battery_pi.yaml</code></td>
+<td>the battery monitor (<code>battery</code>), on the voltage meter's Pi. <strong>Not checked on the car</strong>: nobody has logged in to that Pi yet; the hardware lead confirms</td>
+</tr>
+<tr>
 <td><code>laptop.yaml</code></td>
 <td>the joystick, on the safety driver's laptop, and its own detector (<code>object_detector_laptop</code>, RF-DETR Nano) on the compressed pictures: <code>pixi run -e ml car laptop</code></td>
 </tr>
@@ -369,6 +381,10 @@ hardware: the cameras (Q22), the radar, or which USB port a device is on.</p>
 <tr>
 <td><code>lane</code></td>
 <td>lane keeping with the camera; off in every car machine file</td>
+</tr>
+<tr>
+<td><code>hud</code>, <code>map</code></td>
+<td>the two screens (<code>aav_hud</code>), full screen: <code>dash.yaml</code>. Skipped, with a warning, where <code>aav_hud</code> isn't built</td>
 </tr>
 <tr>
 <td><code>camera_obstacles</code></td>

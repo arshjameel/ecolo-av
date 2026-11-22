@@ -3,7 +3,7 @@
 The help that [CONTRIBUTING.md](../CONTRIBUTING.md) doesn't give.
 
 > **The flow is in [CONTRIBUTING.md](../CONTRIBUTING.md):** fork, branch from
-> `upstream/main`, pull request, one approval, then the merge queue (a merge commit,
+> `upstream/main`, pull request, one approval and green CI, then merge (a merge commit,
 > so every commit keeps its message).
 > Keep your branch current with `git rebase upstream/main`, never a merge.
 
@@ -11,7 +11,7 @@ The help that [CONTRIBUTING.md](../CONTRIBUTING.md) doesn't give.
 
 ```text
    AAV-2025-2026/ecolo-av          the team's repo: "upstream"
-      main  ◄──────────────── merge queue (approved, CI green, merge commit)
+      main  ◄──────────────── merge (approved, CI green, merge commit)
         │                                ▲ pull request
         │ git fetch upstream             │
         ▼                                │

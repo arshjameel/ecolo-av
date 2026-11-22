@@ -195,7 +195,7 @@ The development computers:
 ## Sharing the code
 
 The repo is on GitHub: `git@github.com:AAV-2025-2026/ecolo-av.git`, public: anyone can read it.
-Changes reach `main` only through a pull request from your own fork and the merge queue:
+Changes reach `main` only through a pull request from your own fork, approved and green:
 [Contributing](../CONTRIBUTING.md) has the steps.
 
 | Task | Command |
@@ -203,8 +203,8 @@ Changes reach `main` only through a pull request from your own fork and the merg
 | Get it, take newer work, share yours | fork, clone, branch, pull request: [Contributing](../CONTRIBUTING.md) |
 | Hand it to a laptop with no GitHub access | `git bundle create ../aav.bundle HEAD main` (keep `HEAD`, or a clone checks out nothing), then `git clone aav.bundle aav` there |
 
-CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux (x86_64 and 64-bit ARM) for every push to `main`,
-every pull request and every merge-queue entry, and on a Mac every night. The results are
+CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux (x86_64 and 64-bit ARM) for every push to `main`
+and every pull request, and on a Mac every night. The results are
 on the repo's Actions tab.
 
 **In your fork too.** Turn Actions on once in your fork (its Actions tab, then "I
@@ -214,7 +214,7 @@ request. The nightly `mac` and `sim` runs stay in the team's repo.
 
 | Job | Computer | When | What |
 |---|---|---|---|
-| `linux` | Ubuntu 24.04, x86_64 | every push to `main`, every pull request, the merge queue, a push to a fork's branch | `pixi run test`, the MCP server |
+| `linux` | Ubuntu 24.04, x86_64 | every push to `main`, every pull request, a push to a fork's branch | `pixi run test`, the MCP server |
 | `arm` | Ubuntu 24.04, **64-bit ARM**, like the Orin and the Pis | the same | 12 min: `pixi run test`; the HUD and the map window built as ARM programs, and each drawn once on a virtual screen (picture: the artifact `arm-screens`) |
 | `mac` | macOS 15, Apple Silicon | every night (team's repo) | `pixi run test`, the MCP server |
 | `car-kit` | Ubuntu 24.04, 64-bit ARM | the same as `linux` | `pixi run car-kit`, then `car_install.sh --all` with **no network** (its own network namespace), as on the car ([car install](car-install.md)): 6 min |

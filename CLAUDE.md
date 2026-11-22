@@ -164,12 +164,11 @@ EGM artifact directory: docs/designs
 - The repo is `git@github.com:AAV-2025-2026/ecolo-av.git`, the team's (Q25), **public**, so
   nothing secret ever goes in it. Until 25 Oct it was `zander1976/aav`; its whole history
   came along in the merge. Nobody pushes to `main`: work on a branch in your fork, open
-  a pull request, and the merge queue lands it once CI is green and one teammate
-  approves (`CONTRIBUTING.md`). Run the full `pixi run test` before asking for review
+  a pull request, and merge it once CI is green and one teammate approves
+  (`CONTRIBUTING.md`; no merge queue since 21 Nov: it ran the whole CI a second time). Run the full `pixi run test` before asking for review
   (not just `tools/test.sh`: it skips the launch-file tests). Never force-push `main`.
 - CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux, x86_64 and 64-bit ARM
-  (the car's computers), for every push to `main`, every pull request and each pull
-  request in the merge queue, with the car
+  (the car's computers), for every push to `main` and every pull request, with the car
   kit installed offline on ARM; and on a Mac every night (`docs/infrastructure.md`).
 - Commit messages give the intention: what changed, and why. No attribution lines (no
   `Co-Authored-By`, no "Generated with"). It's a school project: the README's Credits
