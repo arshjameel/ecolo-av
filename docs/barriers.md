@@ -146,6 +146,31 @@ AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barri
 python3 ../../../tools/barrier_graphs.py /tmp/barrier-traces /tmp/barrier-graphs.html
 ```
 
+### In Ravensim, the whole stack (22 Nov)
+
+`sim-check --ghost`: the road world, a ghost 15 m past the bumper, a goal 30 m on, at
+navigation's 1 m/s. One run each (the barrier run three times); the stop zone stays on.
+
+| Follower | First to act | Stood still | Gap to the ghost |
+|---|---|---|---|
+| `mpc_lag_rs`, no barriers | the stop zone, at 0.86 m/s | x = 14.72 m | 0.19 m |
+| `mppi_lag` (the default) | the stop zone, at 0.60 m/s | x = 14.29 m | 0.66 m |
+| `mpc_lag_rs`, barriers on | **the stop rule, 1.1 m sooner**; the stop zone fired after, at 0.43 m/s | x = 14.16 m | 0.76 m (0.84, 0.88) |
+
+| # | What it showed | |
+|---|---|---|
+| 13 | **It works in the full stack**: the marker reaches the tracker, the car slows 1.1 m before the stop zone asks, and stops 0.6 m further back than the same tracker without | the last lock (the stop zone) then has half the speed to deal with |
+| 14 | **The solver: 16.6 ms a tick near the ghost** (18.2 at worst; 0.7 ms without), a quarter of its ticks unsettled | inside the 50 ms tick, with little room: finding 12 again |
+| 15 | **Going round was not tried**: navigation drives 1 m/s, and going round starts near 3 m/s (finding 8) | next: a faster run, or a longer look ahead |
+
+Two things seen on the way, not about the barriers:
+
+- `sim-check --ghost` reports FAIL for every follower: it listens for the local costmap on
+  its old name (`/local_costmap/costmap`; ours is `/drivers/nav/costmap/local`).
+- One earlier run of `mpc_lag_rs` without barriers, while two other simulators were
+  loading the same computer, **drove through the ghost and the stop zone never fired**.
+  It did not happen again on a quiet computer. Not explained.
+
 ## 6. What it assumes
 
 | Assumption | True on the car? |
@@ -164,7 +189,7 @@ So: shown on a pretend car, argued for the model. **Not proved for the car.**
 
 | | |
 |---|---|
-| A run in Ravensim, and a score against `mppi_lag` | next |
+| Going round in Ravensim (it needs about 3 m/s), and a league score against `mppi_lag` | next |
 | Real obstacles (the costmap, `things`) as circles | the ghost is the only source |
 | The stability rule (a Lyapunov rule in the plan) | not started; the safety filter has one for the lane |
 | A proof with the dead time | open |

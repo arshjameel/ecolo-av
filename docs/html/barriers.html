@@ -7,7 +7,7 @@
 <!-- Generated from docs/barriers.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Barriers in the MPC: keeping the car off things</h1>
-<div class="meta">10 min read · 7 sections</div></header>
+<div class="meta">12 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -522,6 +522,73 @@ a wall at the circle's edge and nothing before it, a step.</p>
 AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barrier the_traces -- --ignored
 AAV_BARRIER_OUT=/tmp/barrier-traces cargo test --release -p mpc-lag --test barrier the_sweep -- --ignored
 python3 ../../../tools/barrier_graphs.py /tmp/barrier-traces /tmp/barrier-graphs.html</code></pre>
+<h3 id="in-ravensim-the-whole-stack-22-nov">In Ravensim, the whole stack (22 Nov)</h3>
+<p><code>sim-check --ghost</code>: the road world, a ghost 15 m past the bumper, a goal 30 m on, at
+navigation's 1 m/s. One run each (the barrier run three times); the stop zone stays on.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Follower</th>
+<th>First to act</th>
+<th>Stood still</th>
+<th>Gap to the ghost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mpc_lag_rs</code>, no barriers</td>
+<td>the stop zone, at 0.86 m/s</td>
+<td>x = 14.72 m</td>
+<td>0.19 m</td>
+</tr>
+<tr>
+<td><code>mppi_lag</code> (the default)</td>
+<td>the stop zone, at 0.60 m/s</td>
+<td>x = 14.29 m</td>
+<td>0.66 m</td>
+</tr>
+<tr>
+<td><code>mpc_lag_rs</code>, barriers on</td>
+<td><strong>the stop rule, 1.1 m sooner</strong>; the stop zone fired after, at 0.43 m/s</td>
+<td>x = 14.16 m</td>
+<td>0.76 m (0.84, 0.88)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>What it showed</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>13</td>
+<td><strong>It works in the full stack</strong>: the marker reaches the tracker, the car slows 1.1 m before the stop zone asks, and stops 0.6 m further back than the same tracker without</td>
+<td>the last lock (the stop zone) then has half the speed to deal with</td>
+</tr>
+<tr>
+<td>14</td>
+<td><strong>The solver: 16.6 ms a tick near the ghost</strong> (18.2 at worst; 0.7 ms without), a quarter of its ticks unsettled</td>
+<td>inside the 50 ms tick, with little room: finding 12 again</td>
+</tr>
+<tr>
+<td>15</td>
+<td><strong>Going round was not tried</strong>: navigation drives 1 m/s, and going round starts near 3 m/s (finding 8)</td>
+<td>next: a faster run, or a longer look ahead</td>
+</tr>
+</tbody>
+</table></div>
+<p>Two things seen on the way, not about the barriers:</p>
+<ul>
+<li><code>sim-check --ghost</code> reports FAIL for every follower: it listens for the local costmap on
+  its old name (<code>/local_costmap/costmap</code>; ours is <code>/drivers/nav/costmap/local</code>).</li>
+<li>One earlier run of <code>mpc_lag_rs</code> without barriers, while two other simulators were
+  loading the same computer, <strong>drove through the ghost and the stop zone never fired</strong>.
+  It did not happen again on a quiet computer. Not explained.</li>
+</ul>
 </section>
 <section class="card"><h2 id="6-what-it-assumes">6. What it assumes</h2>
 <div class="table-wrap"><table>
@@ -574,7 +641,7 @@ python3 ../../../tools/barrier_graphs.py /tmp/barrier-traces /tmp/barrier-graphs
 </thead>
 <tbody>
 <tr>
-<td>A run in Ravensim, and a score against <code>mppi_lag</code></td>
+<td>Going round in Ravensim (it needs about 3 m/s), and a league score against <code>mppi_lag</code></td>
 <td>next</td>
 </tr>
 <tr>
