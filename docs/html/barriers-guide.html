@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keeping a car off things: a walk-through · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/barriers-guide.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Keeping a car off things: a walk-through</h1>
+<div class="meta">19 min read · 12 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a class="here" href="barriers-guide.html">Barriers: a walk-through</a>
+<a href="barriers-survey.html">Barriers: the survey</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#step-1-the-simplest-version-of-the-problem">Step 1. The simplest version of the problem</a><a href="#step-2-the-obvious-fix-and-its-flaw">Step 2. The obvious fix, and its flaw</a><a href="#step-3-a-better-question">Step 3. A better question</a><a href="#step-4-write-the-rule-down">Step 4. Write the rule down</a><a href="#step-5-the-proof">Step 5. The proof</a><a href="#step-6-what-the-rule-asks-of-the-car">Step 6. What the rule asks of the car</a><a href="#step-7-where-it-breaks-on-a-real-machine">Step 7. Where it breaks on a real machine</a><a href="#step-8-the-backstop">Step 8. The backstop</a><a href="#step-9-from-a-line-to-a-real-car">Step 9. From a line to a real car</a><a href="#step-10-putting-it-in-the-mpc">Step 10. Putting it in the MPC</a><a href="#step-11-what-the-test-runs-showed">Step 11. What the test runs showed</a><a href="#step-12-what-is-still-open">Step 12. What is still open</a></nav>
+<div class="lead"><p>A study guide to <a href="barriers.html">the barriers in the MPC</a>: the idea worked through by hand.
+The map of the whole area is <a href="barriers-survey.html">the survey</a>.</p>
+<p><strong>How to use it.</strong> Twelve steps. Each has three parts:</p>
+<ul>
+<li><strong>Read</strong>: one idea, a few lines.</li>
+<li><strong>Try it</strong>: something to do with a pencil. Do it before you look.</li>
+<li><strong>Check</strong>: the answer.</li>
+</ul>
+<p>You need multiplication, and nothing else, until step 9. Go slowly. One or two steps a
+sitting is plenty.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Steps</th>
+<th>What you get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 to 3</td>
+<td>the problem, and why the obvious fix isn't enough</td>
+</tr>
+<tr>
+<td>4 to 6</td>
+<td>the barrier idea, and the proof</td>
+</tr>
+<tr>
+<td>7 to 8</td>
+<td>where it breaks on a real machine, and the backstop</td>
+</tr>
+<tr>
+<td>9 to 10</td>
+<td>from a line to a real car, and into the MPC</td>
+</tr>
+<tr>
+<td>11 to 12</td>
+<td>what the test runs showed, and what is still open</td>
+</tr>
+</tbody>
+</table></div>
+<hr /></div>
+<section class="card"><h2 id="step-1-the-simplest-version-of-the-problem">Step 1. The simplest version of the problem</h2>
+<p><strong>Read.</strong> Forget steering. A car drives straight at a wall.</p>
+<pre class="highlight"><code class="language-text">   car ──►                          ┃ wall
+        ◄────────── h ────────────►</code></pre>
+<ul>
+<li><code>h</code> is the room left, in metres.</li>
+<li>A <strong>tick</strong> is one decision. Here a tick is 1 second, to keep the numbers easy.
+  (On our car it is 0.05 s.)</li>
+<li>Each tick the car moves <code>speed × 1 second</code>.</li>
+</ul>
+<p><strong>Try it.</strong> The car starts with h = 8 m and holds 2 m/s. Fill in h after each tick.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tick</th>
+<th>0</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>h (m)</td>
+<td>8</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Check.</strong> 8, 6, 4, 2, 0, −2. At tick 4 it touches. At tick 5 it is 2 m inside the wall.</p>
+<p><strong>The point.</strong> A negative h means "inside". Our whole job is: <strong>h never goes below 0.</strong></p>
+<hr />
+</section>
+<section class="card"><h2 id="step-2-the-obvious-fix-and-its-flaw">Step 2. The obvious fix, and its flaw</h2>
+<p><strong>Read.</strong> The obvious rule: "if h is under 2 m, brake." But brakes are not instant.
+Say the car can lose at most 1 m/s each tick.</p>
+<p><strong>Try it.</strong> Start h = 8, speed 2 m/s. The rule fires when h &lt; 2. Work out each tick.
+Remember: brake first lowers the speed, then the car moves at the new speed.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tick</th>
+<th>h before</th>
+<th>Rule fires?</th>
+<th>Speed this tick</th>
+<th>h after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>8</td>
+<td>no</td>
+<td>2</td>
+<td>6</td>
+</tr>
+<tr>
+<td>1</td>
+<td>6</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+</tr>
+<tr>
+<td>2</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+</tr>
+<tr>
+<td>3</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+</tr>
+<tr>
+<td>4</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Check.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tick</th>
+<th>h before</th>
+<th>Rule fires?</th>
+<th>Speed</th>
+<th>h after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>6</td>
+<td>no</td>
+<td>2</td>
+<td>4</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4</td>
+<td>no</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2</td>
+<td>no (2 is not under 2)</td>
+<td>2</td>
+<td>0</td>
+</tr>
+<tr>
+<td>4</td>
+<td>0</td>
+<td>yes</td>
+<td>1</td>
+<td>−1</td>
+</tr>
+</tbody>
+</table></div>
+<p>It hit. The rule did nothing until the last moment, and then it was too late.</p>
+<p><strong>The point.</strong> A rule that only looks at <strong>distance</strong> reacts late. It ignores how fast
+the room is being used up. Make the 2 m bigger and it works at 2 m/s, then fails at
+4 m/s. You'd need a different number for every speed.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-3-a-better-question">Step 3. A better question</h2>
+<p><strong>Read.</strong> Stop asking "how much room is left?" Ask:</p>
+<blockquote>
+<p><strong>How much of the room that is left am I allowed to use this tick?</strong></p>
+</blockquote>
+<p>Pick a share. Call it <strong>γ</strong> (gamma). Say γ = ½.</p>
+<p><strong>The rule:</strong> each tick, use at most half of what is left.</p>
+<p><strong>Try it.</strong> Start h = 8. Use exactly half each tick. Fill in.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tick</th>
+<th>0</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>h (m)</td>
+<td>8</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+<td>?</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Check.</strong> 8, 4, 2, 1, 0.5, 0.25, 0.125.</p>
+<p><strong>The point.</strong> It gets as close as you like. It never gets to zero. Half of something
+positive is still positive.</p>
+<p><strong>Try it again</strong> with γ = ¼ (use at most a quarter). Start h = 8.</p>
+<p><strong>Check.</strong> 8, 6, 4.5, 3.375, 2.53... Slower approach. Same promise.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-4-write-the-rule-down">Step 4. Write the rule down</h2>
+<p><strong>Read.</strong> "Use at most the share γ" means "keep at least the share (1 − γ)".</p>
+<pre class="highlight"><code class="language-text">   h(next)  ≥  (1 − γ) × h(now)</code></pre>
+<p>That one line is the whole idea. The name for h is a <strong>barrier function</strong>. People
+write it H. The name for the rule is a <strong>control barrier function condition</strong> (CBF).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Plain meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>barrier function H</td>
+<td>a number: positive = safe, zero = the edge, negative = inside</td>
+</tr>
+<tr>
+<td>γ (gamma)</td>
+<td>the share of the room one tick may use, between 0 and 1</td>
+</tr>
+<tr>
+<td>the safe set</td>
+<td>all the places where H ≥ 0</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Try it.</strong> H = 4 and γ = 0.05. What is the smallest H allowed next tick? And the tick
+after?</p>
+<p><strong>Check.</strong> 0.95 × 4 = 3.8. Then 0.95 × 3.8 = 3.61.</p>
+<p><strong>Try it.</strong> What does the rule say when γ = 1?</p>
+<p><strong>Check.</strong> (1 − 1) × H = 0. So it says only "H(next) ≥ 0". That is the obvious fix from
+step 2 again: allowed to use <strong>all</strong> the room in one tick. So γ = 1 is the late rule,
+and small γ is the early, gentle one.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-5-the-proof">Step 5. The proof</h2>
+<p><strong>Read.</strong> We claim: <em>if H starts at 0 or more, and the rule holds every tick, H is
+never negative.</em> The method is <strong>induction</strong>: show it is true at the start, then show
+that "true now" forces "true next". Like dominoes.</p>
+<p><strong>Try it.</strong> Before reading on, try to say in your own words why it must be true. Use
+the table from step 3.</p>
+<p><strong>Check.</strong> The proof, one line at a time.</p>
+<ol>
+<li><strong>Start.</strong> H(0) ≥ 0. We were given that.</li>
+<li><strong>Suppose</strong> H is ≥ 0 at some tick. Call it tick k.</li>
+<li>γ is between 0 and 1. So (1 − γ) is between 0 and 1.</li>
+<li>A number between 0 and 1, times a number ≥ 0, is ≥ 0. So (1 − γ) × H(k) ≥ 0.</li>
+<li>The rule says H(k+1) is at least that. So H(k+1) ≥ 0.</li>
+<li>So tick k being safe forces tick k+1 to be safe. Tick 0 is safe. So every tick is. ∎</li>
+</ol>
+<p><strong>Try it.</strong> Which line breaks if someone sets γ = 1.5?</p>
+<p><strong>Check.</strong> Line 3. (1 − 1.5) = −0.5. Then the rule would allow H(next) = −0.5 × H:
+negative. Inside the wall, and the rule is happy.</p>
+<p><strong>Try it.</strong> Suppose the car is already inside: H = −2, γ = ½. What does the rule ask?</p>
+<p><strong>Check.</strong> H(next) ≥ ½ × (−2) = −1. So H must <strong>rise</strong> from −2 to at least −1. The same
+rule that keeps you out also pushes you back out. Nobody had to add that.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-6-what-the-rule-asks-of-the-car">Step 6. What the rule asks of the car</h2>
+<p><strong>Read.</strong> A rule about H is no use until we know what it means for speed.</p>
+<p>In one tick the car uses up <code>speed × tick</code> of room. The rule allows <code>γ × H</code>. So:</p>
+<pre class="highlight"><code class="language-text">   speed × tick  ≤  γ × H        so        speed  ≤  γ × H / tick</code></pre>
+<p><strong>The allowed speed is proportional to the room left.</strong> Far away: any speed. Close:
+slow. At the edge: zero.</p>
+<p><strong>Try it.</strong> Our real numbers: tick = 0.05 s, γ = 0.05. What speed is allowed with
+H = 3 m of room? With 1 m? With 0.2 m?</p>
+<p><strong>Check.</strong> γ / tick = 0.05 / 0.05 = 1. So speed ≤ H: 3 m/s, 1 m/s, 0.2 m/s.</p>
+<p><strong>Try it.</strong> The car cruises at 1 m/s. How far from the wall does the rule first start
+to matter? Do it for γ = 0.05, then γ = 0.02.</p>
+<p><strong>Check.</strong> The rule bites when 1 = γ × H / 0.05.
+γ = 0.05: H = 1 m. γ = 0.02: H = 2.5 m. <strong>Smaller γ = it acts earlier.</strong></p>
+<hr />
+</section>
+<section class="card"><h2 id="step-7-where-it-breaks-on-a-real-machine">Step 7. Where it breaks on a real machine</h2>
+<p><strong>Read.</strong> The proof in step 5 has a hidden "if": <em>if the rule holds every tick.</em> The
+rule tells the car to slow down. Can the car actually slow that fast?</p>
+<p>Following the rule exactly, each tick the speed must drop by the share γ. So the
+braking needed is:</p>
+<pre class="highlight"><code class="language-text">   braking needed  =  γ × speed / tick</code></pre>
+<p><strong>Try it.</strong> tick = 0.05 s, speed = 1 m/s. What braking does γ = 0.05 need? γ = 0.02?
+The car's gentle stop is about 0.8 m/s² (a guess, not measured).</p>
+<p><strong>Check.</strong> γ = 0.05: 0.05 × 1 / 0.05 = 1 m/s². More than 0.8: <strong>the car can't keep the
+rule.</strong> γ = 0.02: 0.4 m/s². Fine.</p>
+<p><strong>The point.</strong> γ is not free. It has to fit what the brakes can do. Pick it too big
+and the proof's "if" is false.</p>
+<p><strong>What really happened.</strong> In the first test run the car slowed nicely, then <strong>crawled
+into the object at about 0.15 m/s</strong> and kept going. The reason was not in any paper:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What the plan asked</th>
+<th>What the car did</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"slow down a little more each tick"</td>
+<td>our speed controller only <strong>coasts</strong> when it is a little too fast</td>
+</tr>
+<tr>
+<td></td>
+<td>it brakes properly only when it is a lot too fast, or told to stop</td>
+</tr>
+<tr>
+<td>so the gentle request never became real braking</td>
+<td>the car rolled on</td>
+</tr>
+</tbody>
+</table></div>
+<p>The maths was right. The machine broke the "if". Hold on to this one: it is the
+difference between a proof on paper and a car.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-8-the-backstop">Step 8. The backstop</h2>
+<p><strong>Read.</strong> When a clever rule can fail, put a simple one behind it. The simplest thing
+a car can do is <strong>stop</strong>. So ask every tick:</p>
+<blockquote>
+<p><strong>If I asked for a full stop right now, would I still stop in time?</strong></p>
+</blockquote>
+<p>The distance a stop takes has three parts:</p>
+<pre class="highlight"><code class="language-text">   stop distance  =  speed × wait   +   speed × (speed / ramp)   +   speed² / (2 × braking)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>speed × wait</td>
+<td>nothing happens at first (dead time, and one tick)</td>
+</tr>
+<tr>
+<td>speed × speed/ramp</td>
+<td>the command itself is lowered gradually</td>
+</tr>
+<tr>
+<td>speed² / (2 × braking)</td>
+<td>the actual braking</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Try it.</strong> speed 1 m/s, wait 0.15 s, ramp 2 m/s², braking 0.8 m/s². Stop distance?</p>
+<p><strong>Check.</strong> 1 × 0.15 + 1 × 0.5 + 1 / 1.6 = 0.15 + 0.5 + 0.625 = <strong>1.275 m</strong>.</p>
+<p><strong>Try it.</strong> Now at 2 m/s.</p>
+<p><strong>Check.</strong> 2 × 0.15 + 2 × 1 + 4 / 1.6 = 0.3 + 2 + 2.5 = <strong>4.8 m</strong>. Twice the speed,
+almost four times the distance. That is why speed matters so much.</p>
+<p><strong>The rule.</strong> If the object is nearer than the stop distance plus one tick of travel:
+ask the stop now.</p>
+<p><strong>Why it works</strong> (try to say it first):</p>
+<ol>
+<li>Last tick the rule did not fire. So the object was farther than "stop distance +
+   one tick of travel".</li>
+<li>One tick later the car has moved at most one tick of travel. So the object is
+   still farther than the stop distance.</li>
+<li>The rule fires now. The car needs at most the stop distance. It stops short. ∎</li>
+</ol>
+<p><strong>Try it.</strong> Which line is wrong if the car sped up during that tick?</p>
+<p><strong>Check.</strong> Line 2. A faster car has a longer stop distance, so "still farther than the
+stop distance" may be false. The fix: use the fastest the car could be after one tick.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-9-from-a-line-to-a-real-car">Step 9. From a line to a real car</h2>
+<p><strong>Read.</strong> A real car can steer. So the wall becomes a <strong>keep-out circle</strong>: the object,
+plus the car's own size, plus a margin.</p>
+<pre class="highlight"><code class="language-text">              ╭───────╮
+   car ──►   (  object )      d = distance from the car's middle to the centre
+              ╰───────╯      R = the circle's radius</code></pre>
+<p>The barrier becomes:</p>
+<pre class="highlight"><code class="language-text">   H = d² − R²</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>H</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>outside</td>
+<td>d &gt; R, so H &gt; 0</td>
+</tr>
+<tr>
+<td>on the edge</td>
+<td>d = R, so H = 0</td>
+</tr>
+<tr>
+<td>inside</td>
+<td>d &lt; R, so H &lt; 0</td>
+</tr>
+</tbody>
+</table></div>
+<p>Same sign rule as h in step 1. The squares are there because they make the maths
+smooth (no square roots). <strong>The rule from step 4 does not change at all.</strong></p>
+<p><strong>Try it.</strong> R = 2 m. The car's middle is 5 m from the centre. H? Then 3 m. Then 2 m.</p>
+<p><strong>Check.</strong> 25 − 4 = 21. 9 − 4 = 5. 4 − 4 = 0.</p>
+<p><strong>What is new:</strong> there are now two ways to keep H up. <strong>Slow down</strong>, or <strong>steer away</strong>.
+Steering away makes d grow. The rule does not say which. Something has to choose.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-10-putting-it-in-the-mpc">Step 10. Putting it in the MPC</h2>
+<p><strong>Read.</strong> MPC means "model predictive control". It is a loop:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Each tick</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Look where the car is</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Imagine the next 30 ticks (1.5 s), using a model of the car</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Find the steering and speed for all 30 that are <strong>best</strong>, and that <strong>obey the rules</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Do only the first one. Throw the rest away</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Next tick, start again</td>
+</tr>
+</tbody>
+</table></div>
+<p>"Best" means close to the path and smooth. "The rules" were: steering within its
+limits, speed within its limits.</p>
+<p><strong>We add one more rule:</strong> the step-4 barrier line, for each of the 30 ticks.</p>
+<p>That answers step 9's question. The MPC chooses between braking and steering by
+finding whichever keeps closest to the path while obeying the rule.</p>
+<p><strong>One practical extra: the slack.</strong> Sometimes no plan can obey every rule. A solver
+with no answer is the worst case. So each barrier line gets a <strong>slack</strong>: it may be
+broken, at an enormous cost. The solver always has an answer, and it tells us how much
+slack it used. When slack is used, the step-8 backstop is what protects the car.</p>
+<p><strong>Try it.</strong> Why does adding the rule for 30 ticks ahead help, compared with step 2's
+"brake under 2 m"?</p>
+<p><strong>Check.</strong> The plan sees the room shrinking 1.5 s ahead and starts to turn or slow
+<strong>now</strong>, while small moves are enough.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-11-what-the-test-runs-showed">Step 11. What the test runs showed</h2>
+<p><strong>Read.</strong> A pretend car (our model, not the real one). A straight 40 m path. A round
+object at 15 m. "Gap" = metres between the object and the car's body.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Object</th>
+<th>Cruise</th>
+<th>No barrier</th>
+<th>With the barrier (γ 0.05)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>on the path</td>
+<td>1 m/s</td>
+<td>hit, 0.5 m inside</td>
+<td>stopped short, gap 0.32</td>
+</tr>
+<tr>
+<td>on the path</td>
+<td>3 m/s</td>
+<td>hit, 0.5 m inside</td>
+<td>went round, gap 0.74</td>
+</tr>
+<tr>
+<td>0.4 m to the left</td>
+<td>3 m/s</td>
+<td>hit, 0.5 m inside</td>
+<td>went round, gap 0.82</td>
+</tr>
+<tr>
+<td>1.5 m beside</td>
+<td>1 m/s</td>
+<td>passed at 0.50</td>
+<td>passed wider, 0.81</td>
+</tr>
+</tbody>
+</table></div>
+<p>36 runs with the barrier in all. None touched. Smallest gap 0.20 m.</p>
+<p><strong>Try it.</strong> Before the table below: what should a smaller γ do? (Step 6.)</p>
+<p><strong>Check.</strong> Object 0.4 m left, 3 m/s:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>γ</th>
+<th>Starts to turn at</th>
+<th>Widest off the path</th>
+<th>Gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.02</td>
+<td>6.2 m</td>
+<td>2.62 m</td>
+<td>1.76 m</td>
+</tr>
+<tr>
+<td>0.05</td>
+<td>10.4 m</td>
+<td>1.45 m</td>
+<td>0.82 m</td>
+</tr>
+<tr>
+<td>1</td>
+<td>too late to steer: stops</td>
+<td>0.24 m</td>
+<td>0.37 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>Earlier and wider, exactly as step 6 said.</p>
+<p><strong>Try it.</strong> Why did the slow car (1 m/s) stop, when the fast one went round?</p>
+<p><strong>Check.</strong> The plan looks 1.5 seconds ahead. At 1 m/s that is 1.5 m. The keep-out
+circle is 3.6 m wide. There isn't room to steer round something you first notice 1.5 m
+away. So it does the only safe thing left. It is <strong>safe, and stuck</strong>.</p>
+<hr />
+</section>
+<section class="card"><h2 id="step-12-what-is-still-open">Step 12. What is still open</h2>
+<p><strong>Read.</strong> Three promises were on the table. Here is where each stands.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Promise</th>
+<th>Meaning</th>
+<th>Where we are</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Safe</strong></td>
+<td>never touches</td>
+<td>steps 4 to 10. Shown on the pretend car. Proved for the model only</td>
+</tr>
+<tr>
+<td><strong>Never stuck</strong></td>
+<td>the solver always answers</td>
+<td>the slack gives that. But the <em>car</em> can still sit stopped for ever</td>
+</tr>
+<tr>
+<td><strong>Stable</strong></td>
+<td>settles onto the path, doesn't sway</td>
+<td><strong>not started</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>And every "if" we leaned on:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The "if"</th>
+<th>True on the real car?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the model matches the car</td>
+<td>roughly: the lags are guesses until measured</td>
+</tr>
+<tr>
+<td>the car brakes at 0.8 m/s² or more</td>
+<td>not measured</td>
+</tr>
+<tr>
+<td>the car stops in a straight line</td>
+<td>no, it may be turning</td>
+</tr>
+<tr>
+<td>the car knows where it is</td>
+<td>only as well as localization does</td>
+</tr>
+<tr>
+<td>the object is a circle that stands still</td>
+<td>a first shape only</td>
+</tr>
+<tr>
+<td>we know where the object is</td>
+<td>someone has to detect it first</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each row is a place where the paper proof and the real car can disagree. Step 7 was
+one of them showing up.</p>
+<h3 id="words">Words</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>barrier function (H)</td>
+<td>positive = safe, zero = edge, negative = inside</td>
+</tr>
+<tr>
+<td>CBF</td>
+<td>control barrier function: the rule H(next) ≥ (1 − γ) × H(now)</td>
+</tr>
+<tr>
+<td>γ (gamma)</td>
+<td>the share of the room one tick may use</td>
+</tr>
+<tr>
+<td>induction</td>
+<td>true at the start, and true-now forces true-next</td>
+</tr>
+<tr>
+<td>MPC</td>
+<td>plan a short way ahead, do the first move, repeat</td>
+</tr>
+<tr>
+<td>horizon</td>
+<td>how far ahead the plan looks (30 ticks, 1.5 s)</td>
+</tr>
+<tr>
+<td>constraint</td>
+<td>a rule the plan must obey</td>
+</tr>
+<tr>
+<td>slack</td>
+<td>permission to break a rule, at a high cost</td>
+</tr>
+<tr>
+<td>feasible</td>
+<td>at least one plan obeys every rule</td>
+</tr>
+<tr>
+<td>recursive feasibility</td>
+<td>feasible now means feasible next tick</td>
+</tr>
+<tr>
+<td>dead time</td>
+<td>the wait before anything moves at all</td>
+</tr>
+<tr>
+<td>lag</td>
+<td>the curve as it catches up</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="where-the-idea-comes-from">Where the idea comes from</h3>
+<p>A. M. Ali, C. Shen, H. A. Hashim, "A linear MPC with control barrier functions for
+differential drive robots", IET Control Theory &amp; Applications, 2024. Their robot has
+two wheels and no delay; their proof is complete for it. Steps 7, 8 and 12 are about
+what changes on a car.</p>
+<h3 id="open-questions">Open questions</h3>
+<ol>
+<li>In step 7, γ had to fit the brakes. How do you choose γ properly for a machine with
+   limits?</li>
+<li>The slack keeps the solver alive but weakens the promise. What do you use instead?</li>
+<li>How does the proof change when the command takes 0.2 s to act?</li>
+<li>What is the right way to add "stable" on top of "safe"?</li>
+<li>Safe and stuck (step 11): whose job is it to get unstuck?</li>
+</ol></section>
+<nav class="prevnext"><a class="prev" href="barriers.html"><small>Previous</small>← Barriers in the MPC</a>
+<a class="next" href="barriers-survey.html"><small>Next</small>Barriers: the survey →</a></nav>
+</main>
+<footer>Source: <code>docs/barriers-guide.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>

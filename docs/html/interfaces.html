@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">132 min read · 4 sections</div></header>
+<div class="meta">133 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -110,6 +110,9 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-guide.html">Barriers: a walk-through</a>
+<a href="barriers-survey.html">Barriers: the survey</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -317,6 +320,22 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>The hardware panel is alive - the number of frames it has drawn, 10 Hz. Read only with sim watch_screens - a test of what stops the car, refused for the real car</td>
 </tr>
 <tr>
+<td><code>/safety/filter/status</code></td>
+<td><code>diagnostic_msgs/msg/DiagnosticStatus</code></td>
+<td><code>safety_filter</code></td>
+<td>-</td>
+<td>-</td>
+<td>Only with the safety filter running (aav_safety_filter_rs, in shadow until a launch wires it in front of twist_mux - K1, TODO 104). One per command it filters - name safety_filter; hardware_id the driver (nav, point, ai); level OK (passed unchanged) or WARN (trimmed); message the rules that acted (max_speed, speed_barrier, lane_left, lane_right, steering, lyapunov, lane_infeasible, no_road, max_reverse); values every number of its report as text - v_in, w_in, v_out, w_out, speed_now, stop_m (the stopping law's S(speed_now) - checked against recorded stops), h_speed (m to spare after stopping), v_allow, h_left, h_right (m before a lane line at the look-ahead point), w_low, w_high, V, V_dot, slack (the Lyapunov term), offset, twist, curvature, room (the car in the lane), dt, rules. Record it and a drive is scored from its bag (ros/safety/aav_safety_filter_rs/README.md, Testing).</td>
+</tr>
+<tr>
+<td><code>/safety/filter/shadow/ai/cmd_vel</code></td>
+<td><code>geometry_msgs/msg/TwistStamped</code></td>
+<td><code>safety_filter</code></td>
+<td>-</td>
+<td>-</td>
+<td>Only with the safety filter running in shadow (its default out_topic, /safety/filter/shadow/{d}/cmd_vel, one per driver in its drivers - nav, point, ai by default; this entry stands for all three). The command the filter would send for that driver, its header kept. Nothing drives by it. Live (K1), out_topic is /drivers/{d}/cmd_vel and in_topic /drivers/{d}/cmd_vel_raw.</td>
+</tr>
+<tr>
 <td><code>/safety/stop_zone/state</code></td>
 <td><code>nav2_msgs/msg/CollisionMonitorState</code></td>
 <td><code>stop_zone</code></td>
@@ -400,9 +419,9 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/ghost/marker</code></td>
 <td><code>visualization_msgs/msg/Marker</code></td>
 <td><code>ghost_obstacle</code></td>
+<td><code>mpc_lag_rs</code></td>
 <td>-</td>
-<td>-</td>
-<td>The ghost as a purple cylinder in the map frame, for RViz and Lichtblick; DELETE when it goes.</td>
+<td>The ghost as a purple cylinder in the map frame, for RViz and Lichtblick; DELETE when it goes. mpc_lag_rs reads it only with navigation.launch.py mpc_barriers:=true (research, off by default) - the cylinder's centre and width become a keep-out circle its plan may only creep up to.</td>
 </tr>
 <tr>
 <td><code>/drivers/scripted/lag_aware</code></td>

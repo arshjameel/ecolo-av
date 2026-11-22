@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">144 min read · 15 sections</div></header>
+<div class="meta">145 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -110,6 +110,9 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-guide.html">Barriers: a walk-through</a>
+<a href="barriers-survey.html">Barriers: the survey</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -749,7 +752,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/drivers/aav_mpc_lag/README.md">Barriers in the MPC</a> (<code>aav_mpc_lag</code>'s <code>barrier.rs</code>, <code>MpcLag::set_barriers</code>; off unless circles are set; no ROS yet)</td>
+<td><a href="barriers.html">Barriers in the MPC</a> (<code>aav_mpc_lag</code>'s <code>barrier.rs</code>, <code>MpcLag::set_barriers</code>; <code>mpc_barriers:=true</code> with the ghost; off by default; not yet run in Ravensim)</td>
 <td><strong>Research, separate from the capstone</strong> (Ben's own work, not a team deliverable; nothing turns it on). The tracker follows its path into an object. A control barrier function in the plan (Ali, Shen, Hashim 2024) lets the room to a keep-out circle shrink only by a share a tick, and a stop rule stands the car still while there is room. On a pretend car: 36 of 36 runs kept off the object</td>
 <td>Ben</td>
 <td>2026-11-22</td>
@@ -1066,6 +1069,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_safety_filter_rs/README.md">The safety filter for untrusted drivers</a> (<code>aav_safety_filter_rs</code> <code>safety-filter</code>, no ROS; node <code>safety_filter</code>, in shadow by default): trims an automatic driver's (v, w) by the least that keeps the car able to stop (a CBF on the stopping law), inside its lane (CBFs on a look-ahead point) and settling on the line (a soft Lyapunov term); every decision on <code>/safety/filter/status</code></td>
+<td>TODO 104: the AI and LLM drivers can ask for anything, and the locks only stop the car; a filter that changes their commands as little as possible keeps them safe to try. In front of twist_mux (K1), so a person is never trimmed. a candidate for Ben's thesis (20 Nov)</td>
+<td>Ben</td>
+<td>2026-11-20</td>
+<td>built</td>
 </tr>
 <tr>
 <td>Command mux and e-stop lock (<code>aav_command_mux</code>, twist_mux)</td>

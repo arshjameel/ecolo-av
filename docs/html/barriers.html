@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barriers in the MPC: keeping the car off things · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/barriers.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Barriers in the MPC: keeping the car off things</h1>
+<div class="meta">8 min read · 7 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<span class="sep">Reference:</span>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a class="here" href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-guide.html">Barriers: a walk-through</a>
+<a href="barriers-survey.html">Barriers: the survey</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#1-the-rule">1. The rule</a><a href="#2-the-stop-rule-behind-it">2. The stop rule behind it</a><a href="#3-two-forms-of-one-idea">3. Two forms of one idea</a><a href="#4-how-to-run-it">4. How to run it</a><a href="#5-what-happened-on-the-pretend-car">5. What happened on the pretend car</a><a href="#6-what-it-assumes">6. What it assumes</a><a href="#7-not-done">7. Not done</a></nav>
+<div class="lead"><div class="admonition warning">
+<p class="admonition-title">Research, separate from the capstone</p>
+<p>Ben's own work, not a team deliverable. Off by default: nothing in the stack turns
+it on, and no safety lock depends on it. Tested on a pretend car and compiled
+against ROS. <strong>Not yet run in Ravensim, and never on the car.</strong></p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">The short version</p>
+<ul>
+<li><strong>Problem:</strong> the path follower follows its path, even into something on it.</li>
+<li><strong>Idea</strong> (Ali, Shen, Hashim, 2024): a <strong>control barrier function</strong> in the MPC. The
+  room to a keep-out circle may shrink only by a share each tick, so it never
+  reaches zero.</li>
+<li><strong>Built:</strong> the barrier in <code>aav_mpc_lag</code>, a stop rule behind it, and the ghost as
+  its first obstacle (<code>mpc_barriers:=true</code>).</li>
+<li><strong>On a pretend car:</strong> the plain tracker ends 0.5 m inside the object; with
+  barriers, none of 36 runs touches it (smallest gap 0.22 m).</li>
+</ul>
+</div>
+<p>To learn the idea from nothing: <a href="barriers-guide.html">the walk-through</a>, then
+<a href="barriers-survey.html">the survey</a>.</p></div>
+<section class="card"><h2 id="1-the-rule">1. The rule</h2>
+<p>A <strong>keep-out circle</strong> round the object: its radius, the car's own (1.12 m from the
+body's middle to a corner), and a margin (0.2 m).</p>
+<pre class="highlight"><code class="language-text">   H = (the car's middle to the circle's centre)² − radius²      H &gt; 0: outside
+
+   every tick of the plan:    H(next)  ≥  (1 − γ) · H(now)</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>γ</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.02</td>
+<td>turns away early and wide</td>
+</tr>
+<tr>
+<td>0.05 (the default)</td>
+<td>later and closer</td>
+</tr>
+<tr>
+<td>1</td>
+<td>only "never inside": as late as a plain distance limit</td>
+</tr>
+</tbody>
+</table></div>
+<p>If H starts at 0 or more and the rule holds every tick, H is never negative (six lines
+of induction: the walk-through, step 5).</p>
+</section>
+<section class="card"><h2 id="2-the-stop-rule-behind-it">2. The stop rule behind it</h2>
+<p>The rule above is kept by the <strong>plan</strong>. The car can break it (section 5, finding 1). So
+each tick the tracker also asks:</p>
+<blockquote>
+<p>Holding my steering as it is, would I meet the circle within the distance I need to stop?</p>
+</blockquote>
+<p>If yes, it asks a stop now.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The distance to stop, S(v)</td>
+<td>the one stopping law (<code>ego_core::stop_law::StopCurve</code>): ego's, the behaviour planner's and the safety filter's</td>
+</tr>
+<tr>
+<td>"Holding my steering"</td>
+<td>the bend the car is on now, checked every 5 cm</td>
+</tr>
+<tr>
+<td>The tracker's own wait</td>
+<td>its dead time and two ticks</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="3-two-forms-of-one-idea">3. Two forms of one idea</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>The safety filter (<code>aav_safety_filter_rs</code>)</th>
+<th>The barriers here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Where</td>
+<td>in front of twist_mux, on the computer drivers' commands</td>
+<td>inside the path follower</td>
+</tr>
+<tr>
+<td>Keeps</td>
+<td>room to stop before the road's end; inside the lane</td>
+<td>off a round object</td>
+</tr>
+<tr>
+<td>Can it steer round?</td>
+<td>no: it slows and trims</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>How</td>
+<td>a formula a step, no solver</td>
+<td>rows of the MPC's problem</td>
+</tr>
+<tr>
+<td>State</td>
+<td>a node, in shadow</td>
+<td>a node switch, off by default</td>
+</tr>
+</tbody>
+</table></div>
+<p>They share the stopping law. Both are on this branch.</p>
+</section>
+<section class="card"><h2 id="4-how-to-run-it">4. How to run it</h2>
+<pre class="highlight"><code class="language-sh">pixi run sim world:=test_lot tracker:=mpc_lag_rs ghost:=true mpc_barriers:=true
+pixi run ghost --local ahead 10      # place the ghost 10 m ahead</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>H, its slope, the bend held, the room to stop</td>
+<td><code>ros/drivers/aav_mpc_lag/crates/mpc-lag/src/barrier.rs</code></td>
+</tr>
+<tr>
+<td>The rule in the plan; the stop rule</td>
+<td><code>tracker.rs</code> (<code>set_barriers</code>, <code>fence</code>)</td>
+</tr>
+<tr>
+<td>Forward stretches only</td>
+<td><code>geared.rs</code> (<code>set_things</code>)</td>
+</tr>
+<tr>
+<td>The ghost's marker to circles; the status keys</td>
+<td><code>crates/mpc-node/src/main.rs</code></td>
+</tr>
+<tr>
+<td>The tests</td>
+<td><code>tests/barrier.rs</code>, and <code>cargo test --release -p mpc-lag --test barrier -- --ignored --nocapture</code> for the whole table</td>
+</tr>
+</tbody>
+</table></div>
+<p>The status (<code>/drivers/nav/track/status</code>) gains <code>barrier_m</code>, <code>barrier_slack_m2</code> and
+<code>barrier_stop</code>.</p>
+</section>
+<section class="card"><h2 id="5-what-happened-on-the-pretend-car">5. What happened on the pretend car</h2>
+<p>A straight 40 m path, a round object (0.5 m radius) at 15 m. <code>gap</code>: metres between the
+object and the nearest point of the car's body.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Object</th>
+<th>Cruise</th>
+<th>Plain tracker</th>
+<th>Barriers, γ 0.05</th>
+<th>With 0.2 s dead time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.4 m left of the path</td>
+<td>1 m/s</td>
+<td><strong>hit</strong> (−0.50)</td>
+<td>stops short, 0.28</td>
+<td>stops short, 0.24</td>
+</tr>
+<tr>
+<td>0.4 m left</td>
+<td>3 m/s</td>
+<td><strong>hit</strong> (−0.50)</td>
+<td>goes round, 0.90</td>
+<td>goes round, 0.98</td>
+</tr>
+<tr>
+<td>on the path</td>
+<td>1 m/s</td>
+<td><strong>hit</strong> (−0.50)</td>
+<td>stops short, 0.34</td>
+<td>stops short, 0.32</td>
+</tr>
+<tr>
+<td>on the path</td>
+<td>3 m/s</td>
+<td><strong>hit</strong> (−0.50)</td>
+<td>goes round, 0.85</td>
+<td>goes round, 0.72</td>
+</tr>
+<tr>
+<td>1.5 m beside it</td>
+<td>1 m/s</td>
+<td>passes at 0.50</td>
+<td>passes at 0.72</td>
+<td>passes at 0.75</td>
+</tr>
+<tr>
+<td>1.5 m beside it</td>
+<td>3 m/s</td>
+<td>passes at 0.50</td>
+<td>passes at 1.08</td>
+<td>passes at 1.24</td>
+</tr>
+</tbody>
+</table></div>
+<p>γ, on the object 0.4 m left at 3 m/s:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>γ</th>
+<th>Turns away at</th>
+<th>Widest off the path</th>
+<th>Gap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.02</td>
+<td>x = 6.1 m</td>
+<td>2.62 m</td>
+<td>1.76 m</td>
+</tr>
+<tr>
+<td>0.05</td>
+<td>x = 10.6 m</td>
+<td>1.54 m</td>
+<td>0.90 m</td>
+</tr>
+<tr>
+<td>1</td>
+<td>too late to steer: it stops</td>
+<td>0.07 m</td>
+<td>0.27 m</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Finding</th>
+<th>Why it matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>The barrier alone crept through.</strong> The first build slowed nicely, then crawled into the object at 0.15 m/s</td>
+<td>the spine's speed loop only coasts through a small overspeed; a linear plan can't see its stop. The maths was right; the actuator broke its assumption. Hence the stop rule</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Slow is harder than fast.</strong> At 1 m/s it stops instead of going round</td>
+<td>the plan sees 1.5 s = 1.5 m; the keep-out circle is 3.6 m wide</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Safe, and stuck.</strong> A stopped car stays stopped</td>
+<td>a barrier only pushes away: choosing a side is the planner's job</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>A straight look ahead stops a car that is turning away</strong></td>
+<td>with the real stopping law it stood still mid-swerve; the rule now looks along the bend</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>The solver works harder</strong>: a tick 0.3 to 0.5 ms without, 3 to 15 ms with a barrier near; it often ends at its iteration limit</td>
+<td>inside the 50 ms tick; a better solver setting is to do</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="6-what-it-assumes">6. What it assumes</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Assumption</th>
+<th>True on the car?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the model matches the car</td>
+<td>roughly: the lags are guesses until measured</td>
+</tr>
+<tr>
+<td>the plan's H is the real H</td>
+<td>no: H is made linear each tick about the last plan</td>
+</tr>
+<tr>
+<td>the car stops as S(v) says</td>
+<td>S(v) is ego's law; its numbers are not measured on the car</td>
+</tr>
+<tr>
+<td>the car holds its steering while it stops</td>
+<td>roughly</td>
+</tr>
+<tr>
+<td>the car knows where it is, and where the object is</td>
+<td>as well as localization and the ghost do</td>
+</tr>
+<tr>
+<td>the object is a circle that stands still</td>
+<td>a first shape only</td>
+</tr>
+<tr>
+<td>the path is straight beside the object</td>
+<td>else the path's frame bends the circle</td>
+</tr>
+</tbody>
+</table></div>
+<p>So: shown on a pretend car, argued for the model. <strong>Not proved for the car.</strong></p>
+</section>
+<section class="card"><h2 id="7-not-done">7. Not done</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A run in Ravensim, and a score against <code>mppi_lag</code></td>
+<td>next</td>
+</tr>
+<tr>
+<td>Real obstacles (the costmap, <code>things</code>) as circles</td>
+<td>the ghost is the only source</td>
+</tr>
+<tr>
+<td>The stability rule (a Lyapunov rule in the plan)</td>
+<td>not started; the safety filter has one for the lane</td>
+</tr>
+<tr>
+<td>A proof with the dead time</td>
+<td>open</td>
+</tr>
+<tr>
+<td>Moving objects</td>
+<td>open</td>
+</tr>
+<tr>
+<td>Backwards</td>
+<td>no barriers on a backwards stretch</td>
+</tr>
+</tbody>
+</table></div></section>
+<nav class="prevnext"><a class="prev" href="control-explained.html"><small>Previous</small>← Control, explained</a>
+<a class="next" href="barriers-guide.html"><small>Next</small>Barriers: a walk-through →</a></nav>
+</main>
+<footer>Source: <code>docs/barriers.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>
