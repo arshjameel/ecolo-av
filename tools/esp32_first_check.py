@@ -24,7 +24,7 @@ firmware/status/README.md).
 | Brake | at IDLE_BRAKE, as the CONFIG line says, in every status line |
 | Throttle | 0 in every status line |
 | Steering | centred in every status line |
-| Mode | stopped, not armed (and latched, in the text FSM line). Braked with only the RC lost (safety Degraded, fault 256): WAIT, not a failure |
+| Mode | stopped, not armed (latched, in the text FSM line). Only the RC lost: WAIT |
 | Faults | none but 1 (command timeout) and 256 (RC lost: the transmitter is off) |
 | Tick | the worst gap between ticks under 50 ms: half the watchdog's 100 ms |
 | Restarts | none in the window (a second boot, a new boot_id, the uptime going back) |

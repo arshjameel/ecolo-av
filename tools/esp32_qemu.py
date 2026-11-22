@@ -997,7 +997,8 @@ def main(argv=None) -> int:
     ap.add_argument('--flash', type=Path, required=True, help='the merged 4 MB flash image')
     ap.add_argument('--cycles', type=int, default=6,
                     help='cycles, their gaps in turn: silence, frozen, bad_crc')
-    ap.add_argument('--no-rc', action='store_true', help='skip the RC modes after the cycles; with --idle: the transmitter off')
+    ap.add_argument('--no-rc', action='store_true',
+                    help='skip the RC modes after the cycles; with --idle: the transmitter off')
     ap.add_argument('--log', type=Path, help='save the firmware log here')
     ap.add_argument('--idle', type=float, metavar='SECONDS',
                     help='only boot it and send nothing for this long, then save the log '
