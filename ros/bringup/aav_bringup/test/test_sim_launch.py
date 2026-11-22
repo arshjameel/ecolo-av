@@ -885,8 +885,10 @@ def test_lane_pose_runs_the_lane_finder_and_feeds_the_global_ekf():
     assert sent['localization.launch.py']['lane_map'].endswith('road.lanes.yaml')
     assert sent['lane_finder.launch.py'] == {'lane_finder_impl': 'rust'}
     assert included(started(SIM, world='road', lane_pose='true',
-                            lane_finder_impl='python'))['lane_finder.launch.py'] == {
-        'lane_finder_impl': 'python'}
+                            lane_finder_impl='learned'))['lane_finder.launch.py'] == {
+        'lane_finder_impl': 'learned'}
+    with pytest.raises(ValueError, match='lane_finder_impl:=python'):   # removed 22 Nov
+        started(SIM, world='road', lane_pose='true', lane_finder_impl='python')
     assert 'lane_follower.launch.py' not in sent        # nothing steers by the lane
     with pytest.raises(ValueError, match='lane_pose'):
         started(SIM, world='road', lane_pose='true', cameras='false')

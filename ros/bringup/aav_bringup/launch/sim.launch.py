@@ -191,9 +191,10 @@ bench's argument names:
                       instead of the flat scan; only with the lidar
   lidar_impl:=rust    lidar_scan is aav_lidar_rs's (the default since 17 Nov; the Python
                       one went on 22 Nov, tag save/python-fallbacks-1)
-  lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
-                      one's place (the default since 18 Nov), with lane:=true or
-                      lane_pose:=true: the same topics and lanes
+  lane_finder_impl:=learned  the learned lane_finder (aav_lane_finder_learned, a
+                      challenger) in the Rust one's place (aav_lane_finder_rs, the default
+                      since 18 Nov; the Python one went on 22 Nov), with lane:=true or
+                      lane_pose:=true: the same topics
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
@@ -1056,8 +1057,9 @@ def generate_launch_description():
                                           "(aav_spine_bridge's; the Python removed 22 Nov)"),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
-                              description='rust or python: which lane_finder finds the lane '
-                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+                              description='rust (aav_lane_finder_rs; the Python removed '
+                                          '22 Nov) or learned (a challenger): which '
+                                          'lane_finder finds the lane lines'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='rust (aav_things_rs): which things node tracks '
                                           'the cubes (the Python removed 20 Nov)'),

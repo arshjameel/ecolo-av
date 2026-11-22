@@ -82,8 +82,8 @@ each one's README has its topics.
 | `aav_lidar_rs` | perception | `lidar_scan` in Rust: the roof lidar's cloud flattened to a 720-ray scan for the costmap and the stop zone; the only one (the Python removed 22 Nov) | [[works]] against the Python's answers | new: a port of `aav_lidar` |
 | `aav_things_rs` | perception | `things` in Rust: the cubes as tracked things, a drop-in for `aav_things`' (`things_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_things` |
 | `aav_detector_rs` | perception | the detector in Rust, a challenger (`detector_impl:=rust`): RF-DETR's ONNX through ONNX Runtime ([ONNX](onnx.md)) | [[works]] in Ravensim (Core ML); TensorRT [[untested]] | new: a port of `aav_detector`'s `detector` |
-| `aav_lane_finder` | perception | the lane lines in the camera's pictures, as `/perception/lane/geometry` (OpenCV) | [[works]] on the bench | new |
-| `aav_lane_finder_rs` | perception | `lane_finder` in Rust, the default (18 Nov; `lane_finder_impl:=python` falls back): no OpenCV | [[works]] the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 % in Ravensim | new: a port of `aav_lane_finder` |
+| `aav_lane_finder` | perception | the lane finder's launch file, config and Python maths (OpenCV); its node removed 22 Nov | [[works]] on the bench | new |
+| `aav_lane_finder_rs` | perception | `lane_finder` in Rust, the default (18 Nov; the Python removed 22 Nov): the lane lines in the camera's pictures, as `/perception/lane/geometry`; no OpenCV | [[works]] the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 % in Ravensim | new: a port of `aav_lane_finder` |
 | `aav_lane_geometry` | perception | the `LaneGeometry` message (its lane follower removed 19 Nov, TODO 264) | [[works]] | 2025-26 `Lane_Detection_ROS2` |
 | `aav_hud` | hud | the in-car screens in Rust (raylib): the HUD (node `hud`) and the map window (node `map`) | [[works]] on a Mac: `--demo`, fed topics, bench mode. [[untested]] on a Pi and on the car | new |
 | `aav_dev_window` | hud | the developer window (Bevy), for a laptop: `pixi run dev-window`. A cargo program, not a colcon package | built 5 Nov | new |
@@ -137,7 +137,7 @@ each one's README has its topics.
 | `aav_detector`: `object_detector` | `/sensors/camera/front_left/image_raw` | `/perception/detections`, `/perception/detections/image` | `detector:=rfdetr` (the default: a `.pth`, or its `rf-detr-*.mlpackage` or `.engine`) or `yolo` (a `.pt`, `.mlpackage` or `.engine`); needs the `ml` environment, or JetPack's PyTorch and TensorRT |
 | `aav_detector`: `stop_sign_watcher` | `/perception/detections` | `/perception/stop_sign` | twist_mux's stop-sign lock, priority 30 |
 | `aav_radar_clusters`: `radar_clusters` | `/sensors/radar/points` | `/perception/radar/clusters`, `/perception/radar/cluster_boxes` | DBSCAN, in Rust; eps 0.8 m, 15 points (5 on the bench and in Gazebo) |
-| `aav_lane_finder`: `lane_finder` | `/sensors/camera/front_left/image_raw`, `/sensors/camera/front_left/camera_info` | `/perception/lane/geometry`, `/perception/lane/image` | a bird's-eye view, sliding windows, a curve per line; the camera's place from `vehicle.yaml` |
+| `aav_lane_finder_rs`: `lane_finder` | `/sensors/camera/front_left/image_raw`, `/sensors/camera/front_left/camera_info` | `/perception/lane/geometry`, `/perception/lane/image` | a bird's-eye view, sliding windows, a curve per line; the camera's place from `vehicle.yaml` |
 
 ## Backends
 

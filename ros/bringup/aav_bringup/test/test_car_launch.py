@@ -387,11 +387,13 @@ def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
         assert 'lane_finder.launch.py' not in included(started(CAR, machine=machine))
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {'lane': True}})
     sent = included(started(CAR, machine='orin'))
-    # The Rust lane_finder by default (Ben, 18 Nov); lane_finder_impl:=python falls back.
+    # The Rust lane_finder by default (Ben, 18 Nov); the Python went on 22 Nov: refused.
     assert sent['lane_finder.launch.py'] == {'debug_image': 'false',
                                              'lane_finder_impl': 'rust'}
-    back = included(started(CAR, machine='orin', lane_finder_impl='python'))
-    assert back['lane_finder.launch.py']['lane_finder_impl'] == 'python'
+    learned = included(started(CAR, machine='orin', lane_finder_impl='learned'))
+    assert learned['lane_finder.launch.py']['lane_finder_impl'] == 'learned'
+    with pytest.raises(ValueError, match='lane_finder_impl:=python'):
+        started(CAR, machine='orin', lane_finder_impl='python')
     with pytest.raises(ValueError, match='lane_finder_impl'):
         started(CAR, machine='orin', lane_finder_impl='c')
     assert 'lane_follower.launch.py' not in sent

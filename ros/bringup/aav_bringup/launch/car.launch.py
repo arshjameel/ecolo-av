@@ -862,8 +862,9 @@ def generate_launch_description():
                                           'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
-                              description='rust or python: which lane_finder finds the lane '
-                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+                              description='rust (aav_lane_finder_rs; the Python removed '
+                                          '22 Nov) or learned (a challenger): which '
+                                          'lane_finder finds the lane lines'),
         DeclareLaunchArgument('camera_stream_impl',
                               default_value=vehicle.DEFAULT_CAMERA_STREAM_IMPL,
                               description='rust or python: which camera_stream pulls each '

@@ -42,7 +42,8 @@ of a straight road; start_y and start_yaw move it. A stop sign stands 25 m ahead
 right; obstacle:=true puts a 1 m box in the lane 15 m ahead (aav_bench/config/bench.yaml).
 lane:=true runs the lane finder on the pretend camera: /perception/lane/geometry (the
 lane follower that steered by it went on 19 Nov, TODO 264: the costmap draws the lanes).
-lane_finder_impl:=python runs the Python lane_finder in the Rust one's place (the default).
+The lane finder is aav_lane_finder_rs's (the Python one went on 22 Nov);
+lane_finder_impl:=learned runs the learned challenger.
 
 arm:=true arms the spine after 12 s, once navigation is up, the way `ros2 service call
 /spine/arm std_srvs/srv/SetBool "{data: true}"` does: aav_spine_bridge's arm_when_open
@@ -260,8 +261,9 @@ def generate_launch_description():
                                           "(aav_spine_bridge's; the Python removed 22 Nov)"),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
-                              description='rust or python: which lane_finder finds the lane '
-                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+                              description='rust (aav_lane_finder_rs; the Python removed '
+                                          '22 Nov) or learned (a challenger): which '
+                                          'lane_finder finds the lane lines'),
         DeclareLaunchArgument('lane', default_value='false',
                               description='true: the lane finder, on '
                                           '/perception/lane/geometry'),
