@@ -88,9 +88,9 @@ barrier functions (`docs/acknowledgements.md`).
 
 | Part | What |
 |---|---|
-| `barrier.rs` | `Circle` (in the path's frame; `from_world`), H, its slope, `reach`, `stop_distance`, `Rules` (`gamma` 0.05, `ahead` 0.8 m, `weight`, `stop_decel` 0.8 m/s²) |
+| `barrier.rs` | `Circle` (in the path's frame; `from_world`), H, its slope, `met_within`, `room_to_stop`, `Rules` (`gamma` 0.05, `ahead` 0.8 m, `weight`, `stop`: the stopping law) |
 | `MpcLag::set_barriers(rules, circles)` | the rule as rows of the QP, linear in the plan's change, with a slack a tick; none set: the tracker as it was |
-| The stop rule | straight on, the circle nearer than the stop distance and a tick's travel: the set speed ramps to 0 |
+| The stop rule | holding its steering, the car would meet the circle within S(v) and its own wait: the set speed ramps to 0. S(v) is the one stopping law (`ego_core::stop_law::StopCurve`), ego's, the behaviour planner's and the safety filter's (`ros/safety/aav_safety_filter_rs`) |
 | `Report` | `barrier` (m to the nearest edge), `barrier_slack` (m², the rule broken in the plan), `barrier_stop` |
 
 Not in the node yet: no topic brings circles in (`docs/interfaces.yaml` first). Rust
@@ -189,7 +189,7 @@ pixi run python3 ros/drivers/aav_mpc_lag/crates/mpc-lag/gen_vectors.py   # after
 | `qp.rs` | hand answers: free, a box, an equality, a coupling row; the warm start (the same 400 and 50 iterations as `qp.py`); bad problems |
 | `path.rs`, `model.rs`, `tracker.rs` | the foot past the ends, a circle's curvature; the motor's rate, the brake never reversing, the drift on a bend; `interp`, `D'D`, the queues |
 | `gears.rs`, `geared.rs` | the cut at each cusp, the mirror, when the next stretch is taken (and not while rolling); a reversing path refused forward only; backwards within the reverse limit; a forward path gives `MpcLag`'s own commands |
-| `barrier.rs`, `tests/barrier.rs` | H's sign and slope, the reach, the stop distance, the rule's induction; on the pretend car: through the object without barriers and never touching with (3 objects, 1 and 3 m/s, with 0.2 s of dead time), round it at speed and back on the path, stopped short when slow and head on, a smaller gamma turning sooner, the stop rule alone, a far object changing nothing, bad rules refused |
+| `barrier.rs`, `tests/barrier.rs` | H's sign and slope, the reach, the bend held, the room to stop, the rule's induction; on the pretend car: through the object without barriers and never touching with (3 objects, 1 and 3 m/s, with 0.2 s of dead time), round it at speed and back on the path, stopped short when slow and head on, a smaller gamma turning sooner, the stop rule alone, a far object changing nothing, bad rules refused |
 | `tests/closed_loop.rs` | a pretend car (ego's ramps, the shared car model at 100 Hz): straight at 1 and 3 m/s, no speed overshoot, a 1 m offset, an 8 m bend, the U-turn at 2 m/s with vehicle.yaml's lags (0.10 m) and doubled (0.18 m), the stop at the end, the dead-time queues, the tick time, bad numbers. Forward and back (a pretend ego both ways): 8 m straight back (under 0.05 m off), 6 m on, a stop at the cusp (0.02 m short, 0.03 m/s), back round a 5 m bend (0.007 m off); forward, back, forward (each gear changed within 0.11 m of its cusp, standing) |
 
 `colcon test --packages-select aav_mpc_lag` runs the same; `pixi run test` everything.

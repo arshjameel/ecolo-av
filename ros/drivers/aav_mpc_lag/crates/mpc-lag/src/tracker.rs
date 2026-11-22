@@ -40,10 +40,11 @@ use std::time::Instant;
 use car_model::{ActuatorConfig, CarState, Command as CarCommand, SpeedLoop};
 use spine_core::speed_loop::SpeedLoopProfile;
 
-use crate::barrier::{stop_distance, Circle, Rules};
+use crate::barrier::{room_to_stop, Circle, Rules};
 use crate::model::{self, row, Input, PiLoop, State, NU, NX};
 use crate::path::{wrap, Foot, Path};
 use crate::qp::{self, RowMatrix};
+use ego_core::stop_law::StopCurve;
 
 /// The share of full braking a plan uses (aav_drive_to_point approach.py BRAKE_FRACTION,
 /// docs/tests.md 5.2).
@@ -55,6 +56,8 @@ const COSTED: [usize; 4] = [row::E_Y, row::E_TH, row::WHEELS, row::V];
 const SEARCH: f64 = 10.0;
 /// m² of H a whole unit of every planned input moves: below it a barrier's row is left
 /// out (the inputs don't reach that tick).
+/// m/s³: the stopping law's jerk until `set_barriers` gives the car's own (ego's default).
+const STOP_JERK: f64 = 2.0;
 const NO_REACH: f64 = 1.0e-3;
 /// Times the QP's iterations with barriers on.
 const FENCED_ITER: usize = 4;
@@ -323,6 +326,9 @@ impl MpcLag {
             return Err(TrackError::Setting(name));
         }
         let pi = PiLoop::from_profile(s.speed_loop).map_err(TrackError::Loop)?;
+        // Until set_barriers gives the car's own: the stopping law from these settings.
+        let stop = StopCurve::from_numbers(s.max_brake, s.decel, STOP_JERK)
+            .map_err(|_| TrackError::Setting("max_brake"))?;
         let model = ActuatorConfig {
             wheelbase: limits.wheelbase,
             max_steering: limits.max_steer,
@@ -355,7 +361,7 @@ impl MpcLag {
             predicted: Vec::new(),
             holding: false,
             barriers: Vec::new(),
-            rules: Rules::default(),
+            rules: Rules::new(stop),
         })
     }
 
@@ -763,13 +769,17 @@ impl MpcLag {
         // in time can't: so ask it while there is still room to stand still.
         let ahead = self.rules.ahead;
         let (e_y, e_th, along, v) = (x0[row::E_Y], x0[row::E_TH], x0[row::S], x0[row::V]);
-        let wait = self.d_speed as f64 * period + tick;
-        let room = stop_distance(v, wait, self.settings.decel, self.rules.stop_decel) + v * tick;
+        // The tracker's own dead time, this tick's answer, and the tick the car moves
+        // before the next look.
+        let wait = self.d_speed as f64 * period + 2.0 * tick;
+        let room = room_to_stop(&self.rules.stop, v, wait);
+        // The bend the car is on against the path's: its wheels now, held.
+        let bend = x0[row::WHEELS].tan() / self.limits.wheelbase
+            - self.path.as_ref().map_or(0.0, |p| p.curvature_at(along));
         let barrier_stop = self
             .barriers
             .iter()
-            .filter_map(|c| c.reach(e_y, e_th, along, ahead))
-            .any(|reach| reach <= room);
+            .any(|c| c.met_within(e_y, e_th, along, ahead, bend, room));
         let speed = if barrier_stop {
             (self.sent.1 - self.settings.decel * tick).max(0.0)
         } else {

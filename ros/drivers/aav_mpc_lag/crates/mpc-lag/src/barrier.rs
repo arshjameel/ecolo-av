@@ -28,7 +28,12 @@
 //! | the car | one point, `ahead` m in front of base_link along its heading (its body's middle) |
 //! | H | (distance from that point to the centre)² - radius² |
 
+use ego_core::stop_law::StopCurve;
+
 use crate::path::Path;
+
+/// m between the points checked along the car's bend ([`Circle::met_within`]).
+pub const ARC_STEP: f64 = 0.05;
 
 /// A keep-out circle in the path's frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -52,32 +57,28 @@ pub struct Rules {
     /// The cost on a tick's slack (the rule broken in the plan, m²): high, so a slack is
     /// used only when no steering or braking can hold the rule.
     pub weight: f64,
-    /// m/s²: how hard the car slows once a stop is asked (the spine's hold brake): the
-    /// stop rule's own number ([`stop_distance`]). Measure it on the car; lower is safer.
-    pub stop_decel: f64,
+    /// How the car stops, S(v): the one stopping law ego, the behaviour planner and the
+    /// safety filter use (`ego_core::stop_law`). The stop rule asks a stop while S(v)
+    /// still fits before the circle ([`room_to_stop`]).
+    pub stop: StopCurve,
 }
 
-impl Default for Rules {
-    fn default() -> Self {
+impl Rules {
+    /// The rules with this car's stopping law: gamma 0.05, the body's point 0.8 m ahead.
+    #[must_use]
+    pub fn new(stop: StopCurve) -> Self {
         Rules {
             gamma: 0.05,
             ahead: 0.8,
             weight: 1.0e4,
-            stop_decel: 0.8,
+            stop,
         }
     }
-}
 
-impl Rules {
-    /// Whether the numbers can be used: gamma in (0, 1], ahead finite, a weight and a
-    /// stop above 0.
+    /// Whether the numbers can be used: gamma in (0, 1], ahead finite, a weight above 0.
     #[must_use]
     pub fn valid(&self) -> bool {
-        self.gamma > 0.0
-            && self.gamma <= 1.0
-            && self.ahead.is_finite()
-            && self.weight > 0.0
-            && self.stop_decel > 0.0
+        self.gamma > 0.0 && self.gamma <= 1.0 && self.ahead.is_finite() && self.weight > 0.0
     }
 }
 
@@ -137,6 +138,33 @@ impl Circle {
         (b < 0.0 && disc >= 0.0).then(|| -b - disc.sqrt())
     }
 
+    /// Whether the car meets the circle within `room` m if it holds its steering: along
+    /// the bend it is on (`bend`, 1/m, + left: tan(wheels) / wheelbase, less the path's
+    /// own), the body's point checked every [`ARC_STEP`]. The stop rule's look ahead:
+    /// "if I brake now, as I am steering now, do I touch?"
+    #[must_use]
+    pub fn met_within(
+        &self,
+        e_y: f64,
+        e_th: f64,
+        s: f64,
+        ahead: f64,
+        bend: f64,
+        room: f64,
+    ) -> bool {
+        let steps = (room.max(0.0) / ARC_STEP).ceil() as usize;
+        let (mut along, mut left, mut heading) = (s, e_y, e_th);
+        (0..=steps).any(|_| {
+            let inside = self.h(left, heading, along, ahead) <= 0.0;
+            // base_link a step on, the heading at mid-step.
+            let mid = heading + 0.5 * bend * ARC_STEP;
+            along += ARC_STEP * mid.cos();
+            left += ARC_STEP * mid.sin();
+            heading += bend * ARC_STEP;
+            inside
+        })
+    }
+
     /// m from the body's point to the circle's edge: below 0 inside.
     #[must_use]
     pub fn clearance(&self, e_y: f64, e_th: f64, s: f64, ahead: f64) -> f64 {
@@ -145,14 +173,13 @@ impl Circle {
     }
 }
 
-/// m the car needs to stand still from `v` m/s, once the tracker asks a stop: it keeps
-/// its speed for `wait` s (the dead time, and the tick the answer takes), then while the
-/// set speed ramps down at `ramp` m/s² (ego's), and slows at `decel` m/s² at the least.
-/// Each part is the longest it can be, so the sum is on the safe side.
+/// m the tracker keeps clear straight ahead before it asks a stop: the stopping law's
+/// S(v), and the way the car goes on at `v` for `wait` s more (the tracker's own dead
+/// time, and the tick the answer takes).
 #[must_use]
-pub fn stop_distance(v: f64, wait: f64, ramp: f64, decel: f64) -> f64 {
+pub fn room_to_stop(stop: &StopCurve, v: f64, wait: f64) -> f64 {
     let v = v.max(0.0);
-    v * (wait + v / ramp) + v * v / (2.0 * decel)
+    stop.distance(v) + v * wait
 }
 
 /// The barrier's rule for one tick: `next >= (1 - gamma) now`, within `tolerance`.
@@ -233,11 +260,24 @@ mod tests {
     }
 
     #[test]
-    fn the_stop_distance_grows_with_speed_and_is_nothing_at_rest() {
-        assert_eq!(stop_distance(0.0, 0.15, 2.0, 0.8), 0.0);
-        // 1 m/s: 0.15 s waiting, 0.5 s of ramp, then 1 / 1.6 m of braking.
-        assert!((stop_distance(1.0, 0.15, 2.0, 0.8) - (0.65 + 0.625)).abs() < 1e-12);
-        assert!(stop_distance(2.0, 0.15, 2.0, 0.8) > 2.0 * stop_distance(1.0, 0.15, 2.0, 0.8));
+    fn holding_a_bend_the_car_meets_the_circle_or_passes_it() {
+        // Straight at the centre from 5 m short: the edge is 3 m on.
+        assert!(!C.met_within(0.5, 0.0, 4.2, 0.8, 0.0, 2.9));
+        assert!(C.met_within(0.5, 0.0, 4.2, 0.8, 0.0, 3.1));
+        // On a bend of 3 m radius to the right it turns away before the edge.
+        assert!(!C.met_within(0.5, 0.0, 4.2, 0.8, -1.0 / 3.0, 6.0));
+        // Already past it, or inside it.
+        assert!(!C.met_within(0.5, 0.0, 13.0, 0.8, 0.0, 5.0));
+        assert!(C.met_within(0.5, 0.0, 9.0, 0.8, 0.0, 0.0));
+    }
+
+    #[test]
+    fn the_room_to_stop_is_the_stopping_law_and_the_wait() {
+        let stop = StopCurve::new(1.0, 2.0, 0.5).expect("a curve");
+        assert_eq!(room_to_stop(&stop, 0.0, 0.15), 0.0);
+        // tau = 0.5 + 1 / 4; S(2) = 2 x 0.75 + 4 / 2 = 3.5; and 2 x 0.15 of waiting.
+        assert!((room_to_stop(&stop, 2.0, 0.15) - 3.8).abs() < 1e-12);
+        assert!(room_to_stop(&stop, 2.0, 0.15) > 2.0 * room_to_stop(&stop, 1.0, 0.15));
     }
 
     #[test]

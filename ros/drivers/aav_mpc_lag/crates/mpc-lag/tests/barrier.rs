@@ -5,6 +5,7 @@
 //! body stay out of the object, and did H keep its rule from tick to tick?
 
 use car_model::{ActuatorConfig, CarState, Command as CarCommand, SpeedLoop, SpeedLoopProfile};
+use ego_core::stop_law::StopCurve;
 use mpc_lag::barrier::decays_no_faster;
 use mpc_lag::{Circle, Limits, MpcLag, Observed, Path, Rules, Settings};
 
@@ -85,6 +86,12 @@ impl Run {
     }
 }
 
+/// The rules with the pretend car's own stopping law: vehicle.yaml's brake, ego's
+/// deceleration and jerk, the spine's default speed loop.
+fn rules() -> Rules {
+    Rules::new(StopCurve::from_numbers(3.0, 2.0, 2.0).expect("a stopping law"))
+}
+
 fn straight(length: f64) -> Vec<(f64, f64, f64)> {
     (0..=(length / 0.1) as usize)
         .map(|i| (i as f64 * 0.1, 0.0, 0.0))
@@ -115,12 +122,11 @@ fn drive(
     };
     let mut mpc = MpcLag::new(LIMITS, car, settings).expect("a tracker");
     mpc.reset(path.clone());
-    let shown = Rules::default();
     let circle = object.circle(&path, 0.2);
     if let Some(rules) = rules {
         mpc.set_barriers(rules, &[circle]).expect("barriers");
     }
-    let ahead = rules.unwrap_or(shown).ahead;
+    let ahead = rules.unwrap_or_else(self::rules).ahead;
     let mut lp = SpeedLoop::new(SpeedLoopProfile::Default.config());
     let (mut ego_v, mut ego_steer) = (0.0_f64, 0.0_f64);
     let mut state = CarState::default();
@@ -219,7 +225,7 @@ fn the_numbers() {
                     "gamma 0.02",
                     Some(Rules {
                         gamma: 0.02,
-                        ..Rules::default()
+                        ..rules()
                     }),
                     0.0,
                 ),
@@ -227,16 +233,16 @@ fn the_numbers() {
                     "gamma 0.03",
                     Some(Rules {
                         gamma: 0.03,
-                        ..Rules::default()
+                        ..rules()
                     }),
                     0.0,
                 ),
-                ("gamma 0.05", Some(Rules::default()), 0.0),
+                ("gamma 0.05", Some(rules()), 0.0),
                 (
                     "gamma 0.2 ",
                     Some(Rules {
                         gamma: 0.2,
-                        ..Rules::default()
+                        ..rules()
                     }),
                     0.0,
                 ),
@@ -244,11 +250,11 @@ fn the_numbers() {
                     "gamma 1.0 ",
                     Some(Rules {
                         gamma: 1.0,
-                        ..Rules::default()
+                        ..rules()
                     }),
                     0.0,
                 ),
-                ("0.05 +0.2s", Some(Rules::default()), 0.2),
+                ("0.05 +0.2s", Some(rules()), 0.2),
             ] {
                 let gamma = rules.map_or(0.05, |r| r.gamma);
                 let run = drive(&line, object, rules, cruise, dead, 80.0);
@@ -295,10 +301,7 @@ const OBJECTS: [Object; 3] = [
 ];
 
 fn with_gamma(gamma: f64) -> Option<Rules> {
-    Some(Rules {
-        gamma,
-        ..Rules::default()
-    })
+    Some(Rules { gamma, ..rules() })
 }
 
 #[test]
@@ -315,14 +318,7 @@ fn without_barriers_it_drives_through_and_with_them_it_never_touches() {
     for object in OBJECTS {
         for cruise in [1.0, 3.0] {
             for dead_time in [0.0, 0.2] {
-                let run = drive(
-                    &line,
-                    object,
-                    Some(Rules::default()),
-                    cruise,
-                    dead_time,
-                    60.0,
-                );
+                let run = drive(&line, object, Some(rules()), cruise, dead_time, 60.0);
                 assert!(
                     run.least_gap() > 0.15,
                     "{} m at y {} {cruise} m/s dead {dead_time}",
@@ -339,14 +335,7 @@ fn without_barriers_it_drives_through_and_with_them_it_never_touches() {
 #[test]
 fn at_speed_it_goes_round_and_comes_back_to_the_path() {
     for object in OBJECTS {
-        let run = drive(
-            &straight(40.0),
-            object,
-            Some(Rules::default()),
-            3.0,
-            0.0,
-            60.0,
-        );
+        let run = drive(&straight(40.0), object, Some(rules()), 3.0, 0.0, 60.0);
         assert!(run.reached, "y {}", object.y);
         assert!(run.widest() < 2.0, "{} m off the path", run.widest());
         // Back on the line by the end.
@@ -363,14 +352,7 @@ fn slowly_and_head_on_it_stops_short_instead_safe_and_stuck() {
     // At 1 m/s the plan sees 1.5 m: too late to steer round a thing 1.8 m wide. The
     // barrier slows it, the stop rule stands it still. Safe, and going nowhere: choosing
     // a side is the planner's job above.
-    let run = drive(
-        &straight(40.0),
-        OBJECTS[1],
-        Some(Rules::default()),
-        1.0,
-        0.0,
-        60.0,
-    );
+    let run = drive(&straight(40.0), OBJECTS[1], Some(rules()), 1.0, 0.0, 60.0);
     assert!(!run.reached && run.stops > 0);
     assert!(run.last()[4] < 0.01, "it stands still");
     assert!(run.least_gap() > 0.15 && run.least_h() > 0.0);
@@ -430,7 +412,7 @@ fn a_far_object_changes_nothing() {
         radius: 0.5,
     };
     let plain = drive(&straight(40.0), far, None, 3.0, 0.0, 60.0);
-    let fenced = drive(&straight(40.0), far, Some(Rules::default()), 3.0, 0.0, 60.0);
+    let fenced = drive(&straight(40.0), far, Some(rules()), 3.0, 0.0, 60.0);
     assert!(fenced.reached && fenced.stops == 0 && fenced.worst_slack < 1e-6);
     assert!(
         fenced.unsolved <= plain.unsolved + 5,
@@ -455,19 +437,15 @@ fn bad_rules_and_circles_are_refused() {
     for rules in [
         Rules {
             gamma: 0.0,
-            ..Rules::default()
+            ..rules()
         },
         Rules {
             gamma: 1.5,
-            ..Rules::default()
+            ..rules()
         },
         Rules {
             weight: 0.0,
-            ..Rules::default()
-        },
-        Rules {
-            stop_decel: 0.0,
-            ..Rules::default()
+            ..rules()
         },
     ] {
         assert!(mpc.set_barriers(rules, &[circle]).is_err());
@@ -476,22 +454,15 @@ fn bad_rules_and_circles_are_refused() {
         radius: 0.0,
         ..circle
     };
-    assert!(mpc.set_barriers(Rules::default(), &[flat]).is_err());
-    assert!(mpc.set_barriers(Rules::default(), &[circle]).is_ok());
+    assert!(mpc.set_barriers(rules(), &[flat]).is_err());
+    assert!(mpc.set_barriers(rules(), &[circle]).is_ok());
     assert_eq!(mpc.barriers().len(), 1);
 }
 
 #[test]
 fn a_tick_with_a_barrier_fits_well_inside_the_period() {
     // 20 Hz: 50 ms a tick. Mean and worst over a run that goes round the object.
-    let run = drive(
-        &straight(40.0),
-        OBJECTS[0],
-        Some(Rules::default()),
-        3.0,
-        0.0,
-        60.0,
-    );
+    let run = drive(&straight(40.0), OBJECTS[0], Some(rules()), 3.0, 0.0, 60.0);
     let mean = run.step_ms.iter().sum::<f64>() / run.step_ms.len() as f64;
     let worst = run.step_ms.iter().copied().fold(0.0, f64::max);
     println!("a tick with a barrier: {mean:.2} ms mean, {worst:.1} ms worst");

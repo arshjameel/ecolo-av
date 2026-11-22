@@ -269,6 +269,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ego-core"
+version = "0.1.0"
+dependencies = [
+ "car-model",
+ "spine-core",
+]
+
+[[package]]
 name = "either"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -545,6 +553,7 @@ name = "mpc-lag"
 version = "0.1.0"
 dependencies = [
  "car-model",
+ "ego-core",
  "serde_json",
  "spine-core",
 ]
