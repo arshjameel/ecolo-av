@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">143 min read · 15 sections</div></header>
+<div class="meta">144 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1833,6 +1833,20 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben, 7 Nov: "reading isn't my strong suit. I need you to walk me through it": the first flash of the Rust ESP32 is scary, so the whole bench page comes one short step at a time, in bold colour and spoken aloud (macOS <code>say</code>). It runs the copy of the C++, the build, the flash (only once <code>flash</code> is typed) and the first check, says each row ("Brake: pass. The brake is on.") and the board's settings, asks the hands-on checks one by one, rolls back on a STOP or a no, and writes a record in <code>bench-logs/</code>. <code>--dry-run</code> runs nothing</td>
 <td>Ben</td>
 <td>2026-11-07</td>
+<td>built</td>
+</tr>
+<tr>
+<td><code>pixi run espflash</code>, <code>pixi run -e firmware esptool</code></td>
+<td>Ben, 21 Nov, at the car: <code>espflash</code> and <code>esptool</code> typed alone gave "command not found", as both live inside the repo. Now each is a task: <code>pixi run espflash list-ports</code> says whether this computer sees a board at all</td>
+<td>Ben</td>
+<td>2026-11-21</td>
+<td>built</td>
+</tr>
+<tr>
+<td>The first check knows the RC rework (<code>esp32_first_check.py</code>, <code>esp walk</code>)</td>
+<td>21 Nov: the first flash on the car was rolled back. The check called the board's two new idle states failures: <code>mode=Rc</code> (the transmitter on, the RC holding the car braked) and safety <code>Degraded</code> (the transmitter off or not set up). Now PASS, and NOT YET with no roll back; the walk reads again; <code>car-day-build</code> runs the check in QEMU with the transmitter on</td>
+<td>Ben</td>
+<td>2026-11-21</td>
 <td>built</td>
 </tr>
 <tr>

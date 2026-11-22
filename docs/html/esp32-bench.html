@@ -7,7 +7,7 @@
 <!-- Generated from docs/esp32-bench.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>First flash on the bench: the Rust ESP32</h1>
-<div class="meta">22 min read · 10 sections</div></header>
+<div class="meta">23 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -735,7 +735,7 @@ on, nothing else.</p>
 <tr>
 <td>2</td>
 <td>read the last line</td>
-<td><code>SAFE TO GO ON to the next step</code>: go to 3. <code>STOP: &lt;check&gt;, roll back</code>: section 4</td>
+<td><code>SAFE TO GO ON to the next step</code>: go to 3. <code>NOT YET: the RC is lost</code>: <strong>no roll back</strong>: set the transmitter (<a href="car-day.html">car day</a>, T1-T4), then step 1 again. <code>STOP: &lt;check&gt;, roll back</code>: section 4</td>
 </tr>
 </tbody>
 </table></div>
@@ -788,12 +788,12 @@ link must say OK); <code>--json</code> for a machine.</p>
 </tr>
 <tr>
 <td>Mode</td>
-<td>stopped, not armed, latched</td>
-<td>roll back</td>
+<td>stopped, not armed, latched. With a receiver fitted (the car): <code>rc</code> too, the RC holding the car braked until the stick or the computer asks</td>
+<td><strong>WAIT</strong> when only the RC is lost (safety <code>Degraded</code>, fault 256): the board is braked; the transmitter on, CH6 low at about 1100, the left stick in the middle, then check again. Anything else: roll back</td>
 </tr>
 <tr>
 <td>Faults</td>
-<td>none, or only 1 (command timeout) and 256 (RC lost: the transmitter is off)</td>
+<td>none, or only 1 (command timeout) and 256 (RC lost: the transmitter is off, or CH6's End points aren't set)</td>
 <td>the fault names the device</td>
 </tr>
 <tr>
@@ -846,7 +846,17 @@ link must say OK); <code>--json</code> for a machine.</p>
 </table></div>
 <p>The board also says it once a second on the cable (<code>HEALTH link=… age_ms=… counter_moving=…
 devices=4/4 faults=…</code>), and with <code>wifi-status</code> at <code>/health</code> and in big words on its page.</p>
-<p>The QEMU build, booted idle (<code>pixi run esp first-check --qemu</code>, 7 Nov, Ben's Mac):</p>
+<div class="admonition warning">
+<p class="admonition-title">21 Nov: the check lagged the RC rework</p>
+<p>With the RC rework (#35, #36) the board, idle with its transmitter on, says <code>mode=Rc</code>,
+and with the transmitter off or not set up it says safety <code>Degraded</code>. Until the evening
+of 21 Nov this check called both a failure, so the walk rolled a good flash back. Now
+the first is PASS and the second is NOT YET. <code>pixi run car-day-build</code> runs this check
+in QEMU too, so the firmware and the check can't drift apart unseen again.</p>
+</div>
+<p>The QEMU build, booted idle with the transmitter on (<code>pixi run esp first-check --qemu</code>;
+the table below is 7 Nov's, Ben's Mac; since 21 Nov its Mode row reads <code>rc, not armed,
+latched: the RC holds the car, braked, until the stick or the computer asks</code>):</p>
 <pre class="highlight"><code class="language-text">Check       Result  What it saw
 ----------  ------  -----------
 Log         PASS    245 lines, text form
