@@ -7,7 +7,7 @@
 <!-- Generated from docs/actuator-tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Actuator tests: measure how the car moves</h1>
-<div class="meta">64 min read · 13 sections</div></header>
+<div class="meta">65 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1219,7 +1219,9 @@ list), up to 3 m/s, one session, one report in the stands report's form
 <p><code>speed-up</code> stops itself at 3 m/s ("the speed rose 2.86 -&gt; 3.04 m/s while the command
 fell (3.00 -&gt; 0.00): a stuck throttle?"), <code>brake</code> at 2 m/s, <code>throttle-map</code> at 1.5 m/s.
 <code>coast</code>, <code>circles</code> and <code>straight</code> pass. The rule (<code>safety.runaway</code>) is unchanged: a
-safety rule. <strong>Ben decides what changes (TODO 275).</strong></p>
+safety rule. <strong>Ben chose, 23 Nov: hold the top speed longer.</strong> The three tests now hold
+it 2.5 s before the command falls; the rule and the loop are unchanged; the lot's twin
+passes with the <code>default</code> loop, 6 of 6 (TODO 275). At 3 m/s a run needs up to 7.5 m more.</p>
 </div>
 <h4 id="why-it-fails-23-nov">Why it fails (23 Nov)</h4>
 <p>Ben, 23 Nov: "Fix the speed loop". Looked there first. Nothing was changed: the fix that

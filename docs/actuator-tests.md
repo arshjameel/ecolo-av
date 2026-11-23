@@ -498,7 +498,9 @@ list), up to 3 m/s, one session, one report in the stands report's form
     `speed-up` stops itself at 3 m/s ("the speed rose 2.86 -> 3.04 m/s while the command
     fell (3.00 -> 0.00): a stuck throttle?"), `brake` at 2 m/s, `throttle-map` at 1.5 m/s.
     `coast`, `circles` and `straight` pass. The rule (`safety.runaway`) is unchanged: a
-    safety rule. **Ben decides what changes (TODO 275).**
+    safety rule. **Ben chose, 23 Nov: hold the top speed longer.** The three tests now hold
+    it 2.5 s before the command falls; the rule and the loop are unchanged; the lot's twin
+    passes with the `default` loop, 6 of 6 (TODO 275). At 3 m/s a run needs up to 7.5 m more.
 
 #### Why it fails (23 Nov)
 

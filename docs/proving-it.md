@@ -147,7 +147,7 @@ screen" = the ladder window beside the simulator you can see.
 | 3: map the hallway | ❌ no | `record-drive --sim` starts its own simulator from a terminal; no rung, no button |
 | 4: the hallway, empty (phase B) | ✅ yes | **ran: 12 of 12 passes, the fitted model matched all 12**. Not as the car: nobody turns the car round (no slope from both ways), no NDT, the "hallway" is open ground |
 | 5: the hallway, a person aboard | 🟡 partly, not run | `pixi run dry-run payload:=80` then the hallway rung should do it; nothing records the weight (TODO 257) |
-| 6: the lot | 🟡 partly | the rung and each test run from the screen. **ran alone: `circles`, `straight`, `coast` PASS; `speed-up`, `brake`, `throttle-map` stop themselves above 1 m/s** (the runaway rule, TODO 275), so the whole rung fails today. 23 Nov: the cause is the `default` speed loop's known overshoot and the tests' short hold; with `speed_loop:=smooth` the rung passes 6 of 6. Nothing changed: [Ben decides](actuator-tests.md#why-it-fails-23-nov) |
+| 6: the lot | ✅ yes, in the simulator | the whole session passes with the `default` speed loop, 6 of 6 (23 Nov), since `speed-up`, `brake` and `throttle-map` hold their top speed 2.5 s before slowing ([why](actuator-tests.md#why-it-fails-23-nov), TODO 275). Not as the car: no room limit, and nobody turns it round |
 | 7: a campus mapping drive | ❌ no | a person drives it; `record-drive --sim` is a terminal's |
 | 8: offline processing | ❌ no | no car and no simulator in it: laptops, hours |
 | 9: the car drives itself | 🟡 partly | the **route** rung runs one scored drive round the test lot through the whole stack (**ran: every goal reached, exit 0**), in its own simulator with **no picture**, not on the campus, not on a map of ours |
@@ -264,6 +264,6 @@ A challenger replaces the default only by [the league's rules](league.md#how-a-c
 | 6 | ~~The lot and route rungs have no one-command simulator twin~~ built 22 Nov: `car-test --lot --sim`, `measure controllers --tours lot`. Left: the lot's twin does not judge the 10 % / 0.2 m rule; the route's is scored by the league's table, not by `score_drive.py` on a recording, and runs with no picture | 273 |
 | 7 | ~~One command for the screens side by side~~ built 22 Nov: `pixi run dry-run` | 273 |
 | 8 | The hardware panel and the debug screen do not show "on stands" (the ladder window and `pixi run jacks status --sim` do) | 273 |
-| 10 | The stage-4 tests stop themselves above 1 m/s in Ravensim (the runaway rule): the lot cannot pass at 2 to 3 m/s. The cause is known (23 Nov: the `default` speed loop's overshoot, and a hold shorter than the rule's window); the choice is Ben's | 275 |
+| 10 | ~~The stage-4 tests stop themselves above 1 m/s in Ravensim~~: done 23 Nov, the tests hold their top speed 2.5 s; the runaway rule and the speed loop unchanged. Left: the `default` loop still overshoots (11 % at 1 m/s), TODO 27 | 275 |
 | 11 | Nobody turns the simulated car round or puts it back on the start line: a dry run has 340 m of passes, then needs a restart | 273 |
 | 9 | On stands the simulator's free-wheel mass (20 kg) and drag are guesses; its odometry reads the rear wheels, today's car the front | 49b, and a stands measurement |
