@@ -195,7 +195,7 @@ The development computers:
 ## Sharing the code
 
 The repo is on GitHub: `git@github.com:AAV-2025-2026/ecolo-av.git`, public: anyone can read it.
-Changes reach `main` only through a pull request from your own fork, approved and green:
+Changes reach `main` only through a pull request from your own fork and the merge queue:
 [Contributing](../CONTRIBUTING.md) has the steps.
 
 | Task | Command |
@@ -203,8 +203,8 @@ Changes reach `main` only through a pull request from your own fork, approved an
 | Get it, take newer work, share yours | fork, clone, branch, pull request: [Contributing](../CONTRIBUTING.md) |
 | Hand it to a laptop with no GitHub access | `git bundle create ../aav.bundle HEAD main` (keep `HEAD`, or a clone checks out nothing), then `git clone aav.bundle aav` there |
 
-CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux (x86_64 and 64-bit ARM) for every push to `main`
-and every pull request, and on a Mac every night. The results are
+CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux (x86_64 and 64-bit ARM) for every push to `main`,
+every pull request and every merge-queue entry, and on a Mac every night. The results are
 on the repo's Actions tab.
 
 **In your fork too.** Turn Actions on once in your fork (its Actions tab, then "I
@@ -214,7 +214,7 @@ request. The nightly `mac` and `sim` runs stay in the team's repo.
 
 | Job | Computer | When | What |
 |---|---|---|---|
-| `linux` | Ubuntu 24.04, x86_64 | every push to `main`, every pull request, a push to a fork's branch | `pixi run test`, the MCP server |
+| `linux` | Ubuntu 24.04, x86_64 | every push to `main`, every pull request, the merge queue, a push to a fork's branch | `pixi run test`, the MCP server |
 | `arm` | Ubuntu 24.04, **64-bit ARM**, like the Orin and the Pis | the same | 12 min: `pixi run test`; the HUD and the map window built as ARM programs, and each drawn once on a virtual screen (picture: the artifact `arm-screens`) |
 | `mac` | macOS 15, Apple Silicon | every night (team's repo) | `pixi run test`, the MCP server |
 | `car-kit` | Ubuntu 24.04, 64-bit ARM | the same as `linux` | `pixi run car-kit`, then `car_install.sh --all` with **no network** (its own network namespace), as on the car ([car install](car-install.md)): 6 min |
@@ -236,6 +236,31 @@ failure there doesn't fail the night yet (`continue-on-error`).
 
 Gazebo's step went with Gazebo (16 Nov): its last nights in [Gazebo, as it
 was](history/gazebo-as-it-was.md).
+
+### CI's caches
+
+Every run starts on a clean computer. Three caches carry builds from one run to the next,
+each saved under a key made from `pixi.lock` (and every `Cargo.lock` for the Rust two):
+
+| Cache | Holds | Saved |
+|---|---|---|
+| `pixi-pkgs-*` | the packages Pixi installs: ROS, Python, the compilers | after a run that passes |
+| `rust-*` | cargo's downloads; what `pixi run build` compiles (`build/*/target`) | straight after the build, even if a test fails later |
+| `rust-tests-*` | what `tools/test.sh` compiles: every Rust workspace in one folder, `target/tests`, so their libraries compile once; with no debug info (`CARGO_PROFILE_DEV_DEBUG=0`), to keep it small | after the tests, even if one fails |
+
+A key is saved once: a new `Cargo.lock` or `pixi.lock` starts a new cache, from the newest
+older one. A pull request reads `main`'s caches, but what it saves only its own later runs
+see. GitHub keeps 10 GB for the repo and drops the oldest past that.
+
+The cache only saves compiling: every test still runs, every time. cargo rebuilds what
+changed by itself. **To clear one**, when CI fails with a link error a laptop doesn't
+have (a build script's saved answer gone stale, like `rclrs`'s on 20 Nov):
+`gh cache list --repo AAV-2025-2026/ecolo-av`, then `gh cache delete <key>`, or the
+repo's Actions tab, Caches. The next run builds that part cold.
+
+On a laptop, `tools/test.sh` uses `target/tests` too (set `CARGO_TARGET_DIR` to put it
+elsewhere). The `target/` folders it used before, inside each `ros/` workspace and in
+`firmware/spine/`, can be deleted by hand.
 
 ### Reading a CI failure without signing in
 

@@ -4,7 +4,7 @@ Single code base for the Ecolo autonomous vehicle (SYSC 4907, Carleton Universit
 Goal for Gate 4 (26 Feb 2027): drive from GPS point A to B at 1 m/s and stop within 1 m.
 
 **New here? Start with [docs/getting-started.md](docs/getting-started.md).**
-**Making a change? Read [CONTRIBUTING.md](CONTRIBUTING.md): fork, branch, pull request, merge.**
+**Making a change? Read [CONTRIBUTING.md](CONTRIBUTING.md): fork, branch, pull request, merge queue.**
 
 The ROS 2 workspace and spine firmware for Carleton's autonomous vehicle capstone, built
 by the 2026–27 team. Target: **ROS 2 Jazzy on Ubuntu 24.04** on the car's computers (the

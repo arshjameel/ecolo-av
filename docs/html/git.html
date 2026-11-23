@@ -143,13 +143,13 @@
 <div class="lead"><p>The help that <a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a> doesn't give.</p>
 <blockquote>
 <p><strong>The flow is in <a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a>:</strong> fork, branch from
-<code>upstream/main</code>, pull request, one approval and green CI, then merge (a merge commit,
+<code>upstream/main</code>, pull request, one approval, then the merge queue (a merge commit,
 so every commit keeps its message).
 Keep your branch current with <code>git rebase upstream/main</code>, never a merge.</p>
 </blockquote></div>
 <section class="card"><h2 id="the-picture">The picture</h2>
 <pre class="highlight"><code class="language-text">   AAV-2025-2026/ecolo-av          the team's repo: "upstream"
-      main  ◄──────────────── merge (approved, CI green, merge commit)
+      main  ◄──────────────── merge queue (approved, CI green, merge commit)
         │                                ▲ pull request
         │ git fetch upstream             │
         ▼                                │

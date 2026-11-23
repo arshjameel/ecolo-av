@@ -37,7 +37,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 
 | Script | Does | Task |
 |---|---|---|
-| `test.sh` | every test that needs no ROS: Python units, Rust, interfaces.md, stand-ins stay local | inside `test` |
+| `test.sh` | every test that needs no ROS: Python units, Rust (in one build folder, `target/tests`), interfaces.md, stand-ins stay local; each section's time in the log | inside `test` |
 | `lint.sh` | ament_flake8 and ament_pep257 on our Python | `lint` |
 | `release_charts/` | the 0.4 guide's charts (`charts.py <out dir>`) and its screenshot crops (`crop.py`); run by hand with matplotlib and Pillow | by hand |
 | `check_graph.py` | the running graph against `docs/interfaces.yaml`; then `/localization/health`'s line (warn only) | `check <profile>` |
