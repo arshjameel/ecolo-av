@@ -285,3 +285,59 @@ def test_the_live_imu_watch():
             r['gz'] = 0.3
     assert 'not on stands' in watch_rows(rows)
     assert not pf.ImuWatch().start()                     # no rest readings: no watch
+
+
+def test_a_still_receivers_noise_is_not_a_moving_car():
+    """A u-blox at rest reads about 0.05 m/s of noise each way: the median decides."""
+    rng = random.Random(7)
+    still = stands_rows()
+    for r in still:
+        r['gps_speed'] = math.hypot(rng.gauss(0, 0.05), rng.gauss(0, 0.05))
+    assert max(r['gps_speed'] for r in still) > pf.DOPPLER_STILL   # the old mark: a FAIL
+    line = pf.stands_lines(still, ground=False)[1]
+    assert line.status is pf.Status.PASS and 'median' in line.detail, line.detail
+    # Creeping off the stands at 0.15 m/s under the same noise is still caught.
+    creeping = stands_rows()
+    for r in creeping:
+        r['gps_speed'] = math.hypot(0.15 + rng.gauss(0, 0.05), rng.gauss(0, 0.05))
+    assert pf.stands_lines(creeping, ground=False)[1].status is pf.Status.FAIL
+
+
+def test_the_imu_watch_allows_for_the_imus_own_noise_and_no_more():
+    quiet = pf.ImuWatch()
+    for _ in range(100):
+        quiet.rest(0.0, 0.0)
+    assert quiet.start()
+    # A quiet IMU keeps the mark it always had.
+    assert quiet.limit([0.02] * 100) == pf.WATCH_SPEED
+    # A noisy one: 0.15 m/s^2 at 50 Hz sums to 0.039 m/s over 2 s (the readings' own
+    # 0.030, the bias's error 0.024), so 5 x that.
+    rng = random.Random(3)
+    noisy = pf.ImuWatch()
+    for _ in range(150):
+        noisy.rest(rng.gauss(0, 0.15), rng.gauss(0, 0.15))
+    assert noisy.start()
+    assert 0.17 < noisy.limit([0.02] * 100) < 0.22
+    # Whatever the noise, never looser than WATCH_MOST: under the stands' 0.3 m/s cap.
+    noisy.noise = 5.0
+    assert noisy.limit([0.02] * 100) == pf.WATCH_MOST < 0.3
+
+
+def test_a_still_car_with_a_noisy_imu_does_not_trip_the_watch_but_a_rolling_one_does():
+    def run(accel, seed):
+        rng = random.Random(seed)
+        watch = pf.ImuWatch()
+        for _ in range(150):
+            watch.rest(rng.gauss(0, 0.2), rng.gauss(0, 0.2))
+        watch.start()
+        for i in range(1500):    # 30 s at 50 Hz
+            why = watch.add(i * 0.02, accel(i * 0.02) + rng.gauss(0, 0.2), rng.gauss(0, 0.2),
+                            0.0, False)
+            if why:
+                return why
+        return None
+
+    assert all(run(lambda t: 0.0, seed) is None for seed in range(40))
+    # Off the stands: 0.3 m/s reached in a second, as the preflight's first step asks.
+    assert all('off the stands' in (run(lambda t: 0.3 if t < 1.0 else 0.0, seed) or '')
+               for seed in range(40))

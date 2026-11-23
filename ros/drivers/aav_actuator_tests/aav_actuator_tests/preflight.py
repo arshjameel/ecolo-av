@@ -16,8 +16,9 @@ they run every sensor is counted; afterwards one line per check, as car-day-chec
 | The printout | table(), passed() |
 
 On stands the wheels and the rest disagree on purpose (docs/learn-speed.md section 9).
-In Gazebo and on the bench the car is on the ground, so the same maths checks the
-opposite: there the IMU and the GPS must agree with the wheels.
+On the bench, and in Ravensim unless its car is on jacks (--on-jacks), the car is on the
+ground, so the same maths checks the opposite: there the IMU and the GPS must agree with
+the wheels.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import enum
 import math
+import statistics
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from aav_actuator_tests import procedures as pr
@@ -40,12 +42,20 @@ BRAKE_TIME = 5.0         # s: still within this after the brake step starts
 IMU_WINDOW = 3.0         # s at most: the IMU's speed change, from the command to 95% speed
 IMU_STANDS = 0.4         # on stands: the IMU's speed change under this x the wheels'
 IMU_GROUND = 0.6         # on the ground: at least this x the wheels'
-DOPPLER_STILL = 0.1      # m/s: on stands the GPS's own speed stays under this
+DOPPLER_STILL = 0.1      # m/s: on stands the GPS's own speed, its median, stays under this.
+#                          The median, not the most: a still receiver's speed is all noise
+#                          (about 0.05 m/s each way, so 0.06 as a speed), and one reading in
+#                          seven is over 0.1 by chance. Found on Ravensim's jacks, 22 Nov
 GPS_STANDS = 2.5         # m: without Doppler, on stands the fixes move less (a WARN only)
 GPS_GROUND = 0.5         # on the ground: the fixes move at least this x the wheels' distance
 MIN_SPIN = 1.5           # m the wheels must turn for the GPS check to mean anything
 WATCH_WINDOW = 2.0       # s: the live IMU watch adds up this much acceleration
 WATCH_SPEED = 0.15       # m/s: more than this from the IMU on stands: off the stands
+WATCH_SIGMAS = 5.0       # ... or this many times what the IMU's own noise at rest adds up to
+#                          over the window, if that is more: a still car with a noisy IMU
+#                          (0.2 m/s^2 at 50 Hz sums to 0.05 m/s) tripped 0.15 by chance on
+#                          Ravensim's jacks, 22 Nov. A quiet IMU keeps 0.15
+WATCH_MOST = 0.25        # m/s: never looser than this, whatever the noise: under the 0.3 cap
 WATCH_YAW = 0.1          # rad/s: more than this while steering on stands: off the stands
 EARTH_RADIUS = 6371000.0
 
@@ -443,10 +453,11 @@ def gps_line(rows: Sequence[Mapping], ground: bool, where: str) -> Line:
             return Line(Status.PASS if ok else Status.FAIL, name,
                         f'Doppler {gps:.2f} m/s in the hold, wheels {abs(wheels):.2f} '
                         f'(needs at least {IMU_GROUND:g} x)')
-        top = max(abs(d) for d in doppler)
-        return Line(Status.PASS if top < DOPPLER_STILL else Status.FAIL, name,
-                    f'Doppler at most {top:.2f} m/s while the wheels spun (needs under '
-                    f'{DOPPLER_STILL:g})')
+        middle = statistics.median(abs(d) for d in doppler)
+        return Line(Status.PASS if middle < DOPPLER_STILL else Status.FAIL, name,
+                    f'Doppler {middle:.2f} m/s (the median of {len(doppler)}, at most '
+                    f'{max(abs(d) for d in doppler):.2f}) while the wheels spun (needs a '
+                    f'median under {DOPPLER_STILL:g})')
     before = [r for r in phase_rows(rows, SETTLE) if finite(r['lat'], r['lon'])]
     after = [r for r in tail(phase_rows(rows, BRAKE), 1.0) if finite(r['lat'], r['lon'])]
     if not before or not after:
@@ -481,6 +492,7 @@ class ImuWatch:
 
     def __init__(self) -> None:
         self.bias: Optional[Tuple[float, float]] = None
+        self.noise = 0.0     # m/s^2: the noisier axis's spread at rest
         self.rest_samples: List[Tuple[float, float]] = []
         self.recent: List[Tuple[float, float, float]] = []   # (t, ax - bias, ay - bias)
 
@@ -495,7 +507,23 @@ class ImuWatch:
         n = len(self.rest_samples)
         self.bias = (sum(a for a, _ in self.rest_samples) / n,
                      sum(b for _, b in self.rest_samples) / n)
+        if n > 1:
+            self.noise = max(statistics.stdev(a for a, _ in self.rest_samples),
+                             statistics.stdev(b for _, b in self.rest_samples))
         return True
+
+    def limit(self, steps: Sequence[float]) -> float:
+        """
+        Return the speed change (m/s) that means "moving", over readings `steps` s apart.
+
+        WATCH_SPEED, unless the IMU's own noise at rest, added up the same way, would
+        reach it by chance: then WATCH_SIGMAS times that sum, and never over WATCH_MOST.
+        The sum has two parts: each reading's noise, and the bias's own error (the mean
+        of the rest readings), which every reading in the window carries.
+        """
+        n = max(len(self.rest_samples), 1)
+        summed = self.noise * math.sqrt(sum(dt * dt for dt in steps) + sum(steps) ** 2 / n)
+        return min(max(WATCH_SPEED, WATCH_SIGMAS * summed), WATCH_MOST)
 
     def add(self, t: float, ax: float, ay: float, gz: float, steering: bool) -> Optional[str]:
         if self.bias is None or not finite(t, ax, ay):
@@ -506,15 +534,18 @@ class ImuWatch:
         self.recent.append((t, ax - self.bias[0], ay - self.bias[1]))
         self.recent = [s for s in self.recent if t - s[0] <= WATCH_WINDOW]
         vx = vy = 0.0
+        steps = []
         for a, b in zip(self.recent, self.recent[1:]):
             dt = b[0] - a[0]
             if 0 < dt < 0.5:
                 vx += a[1] * dt
                 vy += a[2] * dt
+                steps.append(dt)
         dv = max(abs(vx), abs(vy))
-        if dv > WATCH_SPEED:
+        limit = self.limit(steps)
+        if dv > limit:
             return (f'the IMU says the car changed speed by {dv:.2f} m/s in '
-                    f'{WATCH_WINDOW:g} s: off the stands?')
+                    f'{WATCH_WINDOW:g} s (over {limit:.2f}): off the stands?')
         return None
 
 
