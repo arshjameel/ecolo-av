@@ -761,8 +761,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="barriers.html">Barriers in the MPC</a> (<code>aav_mpc_lag</code>'s <code>barrier.rs</code>, <code>MpcLag::set_barriers</code>; <code>mpc_barriers:=true</code> with the ghost; off by default; not yet run in Ravensim)</td>
-<td><strong>Outside the capstone's scope</strong>: Ben's own research, toward his MASc thesis (not a team deliverable; nothing turns it on). The tracker follows its path into an object. A control barrier function in the plan (Ali, Shen, Hashim 2024) lets the room to a keep-out circle shrink only by a share a tick, and a stop rule stands the car still while there is room. On a pretend car: 36 of 36 runs kept off the object</td>
+<td><a href="barriers.html">Barriers in the MPC</a> (<code>aav_mpc_lag</code>'s <code>barrier.rs</code>, <code>MpcLag::set_barriers</code>; <code>mpc_barriers:=true</code> with the ghost, <code>mpc_barrier_gamma:=</code>; off by default; to watch it in Ravensim: <code>pixi run barrier-watch plain</code>, <code>step</code> or <code>barrier</code>)</td>
+<td><strong>Outside the capstone's scope</strong>: Ben's own research, toward his MASc thesis (not a team deliverable; nothing turns it on). The tracker follows its path into an object. A control barrier function in the plan (Ali, Shen, Hashim 2024) lets the room to a keep-out circle shrink only by a share a tick, and a stop rule stands the car still while there is room. On a pretend car: 36 of 36 runs kept off the object. In Ravensim at 3 m/s (22 Nov): the plain tracker drives through the ghost, a hard distance limit stops close before it, the barrier goes round (11 of 11); below 2.5 m/s it stops</td>
 <td>Ben</td>
 <td>2026-11-22</td>
 <td>built</td>

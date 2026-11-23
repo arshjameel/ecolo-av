@@ -7,7 +7,7 @@
 <!-- Generated from docs/barriers.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Barriers in the MPC: keeping the car off things</h1>
-<div class="meta">13 min read · 8 sections</div></header>
+<div class="meta">23 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -148,8 +148,9 @@
 <div class="lead"><div class="admonition warning">
 <p class="admonition-title">Outside the capstone's scope (Ben's own research, toward his MASc thesis)</p>
 <p>Ben's own work, not a team deliverable. Off by default: nothing in the stack turns
-it on, and no safety lock depends on it. Tested on a pretend car and compiled
-against ROS. <strong>Not yet run in Ravensim, and never on the car.</strong></p>
+it on, and no safety lock depends on it. Tested on a pretend car, and run in
+Ravensim with the whole stack (section 5: <a href="#watch-it-in-ravensim">watch it</a>).
+<strong>Never on the car.</strong></p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">The short version</p>
@@ -162,6 +163,9 @@ against ROS. <strong>Not yet run in Ravensim, and never on the car.</strong></p>
   its first obstacle (<code>mpc_barriers:=true</code>).</li>
 <li><strong>On a pretend car:</strong> the plain tracker ends 0.5 m inside the object; with
   barriers, none of 36 runs touches it (smallest gap 0.22 m).</li>
+<li><strong>In Ravensim, at 3 m/s:</strong> the plain tracker drives through the ghost, the hard
+  distance limit stops close before it, the barrier goes round. See it:
+  <code>pixi run barrier-watch --side-by-side --speed 3</code>.</li>
 </ul>
 </div>
 <p>To learn the idea from nothing: <a href="barriers-guide.html">the walk-through</a>, then
@@ -313,6 +317,8 @@ each tick the tracker also asks:</p>
 <section class="card"><h2 id="4-how-to-run-it">4. How to run it</h2>
 <pre class="highlight"><code class="language-sh">pixi run sim world:=test_lot tracker:=mpc_lag_rs ghost:=true mpc_barriers:=true
 pixi run ghost --local ahead 10      # place the ghost 10 m ahead</code></pre>
+<p><code>mpc_barrier_gamma:=1</code> beside it sets γ (empty: 0.05). To watch one drive with
+everything set up for you: <a href="#watch-it-in-ravensim">Watch it in Ravensim</a>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -622,19 +628,327 @@ navigation's 1 m/s. One run each (the barrier run three times); the stop zone st
 </tr>
 <tr>
 <td>15</td>
-<td><strong>Going round was not tried</strong>: navigation drives 1 m/s, and going round starts near 3 m/s (finding 8)</td>
-<td>next: a faster run, or a longer look ahead</td>
+<td><strong>Going round was not tried</strong> in these three runs: navigation drives 1 m/s, and going round starts near 3 m/s (finding 8)</td>
+<td>tried since: <a href="#watch-it-in-ravensim">Watch it in Ravensim</a>, below</td>
 </tr>
 </tbody>
 </table></div>
 <p>Two things seen on the way, not about the barriers:</p>
 <ul>
-<li><code>sim-check --ghost</code> reports FAIL for every follower: it listens for the local costmap on
-  its old name (<code>/local_costmap/costmap</code>; ours is <code>/drivers/nav/costmap/local</code>).</li>
+<li><code>sim-check --ghost</code> reported FAIL for every follower: it listened for the local costmap on
+  its old name (<code>/local_costmap/costmap</code>; ours is <code>/drivers/nav/costmap/local</code>). Fixed
+  22 Nov (TODO 268): it passes with <code>mpc_lag_rs</code>. With <code>mppi_lag</code> it still fails, for
+  another reason (the car stands turned aside, so the check reads no gap).</li>
 <li>One earlier run of <code>mpc_lag_rs</code> without barriers, while two other simulators were
   loading the same computer, <strong>drove through the ghost and the stop zone never fired</strong>.
   It did not happen again on a quiet computer. Not explained.</li>
 </ul>
+<h3 id="watch-it-in-ravensim">Watch it in Ravensim</h3>
+<p>One command: the same drive past the same ghost, the follower three ways. It starts
+Ravensim's road world with navigation, opens RViz from above, places the ghost 15 m
+past the bumper, sends a goal 40 m straight ahead, and prints one line of result.</p>
+<pre class="highlight"><code class="language-sh">pixi run barrier-watch plain   --speed 3     # the follower (mpc_lag_rs) alone
+pixi run barrier-watch step    --speed 3     # a hard distance limit: the rule with γ = 1
+pixi run barrier-watch barrier --speed 3     # the barrier, γ = 0.05
+pixi run barrier-watch --side-by-side --speed 3    # plain and barrier at once</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--speed 3</code></td>
+<td>m/s the car may drive (1: navigation's own, and the real car's; up to 5)</td>
+</tr>
+<tr>
+<td><code>--offset 0.4</code></td>
+<td>the ghost's centre, m left of the car's line (0: on it; negative: right)</td>
+</tr>
+<tr>
+<td><code>--side-by-side</code></td>
+<td>two simulators at once, each on its own ROS domain; <code>--modes plain,step</code> picks the two</td>
+</tr>
+<tr>
+<td><code>--gamma 0.02</code></td>
+<td>with <code>barrier</code>: another γ</td>
+</tr>
+<tr>
+<td><code>--headless</code></td>
+<td>no windows; it stops when the drive ends</td>
+</tr>
+<tr>
+<td><code>--dev-window</code></td>
+<td>also the developer window, live</td>
+</tr>
+<tr>
+<td><code>truth_pose:=true</code></td>
+<td>(any <code>sim.launch.py</code> switch) the simulator's truth as the pose: takes localization's wander out of the picture</td>
+</tr>
+<tr>
+<td>Ctrl-C</td>
+<td>stops everything the command started, by process group</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>In RViz</th>
+<th>Is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the purple dot</td>
+<td>the ghost (a person, 0.5 m wide)</td>
+</tr>
+<tr>
+<td>the purple circle</td>
+<td>the barrier's keep-out circle: the body's point may not come inside. Drawn in every mode, so <code>plain</code> shows what it drives through</td>
+</tr>
+<tr>
+<td>the blue line</td>
+<td>navigation's plan: straight through the ghost (the planner does not see it)</td>
+</tr>
+<tr>
+<td>the orange trail</td>
+<td>where the car has been</td>
+</tr>
+<tr>
+<td>the red box</td>
+<td>the stop zone's box, 1 m in front of the bumper</td>
+</tr>
+</tbody>
+</table></div>
+<p>The window's title says which mode it is. Each run's samples go to
+<code>/tmp/aav-barrier-watch/&lt;mode&gt;-&lt;speed&gt;-&lt;offset&gt;.csv</code>, the commit and the command first.</p>
+<div class="admonition note">
+<p class="admonition-title">Every safety lock stays on</p>
+<p>The stop zone and the ghost's costmap layer are as in every other run: the command
+takes nothing out. It turned out that none of them is in the barrier's way.</p>
+</div>
+<p><strong>What it showed</strong> (22 Nov, <code>--headless</code>, one computer, each run alone). The gap is from
+the car's body to the ghost, on the simulator's truth; below zero is inside it. The
+first number is the last set of runs (24, commit <code>c56baee1</code>); in brackets, every run of
+that cell, earlier ones too.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Speed</th>
+<th>The ghost</th>
+<th>Plain</th>
+<th>Step (γ 1)</th>
+<th>Barrier (γ 0.05)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3 m/s</td>
+<td>on the line</td>
+<td><strong>drives through</strong>, −0.59 m (5 of 6: −0.59 to −0.71)</td>
+<td>stops, 0.64 m (3 of 4 stop, 0.44 to 0.64; 1 stops, backs up and gets round)</td>
+<td><strong>goes round</strong>, 0.75 m (11 of 11: 0.75 to 1.52)</td>
+</tr>
+<tr>
+<td>3 m/s</td>
+<td>0.4 m left</td>
+<td><strong>touches</strong>, −0.19 m (2 of 2)</td>
+<td>stops, 0.39 m (3 of 3: 0.23 to 0.39)</td>
+<td><strong>goes round</strong>, 0.98 m (3 of 3: 0.71 to 1.59)</td>
+</tr>
+<tr>
+<td>3 m/s</td>
+<td>1.0 m left</td>
+<td>passes beside, 0.30 m (3 of 3: 0.30 to 0.54)</td>
+<td>passes beside, 0.80 m (1 of 2; the other stops, 0.44)</td>
+<td>goes round, 1.12 m (2 of 2)</td>
+</tr>
+<tr>
+<td>1 m/s</td>
+<td>on the line</td>
+<td>stops, 0.03 m (2 of 2: 0.03, 0.25)</td>
+<td>stops, 0.70 m (2 of 2)</td>
+<td>stops, 0.80 m (2 of 2)</td>
+</tr>
+<tr>
+<td>1 m/s</td>
+<td>0.4 m left</td>
+<td><strong>touches</strong>, 0.00 m (the other: stops, 0.05)</td>
+<td>stops, 0.58 m (2 of 2)</td>
+<td>stops, 0.66 m (2 of 2)</td>
+</tr>
+<tr>
+<td>1 m/s</td>
+<td>1.0 m left</td>
+<td>passes beside, 0.28 m (2 of 2)</td>
+<td><strong>stops</strong>, 0.79 m (2 of 2)</td>
+<td>passes beside, 0.61 m (2 of 2)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Also</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Barrier, on the line, 2 m/s</td>
+<td>stops, 0.80 m (2 of 2)</td>
+</tr>
+<tr>
+<td>Barrier, on the line, 2.5 m/s</td>
+<td>goes round, 1.11 m (2 of 2)</td>
+</tr>
+<tr>
+<td>Barrier with γ 0.02, on the line, 3 m/s</td>
+<td>goes round wider: 2.68 m off the line, gap 1.71 m (1 run)</td>
+</tr>
+<tr>
+<td>The ghost 0.4 m right, 3 m/s, barrier</td>
+<td>goes round, 1.18 m (1 run)</td>
+</tr>
+<tr>
+<td><code>truth_pose:=true</code>, 3 m/s, on the line</td>
+<td>plain −0.75 m, step stops 0.46 m, barrier goes round 1.49 m: the same picture</td>
+</tr>
+<tr>
+<td><code>--side-by-side</code>, 3 m/s, twice (once with the windows)</td>
+<td>plain −0.69, −0.71 m; barrier 1.50, 1.20 m: the same as alone</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Who acts first</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Follower</th>
+<th>First to ask a stop</th>
+<th>Then</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plain</td>
+<td>the stop zone, when the ghost is 0.5 to 0.9 m from the bumper</td>
+<td>at 1 m/s the car stands 0 to 0.25 m before it; at 3 m/s it cannot stop in 1 m and drives through</td>
+</tr>
+<tr>
+<td>Step</td>
+<td>the stop rule, 5.6 to 8.4 m before the ghost at 3 m/s, 1.9 to 2.4 m at 1 m/s; then the stop zone</td>
+<td>it creeps on, and the stop zone holds it 0.2 to 0.7 m before the ghost</td>
+</tr>
+<tr>
+<td>Barrier</td>
+<td>the stop rule, at the same distances</td>
+<td>at 2.5 m/s and up it slows to 0.3 to 1 m/s, steers round outside the stop zone's box, and speeds up again: the stop zone never fired</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>What it showed</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16</td>
+<td><strong>Going round works in Ravensim with every lock on</strong>, from 2.5 m/s</td>
+<td>nothing had to be switched off</td>
+</tr>
+<tr>
+<td>17</td>
+<td><strong>It is not one smooth swerve</strong>: the stop rule brakes first (to 0.3 to 1 m/s), then the car steers round and speeds up</td>
+<td>19 to 23 s for the 40 m; plain takes 20 s</td>
+</tr>
+<tr>
+<td>18</td>
+<td><strong>At 2 m/s and below it stops</strong>, as on the pretend car (finding 8)</td>
+<td>see "What stops it", below</td>
+</tr>
+<tr>
+<td>19</td>
+<td><strong>The plain tracker at 3 m/s drives through the ghost</strong>: the stop zone asks at 0.5 to 0.7 m, too late for 3 m/s</td>
+<td>the stop zone is sized for the car's 1 m/s; <code>sim_speed:=3</code> is the simulator's only</td>
+</tr>
+<tr>
+<td>20</td>
+<td><strong>At 1 m/s the stop zone alone leaves 0 to 0.25 m</strong>; the stop rule before it leaves 0.6 to 0.8 m</td>
+<td>R3's result again, in more runs</td>
+</tr>
+<tr>
+<td>21</td>
+<td><strong>The step is the worst to watch</strong>: it stops closest (0.23 m once), stops for a ghost 1.0 m aside that the others pass, and once backed up and crept round</td>
+<td>what a barrier adds to a plain limit, in one picture</td>
+</tr>
+<tr>
+<td>22</td>
+<td><strong>One plain run passed 0.96 m beside the ghost on the line</strong>: the car was lost, 1.8 m off its line from the start</td>
+<td>localization, not the follower. The likely cause, not proved: the follower's log shows its map-to-odom correction jumping by 10° to 25° in 6 of the last 23 runs. <code>truth_pose:=true</code> takes it out</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What stops a go-round, and what does not</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>In the way?</th>
+<th>How we know</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The tracker's own look ahead</td>
+<td><strong>yes, below 2.5 m/s</strong></td>
+<td>its plan is 1.5 s long: 1.5 m at 1 m/s, and the keep-out circle is 3.1 m across. The stop rule fires 2 m before the ghost, the car creeps straight on, and never turns. The pretend car, with no stop zone at all, stops the same way</td>
+</tr>
+<tr>
+<td>The stop zone</td>
+<td><strong>it ends the creep</strong> at 1 and 2 m/s: the ghost enters its box just under 1 m from the bumper, and <code>stop_hold</code> holds navigation</td>
+<td>the runs' samples and logs: the stop rule first, the stop zone about 2 s later. At 2.5 m/s and up the car is already beside the box: it never fires</td>
+</tr>
+<tr>
+<td>The planner</td>
+<td>no</td>
+<td>the ghost is not in the planner's costmap (<code>vehicle.nav2_tuned</code>): the plan stays straight through it</td>
+</tr>
+<tr>
+<td>The costmap in the follower</td>
+<td>no</td>
+<td><code>mpc_lag_rs</code> reads no costmap (the default <code>mppi_lag</code> does, and steers by it)</td>
+</tr>
+<tr>
+<td>The behaviour planner's speed cap</td>
+<td>no</td>
+<td>it does not read the ghost</td>
+</tr>
+<tr>
+<td>Navigation's 1 m/s</td>
+<td><strong>yes</strong></td>
+<td><code>sim_speed:=</code> (the command's <code>--speed</code>) raises it, in the simulator only</td>
+</tr>
+</tbody>
+</table></div>
+<p>Not done: whether the barrier alone would creep round at 1 m/s with the ghost out of the
+stop zone's sources. That would take a new switch that weakens a lock, and the pretend
+car already says no.</p>
+<div class="admonition warning">
+<p class="admonition-title">How far to trust the numbers</p>
+<p>One to twelve runs a cell, not the test plan's ten each. The ghost is a person-sized
+cylinder (0.25 m radius; the pretend car's object was 0.5 m). The gap moves by 0.2 to
+0.8 m between runs of the same cell: localization wanders (0.08 m median, more at
+the start). The windows were opened and checked on a picture of RViz's window (one
+run alone, one pair side by side). Ben has not watched it yet.</p>
+</div>
 </section>
 <section class="card"><h2 id="6-what-it-assumes">6. What it assumes</h2>
 <div class="table-wrap"><table>
@@ -687,8 +1001,16 @@ navigation's 1 m/s. One run each (the barrier run three times); the stop zone st
 </thead>
 <tbody>
 <tr>
-<td>Going round in Ravensim (it needs about 3 m/s), and a league score against <code>mppi_lag</code></td>
-<td>next</td>
+<td>Ten runs a cell in Ravensim (rungs R3, R4), and a league score against <code>mppi_lag</code></td>
+<td>next: <code>barrier-watch --headless</code> in a loop</td>
+</tr>
+<tr>
+<td>Going round below 2.5 m/s (the car drives 1 m/s)</td>
+<td>a longer look ahead, or the planner choosing a side (finding 3)</td>
+</tr>
+<tr>
+<td>A smooth go-round: today the stop rule brakes first (finding 17)</td>
+<td>open</td>
 </tr>
 <tr>
 <td>Real obstacles (the costmap, <code>things</code>) as circles</td>

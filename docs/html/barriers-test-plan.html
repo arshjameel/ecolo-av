@@ -319,7 +319,7 @@ again, and write both results down. The barrier's rungs below are then run again
 <td><code>mpc_lag_rs</code> alone; <code>mppi_lag</code></td>
 <td>10 of 10: stood 0.5 m or more before the ghost, stop rule first</td>
 <td>10 each</td>
-<td><strong>partly</strong>: 3 runs, 0.76 to 0.88 m, stop rule first each time</td>
+<td><strong>partly</strong>: 3 runs, 0.76 to 0.88 m, stop rule first each time; and 2 more with <code>barrier-watch</code>, 0.75 and 0.80 m, stop rule first (measured from the body on the simulator's truth, not from the ghost's scan)</td>
 </tr>
 <tr>
 <td>R4</td>
@@ -328,7 +328,7 @@ again, and write both results down. The barrier's rungs below are then run again
 <td>the same two</td>
 <td>10 of 10 reach the goal; least gap 0.3 m or more</td>
 <td>10 each</td>
-<td>to build: navigation drives 1 m/s</td>
+<td><strong>partly</strong>: built (<code>pixi run barrier-watch barrier --speed 3</code>, <a href="barriers.html#watch-it-in-ravensim">the page</a>). On the line: 11 of 11 went round and reached the goal, least gap 0.75 m. 0.4 m beside: 3 of 3, 0.71 m. 1.0 m beside: 2 of 2. Baselines, on the line and 0.4 m beside: plain touched 7 of 8; the step stopped short 6 of 7. Not yet 10 each in one set; <code>mppi_lag</code> not run</td>
 </tr>
 <tr>
 <td>R5</td>
@@ -477,15 +477,15 @@ the car is ready for.</p>
 </tr>
 <tr>
 <td>Partly</td>
-<td>R3 (3 runs of 10)</td>
+<td>R3 (5 runs of 10); R4 (11 runs on the line, 3 and 2 beside: all went round, none touched)</td>
 </tr>
 <tr>
 <td>Against it</td>
-<td>going round needs about 3 m/s (R4 not possible yet); the solver is unsettled on most ticks with a barrier near (B6 matters)</td>
+<td>going round needs 2.5 m/s or more, and the car drives 1 m/s; the go-round brakes to 0.3 to 1 m/s first; the solver is unsettled on most ticks with a barrier near (B6 matters)</td>
 </tr>
 <tr>
 <td>Not started</td>
-<td>part 1, R2, R4 to R8, part 3</td>
+<td>part 1, R2, R5 to R8, part 3</td>
 </tr>
 </tbody>
 </table></div></section>

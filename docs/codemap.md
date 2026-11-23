@@ -116,6 +116,7 @@ current): after adding, moving or removing a package, run
 | [aav_ghost](../ros/safety/aav_ghost/README.md) | Python | Ghost obstacles | `aav_ghost/ghost.py` | `aav_ghost/ghost_cli.py`, `aav_ghost/ghost_obstacle.py` | `test/` | `config/` |
 | [aav_joy_alive_rs](../ros/safety/aav_joy_alive_rs/README.md) | Rust | joy_alive in Rust (rclrs) | `crates/joy-alive-core` | `crates/joy-alive-node` | - | - |
 | [aav_safety](../ros/safety/aav_safety/README.md) | Python | The sensor watchdog | `aav_safety/(6 modules)` | - | `test/` | `config/`, `launch/` |
+| [aav_safety_filter_rs](../ros/safety/aav_safety_filter_rs/README.md) | Rust | The safety filter for the automatic drivers, in Rust (rclrs), in shadow by default | `crates/safety-filter` | `crates/safety-filter-node` | - | - |
 | [aav_safety_rs](../ros/safety/aav_safety_rs/README.md) | Rust | The geofence, the stop hold and the goal leash in Rust (rclrs) | `crates/safety-core` | `crates/safety-node` | `test/` | - |
 | [aav_self_test_rs](../ros/safety/aav_self_test_rs/README.md) | Rust | The boot self-test in Rust (rclrs), TODO 255 | `crates/self-test-core` | `crates/self-test-node` | `test/` | `launch/` |
 | [aav_stop_zone](../ros/safety/aav_stop_zone/README.md) | Rust | The stop zone in Rust (rclrs) | `crates/stop-zone` | `crates/stop-zone-node` | - | - |
