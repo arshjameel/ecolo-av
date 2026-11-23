@@ -9,6 +9,9 @@
 //!
 //! The car here lags (speed 0.3 s, steering 0.8 rad/s), which the filter's model leaves
 //! out: the margins are what absorb it. Change a setting and these say if a margin is gone.
+//!
+//! `guarantees.proptest-regressions` holds the cases that once failed; proptest runs them
+//! first. It is in git on purpose: each is a finding (the README, "What the tests found").
 
 use ego_core::stop_law::StopCurve;
 use proptest::prelude::*;
@@ -125,8 +128,16 @@ fn drive(lane: &Lane, car: Car, driver: &Hostile, filtered: bool) -> Vec<safety_
     ticks
 }
 
+/// 400 cases a property, or `PROPTEST_CASES` (a soak: `PROPTEST_CASES=5000 cargo test`).
+fn cases() -> u32 {
+    std::env::var("PROPTEST_CASES")
+        .ok()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(400)
+}
+
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(400))]
+    #![proptest_config(ProptestConfig::with_cases(cases()))]
 
     #[test]
     fn never_faster_never_reversed(cmds in prop::collection::vec((-3.0..3.0f64, -2.0..2.0f64), 1..50),
@@ -188,4 +199,50 @@ fn the_drivers_are_hostile_without_the_filter() {
     assert!(past <= 0.0, "{past}");
     let (_, over) = worst(&drive(&lane, car, &swerve, true));
     assert!(over <= 0.0, "{over}");
+}
+
+/// The case proptest found on 23 Nov (`guarantees.proptest-regressions`), kept as a plain
+/// test. The driver rides the right lane line of a left bend at full speed, then asks for
+/// 0.019 m/s with a hard right turn, then for full speed again.
+///
+/// Before the fix the lane rules looked only at the *commanded* speed: under 0.02 m/s
+/// they stood aside, though the car still rolled at 1.5 m/s. The hard right went straight
+/// to the wheels, the car turned out while it slowed, and the body went 0.044 m over the
+/// line. Now the lane is judged at the speed the car has.
+#[test]
+fn a_creep_command_while_the_car_still_rolls_cannot_swing_it_over_the_line() {
+    let lane = bending_lane(30.0, HALF_LANE, 15.0);
+    let car = Car {
+        x: 1.0,
+        y: 0.0,
+        yaw: 0.0,
+        v: 0.0,
+        steer: 0.0,
+    };
+    let driver = Hostile {
+        pieces: vec![
+            (2.7579002506139427, -0.09505525071709515),
+            (0.01856879439669645, -1.2389701371307913),
+            (2.9041956209582316, 0.0),
+        ],
+        hold: 3.550266885039675,
+    };
+    let ticks = drive(&lane, car, &driver, true);
+    let (past, over) = worst(&ticks);
+    assert!(past <= 0.0, "passed the end by {past:.3} m");
+    assert!(over <= 0.0, "over a lane line by {over:.3} m");
+    // The lane margin (0.2 m) is kept too, give or take the car's lag.
+    assert!(
+        over <= -0.15,
+        "the body came within {:.3} m of a line",
+        -over
+    );
+    // And the filter did not buy that by parking the car: it drives on to the end.
+    let start = ticks[0].room;
+    let end = ticks.last().expect("ticks").room;
+    assert!(
+        start - end > 20.0,
+        "the car only covered {:.1} m",
+        start - end
+    );
 }

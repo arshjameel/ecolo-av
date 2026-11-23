@@ -235,9 +235,15 @@ pub struct SafetyFilter {
 
 /// The tick's length, kept sane: a long gap must not let the speed jump.
 const MAX_DT: f64 = 0.2;
-/// Below this forward speed (m/s) the lane and Lyapunov rules don't act: the car barely
-/// moves, and ego holds the wheels where they are.
+/// m/s: the slowest speed the lane is judged at (the bounds divide by it), and below it
+/// the Lyapunov pull is off. The lane barriers act at every forward speed: a command
+/// below this while the car still rolls is judged at the speed the car has (the 23 Nov
+/// finding, the README).
 const CREEP: f64 = 0.02;
+
+/// m/s: with the lane out of the wheels' reach but the reach bringing the car back, the
+/// car slows to this, not to a stop. In 1.25 s (lock to lock at 0.8 rad/s) it covers 0.13 m.
+const CRAWL: f64 = 0.1;
 
 impl SafetyFilter {
     /// A filter that has sent nothing yet.
@@ -348,35 +354,44 @@ pub fn filter(s: &Settings, last: Command, cmd: Command, inputs: &Inputs) -> Rep
 
     // 2. The driver's curve, at the new speed.
     let wanted = keep_curve(cmd, v);
-    if v < CREEP {
+    // The speeds the lane is judged at. The car lags its command, so its real speed is
+    // somewhere between the one measured and the one going out: the lane must hold at both.
+    let moving = measured.unwrap_or(v);
+    if v <= 0.0 {
+        // A stop: ego holds the wheels where they are.
         r.output = Command { v, w: wanted };
         return r;
     }
+    let slow = v.min(moving).max(CREEP);
+    let fast = v.max(moving);
 
     // 3 and 4. The lane, the Lyapunov pull and the wheels.
     let reach = v * s.max_curvature();
     let (mut low, mut high) = (-reach, reach);
-    let lane = lane_bounds(s, &frame, v);
+    let lane = lane_bounds(s, &frame, slow, fast, v);
     if let Some(b) = lane {
         r.h_left = b.h_left;
         r.h_right = b.h_right;
     }
     let mut w = wanted;
-    if let (Some(b), true) = (lane, s.clf_weight > 0.0) {
+    if let (Some(b), true) = (lane, s.clf_weight > 0.0 && v >= CREEP) {
         let pulled = lyapunov_pull(s, &frame, v, w, b.c);
         if (pulled - w).abs() > 1e-12 {
             r.rules.push(Rule::Lyapunov);
         }
         w = pulled;
     }
-    let mut infeasible = false;
+    // `Some(true)`: the lane is out of the wheels' reach, but the reach still brings the
+    // look-ahead point back; `Some(false)`: out of reach, and still going out.
+    let mut infeasible = None;
     if let Some(b) = lane {
         if b.low > high || b.high < low {
             // The lane can't be kept with the wheels' reach: keep the reach (physics),
             // steer as near the lane as it allows, and slow down.
-            infeasible = true;
             r.rules.push(Rule::LaneInfeasible);
             let toward = if b.low > high { high } else { low };
+            let back = p_rate(&frame, v, toward, b.c);
+            infeasible = Some(if b.low > high { back > 0.0 } else { back < 0.0 });
             low = toward;
             high = toward;
         } else {
@@ -402,8 +417,17 @@ pub fn filter(s: &Settings, last: Command, cmd: Command, inputs: &Inputs) -> Rep
     }
     r.w_low = low;
     r.w_high = high;
-    if infeasible {
-        v = v.min((speed_now - s.curve.a() * dt).max(0.0));
+    if let Some(coming_back) = infeasible {
+        // Slow from the speed the car has (measured), not from the last command: a car
+        // still speeding up toward its command would otherwise go on speeding up.
+        let from = measured.unwrap_or(speed_now);
+        // Coming back, it crawls, not stops: stopped, ego holds the wheels where they
+        // are, and the car would never turn back into its lane.
+        let floor = if coming_back { CRAWL } else { 0.0 };
+        let slowed = v.min((from - s.curve.a() * dt).max(floor));
+        // The wheels' curve is kept as the speed falls (w / v is what ego steers by).
+        w = if v > 0.0 { w * slowed / v } else { w };
+        v = slowed;
     }
     r.output = Command { v, w };
     if let Some(b) = lane {
@@ -481,17 +505,23 @@ fn p_rate(f: &Frame, v: f64, w: f64, c: f64) -> f64 {
     v * f.twist.sin() + c * (w - v * f.curvature)
 }
 
-/// The lane barriers as an interval for w; `None` without known edges.
+/// The lane barriers as an interval for w at the speed going out; `None` without known
+/// edges.
 ///
 /// ```text
 /// h_L = room_L − p ≥ 0,   h_R = room_R + p ≥ 0          room = edge − half width − margin
-/// CBF:  ṗ ≤ α·h_L  and  ṗ ≥ −α·h_R
-///   ⇔   v·κ + (−α·h_R − v·sin e_ψ)/c  ≤  w  ≤  v·κ + (α·h_L − v·sin e_ψ)/c
+/// CBF:  ṗ ≤ α·h_L  and  ṗ ≥ −α·h_R,   with  ṗ = u·sin e_ψ + c·u·(k − κ)
+///   ⇔   κ + (−α·h_R/u − sin e_ψ)/c  ≤  k  ≤  κ + (α·h_L/u − sin e_ψ)/c
 /// ```
+///
+/// `k = w / v` is the curve the wheels are given (ego steers by it), and `u` is the speed
+/// the car really has: anywhere from `slow` to `fast`, because the car lags its command.
+/// Each bound is linear in `1/u`, so it is tightest at one end of that range: both ends
+/// are taken. The interval for w is the one for k, times `v_out`.
 ///
 /// The look-ahead point makes the barrier "relative degree one": w moves p at once,
 /// where the offset itself only moves once the heading has turned.
-fn lane_bounds(s: &Settings, f: &Frame, v: f64) -> Option<LaneBounds> {
+fn lane_bounds(s: &Settings, f: &Frame, slow: f64, fast: f64, v_out: f64) -> Option<LaneBounds> {
     if !(f.left.is_finite() && f.right.is_finite()) {
         return None;
     }
@@ -504,15 +534,27 @@ fn lane_bounds(s: &Settings, f: &Frame, v: f64) -> Option<LaneBounds> {
     let room_right = f.right - s.half_width - s.lane_margin;
     let h_left = room_left - p;
     let h_right = room_right + p;
-    let drift = v * f.twist.sin();
-    let base = v * f.curvature;
+    let base = f.curvature - f.twist.sin() / c;
+    let curve_low = |u: f64| base - s.alpha_lane * h_right / (u * c);
+    let curve_high = |u: f64| base + s.alpha_lane * h_left / (u * c);
+    let mut low = curve_low(slow).max(curve_low(fast));
+    let mut high = curve_high(slow).min(curve_high(fast));
+    if low > high {
+        // Over one line already, at two speeds that ask for different curves: the line
+        // the car is nearer wins.
+        if h_right < h_left {
+            high = low;
+        } else {
+            low = high;
+        }
+    }
     Some(LaneBounds {
         p,
         c,
         h_left,
         h_right,
-        low: base + (-s.alpha_lane * h_right - drift) / c,
-        high: base + (s.alpha_lane * h_left - drift) / c,
+        low: low * v_out,
+        high: high * v_out,
     })
 }
 
@@ -713,6 +755,52 @@ mod tests {
         s.clf_weight = 0.0;
         let off = filter(&s, last, Command { v: 1.0, w: 0.0 }, &inputs(Some(f), 1.0));
         assert_eq!(off.output.w, 0.0);
+    }
+
+    #[test]
+    fn a_creep_command_is_judged_at_the_speed_the_car_still_has() {
+        // 23 Nov: the car rolls at 1.5 m/s beside the right line; the driver asks for
+        // 0.01 m/s and a hard right. ego steers by w / v: that is full right lock.
+        let s = settings();
+        let last = Command { v: 1.5, w: 0.0 };
+        let f = frame(50.0, -0.85, 0.0, 1.5);
+        let cmd = Command { v: 0.01, w: -1.0 };
+        let r = filter(&s, last, cmd, &inputs(Some(f), 1.5));
+        assert_eq!(r.output.v, 0.01);
+        assert!(r.rules.contains(&Rule::LaneRight), "{:?}", r.rules);
+        // h_R = 0.9 − 0.85 = 0.05 m; at 1.5 m/s the curve may be no tighter to the right
+        // than −α·h_R / (u·c) = −0.05 / (1.5 · 1.5).
+        let curve = r.output.w / r.output.v;
+        assert!((curve + 0.05 / 2.25).abs() < 1e-9, "{curve}");
+        // With the car itself at a crawl, the same command has far more room to turn.
+        let slow = filter(&s, cmd, cmd, &inputs(Some(f), 0.01));
+        assert!(slow.output.w / slow.output.v < curve);
+    }
+
+    #[test]
+    fn over_a_line_and_stopped_it_crawls_back_and_does_not_freeze() {
+        // Stopped a little past the right margin: no curve brings it back as fast as the
+        // barrier asks, so the lane is "infeasible". Full left lock does bring it back.
+        let s = settings();
+        let f = frame(50.0, -0.95, 0.0, 1.5);
+        let r = filter(
+            &s,
+            Command::default(),
+            Command { v: 1.0, w: 0.0 },
+            &inputs(Some(f), 0.0),
+        );
+        assert!(r.rules.contains(&Rule::LaneInfeasible), "{:?}", r.rules);
+        assert_eq!(r.output.v, CRAWL);
+        assert!((r.output.w / r.output.v - s.max_curvature()).abs() < 1e-9);
+        // Facing out across the line, full lock does not bring it back: it stops.
+        let out = frame(50.0, -0.95, -1.2, 1.5);
+        let r = filter(
+            &s,
+            Command::default(),
+            Command { v: 1.0, w: 0.0 },
+            &inputs(Some(out), 0.0),
+        );
+        assert_eq!(r.output.v, 0.0);
     }
 
     #[test]

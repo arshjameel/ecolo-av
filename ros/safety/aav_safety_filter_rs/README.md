@@ -80,8 +80,14 @@ nothing behind the car (as ego).
 - Never faster, never reversed: `|v_out| ≤ |v_in|`, the same sign; a stop stays a stop.
 - No fresh road or pose, a car more than `max_offset` off its line, or a command that
   isn't a number: no forward motion.
+- The lane barriers act at **every forward speed**, and judge the lane at the speed the
+  car **has** as well as the speed going out (the car lags its command): a tiny `v` with
+  a large `w` is still full lock to ego, which steers by `w / v` (found 23 Nov, below).
 - The wheels' reach (`|w| ≤ v·tan δ_max / L`) is physics: when the lane can't be kept
-  within it, the reach wins, the turn goes as near the lane as it allows, and the car slows.
+  within it, the reach wins, the turn goes as near the lane as it allows, and the car
+  slows from its measured speed: to a stop if full lock still takes it out, to a crawl
+  (0.1 m/s) if full lock brings it back (stopped, ego holds the wheels: it would never
+  turn back in).
 - Never in a person's path (K1). Not a lock: locks still stop the car; this only trims.
 - `safety-filter` has no ROS. Rust API Guidelines: enums (`Rule`), `Result`
   (`SettingsError`), no `unwrap` in library code; `cargo fmt` and `cargo clippy -D
@@ -108,24 +114,52 @@ pixi run build && colcon test --packages-select aav_safety_filter_rs
 | Test | Covers |
 |---|---|
 | `filter` and `lane` unit tests | each rule's own cases; the frame on lines and circles, past the end |
-| `tests/guarantees.rs` (proptest, 400 cases each) | never faster or reversed; any hostile driver, on a straight road and a bend, never passes the end nor puts the body over a lane line, with a lagging car; the same drivers do both without the filter |
+| `tests/guarantees.rs` (proptest, 400 cases each; `PROPTEST_CASES=5000` for a soak) | never faster or reversed; any hostile driver, on a straight road and a bend, never passes the end nor puts the body over a lane line, with a lagging car; the same drivers do both without the filter; the 23 Nov case as a plain test |
+| `tests/guarantees.proptest-regressions` | the failing cases proptest has found, run first every time. In git on purpose |
 | `examples/ablation.rs` | the filter's parts taken away one at a time, on the same 300 hostile drivers |
 
-The ablation (20 Nov; a 30 m bend of radius 15 m, lane lines 1.5 m from the line, 40 s a
+The ablation (20 Nov, run again 23 Nov after the fix below; a 30 m bend of radius 15 m, lane lines 1.5 m from the line, 40 s a
 run, the filter at 20 Hz, the car lagging):
 
 | Variant | Runs past the end | Runs over a line | Mean progress (m) | Mean \|offset\| (m) |
 |---|---|---|---|---|
 | open (no filter) | 24/300 | 299/300 | 11.3 | 6.53 |
 | speed barrier only | 0/300 | 299/300 | 6.8 | 3.12 |
-| speed + lane barriers | 0/300 | 0/300 | 28.0 | 0.640 |
-| full (+ Lyapunov) | 0/300 | 0/300 | 28.1 | 0.619 |
+| speed + lane barriers | 0/300 | 0/300 | 27.9 | 0.638 |
+| full (+ Lyapunov) | 0/300 | 0/300 | 28.0 | 0.617 |
 
 The barriers make it safe; the Lyapunov term only tightens the line a little (3 % less
 offset). Two findings on the way: the speed barrier first trusted a closing speed of `v`,
 which is wrong off the line on the inside of a bend (`closing` now uses
 `v·cos e_ψ / (1 − κ·e_y)`); and a car far off its line makes the frame meaningless (the
 nearest point jumps), hence `max_offset`.
+
+### What the tests found (23 Nov)
+
+The property test `a_bend_holds_any_driver` found a driver that put the body **0.044 m
+over a lane line**. It was a real hole in the filter, not in the test. The promise did
+not change; the filter now keeps it.
+
+| | |
+|---|---|
+| The driver | rides the right line of a left bend at 2 m/s; then asks for `v` 0.019 m/s, `w` −1.24 rad/s; 3.5 s later, full speed again |
+| Why it got through | the lane rules stood aside when the **commanded** speed was under 0.02 m/s ("the car barely moves"). But the car still rolled at 1.5 m/s, and ego steers by `w / v`: full right lock. The car turned out while it slowed |
+| Made worse by | the out-of-reach rule slowed from the last *command* (2 m/s), not from the car's speed (0.3 m/s): the car went on speeding up, 0.24 m past its margin |
+| Fix 1 | the lane bounds are on the curve `k = w / v`, judged at both ends of the car's speed range (measured, and going out). Each bound is linear in `1/u`, so the two ends are the worst cases |
+| Fix 2 | no "barely moves" exception: the lane rules act at every forward speed (a 0.019 m/s driver could also have crept over a line, given time) |
+| Fix 3 | out of reach, the car slows from its **measured** speed; it crawls at 0.1 m/s when full lock brings it back, and stops when it doesn't |
+| The same case now | the body stays 0.228 m inside the line (the 0.2 m margin holds), and the car drives on to the road's end |
+| The promise | as before: with the test's lagging car, no hostile driver puts the body over a lane line or past the end. Still not proven for a car whose steering can't follow |
+
+| Run after the fix (23 Nov, a Mac) | Result |
+|---|---|
+| `cargo test --locked -p safety-filter`, with the saved case | 20 unit + 5 guarantee tests pass |
+| `PROPTEST_CASES=5000`, 4 times | no failure in any property |
+| `PROPTEST_CASES=40000`, 3 times | no failure in any property |
+
+Not tested by these: a driver that asks for under 0.02 m/s is rare in the random drivers
+(under 1 % of pieces), so the unit tests in `filter.rs` carry that case. ego's own floor
+is 0.05 m/s (`min_speed_for_steering`): on the car, a command under it holds the wheels.
 
 Live, the node in shadow on a pretend road (20 Nov, `ROS_DOMAIN_ID` of its own): plenty
 of room passed unchanged; 2 m/s near the end became 0 (`max_speed speed_barrier`); a hard
