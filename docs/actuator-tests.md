@@ -389,8 +389,10 @@ they check on the car, and the live IMU watch runs too. `--on-jacks` is your wor
 `--stands` is on the car: the watch stops the run if the IMU says the car moves.
 
 **The live IMU watch** stops the run when the IMU's speed change over 2 s passes 0.15 m/s.
-A noisy IMU reaches that standing still, so the mark is the larger of 0.15 and 5 x what its
-own noise at rest adds up to, and never over 0.25 (the cap is 0.3). A quiet IMU keeps 0.15.
+**On the real car the mark is a fixed 0.15 m/s** (Ben, 23 Nov), until its IMU's noise at
+rest is measured. In the simulator (`--sim`) a noisy IMU reaches that standing still, so
+there the mark is the larger of 0.15 and 5 x what its own noise at rest adds up to, and
+never over 0.25 (the cap is 0.3).
 
 Who must be there on the car:
 the **e-stop person** (they are the stop), someone watching the **rear wheels** with a

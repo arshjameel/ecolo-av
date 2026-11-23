@@ -146,7 +146,8 @@ class PreflightRun(Run):
         self.lines = []
         self.end = None
         self.result = 0
-        self.watch = pf.ImuWatch()
+        # The mark follows the IMU's noise in the simulator only (Ben, 23 Nov).
+        self.watch = pf.ImuWatch(by_noise=bool(getattr(args, 'sim', False)))
         self.ground = False
         self.standin = False
 

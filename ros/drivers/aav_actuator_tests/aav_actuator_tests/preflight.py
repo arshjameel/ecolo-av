@@ -490,7 +490,11 @@ class ImuWatch:
     the last WATCH_WINDOW s only, so the bias's small error can't build up.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, by_noise: bool = False) -> None:
+        # by_noise: the mark may rise with the IMU's own noise (limit()). Only for the
+        # simulator (Ben, 23 Nov): the real car keeps the fixed WATCH_SPEED until its
+        # IMU's noise at rest has been measured.
+        self.by_noise = by_noise
         self.bias: Optional[Tuple[float, float]] = None
         self.noise = 0.0     # m/s^2: the noisier axis's spread at rest
         self.rest_samples: List[Tuple[float, float]] = []
@@ -516,11 +520,14 @@ class ImuWatch:
         """
         Return the speed change (m/s) that means "moving", over readings `steps` s apart.
 
-        WATCH_SPEED, unless the IMU's own noise at rest, added up the same way, would
+        WATCH_SPEED always on the real car. In the simulator (by_noise): WATCH_SPEED,
+        unless the IMU's own noise at rest, added up the same way, would
         reach it by chance: then WATCH_SIGMAS times that sum, and never over WATCH_MOST.
         The sum has two parts: each reading's noise, and the bias's own error (the mean
         of the rest readings), which every reading in the window carries.
         """
+        if not self.by_noise:
+            return WATCH_SPEED
         n = max(len(self.rest_samples), 1)
         summed = self.noise * math.sqrt(sum(dt * dt for dt in steps) + sum(steps) ** 2 / n)
         return min(max(WATCH_SPEED, WATCH_SIGMAS * summed), WATCH_MOST)

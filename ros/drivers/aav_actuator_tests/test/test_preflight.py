@@ -304,7 +304,7 @@ def test_a_still_receivers_noise_is_not_a_moving_car():
 
 
 def test_the_imu_watch_allows_for_the_imus_own_noise_and_no_more():
-    quiet = pf.ImuWatch()
+    quiet = pf.ImuWatch(by_noise=True)
     for _ in range(100):
         quiet.rest(0.0, 0.0)
     assert quiet.start()
@@ -313,7 +313,7 @@ def test_the_imu_watch_allows_for_the_imus_own_noise_and_no_more():
     # A noisy one: 0.15 m/s^2 at 50 Hz sums to 0.039 m/s over 2 s (the readings' own
     # 0.030, the bias's error 0.024), so 5 x that.
     rng = random.Random(3)
-    noisy = pf.ImuWatch()
+    noisy = pf.ImuWatch(by_noise=True)
     for _ in range(150):
         noisy.rest(rng.gauss(0, 0.15), rng.gauss(0, 0.15))
     assert noisy.start()
@@ -323,10 +323,19 @@ def test_the_imu_watch_allows_for_the_imus_own_noise_and_no_more():
     assert noisy.limit([0.02] * 100) == pf.WATCH_MOST < 0.3
 
 
+def test_on_the_real_car_the_imu_watch_keeps_its_fixed_mark_whatever_the_noise():
+    rng = random.Random(3)
+    car = pf.ImuWatch()
+    for _ in range(150):
+        car.rest(rng.gauss(0, 0.2), rng.gauss(0, 0.2))
+    assert car.start()
+    assert car.limit([0.02] * 100) == pf.WATCH_SPEED
+
+
 def test_a_still_car_with_a_noisy_imu_does_not_trip_the_watch_but_a_rolling_one_does():
     def run(accel, seed):
         rng = random.Random(seed)
-        watch = pf.ImuWatch()
+        watch = pf.ImuWatch(by_noise=True)
         for _ in range(150):
             watch.rest(rng.gauss(0, 0.2), rng.gauss(0, 0.2))
         watch.start()
