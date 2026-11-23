@@ -14,7 +14,11 @@ ROS domain of its own), so it never reaches a real car.
   Ctrl-C                                       stops everything it started
 
 It starts Ravensim's road world with navigation and the ghost, and (without --headless)
-RViz on rviz/barrier.rviz: the map, the ghost (purple), the plan, and the car's trail. It
+our own navigation view (pixi run nav-view, the developer window's map panel alone) on that
+simulator, the mode in its title: the map, the local costmap, the ghost (purple) in the
+barrier's keep-out circle, the plan, the car's trail and the stop zone's box. It keeps the
+view's newest picture beside the CSV (<mode>-<speed>-<offset>.png, every 2 s). RViz opens
+only with --rviz (rviz/barrier.rviz, the reference). It
 waits for navigation, places the ghost, sends a goal straight ahead, and prints one line.
 Every safety lock stays on (the stop zone too): nothing here takes one out.
 
@@ -29,7 +33,8 @@ Options:
   --radius M       the ghost's radius (0.25: a person 0.5 m wide)
   --gamma G        with barrier: another share of the room a tick (0.05)
   --headless       no windows, and stop when the drive ends (tests)
-  --dev-window     also the developer window, live (pixi run dev-window --live)
+  --dev-window     the whole developer window, live, in place of the navigation view
+  --rviz           also RViz, on rviz/barrier.rviz (the stock viewer: the reference only)
   --side-by-side   two runs at once, each its own simulator and domain: plain and barrier
                    (or --modes plain,step)
   --keep S         with windows: stay open this long after the result (default: until Ctrl-C)
@@ -68,6 +73,7 @@ def options(argv):
     parser.add_argument('--gamma', type=float)
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--dev-window', action='store_true')
+    parser.add_argument('--rviz', action='store_true')
     parser.add_argument('--side-by-side', action='store_true')
     parser.add_argument('--modes', default='plain,barrier')
     parser.add_argument('--keep', type=float)
@@ -130,8 +136,9 @@ def side_by_side(args, argv):
     # The second: another free one. free_domain looks at what runs now, and the first
     # simulator isn't up yet: step past it.
     domains = [first, first + 1 if first < 232 else first - 1]
-    for mode, domain in zip(modes, domains):
-        env = dict(os.environ, AAV_SIM_DOMAIN=str(domain))
+    for slot, (mode, domain) in enumerate(zip(modes, domains)):
+        # The slot: where this run's window opens, so the two sit beside each other.
+        env = dict(os.environ, AAV_SIM_DOMAIN=str(domain), AAV_BARRIER_WATCH_SLOT=str(slot))
         start([sys.executable, os.path.abspath(__file__), mode, *passed], env=env)
         print(f'{mode}: its own simulator, on ROS domain {domain}', flush=True)
     codes = [group.wait() for group in list(GROUPS)]
@@ -161,10 +168,12 @@ def run(args, extra):
     if not args.headless:
         title = (f'barrier-watch: {args.mode.upper()}, {args.speed:g} m/s, the ghost '
                  f'{args.offset:g} m left')
-        start(['rviz2', '-d', rviz_layout(f'{stem}.rviz', args), '-t', title],
-              f'{stem}-rviz.log', env)
-        if args.dev_window:
-            start(['tools/dev_window.sh', '--live'], f'{stem}-window.log', env)
+        start(view_command(args, title, f'{stem}.png',
+                           os.environ.get('AAV_BARRIER_WATCH_SLOT')),
+              f'{stem}-window.log', env)
+        if args.rviz:       # only when asked: the stock viewer, as the reference
+            start(['rviz2', '-d', rviz_layout(f'{stem}.rviz', args), '-t', title],
+                  f'{stem}-rviz.log', env)
     rclpy.init()
     probe = sim_check.Probe()
     status = {}
@@ -199,7 +208,7 @@ def run(args, extra):
                                    width=2.0 * args.radius, enabled=True):
             print("FAILED TO START: ghost_obstacle didn't take the ghost")
             return 1
-        probe.keep_out = keep_out(probe, gx, gy, args.radius)    # held: RViz may come late
+        probe.keep_out = keep_out(probe, gx, gy, args.radius)    # held: a view may come late
         if probe.glob.header.frame_id != 'map':
             print(f'FAILED TO START: the global EKF is in {probe.glob.header.frame_id}, not map')
             return 1
@@ -248,6 +257,28 @@ def run(args, extra):
         rclpy.try_shutdown()
 
 
+VIEW_WIDTH = 900    # the navigation view's window, points across (dev_window --map-only)
+
+
+def view_command(args, title, picture, slot=None):
+    """
+    Return the command of this run's own picture: our navigation view, live on its simulator.
+
+    The developer window's map panel alone (tools/dev_window.sh --map-only), or the whole
+    window with --dev-window; the mode in the title; the view as wide as the drive and a
+    margin, following the car; its newest screenshot kept in `picture`. `slot` (0 or 1,
+    a side-by-side pair): the second window opens to the right of the first.
+    """
+    command = ['tools/dev_window.sh']
+    if not args.dev_window:
+        command.append('--map-only')
+    command += ['--live', '--title', title, '--map-span', f'{args.goal + 20.0:g}',
+                '--screenshot', picture, '--screenshot-every', '2']
+    if slot is not None:
+        command += ['--position', f'{40 + int(slot) * (VIEW_WIDTH + 20)},60']
+    return command
+
+
 def rviz_layout(path, args):
     """
     Write this run's copy of rviz/barrier.rviz, its view on this drive; return the path.
@@ -275,10 +306,11 @@ KEEP_OUT = 1.12 + 0.2
 
 def keep_out(probe, x, y, radius):
     """
-    Draw the barrier's keep-out circle round the object, for RViz; return what holds it.
+    Draw the barrier's keep-out circle round the object, for the view; return what holds it.
 
     The same circle in every mode, so the plain run shows what it drives through. A line
-    on the ground in the map frame, sent once and kept for a late RViz (transient local).
+    on the ground in the map frame, sent once and kept for a view that starts late
+    (transient local). The topic is in docs/interfaces.yaml; only screens read it.
     """
     from geometry_msgs.msg import Point
     from rclpy.qos import DurabilityPolicy, QoSProfile

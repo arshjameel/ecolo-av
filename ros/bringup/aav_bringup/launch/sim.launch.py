@@ -4,7 +4,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
   ros2 launch aav_bringup sim.launch.py [stack:=ours|best|car|]
       [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
-      [teleop:=false] [rviz:=true]
+      [teleop:=false] [rviz:=false]
       [perception:=false] [lane:=false|true] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
@@ -43,7 +43,7 @@ the stack's pick; a single switch given by hand (planner:=) still wins over both
 stack:= (empty): no stack, each switch as given, else the champions'. The real
 car (car.launch.py) keeps its own choices until ours wins there too.
   pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
-  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Ravensim, RViz, navigation, the HUD
+  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Ravensim, navigation, the HUD
   pixi run sim world:=test_lot map:=true           ... and the big screen's map window
 
 world:=empty pairs with the empty map (phase 2); world:=test_lot with
@@ -934,7 +934,8 @@ def generate_launch_description():
         DeclareLaunchArgument('nav', default_value='true'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer'),
-        DeclareLaunchArgument('rviz', default_value='true'),
+        # Off: our own navigation view is the nav screen (pixi run nav-view, docs/hud.md).
+        DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher (the ml '
                                           'environment; world:=road)'),
