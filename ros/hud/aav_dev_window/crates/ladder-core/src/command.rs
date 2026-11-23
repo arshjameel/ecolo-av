@@ -3,12 +3,35 @@
 
 use std::{path::Path, process::Command};
 
-use crate::ladder::{Place, Rung};
+use crate::ladder::{Place, Rung, SingleTest};
 
 /// The interpreter: the one on the path (`pixi run ladder-window` puts pixi's first).
 pub const PROGRAM: &str = "python3";
 /// The tool, from the repository's root.
 pub const TOOL: &str = "tools/ladder.py";
+
+/// Which of a rung's simulator sessions to show.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Which {
+    /// The newest run, a single test included.
+    #[default]
+    Newest,
+    /// The session the ladder's newest result names.
+    Recorded,
+}
+
+impl Which {
+    pub const ALL: [Self; 2] = [Self::Newest, Self::Recorded];
+
+    /// The choice's words on the screen.
+    #[must_use]
+    pub fn words(self) -> &'static str {
+        match self {
+            Self::Newest => "the newest run",
+            Self::Recorded => "the session the ladder recorded",
+        }
+    }
+}
 
 /// A result a person records.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -76,6 +99,22 @@ impl ToolCommand {
     /// car side at all.
     pub(crate) fn run_in_simulator(rung: &Rung) -> Self {
         Self::new(["run", &rung.id])
+    }
+
+    /// Run one of a rung's tests alone, in the simulator; the tool records nothing. Only
+    /// [`crate::show::test_button`] makes one. The tool's `run --only` has no car side.
+    pub(crate) fn run_one_in_simulator(rung: &Rung, test: &SingleTest) -> Self {
+        Self::new(["run", &rung.id, "--only", &test.name])
+    }
+
+    /// One of a rung's simulator sessions, as JSON: the tool reads the report's files.
+    #[must_use]
+    pub fn session(rung: &Rung, which: Which) -> Self {
+        let mut command = Self::new(["session", &rung.id, "--json"]);
+        if which == Which::Recorded {
+            command.args.push("--recorded".into());
+        }
+        command
     }
 
     /// Record a result by hand. It runs nothing: `--car` only says where a person ran it.
@@ -150,6 +189,24 @@ mod tests {
         assert_eq!(
             ToolCommand::table().line(),
             "python3 tools/ladder.py --json"
+        );
+    }
+
+    #[test]
+    fn a_session_is_asked_of_the_tool_and_a_single_test_is_its_run_only() {
+        let lot = rung("lot");
+        assert_eq!(
+            ToolCommand::session(&lot, Which::Newest).args(),
+            ["tools/ladder.py", "session", "lot", "--json"]
+        );
+        assert_eq!(
+            ToolCommand::session(&lot, Which::Recorded).args(),
+            ["tools/ladder.py", "session", "lot", "--json", "--recorded"]
+        );
+        let brake = lot.test("brake").expect("the pretend lot has brake");
+        assert_eq!(
+            ToolCommand::run_one_in_simulator(&lot, brake).args(),
+            ["tools/ladder.py", "run", "lot", "--only", "brake"]
         );
     }
 

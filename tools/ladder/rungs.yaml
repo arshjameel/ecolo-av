@@ -2,6 +2,12 @@
 #   needs: the rungs that must have passed in the same place before this one opens.
 #   sim, car: the command that runs it there ('' = by hand: see `how`).
 #   on_car: false for a rung with no car side (it counts for the car once the simulator's passes).
+#   tests, sim_one: the rung's single tests, by the runner's own list (stands, hallway or
+#   lot: tools/ladder_report.py), and the command that runs one alone in the simulator
+#   ({test}); never recorded: a rung passes whole.
+#   after: what a person does after its session, as on the car.
+#   --attach in a sim command: it uses the Ravensim already running on this computer (one
+#   you can watch: pixi run dry-run), and starts its own when none is (car-test decides).
 # A car rung also needs its own simulator twin to have passed. tools/ladder.py reads this;
 # progress is saved outside git (~/aav-tests/ladder.yaml).
 rungs:
@@ -40,7 +46,13 @@ rungs:
     measures: 'steering: angle, rate, centre; the wheels follow a speed; faults on purpose'
     passes: car-test --stands, every step PASS
     needs: [bench]
-    sim: pixi run car-test --stands --sim --no-manual
+    sim: pixi run car-test --stands --sim --attach --no-manual
+    sim_one: pixi run car-test --stands --sim --attach --no-manual --only {test}
+    tests: stands
+    after: >-
+      The last step sets the e-stop, and it stays set, as on the car: a person clears it
+      (pixi run clear estop --sim) before the next test. The car is put on stands for the
+      session, and lowered after.
     car: pixi run car-test --stands
     how: docs/actuator-tests.md
   - id: hallway
@@ -49,7 +61,12 @@ rungs:
     measures: 'speed up, coast, brake: dead time, lag, stopping distance, with error bars'
     passes: the model's speed within 10 % of the car's, its stop within 0.2 m
     needs: [stands]
-    sim: pixi run car-test --hallway --sim --no-manual
+    sim: pixi run car-test --hallway --sim --attach --no-manual
+    sim_one: pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds {test}
+    tests: hallway
+    after: >-
+      On the ground: a car left on stands is lowered first. Nobody turns the simulated car
+      round: every pass drives on from where the last one stopped.
     car: pixi run car-test --hallway
     how: docs/actuator-tests.md
   - id: lot
@@ -58,7 +75,12 @@ rungs:
     measures: speed-up, brake, circles and a straight line, at speed
     passes: the hallway's pass rule, at the higher speeds
     needs: [hallway]
-    sim: ''
+    sim: pixi run car-test --lot --sim --attach
+    sim_one: pixi run car-test --lot --sim --attach --only {test}
+    tests: lot
+    after: >-
+      The simulator's twin only: each test passes when it runs to the end. The pass rule
+      at speed (the model within 10 %, the stop within 0.2 m) is read from its summaries.
     car: ''
     how: docs/actuator-tests.md
   - id: route
@@ -67,6 +89,10 @@ rungs:
     measures: 'the scorecard: time, metres off the plan, sway, holds'
     passes: the route done at low speed, no takeover needed for safety
     needs: [lot]
-    sim: ''
+    sim: pixi run measure controllers --tours lot
+    after: >-
+      The simulator's twin: one scored drive round the test lot through the whole stack,
+      in its own simulator with no picture; it passes when every goal is reached. The
+      scores are in its report (log/controller-compare/).
     car: ''
     how: docs/league.md

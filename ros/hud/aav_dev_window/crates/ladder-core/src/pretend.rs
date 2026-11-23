@@ -1,7 +1,10 @@
 //! Sample data for `--pretend`: the ladder part-way up, with every kind of cell in it, so
 //! the window can be shown with no tool and no progress file. Nothing runs from it.
 
-use crate::ladder::{Ladder, Rung, Side, State};
+use crate::{
+    ladder::{Ladder, Rung, Side, SingleTest, State},
+    report::Report,
+};
 
 /// The pretend ladder: the real rungs' names, made-up results.
 #[must_use]
@@ -60,7 +63,7 @@ pub fn ladder() -> Ladder {
                     ..done(
                         State::Pass,
                         "2026-11-19 16:05",
-                        "pixi run car-test --stands --sim --no-manual",
+                        "pixi run car-test --stands --sim --attach --no-manual",
                     )
                 },
                 shut(
@@ -77,7 +80,10 @@ pub fn ladder() -> Ladder {
                 "speed up, coast, brake: dead time, lag, stopping distance, with error bars",
                 "the model's speed within 10 % of the car's, its stop within 0.2 m",
                 "docs/actuator-tests.md",
-                shut("pixi run car-test --hallway --sim --no-manual", &[]),
+                shut(
+                    "pixi run car-test --hallway --sim --attach --no-manual",
+                    &[],
+                ),
                 shut(
                     "pixi run car-test --hallway",
                     &[
@@ -91,16 +97,34 @@ pub fn ladder() -> Ladder {
                 "speed-up, brake, circles and a straight line, at speed",
                 "the hallway's pass rule, at the higher speeds",
                 "docs/actuator-tests.md",
-                shut("", &["hallway has not passed (sim)"]),
-                shut("", &["hallway has not passed (car)"]),
+                shut(
+                    "pixi run car-test --lot --sim --attach",
+                    &["hallway has not passed (sim)"],
+                ),
+                shut(
+                    "",
+                    &[
+                        "hallway has not passed (car)",
+                        "lot has not passed in the simulator",
+                    ],
+                ),
             ),
             rung(
                 ("route", "A route, the car driving itself", "route"),
                 "the scorecard: time, metres off the plan, sway, holds",
                 "the route done at low speed, no takeover needed for safety",
                 "docs/league.md",
-                shut("", &["lot has not passed (sim)"]),
-                shut("", &["lot has not passed (car)"]),
+                shut(
+                    "pixi run measure controllers --tours lot",
+                    &["lot has not passed (sim)"],
+                ),
+                shut(
+                    "",
+                    &[
+                        "lot has not passed (car)",
+                        "route has not passed in the simulator",
+                    ],
+                ),
             ),
         ],
     }
@@ -121,9 +145,71 @@ fn rung(
         measures: measures.into(),
         passes: passes.into(),
         how: how.into(),
+        after: match id {
+            "stands" => "The last step sets the e-stop, and it stays set, as on the car: a \
+                         person clears it (pixi run clear estop --sim)."
+                .into(),
+            _ => String::new(),
+        },
+        tests: tests(id),
         sim,
         car,
     }
+}
+
+/// A few of each rung's single tests, with the tool's own commands.
+fn tests(id: &str) -> Vec<SingleTest> {
+    let (names, command): (&[(&str, &str, &str)], &str) = match id {
+        "stands" => (
+            &[
+                ("preflight", "1", "the preflight"),
+                ("steer-sweep", "3a", "steering sweep (3.10)"),
+                ("steer-rate", "3b", "steering rate (3.11)"),
+                ("wheel-steps", "4", "throttle on free wheels (3.14)"),
+                ("estop", "5h", "the e-stop"),
+            ],
+            "pixi run car-test --stands --sim --attach --no-manual --only",
+        ),
+        "hallway" => (
+            &[
+                ("coast", "B2", "hallway: stand still, speed up, coast"),
+                ("speed-up", "B1", "hallway: stand still, speed up, brake"),
+                ("brake", "B3", "hallway: stand still, speed up, brake hard"),
+                ("steer", "B4", "hallway: steer left, right, left"),
+            ],
+            "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds",
+        ),
+        "lot" => (
+            &[
+                ("speed-up", "4.1", "speed up: time to 1, 2, 3 m/s"),
+                ("brake", "4.3", "brake: stopping distance"),
+                ("circles", "4.5", "circles: the real wheel angle"),
+            ],
+            "pixi run car-test --lot --sim --attach --only",
+        ),
+        _ => (&[], ""),
+    };
+    names
+        .iter()
+        .map(|&(name, number, title)| SingleTest {
+            name: name.into(),
+            number: number.into(),
+            title: title.into(),
+            command: format!("{command} {name}"),
+        })
+        .collect()
+}
+
+/// A pretend session for a rung: two real ones from Ravensim (22 Nov), kept as the tool
+/// printed them, so the window's table and graph can be shown with no tool.
+#[must_use]
+pub fn report(rung: &str) -> Option<Report> {
+    let json = match rung {
+        "stands" => include_str!("../tests/session-stands.json"),
+        "hallway" => include_str!("../tests/session.json"),
+        _ => return None,
+    };
+    Report::parse(json).ok()
 }
 
 /// A side with a result.
@@ -162,6 +248,25 @@ mod tests {
         let real = Ladder::parse(include_str!("../tests/ladder.json")).expect("it reads");
         let ids = |l: &Ladder| l.rungs.iter().map(|r| r.id.clone()).collect::<Vec<_>>();
         assert_eq!(ids(&ladder()), ids(&real));
+    }
+
+    #[test]
+    fn the_pretend_sessions_read_and_have_a_table_a_graph_and_fits() {
+        let stands = report("stands").expect("the stands session reads");
+        assert!(stands.recorded && stands.steps.len() > 10);
+        assert!(stands.steps.iter().any(|s| s.graph.is_some()));
+        assert!(stands.steps.iter().any(|s| !s.yaml.is_empty()));
+        let hallway = report("hallway").expect("the hallway session reads");
+        assert!(!hallway.fits.is_empty());
+        assert!(report("code").is_none());
+    }
+
+    #[test]
+    fn the_pretend_single_tests_are_the_simulators() {
+        let ladder = ladder();
+        let tests: Vec<_> = ladder.rungs.iter().flat_map(|r| &r.tests).collect();
+        assert!(tests.len() > 8);
+        assert!(tests.iter().all(|t| t.command.contains(" --sim ")));
     }
 
     #[test]

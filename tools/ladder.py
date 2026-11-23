@@ -8,6 +8,11 @@ The test ladder: which rung has passed, which is next, and the progress kept bet
     pixi run ladder record <rung> pass|fail [--car] [--report DIR] [--note TEXT]
                                             [--override WHY]
     pixi run ladder record --from-report ~/aav-tests/<session>   (car-test's report.yaml)
+    pixi run ladder run <rung> --only <test>   one of its tests alone, in the simulator;
+                                            not recorded (a rung passes whole)
+    pixi run ladder session <rung> [--json] the newest simulator session of a rung: each
+                                            step, its numbers, its vehicle.yaml lines
+                                            (--recorded: the one the ladder's result names)
     pixi run ladder --json                  the same table, for a screen
 
 The rungs are tools/ladder/rungs.yaml (docs/proving-it.md). Progress is one file outside
@@ -26,13 +31,16 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
 RUNGS = os.path.join(ROOT, 'tools', 'ladder', 'rungs.yaml')
 PLACES = ('sim', 'car')
-STEPS = {'stands': 'stands', 'hallway': 'hallway'}     # a report folder's name -> its rung
+# A report folder's name -> its rung.
+STEPS = {'stands': 'stands', 'hallway': 'hallway', 'lot': 'lot'}
 
 
 def progress_file():
@@ -101,7 +109,8 @@ def table(rungs, results):
     rows = []
     for r in rungs:
         row = {'id': r['id'], 'title': r['title'], 'where': r['where'],
-               'measures': r['measures'], 'passes': r['passes'], 'how': r['how']}
+               'measures': r['measures'], 'passes': r['passes'], 'how': r['how'],
+               'after': r.get('after', ''), 'tests': single_tests(r)}
         for place in PLACES:
             last = latest(results, r['id'], place if r.get('on_car', True) else 'sim')
             row[place] = {
@@ -115,6 +124,21 @@ def table(rungs, results):
             }
         rows.append(row)
     return rows
+
+
+def single_tests(rung):
+    """
+    Return a rung's single tests, each with the command that runs it alone in the simulator.
+
+    The names come from the runner's own lists (tools/ladder_report.py); the command is
+    rungs.yaml's `sim_one`, with {test}. A rung without `tests:` has none.
+    """
+    if not rung.get('tests'):
+        return []
+    import ladder_report
+    return [{'name': name, 'number': number, 'title': title,
+             'command': rung['sim_one'].format(test=name)}
+            for name, number, title in ladder_report.single_tests(rung['tests'])]
 
 
 def commit():
@@ -150,9 +174,35 @@ def from_report(folder):
     name = os.path.basename(folder.rstrip('/'))
     rung = next((r for key, r in STEPS.items() if key in name), None)
     if rung is None:
-        raise ValueError(f'{name}: not a stands or hallway session')
-    clean = counts.get('FAIL', 0) == 0 and counts.get('NOT RUN', 0) == 0
+        raise ValueError(f'{name}: not a stands, hallway or lot session')
+    # Nothing passed is not a pass: a run refused before its first step has no FAIL either.
+    clean = (counts.get('FAIL', 0) == 0 and counts.get('NOT RUN', 0) == 0
+             and counts.get('PASS', 0) > 0)
     return rung, 'sim' if name.endswith('-sim') else 'car', 'pass' if clean else 'fail'
+
+
+def tests_dir():
+    """Return where the test runs keep their report folders (AAV_TESTS_DIR, ~/aav-tests)."""
+    return os.path.expanduser(os.environ.get('AAV_TESTS_DIR', '~/aav-tests'))
+
+
+def newest_session(rung, since, base=None):
+    """
+    Return the newest `<time>-<rung>-sim` report folder made at or after `since`, or ''.
+
+    since: seconds (time.time()) when the run began; None takes any. The folder's name
+    carries its start, to the second: that, not the file system's times, decides.
+    """
+    base = base or tests_dir()
+    if not os.path.isdir(base):
+        return ''
+    floor = ('' if since is None else
+             datetime.datetime.fromtimestamp(since).strftime('%Y-%m-%d-%H%M%S'))
+    tail = f'-{rung}-sim'
+    found = sorted(d for d in os.listdir(base)
+                   if d.endswith(tail) and d[:17] >= floor
+                   and os.path.isfile(os.path.join(base, d, 'report.yaml')))
+    return os.path.join(base, found[-1]) if found else ''
 
 
 MARK = {'pass': 'PASS', 'fail': 'FAIL', 'not run': '  - '}
@@ -181,6 +231,14 @@ def main(argv=None):
     nxt.add_argument('--car', action='store_true')
     run = sub.add_parser('run')
     run.add_argument('rung')
+    run.add_argument('--only', default='', metavar='TEST',
+                     help="one of the rung's tests alone, in the simulator; not recorded")
+    ses = sub.add_parser('session')
+    ses.add_argument('rung')
+    ses.add_argument('--json', action='store_true', dest='session_json')
+    ses.add_argument('--recorded', action='store_true',
+                     help="the session the ladder's newest result names, not the newest "
+                          'run (a single test since then is the newest run)')
     rec = sub.add_parser('record')
     rec.add_argument('rung', nargs='?')
     rec.add_argument('result', nargs='?', choices=('pass', 'fail'))
@@ -212,6 +270,19 @@ def main(argv=None):
         if args.rung not in ids:
             parser.error(f'rungs: {", ".join(ids)}')
         rung = rungs[ids.index(args.rung)]
+        if args.only:
+            tests = {t['name']: t for t in single_tests(rung)}
+            if args.only not in tests:
+                names = ', '.join(tests) or 'it has none'
+                print(f'{args.rung} has no single test {args.only!r}: {names}',
+                      file=sys.stderr)
+                return 2
+            command = tests[args.only]['command']
+            print(f'Running {args.only} alone in the simulator: {command}', flush=True)
+            code = subprocess.run(command, shell=True, cwd=ROOT).returncode
+            print(f'A single test (exit {code}): not recorded on the ladder. A rung passes '
+                  f'whole: pixi run ladder run {args.rung}')
+            return code
         shut = blockers(rungs, results, args.rung, 'sim')
         if shut:
             print('Shut: ' + '; '.join(shut) + '. (To record it anyway: ladder record '
@@ -222,10 +293,26 @@ def main(argv=None):
                   f'record {args.rung} pass', file=sys.stderr)
             return 2
         print(f"Running {args.rung} in the simulator: {rung['sim']}", flush=True)
+        began = time.time()
         code = subprocess.run(rung['sim'], shell=True, cwd=ROOT).returncode
-        entry = record(args.rung, 'sim', 'pass' if code == 0 else 'fail')
+        entry = record(args.rung, 'sim', 'pass' if code == 0 else 'fail',
+                       report=newest_session(args.rung, began))
         print(f"Recorded: {args.rung} {entry['result']} (sim) at {entry['commit']}")
         return code
+
+    if args.do == 'session':
+        if args.rung not in ids:
+            parser.error(f'rungs: {", ".join(ids)}')
+        import ladder_report
+        last = latest(results, args.rung, 'sim')
+        named = last.get('report', '') if last else ''
+        folder = named if args.recorded else newest_session(args.rung, None)
+        report = ladder_report.session(folder)
+        if args.recorded and not named:
+            report['why'] = 'the ladder has no recorded session for this rung yet'
+        report.update(rung=args.rung, recorded=bool(folder) and named == folder)
+        print(json.dumps(report) if args.session_json else ladder_report.text(report))
+        return 0
 
     if args.do == 'record':
         place = 'car' if args.car else 'sim'

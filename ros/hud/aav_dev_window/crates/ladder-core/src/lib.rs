@@ -13,6 +13,7 @@
 //! | [`show`] | what a cell says, whether the run button is on and why not, the car's side |
 //! | [`command`] | the argument lists for `tools/ladder.py`: the table, a run, a record |
 //! | [`jacks`] | the simulated car on stands or on the ground: `tools/jacks.py`'s commands and answer |
+//! | [`report`] | a session's steps, numbers, graph and fits, as the tool's `session --json` prints them |
 //! | [`process`] | the tool as a child: its last lines, stopped by its process group |
 //! | [`session`] | the window's state: the ladder read every 2 s, one run at a time, the form |
 //! | [`pretend`] | sample data, for `--pretend` |
@@ -22,11 +23,13 @@ pub mod jacks;
 pub mod ladder;
 pub mod pretend;
 pub mod process;
+pub mod report;
 pub mod session;
 pub mod show;
 
-pub use command::{Outcome, RecordForm, ToolCommand};
+pub use command::{Outcome, RecordForm, ToolCommand, Which};
 pub use jacks::Jacks;
-pub use ladder::{Ladder, ParseError, Place, Rung, Side, State};
+pub use ladder::{Ladder, ParseError, Place, Rung, Side, SingleTest, State};
+pub use report::{Fit, Graph, Report, Status, StepRow};
 pub use session::{Session, Source};
-pub use show::{CarSide, Cell, RunButton, WhyNot};
+pub use show::{CarSide, Cell, RunButton, RunsIn, WhyNot};

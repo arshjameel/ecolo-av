@@ -92,11 +92,34 @@ pub struct Rung {
     pub passes: String,
     /// The page that says how to do it by hand.
     pub how: String,
+    /// What a person does after its session, as on the car; or empty.
+    #[serde(default)]
+    pub after: String,
+    /// Its tests one at a time, in the simulator; empty: it has none.
+    #[serde(default)]
+    pub tests: Vec<SingleTest>,
     pub sim: Side,
     pub car: Side,
 }
 
+/// One of a rung's tests, run alone in the simulator. The names are the runner's own
+/// (`car-test`'s steps); the tool builds the command. There is none for the car.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SingleTest {
+    pub name: String,
+    /// Its number on the testing plan's card: `3b`, `B3`, `4.3`.
+    pub number: String,
+    pub title: String,
+    /// The command the tool runs for it: shown, never run by the window itself.
+    pub command: String,
+}
+
 impl Rung {
+    #[must_use]
+    pub fn test(&self, name: &str) -> Option<&SingleTest> {
+        self.tests.iter().find(|t| t.name == name)
+    }
+
     #[must_use]
     pub fn side(&self, place: Place) -> &Side {
         match place {
@@ -204,6 +227,41 @@ mod tests {
             Some("stack")
         );
         Ok(())
+    }
+
+    #[test]
+    fn a_rungs_single_tests_read_and_every_one_is_the_simulators() -> Result<(), ParseError> {
+        let ladder = Ladder::parse(REAL)?;
+        assert!(ladder.rung("code").ok_or_else(missing)?.tests.is_empty());
+        let stands = ladder.rung("stands").ok_or_else(missing)?;
+        assert_eq!(
+            stands.tests.first().map(|t| t.name.as_str()),
+            Some("preflight")
+        );
+        assert!(stands.test("estop").is_some() && stands.test("cable").is_none());
+        assert!(stands.after.contains("pixi run clear estop --sim"));
+        for test in ladder.rungs.iter().flat_map(|r| &r.tests) {
+            assert!(test.command.contains(" --sim "), "{}", test.command);
+            assert!(test.command.ends_with(&test.name), "{}", test.command);
+        }
+        let brake = ladder.rung("lot").ok_or_else(missing)?.test("brake");
+        assert_eq!(
+            brake.map(|t| t.command.as_str()),
+            Some("pixi run car-test --lot --sim --attach --only brake")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn an_older_tool_without_single_tests_still_reads() {
+        let old = REAL
+            .replace("\"tests\":", "\"tests_then\":")
+            .replace("\"after\":", "\"after_then\":");
+        let ladder = Ladder::parse(&old).expect("the fields are optional");
+        assert!(ladder
+            .rungs
+            .iter()
+            .all(|r| r.tests.is_empty() && r.after.is_empty()));
     }
 
     #[test]

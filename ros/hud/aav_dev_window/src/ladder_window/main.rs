@@ -3,12 +3,13 @@
 //! developer window; no ROS.
 //!
 //! ```text
-//! ladder_window [--pretend] [--root DIR] [--seconds S] [--screenshot FILE]
+//! ladder_window [--pretend] [--root DIR] [--rung ID] [--seconds S] [--screenshot FILE]
 //! ```
 //!
 //! `--pretend`: built-in sample data, with no tool; nothing runs. `--root`: the repository
 //! (default: the folder above this one that holds `tools/ladder.py`). `--seconds` exits
-//! after S seconds; `--screenshot` saves one picture halfway through.
+//! after S seconds; `--screenshot` saves one picture halfway through. `--rung` opens on
+//! that rung (for a picture of its session; a person clicks).
 //!
 //! Every rule is the Python tool's; the window's logic is `ladder-core`
 //! (`crates/ladder-core`), and this file and `draw.rs` only show it. The window starts
@@ -30,7 +31,7 @@ use bevy::{
 use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 use ladder_core::{command::TOOL, Session, Source};
 
-const USAGE: &str = "usage: ladder_window [--pretend] [--root DIR] [--seconds S] \
+const USAGE: &str = "usage: ladder_window [--pretend] [--root DIR] [--rung ID] [--seconds S] \
                      [--screenshot FILE]";
 /// How long the window settles before `--screenshot` and `--seconds` count, seconds.
 const SETTLE: f32 = 1.0;
@@ -40,6 +41,7 @@ const SETTLE: f32 = 1.0;
 struct Options {
     pretend: bool,
     root: Option<PathBuf>,
+    rung: Option<String>,
     seconds: Option<f32>,
     screenshot: Option<PathBuf>,
 }
@@ -52,6 +54,7 @@ impl Options {
             match arg.as_str() {
                 "--pretend" => options.pretend = true,
                 "--root" => options.root = Some(value()?.into()),
+                "--rung" => options.rung = Some(value()?),
                 "--seconds" => {
                     options.seconds =
                         Some(value()?.parse().map_err(|e| format!("--seconds: {e}"))?);
@@ -117,10 +120,14 @@ fn main() -> AppExit {
         }
     };
 
+    let mut session = Session::new(source);
+    if let Some(rung) = &options.rung {
+        session.select(rung);
+    }
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.06, 0.06, 0.07)))
         .insert_resource(Ui {
-            session: Mutex::new(Session::new(source)),
+            session: Mutex::new(session),
             styled: false,
         })
         .insert_resource(Run {
@@ -131,7 +138,7 @@ fn main() -> AppExit {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "AAV test ladder".into(),
-                resolution: (1500, 950).into(),
+                resolution: (1600, 1000).into(),
                 ..default()
             }),
             ..default()

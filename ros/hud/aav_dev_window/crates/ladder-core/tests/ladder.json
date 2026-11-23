@@ -8,10 +8,12 @@
    "measures": "nothing; every unit test, the pretend car",
    "passes": "tools/test.sh exits 0",
    "how": "docs/proving-it.md",
+   "after": "",
+   "tests": [],
    "sim": {
     "state": "pass",
     "when": "2026-11-22 16:56",
-    "commit": "e719f405+",
+    "commit": "c48caf7b+",
     "report": "",
     "override": "",
     "command": "pixi run bash tools/test.sh",
@@ -20,7 +22,7 @@
    "car": {
     "state": "pass",
     "when": "2026-11-22 16:56",
-    "commit": "e719f405+",
+    "commit": "c48caf7b+",
     "report": "",
     "override": "",
     "command": "",
@@ -34,10 +36,12 @@
    "measures": "the graph, a drive, a stop",
    "passes": "every line of sim-check PASS",
    "how": "docs/tests.md",
+   "after": "",
+   "tests": [],
    "sim": {
     "state": "fail",
     "when": "2026-11-22 16:56",
-    "commit": "e719f405+",
+    "commit": "c48caf7b+",
     "report": "",
     "override": "",
     "command": "pixi run sim-check",
@@ -46,7 +50,7 @@
    "car": {
     "state": "fail",
     "when": "2026-11-22 16:56",
-    "commit": "e719f405+",
+    "commit": "c48caf7b+",
     "report": "",
     "override": "",
     "command": "",
@@ -62,6 +66,8 @@
    "measures": "messages, timing, the locks",
    "passes": "every line of bench-check PASS; on the car, every box of After the install",
    "how": "docs/after-install.md",
+   "after": "",
+   "tests": [],
    "sim": {
     "state": "not run",
     "when": "",
@@ -93,13 +99,88 @@
    "measures": "steering: angle, rate, centre; the wheels follow a speed; faults on purpose",
    "passes": "car-test --stands, every step PASS",
    "how": "docs/actuator-tests.md",
+   "after": "The last step sets the e-stop, and it stays set, as on the car: a person clears it (pixi run clear estop --sim) before the next test. The car is put on stands for the session, and lowered after.",
+   "tests": [
+    {
+     "name": "preflight",
+     "number": "1",
+     "title": "the preflight (actuator-test preflight --stands)",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only preflight"
+    },
+    {
+     "name": "sensors",
+     "number": "2",
+     "title": "every sensor at its documented rate (preflight --no-drive)",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only sensors"
+    },
+    {
+     "name": "steer-sweep",
+     "number": "3a",
+     "title": "steering sweep (3.10)",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only steer-sweep"
+    },
+    {
+     "name": "steer-rate",
+     "number": "3b",
+     "title": "steering rate (3.11)",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only steer-rate"
+    },
+    {
+     "name": "steer-centre",
+     "number": "3c",
+     "title": "steering centre (3.12)",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only steer-centre"
+    },
+    {
+     "name": "wheel-steps",
+     "number": "4",
+     "title": "throttle on free wheels (3.14)",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only wheel-steps"
+    },
+    {
+     "name": "heartbeat",
+     "number": "5a",
+     "title": "the Orin is lost: its heartbeat to the ESP32 stops",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only heartbeat"
+    },
+    {
+     "name": "gps",
+     "number": "5b",
+     "title": "the GPS is lost",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only gps"
+    },
+    {
+     "name": "imu",
+     "number": "5c",
+     "title": "the IMU is lost",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only imu"
+    },
+    {
+     "name": "camera",
+     "number": "5d",
+     "title": "the front camera is lost",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only camera"
+    },
+    {
+     "name": "lidar",
+     "number": "5e",
+     "title": "the lidar is lost",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only lidar"
+    },
+    {
+     "name": "estop",
+     "number": "5h",
+     "title": "the e-stop",
+     "command": "pixi run car-test --stands --sim --attach --no-manual --only estop"
+    }
+   ],
    "sim": {
     "state": "not run",
     "when": "",
     "commit": "",
     "report": "",
     "override": "",
-    "command": "pixi run car-test --stands --sim --no-manual",
+    "command": "pixi run car-test --stands --sim --attach --no-manual",
     "blocked_by": [
      "bench has not passed (sim)"
     ]
@@ -124,13 +205,40 @@
    "measures": "speed up, coast, brake: dead time, lag, stopping distance, with error bars",
    "passes": "the model's speed within 10 % of the car's, its stop within 0.2 m",
    "how": "docs/actuator-tests.md",
+   "after": "On the ground: a car left on stands is lowered first. Nobody turns the simulated car round: every pass drives on from where the last one stopped.",
+   "tests": [
+    {
+     "name": "coast",
+     "number": "B2",
+     "title": "hallway: stand still, speed up, coast (the drag)",
+     "command": "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds coast"
+    },
+    {
+     "name": "speed-up",
+     "number": "B1",
+     "title": "hallway: stand still, speed up, brake (throttle lag, dead time, max_accel)",
+     "command": "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds speed-up"
+    },
+    {
+     "name": "brake",
+     "number": "B3",
+     "title": "hallway: stand still, speed up, brake (brake lag, dead time, max_brake, stopping distance)",
+     "command": "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds brake"
+    },
+    {
+     "name": "steer",
+     "number": "B4",
+     "title": "hallway: stand still, roll, steer left, right, left on the ground (steering lag and dead time)",
+     "command": "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds steer"
+    }
+   ],
    "sim": {
     "state": "not run",
     "when": "",
     "commit": "",
     "report": "",
     "override": "",
-    "command": "pixi run car-test --hallway --sim --no-manual",
+    "command": "pixi run car-test --hallway --sim --attach --no-manual",
     "blocked_by": [
      "stands has not passed (sim)"
     ]
@@ -155,13 +263,52 @@
    "measures": "speed-up, brake, circles and a straight line, at speed",
    "passes": "the hallway's pass rule, at the higher speeds",
    "how": "docs/actuator-tests.md",
+   "after": "The simulator's twin only: each test passes when it runs to the end. The pass rule at speed (the model within 10 %, the stop within 0.2 m) is read from its summaries.",
+   "tests": [
+    {
+     "name": "speed-up",
+     "number": "4.1",
+     "title": "speed up: time to 1, 2, 3 m/s; acceleration in g",
+     "command": "pixi run car-test --lot --sim --attach --only speed-up"
+    },
+    {
+     "name": "coast",
+     "number": "4.2",
+     "title": "coast: neither throttle nor brake; the drag",
+     "command": "pixi run car-test --lot --sim --attach --only coast"
+    },
+    {
+     "name": "brake",
+     "number": "4.3",
+     "title": "brake: stopping distance and deceleration in g",
+     "command": "pixi run car-test --lot --sim --attach --only brake"
+    },
+    {
+     "name": "throttle-map",
+     "number": "4.4",
+     "title": "throttle map: throttle level vs acceleration",
+     "command": "pixi run car-test --lot --sim --attach --only throttle-map"
+    },
+    {
+     "name": "circles",
+     "number": "4.5",
+     "title": "circles: the real wheel angle per command",
+     "command": "pixi run car-test --lot --sim --attach --only circles"
+    },
+    {
+     "name": "straight",
+     "number": "4.7",
+     "title": "straight line: the sideways drift over 10 m",
+     "command": "pixi run car-test --lot --sim --attach --only straight"
+    }
+   ],
    "sim": {
     "state": "not run",
     "when": "",
     "commit": "",
     "report": "",
     "override": "",
-    "command": "",
+    "command": "pixi run car-test --lot --sim --attach",
     "blocked_by": [
      "hallway has not passed (sim)"
     ]
@@ -174,7 +321,8 @@
     "override": "",
     "command": "",
     "blocked_by": [
-     "hallway has not passed (car)"
+     "hallway has not passed (car)",
+     "lot has not passed in the simulator"
     ]
    }
   },
@@ -185,13 +333,15 @@
    "measures": "the scorecard: time, metres off the plan, sway, holds",
    "passes": "the route done at low speed, no takeover needed for safety",
    "how": "docs/league.md",
+   "after": "The simulator's twin: one scored drive round the test lot through the whole stack, in its own simulator with no picture; it passes when every goal is reached. The scores are in its report (log/controller-compare/).",
+   "tests": [],
    "sim": {
     "state": "not run",
     "when": "",
     "commit": "",
     "report": "",
     "override": "",
-    "command": "",
+    "command": "pixi run measure controllers --tours lot",
     "blocked_by": [
      "lot has not passed (sim)"
     ]
@@ -204,7 +354,8 @@
     "override": "",
     "command": "",
     "blocked_by": [
-     "lot has not passed (car)"
+     "lot has not passed (car)",
+     "route has not passed in the simulator"
     ]
    }
   }

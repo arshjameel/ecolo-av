@@ -13,12 +13,13 @@ use std::{
 };
 
 use crate::{
-    command::{RecordForm, ToolCommand},
+    command::{RecordForm, ToolCommand, Which},
     jacks::{self, Ask, Jacks},
     ladder::{Ladder, Rung},
     pretend,
     process::{self, Answer, Running, Signal},
-    show::{self, RunButton, WhyNot},
+    report::{self, Report, StepRow},
+    show::{self, RunButton, RunsIn, WhyNot},
 };
 
 /// How often the ladder is read again.
@@ -62,6 +63,10 @@ impl Notice {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RunningNow<'a> {
     pub rung: &'a str,
+    /// The single test it runs, or `None`: the whole rung.
+    pub test: Option<&'a str>,
+    /// The step it is on, from its own lines: `Step 3b: steering rate (3.11)`.
+    pub step: Option<&'a str>,
     /// Stop was pressed: the next press does not ask.
     pub stop_asked: bool,
 }
@@ -69,6 +74,8 @@ pub struct RunningNow<'a> {
 #[derive(Debug)]
 struct Run {
     rung: String,
+    /// The single test, or `None`: the whole rung, which the tool records.
+    test: Option<String>,
     child: Running,
     stop_asked: bool,
 }
@@ -101,6 +108,16 @@ pub struct Session {
     /// When the last jacks answer came: the next status is asked `jacks::ASK_EVERY` later.
     jacks_at: Option<Instant>,
     jacks_said: Option<Notice>,
+    /// The selected rung's newest simulator session, as the tool last read it.
+    report: Option<Report>,
+    /// The session call in progress, and the rung it asked about.
+    reporting: Option<(String, Pending)>,
+    /// The session shown is stale: the rung changed, or a run ended.
+    report_now: bool,
+    /// The step whose numbers and graph are shown.
+    step: Option<String>,
+    /// Which session is shown: the newest run, or the one the ladder recorded.
+    which: Which,
 }
 
 impl Session {
@@ -126,6 +143,11 @@ impl Session {
             jacks_asking: None,
             jacks_at: None,
             jacks_said: None,
+            report: None,
+            reporting: None,
+            report_now: true,
+            step: None,
+            which: Which::default(),
         };
         if session.source == Source::Pretend {
             session.jacks = Jacks::Pretend;
@@ -140,9 +162,27 @@ impl Session {
         self.take_record();
         self.take_ladder();
         self.take_jacks(now);
+        self.take_report();
         let Source::Tool { root } = &self.source else {
+            if self.report_now {
+                self.report_now = false;
+                self.report = self.selected.as_deref().and_then(pretend::report);
+                self.keep_step();
+            }
             return;
         };
+        // Not before the ladder is read: until then no rung is known to have sessions.
+        if self.report_now && self.reporting.is_none() && self.ladder.is_some() {
+            self.report_now = false;
+            // Only a rung with tests of its own has sessions to read.
+            match self.selected().filter(|rung| !rung.tests.is_empty()) {
+                Some(rung) => {
+                    let asked = process::ask(ToolCommand::session(rung, self.which).process(root));
+                    self.reporting = Some((rung.id.clone(), asked));
+                }
+                None => self.report = None,
+            }
+        }
         let jacks_due = self
             .jacks_at
             .is_none_or(|at| now.saturating_duration_since(at) >= jacks::ASK_EVERY);
@@ -185,13 +225,62 @@ impl Session {
         if self.selected.as_deref() != Some(id) {
             self.selected = Some(id.to_owned());
             self.recorded = None;
+            self.report = None;
+            self.step = None;
+            self.report_now = true;
         }
+    }
+
+    /// The selected rung's newest simulator session; `None`: not read yet, or the rung
+    /// has no sessions (the unit tests, `sim-check`).
+    #[must_use]
+    pub fn report(&self) -> Option<&Report> {
+        self.report
+            .as_ref()
+            .filter(|report| Some(report.rung.as_str()) == self.selected.as_deref())
+    }
+
+    /// The step whose numbers and graph are shown.
+    #[must_use]
+    pub fn step(&self) -> Option<&StepRow> {
+        self.report()?.step(self.step.as_deref()?)
+    }
+
+    /// Which session is shown.
+    #[must_use]
+    pub fn which(&self) -> Which {
+        self.which
+    }
+
+    /// Show the newest run, or the session the ladder recorded. A run that ends shows
+    /// the newest again: it is what was just done.
+    pub fn show(&mut self, which: Which) {
+        if self.which != which {
+            self.which = which;
+            self.step = None;
+            self.report_now = true;
+        }
+    }
+
+    /// A row of the session's table was clicked.
+    pub fn select_step(&mut self, name: &str) {
+        self.step = Some(name.to_owned());
+    }
+
+    /// Where the selected rung's simulator run would happen: in the simulator that is
+    /// open, or in one of its own.
+    #[must_use]
+    pub fn runs_in(&self) -> Option<RunsIn> {
+        let rung = self.selected()?;
+        (!rung.sim.command.trim().is_empty()).then(|| RunsIn::of(&rung.sim.command, &self.jacks))
     }
 
     #[must_use]
     pub fn running(&self) -> Option<RunningNow<'_>> {
         self.run.as_ref().map(|run| RunningNow {
             rung: &run.rung,
+            test: run.test.as_deref(),
+            step: report::current_step(self.console.iter().map(String::as_str)),
             stop_asked: run.stop_asked,
         })
     }
@@ -232,9 +321,34 @@ impl Session {
 
     /// "Run in the simulator" was pressed. Nothing starts unless the button is on.
     pub fn press_run(&mut self) {
-        let (Some(RunButton::Ready(command)), Source::Tool { root }, Some(rung)) =
-            (self.run_button(), &self.source, self.selected())
-        else {
+        if let Some(RunButton::Ready(command)) = self.run_button() {
+            self.start(&command, None);
+        }
+    }
+
+    /// The Run button beside one of the selected rung's single tests.
+    #[must_use]
+    pub fn test_button(&self, test: &str) -> Option<RunButton> {
+        let rung = self.selected()?;
+        let test = rung.test(test)?;
+        Some(match self.source {
+            Source::Pretend => RunButton::Off(WhyNot::Pretend),
+            Source::Tool { .. } => {
+                show::test_button(rung, test, self.run.as_ref().map(|r| r.rung.as_str()))
+            }
+        })
+    }
+
+    /// A single test's Run was pressed. Nothing starts unless its button is on. The tool
+    /// runs it in the simulator and records nothing.
+    pub fn press_run_test(&mut self, test: &str) {
+        if let Some(RunButton::Ready(command)) = self.test_button(test) {
+            self.start(&command, Some(test));
+        }
+    }
+
+    fn start(&mut self, command: &ToolCommand, test: Option<&str>) {
+        let (Source::Tool { root }, Some(rung)) = (&self.source, self.selected()) else {
             return;
         };
         let rung = rung.id.clone();
@@ -247,6 +361,7 @@ impl Session {
                 self.last_run = None;
                 self.run = Some(Run {
                     rung,
+                    test: test.map(str::to_owned),
                     child,
                     stop_asked: false,
                 });
@@ -356,6 +471,8 @@ impl Session {
                 self.last_run = Some(run_notice(&run, status));
                 self.ended = Some(run.child);
                 self.read_now = true;
+                self.report_now = true;
+                self.which = Which::Newest;
             }
         }
     }
@@ -410,6 +527,40 @@ impl Session {
         }
     }
 
+    fn take_report(&mut self) {
+        let Some((rung, pending)) = self.reporting.take() else {
+            return;
+        };
+        let mut pending = Some(pending);
+        let Some(answer) = take(&mut pending) else {
+            self.reporting = pending.map(|p| (rung, p));
+            return;
+        };
+        if self.selected.as_deref() != Some(rung.as_str()) {
+            return; // another rung was chosen meanwhile: its own call is due
+        }
+        // A session that does not read leaves the last one shown; the ladder's own
+        // problem line covers a tool that is broken.
+        if let Some(report) = answer
+            .ok()
+            .filter(Answer::succeeded)
+            .and_then(|a| Report::parse(&a.stdout).ok())
+        {
+            self.report = Some(report);
+            self.keep_step();
+        }
+    }
+
+    /// Keep the step chosen while the session has it; else open on the one to read first.
+    fn keep_step(&mut self) {
+        if self.step().is_none() {
+            self.step = self
+                .report()
+                .and_then(Report::first_to_read)
+                .map(|step| step.name.clone());
+        }
+    }
+
     fn take_ladder(&mut self) {
         let Some(answer) = take(&mut self.reading) else {
             return;
@@ -445,6 +596,7 @@ impl Session {
                 .first_not_passed()
                 .or_else(|| ladder.top_first().next())
                 .map(|rung| rung.id.clone());
+            self.report_now = true;
         }
     }
 }
@@ -462,18 +614,25 @@ fn take(pending: &mut Option<Pending>) -> Option<Result<Answer, String>> {
 
 fn run_notice(run: &Run, status: Result<ExitStatus, String>) -> Notice {
     let rung = &run.rung;
+    let what = match &run.test {
+        Some(test) => format!("{rung}, {test} alone"),
+        None => rung.clone(),
+    };
+    let kept = if run.test.is_some() {
+        "a single test: not recorded on the ladder"
+    } else {
+        "the tool recorded it"
+    };
     match status.map(|s| s.code()) {
-        Ok(Some(0)) => Notice::good(format!(
-            "{rung}: the run ended with 0; the tool recorded it"
-        )),
+        Ok(Some(0)) => Notice::good(format!("{what}: the run ended with 0; {kept}")),
         Ok(Some(code)) => Notice::bad(format!(
-            "{rung}: the run ended with {code}; see the console and the ladder"
+            "{what}: the run ended with {code}; {kept}; see the table and the console"
         )),
         Ok(None) if run.stop_asked => {
-            Notice::bad(format!("{rung}: stopped by you; nothing was recorded"))
+            Notice::bad(format!("{what}: stopped by you; nothing was recorded"))
         }
-        Ok(None) => Notice::bad(format!("{rung}: a signal ended the run")),
-        Err(why) => Notice::bad(format!("{rung}: the run was lost: {why}")),
+        Ok(None) => Notice::bad(format!("{what}: a signal ended the run")),
+        Err(why) => Notice::bad(format!("{what}: the run was lost: {why}")),
     }
 }
 
@@ -504,6 +663,38 @@ mod tests {
         assert_eq!(session.ladder().map(|l| l.rungs.len()), Some(7));
         assert_eq!(session.selected().map(|r| r.id.as_str()), Some("stack"));
         assert!(session.problem().is_none());
+    }
+
+    #[test]
+    fn pretend_data_shows_a_session_with_a_step_to_read() {
+        let mut session = Session::new(Source::Pretend);
+        session.select("stands");
+        assert!(session.report().is_none(), "not read until the next tick");
+        session.tick(Instant::now());
+        let report = session.report().expect("the pretend stands session");
+        assert_eq!(report.rung, "stands");
+        let step = session.step().expect("a step is chosen");
+        assert!(step.graph.is_some(), "it opens on a step with a graph");
+        session.select_step("estop");
+        assert_eq!(session.step().map(|s| s.name.as_str()), Some("estop"));
+        // Another rung: its own session, or none; never the last rung's.
+        session.select("code");
+        session.tick(Instant::now());
+        assert!(session.report().is_none() && session.step().is_none());
+    }
+
+    #[test]
+    fn pretend_data_runs_no_single_test() {
+        let mut session = Session::new(Source::Pretend);
+        session.select("stands");
+        assert_eq!(
+            session.test_button("steer-rate"),
+            Some(RunButton::Off(WhyNot::Pretend))
+        );
+        assert_eq!(session.test_button("no-such-test"), None);
+        session.press_run_test("steer-rate");
+        assert!(session.running().is_none());
+        assert_eq!(session.runs_in(), Some(RunsIn::OwnNoneOpen));
     }
 
     #[test]

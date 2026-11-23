@@ -5,7 +5,8 @@ use std::fmt;
 
 use crate::{
     command::ToolCommand,
-    ladder::{Rung, Side, State},
+    jacks::Jacks,
+    ladder::{Rung, Side, SingleTest, State},
 };
 
 /// The sentence under the car's command. A safety rule: the window never moves the car.
@@ -103,6 +104,59 @@ pub fn run_button(rung: &Rung, running: Option<&str>) -> RunButton {
     RunButton::Ready(ToolCommand::run_in_simulator(rung))
 }
 
+/// The Run button beside one of a rung's single tests. A single test is never shut: it
+/// records nothing, so it cannot move the ladder; one run at a time still holds.
+///
+/// Like [`run_button`] it takes no place: the tool's `run --only` is the simulator's.
+#[must_use]
+pub fn test_button(rung: &Rung, test: &SingleTest, running: Option<&str>) -> RunButton {
+    match running {
+        Some(busy) => RunButton::Off(WhyNot::Running { rung: busy.into() }),
+        None => RunButton::Ready(ToolCommand::run_one_in_simulator(rung, test)),
+    }
+}
+
+/// Where a simulator run will happen: in the simulator that is open, or in one of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunsIn {
+    /// A simulator runs on this computer and the command attaches: the car you see is
+    /// the one tested.
+    Visible,
+    /// The command attaches, but no simulator is open: it starts its own, with no picture.
+    OwnNoneOpen,
+    /// The command always starts its own (the unit tests, `sim-check`, `bench-check`).
+    Own,
+}
+
+impl RunsIn {
+    /// Decide from the command the tool will run and what the jacks poll last heard.
+    #[must_use]
+    pub fn of(command: &str, jacks: &Jacks) -> Self {
+        let attaches = command.split_whitespace().any(|word| word == "--attach");
+        let open = matches!(jacks, Jacks::OnGround | Jacks::OnStands | Jacks::Silent);
+        match (attaches, open) {
+            (true, true) => Self::Visible,
+            (true, false) => Self::OwnNoneOpen,
+            (false, _) => Self::Own,
+        }
+    }
+}
+
+impl fmt::Display for RunsIn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Visible => {
+                "Runs in the simulator that is open on this computer: watch the car there."
+            }
+            Self::OwnNoneOpen => {
+                "No simulator is open: the run starts its own, with no picture. \
+                 To watch it: pixi run dry-run."
+            }
+            Self::Own => "Starts what it needs itself, with no picture.",
+        })
+    }
+}
+
 /// The car's side of the detail: words to read and copy, never a button that runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CarSide<'a> {
@@ -129,6 +183,44 @@ mod tests {
         ladder::{Ladder, Place},
         pretend,
     };
+
+    #[test]
+    fn a_single_test_runs_even_on_a_shut_rung_but_one_run_at_a_time() {
+        let ladder = real();
+        let stands = rung(&ladder, "stands");
+        assert!(stands.sim.is_shut());
+        let sweep = stands.test("steer-sweep").expect("stands has steer-sweep");
+        let RunButton::Ready(command) = test_button(stands, sweep, None) else {
+            panic!("a single test is never shut");
+        };
+        assert_eq!(
+            command.args(),
+            ["tools/ladder.py", "run", "stands", "--only", "steer-sweep"]
+        );
+        assert_eq!(
+            test_button(stands, sweep, Some("hallway")),
+            RunButton::Off(WhyNot::Running {
+                rung: "hallway".into()
+            })
+        );
+    }
+
+    #[test]
+    fn a_run_says_whether_it_will_be_seen() {
+        let attach = "pixi run car-test --stands --sim --attach --no-manual";
+        assert_eq!(RunsIn::of(attach, &Jacks::OnGround), RunsIn::Visible);
+        assert_eq!(RunsIn::of(attach, &Jacks::OnStands), RunsIn::Visible);
+        let none = Jacks::NoSimulator("no simulator heard".into());
+        assert_eq!(RunsIn::of(attach, &none), RunsIn::OwnNoneOpen);
+        assert_eq!(RunsIn::of(attach, &Jacks::Unknown), RunsIn::OwnNoneOpen);
+        assert_eq!(
+            RunsIn::of("pixi run sim-check", &Jacks::OnGround),
+            RunsIn::Own
+        );
+        assert!(RunsIn::OwnNoneOpen.to_string().contains("pixi run dry-run"));
+        // "--attached" or a path with the word in it is not the flag.
+        assert_eq!(RunsIn::of("tool --attached", &Jacks::OnGround), RunsIn::Own);
+    }
 
     fn real() -> Ladder {
         Ladder::parse(include_str!("../tests/ladder.json")).expect("the tool's JSON reads")
@@ -195,6 +287,7 @@ mod tests {
         let mut ladder = real();
         let lot = &mut ladder.rungs[5];
         lot.sim.blocked_by.clear();
+        lot.sim.command.clear();
         assert_eq!(
             run_button(lot, None),
             RunButton::Off(WhyNot::ByHand {

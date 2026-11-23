@@ -108,3 +108,28 @@ def test_the_json_keeps_the_shape_the_window_reads(progress, capsys):
             assert set(mine[place]) == set(theirs[place])
             assert mine[place]['state'] in ('pass', 'fail', 'not run')
             assert isinstance(mine[place]['blocked_by'], list)
+
+
+def test_a_run_finds_the_report_folder_it_made(tmp_path):
+    for name in ('2026-11-22-100000-stands-sim', '2026-11-22-120000-stands-sim',
+                 '2026-11-22-130000-hallway-sim', '2026-11-22-140000-stands'):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / 'report.yaml').write_text('counts: {PASS: 1}\n')
+    (tmp_path / '2026-11-22-150000-stands-sim').mkdir()        # no report: not a session
+    import datetime
+    noon = datetime.datetime(2026, 11, 22, 11, 0, 0).timestamp()
+    found = ladder.newest_session('stands', noon, str(tmp_path))
+    assert found.endswith('2026-11-22-120000-stands-sim')
+    late = datetime.datetime(2026, 11, 22, 16, 0, 0).timestamp()
+    assert ladder.newest_session('stands', late, str(tmp_path)) == ''
+    assert ladder.newest_session('stands', None, str(tmp_path)).endswith('120000-stands-sim')
+    assert ladder.newest_session('lot', None, str(tmp_path)) == ''
+
+
+def test_a_session_where_nothing_passed_is_not_a_pass(tmp_path):
+    folder = tmp_path / '2026-11-22-120000-stands-sim'
+    folder.mkdir()
+    (folder / 'report.yaml').write_text('counts: {PASS: 0, FAIL: 0, SKIPPED: 2}\n')
+    assert ladder.from_report(str(folder)) == ('stands', 'sim', 'fail')
+    (folder / 'report.yaml').write_text('counts: {PASS: 3, FAIL: 0, SKIPPED: 2}\n')
+    assert ladder.from_report(str(folder)) == ('stands', 'sim', 'pass')
