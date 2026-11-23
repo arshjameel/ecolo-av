@@ -27,10 +27,10 @@ A 32-byte frame comes about every 7 ms.
 | `Receiver::frames()` | good frames so far (wraps) |
 | `RcMap::TODAY` | today's channels and switch points (below); also `RcMap::default()` |
 | `RcMap::THREE_POSITION` | the same, with the mode switch's middle as RC via ROS (TODO 48, proposed) |
-| `RcMap`'s public fields | build your own map: channels `mode_switch`, `throttle`, `steering`; usable range `valid_above`, `valid_below`; the failsafe `lost_below`; mode switch `direct_above`, `via_ros_above` (`Option`); sticks `centre`, `half_travel`; the left stick `brake_band`, `throttle_reversed` |
+| `RcMap`'s public fields | build your own map: channels `mode_switch`, `throttle`, `steering`, `stop_stick`; usable range `valid_above`, `valid_below`; the failsafe `lost_below`; mode switch `direct_above`, `via_ros_above` (`Option`); sticks `centre`, `half_travel`; the left stick's middle `brake_band`, `throttle_reversed`; a stick's end `full` (0.88); the steering centred to give, `centred` (0.15) |
 | `RcMap::steer_right_gain` | right turns (the stick below centre) times this, then clamped to -1: 1.0 in `TODAY`; `legacy_link::STEER_RIGHT_PER_LEFT` gives the C++'s (the ESP32's `cpp-rc-steering`, 7 Nov) |
 | `RcMap::switch(value)` | the `spine_core::RcSwitch` for a mode-switch value: normal (`Computer`), via ROS or manual (`Direct`) |
-| `RcMap::rc_input(&channels)` | the `spine_core::RcInput`: mode switch, throttle and steering (each -1 to 1), and whether the left stick is in its brake band; `None` for a mode switch out of range or on the failsafe |
+| `RcMap::rc_input(&channels)` | the `spine_core::RcInput`: mode switch, throttle and steering (each -1 to 1), whether the left stick is in its middle (`middle`) or past 88 % (`full`), and the right stick (`right`: `Centre`, `Stop`, `Give`); `None` for a mode switch out of range or on the failsafe |
 | `decode`, `encode`, `checksum` | one frame, without a parser |
 | `Channels::get(index)` | one channel; index 0 is the transmitter's CH1 |
 | `BAUD`, `FRAME_LEN`, `CHANNELS`, `HEADER` | 115200, 32, 14, `0x20 0x40` |
@@ -45,15 +45,21 @@ The 2025-26 firmware counted channels from 0, as its iBUS library does. So its
 | Index | Transmitter | Use | Switch points |
 |---|---|---|---|
 | 5 | CH6 | mode switch | normal; manual (RC direct) above 1500 (`THREE_POSITION`: RC via ROS 1301..1700, manual above); **under 1050: the failsafe (1000), RC lost**; the switch's low sends 1100 (End points CH6, low side 80%) |
-| 2 | CH3 | the left stick, up and down | the middle ±30 % (1350..1650) is the brake band; below it forward, 1000 full; above it reverse, 2000 full |
-| 3 | CH4 | steering stick | 1000 is +1 (left?), 2000 is -1 |
+| 2 | CH3 | the left stick, up and down | the middle ±30 % (1350..1650): throttle off; below it forward, above it reverse; past 88 % (under 1060, over 1940) its end |
+| 3 | CH4 | the right stick, sideways: steering | 1000 is +1 (left?), 2000 is -1; centred within ±15 % (1425..1575) |
+| 1 | CH2 | the right stick, up and down (springs back) | over 1940 (down past 88 %): the stop; under 1060 (up past 88 %) with the steering centred: give the car to the computer |
 | 4 | CH5 | (SwC) not read since 21 Nov: its wiring is loose | |
 
 Every channel must read between 100 and 2200, or it is out of range.
 
-Outside the band the throttle is rescaled: 0 at the band's edge, 1 at the stick's end, so
-the speed never jumps (Arsh, 21 Nov: the FS-i6X's left stick doesn't spring back, so where
-it rests is the driver's choice). The transmitter's failsafe must set CH6 to 1000, and the switch's low must send 1100:
+Outside the middle the throttle is rescaled: 0 at the middle's edge, 1 at the stick's end,
+for the uplink; the spine reads only its sign, as the RC's speeds are fixed (Arsh and Ben,
+21 Nov: the FS-i6X's left stick doesn't spring back, so where it rests is the driver's
+choice; [the design](../../../../docs/designs/2026-11-22_rc-right-stick.md)). The FS-i6X's
+sticks reach -100 % up and +97 % down, so 88 % leaves room.
+
+The transmitter's failsafe must set CH6 to 1000 and CH2 to its stop (the right stick
+held down), and the switch's low must send 1100:
 [Car day, the RC transmitter](../../../../docs/car-day.md#the-rc-transmitter).
 
 TODO(Q7), to check on the transmitter:
@@ -74,7 +80,8 @@ TODO(Q7), to check on the transmitter:
 - A channel is usable only strictly between 100 and 2200.
 - Mode switch out of range, or under `lost_below` (the failsafe): `rc_input` is `None`
   (no usable RC).
-- A stick out of range: the brake band, straight wheels. The gear switch is never read.
+- A stick out of range (CH2, CH3 or CH4): the right stick's stop, straight wheels. The
+  gear switch is never read.
 - Throttle and steering stay between -1 and 1. The crate never sends radians or
   Jrk counts: that is `spine-board`'s job.
 
@@ -115,8 +122,8 @@ Changed on purpose:
 | Receiver goes silent | keeps the last values, and the last throttle, forever | `None` after the timeout |
 | Steering past 2000 | `map()` went negative; cast to `uint16_t` and clamped, it was full lock the other way | stops at -1 |
 | Steering scale | 1550 Jrk counts per unit on one side, 1950 on the other | -1 to 1 both ways; `spine-board` turns radians into Jrk counts |
-| Override on, a stick out of range | `jrkSafeStop()`: full brake, wheels straight, throttle off | the brake band (a full brake) and straight wheels |
+| Override on, a stick out of range | `jrkSafeStop()`: full brake, wheels straight, throttle off | the right stick's stop (a full brake) and straight wheels |
 | Override switch out of range | read as off, so the computer drives | `None`: no usable RC; `spine-core` stops if RC was driving |
-| Forward, reverse and brake | the gear switch (CH5), the throttle on half the stick | the left stick's whole travel, a brake band in the middle; CH5 not read (21 Nov) |
+| Forward, reverse and brake | the gear switch (CH5), the throttle on half the stick | the left stick's whole travel, throttle off in its middle; the right stick's up and down (CH2) for the stop; CH5 not read (21 Nov) |
 | The radio link drops | keeps the last values | the failsafe's CH6 under 1050 is no usable RC |
 | What the throttle means | a share of the DAC, open loop | a share of the top speed, for `spine-core`'s speed loop |

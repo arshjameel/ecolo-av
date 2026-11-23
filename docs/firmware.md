@@ -126,7 +126,7 @@ and the glue between them and `spine-core`, are written too (10 October):
 | `jrk-g2` | the two Pololu Jrk G2s (steering, brake) over I2C | 15 |
 | `ad5311` | the throttle DAC over I2C | 10 |
 | `pca9555` | the I/O expander: the direction output | 6 |
-| `ibus` | the FlySky RC receiver | 26 |
+| `ibus` | the FlySky RC receiver | 30 |
 | `mcp2515` | the MCP2515 CAN controller over SPI: a Pico 2 has no CAN of its own | 34 |
 | `legacy-link` | the Motor-Pi's 13-byte UART frames, and the targets the C++ set for them (15 Oct); version 2 with the Orin's heartbeat (24 Oct, TODO 50); versions 3 and 4 since | 121 |
 | `spine-board` | all of them, from `spine-core`'s outputs, in a safe order; their errors become fault bits. Commands through CAN or the UART (`CommandLink`) | 119 |
@@ -236,7 +236,7 @@ reviewed these yet.**
 
 | What happens | The spine |
 |---|---|
-| E-stop, driver fault, the RC's left stick in its brake band | hard stop |
+| E-stop, driver fault, the RC's right stick pulled down | hard stop |
 | Lost input: commands, RC (in normal mode too), wheel speed | hard stop, latched until re-armed |
 | Past 1.25 m/s (the limit is 1.0) | throttle off, brake 0.5, until under the limit |
 | Still over the limit 2 s later, speeding up or steady | hard stop, latched |
@@ -246,30 +246,35 @@ The table in full: [`spine-core`](../firmware/spine/crates/spine-core/README.md)
 ### The RC transmitter (Arsh, 21 Nov)
 
 The FS-i6X's left stick doesn't spring back to the middle, and its SwC switch (CH5) has
-loose wiring. So the left stick alone says brake, forward or reverse, and the ESP32 decides
-between the RC and the computer itself, so it still works with the Motor Pi or the Orin dead.
+loose wiring. The ESP32 decides between the RC and the computer itself, so it still works
+with the Motor Pi or the Orin dead. Since 22 Nov (Arsh and Ben,
+[the design](designs/2026-11-22_rc-right-stick.md)) the right stick's up and down (CH2,
+which springs back) hands the car over, and the left stick is one pedal:
 
 ```text
-left stick (CH3):  1000 ◄── forward ──┤ brake band, ±30 % ├── reverse ──► 2000
-                   full throttle    0 at the edge     0 at the edge    full reverse
+right stick (CH2):  up past 88 % ── give to the computer (steering centred, 0.5 s)
+                    down past 88 % ── hard brake while held; the RC takes the car
+left stick (CH3):   1000 ◄── forward ──┤ middle ±30 %: throttle off ├── reverse ──► 2000
+                    past 88 % the other way, the car still moving: the hard brake too
 ```
 
 | Mode switch (CH6) | Who drives |
 |---|---|
-| Low: **normal** | the computer, but the RC outranks it (below). The RC must stay: losing it is a hard stop |
-| Middle: RC via ROS | the computer, from the sticks sent up to ROS (unchanged). The team's FS-i6X has a two-position switch, so it can't pick this |
-| High: **manual** (RC direct) | the RC only; the computer's commands count for nothing |
+| Low: **normal** | the computer once the right stick has given it the car; the RC takes it back with the right stick down. The RC must stay: losing it is a hard stop |
+| Middle: RC via ROS | the computer, from the sticks sent up to ROS. The right stick down still brakes. The team's FS-i6X has a two-position switch, so it can't pick this |
+| High: **manual** (RC direct) | the RC only; the computer's commands count for nothing. The right stick up does nothing |
 | Under 1050: the transmitter's failsafe (1000) | RC lost: a hard stop, latched. The FS-i6X's failsafe can't go below -100% (1000), so the switch's low is moved to 1100 (End points CH6, low side 80%) |
 
 | Rule | The spine |
 |---|---|
-| The stick in its band | full brake at once, no light stage (T3.6's 0.33 for 1 s is gone) |
-| Forward to reverse, or back | braked until 1 s (`RC_BRAKE_MS`) after the stick entered the band; the same way again: at once |
-| After any stop, at power-up, after the mode switch moves | the RC waits for the stick to visit the band (`rc_hold`) |
-| Normal: the stick leaves the band while the computer drives | the RC takes over: braked 1 s, then it drives |
-| Normal: the stick into the band | braked, and a 1 s window: the first to ask has the car when it ends. The stick leaving the band (the RC wins a tie), or the computer asking to move (armed, over 0.05 m/s, or any throttle on the UART) |
-| Normal: the computer won with the stick still out | the stick must come back to the band before it takes over again |
-| Normal: nobody asks | the RC keeps the car, fully braked; the hardware test mode may start |
+| The left stick up or back | drive that way at a fixed speed (1.0 m/s, 0.5 back), ramped at 0.5 m/s² (`RC_ACCEL`) |
+| The left stick in its middle | throttle off, no brake: the motor's own braking (regen, assumed) |
+| The left stick the other way, the car still moving | throttle off; past 88 % the hard brake too. The new way once stopped: under 0.05 m/s for 0.5 s, or with no speed (today's ESP32), the hard brake held 1 s |
+| The right stick down | the hard brake while held, the steering stick still steering. In normal mode the RC takes the car |
+| Let go of it; after any other stop, at power-up, after the mode switch moves | braked at least 1 s (`RC_BRAKE_MS`), until the left stick leaves the zone it was in (`RcHold`) |
+| Normal: the right stick up, steering within ±15 %, held 0.5 s (`RC_GIVE_MS`) | the computer has the car (it still needs arming) |
+| Normal: the left stick alone | never takes the car from the computer |
+| A stick out of range (CH2, CH3 or CH4) | the right stick's stop |
 | The left stick sideways, SwC (CH5) | nothing |
 
 Not known yet: whether the left stick's low end really is forward (`throttle_reversed` in

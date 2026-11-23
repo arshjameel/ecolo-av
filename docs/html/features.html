@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">143 min read · 15 sections</div></header>
+<div class="meta">144 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1343,10 +1343,10 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td>The RC transmitter's stick layout and normal mode's arbiter (<code>ibus</code>, <code>spine-core</code> <code>RcOwner</code>)</td>
-<td>The FS-i6X's left stick doesn't spring back and SwC's wiring is loose, so the left stick alone says forward, a brake band (a hard stop) and reverse, with 1 s braked before changing direction; in normal mode the RC outranks the computer on the ESP32 itself, so it still works with the computer dead; the transmitter's failsafe (CH6 at 1000, the switch's low moved to 1100) counts as a lost RC, so a dropped link never leaves the car on its last stick</td>
-<td>Arsh</td>
-<td>2026-11-21</td>
+<td>The RC transmitter's stick layout and normal mode's owner (<code>ibus</code>, <code>spine-core</code> <code>RcOwner</code>, <code>RcHold</code>)</td>
+<td>The FS-i6X's left stick doesn't spring back and SwC's wiring is loose. Since 22 Nov the right stick (CH2, which springs back) hands the car over on purpose: down past 88 % is a hard brake and the RC takes the car, up past 88 % with the steering centred for 0.5 s gives it to the computer, decided on the ESP32 so it works with the computer dead. The left stick is one pedal (Ben's idea): forward or back at a fixed, ramped speed, its middle lets the motor slow the car, the other way past 88 % brakes hard, then changes direction once stopped. After any stop the car stays braked until the left stick moves. The transmitter's failsafe (CH6 at 1000, CH2 on its stop) counts as a lost RC (<a href="../designs/2026-11-22_rc-right-stick.md">design</a>)</td>
+<td>Arsh, Ben</td>
+<td>2026-11-22</td>
 <td>built</td>
 </tr>
 <tr>

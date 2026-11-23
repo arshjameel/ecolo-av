@@ -264,7 +264,7 @@ impl Rig {
     }
 
     /// Queue one iBUS frame on the serial port: the mode switch on manual (`override_on`)
-    /// or normal, the left stick (1500 is the brake band, 1000 full forward), steering.
+    /// or normal, the left stick (1500 is its middle, 1000 full forward), steering.
     pub fn rc(&mut self, override_on: bool, throttle: u16, steering: u16) {
         let mut ch = [1500; CHANNELS];
         ch[5] = if override_on { 2000 } else { 1000 };
