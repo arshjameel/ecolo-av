@@ -361,7 +361,8 @@ def tool_args(step: Step, sim: bool, out: str) -> List[str]:
     if sim:
         args.append('--sim')
         if step.args[:1] == ('preflight',):
-            args += ['--skip', *SIM_SKIP]
+            # The runner's Ravensim is on stands (SIM_ARGS on_stands:=true), as the car.
+            args += ['--skip', *SIM_SKIP, '--on-jacks']
     return args
 
 

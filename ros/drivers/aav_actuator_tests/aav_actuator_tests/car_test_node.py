@@ -42,7 +42,10 @@ Subscribes  everything the preflight does (PreflightNode: every sensor, counted)
 Publishes   drivers/tests/cmd_vel  geometry_msgs/TwistStamped: the faults' slow roll, 50 Hz
             safety/estop           std_msgs/Bool, true only: when the car won't stop; and
                                    in --sim the e-stop step's press, standing in for a person
-Calls       /<node>/set_parameters  --sim only: fault.<sensor> stop, then ok, on Ravensim's
+Calls       /vehicle/sim/set_jacks  --sim only, phase A: std_srvs/SetBool on its own Ravensim,
+                                   true before the first step (it starts on stands:
+                                   on_stands:=true), false after the last
+            /<node>/set_parameters  --sim only: fault.<sensor> stop, then ok, on Ravensim's
                                     sensor node (aav_sim_models faults.NODES)
 Signals     --sim only: its own Ravensim's output_mux, SIGSTOP then SIGCONT (the heartbeat
             step), found in its own launch's log and checked in its own process group:
@@ -79,6 +82,7 @@ from rclpy.parameter import Parameter
 from rclpy.parameter_client import AsyncParameterClient
 from rclpy.signals import SignalHandlerOptions
 from std_msgs.msg import Bool, String
+from std_srvs.srv import SetBool
 import yaml
 
 ODOM_STALE = 0.5       # s
@@ -90,7 +94,10 @@ SIM_UP = 600.0         # s for our Ravensim to come up (its cameras may build fi
 MEND_TIME = 30.0       # s for the watchdog to say OK again after a fault is mended
 # What the watchdog's inputs are called in the preflight's sensor counts (preflight.SENSORS).
 COUNTED = {'gps': 'gps', 'imu': 'imu_filtered', 'camera': 'camera', 'lidar': 'lidar'}
-SIM_ARGS = ('world:=road', 'rviz:=false', 'faults:=true', 'nav:=false')
+# on_stands:=true: our Ravensim's car is on stands (on jacks) from the start, as the real
+# car is for phase A: the rear wheels spin and steer, the car stays put (TODO 272).
+SIM_ARGS = ('world:=road', 'rviz:=false', 'faults:=true', 'nav:=false', 'on_stands:=true')
+JACKS_SERVICE = '/vehicle/sim/set_jacks'   # Ravensim's own: only ever called in --sim
 
 
 class Tee:
@@ -206,6 +213,7 @@ class CarTest:
         self.interrupted = False
         self.inputs = watchdog_inputs()
         self.still_since = None
+        self.on_stands = False     # --sim: our Ravensim's car, once it has said so
 
     # --- before -----------------------------------------------------------------------
 
@@ -225,6 +233,15 @@ class CarTest:
                 return (f'Ravensim did not come up in {SIM_UP:.0f} s (see '
                         f'{self.sim.log_path})')
             node.spin_for(5.0)   # the rest settles
+            # Asking for what it should be already changes nothing, and says so.
+            ok, word = self.jacks(True)
+            if not ok:
+                return f"our Ravensim's car is not on stands: {word}"
+            self.say(f'Ravensim: {word}')
+            self.on_stands = True
+            self.notes.append("Ravensim's car was on stands (on jacks) for every step, as the "
+                              'real car: the rear wheels spun and steered, the car stayed '
+                              'put (sim.launch.py on_stands:=true)')
             self.notes.append(f'Ravensim has no {", ".join(ct.SIM_SKIP)}: the preflight '
                               'steps skip it (--skip)')
         else:
@@ -251,6 +268,34 @@ class CarTest:
             if not safety.confirmed(typed, 'car-test'):
                 return 'cancelled: nothing moved'
         return None
+
+    def jacks(self, up):
+        """--sim only: our Ravensim's car on stands (True) or back down; (ok, its words)."""
+        client = self.node.create_client(SetBool, JACKS_SERVICE)
+        try:
+            if not client.wait_for_service(timeout_sec=10.0):
+                return False, f'no {JACKS_SERVICE}'
+            sent = client.call_async(SetBool.Request(data=up))
+            self.node.spin_for(10.0, sent.done)
+            if not sent.done():
+                return False, f'{JACKS_SERVICE} did not answer'
+            return sent.result().success, sent.result().message
+        finally:
+            self.node.destroy_client(client)
+
+    def lower(self):
+        """
+        --sim only, at the end: take our Ravensim's car off the stands, as a person would.
+
+        The car has been stopped (stop_car). Ravensim refuses while the wheels spin or a
+        speed is commanded: that would be the car leaping off the stands, so it is noted.
+        """
+        if not self.sim or not self.on_stands:
+            return
+        ok, word = self.jacks(False)
+        self.say(f'Ravensim: {word}')
+        self.notes.append(f'At the end the car was lowered off the stands: {word}' if ok else
+                          f'NOT LOWERED at the end: {word}')
 
     def fresh_odom(self):
         t = self.node.odom_time
@@ -944,8 +989,8 @@ def main(argv=None):
                  f"{os.environ.get('ROS_DOMAIN_ID')}, this computer only)" if args.sim
                  else 'the real car, in the hallway')
     else:
-        where = (f"Ravensim's road world, started by the runner (ROS domain "
-                 f"{os.environ.get('ROS_DOMAIN_ID')}, this computer only)" if args.sim
+        where = ("Ravensim's road world, the car on stands, started by the runner (ROS "
+                 f"domain {os.environ.get('ROS_DOMAIN_ID')}, this computer only)" if args.sim
                  else 'the real car, on stands')
     out.say(f'car-test --{phase}: {where}. Report folder: {folder}')
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
@@ -959,6 +1004,8 @@ def main(argv=None):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:
             run.stop_car()
+            if not args.hallway:
+                run.lower()
             run.report(started, where)
         finally:
             node.destroy_node()

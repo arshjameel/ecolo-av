@@ -23,7 +23,8 @@ TwistStamped on /drivers/tests/cmd_vel and logs what the car did.
                       in time to stop inside the hallway's room (stop_room)
 
 Steering can only change while the car moves (ego holds it below 0.05 m/s), so the
-stage-3 tests creep along: on stands the wheels spin slowly, in Gazebo the car crawls.
+stage-3 tests creep along: on stands the wheels spin slowly (Ravensim's too, on jacks);
+on the ground the car crawls.
 """
 
 from __future__ import annotations

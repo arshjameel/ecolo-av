@@ -110,7 +110,7 @@ def test_tool_args():
     pf, sweep = ct.STEPS[0], ct.STEPS[2]
     assert ct.tool_args(pf, False, '/o') == ['preflight', '--stands', '--out', '/o']
     assert ct.tool_args(pf, True, '/o') == ['preflight', '--stands', '--out', '/o', '--sim',
-                                            '--skip', 'battery']
+                                            '--skip', 'battery', '--on-jacks']
     assert ct.tool_args(sweep, True, '/o') == ['steer-sweep', '--stands', '--out', '/o',
                                                '--sim']
     assert '--no-drive' in ct.tool_args(ct.STEPS[1], False, '/o')
