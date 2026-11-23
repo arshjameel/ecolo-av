@@ -36,7 +36,15 @@
 //!                                     MESH_RESOURCE marker: ns its name, mesh_resource its
 //!                                     SDF file (file://), its pose in the map. For the
 //!                                     cameras (sim_cameras), which draw them
-//! Serves      vehicle/sim/spawn_entity  simulation_interfaces/SpawnEntity: put a model (an SDF
+//!             vehicle/sim/jacks       std_msgs/Bool, latched: true while the car is on
+//!                                     stands (the wheels spin free, the body stays put),
+//!                                     sent at the start and on each change. sim_adapter
+//!                                     takes the car's weight off the wheels by it
+//! Serves      vehicle/sim/set_jacks   std_srvs/SetBool: true puts the car on stands, false
+//!                                     back on the ground. Refused, in words, unless the
+//!                                     car (or its wheels) stands still and no speed is
+//!                                     commanded (sim-core jacks.rs), so it can't leap off
+//!             vehicle/sim/spawn_entity  simulation_interfaces/SpawnEntity: put a model (an SDF
 //!                                     file, or model://name) in the world, at initial_pose
 //!                                     (map frame; x, y and yaw), as Gazebo's create service
 //!             vehicle/sim/delete_entity  simulation_interfaces/DeleteEntity: take it away
@@ -56,7 +64,9 @@
 //!             meets, as Gazebo's; body_length 0: it drives through), ground_step (m: the
 //!             highest step a wheel rolls up, 0.1; the car rides the world's ground, tilts on
 //!             slopes, stops at a higher kerb; 0: flat ground), seed, wheel_noise (m/s on
-//!             each wheel reading, 0: off), wheel_slip (a fraction, 0: off), step (s),
+//!             each wheel reading, 0: off), wheel_slip (a fraction, 0: off), on_stands
+//!             (false; true: the car starts on stands), speed_wheels (rear: the wheels the
+//!             odometry reads; front, as today's car, reads 0 on stands), step (s),
 //!             clock_hz, real_time_factor (1.0; 0: as fast as it can), threads, camera_lockstep
 //!             (false; true: wait for the cameras, above), camera_timeout (s, wall: 10)
 //!
@@ -90,9 +100,11 @@ use ros_env::simulation_interfaces::srv::{
     SetEntityState_Request, SetEntityState_Response, SpawnEntity, SpawnEntity_Request,
     SpawnEntity_Response,
 };
-use ros_env::std_msgs::msg::Header;
+use ros_env::std_msgs::msg::{Bool, Header};
+use ros_env::std_srvs::srv::{SetBool, SetBool_Request, SetBool_Response};
 use ros_env::visualization_msgs::msg::{Marker, MarkerArray};
 use sim_core::car::{Command, TwistFollower};
+use sim_core::jacks::{self, SpeedWheels, Stance, Switched};
 use sim_core::lidar::{LidarSpec, Scan, FIELDS, POINT_STEP};
 use sim_core::lockstep::{CameraGate, Waited};
 use sim_core::math::{Pose, Rot3};
@@ -189,7 +201,19 @@ fn main() -> Result<()> {
         params.start_y.get(),
         params.start_yaw.get(),
     );
-    let sim = Simulator::new(settings, world, car, start);
+    let mut sim = Simulator::new(settings, world, car, start);
+    let speed_wheels: SpeedWheels = params.speed_wheels.get().parse()?;
+    sim.set_speed_wheels(speed_wheels);
+    let stance = Stance::from_on_stands(params.on_stands.get());
+    sim.set_stance(stance);
+    if stance.is_on_stands() {
+        log_warn!(
+            node.logger(),
+            "the car starts ON STANDS: the wheels spin, the car stays put \
+             (vehicle/sim/set_jacks false lowers it); the odometry reads the {} wheels",
+            params.speed_wheels.get()
+        );
+    }
 
     let out = Outputs {
         clock: node.create_publisher("/clock")?,
@@ -222,6 +246,9 @@ fn main() -> Result<()> {
         changes: Vec::new(),
         placed: BTreeMap::new(),
         entities: node.create_publisher("vehicle/sim/entities".reliable().transient_local())?,
+        stance,
+        wheel_speed: 0.0,
+        jacks: node.create_publisher("vehicle/sim/jacks".reliable().transient_local())?,
     }));
     if params.obstacle.get() {
         let at = Pose::from_xyz_rpy(
@@ -236,6 +263,15 @@ fn main() -> Result<()> {
     } else if let Ok(s) = shared.lock() {
         s.announce();
     }
+    if let Ok(s) = shared.lock() {
+        s.announce_jacks();
+    }
+    let lifting = Arc::clone(&shared);
+    let jacks_logger = node.logger().clone();
+    let _jacks = node.create_service::<SetBool, _>(
+        "vehicle/sim/set_jacks",
+        move |request: SetBool_Request| set_jacks(&lifting, &jacks_logger, &request),
+    )?;
     let latest = Arc::clone(&shared);
     let _cmd = node.create_subscription("vehicle/sim/cmd_vel", move |msg: Twist| {
         if let Ok(mut s) = latest.lock() {
@@ -331,6 +367,8 @@ fn run(
             let mut s = shared
                 .lock()
                 .map_err(|_| anyhow!("the command's lock is poisoned"))?;
+            // What the jacks' service decides on: the wheels' speed after the last step.
+            s.wheel_speed = sim.wheel_speed();
             (s.command, std::mem::take(&mut s.changes))
         };
         for change in changes {
@@ -342,6 +380,7 @@ fn run(
                     velocity,
                 } => sim.place_model(&name, mesh, &pose, velocity),
                 Change::PlaceCar(x, y, yaw) => sim.place_car(x, y, yaw),
+                Change::Jacks(stance) => sim.set_stance(stance),
                 Change::Remove(name) => {
                     sim.remove_model(&name);
                 }
@@ -398,9 +437,21 @@ struct Shared {
     /// was one; the cameras hear the lot on vehicle/sim/entities.
     placed: BTreeMap<String, (PathBuf, Pose)>,
     entities: Publisher<MarkerArray>,
+    /// On the ground or on stands, as the last accepted request left it.
+    stance: Stance,
+    /// m/s at the tyre, after the loop's last step.
+    wheel_speed: f64,
+    jacks: Publisher<Bool>,
 }
 
 impl Shared {
+    /// Whether the car is on stands, latched (vehicle/sim/jacks).
+    fn announce_jacks(&self) {
+        let _ = self.jacks.publish(Bool {
+            data: self.stance.is_on_stands(),
+        });
+    }
+
     /// Every placed model, latched, for the cameras: a DELETEALL, then one marker each.
     fn announce(&self) {
         let clear = Marker {
@@ -445,6 +496,8 @@ impl Shared {
 enum Change {
     /// The car, moved: x, y (m), yaw (rad), in the map.
     PlaceCar(f64, f64, f64),
+    /// The car, put on stands or back on the ground.
+    Jacks(Stance),
     Place {
         name: String,
         mesh: Mesh,
@@ -533,6 +586,46 @@ fn delete(shared: &Mutex<Shared>, request: &DeleteEntity_Request) -> DeleteEntit
         ),
     };
     DeleteEntity_Response { result }
+}
+
+/// SetBool on vehicle/sim/set_jacks: on stands (true) or on the ground (false), from the
+/// next step. Whether it may: sim-core jacks.rs `switch`, on the wheels' speed after the
+/// last step and the speed the car is told to follow now.
+fn set_jacks(
+    shared: &Mutex<Shared>,
+    logger: &Logger,
+    request: &SetBool_Request,
+) -> SetBool_Response {
+    let wanted = Stance::from_on_stands(request.data);
+    let Ok(mut s) = shared.lock() else {
+        return SetBool_Response {
+            success: false,
+            message: "the simulator's lock is poisoned".into(),
+        };
+    };
+    match jacks::switch(s.stance, wanted, s.wheel_speed, s.command.asked_speed()) {
+        Ok(Switched::Already(stance)) => SetBool_Response {
+            success: true,
+            message: format!("the car is {stance} already"),
+        },
+        Ok(Switched::Now(stance)) => {
+            s.stance = stance;
+            s.changes.push(Change::Jacks(stance));
+            s.announce_jacks();
+            log_warn!(logger, "the car is now {stance}");
+            SetBool_Response {
+                success: true,
+                message: format!("the car is now {stance}"),
+            }
+        }
+        Err(why) => {
+            log_warn!(logger, "the car stays {}: {why}", s.stance);
+            SetBool_Response {
+                success: false,
+                message: format!("refused, the car stays {}: {why}", s.stance),
+            }
+        }
+    }
 }
 
 /// A ROS pose as sim-core's plain one.
@@ -806,6 +899,8 @@ struct Params {
     seed: ReadOnlyParameter<i64>,
     wheel_noise: ReadOnlyParameter<f64>,
     wheel_slip: ReadOnlyParameter<f64>,
+    on_stands: ReadOnlyParameter<bool>,
+    speed_wheels: ReadOnlyParameter<Arc<str>>,
     step: ReadOnlyParameter<f64>,
     clock_hz: ReadOnlyParameter<f64>,
     real_time_factor: ReadOnlyParameter<f64>,
@@ -865,6 +960,8 @@ impl Params {
             seed: node.declare_parameter("seed").default(1).read_only()?,
             wheel_noise: number("wheel_noise", 0.0)?,
             wheel_slip: number("wheel_slip", 0.0)?,
+            on_stands: flag("on_stands", false)?,
+            speed_wheels: text("speed_wheels", "rear")?,
             step: number("step", 0.001)?,
             clock_hz: number("clock_hz", 1000.0)?,
             real_time_factor: number("real_time_factor", 1.0)?,

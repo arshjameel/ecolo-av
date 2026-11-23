@@ -122,6 +122,7 @@ reaches a real car on the same network. A family is one command and a word after
 | `drive-to-point` | drive to one point and stop smoothly: `drive-to-point --sim --ahead 20` |
 | `ghost` | a pretend person only navigation sees, to test stopping: `ghost ahead 10` |
 | `sim-fault` | make a simulated sensor fail on purpose: `sim-fault gps stop`, then `sim-fault gps ok` |
+| `jacks` | put Ravensim's car on stands or back on the ground, next to `pixi run sim`: `jacks up --sim` (the rear wheels spin and steer, the car stays put), `jacks down --sim` (refused while the wheels spin), `jacks status --sim`. The simulator only ([docs](docs/actuator-tests.md#the-simulated-car-on-stands-pixi-run-jacks)) |
 
 ### The screens
 

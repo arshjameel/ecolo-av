@@ -98,6 +98,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `demo_all.sh` | Ravensim, RViz, the HUD and the map window in one go (`--debug`: the debug HUD too) | `demo` |
 | `pick.py` | a plain-words menu of the sim's switches (route, follower, where-am-I, speed loop): prints, saves and runs the command (`docs/switches.md`) | `pick` |
 | `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
+| `jacks.py` | Ravensim's car on stands or on the ground: `up`, `down`, `status`, always `--sim`; refuses unless `/system/source` says only SIM | `jacks` |
 | `software_gl.sh` | Mesa's software renderer with no GPU: Vulkan (lavapipe) for Ravensim's cameras, which then run in lockstep (it exports `AAV_SOFTWARE_GL=1`); `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
 | `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt` (`--ndt-map`: another map), `--ndt-ekf`, `--ndt-leads`, `--gps-off`, `--gps-fault` (stop, jump, drift), `--voxels`, `--kiss-icp`), same routes | `measure controllers` |

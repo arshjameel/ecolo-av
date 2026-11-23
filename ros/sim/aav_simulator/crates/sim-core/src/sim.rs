@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use crate::car::{CarModel, CarState, Command};
 use crate::geo::Geodetic;
 use crate::ground::Ground;
+use crate::jacks::{FreeWheels, SpeedWheels, Stance};
 use crate::lidar::{LidarSpec, Scan};
 use crate::math::{Pose, Rot3, Vec3};
 use crate::noise::Noise;
@@ -361,6 +362,10 @@ pub struct Simulator {
     /// The car's motion at the last IMU reading: the next one averages over the time
     /// between, as a real IMU's filter does (None: the first, or the car was placed).
     imu_last: Option<ImuMemory>,
+    /// On the ground, or on stands: the wheels spin and the body stays put (`jacks`).
+    stance: Stance,
+    /// Which wheels the odometry reads: on stands only the driven rear ones turn.
+    speed_wheels: SpeedWheels,
 }
 
 /// What the IMU remembers from its last reading.
@@ -462,6 +467,56 @@ impl Simulator {
             joints: Joints::default(),
             last_contact_ns: None,
             wheel_heights: [0.0; 4],
+            stance: Stance::OnGround,
+            speed_wheels: SpeedWheels::default(),
+        }
+    }
+
+    /// Whether the car is on the ground or on stands.
+    #[must_use]
+    pub fn stance(&self) -> Stance {
+        self.stance
+    }
+
+    /// Put the car on stands, or back on the ground, where it is. Either way it starts
+    /// standing still: the body, and the wheels too, so it can't leap off the stands.
+    /// Whether it may is the caller's question first (`jacks::switch`).
+    pub fn set_stance(&mut self, stance: Stance) {
+        if stance == self.stance {
+            return;
+        }
+        self.stance = stance;
+        let here = self.car.state();
+        self.car.hold(&here);
+        // Not a motion: the IMU starts afresh.
+        self.imu_last = None;
+    }
+
+    /// Which wheels the odometry reads (vehicle.yaml `speed_wheels`): it matters on stands.
+    pub fn set_speed_wheels(&mut self, wheels: SpeedWheels) {
+        self.speed_wheels = wheels;
+    }
+
+    /// The wheels' speed at the tyre (m/s): on the ground the car's own; on stands the
+    /// driven wheels', while the car stands.
+    #[must_use]
+    pub fn wheel_speed(&self) -> f64 {
+        self.car.state().speed
+    }
+
+    /// The body's motion: the car model's on the ground; on stands it stands still where
+    /// it is, whatever the wheels do. The steering is the wheels' own either way.
+    #[must_use]
+    pub fn body(&self) -> CarState {
+        let s = self.car.state();
+        match self.stance {
+            Stance::OnGround => s,
+            Stance::OnStands => CarState {
+                speed: 0.0,
+                accel: 0.0,
+                yaw_rate: 0.0,
+                ..s
+            },
         }
     }
 
@@ -608,6 +663,9 @@ impl Simulator {
     pub fn step(&mut self, command: &Command) -> Vec<Output> {
         let dt = self.settings.step_ns as f64 * 1e-9;
         self.move_models(dt);
+        if self.stance.is_on_stands() {
+            return self.step_on_stands(command, dt);
+        }
         let before = self.car.state();
         let mut s = self.car.step(command, dt);
         self.time_ns += self.settings.step_ns;
@@ -649,6 +707,21 @@ impl Simulator {
         out
     }
 
+    /// One step on stands: the car model answers the command as ever (the wheels' speed,
+    /// the steering, through the same limits), and the body is put back where it stood.
+    /// Nothing can be hit and no ground is felt: the car doesn't move.
+    fn step_on_stands(&mut self, command: &Command, dt: f64) -> Vec<Output> {
+        let stood = self.car.state();
+        self.car.step(command, dt);
+        self.car.pin(stood.x, stood.y, stood.yaw);
+        self.time_ns += self.settings.step_ns;
+        let s = self.car.state();
+        self.integrate(&s, dt);
+        let mut out = Vec::new();
+        self.speak(&mut out, false);
+        out
+    }
+
     fn due(&self, hz: f64) -> bool {
         let p = period_ns(hz, self.settings.step_ns);
         p > 0 && self.time_ns.is_multiple_of(p)
@@ -663,7 +736,7 @@ impl Simulator {
             out.push(Output::Odom(self.odom));
         }
         if self.due(r.truth) {
-            let s = self.car.state();
+            let s = self.body();
             let base = self.base_link();
             let (roll, pitch, _) = base.rotation.rpy();
             out.push(Output::Truth(Odometry {
@@ -726,7 +799,7 @@ impl Simulator {
             time_ns: self.time_ns,
             world: &self.world,
             world_file: self.settings.world_file.as_deref(),
-            car: self.car.state(),
+            car: self.body(),
             base_link: base,
         };
         for p in &mut self.plugins {
@@ -737,35 +810,52 @@ impl Simulator {
         }
     }
 
-    /// The wheels' odometry and the joints, after the car moved by a step.
+    /// The wheels' odometry and the joints, after the car model moved by a step.
     fn integrate(&mut self, s: &CarState, dt: f64) {
+        // How the body moved: on stands, not at all.
+        let body = self.body();
         // The odometry: the car's motion from where it started, in its start heading.
-        let (dx, dy) = (s.x - self.start.x, s.y - self.start.y);
+        let (dx, dy) = (body.x - self.start.x, body.y - self.start.y);
         let (sin0, cos0) = self.start.yaw.sin_cos();
         self.odom = Odometry {
             x: cos0 * dx + sin0 * dy,
             y: -sin0 * dx + cos0 * dy,
-            yaw: crate::math::wrap(s.yaw - self.start.yaw),
-            speed: s.speed,
-            yaw_rate: s.yaw_rate,
+            yaw: crate::math::wrap(body.yaw - self.start.yaw),
+            speed: body.speed,
+            yaw_rate: body.yaw_rate,
             z: 0.0,
             roll: 0.0,
             pitch: 0.0,
         };
-        if self.settings.noise.wheels_noisy() {
-            self.read_wheels(s, dt);
-        }
         let g = self.settings.geometry;
-        let half = g.track / 2.0;
-        // Each wheel's ground speed along its own heading.
-        let rear = [s.speed - s.yaw_rate * half, s.speed + s.yaw_rate * half];
-        let side = s.yaw_rate * g.wheelbase;
-        let front = [
-            (rear[0].powi(2) + side.powi(2)).sqrt().copysign(s.speed),
-            (rear[1].powi(2) + side.powi(2)).sqrt().copysign(s.speed),
-        ];
-        let speeds = [rear[0], rear[1], front[0], front[1]];
-        for (i, v) in speeds.iter().enumerate() {
+        let tyres = match self.stance {
+            Stance::OnGround => {
+                if self.settings.noise.wheels_noisy() {
+                    self.read_wheels(s.speed, s.yaw_rate, &body, dt);
+                } else if self.drift != [0.0; 3] {
+                    // What the wheels counted on stands stays counted.
+                    self.read(body.speed, body.yaw_rate, &body, dt);
+                }
+                let half = g.track / 2.0;
+                // Each wheel's ground speed along its own heading.
+                let rear = [s.speed - s.yaw_rate * half, s.speed + s.yaw_rate * half];
+                let side = s.yaw_rate * g.wheelbase;
+                let front = [
+                    (rear[0].powi(2) + side.powi(2)).sqrt().copysign(s.speed),
+                    (rear[1].powi(2) + side.powi(2)).sqrt().copysign(s.speed),
+                ];
+                [rear[0], rear[1], front[0], front[1]]
+            }
+            Stance::OnStands => {
+                // The wheels count turns; the body stands. Ackermann odometry turns by
+                // the wheels' speed and the steering, so it "drives" a curve in the air.
+                let free = FreeWheels::at(s.speed, self.speed_wheels);
+                let turn = free.sensed_speed * s.steering.tan() / g.wheelbase;
+                self.read_wheels(free.sensed_speed, turn, &body, dt);
+                free.tyre_speeds
+            }
+        };
+        for (i, v) in tyres.iter().enumerate() {
             let rate = v / g.wheel_radius;
             self.joints.wheel_rate[i] = rate;
             self.joints.wheel_angle[i] = crate::math::wrap(self.joints.wheel_angle[i] + rate * dt);
@@ -773,28 +863,36 @@ impl Simulator {
         self.joints.steering = wheel_angles(s.steering, g.wheelbase, g.track);
     }
 
-    /// The wheels' odometry from noisy, slipping wheels: the truth's plus a drift that
-    /// grows from the gap between what the wheels read and how the car moved.
-    fn read_wheels(&mut self, s: &CarState, dt: f64) {
+    /// The wheels' odometry from wheels that turn at `speed` (m/s) and `yaw_rate`, with
+    /// their noise and slip, while the body moves as `body`.
+    fn read_wheels(&mut self, speed: f64, yaw_rate: f64, body: &CarState, dt: f64) {
         let n = self.settings.noise;
         // A wheel that doesn't turn reads nothing: no noise standing still.
-        let turning = s.speed.abs() > 0.01;
-        let speed = if turning {
-            s.speed * (1.0 + n.wheel_slip) + self.wheel_noise.gauss(n.wheel_speed)
+        let turning = speed.abs() > 0.01;
+        let read = if turning && n.wheels_noisy() {
+            speed * (1.0 + n.wheel_slip) + self.wheel_noise.gauss(n.wheel_speed)
+        } else if turning {
+            speed
         } else {
             0.0
         };
         // Ackermann odometry turns by the wheels' speed and the steering: the same error.
-        let yaw_rate = if turning {
-            s.yaw_rate * speed / s.speed
+        let read_yaw_rate = if turning {
+            yaw_rate * read / speed
         } else {
-            s.yaw_rate
+            yaw_rate
         };
+        self.read(read, read_yaw_rate, body, dt);
+    }
+
+    /// The odometry as the wheels read it: the body's own plus a drift that grows from
+    /// the gap between what the wheels read and how the body moved.
+    fn read(&mut self, speed: f64, yaw_rate: f64, body: &CarState, dt: f64) {
         let true_yaw = self.odom.yaw;
         let read_yaw = true_yaw + self.drift[2];
-        self.drift[0] += (speed * read_yaw.cos() - s.speed * true_yaw.cos()) * dt;
-        self.drift[1] += (speed * read_yaw.sin() - s.speed * true_yaw.sin()) * dt;
-        self.drift[2] += (yaw_rate - s.yaw_rate) * dt;
+        self.drift[0] += (speed * read_yaw.cos() - body.speed * true_yaw.cos()) * dt;
+        self.drift[1] += (speed * read_yaw.sin() - body.speed * true_yaw.sin()) * dt;
+        self.drift[2] += (yaw_rate - body.yaw_rate) * dt;
         self.odom.x += self.drift[0];
         self.odom.y += self.drift[1];
         self.odom.yaw = crate::math::wrap(self.odom.yaw + self.drift[2]);
@@ -810,7 +908,7 @@ impl Simulator {
     /// instant's acceleration would alias the car model's 1 ms steps (it catches each new
     /// command in a step or two at up to 10 m/s²).
     fn imu(&mut self) -> ImuReading {
-        let s = self.car.state();
+        let s = self.body();
         let mount = self.settings.mounts.imu;
         let base = self.base_link();
         let world = base.then(&mount);
@@ -993,6 +1091,117 @@ mod tests {
         assert!(body.touches(&scene, &Pose::IDENTITY));
         let back = Pose::new(Vec3::new(-0.2, 0.0, 0.0), Rot3::IDENTITY);
         assert!(!body.touches(&scene, &back));
+    }
+
+    /// Run `steps` on a flat world; return the last of each output seen.
+    fn last_outputs(
+        sim: &mut Simulator,
+        command: &Command,
+        steps: usize,
+    ) -> (Odometry, Odometry, ImuReading, Joints, Geodetic) {
+        let (mut odom, mut truth, mut imu, mut joints, mut fix) = (None, None, None, None, None);
+        for _ in 0..steps {
+            for o in sim.step(command) {
+                match o {
+                    Output::Odom(v) => odom = Some(v),
+                    Output::Truth(v) => truth = Some(v),
+                    Output::Imu(v) => imu = Some(v),
+                    Output::Joints(v) => joints = Some(v),
+                    Output::NavSat(v) => fix = Some(v),
+                    _ => {}
+                }
+            }
+        }
+        (
+            odom.expect("odom"),
+            truth.expect("truth"),
+            imu.expect("imu"),
+            joints.expect("joints"),
+            fix.expect("navsat"),
+        )
+    }
+
+    #[test]
+    fn on_stands_the_wheels_spin_and_steer_and_the_body_stays_put() {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(quiet(), World::flat(400.0), car, (3.0, -2.0, 0.5));
+        let still = Command::Twist {
+            speed: 0.0,
+            yaw_rate: 0.0,
+        };
+        let (_, _, _, _, fix_before) = last_outputs(&mut sim, &still, 300);
+        sim.set_stance(Stance::OnStands);
+        // 0.3 m/s, turning left: on the ground an arc.
+        let go = Command::Twist {
+            speed: 0.3,
+            yaw_rate: 0.08,
+        };
+        let (odom, truth, imu, joints, fix) = last_outputs(&mut sim, &go, 3000);
+        // The truth, the IMU and the GPS: still, exactly where it stood.
+        assert_eq!((truth.x, truth.y, truth.yaw), (3.0, -2.0, 0.5));
+        assert_eq!((truth.speed, truth.yaw_rate), (0.0, 0.0));
+        assert_eq!(imu.angular_velocity, Vec3::new(0.0, 0.0, 0.0));
+        assert!(imu.linear_acceleration.x.abs() < 1e-9 && imu.linear_acceleration.y.abs() < 1e-9);
+        assert!((imu.linear_acceleration.z - GRAVITY).abs() < 1e-9);
+        assert_eq!(fix, fix_before);
+        // The driven rear wheels spin at the commanded speed; the free front ones stand.
+        let rate = 0.3 / 0.18;
+        assert!((joints.wheel_rate[0] - rate).abs() < 1e-6, "{joints:?}");
+        assert!((joints.wheel_rate[1] - rate).abs() < 1e-6);
+        assert_eq!(&joints.wheel_rate[2..], &[0.0, 0.0]);
+        // The steering turned as told (atan(L x yaw rate / speed) at the centre wheel).
+        let centre = (1.561_f64 * 0.08 / 0.3).atan();
+        assert!((sim.body().steering - centre).abs() < 1e-3);
+        assert!(joints.steering[0] > joints.steering[1] && joints.steering[1] > 0.3);
+        // The wheels' odometry says it drives, and counts the distance.
+        assert!((odom.speed - 0.3).abs() < 1e-6 && odom.yaw_rate > 0.07);
+        assert!(odom.x.hypot(odom.y) > 0.5, "{odom:?}");
+        assert!((sim.wheel_speed() - 0.3).abs() < 1e-6);
+    }
+
+    #[test]
+    fn speed_sensors_on_the_front_wheels_read_nothing_on_stands() {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(quiet(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        sim.set_speed_wheels(SpeedWheels::Front);
+        sim.set_stance(Stance::OnStands);
+        let go = Command::Twist {
+            speed: 0.3,
+            yaw_rate: 0.0,
+        };
+        let (odom, _, _, joints, _) = last_outputs(&mut sim, &go, 1000);
+        assert!(
+            joints.wheel_rate[0] > 1.0,
+            "the motor still spins the rear wheels"
+        );
+        assert_eq!((odom.speed, odom.x), (0.0, 0.0));
+    }
+
+    #[test]
+    fn lowered_the_car_starts_from_rest_and_drives_as_before() {
+        let car = Box::new(TwistFollower::new(1.561, 0.5));
+        let mut sim = Simulator::new(quiet(), World::flat(400.0), car, (0.0, 0.0, 0.0));
+        sim.set_stance(Stance::OnStands);
+        let go = Command::Twist {
+            speed: 1.0,
+            yaw_rate: 0.0,
+        };
+        let (on_stands, _, _, _, _) = last_outputs(&mut sim, &go, 2000);
+        assert!(on_stands.x > 1.5, "the wheels counted about 2 m in the air");
+        // Lowered with the wheels still spinning (the node refuses this; the loop makes
+        // it safe anyway): the car starts from rest, it doesn't leap.
+        sim.set_stance(Stance::OnGround);
+        assert_eq!(sim.wheel_speed(), 0.0);
+        assert_eq!(sim.car().x, 0.0);
+        let (odom, truth, _, joints, _) = last_outputs(&mut sim, &go, 2000);
+        assert!((truth.speed - 1.0).abs() < 1e-6 && truth.x > 1.5 && truth.x < 2.0);
+        // All four wheels roll again, and the odometry carries on from what it counted.
+        assert!(joints
+            .wheel_rate
+            .iter()
+            .all(|r| (r - 1.0 / 0.18).abs() < 1e-6));
+        assert!((odom.x - (on_stands.x + truth.x)).abs() < 1e-6, "{odom:?}");
+        assert_eq!(sim.stance(), Stance::OnGround);
     }
 
     #[test]

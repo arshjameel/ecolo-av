@@ -309,6 +309,10 @@ bench's argument names:
                       car for the hallway fits to find (car-test --hallway --sim, TODO 248)
   wheel_noise:=0.05 wheel_slip:=0.02 noise_seed:=1  noisy, slipping wheels (Ravensim's;
                       0: off)
+  on_stands:=true     Ravensim's car starts on stands (on jacks): the rear wheels spin and
+                      steer, the car stays put; pixi run jacks down lowers it (TODO 272).
+                      speed_wheels:=front: the odometry reads the front wheels, as today's
+                      car, so 0 on stands; free_wheel_mass:=20: kg the motor moves there
   lag_scale:=2        the actuator model's throttle, brake and steering lags twice
                       vehicle.yaml's, while every driver still reads vehicle.yaml: how a
                       follower copes with a car slower than it was told (1.0: as written)
@@ -609,6 +613,8 @@ def launch_setup(context):
                 payload=arg('payload'), adaptive_brake=arg('adaptive_brake'),
                 lag_scale=arg('lag_scale'), actuators=arg('actuators'),
                 wheel_noise=arg('wheel_noise'), wheel_slip=arg('wheel_slip'),
+                on_stands=arg('on_stands'), speed_wheels=arg('speed_wheels'),
+                free_wheel_mass=arg('free_wheel_mass'),
                 noise_seed=arg('noise_seed'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
@@ -981,6 +987,14 @@ def generate_launch_description():
                               description='the wheels read this share too far (0: off)'),
         DeclareLaunchArgument('noise_seed', default_value='1',
                               description="the sensors' noise seed"),
+        DeclareLaunchArgument('on_stands', default_value='false',
+                              description="true: Ravensim's car starts on stands: the wheels "
+                                          'spin, the car stays put (pixi run jacks)'),
+        DeclareLaunchArgument('speed_wheels', default_value='rear',
+                              description='the wheels the simulated odometry reads: rear '
+                                          "(driven) or front (today's car: 0 on stands)"),
+        DeclareLaunchArgument('free_wheel_mass', default_value='20.0',
+                              description='kg the motor moves on stands (a GUESS)'),
         DeclareLaunchArgument('lag_scale', default_value='1.0',
                               description="the actuator model's lags times this (a "
                                           'robustness test; the drivers keep vehicle.yaml)'),

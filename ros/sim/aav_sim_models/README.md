@@ -53,7 +53,8 @@ no command timeout). `esp32_loop:=pi|open` is the bridge's `speed_loop.mode`.
 Arguments: `world` (empty, test_lot, road, or a path), `obstacle`, `start_x`, `start_y` (m),
 `start_yaw` (rad), `lidar`, `cameras`, `camera_lockstep` (auto, true, false; auto = on
 under `tools/software_gl.sh`), `graphics` (auto, simple, pretty; auto = pretty on a GPU), `chase_camera`, `radar`, `actuator_model`, `speed_loop`,
-`payload` (kg aboard), `adaptive_brake`, `lag_scale`, `faults`, `spine`, `arm`, `bridge`
+`payload` (kg aboard), `adaptive_brake`, `lag_scale`, `on_stands` (the car starts on stands),
+`speed_wheels` (rear, or front as today's car), `free_wheel_mass` (20 kg, a guess), `faults`, `spine`, `arm`, `bridge`
 (rust or python), `esp32`, `esp32_loop` (pi or open), `noise_seed`, `wheel_noise`,
 `wheel_slip`, `clock_hz`.
 
@@ -104,6 +105,7 @@ and `brake` still carry what was asked as `command`, and what the car did as `me
 | `gps.py` | the receiver's velocity from the truth | no |
 | `radar.py` | the simulator's radar cloud as the TI radar's; with its `speed` field, a moving thing's own Doppler speed (TODO 194) | no |
 | `wheels.py` | each wheel's speed from joint states | no |
+| `jacks.py` | the car on stands: the car model with free wheels (`free_wheels`: the motor moves `FREE_WHEEL_MASS`, 20 kg, a guess, not the car); `sim_adapter` switches on `/vehicle/sim/jacks` | no |
 | `sources.py` | what `/system/source` announces | no |
 | `worlds.py` | which world renders which sensors (`has_sensors`); each world's lane map (`lane_map_file`); the simulator's name (`check_simulator`; the old name `own` went on 20 Nov) and `camera_lockstep` | no |
 | `pose_frames.py` | `map_to_odom`: the `map → odom` that puts the car on the truth (`truth_localizer`) | no |

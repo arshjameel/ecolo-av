@@ -14,6 +14,8 @@ Subscribes  control/sim/actuator_cmd  ackermann_msgs/AckermannDriveStamped: ego'
                                   behind the real legacy_uart_bridge
             vehicle/sim/odom           nav_msgs/Odometry   (bridged from the Ackermann system)
             joint_states          sensor_msgs/JointState (bridged: the wheels' spin)
+            vehicle/sim/jacks     std_msgs/Bool, latched: true while Ravensim's car is on
+                                  stands (the simulator's vehicle/sim/set_jacks)
 Publishes   vehicle/sim/cmd_vel        geometry_msgs/Twist (bridged to /model/aav/cmd_vel), at
                                   rate_hz: the actuator model's speed and steering
             vehicle/odom          nav_msgs/Odometry, twist only, like aav_spine (not with spine)
@@ -61,7 +63,14 @@ modelled car push and brake less (car_model's share), whoever drives it. adaptiv
 (aav_description adaptive_brake.py, vehicle.yaml's `brake:` limits) between the speed
 loop and the brake, as it would sit on the car: below ego and every safety lock.
 
-Parameters  actuator_model (true), speed_loop (default: the actuator model's speed loop
+The car on stands (jacks.py; the simulator's vehicle/sim/set_jacks, on_stands:=true):
+while vehicle/sim/jacks says true, the actuator model drives free wheels: the motor and the
+brake move free_wheel_mass, not the car's mass and payload, so the wheels answer about 9
+times faster. The simulator spins the rear wheels and holds the body still; everything
+published here stays as it is, as on the real car on stands.
+
+Parameters  free_wheel_mass (20 kg, a GUESS: jacks.py), actuator_model (true),
+            speed_loop (default: the actuator model's speed loop
             profile, 'default', 'smooth', 'lqi' or 'firm': TODO 27, 3, 163), payload (0 kg, live),
             adaptive_brake (false, live), actuators ('': the car model's own numbers
             over vehicle.yaml's, "throttle_lag=0.3,drag=0.2": a known car to measure,
@@ -90,7 +99,7 @@ from aav_description.adaptive_brake import AdaptiveBrake, BrakeLimits
 from aav_interfaces.msg import ActuatorState, DataSource, SensorSource, SpineOutputs
 from aav_interfaces.msg import VehicleStatus
 from aav_interfaces.msg import WheelSpeeds
-from aav_sim_models import faults, sources, wheels
+from aav_sim_models import faults, jacks, sources, wheels
 from aav_sim_models.actuator_model import (ActuatorConfig, Actuators, Demand, Ideal,
                                            speed_loop_profile)
 from aav_sim_models.actuator_overrides import overridden
@@ -104,6 +113,7 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Bool
 
 
 NAN = float('nan')
@@ -163,6 +173,12 @@ class SimAdapter(Node):
                              'actuator_model must be true')
         profile = self.declare_parameter('speed_loop', 'default').value
         self.config = config
+        self.on_stands = False   # until the simulator says otherwise (vehicle/sim/jacks)
+        self.free_wheel_mass = float(self.declare_parameter(
+            'free_wheel_mass', jacks.FREE_WHEEL_MASS).value)
+        why = jacks.check_free_wheel_mass(self.free_wheel_mass)
+        if why:
+            raise ValueError(why)
         self.brake_limits = BrakeLimits.from_vehicle(car)
         if modelled:
             self.model = Actuators(config, speed_loop_profile(profile))
@@ -225,6 +241,17 @@ class SimAdapter(Node):
         self.set_load(float(self.declare_parameter('payload', 0.0, whole).value),
                       bool(self.declare_parameter('adaptive_brake', False).value))
         self.add_on_set_parameters_callback(self.on_fault)
+        latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                             durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.create_subscription(Bool, 'vehicle/sim/jacks', self.on_jacks, latched)
+
+    def on_jacks(self, msg):
+        """Ravensim put the car on stands, or back on the ground: load the wheels to match."""
+        if msg.data == self.on_stands:
+            return
+        self.on_stands = msg.data
+        self.set_load(float(self.get_parameter('payload').value),
+                      bool(self.get_parameter('adaptive_brake').value))
 
     def load_problem(self, payload, adaptive):
         """Return why this payload or adaptive brake can't be had, or None."""
@@ -245,11 +272,19 @@ class SimAdapter(Node):
         if not isinstance(self.model, Actuators):
             return
         self.model.cfg = replace(self.config, payload=payload)
+        if self.on_stands:
+            # Off the ground the wheels carry neither the car nor what is aboard.
+            self.model.cfg = jacks.free_wheels(self.model.cfg, self.free_wheel_mass)
         if adaptive and self.model.brake_loop is None:
             # It expects the empty car: the load is what it finds out.
             self.model.brake_loop = AdaptiveBrake(self.config, self.brake_limits)
         elif not adaptive:
             self.model.brake_loop = None
+        if self.on_stands:
+            self.get_logger().warning(
+                f'ON STANDS: free wheels, {self.free_wheel_mass:g} kg to move (a guess), so '
+                f'the motor and brake answer {self.model.cfg.share:.1f} times faster')
+            return
         self.get_logger().info(
             f'{payload:g} kg aboard (its brakes and motor at {100 * self.model.cfg.share:.0f} %'
             f' of the empty car\'s); the adaptive brake {"on" if adaptive else "off"}')

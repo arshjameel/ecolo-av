@@ -111,6 +111,12 @@ impl CarModel for SharedCar {
         self.state.v = 0.0;
         self.accel = 0.0;
     }
+
+    fn pin(&mut self, x: f64, y: f64, yaw: f64) {
+        self.state.x = x;
+        self.state.y = y;
+        self.state.yaw = yaw;
+    }
 }
 
 #[cfg(test)]
