@@ -3,7 +3,8 @@ The numbers behind `pixi run barrier-watch` (tools/barrier_watch.py). No ROS her
 
 Outside the capstone's scope (Ben's own research, toward his MASc thesis): the barriers in
 the MPC (docs/barriers.md). One drive past a round object gives a list of samples; this
-turns them into one line: touched, stopped or went round; the least gap; who acted first.
+turns them into one line: touched, stopped, went round or passed beside; the least gap;
+who acted first.
 
 Everything is in the run's own frame: x along the car's heading at the start, y to its
 left, the origin where base_link stood (REP-103: metres, seconds, radians). The poses are
@@ -109,7 +110,7 @@ def gap(body, sample, centre, radius):
 class Verdict:
     """What one drive did."""
 
-    outcome: str            # touched, went round, stopped, or still moving
+    outcome: str            # touched, went round, passed beside, stopped, or still moving
     least_gap: float        # m (nan with no samples)
     first: str              # who acted first, in words
     passed: bool            # the rear bumper went past the object
@@ -179,7 +180,8 @@ def verdict(samples, body, centre, radius):
     if least <= 0.0:
         outcome = 'touched'
     elif passed:
-        outcome = 'went round'
+        # Past it without touching: by steering round, or it was never in the way.
+        outcome = 'went round' if max(abs(s.y) for s in samples) >= SWERVED else 'passed beside'
     elif abs(last.v) < STILL:
         outcome = 'stopped'
     else:

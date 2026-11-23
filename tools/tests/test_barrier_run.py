@@ -94,7 +94,7 @@ def test_a_small_sway_is_nobody_acting():
     # The follower sways a little on its own (0.1 to 0.7 m seen in Ravensim): not a swerve.
     points = [(x, -0.6, 1.0) for x in range(0, 30)]
     v = br.verdict(drive(points), BODY, br.object_centre(BODY, 15.0, 3.0, RADIUS), RADIUS)
-    assert v.outcome == 'went round' and v.first == 'nobody'
+    assert v.outcome == 'passed beside' and v.first == 'nobody'
 
 
 def test_a_stop_before_the_car_drives_is_not_this_drives():
