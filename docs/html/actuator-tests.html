@@ -7,7 +7,7 @@
 <!-- Generated from docs/actuator-tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Actuator tests: measure how the car moves</h1>
-<div class="meta">57 min read · 13 sections</div></header>
+<div class="meta">61 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -997,6 +997,7 @@ The word to type: <code>preflight</code>. If the car is still moving 5 s after t
 (TODO 246). It runs every step below in order and writes <strong>one report folder</strong>.</p>
 <pre class="highlight"><code class="language-bash">pixi run car-test --stands                       # the real car, wheels off the ground
 pixi run car-test --stands --sim --no-manual     # its own Ravensim (this computer only)
+pixi run car-test --stands --sim --attach --no-manual   # the Ravensim already running here
 pixi run car-test --stands --only faults         # some steps (or a group: steering, faults)</code></pre>
 <div class="table-wrap"><table>
 <thead>
@@ -1127,6 +1128,102 @@ the watchdog notices, not a lock on the tests.</p>
 </tr>
 </tbody>
 </table></div>
+<h3 id="-sim-attach-the-simulator-you-can-watch"><code>--sim --attach</code>: the simulator you can watch</h3>
+<p><code>--sim</code> starts a Ravensim nobody sees. <code>--sim --attach</code> tests <strong>the one already running on
+this computer</strong>, such as <a href="proving-it.html#the-dry-run-pixi-run-dry-run">the dry run's</a>, so the
+car moves in its picture (TODO 273). <code>--hallway</code> and <code>--lot</code> take it too.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>It hears on <code>/system/source</code>, this computer only</th>
+<th>It does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SIM</td>
+<td>tests that simulator, on its ROS domain; never starts or stops it</td>
+</tr>
+<tr>
+<td>nothing</td>
+<td>starts its own, as <code>--sim</code> alone</td>
+</tr>
+<tr>
+<td>REAL, BENCH or REPLAY</td>
+<td><strong>refused</strong>: nothing starts, nothing moves</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Attached</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the car goes on stands for phase A and comes down after; down first for phase B and the lot</td>
+<td>Ravensim refuses while the wheels spin: then the session is refused</td>
+</tr>
+<tr>
+<td>the e-stop an earlier test left set</td>
+<td>the session is <strong>refused</strong> (twist_mux's own word on <code>/diagnostics</code>). A person clears it, as on the car: <code>pixi run clear estop --sim</code> (<code>--sim</code>: this computer only)</td>
+</tr>
+<tr>
+<td>step 5a, the heartbeat</td>
+<td>pauses the simulator's output mux only when its owner said which process group is its own (<code>pixi run dry-run</code> does); else <strong>SKIPPED</strong>, with why</td>
+</tr>
+<tr>
+<td><code>--sim-actuators</code>, <code>--wheel-noise</code>, <code>--wheel-slip</code></td>
+<td>refused with <code>--attach</code>: the simulator runs as it was started</td>
+</tr>
+<tr>
+<td>the simulated car is never turned round or put back</td>
+<td>every pass drives on from where the last stopped; the dry run's world has 340 m</td>
+</tr>
+</tbody>
+</table></div>
+<p>Tested 22 Nov, Ben's MacBook, attached to a running Ravensim (road world): <code>--stands</code> 12
+PASS, 2 SKIPPED (5f, 5g: no Pi, no cables), the heartbeat step included; <code>--hallway</code> 12 of
+12 passes, the fitted model matching all 12 (refused first, while the e-stop was still set).</p>
+<h3 id="car-test-lot-sim-the-lots-simulator-twin"><code>car-test --lot --sim</code>: the lot's simulator twin</h3>
+<p>The ladder's lot rung in one command: every stage-4 test that is not a hallway pass
+(<code>speed-up</code>, <code>coast</code>, <code>brake</code>, <code>throttle-map</code>, <code>circles</code>, <code>straight</code>: from the tests' own
+list), up to 3 m/s, one session, one report in the stands report's form
+(<code>~/aav-tests/&lt;time&gt;-lot-sim/</code>). <code>--only brake circles</code> picks some; <code>--attach</code> as above.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--sim</code> required</td>
+<td>on the real car the lot stays by hand, one test at a time, capped at 1 m/s</td>
+</tr>
+<tr>
+<td>a step passes when its test <strong>ran to the end</strong> and made its report</td>
+<td>the hallway's pass rule (model within 10 %, stop within 0.2 m) is <strong>not judged</strong> here: read each summary</td>
+</tr>
+<tr>
+<td>any FAIL ends the session</td>
+<td>as phase A</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition warning">
+<p class="admonition-title">22 Nov: it fails today, and that is a finding</p>
+<p>Its first runs stopped themselves at 2 and 3 m/s: <code>speed-up</code> ("the speed rose 2.86 -&gt;
+3.04 m/s while the command fell (3.00 -&gt; 0.00): a stuck throttle?") and <code>brake</code> at
+2 m/s the same, <code>throttle-map</code> at 1.5 m/s. <code>coast</code>, <code>circles</code> and <code>straight</code> pass.
+The runaway rule (<code>safety.runaway</code>) saw the speed loop still climbing
+for a moment after the test dropped its command. At 1 m/s, the real car's cap, the tests
+pass. The rule is unchanged: a safety rule, a person decides (TODO 275). The hallway
+passes hold their top speed 2.5 s before slowing for this reason; these tests do not.</p>
+</div>
 <h3 id="the-report-folder">The report folder</h3>
 <p><code>~/aav-tests/&lt;time&gt;-stands[-sim]/</code>:</p>
 <div class="table-wrap"><table>
@@ -1143,7 +1240,7 @@ the watchdog notices, not a lock on the tests.</p>
 </tr>
 <tr>
 <td><code>report.yaml</code></td>
-<td>the same, for tools</td>
+<td>the same, for tools (<code>pixi run ladder session &lt;rung&gt;</code>, the ladder window); a hallway and a lot session write one too, a step a pass</td>
 </tr>
 <tr>
 <td><code>run.log</code></td>

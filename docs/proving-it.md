@@ -25,6 +25,8 @@ run: it is the map, and the list of what is missing.
 pixi run ladder                      # every rung: the simulator's side and the car's
 pixi run ladder next                 # the next open rung and its command (--car: the car's)
 pixi run ladder run stands           # run a rung's simulator twin; the result is recorded
+pixi run ladder run lot --only brake # one of its tests alone; not recorded
+pixi run ladder session stands       # the newest simulator session: each step, its numbers
 pixi run ladder record --from-report ~/aav-tests/<session>    # a car-test session
 pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by hand
 ```
@@ -36,35 +38,134 @@ pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by h
 | A rung is shut until the rungs under it have passed | a car rung also needs its own simulator twin |
 | A pass on a shut rung needs `--override "why"` | and the why is kept |
 | It never moves the car | for a car rung it prints the command; a person runs it |
+| A simulator run uses the simulator that is open | the rungs' commands carry `--attach`: `car-test` listens to `/system/source` on this computer; SIM: it tests that one; nothing heard: it starts its own, with no picture; anything else (REAL...): refused |
+| A single test never moves the ladder | `run <rung> --only <test>` records nothing: a rung passes whole |
 
 The rungs are `tools/ladder/rungs.yaml`.
+
+## The dry run: `pixi run dry-run`
+
+**Everything we will do with the real car, done first with the simulated one you can see**
+(Ben, 22 Nov: "control the car in ravensim the same way we would control the actual car
+... a dry run of everything we will do in real life"; TODO 273).
+
+```bash
+pixi run dry-run                     # Ravensim, its picture, the ladder window
+pixi run dry-run --panel --debug     # and the hardware panel and the debug screen
+pixi run clear estop --sim           # a person clears the e-stop a test left set
+```
+
+| It opens | What it is | For |
+|---|---|---|
+| the simulator | `sim.launch.py`, no window of its own; its lines go to `/tmp/aav-dry-run/sim-launch.log` | the car |
+| the simulator's picture | the developer window, live (`pixi run dev-window --live`) | watching the car while a test runs |
+| the ladder window | below | running the tests, reading the results |
+| `--panel` | the hardware panel (`pixi run hw-panel`) | every sensor's number; the buttons |
+| `--debug` | the debug screen (`pixi run debug-hud`) | the lidar, the localizers |
+
+Ctrl-C, or closing the ladder window, stops every process group it started; it says
+"nothing is left running", or names what is. It refuses to start beside another simulator,
+or anything else that announces on `/system/source`.
+
+**The world it picks.** The tests' own simulators differ (the stands test takes the road
+world with cameras; the hallway and the lot an empty world without). The dry run needs one
+world for all of them:
+
+| Switch | Why |
+|---|---|
+| `world:=road` | the stands test waits for a camera's picture, and its faults break the camera and the lidar: both need something to see; the picture shows a road |
+| `nav:=false` | nothing else drives, as in every actuator test's simulator |
+| `faults:=true` | the stands test's step 5 breaks sensors on purpose |
+| `sim_speed:=3` | ego's cap, for the lot's tests at 2 and 3 m/s |
+| `start_x:=-150`, `geofence_radius:=340` | nobody turns the simulated car round: every pass drives on from where the last one stopped. 340 m of flat ground ahead; the fence ends 10 m before the ground does |
+
+Any `sim.launch.py` switch can follow the command (`pixi run dry-run world:=empty`); yours win.
+
+| As on the car | In the dry run |
+|---|---|
+| the stands test's last step sets the e-stop, and it stays set | the same. The next test is **refused** until a person clears it: `pixi run clear estop --sim` (`--sim`: this computer only) |
+| a person puts the car on stands, and takes it off | the runner does: up for phase A, down after; down first for the hallway and the lot. The window's switch does it by hand |
+| a person puts the car back on the start line | nobody does: after about 340 m of passes the geofence stops the test. Stop the dry run and start it again |
+| the heartbeat fault: a cable pulled | the runner pauses the output mux of **this** simulator (the dry run tells it which process group is its own) |
+
+**Tested, 22 Nov, Ben's MacBook.** See [what can be dry-run](#what-can-be-dry-run-from-the-screen).
 
 ### The window: `pixi run ladder-window`
 
 ```bash
 pixi run ladder-window               # the ladder, in a window (the first time: cargo builds Bevy)
 pixi run ladder-window --pretend     # sample data: nothing runs, nothing is recorded
+pixi run dry-run                     # the window beside a simulator you can watch (above)
 ```
 
-![The test ladder's window, pretend data](img/ladder-window.png)
+![The test ladder's window beside a running Ravensim: one stands test's result and its graph](img/ladder-window.png)
+
+The picture is the window's own screenshot, 22 Nov, beside the dry run's simulator, after
+`steer-sweep` was run alone. (Taken before the **Show** switch was added.)
 
 | Part | Shows | Does |
 |---|---|---|
 | left: the ladder | the top rung at the top; **Simulator** and **The car** side by side; each cell in words: PASS or FAIL with the date, not run, shut | click a rung; hover a shut cell for why |
-| right: the rung | what it measures, when it passes, the last result (date, commit, report, override), what shuts it | |
-| **Run in the simulator** | on only when the simulator's side is open and has a command; else it says why | `pixi run ladder run <rung>`; one run at a time |
-| the console | the run's last lines, "running...", how it ended | **Stop** ends the run and all it started |
+| middle: the rung | what it measures, when it passes, the last result (date, commit, report, override), what shuts it | |
+| **Run in the simulator** | on only when the simulator's side is open and has a command; else it says why. Under it: "Runs in the simulator that is open", or "starts its own, with no picture" | `pixi run ladder run <rung>`; one run at a time |
+| **Its tests, one at a time** | the rung's own tests (from `car-test`'s list, not a copy), a **Run** each; simulator only | `pixi run ladder run <rung> --only <test>`; not recorded; the car goes on stands or to the ground by itself |
+| right: **The last session** | while a run goes: **RUNNING NOW** and its step. **Show**: the newest run (a single test too), or the session the ladder recorded. Then that session as a table: step, PASS / FAIL / SKIPPED / NOT RUN, what happened, the `vehicle.yaml` lines it produced | click a step |
+| the chosen step | one graph, **commanded (dashed) against measured (solid)** over time: speed, or the steering angle for the steering tests; axes labelled; the widest gap; hover reads both lines. Then the test's own numbers (stopping distance, lags, dead times) beside `vehicle.yaml`'s | |
+| the session's fits (hallway) | each number as mean ± the passes' spread, n, and **trusted** or **NOT TRUSTED: why** | |
+| the console | the run's last lines, "running..." with the step, how it ended | **Stop** ends the run and all it started |
 | **The car** | its command as text, and "A person starts a car test from the terminal" | **Copy** only |
 | **Record by hand** | pass or fail, simulator or car, a note, an override reason | `pixi run ladder record ...`; a refusal is shown in the tool's words |
 | top: **The simulated car** | "on the ground" or "ON STANDS", asked every 5 s; off, with the reason, unless a simulator runs on this computer | **Put it on stands** / **Lower it to the ground**: `pixi run jacks up --sim` or `down`; Ravensim's refusal (wheels still spinning) is shown in its words |
 
 | Rule | |
 |---|---|
-| The window never moves the car | it has no control that starts a car test; the jacks switch is the simulator's only (`--sim`, `--local`, refused when `/system/source` says REAL) |
-| The tool is the only writer | the window reads `ladder --json` every 2 s and after each action; every rule stays in `tools/ladder.py` |
-| Closing the window stops its run | no simulator is left behind |
+| The window never moves the car | it has no control that starts a car test; every run it starts is the tool's simulator run (`--sim`); the jacks switch is the simulator's only (`--sim`, `--local`, refused when `/system/source` says REAL) |
+| The tool is the only writer, and the only reader of reports | the window reads `ladder --json` every 2 s and `ladder session <rung> --json` when a rung is chosen or a run ends; every rule stays in `tools/ladder.py`, the report's files are read by `tools/ladder_report.py` |
+| Colour is never the only signal | every result is a word; the graph's lines differ by their dashes, and the legend says which is which |
+| Closing the window stops its run | a simulator it started is not left behind; one it attached to stays, as its owner's |
 
 The code: `ros/hud/aav_dev_window` (`src/ladder_window/`, and the logic in `crates/ladder-core`).
+
+## What can be dry-run from the screen
+
+Ben, 22 Nov: "so I can figure out if we are testing everything". Filled from what was
+built and **run on 22 Nov** (Ben's MacBook, `pixi run dry-run --panel --debug`, the tests
+started by the ladder tool's own commands, the ones the window's buttons run). "From the
+screen" = the ladder window beside the simulator you can see.
+
+**The session cards** ([the testing plan](testing-plan.md#the-sessions-as-cards)):
+
+| Card | From the screen? | What ran, and what is missing |
+|---|---|---|
+| 0: after the install | 🟡 partly | the **bench** rung runs `bench-check` (its own stand-in, no picture; not run tonight). The boxes on the real boards have no twin |
+| 1: the boot self-test | ❌ no | no rung runs `pixi run check` or reads `/safety/self_test/status`. The stands preflight counts every sensor's rate; the e-stop press is stands step 5h |
+| 2: stands (phase A) | ✅ yes, 12 of 14 steps | **ran: 12 PASS, 2 SKIPPED**, the heartbeat fault included. Skipped: a Pi's link, a cable (no Pi, no cables). Not there: the steering's ends on the hardware panel (B1-B9), the wheel watcher with a tachometer |
+| 3: map the hallway | ❌ no | `record-drive --sim` starts its own simulator from a terminal; no rung, no button |
+| 4: the hallway, empty (phase B) | ✅ yes | **ran: 12 of 12 passes, the fitted model matched all 12**. Not as the car: nobody turns the car round (no slope from both ways), no NDT, the "hallway" is open ground |
+| 5: the hallway, a person aboard | 🟡 partly, not run | `pixi run dry-run payload:=80` then the hallway rung should do it; nothing records the weight (TODO 257) |
+| 6: the lot | 🟡 partly | the rung and each test run from the screen. **ran alone: `circles`, `straight`, `coast` PASS; `speed-up`, `brake`, `throttle-map` stop themselves above 1 m/s** (the runaway rule, TODO 275), so the whole rung fails today |
+| 7: a campus mapping drive | ❌ no | a person drives it; `record-drive --sim` is a terminal's |
+| 8: offline processing | ❌ no | no car and no simulator in it: laptops, hours |
+| 9: the car drives itself | 🟡 partly | the **route** rung runs one scored drive round the test lot through the whole stack (**ran: every goal reached, exit 0**), in its own simulator with **no picture**, not on the campus, not on a map of ours |
+
+**Every test** ([Actuator tests](actuator-tests.md#the-tests)):
+
+| Test | From the screen? | Ran 22 Nov, attached to the simulator in view |
+|---|---|---|
+| `preflight`, the sensors alone | ✅ | PASS, in the stands session |
+| `steer-sweep`, `steer-rate`, `steer-centre` | ✅ | PASS, in the stands session; `steer-sweep` alone too, with its graph |
+| `wheel-steps` | ✅ | PASS |
+| the faults: heartbeat, GPS, IMU, camera, lidar, e-stop | ✅ | PASS. The camera's passes on FROZEN, not on lost (TODO 274) |
+| the faults: a Pi's link, a cable | ❌ | no Pi and no cables in Ravensim |
+| `hall-coast`, `hall-speed-up`, `hall-brake`, `hall-steer` | ✅ | 3 passes each, all PASS; `hall-brake` alone too |
+| `coast`, `circles`, `straight` | ✅ | PASS, each alone |
+| `speed-up`, `brake`, `throttle-map` | 🟡 they run, and stop themselves | FAIL: "the speed rose ... while the command fell" at 3, 2 and 1.5 m/s. Up to 1 m/s, the real car's cap, they pass |
+| hold a speed, a steering step on the ground, a lane change | ❌ | not built (TODO 266) |
+
+| Not run by a person yet | |
+|---|---|
+| the window's buttons | every command above was typed as the tool's command (`pixi run ladder run <rung> [--only <test>]`), with the windows open; a click on **Run** starts the same command (the window's tests cover that), but nobody has clicked it beside a simulator |
+| the picture while a test runs | the developer window was open; nobody watched it |
 
 ## The rules of evidence
 
@@ -156,7 +257,9 @@ A challenger replaces the default only by [the league's rules](league.md#how-a-c
 | 3 | `sim-check --ghost` listens on the costmap's old name | 268 |
 | 4 | A run log: every test run's commit, command, settings and result in one place | 269 |
 | 5 | Step 6 against step 1: the car's scores beside the simulator's for the same route | 270, after the car drives |
-| 6 | The lot and route rungs have no one-command simulator twin (by hand today) | 273 |
-| 7 | One command that opens Ravensim, the hardware panel, the debug screen and the ladder window side by side | 273 |
+| 6 | ~~The lot and route rungs have no one-command simulator twin~~ built 22 Nov: `car-test --lot --sim`, `measure controllers --tours lot`. Left: the lot's twin does not judge the 10 % / 0.2 m rule; the route's is scored by the league's table, not by `score_drive.py` on a recording, and runs with no picture | 273 |
+| 7 | ~~One command for the screens side by side~~ built 22 Nov: `pixi run dry-run` | 273 |
 | 8 | The hardware panel and the debug screen do not show "on stands" (the ladder window and `pixi run jacks status --sim` do) | 273 |
+| 10 | The stage-4 tests stop themselves above 1 m/s in Ravensim (the runaway rule): the lot cannot pass at 2 to 3 m/s | 275 |
+| 11 | Nobody turns the simulated car round or puts it back on the start line: a dry run has 340 m of passes, then needs a restart | 273 |
 | 9 | On stands the simulator's free-wheel mass (20 kg) and drag are guesses; its odometry reads the rear wheels, today's car the front | 49b, and a stands measurement |

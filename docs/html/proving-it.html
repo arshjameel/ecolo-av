@@ -7,7 +7,7 @@
 <!-- Generated from docs/proving-it.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Proving it: how the tests fit together</h1>
-<div class="meta">12 min read · 6 sections</div></header>
+<div class="meta">22 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -144,7 +144,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#where-we-are-pixi-run-ladder">Where we are: pixi run ladder</a><a href="#the-rules-of-evidence">The rules of evidence</a><a href="#set-1-the-ladder">Set 1: the ladder</a><a href="#the-same-test-on-the-car-and-in-the-simulator">The same test, on the car and in the simulator</a><a href="#set-2-the-algorithm-tests">Set 2: the algorithm tests</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#where-we-are-pixi-run-ladder">Where we are: pixi run ladder</a><a href="#the-dry-run-pixi-run-dry-run">The dry run: pixi run dry-run</a><a href="#what-can-be-dry-run-from-the-screen">What can be dry-run from the screen</a><a href="#the-rules-of-evidence">The rules of evidence</a><a href="#set-1-the-ladder">Set 1: the ladder</a><a href="#the-same-test-on-the-car-and-in-the-simulator">The same test, on the car and in the simulator</a><a href="#set-2-the-algorithm-tests">Set 2: the algorithm tests</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p><strong>One page for the question "how do we know?"</strong> We have two sets of tests. This page says
 what each is for, how one step proves the step before, and how the same test runs on the
 car and in the simulator. Written 22 November 2026 by Ben Woodhead (Ben: "Testing. Proofs.
@@ -177,6 +177,8 @@ run: it is the map, and the list of what is missing.</p>
 <pre class="highlight"><code class="language-bash">pixi run ladder                      # every rung: the simulator's side and the car's
 pixi run ladder next                 # the next open rung and its command (--car: the car's)
 pixi run ladder run stands           # run a rung's simulator twin; the result is recorded
+pixi run ladder run lot --only brake # one of its tests alone; not recorded
+pixi run ladder session stands       # the newest simulator session: each step, its numbers
 pixi run ladder record --from-report ~/aav-tests/&lt;session&gt;    # a car-test session
 pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by hand</code></pre>
 <div class="table-wrap"><table>
@@ -207,13 +209,132 @@ pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by h
 <td>It never moves the car</td>
 <td>for a car rung it prints the command; a person runs it</td>
 </tr>
+<tr>
+<td>A simulator run uses the simulator that is open</td>
+<td>the rungs' commands carry <code>--attach</code>: <code>car-test</code> listens to <code>/system/source</code> on this computer; SIM: it tests that one; nothing heard: it starts its own, with no picture; anything else (REAL...): refused</td>
+</tr>
+<tr>
+<td>A single test never moves the ladder</td>
+<td><code>run &lt;rung&gt; --only &lt;test&gt;</code> records nothing: a rung passes whole</td>
+</tr>
 </tbody>
 </table></div>
 <p>The rungs are <code>tools/ladder/rungs.yaml</code>.</p>
+</section>
+<section class="card"><h2 id="the-dry-run-pixi-run-dry-run">The dry run: <code>pixi run dry-run</code></h2>
+<p><strong>Everything we will do with the real car, done first with the simulated one you can see</strong>
+(Ben, 22 Nov: "control the car in ravensim the same way we would control the actual car
+... a dry run of everything we will do in real life"; TODO 273).</p>
+<pre class="highlight"><code class="language-bash">pixi run dry-run                     # Ravensim, its picture, the ladder window
+pixi run dry-run --panel --debug     # and the hardware panel and the debug screen
+pixi run clear estop --sim           # a person clears the e-stop a test left set</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>It opens</th>
+<th>What it is</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the simulator</td>
+<td><code>sim.launch.py</code>, no window of its own; its lines go to <code>/tmp/aav-dry-run/sim-launch.log</code></td>
+<td>the car</td>
+</tr>
+<tr>
+<td>the simulator's picture</td>
+<td>the developer window, live (<code>pixi run dev-window --live</code>)</td>
+<td>watching the car while a test runs</td>
+</tr>
+<tr>
+<td>the ladder window</td>
+<td>below</td>
+<td>running the tests, reading the results</td>
+</tr>
+<tr>
+<td><code>--panel</code></td>
+<td>the hardware panel (<code>pixi run hw-panel</code>)</td>
+<td>every sensor's number; the buttons</td>
+</tr>
+<tr>
+<td><code>--debug</code></td>
+<td>the debug screen (<code>pixi run debug-hud</code>)</td>
+<td>the lidar, the localizers</td>
+</tr>
+</tbody>
+</table></div>
+<p>Ctrl-C, or closing the ladder window, stops every process group it started; it says
+"nothing is left running", or names what is. It refuses to start beside another simulator,
+or anything else that announces on <code>/system/source</code>.</p>
+<p><strong>The world it picks.</strong> The tests' own simulators differ (the stands test takes the road
+world with cameras; the hallway and the lot an empty world without). The dry run needs one
+world for all of them:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Switch</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>world:=road</code></td>
+<td>the stands test waits for a camera's picture, and its faults break the camera and the lidar: both need something to see; the picture shows a road</td>
+</tr>
+<tr>
+<td><code>nav:=false</code></td>
+<td>nothing else drives, as in every actuator test's simulator</td>
+</tr>
+<tr>
+<td><code>faults:=true</code></td>
+<td>the stands test's step 5 breaks sensors on purpose</td>
+</tr>
+<tr>
+<td><code>sim_speed:=3</code></td>
+<td>ego's cap, for the lot's tests at 2 and 3 m/s</td>
+</tr>
+<tr>
+<td><code>start_x:=-150</code>, <code>geofence_radius:=340</code></td>
+<td>nobody turns the simulated car round: every pass drives on from where the last one stopped. 340 m of flat ground ahead; the fence ends 10 m before the ground does</td>
+</tr>
+</tbody>
+</table></div>
+<p>Any <code>sim.launch.py</code> switch can follow the command (<code>pixi run dry-run world:=empty</code>); yours win.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>As on the car</th>
+<th>In the dry run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the stands test's last step sets the e-stop, and it stays set</td>
+<td>the same. The next test is <strong>refused</strong> until a person clears it: <code>pixi run clear estop --sim</code> (<code>--sim</code>: this computer only)</td>
+</tr>
+<tr>
+<td>a person puts the car on stands, and takes it off</td>
+<td>the runner does: up for phase A, down after; down first for the hallway and the lot. The window's switch does it by hand</td>
+</tr>
+<tr>
+<td>a person puts the car back on the start line</td>
+<td>nobody does: after about 340 m of passes the geofence stops the test. Stop the dry run and start it again</td>
+</tr>
+<tr>
+<td>the heartbeat fault: a cable pulled</td>
+<td>the runner pauses the output mux of <strong>this</strong> simulator (the dry run tells it which process group is its own)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Tested, 22 Nov, Ben's MacBook.</strong> See <a href="#what-can-be-dry-run-from-the-screen">what can be dry-run</a>.</p>
 <h3 id="the-window-pixi-run-ladder-window">The window: <code>pixi run ladder-window</code></h3>
 <pre class="highlight"><code class="language-bash">pixi run ladder-window               # the ladder, in a window (the first time: cargo builds Bevy)
-pixi run ladder-window --pretend     # sample data: nothing runs, nothing is recorded</code></pre>
-<p><img alt="The test ladder's window, pretend data" src="../img/ladder-window.png" /></p>
+pixi run ladder-window --pretend     # sample data: nothing runs, nothing is recorded
+pixi run dry-run                     # the window beside a simulator you can watch (above)</code></pre>
+<p><img alt="The test ladder's window beside a running Ravensim: one stands test's result and its graph" src="../img/ladder-window.png" /></p>
+<p>The picture is the window's own screenshot, 22 Nov, beside the dry run's simulator, after
+<code>steer-sweep</code> was run alone. (Taken before the <strong>Show</strong> switch was added.)</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -229,18 +350,38 @@ pixi run ladder-window --pretend     # sample data: nothing runs, nothing is rec
 <td>click a rung; hover a shut cell for why</td>
 </tr>
 <tr>
-<td>right: the rung</td>
+<td>middle: the rung</td>
 <td>what it measures, when it passes, the last result (date, commit, report, override), what shuts it</td>
 <td></td>
 </tr>
 <tr>
 <td><strong>Run in the simulator</strong></td>
-<td>on only when the simulator's side is open and has a command; else it says why</td>
+<td>on only when the simulator's side is open and has a command; else it says why. Under it: "Runs in the simulator that is open", or "starts its own, with no picture"</td>
 <td><code>pixi run ladder run &lt;rung&gt;</code>; one run at a time</td>
 </tr>
 <tr>
+<td><strong>Its tests, one at a time</strong></td>
+<td>the rung's own tests (from <code>car-test</code>'s list, not a copy), a <strong>Run</strong> each; simulator only</td>
+<td><code>pixi run ladder run &lt;rung&gt; --only &lt;test&gt;</code>; not recorded; the car goes on stands or to the ground by itself</td>
+</tr>
+<tr>
+<td>right: <strong>The last session</strong></td>
+<td>while a run goes: <strong>RUNNING NOW</strong> and its step. <strong>Show</strong>: the newest run (a single test too), or the session the ladder recorded. Then that session as a table: step, PASS / FAIL / SKIPPED / NOT RUN, what happened, the <code>vehicle.yaml</code> lines it produced</td>
+<td>click a step</td>
+</tr>
+<tr>
+<td>the chosen step</td>
+<td>one graph, <strong>commanded (dashed) against measured (solid)</strong> over time: speed, or the steering angle for the steering tests; axes labelled; the widest gap; hover reads both lines. Then the test's own numbers (stopping distance, lags, dead times) beside <code>vehicle.yaml</code>'s</td>
+<td></td>
+</tr>
+<tr>
+<td>the session's fits (hallway)</td>
+<td>each number as mean ± the passes' spread, n, and <strong>trusted</strong> or <strong>NOT TRUSTED: why</strong></td>
+<td></td>
+</tr>
+<tr>
 <td>the console</td>
-<td>the run's last lines, "running...", how it ended</td>
+<td>the run's last lines, "running..." with the step, how it ended</td>
 <td><strong>Stop</strong> ends the run and all it started</td>
 </tr>
 <tr>
@@ -270,19 +411,166 @@ pixi run ladder-window --pretend     # sample data: nothing runs, nothing is rec
 <tbody>
 <tr>
 <td>The window never moves the car</td>
-<td>it has no control that starts a car test; the jacks switch is the simulator's only (<code>--sim</code>, <code>--local</code>, refused when <code>/system/source</code> says REAL)</td>
+<td>it has no control that starts a car test; every run it starts is the tool's simulator run (<code>--sim</code>); the jacks switch is the simulator's only (<code>--sim</code>, <code>--local</code>, refused when <code>/system/source</code> says REAL)</td>
 </tr>
 <tr>
-<td>The tool is the only writer</td>
-<td>the window reads <code>ladder --json</code> every 2 s and after each action; every rule stays in <code>tools/ladder.py</code></td>
+<td>The tool is the only writer, and the only reader of reports</td>
+<td>the window reads <code>ladder --json</code> every 2 s and <code>ladder session &lt;rung&gt; --json</code> when a rung is chosen or a run ends; every rule stays in <code>tools/ladder.py</code>, the report's files are read by <code>tools/ladder_report.py</code></td>
+</tr>
+<tr>
+<td>Colour is never the only signal</td>
+<td>every result is a word; the graph's lines differ by their dashes, and the legend says which is which</td>
 </tr>
 <tr>
 <td>Closing the window stops its run</td>
-<td>no simulator is left behind</td>
+<td>a simulator it started is not left behind; one it attached to stays, as its owner's</td>
 </tr>
 </tbody>
 </table></div>
 <p>The code: <code>ros/hud/aav_dev_window</code> (<code>src/ladder_window/</code>, and the logic in <code>crates/ladder-core</code>).</p>
+</section>
+<section class="card"><h2 id="what-can-be-dry-run-from-the-screen">What can be dry-run from the screen</h2>
+<p>Ben, 22 Nov: "so I can figure out if we are testing everything". Filled from what was
+built and <strong>run on 22 Nov</strong> (Ben's MacBook, <code>pixi run dry-run --panel --debug</code>, the tests
+started by the ladder tool's own commands, the ones the window's buttons run). "From the
+screen" = the ladder window beside the simulator you can see.</p>
+<p><strong>The session cards</strong> (<a href="testing-plan.html#the-sessions-as-cards">the testing plan</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Card</th>
+<th>From the screen?</th>
+<th>What ran, and what is missing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0: after the install</td>
+<td>🟡 partly</td>
+<td>the <strong>bench</strong> rung runs <code>bench-check</code> (its own stand-in, no picture; not run tonight). The boxes on the real boards have no twin</td>
+</tr>
+<tr>
+<td>1: the boot self-test</td>
+<td>❌ no</td>
+<td>no rung runs <code>pixi run check</code> or reads <code>/safety/self_test/status</code>. The stands preflight counts every sensor's rate; the e-stop press is stands step 5h</td>
+</tr>
+<tr>
+<td>2: stands (phase A)</td>
+<td>✅ yes, 12 of 14 steps</td>
+<td><strong>ran: 12 PASS, 2 SKIPPED</strong>, the heartbeat fault included. Skipped: a Pi's link, a cable (no Pi, no cables). Not there: the steering's ends on the hardware panel (B1-B9), the wheel watcher with a tachometer</td>
+</tr>
+<tr>
+<td>3: map the hallway</td>
+<td>❌ no</td>
+<td><code>record-drive --sim</code> starts its own simulator from a terminal; no rung, no button</td>
+</tr>
+<tr>
+<td>4: the hallway, empty (phase B)</td>
+<td>✅ yes</td>
+<td><strong>ran: 12 of 12 passes, the fitted model matched all 12</strong>. Not as the car: nobody turns the car round (no slope from both ways), no NDT, the "hallway" is open ground</td>
+</tr>
+<tr>
+<td>5: the hallway, a person aboard</td>
+<td>🟡 partly, not run</td>
+<td><code>pixi run dry-run payload:=80</code> then the hallway rung should do it; nothing records the weight (TODO 257)</td>
+</tr>
+<tr>
+<td>6: the lot</td>
+<td>🟡 partly</td>
+<td>the rung and each test run from the screen. <strong>ran alone: <code>circles</code>, <code>straight</code>, <code>coast</code> PASS; <code>speed-up</code>, <code>brake</code>, <code>throttle-map</code> stop themselves above 1 m/s</strong> (the runaway rule, TODO 275), so the whole rung fails today</td>
+</tr>
+<tr>
+<td>7: a campus mapping drive</td>
+<td>❌ no</td>
+<td>a person drives it; <code>record-drive --sim</code> is a terminal's</td>
+</tr>
+<tr>
+<td>8: offline processing</td>
+<td>❌ no</td>
+<td>no car and no simulator in it: laptops, hours</td>
+</tr>
+<tr>
+<td>9: the car drives itself</td>
+<td>🟡 partly</td>
+<td>the <strong>route</strong> rung runs one scored drive round the test lot through the whole stack (<strong>ran: every goal reached, exit 0</strong>), in its own simulator with <strong>no picture</strong>, not on the campus, not on a map of ours</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Every test</strong> (<a href="actuator-tests.html#the-tests">Actuator tests</a>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Test</th>
+<th>From the screen?</th>
+<th>Ran 22 Nov, attached to the simulator in view</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>preflight</code>, the sensors alone</td>
+<td>✅</td>
+<td>PASS, in the stands session</td>
+</tr>
+<tr>
+<td><code>steer-sweep</code>, <code>steer-rate</code>, <code>steer-centre</code></td>
+<td>✅</td>
+<td>PASS, in the stands session; <code>steer-sweep</code> alone too, with its graph</td>
+</tr>
+<tr>
+<td><code>wheel-steps</code></td>
+<td>✅</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>the faults: heartbeat, GPS, IMU, camera, lidar, e-stop</td>
+<td>✅</td>
+<td>PASS. The camera's passes on FROZEN, not on lost (TODO 274)</td>
+</tr>
+<tr>
+<td>the faults: a Pi's link, a cable</td>
+<td>❌</td>
+<td>no Pi and no cables in Ravensim</td>
+</tr>
+<tr>
+<td><code>hall-coast</code>, <code>hall-speed-up</code>, <code>hall-brake</code>, <code>hall-steer</code></td>
+<td>✅</td>
+<td>3 passes each, all PASS; <code>hall-brake</code> alone too</td>
+</tr>
+<tr>
+<td><code>coast</code>, <code>circles</code>, <code>straight</code></td>
+<td>✅</td>
+<td>PASS, each alone</td>
+</tr>
+<tr>
+<td><code>speed-up</code>, <code>brake</code>, <code>throttle-map</code></td>
+<td>🟡 they run, and stop themselves</td>
+<td>FAIL: "the speed rose ... while the command fell" at 3, 2 and 1.5 m/s. Up to 1 m/s, the real car's cap, they pass</td>
+</tr>
+<tr>
+<td>hold a speed, a steering step on the ground, a lane change</td>
+<td>❌</td>
+<td>not built (TODO 266)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Not run by a person yet</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the window's buttons</td>
+<td>every command above was typed as the tool's command (<code>pixi run ladder run &lt;rung&gt; [--only &lt;test&gt;]</code>), with the windows open; a click on <strong>Run</strong> starts the same command (the window's tests cover that), but nobody has clicked it beside a simulator</td>
+</tr>
+<tr>
+<td>the picture while a test runs</td>
+<td>the developer window was open; nobody watched it</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="the-rules-of-evidence">The rules of evidence</h2>
 <div class="table-wrap"><table>
@@ -611,17 +899,27 @@ every one takes the same tests.</p>
 </tr>
 <tr>
 <td>6</td>
-<td>The lot and route rungs have no one-command simulator twin (by hand today)</td>
+<td>~~The lot and route rungs have no one-command simulator twin~~ built 22 Nov: <code>car-test --lot --sim</code>, <code>measure controllers --tours lot</code>. Left: the lot's twin does not judge the 10 % / 0.2 m rule; the route's is scored by the league's table, not by <code>score_drive.py</code> on a recording, and runs with no picture</td>
 <td>273</td>
 </tr>
 <tr>
 <td>7</td>
-<td>One command that opens Ravensim, the hardware panel, the debug screen and the ladder window side by side</td>
+<td>~~One command for the screens side by side~~ built 22 Nov: <code>pixi run dry-run</code></td>
 <td>273</td>
 </tr>
 <tr>
 <td>8</td>
 <td>The hardware panel and the debug screen do not show "on stands" (the ladder window and <code>pixi run jacks status --sim</code> do)</td>
+<td>273</td>
+</tr>
+<tr>
+<td>10</td>
+<td>The stage-4 tests stop themselves above 1 m/s in Ravensim (the runaway rule): the lot cannot pass at 2 to 3 m/s</td>
+<td>275</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Nobody turns the simulated car round or puts it back on the start line: a dry run has 340 m of passes, then needs a restart</td>
 <td>273</td>
 </tr>
 <tr>
