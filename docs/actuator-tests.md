@@ -414,6 +414,7 @@ Phase A of [the testing plan](testing-plan.md#phase-a-the-car-on-stands) in one 
 ```bash
 pixi run car-test --stands                       # the real car, wheels off the ground
 pixi run car-test --stands --sim --no-manual     # its own Ravensim (this computer only)
+pixi run car-test --stands --sim --attach --no-manual   # the Ravensim already running here
 pixi run car-test --stands --only faults         # some steps (or a group: steering, faults)
 ```
 
@@ -454,6 +455,52 @@ gate) and **how soon the car stood still**.
 | `--sim`: that Ravensim's car is **on stands** from the start (`on_stands:=true`) and lowered at the end | the simulated test tests what the real one does: wheels spin, the car stays put (TODO 272) |
 | The e-stop is the last step | it latches: nothing drives after it |
 
+### `--sim --attach`: the simulator you can watch
+
+`--sim` starts a Ravensim nobody sees. `--sim --attach` tests **the one already running on
+this computer**, such as [the dry run's](proving-it.md#the-dry-run-pixi-run-dry-run), so the
+car moves in its picture (TODO 273). `--hallway` and `--lot` take it too.
+
+| It hears on `/system/source`, this computer only | It does |
+|---|---|
+| SIM | tests that simulator, on its ROS domain; never starts or stops it |
+| nothing | starts its own, as `--sim` alone |
+| REAL, BENCH or REPLAY | **refused**: nothing starts, nothing moves |
+
+| Attached | |
+|---|---|
+| the car goes on stands for phase A and comes down after; down first for phase B and the lot | Ravensim refuses while the wheels spin: then the session is refused |
+| the e-stop an earlier test left set | the session is **refused** (twist_mux's own word on `/diagnostics`). A person clears it, as on the car: `pixi run clear estop --sim` (`--sim`: this computer only) |
+| step 5a, the heartbeat | pauses the simulator's output mux only when its owner said which process group is its own (`pixi run dry-run` does); else **SKIPPED**, with why |
+| `--sim-actuators`, `--wheel-noise`, `--wheel-slip` | refused with `--attach`: the simulator runs as it was started |
+| the simulated car is never turned round or put back | every pass drives on from where the last stopped; the dry run's world has 340 m |
+
+Tested 22 Nov, Ben's MacBook, attached to a running Ravensim (road world): `--stands` 12
+PASS, 2 SKIPPED (5f, 5g: no Pi, no cables), the heartbeat step included; `--hallway` 12 of
+12 passes, the fitted model matching all 12 (refused first, while the e-stop was still set).
+
+### `car-test --lot --sim`: the lot's simulator twin
+
+The ladder's lot rung in one command: every stage-4 test that is not a hallway pass
+(`speed-up`, `coast`, `brake`, `throttle-map`, `circles`, `straight`: from the tests' own
+list), up to 3 m/s, one session, one report in the stands report's form
+(`~/aav-tests/<time>-lot-sim/`). `--only brake circles` picks some; `--attach` as above.
+
+| Rule | Why |
+|---|---|
+| `--sim` required | on the real car the lot stays by hand, one test at a time, capped at 1 m/s |
+| a step passes when its test **ran to the end** and made its report | the hallway's pass rule (model within 10 %, stop within 0.2 m) is **not judged** here: read each summary |
+| any FAIL ends the session | as phase A |
+
+!!! warning "22 Nov: it fails today, and that is a finding"
+    Its first runs stopped themselves at 2 and 3 m/s: `speed-up` ("the speed rose 2.86 ->
+    3.04 m/s while the command fell (3.00 -> 0.00): a stuck throttle?") and `brake` at
+    2 m/s the same, `throttle-map` at 1.5 m/s. `coast`, `circles` and `straight` pass.
+    The runaway rule (`safety.runaway`) saw the speed loop still climbing
+    for a moment after the test dropped its command. At 1 m/s, the real car's cap, the tests
+    pass. The rule is unchanged: a safety rule, a person decides (TODO 275). The hallway
+    passes hold their top speed 2.5 s before slowing for this reason; these tests do not.
+
 ### The report folder
 
 `~/aav-tests/<time>-stands[-sim]/`:
@@ -461,7 +508,7 @@ gate) and **how soon the car stood still**.
 | File | Holds |
 |---|---|
 | `report.md` | the table: PASS / FAIL / SKIPPED / NOT RUN per step, what happened, the `vehicle.yaml` lines |
-| `report.yaml` | the same, for tools |
+| `report.yaml` | the same, for tools (`pixi run ladder session <rung>`, the ladder window); a hallway and a lot session write one too, a step a pass |
 | `run.log` | everything printed |
 | `<step>/` | each test's own folder (`log.csv`, `summary.txt`, `meta.yaml`) and `output.log` |
 | `sim-launch.log` | `--sim`: our Ravensim's log |

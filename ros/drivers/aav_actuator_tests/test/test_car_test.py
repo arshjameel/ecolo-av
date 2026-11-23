@@ -257,3 +257,94 @@ def test_table_and_markdown():
     assert '| 1 | the preflight' in md and '**FAIL**' in md
     assert '```yaml' in md and '- a | note' in md
     assert ct.cell('a | b\nc') == 'a \\| b c'
+
+
+# --- --sim --attach ------------------------------------------------------------------
+
+
+def test_attach_only_ever_to_a_simulator():
+    assert ct.attach_choice('SIM')[0] is ct.Attach.ATTACH
+    assert ct.attach_choice('UNKNOWN')[0] is ct.Attach.OWN       # nothing heard: our own
+    for kind in ('REAL', 'BENCH', 'REPLAY'):
+        choice, why = ct.attach_choice(kind)
+        assert choice is ct.Attach.REFUSE, kind
+        assert kind in why and 'Nothing was started' in why
+
+
+def test_attach_is_for_sim_and_takes_the_simulator_as_it_runs():
+    assert ct.parse(['--stands', '--sim', '--attach', '--no-manual']).attach
+    assert ct.parse(['--hallway', '--sim', '--attach']).attach
+    assert not ct.parse(['--stands', '--sim']).attach
+    for bad in (['--stands', '--attach'], ['--hallway', '--attach'],
+                ['--hallway', '--sim', '--attach', '--sim-actuators', 'drag=0.2'],
+                ['--hallway', '--sim', '--attach', '--wheel-noise', '0.02']):
+        with pytest.raises(SystemExit):
+            ct.parse(bad)
+
+
+def test_an_attached_simulator_that_is_not_ready_says_what_a_person_does():
+    why = ct.not_ready([], 'STOP: latched')
+    assert 'STOP: latched' in why and 'pixi run clear gate --sim' in why
+    assert 'the camera' in ct.not_ready(['the camera'], 'OPEN')
+    assert 'clear' not in ct.not_ready(['the camera'], 'OPEN')
+    why = ct.not_ready([], 'OPEN', estop=True)
+    assert 'pixi run clear estop --sim' in why and 'a person clears' in why
+
+
+def test_the_attached_simulators_process_group_only_from_the_one_who_started_it(tmp_path):
+    assert ct.attached_launch({}, str(tmp_path)) == ('', None)       # not told: nobody
+    env = {'AAV_SIM_LAUNCH_LOG': '/tmp/x.log', 'AAV_SIM_LAUNCH_PGID': '4242'}
+    assert ct.attached_launch(env, str(tmp_path)) == ('/tmp/x.log', 4242)
+    (tmp_path / 'sim-launch.pgid').write_text('777\n')
+    assert ct.attached_launch({}, str(tmp_path)) == (str(tmp_path / 'sim-launch.log'), 777)
+    assert ct.attached_launch(env, str(tmp_path)) == ('/tmp/x.log', 4242)   # the env first
+    (tmp_path / 'sim-launch.pgid').write_text('not a number')
+    assert ct.attached_launch({}, str(tmp_path)) == ('', None)
+
+
+def test_the_estop_lock_is_read_from_twist_muxs_own_word():
+    locked = [('twist_mux: Twist mux status', {
+        'lock locks.estop': ' locked (listening to /safety/estop @ 0.0s with priority #255)',
+        'lock locks.stop_sign': ' free (listening to /perception/stop_sign @ 0.0s)'})]
+    assert ct.estop_locked(locked) is True
+    free = [('twist_mux: Twist mux status', {'lock locks.estop': ' free (...)'})]
+    assert ct.estop_locked(free) is False
+    assert ct.estop_locked([('ekf_local: odometry', {'lock locks.estop': ' locked'})]) is None
+    assert ct.estop_locked([]) is None
+
+
+# --- the lot's simulator twin --------------------------------------------------------
+
+
+def test_the_lot_is_every_stage_4_test_that_is_not_a_hallway_pass():
+    assert ct.LOT_NAMES == ('speed-up', 'coast', 'brake', 'throttle-map', 'circles',
+                            'straight')
+    assert set(ct.LOT_NAMES) == {n for n, t in pr.TESTS.items()
+                                 if t.stage == 4 and not t.hallway}
+    planned = ct.lot_plan(['brake'])
+    assert names(planned) == ['brake']
+    assert names(ct.lot_plan([])) == list(ct.LOT_NAMES)
+
+
+def test_the_lot_is_the_simulators_only_and_at_speed():
+    a = ct.parse(['--lot', '--sim', '--attach', '--only', 'brake', 'circles'])
+    assert a.lot and a.only == ['brake', 'circles']
+    for bad in (['--lot'], ['--lot', '--sim', '--only', 'steer-sweep'],
+                ['--lot', '--stands', '--sim'], ['--lot', '--sim', '--wheel-noise', '0.1']):
+        with pytest.raises(SystemExit):
+            ct.parse(bad)
+    args = ct.lot_args(ct.LOT_STEPS[0], '/tmp/x')
+    assert args[0] == 'speed-up' and '--sim' in args and '--stands' not in args
+    assert args[args.index('--max-speed') + 1] == '3'
+    assert 'sim_speed:=3' in ct.lot_launch_args() and 'nav:=false' in ct.lot_launch_args()
+
+
+def test_a_lot_step_passes_when_its_test_ran_to_the_end():
+    assert ct.lot_result(0, 'actuators:\n  max_brake: 3.1  # measured') == (
+        ct.Status.PASS, 'ran to the end; vehicle.yaml lines: max_brake')
+    assert ct.lot_result(0, '')[1] == 'ran to the end; no vehicle.yaml lines'
+    status, detail = ct.lot_result(3, '')
+    assert status is ct.Status.FAIL and 'ABORTED' in detail
+    assert ct.table([], 'car-test --lot').startswith('car-test --lot\n==============\n')
+    assert ct.report_folder('/t', True, datetime.datetime(2026, 11, 22, 9, 0, 0),
+                            'lot') == '/t/2026-11-22-090000-lot-sim'
