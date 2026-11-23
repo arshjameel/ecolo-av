@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">146 min read · 15 sections</div></header>
+<div class="meta">148 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -656,7 +656,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="actuator-tests.html#car-test-the-whole-stands-test">car-test: the whole stands test</a> (<code>pixi run car-test --stands</code>)</td>
-<td>Our professor asked for one automated testing system: phase A (the preflight, every sensor, the steering, throttle on free wheels, faults on purpose) in one command with one report, stopping at the first failure, so every stands day is run and recorded the same way</td>
+<td>Our professor asked for one automated testing system: phase A (the preflight, every sensor, the steering, throttle on free wheels, faults on purpose) in one command with one report, stopping at the first failure, so every stands day is run and recorded the same way. Since 22 Nov <code>--sim</code> runs with Ravensim's car on stands (TODO 272), as the real test does</td>
 <td>Ben Woodhead</td>
 <td>2026-11-19</td>
 <td>sim</td>
@@ -670,7 +670,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="proving-it.html#where-we-are-pixi-run-ladder">The test ladder, with saved progress</a> (<code>pixi run ladder</code>, <code>tools/ladder.py</code>, <code>tools/ladder/rungs.yaml</code>; <a href="proving-it.html#the-window-pixi-run-ladder-window">the window</a>: <code>pixi run ladder-window</code>, <code>ros/hud/aav_dev_window</code>)</td>
-<td>Ben, 22 Nov: "spin up the testing and then start working through the rungs saving our progress as we go". The rungs from the laptop to a route, the simulator's side and the car's kept apart; a rung is shut until the ones under it pass; every result kept with its commit. It never moves the car. The window (Ben, 22 Nov: "an actual window"): every rung, Run in the simulator with its console and Stop, Record by hand; the car's command is only shown; the tool stays the only writer</td>
+<td>Ben, 22 Nov: "spin up the testing and then start working through the rungs saving our progress as we go". The rungs from the laptop to a route, the simulator's side and the car's kept apart; a rung is shut until the ones under it pass; every result kept with its commit. It never moves the car. The window (Ben, 22 Nov: "an actual window"): every rung, Run in the simulator with its console and Stop, Record by hand; the car's command is only shown; the tool stays the only writer. Since 22 Nov also "The simulated car: on stands / on the ground", on only while a simulator runs on this computer</td>
 <td>Ben Woodhead</td>
 <td>2026-11-22</td>
 <td>built</td>
@@ -1563,6 +1563,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>A recorded drive runs through the EKFs again, to check them; they match within 0.03 m. With the lidar, the first drive on the ground also gives NDT's map of the lot and real scores for the trials (tests.md 4e)</td>
 <td>Ben</td>
 <td>2026-10-09</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="actuator-tests.html#the-simulated-car-on-stands-pixi-run-jacks">The simulated car on stands</a> (<code>pixi run jacks up --sim</code>, <code>down</code>, <code>status</code>, <code>sim on_stands:=true</code>; <code>aav_simulator</code>'s <code>jacks.rs</code>, <code>aav_sim_models/jacks.py</code>; the ladder window's switch)</td>
+<td>Ben, 22 Nov: "put the car on jacks and take it off jacks type thing ... test it just like the real car using the real commands". Lifted, the rear wheels spin and steer through the same actuator model and the car stays put: the wheels say moving, the IMU, GPS, lidar and truth say still, and the stack sees that disagreement as it would on the real stands. Lowering is refused while the wheels spin. <code>car-test --stands --sim</code> runs on it, so the stands rung's simulator twin tests what the real one does; its first run found two checks that a still car's sensor noise failed. Rust for the rule and the simulator, Python for the car model's free wheels and the tool</td>
+<td>Ben Woodhead</td>
+<td>2026-11-22</td>
 <td>sim</td>
 </tr>
 <tr>

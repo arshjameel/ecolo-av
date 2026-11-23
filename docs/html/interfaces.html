@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">133 min read · 4 sections</div></header>
+<div class="meta">135 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1098,6 +1098,14 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>Where Ravensim's car really is (map frame - the world's origin is the datum - 50 Hz), like the bench's /vehicle/bench/truth. Only the stand-ins read it - sim_gps, for the receiver's velocity (/sensors/gps/fix_velocity), never for a position; tools/sim_check.py compares it with /localization/odom/global. Ravensim's other topics (/vehicle/sim/odom, imu, navsat, cmd_vel, radar/points) only link the simulator (aav_simulator's node simulator), sim_adapter and the sensor nodes (sim_imu, sim_gps, sim_radar, sim_camera_relay, sim_lidar_relay - one process per sensor, as on the car); they were /gazebo/* until Gazebo went on 16 Nov, and the same nodes read them.</td>
 </tr>
 <tr>
+<td><code>/vehicle/sim/jacks</code></td>
+<td><code>std_msgs/msg/Bool</code></td>
+<td><code>simulator</code></td>
+<td><code>sim_adapter</code>, <code>jacks_cli</code></td>
+<td>sim</td>
+<td>Ravensim's. true while the simulated car is on stands (on jacks) - the rear wheels spin and steer as commanded, through the same actuator model, and the body stays put, so the wheels say "moving" while the truth, the IMU, the GPS and the lidar say "still", as on the real car on stands. Latched (reliable, transient local, depth 1) - sent at the start (sim.launch.py on_stands:=true starts it true) and on each change by /vehicle/sim/set_jacks. sim_adapter takes the car's weight off its actuator model by it (free wheels - free_wheel_mass, 20 kg, a guess); pixi run jacks status --sim (tools/jacks.py, the node jacks_cli) prints it. Nothing that drives reads it - on the real car a person says --stands. docs/actuator-tests.md.</td>
+</tr>
+<tr>
 <td><code>/vehicle/sim/cmd_vel</code></td>
 <td><code>geometry_msgs/msg/Twist</code></td>
 <td><code>sim_adapter</code></td>
@@ -1752,6 +1760,12 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>simulation_interfaces/srv/SetEntityState</code></td>
 <td><code>simulator</code></td>
 <td>Ravensim - put the car (entity aav) at state.pose in the map frame (x, y and yaw), standing still, as Gazebo's set_pose service does; a non-zero twist is refused. The truth and wheel odometry jump with it. tools/sim_frames.py --simulator own uses it. Sim only.</td>
+</tr>
+<tr>
+<td><code>/vehicle/sim/set_jacks</code></td>
+<td><code>std_srvs/srv/SetBool</code></td>
+<td><code>simulator</code></td>
+<td>Ravensim - put the simulated car on stands (data true) or back on the ground (false), where it is. Refused, with the reason in message, unless the wheels (on the ground, the car) are slower than 0.02 m/s and no speed is commanded on /vehicle/sim/cmd_vel - the car never leaps off the stands (aav_simulator sim-core jacks.rs). Asking for what it is already succeeds and changes nothing. The state is on /vehicle/sim/jacks. Called by pixi run jacks up</td>
 </tr>
 <tr>
 <td><code>/track/set_parameters</code></td>

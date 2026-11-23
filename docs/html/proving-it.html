@@ -7,7 +7,7 @@
 <!-- Generated from docs/proving-it.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Proving it: how the tests fit together</h1>
-<div class="meta">10 min read · 6 sections</div></header>
+<div class="meta">12 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -253,6 +253,11 @@ pixi run ladder-window --pretend     # sample data: nothing runs, nothing is rec
 <td>pass or fail, simulator or car, a note, an override reason</td>
 <td><code>pixi run ladder record ...</code>; a refusal is shown in the tool's words</td>
 </tr>
+<tr>
+<td>top: <strong>The simulated car</strong></td>
+<td>"on the ground" or "ON STANDS", asked every 5 s; off, with the reason, unless a simulator runs on this computer</td>
+<td><strong>Put it on stands</strong> / <strong>Lower it to the ground</strong>: <code>pixi run jacks up --sim</code> or <code>down</code>; Ravensim's refusal (wheels still spinning) is shown in its words</td>
+</tr>
 </tbody>
 </table></div>
 <div class="table-wrap"><table>
@@ -265,7 +270,7 @@ pixi run ladder-window --pretend     # sample data: nothing runs, nothing is rec
 <tbody>
 <tr>
 <td>The window never moves the car</td>
-<td>it has no control that starts a car test</td>
+<td>it has no control that starts a car test; the jacks switch is the simulator's only (<code>--sim</code>, <code>--local</code>, refused when <code>/system/source</code> says REAL)</td>
 </tr>
 <tr>
 <td>The tool is the only writer</td>
@@ -489,6 +494,30 @@ stop within 0.2 m (<a href="actuator-tests.html#the-model-against-the-car">the m
 </tr>
 </tbody>
 </table></div>
+<p><strong>The stands twin is on stands too</strong> (TODO 272, 22 Nov). <code>car-test --stands --sim</code> starts
+its Ravensim with the car on jacks and lowers it at the end: the rear wheels spin and steer,
+the car stays put, and the wheels disagree with the IMU and the GPS, as on the real stands
+(<a href="actuator-tests.html#the-simulated-car-on-stands-pixi-run-jacks">how</a>). Before, the simulated
+car crawled in arcs and the stands checks ran backwards.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The first honest run found</th>
+<th>Fixed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"GPS still" failed on a still car: the receiver's noise passes 0.1 m/s one reading in seven</td>
+<td>the median decides, not the largest</td>
+</tr>
+<tr>
+<td>the live IMU watch stopped a still car one run in three (Ravensim's IMU noise, 0.2 m/s²)</td>
+<td>the mark allows for the IMU's own noise at rest, never over 0.25 m/s; a quiet IMU keeps 0.15</td>
+</tr>
+</tbody>
+</table></div>
+<p>Both would have shown up first on car day.</p>
 <p>GPS and NDT are the <strong>outside witnesses</strong>: they do not pass through the wheels or the IMU,
 so they catch a wrong wheel size or a drifting IMU.</p>
 </section>
@@ -579,6 +608,26 @@ every one takes the same tests.</p>
 <td>5</td>
 <td>Step 6 against step 1: the car's scores beside the simulator's for the same route</td>
 <td>270, after the car drives</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The lot and route rungs have no one-command simulator twin (by hand today)</td>
+<td>273</td>
+</tr>
+<tr>
+<td>7</td>
+<td>One command that opens Ravensim, the hardware panel, the debug screen and the ladder window side by side</td>
+<td>273</td>
+</tr>
+<tr>
+<td>8</td>
+<td>The hardware panel and the debug screen do not show "on stands" (the ladder window and <code>pixi run jacks status --sim</code> do)</td>
+<td>273</td>
+</tr>
+<tr>
+<td>9</td>
+<td>On stands the simulator's free-wheel mass (20 kg) and drag are guesses; its odometry reads the rear wheels, today's car the front</td>
+<td>49b, and a stands measurement</td>
 </tr>
 </tbody>
 </table></div></section>
