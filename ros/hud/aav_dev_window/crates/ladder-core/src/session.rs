@@ -19,6 +19,7 @@ use crate::{
     pretend,
     process::{self, Answer, Running, Signal},
     report::{self, Report, StepRow},
+    research::{Watch, WatchButton},
     show::{self, RunButton, RunsIn, WhyNot},
 };
 
@@ -78,6 +79,8 @@ struct Run {
     test: Option<String>,
     child: Running,
     stop_asked: bool,
+    /// A research watch, not the ladder's: nothing is recorded.
+    research: bool,
 }
 
 type Pending = Receiver<Result<Answer, String>>;
@@ -364,10 +367,56 @@ impl Session {
                     test: test.map(str::to_owned),
                     child,
                     stop_asked: false,
+                    research: false,
                 });
             }
             Err(why) => {
                 self.last_run = Some(Notice::bad(format!("{rung} did not start: {why}")));
+            }
+        }
+    }
+
+    /// A research watch's Run button (`research`): off with pretend data and while
+    /// anything runs. It is not the ladder's: no rung need be chosen, none is shut.
+    #[must_use]
+    pub fn watch_button(&self, watch: Watch) -> WatchButton {
+        match (&self.source, &self.run) {
+            (Source::Pretend, _) => WatchButton::Off(WhyNot::Pretend),
+            (_, Some(run)) => WatchButton::Off(WhyNot::Running {
+                rung: run.rung.clone(),
+            }),
+            (Source::Tool { .. }, None) => WatchButton::Ready(watch.command()),
+        }
+    }
+
+    /// A research watch's Run was pressed. Nothing starts unless its button is on; the
+    /// ladder's tool is not called, so nothing is recorded.
+    pub fn press_watch(&mut self, watch: Watch) {
+        let (Source::Tool { root }, WatchButton::Ready(command)) =
+            (&self.source, self.watch_button(watch))
+        else {
+            return;
+        };
+        let process = command.process(root);
+        self.console.clear();
+        self.say(format!("$ {}", command.line()));
+        self.ended = None;
+        match Running::start(process) {
+            Ok(child) => {
+                self.last_run = None;
+                self.run = Some(Run {
+                    rung: watch.name(),
+                    test: None,
+                    child,
+                    stop_asked: false,
+                    research: true,
+                });
+            }
+            Err(why) => {
+                self.last_run = Some(Notice::bad(format!(
+                    "{} did not start: {why}",
+                    watch.name()
+                )));
             }
         }
     }
@@ -618,7 +667,9 @@ fn run_notice(run: &Run, status: Result<ExitStatus, String>) -> Notice {
         Some(test) => format!("{rung}, {test} alone"),
         None => rung.clone(),
     };
-    let kept = if run.test.is_some() {
+    let kept = if run.research {
+        "research, outside the capstone's scope: not on the ladder, nothing recorded"
+    } else if run.test.is_some() {
         "a single test: not recorded on the ladder"
     } else {
         "the tool recorded it"
@@ -681,6 +732,19 @@ mod tests {
         session.select("code");
         session.tick(Instant::now());
         assert!(session.report().is_none() && session.step().is_none());
+    }
+
+    #[test]
+    fn pretend_data_runs_no_research_watch() {
+        let mut session = Session::new(Source::Pretend);
+        for watch in Watch::ALL {
+            assert_eq!(
+                session.watch_button(watch),
+                WatchButton::Off(WhyNot::Pretend)
+            );
+            session.press_watch(watch);
+        }
+        assert!(session.running().is_none());
     }
 
     #[test]

@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
 """
-The dry run: Ravensim with its picture and the test ladder's window, in one go.
+The dry run: the virtual test platform, three screens in one go (Ben, 23 Nov).
 
-    pixi run dry-run                    Ravensim, its picture, the ladder window
-    pixi run dry-run --panel --debug    and the hardware panel, and the debug screen
+    pixi run dry-run                    Ravensim's screen, the hardware screen, the tests screen
+    pixi run dry-run --nav              and the navigation view in a window of its own
+    pixi run dry-run --debug            and the raylib debug screen (the in-car one)
+    pixi run dry-run --no-panel         without the hardware panel
     pixi run dry-run --no-picture       without the developer window (a slow laptop)
+
+  Screen            Window                         Shows
+  1 Ravensim        the developer window           the 3D scene; the debug view (what the
+                                                   lidar sees: what we can hit); the map
+                                                   from above (the nav view): one window
+                    --nav: the navigation view     that map alone, for another monitor
+  2 the hardware    the hardware panel             the car's switches and lights
+  3 the tests       the ladder window              the rungs, each test's Run, the session
     pixi run dry-run sim_speed:=2       any sim.launch.py switch, name:=value (yours win)
     Ctrl-C, or close the ladder window  stops everything it started
 
@@ -19,8 +29,12 @@ tools/ros.sh --local, and every part goes through it again):
                      its output goes to /tmp/aav-dry-run/sim-launch.log
   2. the picture     tools/dev_window.sh --live (the developer window on the simulator)
   3. the ladder      the ladder window (ros/hud/aav_dev_window, ladder_window; no ROS)
-  4. --panel         the hardware panel (ros2 launch aav_hud hw_panel.launch.py)
-  5. --debug         the debug screen (ros2 launch aav_hud debug_hud.launch.py)
+  4. the hardware    the hardware panel (ros2 launch aav_hud hw_panel.launch.py); not with
+                     --no-panel
+  5. --nav           the navigation view (tools/dev_window.sh --map-only --live)
+  6. --debug         the debug screen (ros2 launch aav_hud debug_hud.launch.py)
+
+No RViz anywhere: the simulator gets rviz:=false, and the pictures are ours.
 
 It refuses to start when a simulator, or anything else, already announces on
 /system/source here (tools/jacks.py's check): two simulators on one ROS domain, or one
@@ -78,8 +92,13 @@ class Part:
 def parse(argv):
     parser = argparse.ArgumentParser(
         prog='pixi run dry-run',
-        description='Ravensim with its picture and the test ladder window attached to it.')
-    parser.add_argument('--panel', action='store_true', help='the hardware panel too')
+        description='The virtual test platform: Ravensim, the hardware panel and the tests.')
+    parser.add_argument('--panel', action='store_true',
+                        help='the hardware panel (it opens anyway since 23 Nov: kept so '
+                             'an old command still works)')
+    parser.add_argument('--no-panel', action='store_true', help='no hardware panel')
+    parser.add_argument('--nav', action='store_true',
+                        help='the navigation view too, in a window of its own')
     parser.add_argument('--debug', action='store_true', help='the debug screen too')
     parser.add_argument('--no-picture', action='store_true',
                         help='no developer window on the simulator')
@@ -103,9 +122,12 @@ def plan(args):
                       ('cargo', 'run', '--release', '-q', '--manifest-path',
                        'ros/hud/aav_dev_window/Cargo.toml', '--bin', 'ladder_window'),
                       needed=True))
-    if args.panel:
+    if not args.no_panel:
         parts.append(Part('the hardware panel',
                           LOCAL + ('ros2', 'launch', 'aav_hud', 'hw_panel.launch.py')))
+    if args.nav:
+        parts.append(Part('the navigation view',
+                          ('tools/dev_window.sh', '--map-only', '--live')))
     if args.debug:
         parts.append(Part('the debug screen',
                           LOCAL + ('ros2', 'launch', 'aav_hud', 'debug_hud.launch.py')))

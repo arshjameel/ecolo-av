@@ -24,6 +24,7 @@ pub mod ladder;
 pub mod pretend;
 pub mod process;
 pub mod report;
+pub mod research;
 pub mod session;
 pub mod show;
 
@@ -31,5 +32,6 @@ pub use command::{Outcome, RecordForm, ToolCommand, Which};
 pub use jacks::Jacks;
 pub use ladder::{Ladder, ParseError, Place, Rung, Side, SingleTest, State};
 pub use report::{Fit, Graph, Report, Status, StepRow};
+pub use research::{Watch, WatchButton};
 pub use session::{Session, Source};
 pub use show::{CarSide, Cell, RunButton, RunsIn, WhyNot};

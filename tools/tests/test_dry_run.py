@@ -12,8 +12,9 @@ import pytest  # noqa: E402
 
 def test_the_simulator_comes_first_with_what_every_rung_needs():
     parts = dry_run.plan(dry_run.parse([]))
+    # The three screens: Ravensim's (its picture), the tests (the ladder), the hardware.
     assert [p.name for p in parts] == ['the simulator', "the simulator's picture",
-                                       'the ladder window']
+                                       'the ladder window', 'the hardware panel']
     sim = parts[0].cmd
     assert sim[:2] == ('tools/ros.sh', '--local')
     for switch in ('world:=road', 'nav:=false', 'faults:=true', 'sim_speed:=3', 'rviz:=false'):
@@ -29,10 +30,16 @@ def test_your_switches_come_last_so_they_win():
 
 
 def test_the_extra_screens_are_asked_for_and_everything_with_ros_stays_local():
-    args = dry_run.parse(['--panel', '--debug', '--no-picture'])
+    args = dry_run.parse(['--panel', '--debug', '--no-picture', '--nav'])
     parts = dry_run.plan(args)
     assert [p.name for p in parts] == ['the simulator', 'the ladder window',
-                                       'the hardware panel', 'the debug screen']
+                                       'the hardware panel', 'the navigation view',
+                                       'the debug screen']
+    assert parts[3].cmd == ('tools/dev_window.sh', '--map-only', '--live')
+    bare = dry_run.plan(dry_run.parse(['--no-panel', '--no-picture']))
+    assert [p.name for p in bare] == ['the simulator', 'the ladder window']
+    # Nothing in the dry run is RViz: the pictures are ours.
+    assert not any('rviz2' in part.cmd for part in parts)
     for part in parts:
         if 'ros2' in part.cmd:
             assert part.cmd[:2] == ('tools/ros.sh', '--local'), part.name

@@ -8,7 +8,8 @@
 use bevy_egui::egui;
 use ladder_core::{
     report::tick_label, session::Notice, show::CAR_RULE, CarSide, Cell, Fit, Graph, Jacks, Ladder,
-    Outcome, Place, Report, RunButton, Rung, Session, Side, Source, State, Status, StepRow, Which,
+    Outcome, Place, Report, RunButton, Rung, Session, Side, Source, State, Status, StepRow, Watch,
+    WatchButton, Which,
 };
 
 const GREEN: egui::Color32 = egui::Color32::from_rgb(45, 210, 110);
@@ -36,6 +37,7 @@ enum Action {
     Record,
     Jacks,
     RunTest(String),
+    Watch(Watch),
     Step(String),
     Show(Which),
 }
@@ -124,6 +126,7 @@ pub fn window(ctx: &egui::Context, session: &mut Session) {
             Action::Record => session.press_record(),
             Action::Jacks => session.press_jacks(),
             Action::RunTest(name) => session.press_run_test(&name),
+            Action::Watch(watch) => session.press_watch(watch),
             Action::Step(name) => session.select_step(&name),
             Action::Show(which) => session.show(which),
         }
@@ -316,6 +319,47 @@ fn detail(ui: &mut egui::Ui, session: &mut Session, rung: &Rung, actions: &mut V
 
     ui.separator();
     record_form(ui, session, rung, actions);
+    research(ui, session, actions);
+}
+
+/// The research watch, set clearly apart from the ladder: its own heading, its own box,
+/// under everything the capstone's rung shows.
+fn research(ui: &mut egui::Ui, session: &Session, actions: &mut Vec<Action>) {
+    ui.add_space(18.0);
+    egui::Frame::group(ui.style()).show(ui, |ui| {
+        ui.label(
+            egui::RichText::new(ladder_core::research::HEADING)
+                .strong()
+                .color(AMBER),
+        );
+        ui.add(
+            egui::Label::new(egui::RichText::new(ladder_core::research::RULE).color(GREY)).wrap(),
+        );
+        egui::Grid::new("research")
+            .num_columns(3)
+            .spacing(egui::vec2(14.0, 6.0))
+            .show(ui, |ui| {
+                for watch in Watch::ALL {
+                    let button = session.watch_button(watch);
+                    let ready = matches!(button, WatchButton::Ready(_));
+                    let hover = match &button {
+                        WatchButton::Ready(command) => command.line(),
+                        WatchButton::Off(why) => format!("Off: {why}"),
+                    };
+                    if ui
+                        .add_enabled(ready, egui::Button::new("Run"))
+                        .on_hover_text(&hover)
+                        .on_disabled_hover_text(&hover)
+                        .clicked()
+                    {
+                        actions.push(Action::Watch(watch));
+                    }
+                    ui.strong(format!("barrier-watch {}", watch.word()));
+                    ui.label(watch.says());
+                    ui.end_row();
+                }
+            });
+    });
 }
 
 /// The rung's tests, one at a time: each with its own Run. Simulator only: the tool's
