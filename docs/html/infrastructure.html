@@ -7,7 +7,7 @@
 <!-- Generated from docs/infrastructure.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Infrastructure: how the project is put together</h1>
-<div class="meta">20 min read · 11 sections</div></header>
+<div class="meta">22 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -736,7 +736,7 @@ Changes reach <code>main</code> only through a pull request from your own fork a
 </table></div>
 <p>CI (<code>.github/workflows/test.yml</code>) runs <code>pixi run test</code> on Linux (x86_64 and 64-bit ARM) for every push to <code>main</code>,
 every pull request and every merge-queue entry, and on a Mac every night. The results are
-on the repo's Actions tab.</p>
+on the repo's Actions tab. A docs-only pull request runs only the docs' checks (below).</p>
 <p><strong>In your fork too.</strong> Turn Actions on once in your fork (its Actions tab, then "I
 understand my workflows, go ahead and enable them"). From then on every push to a branch
 there runs <code>linux</code>, <code>arm</code> and <code>car-kit</code>, so you see green or red before you open the pull
@@ -822,9 +822,46 @@ failure there doesn't fail the night yet (<code>continue-on-error</code>).</p>
 </table></div>
 <p>Gazebo's step went with Gazebo (16 Nov): its last nights in <a href="../history/gazebo-as-it-was.md">Gazebo, as it
 was</a>.</p>
+<h3 id="ci-and-the-docs-only-run">CI and the docs-only run</h3>
+<p>A pull request or merge-queue entry whose every changed file is a Markdown file (anywhere),
+or in <code>docs/html/</code> or <code>docs/img/</code>, is docs only. The job <code>changes</code> decides, with main's copy
+of <code>tools/ci_docs_only.py</code>; then:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>A docs-only change</th>
+<th>Anything else</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>linux</code></td>
+<td>the docs' checks only: <code>tools/tests</code>, <code>docs/interfaces.md</code> and <code>docs/codemap.md</code> in sync. No build</td>
+<td>the full run</td>
+</tr>
+<tr>
+<td><code>arm</code></td>
+<td>skipped (GitHub counts it as passed)</td>
+<td>the full run</td>
+</tr>
+<tr>
+<td><code>car-kit</code>, <code>car-kit-22.04</code></td>
+<td>runs, every step skipped</td>
+<td>the full run</td>
+</tr>
+</tbody>
+</table></div>
+<p>One other file (code, a YAML such as <code>docs/interfaces.yaml</code>, <code>pixi.lock</code>, the workflow
+itself) and it's the full run. In the merge queue the change counts from <code>main</code>, so a code
+change ahead in the queue gives the entries behind it the full run too. A push to <code>main</code>,
+the nights and Run workflow always get the full run, and so does any run where <code>changes</code>
+fails or can't list the files: a fault only makes a run longer. A change to
+<code>tools/ci_docs_only.py</code> is code: the full run.</p>
 <h3 id="cis-caches">CI's caches</h3>
-<p>Every run starts on a clean computer. Three caches carry builds from one run to the next,
-each saved under a key made from <code>pixi.lock</code> (and every <code>Cargo.lock</code> for the Rust two):</p>
+<p>Every run starts on a clean computer. Two caches carry the Rust builds from one run to the
+next, in the <code>linux</code> and <code>arm</code> jobs only, each saved under a key made from <code>pixi.lock</code> and
+every <code>Cargo.lock</code>:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -834,11 +871,6 @@ each saved under a key made from <code>pixi.lock</code> (and every <code>Cargo.l
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>pixi-pkgs-*</code></td>
-<td>the packages Pixi installs: ROS, Python, the compilers</td>
-<td>after a run that passes</td>
-</tr>
 <tr>
 <td><code>rust-*</code></td>
 <td>cargo's downloads; what <code>pixi run build</code> compiles (<code>build/*/target</code>)</td>
@@ -851,9 +883,16 @@ each saved under a key made from <code>pixi.lock</code> (and every <code>Cargo.l
 </tr>
 </tbody>
 </table></div>
-<p>A key is saved once: a new <code>Cargo.lock</code> or <code>pixi.lock</code> starts a new cache, from the newest
-older one. A pull request reads <code>main</code>'s caches, but what it saves only its own later runs
-see. GitHub keeps 10 GB for the repo and drops the oldest past that.</p>
+<p><strong>Only a push to <code>main</code> saves them.</strong> Pull requests and the merge queue read <code>main</code>'s (the
+queue can't see a pull request's caches anyway). GitHub keeps 10 GB of caches for the
+repo and drops the least recently used past that, and the four are about 9.4 GB together:
+when every pull request saved its own copies too, they pushed <code>main</code>'s out within hours,
+and every run built cold (22 Nov). A key is saved once: a new <code>Cargo.lock</code> or <code>pixi.lock</code>
+starts a new cache, from the newest older one, once <code>main</code> has run with it.</p>
+<p>No other caches (22 Nov). Pixi's packages: restoring them took as long as downloading them
+(<code>car-kit</code>, about 100 s either way), and their 1.75 GB a computer pushed the Rust caches
+out. The Mac: it runs once a night, and its Rust caches were gone by the next night every
+time while saving them pushed out <code>linux</code>'s and <code>arm</code>'s.</p>
 <p>The cache only saves compiling: every test still runs, every time. cargo rebuilds what
 changed by itself. <strong>To clear one</strong>, when CI fails with a link error a laptop doesn't
 have (a build script's saved answer gone stale, like <code>rclrs</code>'s on 20 Nov):

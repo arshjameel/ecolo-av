@@ -205,7 +205,7 @@ Changes reach `main` only through a pull request from your own fork and the merg
 
 CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux (x86_64 and 64-bit ARM) for every push to `main`,
 every pull request and every merge-queue entry, and on a Mac every night. The results are
-on the repo's Actions tab.
+on the repo's Actions tab. A docs-only pull request runs only the docs' checks (below).
 
 **In your fork too.** Turn Actions on once in your fork (its Actions tab, then "I
 understand my workflows, go ahead and enable them"). From then on every push to a branch
@@ -237,20 +237,47 @@ failure there doesn't fail the night yet (`continue-on-error`).
 Gazebo's step went with Gazebo (16 Nov): its last nights in [Gazebo, as it
 was](history/gazebo-as-it-was.md).
 
+### CI and the docs-only run
+
+A pull request or merge-queue entry whose every changed file is a Markdown file (anywhere),
+or in `docs/html/` or `docs/img/`, is docs only. The job `changes` decides, with main's copy
+of `tools/ci_docs_only.py`; then:
+
+| Job | A docs-only change | Anything else |
+|---|---|---|
+| `linux` | the docs' checks only: `tools/tests`, `docs/interfaces.md` and `docs/codemap.md` in sync. No build | the full run |
+| `arm` | skipped (GitHub counts it as passed) | the full run |
+| `car-kit`, `car-kit-22.04` | runs, every step skipped | the full run |
+
+One other file (code, a YAML such as `docs/interfaces.yaml`, `pixi.lock`, the workflow
+itself) and it's the full run. In the merge queue the change counts from `main`, so a code
+change ahead in the queue gives the entries behind it the full run too. A push to `main`,
+the nights and Run workflow always get the full run, and so does any run where `changes`
+fails or can't list the files: a fault only makes a run longer. A change to
+`tools/ci_docs_only.py` is code: the full run.
+
 ### CI's caches
 
-Every run starts on a clean computer. Three caches carry builds from one run to the next,
-each saved under a key made from `pixi.lock` (and every `Cargo.lock` for the Rust two):
+Every run starts on a clean computer. Two caches carry the Rust builds from one run to the
+next, in the `linux` and `arm` jobs only, each saved under a key made from `pixi.lock` and
+every `Cargo.lock`:
 
 | Cache | Holds | Saved |
 |---|---|---|
-| `pixi-pkgs-*` | the packages Pixi installs: ROS, Python, the compilers | after a run that passes |
 | `rust-*` | cargo's downloads; what `pixi run build` compiles (`build/*/target`) | straight after the build, even if a test fails later |
 | `rust-tests-*` | what `tools/test.sh` compiles: every Rust workspace in one folder, `target/tests`, so their libraries compile once; with no debug info (`CARGO_PROFILE_DEV_DEBUG=0`), to keep it small | after the tests, even if one fails |
 
-A key is saved once: a new `Cargo.lock` or `pixi.lock` starts a new cache, from the newest
-older one. A pull request reads `main`'s caches, but what it saves only its own later runs
-see. GitHub keeps 10 GB for the repo and drops the oldest past that.
+**Only a push to `main` saves them.** Pull requests and the merge queue read `main`'s (the
+queue can't see a pull request's caches anyway). GitHub keeps 10 GB of caches for the
+repo and drops the least recently used past that, and the four are about 9.4 GB together:
+when every pull request saved its own copies too, they pushed `main`'s out within hours,
+and every run built cold (22 Nov). A key is saved once: a new `Cargo.lock` or `pixi.lock`
+starts a new cache, from the newest older one, once `main` has run with it.
+
+No other caches (22 Nov). Pixi's packages: restoring them took as long as downloading them
+(`car-kit`, about 100 s either way), and their 1.75 GB a computer pushed the Rust caches
+out. The Mac: it runs once a night, and its Rust caches were gone by the next night every
+time while saving them pushed out `linux`'s and `arm`'s.
 
 The cache only saves compiling: every test still runs, every time. cargo rebuilds what
 changed by itself. **To clear one**, when CI fails with a link error a laptop doesn't
