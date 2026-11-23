@@ -7,7 +7,7 @@
 <!-- Generated from docs/proving-it.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Proving it: how the tests fit together</h1>
-<div class="meta">22 min read · 8 sections</div></header>
+<div class="meta">23 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -225,9 +225,12 @@ pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by h
 <p><strong>Everything we will do with the real car, done first with the simulated one you can see</strong>
 (Ben, 22 Nov: "control the car in ravensim the same way we would control the actual car
 ... a dry run of everything we will do in real life"; TODO 273).</p>
-<pre class="highlight"><code class="language-bash">pixi run dry-run                     # Ravensim, its picture, the ladder window
-pixi run dry-run --panel --debug     # and the hardware panel and the debug screen
+<pre class="highlight"><code class="language-bash">pixi run dry-run                     # three screens: Ravensim's, the hardware panel, the tests
+pixi run dry-run --nav --debug       # and the navigation view alone, and the debug screen
+pixi run dry-run --no-panel          # without the hardware panel
 pixi run clear estop --sim           # a person clears the e-stop a test left set</code></pre>
+<p>Which window is which screen, and why no RViz opens:
+<a href="hud.html#rviz-and-ours">RViz and ours</a> (since 23 Nov the hardware panel opens by default).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>

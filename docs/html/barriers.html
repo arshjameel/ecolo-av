@@ -7,7 +7,7 @@
 <!-- Generated from docs/barriers.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Barriers in the MPC: keeping the car off things</h1>
-<div class="meta">23 min read · 8 sections</div></header>
+<div class="meta">24 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -645,7 +645,8 @@ navigation's 1 m/s. One run each (the barrier run three times); the stop zone st
 </ul>
 <h3 id="watch-it-in-ravensim">Watch it in Ravensim</h3>
 <p>One command: the same drive past the same ghost, the follower three ways. It starts
-Ravensim's road world with navigation, opens RViz from above, places the ghost 15 m
+Ravensim's road world with navigation, opens our own navigation view from above (the
+mode in its title; RViz only with <code>--rviz</code>: <a href="hud.html#rviz-and-ours">RViz and ours</a>), places the ghost 15 m
 past the bumper, sends a goal 40 m straight ahead, and prints one line of result.</p>
 <pre class="highlight"><code class="language-sh">pixi run barrier-watch plain   --speed 3     # the follower (mpc_lag_rs) alone
 pixi run barrier-watch step    --speed 3     # a hard distance limit: the rule with γ = 1
@@ -681,7 +682,11 @@ pixi run barrier-watch --side-by-side --speed 3    # plain and barrier at once</
 </tr>
 <tr>
 <td><code>--dev-window</code></td>
-<td>also the developer window, live</td>
+<td>the whole developer window, live, in place of the navigation view</td>
+</tr>
+<tr>
+<td><code>--rviz</code></td>
+<td>also RViz (<code>rviz/barrier.rviz</code>): the stock viewer, the reference only</td>
 </tr>
 <tr>
 <td><code>truth_pose:=true</code></td>
@@ -696,7 +701,7 @@ pixi run barrier-watch --side-by-side --speed 3    # plain and barrier at once</
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>In RViz</th>
+<th>In the view</th>
 <th>Is</th>
 </tr>
 </thead>
@@ -718,11 +723,14 @@ pixi run barrier-watch --side-by-side --speed 3    # plain and barrier at once</
 <td>where the car has been</td>
 </tr>
 <tr>
-<td>the red box</td>
-<td>the stop zone's box, 1 m in front of the bumper</td>
+<td>the box ahead of the car</td>
+<td>the stop zone's box, from the front bumper ahead: white when clear, red with STOP ZONE: STOP while it stops the car</td>
 </tr>
 </tbody>
 </table></div>
+<p>The view's newest picture is kept beside the CSV (<code>/tmp/aav-barrier-watch/&lt;mode&gt;-&lt;speed&gt;-&lt;offset&gt;.png</code>).
+The ladder window (<code>pixi run dry-run</code>) can start the three modes too, in a box of its own
+marked as research.</p>
 <p>The window's title says which mode it is. Each run's samples go to
 <code>/tmp/aav-barrier-watch/&lt;mode&gt;-&lt;speed&gt;-&lt;offset&gt;.csv</code>, the commit and the command first.</p>
 <div class="admonition note">

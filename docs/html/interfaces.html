@@ -7,7 +7,7 @@
 <!-- Generated from docs/interfaces.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Interfaces</h1>
-<div class="meta">135 min read · 4 sections</div></header>
+<div class="meta">136 min read · 4 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -341,7 +341,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/stop_zone/state</code></td>
 <td><code>nav2_msgs/msg/CollisionMonitorState</code></td>
 <td><code>stop_zone</code></td>
-<td><code>stop_hold</code>, <code>controller_compare</code></td>
+<td><code>stop_hold</code>, <code>controller_compare</code>, <code>dev_window</code></td>
 <td>-</td>
 <td>What the stop zone does (aav_stop_zone, the car's since 17 Nov - it replaced Nav2's collision_monitor after stopping every time it did, no later - docs/safety-case.md), on each change, in collision_monitor's message - action_type 0 nothing, 1 stop; polygon_name StopZone, or "invalid source" when a sensor it reads is silent. It decides afresh on every command, so it can flicker between the two at the box's edge - stop_hold holds the stop.</td>
 </tr>
@@ -357,7 +357,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/stop_zone/box</code></td>
 <td><code>geometry_msgs/msg/PolygonStamped</code></td>
 <td><code>stop_zone</code></td>
-<td>-</td>
+<td><code>dev_window</code></td>
 <td>-</td>
 <td>The box in use in base_link, each command, for RViz and Foxglove (collision_monitor's polygon_pub_topic) - from the front bumper ahead (behind, reversing), 0.2 m wider than the body each side (vehicle.yaml, through aav_description vehicle.py).</td>
 </tr>
@@ -421,7 +421,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>/safety/ghost/marker</code></td>
 <td><code>visualization_msgs/msg/Marker</code></td>
 <td><code>ghost_obstacle</code></td>
-<td><code>mpc_lag_rs</code></td>
+<td><code>mpc_lag_rs</code>, <code>dev_window</code></td>
 <td>-</td>
 <td>The ghost as a purple cylinder in the map frame, for RViz and Lichtblick; DELETE when it goes. mpc_lag_rs reads it only with navigation.launch.py mpc_barriers:=true (research, off by default) - the cylinder's centre and width become a keep-out circle its plan may only creep up to.</td>
 </tr>
@@ -1530,10 +1530,18 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td>Only with behaviour:=true, 5 Hz - for the screens. name behaviour; message STATE and why; level OK, or WARN with a warning or in ASK. values state (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK), reason (sign, obstacle, fence, goal, moving - anything moving within 10 m or onto the road ahead within 3 s holds the car, with things - a lock's name, the e-stop), cap_mps (what /drivers/nav/speed_limit carries), left_m (to the binding stop's final stop, inf for none), warnings (sign passed, no lock; sign lost; odometry stale). aav_behaviour_rs publishes it by default (behaviour_impl:=rust, since 16 Nov; behaviour_impl:=python runs the Python), with the same node name, QoS and answers.</td>
 </tr>
 <tr>
+<td><code>/drivers/nav/track/barrier_watch/keep_out</code></td>
+<td><code>visualization_msgs/msg/Marker</code></td>
+<td><code>barrier_watch</code></td>
+<td><code>dev_window</code></td>
+<td>-</td>
+<td>Research, outside the capstone's scope, the simulator only - the barrier's keep-out circle round the ghost (pixi run barrier-watch, tools/barrier_watch.py; never on the car). A LINE_STRIP on the ground in the map frame, radius the ghost's plus the barrier's body radius and margin (1.12 + 0.2 m, aav_mpc_lag), the same in every mode so the plain run shows what it drives through. Latched (reliable, transient local, depth 1), sent once. Only drawn - the developer window's map panel and pixi run nav-view (and rviz/barrier.rviz with --rviz); nothing drives by it.</td>
+</tr>
+<tr>
 <td><code>/drivers/nav/costmap/local</code></td>
 <td><code>nav_msgs/msg/OccupancyGrid</code></td>
 <td><code>costmap</code></td>
-<td>-</td>
+<td><code>dev_window</code></td>
 <td>-</td>
 <td>Our local costmap (aav_costmap), Nav2's local_costmap rebuilt in Rust from the same nav2.yaml block - odom, a 20 m x 20 m window of 0.1 m cells rolling with the car, the static map, the same obstacle layers and sources (the lidar scan; the radar, cameras, ghost and cubes where they run), inflation with the car's padded outline. Updated at the block's update_frequency (5 Hz), sent at its publish_frequency (2 Hz). Values as Nav2's publisher writes them - 0 free, 1-98 inflated, 99 inscribed, 100 lethal, -1 unknown.</td>
 </tr>

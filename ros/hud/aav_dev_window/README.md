@@ -37,7 +37,12 @@ simulator; the other choices are made at launch. The plan:
 | `src/map_edit/streets.rs` | its street map: the tiles round the map, read once (`map-core`) |
 | `src/ladder_window/main.rs` | the test ladder's window (`pixi run ladder-window`, TODO 271): its own binary, `ladder_window`; no ROS ([Proving it](../../../docs/proving-it.md#the-window-pixi-run-ladder-window)) |
 | `src/ladder_window/draw.rs` | its drawing, in egui: the ladder, the chosen rung with a Run for each of its tests, the last session (a table of steps, the chosen step's graph of commanded against measured, its numbers, a hallway session's fits), the console; at the top "The simulated car: on stands / on the ground" and its one button, on only while a simulator runs on this computer (`pixi run jacks`, TODO 272) |
+| [`crates/nav-core`](./crates/nav-core/README.md) | the navigation view's logic: the trail, a marker's outline, the stop zone, the body, the scale: no Bevy, no egui, no ROS, tested by `tools/test.sh` |
 | [`crates/ladder-core`](./crates/ladder-core/README.md) | its logic: the tool's JSON as types, each cell and button, a session's steps, graph and fits, the tool's commands, the run as a child: no Bevy, no egui, tested by `tools/test.sh` |
+
+Also: `--map-span M` (metres across at the start), `--title`, `--position X,Y`,
+`--screenshot-every S` (the newest picture of a long run). What the map took over from
+RViz: [RViz and ours](../../../docs/hud.md#rviz-and-ours).
 
 It shares logic with the raylib screens: `debug-core` (the cubes' bands, the camera),
 `map-core` (map to screen and back), `hud-core` (a picture message into RGBA).
@@ -54,6 +59,7 @@ pixi run dev-window --live --map-whole             # the map panel starts on the
 pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
 pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
 pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, their saved map
+pixi run nav-view --live                           # the map panel alone, in its own window (--map-only): what RViz was for
 pixi run map-edit bags/<drive>/map                         # the map editor: no ROS (docs/map-editor.md)
 pixi run ladder-window                                     # the test ladder: no ROS (docs/proving-it.md)
 pixi run ladder-window --pretend --rung stands --seconds 5 --screenshot /tmp/ladder.png   # sample data, seen without a person
@@ -72,7 +78,9 @@ map window's debug page (key D) shows the whole command path.
 | O | costmap | C, R | from behind it (the default) or the car; reset |
 | T | the squiggly line (on) | K | the things, with their names (on) |
 | H | the chunks loaded, their saved map, and the route (on) | L | the lane map's lines (on) |
-| F | the map: follow the car, or the whole map (also its buttons) | | |
+| F | the map: follow the car, or the whole map (also its buttons) | B | the car's trail on the map (on) |
+| J | the local costmap on the map, amber (on) | Z | the ghost, the keep-out circle, the stop zone's box (on) |
+| Q | the map's grid of round metres (on) | | |
 
 ### The squiggly line (Ben, 7 Nov)
 

@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">149 min read · 15 sections</div></header>
+<div class="meta">151 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -677,9 +677,16 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="proving-it.html#the-dry-run-pixi-run-dry-run">The dry run</a> (<code>pixi run dry-run</code>, <code>tools/dry_run.py</code>; <code>pixi run clear &lt;latch&gt; --sim</code>)</td>
-<td>Ben, 22 Nov: "control the car in ravensim the same way we would control the actual car ... a dry run of everything we will do in real life". One command opens Ravensim, its picture and the ladder window attached to it (<code>--panel</code>, <code>--debug</code>: the hardware panel, the debug screen), on this computer only; the window's tests move the car you see; Ctrl-C stops every process group it started. As on the car, a test never clears a stop: a person does (<code>clear estop --sim</code>). Its first night found that the stage-4 tests stop themselves above 1 m/s (TODO 275)</td>
+<td>Ben, 22 Nov: "control the car in ravensim the same way we would control the actual car ... a dry run of everything we will do in real life". One command opens the three screens (23 Nov): Ravensim's picture, the hardware panel and the ladder window attached to it (<code>--nav</code>, <code>--debug</code>: the navigation view alone, the debug screen), on this computer only; the window's tests move the car you see; Ctrl-C stops every process group it started. As on the car, a test never clears a stop: a person does (<code>clear estop --sim</code>). Its first night found that the stage-4 tests stop themselves above 1 m/s (TODO 275)</td>
 <td>Ben Woodhead</td>
 <td>2026-11-22</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="hud.html#rviz-and-ours">Our own navigation view</a> (<code>pixi run nav-view</code>; the developer window's map panel, <code>ros/hud/aav_dev_window</code>, its logic in <code>crates/nav-core</code>)</td>
+<td>Ben, 23 Nov: "Why did we keep seeing rviz with nav2 plugin pop up when testing cbf. Didn't we port all of this to rust? ... lets finish the port so we don't rely on something that pops up in a weird way like rviz does". The top-down view is ours: the map, both costmaps, the plan, the car's trail and body, the stop zone's box and state, the ghost and the barrier's keep-out circle, a goal by click, a scale and grid; inside the developer window and alone in its own window, one code base. <code>pixi run demo</code>, <code>barrier-watch</code> and <code>sim</code> open it, or nothing; RViz opens only when asked (<code>rviz:=true</code>, <code>--rviz</code>)</td>
+<td>Ben Woodhead</td>
+<td>2026-11-23</td>
 <td>sim</td>
 </tr>
 </tbody>

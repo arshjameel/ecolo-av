@@ -50,10 +50,14 @@ The rungs are `tools/ladder/rungs.yaml`.
 ... a dry run of everything we will do in real life"; TODO 273).
 
 ```bash
-pixi run dry-run                     # Ravensim, its picture, the ladder window
-pixi run dry-run --panel --debug     # and the hardware panel and the debug screen
+pixi run dry-run                     # three screens: Ravensim's, the hardware panel, the tests
+pixi run dry-run --nav --debug       # and the navigation view alone, and the debug screen
+pixi run dry-run --no-panel          # without the hardware panel
 pixi run clear estop --sim           # a person clears the e-stop a test left set
 ```
+
+Which window is which screen, and why no RViz opens:
+[RViz and ours](hud.md#rviz-and-ours) (since 23 Nov the hardware panel opens by default).
 
 | It opens | What it is | For |
 |---|---|---|

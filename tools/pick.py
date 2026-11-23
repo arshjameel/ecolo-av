@@ -25,8 +25,8 @@ KISS_PYTHON = '.pixi/envs/kiss/bin/python'
 
 # What to start: the pixi task (and its flag), and what it is.
 PROGRAMS = [
-    ('demo --debug', 'Ravensim, RViz, the HUD, the map window and the debug HUD (cubes, NDT)'),
-    ('demo', 'Ravensim, RViz, the HUD and the map window'),
+    ('demo --debug', 'Ravensim, the nav screen, the HUD, the map window and the debug HUD (cubes, NDT)'),
+    ('demo', 'Ravensim, the nav screen, the HUD and the map window'),
     ('sim', 'Ravensim and the car only (add windows yourself)'),
 ]
 

@@ -92,13 +92,13 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | Script | Does | Task |
 |---|---|---|
 | `ros.sh` | the workspace sourced; `--local` for stand-ins | (most tasks) |
-| `dev_window.sh` | the developer window (Bevy): pretend data, `--live` beside a sim here, or `--watch` | `dev-window` |
+| `dev_window.sh` | the developer window (Bevy): pretend data, `--live` beside a sim here, or `--watch`; `--map-only` first: the navigation view | `dev-window`, `nav-view` |
 | `sim_cameras.sh` | our simulator's cameras (Bevy, offscreen): the timing check, `--bench`, `--save`; `--ros` publishes the camera topics, here only | `sim-cameras` |
 | `screen.sh` | one of the four raylib screens, live or with pretend data (`--demo`) | `hud`, `map`, `debug-hud`, `hw-panel` |
 | `ravensim.sh` | Ravensim and the developer window live on it, one process group; sim switches pass through (`world:=campus` adds its RavenTiles and lanes) | `ravensim` |
-| `barrier_watch.py` | **outside the capstone's scope (Ben's research)**: one drive past a ghost in Ravensim with the follower plain, with a hard distance limit, or with the barrier; RViz from above (`rviz/barrier.rviz`), one line of result, a CSV in `/tmp/aav-barrier-watch/`; `--side-by-side`, `--headless` ([Barriers](../docs/barriers.md)). The maths: `barrier_run.py` (no ROS, tested) | `barrier-watch` |
-| `dry_run.py` | the dry run (TODO 273): Ravensim (`world:=road nav:=false faults:=true sim_speed:=3`), its picture (the developer window) and the test ladder's window, each in its own process group; `--panel`, `--debug`; Ctrl-C stops them all. The ladder's runs attach to it | `dry-run` |
-| `demo_all.sh` | Ravensim, RViz, the HUD and the map window in one go (`--debug`: the debug HUD too) | `demo` |
+| `barrier_watch.py` | **outside the capstone's scope (Ben's research)**: one drive past a ghost in Ravensim with the follower plain, with a hard distance limit, or with the barrier; our navigation view from above (`--rviz`: RViz too, `rviz/barrier.rviz`), one line of result, a CSV in `/tmp/aav-barrier-watch/`; `--side-by-side`, `--headless` ([Barriers](../docs/barriers.md)). The maths: `barrier_run.py` (no ROS, tested) | `barrier-watch` |
+| `dry_run.py` | the dry run (TODO 273): Ravensim (`world:=road nav:=false faults:=true sim_speed:=3`), its picture (the developer window), the hardware panel and the test ladder's window, each in its own process group: the three screens; `--nav`, `--debug`, `--no-panel`, `--no-picture`; Ctrl-C stops them all. The ladder's runs attach to it | `dry-run` |
+| `demo_all.sh` | Ravensim, the nav screen (ours, `nav-view`), the HUD and the map window in one go (`--debug`: the debug HUD too; `--rviz`: RViz too) | `demo` |
 | `pick.py` | a plain-words menu of the sim's switches (route, follower, where-am-I, speed loop): prints, saves and runs the command (`docs/switches.md`) | `pick` |
 | `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
 | `jacks.py` | Ravensim's car on stands or on the ground: `up`, `down`, `status`, always `--sim`; refuses unless `/system/source` says only SIM | `jacks` |

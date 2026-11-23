@@ -196,7 +196,8 @@ Two things seen on the way, not about the barriers:
 ### Watch it in Ravensim
 
 One command: the same drive past the same ghost, the follower three ways. It starts
-Ravensim's road world with navigation, opens RViz from above, places the ghost 15 m
+Ravensim's road world with navigation, opens our own navigation view from above (the
+mode in its title; RViz only with `--rviz`: [RViz and ours](hud.md#rviz-and-ours)), places the ghost 15 m
 past the bumper, sends a goal 40 m straight ahead, and prints one line of result.
 
 ```sh
@@ -213,17 +214,22 @@ pixi run barrier-watch --side-by-side --speed 3    # plain and barrier at once
 | `--side-by-side` | two simulators at once, each on its own ROS domain; `--modes plain,step` picks the two |
 | `--gamma 0.02` | with `barrier`: another γ |
 | `--headless` | no windows; it stops when the drive ends |
-| `--dev-window` | also the developer window, live |
+| `--dev-window` | the whole developer window, live, in place of the navigation view |
+| `--rviz` | also RViz (`rviz/barrier.rviz`): the stock viewer, the reference only |
 | `truth_pose:=true` | (any `sim.launch.py` switch) the simulator's truth as the pose: takes localization's wander out of the picture |
 | Ctrl-C | stops everything the command started, by process group |
 
-| In RViz | Is |
+| In the view | Is |
 |---|---|
 | the purple dot | the ghost (a person, 0.5 m wide) |
 | the purple circle | the barrier's keep-out circle: the body's point may not come inside. Drawn in every mode, so `plain` shows what it drives through |
 | the blue line | navigation's plan: straight through the ghost (the planner does not see it) |
 | the orange trail | where the car has been |
-| the red box | the stop zone's box, 1 m in front of the bumper |
+| the box ahead of the car | the stop zone's box, from the front bumper ahead: white when clear, red with STOP ZONE: STOP while it stops the car |
+
+The view's newest picture is kept beside the CSV (`/tmp/aav-barrier-watch/<mode>-<speed>-<offset>.png`).
+The ladder window (`pixi run dry-run`) can start the three modes too, in a box of its own
+marked as research.
 
 The window's title says which mode it is. Each run's samples go to
 `/tmp/aav-barrier-watch/<mode>-<speed>-<offset>.csv`, the commit and the command first.
