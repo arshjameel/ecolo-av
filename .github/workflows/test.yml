@@ -6,6 +6,7 @@
 #   64-bit ARM Linux (the car's Orin and Pis): the same tests on every push and pull
 #   request (job arm), and the car kit made and installed offline (job car-kit).
 # The Pixi version matches the one that wrote pixi.lock; raise both together.
+# A pull request that changes only the docs runs only the docs' checks (job changes).
 # A failed test step prints each failing test as an annotation (tools/ci_annotate.py):
 # GitHub's API shows those to anyone, the job's log only to people signed in.
 name: test
@@ -38,10 +39,45 @@ env:
   PSModulePath: ""
 
 jobs:
+  # Docs only? A pull request or merge queue entry whose every changed file is Markdown,
+  # or in docs/html/ or docs/img/ (tools/ci_docs_only.py), skips the build and the Rust and
+  # ROS tests: linux runs only the docs' checks, arm is skipped, car-kit runs no steps.
+  # GitHub counts a skipped job as passed for main's required checks. Pushes, the nights
+  # and Run workflow always get the full run (this job doesn't run, so docs_only is
+  # empty). If it fails, docs_only is empty too: the full run.
+  changes:
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.files.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Docs only?
+        id: files
+        # The pull request's base, or for the queue main without the entries ahead: a
+        # code change ahead gives the entries behind it the full run too.
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        # main's copy of the script, not the pull request's: a change to the script is
+        # code, so it gets the full run. No copy on main (a new script): the full run.
+        run: |
+          git fetch -q --depth=1 origin "$BASE" || true
+          if git show "$BASE:tools/ci_docs_only.py" > "$RUNNER_TEMP/ci_docs_only.py" 2>/dev/null; then
+            python3 "$RUNNER_TEMP/ci_docs_only.py" "$BASE" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "the full run: main has no tools/ci_docs_only.py"
+            echo "docs_only=false" | tee -a "$GITHUB_OUTPUT"
+          fi
+
   linux:
-    if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
+    needs: changes
+    # !cancelled(): runs even if the job changes failed (then the full run)
+    if: ${{ !cancelled() && github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    env:
+      DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
     steps:
       - uses: actions/checkout@v5
       - name: Install Pixi
@@ -53,21 +89,23 @@ jobs:
           done
           [ -x "$HOME/.pixi/bin/pixi" ]
           echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@v5
-        with:
-          path: ~/.cache/rattler/cache/pkgs
-          key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
-          restore-keys: pixi-pkgs-${{ runner.os }}-
       # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
       # (build/<package>/target), so a run rebuilds only our crates, not every dependency (the colcon build went from
       # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
       # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
-      # Restored here, saved right after the build (below), so a run whose tests fail or
-      # time out still leaves its build for the next: actions/cache saves only on success,
-      # and on 18 Nov main's linux job built cold (27 of its 60 min), timed out in the
-      # tests, saved nothing, and so the next run would build cold again.
+      # Saved right after the build (below), so a run whose tests fail or time out still
+      # leaves its build for the next (18 Nov: main's linux job built cold, timed out in
+      # the tests, and saved nothing).
+      # Only main saves (22 Nov). GitHub keeps 10 GB of caches in all and drops the least
+      # recently used past that; this job's and arm's Rust caches are 9.4 GB together. When
+      # every pull request saved its own copies too, they pushed main's out within hours,
+      # and every run built cold. A pull request and the merge queue read main's (the queue
+      # can't see a pull request's caches anyway). No cache for Pixi's packages either:
+      # restoring it took as long as downloading them (22 Nov, car-kit: about 100 s each
+      # way), and its 1.75 GB pushed the Rust caches out.
       - uses: actions/cache/restore@v5
         id: rust-cache
+        if: env.DOCS_ONLY != 'true'
         with:
           path: |
             ~/.cargo/registry/index
@@ -82,6 +120,7 @@ jobs:
       # PR #34: aav_costmap, Linux and ARM, while the fork's own cache built it). Their
       # build scripts are cheap: run them again every time.
       - name: Drop the ROS Rust bindings' cached build-script output
+        if: env.DOCS_ONLY != 'true'
         run: |
           rm -rf build/*/target/*/build/rclrs-* build/*/target/*/.fingerprint/rclrs-* \
                  build/*/target/*/build/rosidl_runtime_rs-* \
@@ -89,10 +128,11 @@ jobs:
       # The build on its own, with its own limit, so the tests keep their full 60 min.
       # pixi run test builds again first, but then nothing has changed (a minute or two).
       - name: pixi run build
+        if: env.DOCS_ONLY != 'true'
         timeout-minutes: 45
         run: pixi run --locked build 2>&1 | tee build.log
       - name: Save the Rust cache, even if a later step fails
-        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        if: always() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
           path: |
@@ -106,8 +146,10 @@ jobs:
       # cargo settings of its own: the board programs keep theirs), so the libraries they
       # share compile once. The build's cache above is saved before the tests, and a cache
       # key can't be saved twice, so this folder has a cache of its own, saved after them.
+      # Main only, as above.
       - uses: actions/cache/restore@v5
         id: rust-test-cache
+        if: env.DOCS_ONLY != 'true'
         with:
           path: |
             target/tests
@@ -115,6 +157,7 @@ jobs:
           key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
           restore-keys: rust-tests-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
+        if: env.DOCS_ONLY != 'true'
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
         # once a test has run 5 min (the Mac nightly of 24 Oct ran past 90 min).
@@ -127,13 +170,24 @@ jobs:
         run: pixi run --locked test 2>&1 | tee test.log
       - name: Save the Rust test cache, even if a test failed
         # Only once the tests ran (test.log): a run stopped in the build has nothing new.
-        if: always() && steps.rust-test-cache.outputs.cache-hit != 'true' && hashFiles('test.log') != ''
+        if: always() && github.ref == 'refs/heads/main' && steps.rust-test-cache.outputs.cache-hit != 'true' && hashFiles('test.log') != ''
         uses: actions/cache/save@v5
         with:
           path: |
             target/tests
             !target/tests/**/incremental
           key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
+      # A docs-only change (the job changes): the checks that read the docs, and no build.
+      # tools/tests needs no build (22 Nov: 715 passed with build/ and install/ moved away).
+      - name: Docs only, the docs' checks
+        if: env.DOCS_ONLY == 'true'
+        env:
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          pixi run --locked python3 -m pytest -q -p no:cacheprovider tools/tests 2>&1 | tee test.log
+          pixi run --locked python3 tools/gen_interfaces_md.py --check 2>&1 | tee -a test.log
+          pixi run --locked python3 tools/codemap.py --check 2>&1 | tee -a test.log
       - name: Failures as annotations (readable without signing in)
         # Not when the run failed before the build (GitHub down, say): no log.
         if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
@@ -147,6 +201,7 @@ jobs:
             [ -s "$f" ] && { echo "== $f"; tail -n 80 "$f"; }
           done; true
       - name: The MCP server, over stdio
+        if: env.DOCS_ONLY != 'true'
         run: pixi run --locked -e mcp python3 tools/tests/mcp_smoke.py
 
   mac:
@@ -164,67 +219,14 @@ jobs:
           done
           [ -x "$HOME/.pixi/bin/pixi" ]
           echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@v5
-        with:
-          path: ~/Library/Caches/rattler/cache/pkgs
-          key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
-          restore-keys: pixi-pkgs-${{ runner.os }}-
-      # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
-      # (build/<package>/target), so a run rebuilds only our crates, not every dependency (the colcon build went from
-      # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
-      # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
-      # Restored here, saved right after the build (below), so a run whose tests fail or
-      # time out still leaves its build for the next: actions/cache saves only on success,
-      # and on 18 Nov main's linux job built cold (27 of its 60 min), timed out in the
-      # tests, saved nothing, and so the next run would build cold again.
-      - uses: actions/cache/restore@v5
-        id: rust-cache
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            build/*/target
-            !**/target/*/incremental
-          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
-          restore-keys: rust-${{ runner.arch }}-${{ runner.os }}-
-      # A cache from older code can hold rclrs's and rosidl_runtime_rs's build-script output
-      # (the libraries to link, where they were): then a Rust node fails to link (20 Nov,
-      # PR #34: aav_costmap, Linux and ARM, while the fork's own cache built it). Their
-      # build scripts are cheap: run them again every time.
-      - name: Drop the ROS Rust bindings' cached build-script output
-        run: |
-          rm -rf build/*/target/*/build/rclrs-* build/*/target/*/.fingerprint/rclrs-* \
-                 build/*/target/*/build/rosidl_runtime_rs-* \
-                 build/*/target/*/.fingerprint/rosidl_runtime_rs-*
+      # No caches (22 Nov): this job runs once a night, and its 4.7 GB of Rust caches were
+      # gone by the next night every time (20 to 22 Nov), while saving them pushed out the
+      # linux and arm jobs' (GitHub keeps 10 GB in all). Nobody waits on it.
       # The build on its own, with its own limit, so the tests keep their full 60 min.
       # pixi run test builds again first, but then nothing has changed (a minute or two).
       - name: pixi run build
         timeout-minutes: 45
         run: pixi run --locked build 2>&1 | tee build.log
-      - name: Save the Rust cache, even if a later step fails
-        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            build/*/target
-            !**/target/*/incremental
-          key: rust-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
-      # tools/test.sh's Rust builds in one folder, target/tests (every workspace with no
-      # cargo settings of its own: the board programs keep theirs), so the libraries they
-      # share compile once. The build's cache above is saved before the tests, and a cache
-      # key can't be saved twice, so this folder has a cache of its own, saved after them.
-      - uses: actions/cache/restore@v5
-        id: rust-test-cache
-        with:
-          path: |
-            target/tests
-            !target/tests/**/incremental
-          key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
-          restore-keys: rust-tests-${{ runner.arch }}-${{ runner.os }}-
       - name: pixi run test
         # A hung test fails the step (and so gets annotated) instead of the job being
         # cancelled at its limit with nothing to read; pytest prints every thread's stack
@@ -232,19 +234,10 @@ jobs:
         timeout-minutes: 60
         env:
           PYTEST_ADDOPTS: -o faulthandler_timeout=300
-          # No debug info in the tests' debug builds: a smaller cache, faster links. The
-          # same checks: overflow and debug_assert! stay on.
+          # No debug info in the tests' debug builds: faster links. The same checks:
+          # overflow and debug_assert! stay on.
           CARGO_PROFILE_DEV_DEBUG: "0"
         run: pixi run --locked test 2>&1 | tee test.log
-      - name: Save the Rust test cache, even if a test failed
-        # Only once the tests ran (test.log): a run stopped in the build has nothing new.
-        if: always() && steps.rust-test-cache.outputs.cache-hit != 'true' && hashFiles('test.log') != ''
-        uses: actions/cache/save@v5
-        with:
-          path: |
-            target/tests
-            !target/tests/**/incremental
-          key: rust-tests-${{ runner.arch }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock', 'pixi.lock') }}
       - name: Failures as annotations (readable without signing in)
         # Not when the run failed before the build (GitHub down, say): no log.
         if: (failure() || cancelled()) && hashFiles('test.log', 'build.log') != ''
@@ -265,7 +258,9 @@ jobs:
   # programs, and each drawn once on a virtual screen. pixi.lock has linux-aarch64 already.
   # Every push, like linux: it takes about as long (12 min on 24 Oct), and runs beside it.
   arm:
-    if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
+    needs: changes
+    # Skipped for a docs-only change; !cancelled(): runs even if changes failed.
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' && github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
     steps:
@@ -279,20 +274,20 @@ jobs:
           done
           [ -x "$HOME/.pixi/bin/pixi" ]
           echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@v5
-        with:
-          path: ~/.cache/rattler/cache/pkgs
-          # Not pixi-pkgs-Linux-*: the linux job's packages are x86_64.
-          key: pixi-pkgs-arm64-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
-          restore-keys: pixi-pkgs-arm64-${{ runner.os }}-
       # Rust (TODO 209): cargo's downloads and the release target folders colcon builds in
       # (build/<package>/target), so a run rebuilds only our crates, not every dependency (the colcon build went from
       # 2208 to 3426 s on 16 Nov). Keyed on every Cargo.lock and pixi.lock (the compiler):
       # a new lock starts from the newest older cache. Not incremental/ (big, debug only).
-      # Restored here, saved right after the build (below), so a run whose tests fail or
-      # time out still leaves its build for the next: actions/cache saves only on success,
-      # and on 18 Nov main's linux job built cold (27 of its 60 min), timed out in the
-      # tests, saved nothing, and so the next run would build cold again.
+      # Saved right after the build (below), so a run whose tests fail or time out still
+      # leaves its build for the next (18 Nov: main's linux job built cold, timed out in
+      # the tests, and saved nothing).
+      # Only main saves (22 Nov). GitHub keeps 10 GB of caches in all and drops the least
+      # recently used past that; this job's and arm's Rust caches are 9.4 GB together. When
+      # every pull request saved its own copies too, they pushed main's out within hours,
+      # and every run built cold. A pull request and the merge queue read main's (the queue
+      # can't see a pull request's caches anyway). No cache for Pixi's packages either:
+      # restoring it took as long as downloading them (22 Nov, car-kit: about 100 s each
+      # way), and its 1.75 GB pushed the Rust caches out.
       - uses: actions/cache/restore@v5
         id: rust-cache
         with:
@@ -319,7 +314,7 @@ jobs:
         timeout-minutes: 45
         run: pixi run --locked build 2>&1 | tee build.log
       - name: Save the Rust cache, even if a later step fails
-        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        if: always() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
           path: |
@@ -333,6 +328,7 @@ jobs:
       # cargo settings of its own: the board programs keep theirs), so the libraries they
       # share compile once. The build's cache above is saved before the tests, and a cache
       # key can't be saved twice, so this folder has a cache of its own, saved after them.
+      # Main only, as above.
       - uses: actions/cache/restore@v5
         id: rust-test-cache
         with:
@@ -351,7 +347,7 @@ jobs:
         run: pixi run --locked test 2>&1 | tee test.log
       - name: Save the Rust test cache, even if a test failed
         # Only once the tests ran (test.log): a run stopped in the build has nothing new.
-        if: always() && steps.rust-test-cache.outputs.cache-hit != 'true' && hashFiles('test.log') != ''
+        if: always() && github.ref == 'refs/heads/main' && steps.rust-test-cache.outputs.cache-hit != 'true' && hashFiles('test.log') != ''
         uses: actions/cache/save@v5
         with:
           path: |
@@ -420,9 +416,13 @@ jobs:
   # Twice: on Ubuntu 24.04, and on 22.04, the car's own OS (JetPack 6 on the Orin). The
   # 24.04 job keeps the check name `car-kit` (main's required check). The 22.04 one is new
   # (26 Oct) and allowed to fail until it has passed a few times: then drop continue-on-error.
+  # A docs-only change (the job changes) runs none of the steps below, but the job itself
+  # runs: a matrix job skipped whole reports its check as `${{ matrix.name }}`, so main's
+  # required check `car-kit` would never come.
   car-kit:
     name: ${{ matrix.name }}
-    if: github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av')
+    needs: changes
+    if: ${{ !cancelled() && github.event_name != 'schedule' && (github.event_name != 'push' || github.ref == 'refs/heads/main' || github.repository != 'AAV-2025-2026/ecolo-av') }}
     strategy:
       fail-fast: false
       matrix:
@@ -434,11 +434,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.name == 'car-kit-22.04' }}
     timeout-minutes: 45
+    env:
+      DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
     steps:
       - uses: actions/checkout@v5
+        if: env.DOCS_ONLY != 'true'
         with:
           fetch-depth: 0   # the kit holds a git bundle of the history
       - name: Install Pixi
+        if: env.DOCS_ONLY != 'true'
         run: |
           # GitHub's downloads fail now and then for a few seconds: try 5 times.
           for try in 1 2 3 4 5; do
@@ -447,12 +451,8 @@ jobs:
           done
           [ -x "$HOME/.pixi/bin/pixi" ]
           echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@v5
-        with:
-          path: ~/.cache/rattler/cache/pkgs
-          key: pixi-pkgs-arm64-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
-          restore-keys: pixi-pkgs-arm64-${{ runner.os }}-
       - name: pixi run car-kit
+        if: env.DOCS_ONLY != 'true'
         run: |
           # The bundle holds HEAD and main; a branch's checkout has no local main.
           git show-ref -q --verify refs/heads/main || git branch main HEAD
@@ -460,13 +460,16 @@ jobs:
           pixi run --locked car-kit 2>&1 | tee car-kit.log
       # car_install.sh wants 13 GB free.
       - name: Make room
+        if: env.DOCS_ONLY != 'true'
         run: |
           df -h "$HOME" | tail -1
           rm -rf .pixi vendor/car-kit-cache ~/.cache/rattler
           df -h "$HOME" | tail -1
       - name: car_install.sh --dry-run
+        if: env.DOCS_ONLY != 'true'
         run: bash car-kit/car_install.sh --dry-run
       - name: car_install.sh --all, offline
+        if: env.DOCS_ONLY != 'true'
         timeout-minutes: 30
         run: |
           # As the runner's own user (car_install.sh refuses root), in a network namespace
@@ -478,12 +481,13 @@ jobs:
             exit 1
           fi
       - name: Failures as annotations (readable without signing in)
-        if: failure() || cancelled()
+        if: env.DOCS_ONLY != 'true' && (failure() || cancelled())
         run: |
           log=car-install.log
           [[ -f $log ]] || log=car-kit.log
           python3 tools/ci_annotate.py "$log" "$HOME/aav-jazzy/aav/build"
       - name: The installed stack runs
+        if: env.DOCS_ONLY != 'true'
         run: |
           ~/aav-jazzy/aav.sh ros2 pkg list > pkgs.txt
           echo "$(grep -c '^aav' pkgs.txt) of our packages installed"
@@ -518,11 +522,6 @@ jobs:
           done
           [ -x "$HOME/.pixi/bin/pixi" ]
           echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@v5
-        with:
-          path: ~/.cache/rattler/cache/pkgs
-          key: pixi-pkgs-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
-          restore-keys: pixi-pkgs-${{ runner.os }}-
       - name: pixi run build
         run: pixi run --locked build
       # Ravensim with its cameras, drawn in software: Mesa's lavapipe through

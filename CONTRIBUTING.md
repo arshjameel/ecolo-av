@@ -203,6 +203,12 @@ A pull request merges only when all of these are true:
 Your first pull request from a fork: a maintainer may need to click **Approve and run
 workflows** before CI starts.
 
+**Docs only?** A pull request that changes only Markdown files, `docs/html/` or
+`docs/img/` skips the build and the Rust and ROS tests: `linux` runs the docs' checks
+(`tools/tests`, `docs/interfaces.md` and `docs/codemap.md` in sync), and `arm` and
+`car-kit` pass without running. One other file and it's the full run
+([Infrastructure](docs/infrastructure.md#ci-and-the-docs-only-run)).
+
 **Reviewing someone else's:** read the description first, then the diff. Check that the
 tests cover the change, that names and topics follow [Conventions](docs/conventions.md),
 and that nothing secret or generated is committed. Ask questions as comments; approve
