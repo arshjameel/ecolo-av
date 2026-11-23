@@ -478,7 +478,7 @@ screen" = the ladder window beside the simulator you can see.</p>
 <tr>
 <td>6: the lot</td>
 <td>🟡 partly</td>
-<td>the rung and each test run from the screen. <strong>ran alone: <code>circles</code>, <code>straight</code>, <code>coast</code> PASS; <code>speed-up</code>, <code>brake</code>, <code>throttle-map</code> stop themselves above 1 m/s</strong> (the runaway rule, TODO 275), so the whole rung fails today</td>
+<td>the rung and each test run from the screen. <strong>ran alone: <code>circles</code>, <code>straight</code>, <code>coast</code> PASS; <code>speed-up</code>, <code>brake</code>, <code>throttle-map</code> stop themselves above 1 m/s</strong> (the runaway rule, TODO 275), so the whole rung fails today. 23 Nov: the cause is the <code>default</code> speed loop's known overshoot and the tests' short hold; with <code>speed_loop:=smooth</code> the rung passes 6 of 6. Nothing changed: <a href="actuator-tests.html#why-it-fails-23-nov">Ben decides</a></td>
 </tr>
 <tr>
 <td>7: a campus mapping drive</td>
@@ -915,7 +915,7 @@ every one takes the same tests.</p>
 </tr>
 <tr>
 <td>10</td>
-<td>The stage-4 tests stop themselves above 1 m/s in Ravensim (the runaway rule): the lot cannot pass at 2 to 3 m/s</td>
+<td>The stage-4 tests stop themselves above 1 m/s in Ravensim (the runaway rule): the lot cannot pass at 2 to 3 m/s. The cause is known (23 Nov: the <code>default</code> speed loop's overshoot, and a hold shorter than the rule's window); the choice is Ben's</td>
 <td>275</td>
 </tr>
 <tr>

@@ -495,13 +495,49 @@ list), up to 3 m/s, one session, one report in the stands report's form
 | any FAIL ends the session | as phase A |
 
 !!! warning "22 Nov: it fails today, and that is a finding"
-    Its first runs stopped themselves at 2 and 3 m/s: `speed-up` ("the speed rose 2.86 ->
-    3.04 m/s while the command fell (3.00 -> 0.00): a stuck throttle?") and `brake` at
-    2 m/s the same, `throttle-map` at 1.5 m/s. `coast`, `circles` and `straight` pass.
-    The runaway rule (`safety.runaway`) saw the speed loop still climbing
-    for a moment after the test dropped its command. At 1 m/s, the real car's cap, the tests
-    pass. The rule is unchanged: a safety rule, a person decides (TODO 275). The hallway
-    passes hold their top speed 2.5 s before slowing for this reason; these tests do not.
+    `speed-up` stops itself at 3 m/s ("the speed rose 2.86 -> 3.04 m/s while the command
+    fell (3.00 -> 0.00): a stuck throttle?"), `brake` at 2 m/s, `throttle-map` at 1.5 m/s.
+    `coast`, `circles` and `straight` pass. The rule (`safety.runaway`) is unchanged: a
+    safety rule. **Ben decides what changes (TODO 275).**
+
+#### Why it fails (23 Nov)
+
+Ben, 23 Nov: "Fix the speed loop". Looked there first. Nothing was changed: the fix that
+exists is the real car's firmware, and already has a decision (25 Oct, TODO 27).
+
+| | |
+|---|---|
+| Which loop | the simulated car runs the spine's `default` profile (`car_model.py` `SpeedLoop`, the same code as `spine-core`, line for line) |
+| Cause 1 | that profile's **known overshoot** ([the speed loop's profile](#the-speed-loops-profile-todo-27)): its integral fills during ego's 1 m/s² ramp and empties slowly. The speed is still climbing when the test drops its command |
+| Cause 2 | the rule compares the speed with **1 s before**. The tests drop the command 1.0 s (`speed-up`, `throttle-map`) or 1.5 s (`brake`) after 95 % of the speed. So the rise it sees happened **during the hold**, while the command was still up |
+| After the command fell | the speed rose **0.003 m/s** (3.034 to 3.037: the throttle's 0.1 s lag), then fell. The loop cuts the throttle at once and brakes |
+
+Measured in Ravensim (23 Nov, Ben's MacBook, `world:=empty nav:=false sim_speed:=3`):
+
+| Test, command | `default`: speed when the command drops | Result | `smooth`: speed then | Result | `firm` |
+|---|---|---|---|---|---|
+| `speed-up` 3 m/s | 3.03 | **stopped by the rule** | 2.89 | ran to the end | ran to the end |
+| `brake` 1 m/s | 1.11 | ran | 0.97 | ran | ran |
+| `brake` 2 m/s | 2.20 | **stopped by the rule** | 1.94 | ran | ran |
+| `brake` 3 m/s | not reached | | 2.90 | ran | ran |
+| `throttle-map` 0.75 m/s | 0.80 | ran | 0.72 | ran | ran |
+| `throttle-map` 1.5 m/s | 1.60 | **stopped by the rule** | 1.44 | ran | ran |
+| `throttle-map` 2.25, 3 m/s | not reached | | 2.17, 2.89 | ran | ran |
+| `car-test --lot --sim` | | **FAIL** at step 4.1 (its own simulator) | | **PASS**, 6 of 6 (`--attach` to `pixi run sim ... speed_loop:=smooth`) | not run |
+
+The stops are no slower: from 2 m/s, `default` on the car model 2.10 s; `smooth` 2.14 s in
+Ravensim (the same brake); `firm` 1.22 s.
+
+!!! note "`smooth` is not a full cure"
+    On the car model alone, a quick loop with 1 % overshoot still trips the rule in
+    `speed-up` at 2 and 3 m/s: from 95 % to 100 % of 3 m/s is 0.15 m/s, inside the rule's
+    second. `smooth` passes because it is slow at the end: 2.89 m/s when the command drops.
+
+| Choice | Changes | Cost |
+|---|---|---|
+| (a) hold the top speed longer than the rule's 1 s before slowing | the tests' procedure (the hallway passes hold 2.5 s) | longer runs: more room in the lot |
+| (b) the lot's twin runs `speed_loop:=smooth` | the simulator's car only | the twin no longer tests the loop the car's spine runs |
+| (c) `smooth` becomes the spine's default | **the real car's firmware**, every model of it, the shared vectors | decided 25 Oct to wait for the stands (TODO 27) |
 
 ### The report folder
 

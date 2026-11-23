@@ -7,7 +7,7 @@
 <!-- Generated from docs/actuator-tests.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Actuator tests: measure how the car moves</h1>
-<div class="meta">61 min read · 13 sections</div></header>
+<div class="meta">64 min read · 13 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1216,14 +1216,153 @@ list), up to 3 m/s, one session, one report in the stands report's form
 </table></div>
 <div class="admonition warning">
 <p class="admonition-title">22 Nov: it fails today, and that is a finding</p>
-<p>Its first runs stopped themselves at 2 and 3 m/s: <code>speed-up</code> ("the speed rose 2.86 -&gt;
-3.04 m/s while the command fell (3.00 -&gt; 0.00): a stuck throttle?") and <code>brake</code> at
-2 m/s the same, <code>throttle-map</code> at 1.5 m/s. <code>coast</code>, <code>circles</code> and <code>straight</code> pass.
-The runaway rule (<code>safety.runaway</code>) saw the speed loop still climbing
-for a moment after the test dropped its command. At 1 m/s, the real car's cap, the tests
-pass. The rule is unchanged: a safety rule, a person decides (TODO 275). The hallway
-passes hold their top speed 2.5 s before slowing for this reason; these tests do not.</p>
+<p><code>speed-up</code> stops itself at 3 m/s ("the speed rose 2.86 -&gt; 3.04 m/s while the command
+fell (3.00 -&gt; 0.00): a stuck throttle?"), <code>brake</code> at 2 m/s, <code>throttle-map</code> at 1.5 m/s.
+<code>coast</code>, <code>circles</code> and <code>straight</code> pass. The rule (<code>safety.runaway</code>) is unchanged: a
+safety rule. <strong>Ben decides what changes (TODO 275).</strong></p>
 </div>
+<h4 id="why-it-fails-23-nov">Why it fails (23 Nov)</h4>
+<p>Ben, 23 Nov: "Fix the speed loop". Looked there first. Nothing was changed: the fix that
+exists is the real car's firmware, and already has a decision (25 Oct, TODO 27).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Which loop</td>
+<td>the simulated car runs the spine's <code>default</code> profile (<code>car_model.py</code> <code>SpeedLoop</code>, the same code as <code>spine-core</code>, line for line)</td>
+</tr>
+<tr>
+<td>Cause 1</td>
+<td>that profile's <strong>known overshoot</strong> (<a href="#the-speed-loops-profile-todo-27">the speed loop's profile</a>): its integral fills during ego's 1 m/s² ramp and empties slowly. The speed is still climbing when the test drops its command</td>
+</tr>
+<tr>
+<td>Cause 2</td>
+<td>the rule compares the speed with <strong>1 s before</strong>. The tests drop the command 1.0 s (<code>speed-up</code>, <code>throttle-map</code>) or 1.5 s (<code>brake</code>) after 95 % of the speed. So the rise it sees happened <strong>during the hold</strong>, while the command was still up</td>
+</tr>
+<tr>
+<td>After the command fell</td>
+<td>the speed rose <strong>0.003 m/s</strong> (3.034 to 3.037: the throttle's 0.1 s lag), then fell. The loop cuts the throttle at once and brakes</td>
+</tr>
+</tbody>
+</table></div>
+<p>Measured in Ravensim (23 Nov, Ben's MacBook, <code>world:=empty nav:=false sim_speed:=3</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Test, command</th>
+<th><code>default</code>: speed when the command drops</th>
+<th>Result</th>
+<th><code>smooth</code>: speed then</th>
+<th>Result</th>
+<th><code>firm</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>speed-up</code> 3 m/s</td>
+<td>3.03</td>
+<td><strong>stopped by the rule</strong></td>
+<td>2.89</td>
+<td>ran to the end</td>
+<td>ran to the end</td>
+</tr>
+<tr>
+<td><code>brake</code> 1 m/s</td>
+<td>1.11</td>
+<td>ran</td>
+<td>0.97</td>
+<td>ran</td>
+<td>ran</td>
+</tr>
+<tr>
+<td><code>brake</code> 2 m/s</td>
+<td>2.20</td>
+<td><strong>stopped by the rule</strong></td>
+<td>1.94</td>
+<td>ran</td>
+<td>ran</td>
+</tr>
+<tr>
+<td><code>brake</code> 3 m/s</td>
+<td>not reached</td>
+<td></td>
+<td>2.90</td>
+<td>ran</td>
+<td>ran</td>
+</tr>
+<tr>
+<td><code>throttle-map</code> 0.75 m/s</td>
+<td>0.80</td>
+<td>ran</td>
+<td>0.72</td>
+<td>ran</td>
+<td>ran</td>
+</tr>
+<tr>
+<td><code>throttle-map</code> 1.5 m/s</td>
+<td>1.60</td>
+<td><strong>stopped by the rule</strong></td>
+<td>1.44</td>
+<td>ran</td>
+<td>ran</td>
+</tr>
+<tr>
+<td><code>throttle-map</code> 2.25, 3 m/s</td>
+<td>not reached</td>
+<td></td>
+<td>2.17, 2.89</td>
+<td>ran</td>
+<td>ran</td>
+</tr>
+<tr>
+<td><code>car-test --lot --sim</code></td>
+<td></td>
+<td><strong>FAIL</strong> at step 4.1 (its own simulator)</td>
+<td></td>
+<td><strong>PASS</strong>, 6 of 6 (<code>--attach</code> to <code>pixi run sim ... speed_loop:=smooth</code>)</td>
+<td>not run</td>
+</tr>
+</tbody>
+</table></div>
+<p>The stops are no slower: from 2 m/s, <code>default</code> on the car model 2.10 s; <code>smooth</code> 2.14 s in
+Ravensim (the same brake); <code>firm</code> 1.22 s.</p>
+<div class="admonition note">
+<p class="admonition-title"><code>smooth</code> is not a full cure</p>
+<p>On the car model alone, a quick loop with 1 % overshoot still trips the rule in
+<code>speed-up</code> at 2 and 3 m/s: from 95 % to 100 % of 3 m/s is 0.15 m/s, inside the rule's
+second. <code>smooth</code> passes because it is slow at the end: 2.89 m/s when the command drops.</p>
+</div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Changes</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(a) hold the top speed longer than the rule's 1 s before slowing</td>
+<td>the tests' procedure (the hallway passes hold 2.5 s)</td>
+<td>longer runs: more room in the lot</td>
+</tr>
+<tr>
+<td>(b) the lot's twin runs <code>speed_loop:=smooth</code></td>
+<td>the simulator's car only</td>
+<td>the twin no longer tests the loop the car's spine runs</td>
+</tr>
+<tr>
+<td>(c) <code>smooth</code> becomes the spine's default</td>
+<td><strong>the real car's firmware</strong>, every model of it, the shared vectors</td>
+<td>decided 25 Oct to wait for the stands (TODO 27)</td>
+</tr>
+</tbody>
+</table></div>
 <h3 id="the-report-folder">The report folder</h3>
 <p><code>~/aav-tests/&lt;time&gt;-stands[-sim]/</code>:</p>
 <div class="table-wrap"><table>
