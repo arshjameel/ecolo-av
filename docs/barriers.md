@@ -19,8 +19,7 @@
       distance limit stops close before it, the barrier goes round. See it:
       `pixi run barrier-watch --side-by-side --speed 3`.
 
-To learn the idea from nothing: [the walk-through](barriers-guide.md), then
-[the survey](barriers-survey.md).
+The study notes (a walk-through and a survey) are kept outside this repository.
 
 ## Scope: what is the capstone's and what is not
 

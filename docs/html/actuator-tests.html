@@ -113,8 +113,6 @@
 <a href="control-explained.html">Control, explained</a>
 <a href="barriers.html">Barriers in the MPC</a>
 <a href="barriers-test-plan.html">Barriers: the test plan</a>
-<a href="barriers-guide.html">Barriers: a walk-through</a>
-<a href="barriers-survey.html">Barriers: the survey</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -961,8 +959,10 @@ With <code>--sim --on-jacks</code> (Ravensim's car lifted: <code>pixi run jacks 
 they check on the car, and the live IMU watch runs too. <code>--on-jacks</code> is your word, as
 <code>--stands</code> is on the car: the watch stops the run if the IMU says the car moves.</p>
 <p><strong>The live IMU watch</strong> stops the run when the IMU's speed change over 2 s passes 0.15 m/s.
-A noisy IMU reaches that standing still, so the mark is the larger of 0.15 and 5 x what its
-own noise at rest adds up to, and never over 0.25 (the cap is 0.3). A quiet IMU keeps 0.15.</p>
+<strong>On the real car the mark is a fixed 0.15 m/s</strong> (Ben, 23 Nov), until its IMU's noise at
+rest is measured. In the simulator (<code>--sim</code>) a noisy IMU reaches that standing still, so
+there the mark is the larger of 0.15 and 5 x what its own noise at rest adds up to, and
+never over 0.25 (the cap is 0.3).</p>
 <p>Who must be there on the car:
 the <strong>e-stop person</strong> (they are the stop), someone watching the <strong>rear wheels</strong> with a
 tachometer app, the laptop person; run it on the Orin (ssh + tmux) or a wired laptop.
