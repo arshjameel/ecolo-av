@@ -22,6 +22,7 @@ python3 tools/ladder.py --json ──▶ Ladder (types) ──▶ Cell, RunButto
 | `command` | `ToolCommand`: `table()`, `record(rung, form)`; a run comes only from `run_button`. `RecordForm`, `Outcome` |
 | `process` | `ask` (a short call, answered on a thread), `Running` (a run in its own process group: `new_lines`, `ended`, `stop`) |
 | `session` | `Session`: the ladder read every 2 s and after each action, one run at a time, the console's last 200 lines, the form; `Source` (the tool, or pretend) |
+| `jacks` | "The simulated car: on stands / on the ground": `Ask` (`tools/ros.sh --local python3 tools/jacks.py <status, up or down> --sim --json`), `Answer` (its JSON), `Jacks` (the state, and the one button it allows) |
 | `pretend` | sample data for `--pretend`: every kind of cell |
 
 ## Invariants
@@ -30,6 +31,9 @@ python3 tools/ladder.py --json ──▶ Ladder (types) ──▶ Cell, RunButto
   the tool runs in the simulator; `run_button` takes no place. The car's command is text.
 - It never opens the progress file, and decides no rule: a shut rung's button is off
   because the tool's JSON says `blocked_by`, and a refusal is shown in the tool's words.
+- The jacks switch is the simulator's only: every command carries `--sim` and `--local`,
+  the button is on only when the tool heard a simulator on this computer, and the tool
+  refuses when anything says REAL. Ravensim's own refusal (wheels spinning) is shown word for word.
 - `--pretend` runs nothing and records nothing.
 
 ## Side Effects
@@ -37,6 +41,8 @@ python3 tools/ladder.py --json ──▶ Ladder (types) ──▶ Cell, RunButto
 - `Session` starts `python3 tools/ladder.py` in the repository's root: `--json` every 2 s,
   `run` and `record` on a press. A run is the leader of its own process group; Stop, and
   the window closing, signal that group only.
+- `Session` starts `tools/ros.sh --local python3 tools/jacks.py status --sim --json` 5 s
+  after each answer, and `up` or `down` on a press.
 
 ## Verification
 

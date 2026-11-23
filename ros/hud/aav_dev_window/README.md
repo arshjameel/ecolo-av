@@ -36,7 +36,7 @@ simulator; the other choices are made at launch. The plan:
 | `src/map_edit/tool.rs` | its tools: a drag into a box, an align drag or key: no Bevy, no egui, tested |
 | `src/map_edit/streets.rs` | its street map: the tiles round the map, read once (`map-core`) |
 | `src/ladder_window/main.rs` | the test ladder's window (`pixi run ladder-window`, TODO 271): its own binary, `ladder_window`; no ROS ([Proving it](../../../docs/proving-it.md#the-window-pixi-run-ladder-window)) |
-| `src/ladder_window/draw.rs` | its drawing, in egui: the ladder, the chosen rung, the console |
+| `src/ladder_window/draw.rs` | its drawing, in egui: the ladder, the chosen rung, the console; at the top "The simulated car: on stands / on the ground" and its one button, on only while a simulator runs on this computer (`pixi run jacks`, TODO 272) |
 | [`crates/ladder-core`](./crates/ladder-core/README.md) | its logic: the tool's JSON as types, each cell and button, the tool's commands, the run as a child: no Bevy, no egui, tested by `tools/test.sh` |
 
 It shares logic with the raylib screens: `debug-core` (the cubes' bands, the camera),
@@ -182,7 +182,9 @@ from behind the car. The live window [before](../../../docs/img/dev-window-rings
   `watch_screens:=` reads it.
 - `ladder_window` starts `python3 tools/ladder.py` (`--json` every 2 s; `run <rung>`, the
   simulator's twin only, and `record` on a press). It never writes the progress file, and
-  it has no control that starts a car test.
+  it has no control that starts a car test. For the simulated car's jacks it starts
+  `tools/ros.sh --local python3 tools/jacks.py status --sim --json` (5 s after each answer),
+  and `up` or `down` on a press: the simulator only, this computer only.
 - Opens a window. `--live` publishes `/goal_pose` and `/safety/estop` (only ever true), after
   every gate: developer mode, ROS kept on this computer, every sensor SIM. Behind the same
   gates it calls `/navigate_to_pose/_action/cancel_goal` (CANCEL THE GOAL: every goal, the navigator's or

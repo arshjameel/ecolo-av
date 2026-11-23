@@ -56,10 +56,11 @@ pixi run ladder-window --pretend     # sample data: nothing runs, nothing is rec
 | the console | the run's last lines, "running...", how it ended | **Stop** ends the run and all it started |
 | **The car** | its command as text, and "A person starts a car test from the terminal" | **Copy** only |
 | **Record by hand** | pass or fail, simulator or car, a note, an override reason | `pixi run ladder record ...`; a refusal is shown in the tool's words |
+| top: **The simulated car** | "on the ground" or "ON STANDS", asked every 5 s; off, with the reason, unless a simulator runs on this computer | **Put it on stands** / **Lower it to the ground**: `pixi run jacks up --sim` or `down`; Ravensim's refusal (wheels still spinning) is shown in its words |
 
 | Rule | |
 |---|---|
-| The window never moves the car | it has no control that starts a car test |
+| The window never moves the car | it has no control that starts a car test; the jacks switch is the simulator's only (`--sim`, `--local`, refused when `/system/source` says REAL) |
 | The tool is the only writer | the window reads `ladder --json` every 2 s and after each action; every rule stays in `tools/ladder.py` |
 | Closing the window stops its run | no simulator is left behind |
 
@@ -114,6 +115,19 @@ One command, with `--sim` for the twin. The report has the same form both ways.
 | A steering step on the ground | 0 to 0.1 rad at 1 and 2 m/s | yaw rate: delay, overshoot, settling | IMU, the local EKF | `steer_lag` on the ground; the model's yaw | ⬜ to build |
 | A lane change | 2 m to the side over 15 m, by the follower | sway: metres side to side, how often the steering changes side | the local EKF, GPS | the follower's tuning | ⬜ to build (the scorecard has the sway number) |
 
+**The stands twin is on stands too** (TODO 272, 22 Nov). `car-test --stands --sim` starts
+its Ravensim with the car on jacks and lowers it at the end: the rear wheels spin and steer,
+the car stays put, and the wheels disagree with the IMU and the GPS, as on the real stands
+([how](actuator-tests.md#the-simulated-car-on-stands-pixi-run-jacks)). Before, the simulated
+car crawled in arcs and the stands checks ran backwards.
+
+| The first honest run found | Fixed |
+|---|---|
+| "GPS still" failed on a still car: the receiver's noise passes 0.1 m/s one reading in seven | the median decides, not the largest |
+| the live IMU watch stopped a still car one run in three (Ravensim's IMU noise, 0.2 m/s²) | the mark allows for the IMU's own noise at rest, never over 0.25 m/s; a quiet IMU keeps 0.15 |
+
+Both would have shown up first on car day.
+
 GPS and NDT are the **outside witnesses**: they do not pass through the wheels or the IMU,
 so they catch a wrong wheel size or a drifting IMU.
 
@@ -142,3 +156,7 @@ A challenger replaces the default only by [the league's rules](league.md#how-a-c
 | 3 | `sim-check --ghost` listens on the costmap's old name | 268 |
 | 4 | A run log: every test run's commit, command, settings and result in one place | 269 |
 | 5 | Step 6 against step 1: the car's scores beside the simulator's for the same route | 270, after the car drives |
+| 6 | The lot and route rungs have no one-command simulator twin (by hand today) | 273 |
+| 7 | One command that opens Ravensim, the hardware panel, the debug screen and the ladder window side by side | 273 |
+| 8 | The hardware panel and the debug screen do not show "on stands" (the ladder window and `pixi run jacks status --sim` do) | 273 |
+| 9 | On stands the simulator's free-wheel mass (20 kg) and drag are guesses; its odometry reads the rear wheels, today's car the front | 49b, and a stands measurement |

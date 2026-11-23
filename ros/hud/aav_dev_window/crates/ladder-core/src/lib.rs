@@ -4,18 +4,21 @@
 //! `tools/ladder.py` holds every rule and is the only writer of the progress file. This
 //! crate only reads what it prints (`--json`), decides what a cell and a button show, and
 //! builds the tool's own commands. Nothing here can start a car test: there is no function
-//! that returns one.
+//! that returns one. The one switch that moves anything, the simulated car's jacks
+//! ([`jacks`]), asks `tools/jacks.py`, which refuses everything but a simulator.
 //!
 //! | Module | Holds |
 //! |---|---|
 //! | [`ladder`] | the tool's JSON as types: [`Ladder`], [`Rung`], [`Side`], [`State`], [`Place`] |
 //! | [`show`] | what a cell says, whether the run button is on and why not, the car's side |
 //! | [`command`] | the argument lists for `tools/ladder.py`: the table, a run, a record |
+//! | [`jacks`] | the simulated car on stands or on the ground: `tools/jacks.py`'s commands and answer |
 //! | [`process`] | the tool as a child: its last lines, stopped by its process group |
 //! | [`session`] | the window's state: the ladder read every 2 s, one run at a time, the form |
 //! | [`pretend`] | sample data, for `--pretend` |
 
 pub mod command;
+pub mod jacks;
 pub mod ladder;
 pub mod pretend;
 pub mod process;
@@ -23,6 +26,7 @@ pub mod session;
 pub mod show;
 
 pub use command::{Outcome, RecordForm, ToolCommand};
+pub use jacks::Jacks;
 pub use ladder::{Ladder, ParseError, Place, Rung, Side, State};
 pub use session::{Session, Source};
 pub use show::{CarSide, Cell, RunButton, WhyNot};

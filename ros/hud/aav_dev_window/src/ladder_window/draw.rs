@@ -1,11 +1,13 @@
 //! The test ladder's window, drawn in egui: the ladder on the left, the chosen rung on the
 //! right, the run's console along the bottom. What each part says is `ladder-core`'s.
 //!
-//! The car's side has words and a Copy button, and nothing that runs.
+//! The car's side has words and a Copy button, and nothing that runs. The one switch that
+//! moves anything is "The simulated car": Ravensim's jacks, on only while a simulator runs
+//! on this computer (`ladder-core`'s `jacks`, through `pixi run jacks`).
 
 use bevy_egui::egui;
 use ladder_core::{
-    session::Notice, show::CAR_RULE, CarSide, Cell, Ladder, Outcome, Place, RunButton, Rung,
+    session::Notice, show::CAR_RULE, CarSide, Cell, Jacks, Ladder, Outcome, Place, RunButton, Rung,
     Session, Side, Source, State,
 };
 
@@ -24,6 +26,7 @@ enum Action {
     Run,
     Stop,
     Record,
+    Jacks,
 }
 
 /// Big, plain words: the docs' rule for a dyslexic reader holds on screens too.
@@ -60,7 +63,10 @@ pub fn window(ctx: &egui::Context, session: &mut Session) {
             .layer_id(egui::LayerId::background())
             .max_rect(ctx.viewport_rect()),
     );
-    egui::Panel::top("where").show(&mut root, |ui| top(ui, session, ladder.as_ref()));
+    egui::Panel::top("where").show(&mut root, |ui| {
+        top(ui, session, ladder.as_ref());
+        jacks(ui, session, &mut actions);
+    });
     egui::Panel::bottom("console")
         .default_size(170.0)
         .resizable(true)
@@ -90,6 +96,7 @@ pub fn window(ctx: &egui::Context, session: &mut Session) {
             Action::Run => session.press_run(),
             Action::Stop => session.press_stop(),
             Action::Record => session.press_record(),
+            Action::Jacks => session.press_jacks(),
         }
     }
 }
@@ -121,6 +128,36 @@ fn top(ui: &mut egui::Ui, session: &Session, ladder: Option<&Ladder>) {
         );
         ui.label("The ladder shown is the last one read. Start it with: pixi run ladder-window");
     }
+}
+
+/// "The simulated car: on stands / on the ground", and the one button that changes it.
+/// Off, with the reason, unless a simulator runs on this computer.
+fn jacks(ui: &mut egui::Ui, session: &Session, actions: &mut Vec<Action>) {
+    ui.horizontal_wrapped(|ui| {
+        ui.strong("The simulated car:");
+        let state = session.jacks();
+        let colour = match state {
+            Jacks::OnStands => AMBER,
+            Jacks::OnGround => GREEN,
+            _ => GREY,
+        };
+        ui.label(
+            egui::RichText::new(state.to_string())
+                .strong()
+                .color(colour),
+        );
+        let button = egui::Button::new(state.button_words());
+        if ui
+            .add_enabled(session.jacks_button().is_some(), button)
+            .on_hover_text("Ravensim only, on this computer: pixi run jacks up|down --sim")
+            .clicked()
+        {
+            actions.push(Action::Jacks);
+        }
+        if let Some(notice) = session.jacks_said() {
+            said(ui, notice, "Done", "REFUSED");
+        }
+    });
 }
 
 /// The ladder: the top rung at the top, a row a rung, a column a place.

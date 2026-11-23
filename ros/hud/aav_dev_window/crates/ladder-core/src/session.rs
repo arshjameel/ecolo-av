@@ -14,6 +14,7 @@ use std::{
 
 use crate::{
     command::{RecordForm, ToolCommand},
+    jacks::{self, Ask, Jacks},
     ladder::{Ladder, Rung},
     pretend,
     process::{self, Answer, Running, Signal},
@@ -93,6 +94,13 @@ pub struct Session {
     reading: Option<Pending>,
     read_at: Option<Instant>,
     read_now: bool,
+    /// The simulated car: on stands or on the ground, as `tools/jacks.py` last said.
+    jacks: Jacks,
+    /// The jacks call in progress, and what it asked.
+    jacks_asking: Option<(Ask, Pending)>,
+    /// When the last jacks answer came: the next status is asked `jacks::ASK_EVERY` later.
+    jacks_at: Option<Instant>,
+    jacks_said: Option<Notice>,
 }
 
 impl Session {
@@ -114,7 +122,14 @@ impl Session {
             reading: None,
             read_at: None,
             read_now: true,
+            jacks: Jacks::Unknown,
+            jacks_asking: None,
+            jacks_at: None,
+            jacks_said: None,
         };
+        if session.source == Source::Pretend {
+            session.jacks = Jacks::Pretend;
+        }
         session.keep_selection();
         session
     }
@@ -124,9 +139,16 @@ impl Session {
         self.follow_run();
         self.take_record();
         self.take_ladder();
+        self.take_jacks(now);
         let Source::Tool { root } = &self.source else {
             return;
         };
+        let jacks_due = self
+            .jacks_at
+            .is_none_or(|at| now.saturating_duration_since(at) >= jacks::ASK_EVERY);
+        if self.jacks_asking.is_none() && jacks_due {
+            self.jacks_asking = Some((Ask::Status, process::ask(Ask::Status.process(root))));
+        }
         let due = self
             .read_at
             .is_none_or(|at| now.saturating_duration_since(at) >= READ_EVERY);
@@ -257,6 +279,37 @@ impl Session {
         }
     }
 
+    /// The simulated car: on stands, on the ground, or why nobody can say.
+    #[must_use]
+    pub fn jacks(&self) -> &Jacks {
+        &self.jacks
+    }
+
+    /// What the jacks button would ask, if it is on: a simulator runs on this computer,
+    /// and no jacks request is on its way.
+    #[must_use]
+    pub fn jacks_button(&self) -> Option<Ask> {
+        let busy = matches!(self.jacks_asking, Some((Ask::Up | Ask::Down, _)));
+        self.jacks.button().filter(|_| !busy)
+    }
+
+    /// What the simulator said to the last press: done, or its refusal word for word.
+    #[must_use]
+    pub fn jacks_said(&self) -> Option<&Notice> {
+        self.jacks_said.as_ref()
+    }
+
+    /// The jacks button was pressed. Nothing is asked unless the button is on; the tool
+    /// and the simulator still decide (a car whose wheels spin is not lowered).
+    pub fn press_jacks(&mut self) {
+        let (Some(ask), Source::Tool { root }) = (self.jacks_button(), &self.source) else {
+            return;
+        };
+        // A status on its way is dropped: its answer would be older than this request's.
+        self.jacks_asking = Some((ask, process::ask(ask.process(root))));
+        self.jacks_said = None;
+    }
+
     /// "Record" was pressed: the form goes to the tool, which may refuse.
     pub fn press_record(&mut self) {
         let Some(rung) = self.selected() else {
@@ -322,6 +375,39 @@ impl Session {
             Ok(answer) => Notice::bad(first_words(&answer.stderr, &answer.stdout)),
             Err(why) => Notice::bad(why),
         });
+    }
+
+    fn take_jacks(&mut self, now: Instant) {
+        let Some((ask, pending)) = self.jacks_asking.take() else {
+            return;
+        };
+        let mut pending = Some(pending);
+        let Some(answer) = take(&mut pending) else {
+            self.jacks_asking = pending.map(|p| (ask, p));
+            return;
+        };
+        self.jacks_at = Some(now);
+        let read = answer.and_then(|a| match jacks::Answer::parse(&a.stdout) {
+            Ok(read) => Ok(read),
+            Err(why) => Err(first_words(&a.stderr, &why)),
+        });
+        match read {
+            Ok(read) => {
+                self.jacks = Jacks::of(&read);
+                if ask != Ask::Status {
+                    self.jacks_said = Some(Notice {
+                        good: read.ok,
+                        text: read.message,
+                    });
+                }
+            }
+            Err(why) => {
+                self.jacks = Jacks::NoSimulator(last_line(&why).to_owned());
+                if ask != Ask::Status {
+                    self.jacks_said = Some(Notice::bad(why));
+                }
+            }
+        }
     }
 
     fn take_ladder(&mut self) {
@@ -438,6 +524,83 @@ mod tests {
         );
         session.tick(Instant::now());
         assert!(session.problem().is_none());
+    }
+
+    #[test]
+    fn pretend_data_never_asks_for_the_jacks() {
+        let mut session = Session::new(Source::Pretend);
+        assert_eq!(session.jacks(), &Jacks::Pretend);
+        assert_eq!(session.jacks_button(), None);
+        session.press_jacks();
+        session.tick(Instant::now());
+        assert!(session.jacks_asking.is_none() && session.jacks_said().is_none());
+    }
+
+    #[test]
+    fn the_jacks_button_is_off_until_a_simulator_answers_and_while_a_request_is_out() {
+        let mut session = Session::new(Source::Tool {
+            root: PathBuf::from("/nowhere"),
+        });
+        assert_eq!(session.jacks(), &Jacks::Unknown);
+        assert_eq!(session.jacks_button(), None);
+        session.press_jacks();
+        assert!(
+            session.jacks_asking.is_none(),
+            "nothing is asked while it is off"
+        );
+
+        session.jacks = Jacks::OnStands;
+        assert_eq!(session.jacks_button(), Some(Ask::Down));
+        let (_tx, rx) = std::sync::mpsc::channel();
+        session.jacks_asking = Some((Ask::Down, rx));
+        assert_eq!(session.jacks_button(), None, "one request at a time");
+        // A status poll on its way does not grey the button.
+        let (_tx, rx) = std::sync::mpsc::channel();
+        session.jacks_asking = Some((Ask::Status, rx));
+        assert_eq!(session.jacks_button(), Some(Ask::Down));
+    }
+
+    #[test]
+    fn the_simulators_refusal_is_shown_word_for_word_and_the_car_stays_up() {
+        let mut session = Session::new(Source::Tool {
+            root: PathBuf::from("/nowhere"),
+        });
+        let (tx, rx) = std::sync::mpsc::channel();
+        session.jacks_asking = Some((Ask::Down, rx));
+        let stdout = r#"{"verb": "down", "simulator": true, "on_stands": true, "ok": false,
+            "message": "refused, the car stays on stands: the wheels still spin at +0.31 m/s"}"#
+            .replace('\n', " ");
+        tx.send(Ok(Answer {
+            code: Some(3),
+            stdout,
+            stderr: String::new(),
+        }))
+        .expect("the session listens");
+        session.take_jacks(Instant::now());
+        assert_eq!(session.jacks(), &Jacks::OnStands);
+        let said = session.jacks_said().expect("its words");
+        assert!(!said.good && said.text.contains("the wheels still spin"));
+    }
+
+    #[test]
+    fn a_tool_that_cannot_answer_turns_the_switch_off_with_its_last_line() {
+        let mut session = Session::new(Source::Tool {
+            root: PathBuf::from("/nowhere"),
+        });
+        let (tx, rx) = std::sync::mpsc::channel();
+        session.jacks_asking = Some((Ask::Status, rx));
+        tx.send(Ok(Answer {
+            code: Some(1),
+            stdout: String::new(),
+            stderr: "Not built yet: run 'pixi run build' first.\n".into(),
+        }))
+        .expect("the session listens");
+        session.take_jacks(Instant::now());
+        assert_eq!(
+            session.jacks(),
+            &Jacks::NoSimulator("Not built yet: run 'pixi run build' first.".into())
+        );
+        assert_eq!(session.jacks_button(), None);
     }
 
     #[test]
