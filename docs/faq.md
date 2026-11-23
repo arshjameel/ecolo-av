@@ -196,7 +196,8 @@ Yes. Pixi installs the same ROS 2 Jazzy on macOS and on Linux. See [Your Mac](ma
 | `pixi run bench-check` | the whole car graph: driving, both e-stops | about 2 minutes |
 | `pixi run check turtle` | the running graph against `docs/interfaces.yaml` | seconds |
 
-CI runs `pixi run test` on every pull request and on each push to `main`.
+CI runs `pixi run test` on every pull request, in the merge queue, and on each push to
+`main`.
 
 ### Where is the list of every topic?
 
