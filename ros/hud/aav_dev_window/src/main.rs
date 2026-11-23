@@ -47,7 +47,8 @@ use crate::feed::{Feed, Update};
 
 const USAGE: &str = "usage: dev_window [--live] [--developer] [--ndt-map FILE] \
                      [--click-goal X,Y] [--cubes N] \
-                     [--all-layers] [--map-whole] [--seconds S] [--screenshot FILE]";
+                     [--all-layers] [--map-whole] [--map-only] [--map-span M] [--title WORDS] [--position X,Y] \
+                     [--seconds S] [--screenshot FILE] [--screenshot-every S]";
 /// One NDT map cube's edge on screen, metres: at 1 m a kerb looked as big as a building.
 const NDT_CELL: f64 = 0.5;
 /// The most outlines drawn in red. Drawing lines costs more than drawing cubes.
@@ -81,6 +82,16 @@ struct Options {
     map_whole: bool,
     seconds: Option<f32>,
     screenshot: Option<PathBuf>,
+    /// Save the screenshot again every so many seconds: the newest picture of a long run.
+    screenshot_every: Option<f32>,
+    /// Only the status strip and the map panel: the navigation view (`pixi run nav-view`).
+    map_only: bool,
+    /// The window's title; `None` for the program's own.
+    title: Option<String>,
+    /// How many metres across the map panel starts, round the car.
+    map_span: Option<f64>,
+    /// Where the window opens on the screen, in pixels from its top left.
+    position: Option<[i32; 2]>,
 }
 
 impl Options {
@@ -97,6 +108,11 @@ impl Options {
             map_whole: false,
             seconds: None,
             screenshot: None,
+            screenshot_every: None,
+            map_only: false,
+            title: None,
+            map_span: None,
+            position: None,
         };
         let mut args = args;
         while let Some(arg) = args.next() {
@@ -125,6 +141,34 @@ impl Options {
                 "--all-layers" => options.all_layers = true,
                 "--map-whole" => options.map_whole = true,
                 "--screenshot" => options.screenshot = Some(value()?.into()),
+                "--screenshot-every" => {
+                    options.screenshot_every = Some(
+                        value()?
+                            .parse()
+                            .ok()
+                            .filter(|s: &f32| *s >= 0.5)
+                            .ok_or("--screenshot-every: seconds, 0.5 or more")?,
+                    );
+                }
+                "--map-only" => options.map_only = true,
+                "--title" => options.title = Some(value()?),
+                "--map-span" => {
+                    options.map_span = Some(
+                        value()?
+                            .parse()
+                            .ok()
+                            .filter(|m: &f64| m.is_finite() && *m > 0.0)
+                            .ok_or("--map-span: metres across, more than 0")?,
+                    );
+                }
+                "--position" => {
+                    let text = value()?;
+                    let parsed = text
+                        .split_once(',')
+                        .and_then(|(x, y)| Some([x.trim().parse().ok()?, y.trim().parse().ok()?]));
+                    options.position =
+                        Some(parsed.ok_or(format!("--position {text}: use X,Y in pixels"))?);
+                }
                 other => return Err(format!("unknown option {other}")),
             }
         }
@@ -196,7 +240,8 @@ struct PictureImage(Handle<Image>);
 #[derive(Resource, Default)]
 struct SpeedTest {
     frames: Vec<f32>,
-    shot: bool,
+    /// When the last screenshot was asked for, seconds.
+    shot_at: Option<f32>,
 }
 
 /// How long `--click-goal` waits, seconds: Nav2 needs time to start.
@@ -248,6 +293,31 @@ fn main() -> AppExit {
     if options.map_whole {
         ui_state.map.show_whole();
     }
+    ui_state.map_only = options.map_only;
+    if let Some(metres) = options.map_span {
+        ui_state.map.start_span(metres);
+    }
+    let position = options
+        .position
+        .map_or(WindowPosition::Automatic, |[x, y]| {
+            WindowPosition::At(IVec2::new(x, y))
+        });
+    match feed::body() {
+        Ok(body) => ui_state.world.body = Some(body),
+        Err(why) => ui_state.world.note(format!("the car's body: {why}")),
+    }
+    let title = options.title.clone().unwrap_or_else(|| {
+        if options.map_only {
+            "AAV navigation view".to_owned()
+        } else {
+            "AAV developer window".to_owned()
+        }
+    });
+    let size = if options.map_only {
+        (900, 760)
+    } else {
+        (1600, 1000)
+    };
     ui_state.world.ndt = if options.live {
         options.ndt_map.as_deref().map(|path| {
             let file = MapFile::read(path, NDT_CELL);
@@ -290,8 +360,9 @@ fn main() -> AppExit {
         .init_resource::<SpeedTest>()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "AAV developer window".into(),
-                resolution: (1600, 1000).into(),
+                title,
+                position,
+                resolution: size.into(),
                 present_mode,
                 ..default()
             }),
@@ -800,12 +871,17 @@ fn speed_test(
 ) {
     let elapsed = time.elapsed_secs();
     let shot_at = WARM_UP + options.seconds.unwrap_or(0.0) / 2.0;
-    if !test.shot && elapsed > shot_at {
+    let due = match (options.screenshot_every, test.shot_at) {
+        (_, None) => elapsed > shot_at,
+        (Some(every), Some(last)) => elapsed > last + every,
+        (None, Some(_)) => false,
+    };
+    if due {
         if let Some(path) = &options.screenshot {
             commands
                 .spawn(Screenshot::primary_window())
                 .observe(save_to_disk(path.clone()));
-            test.shot = true;
+            test.shot_at = Some(elapsed);
         }
     }
     let Some(seconds) = options.seconds else {

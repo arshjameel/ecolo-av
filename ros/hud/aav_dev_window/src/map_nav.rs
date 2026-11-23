@@ -53,6 +53,9 @@ pub enum Gesture {
 pub struct MapNav {
     pub view: View,
     touched: bool,
+    /// How many metres across the view starts, round the car (`--map-span`): a tool's
+    /// choice, such as barrier-watch's drive. `None`: sized by the map.
+    span: Option<f64>,
 }
 
 impl MapNav {
@@ -79,6 +82,7 @@ impl MapNav {
             w.max(h)
         };
         let span = match (near, whole) {
+            _ if self.span.is_some() => self.span,
             (Some(near), _) => Some(side(near)),
             (None, Some(whole)) if side(whole) > BIG_MAP => Some(BIG_MAP_VIEW),
             _ => None,
@@ -91,6 +95,12 @@ impl MapNav {
             }
             None => self.view.mode = Mode::WholeMap,
         }
+    }
+
+    /// Follow the car from the start, `metres` across (`--map-span`), until a person
+    /// moves the view.
+    pub fn start_span(&mut self, metres: f64) {
+        self.span = Some(metres.max(1.0));
     }
 
     /// The whole map from the start (`--map-whole`), as the button does.
@@ -156,6 +166,25 @@ mod tests {
             Some(square(-1000.0, -1000.0, 2000.0)),
             Some(near),
             &vp(),
+        );
+    }
+
+    #[test]
+    fn a_tools_span_wins_over_the_maps_size() {
+        let vp = Viewport {
+            x: 0.0,
+            y: 0.0,
+            width: 800.0,
+            height: 600.0,
+        };
+        let mut nav = MapNav::default();
+        nav.start_span(60.0);
+        nav.frame(Point::new(5.0, 5.0), None, None, &vp);
+        assert_eq!(nav.view.mode, Mode::FollowCar);
+        assert!(
+            (nav.view.scale.0 - 10.0).abs() < 1e-9,
+            "{:?}",
+            nav.view.scale
         );
     }
 

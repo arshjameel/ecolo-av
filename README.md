@@ -114,7 +114,7 @@ reaches a real car on the same network. A family is one command and a word after
 | `turtle` | turtlesim plays the car |
 | `keyboard` | drive from the keyboard, in a second terminal: `keyboard --local` with `turtle` or `bench`, `keyboard --sim` with `sim`. With no flag it drives whatever shares the ROS domain: on the car's network, the car |
 | `sim` | Ravensim, our own simulator, plays the car (Gazebo went on 16 Nov; with no GPU put `tools/software_gl.sh` in front), driven by our own stack (`stack:=ours`, the default since 14 Nov; `stack:=best` for the champions, [the league](docs/league.md); Nav2 went on 17 Nov); `world:=road`, `hud:=true`, `sim_speed:=3`... |
-| `demo` | the whole simulated car at once: the simulator, RViz, the HUD and the map window. `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |
+| `demo` | the whole simulated car at once: the simulator, the nav screen (ours: `nav-view`), the HUD and the map window. `demo --rviz` adds RViz (only when asked). `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |
 | `pick` | a menu of the switches (who steers, where-am-I, speed loop), so you needn't remember them: prints the command, saves it, runs it; `pick last` runs it again ([Switches](docs/switches.md)) |
 | `bench` | the real car's software, with stand-ins for the hardware |
 | `view` | the car's model in RViz |
@@ -135,10 +135,10 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `debug-hud` | the debug screen: the lidar's cubes, the localizers, every sensor |
 | `hw-panel` | the hardware panel: every sensor's number, and simple buttons (hold Space to drive) for Ravensim or the bench, beside `sim` or `demo --debug` (this computer only) |
 | `ravensim` | watch Ravensim: the sim and the developer window live on it, in one go; `world:=campus` or any sim switch (this computer only) |
-| `barrier-watch` | watch the barriers in Ravensim (Ben's research, outside the capstone's scope): one drive past a ghost with the follower `plain`, `step` (a hard distance limit) or `barrier`; `--speed 3`, `--offset 0.4`, `--side-by-side`, `--headless`; RViz from above and one line of result (this computer only; [Barriers](docs/barriers.md#watch-it-in-ravensim)) |
+| `barrier-watch` | watch the barriers in Ravensim (Ben's research, outside the capstone's scope): one drive past a ghost with the follower `plain`, `step` (a hard distance limit) or `barrier`; `--speed 3`, `--offset 0.4`, `--side-by-side`, `--headless`; our navigation view from above (the mode in its title; `--rviz` adds RViz) and one line of result (this computer only; [Barriers](docs/barriers.md#watch-it-in-ravensim)) |
 | `dev-window` | the developer window (Bevy): Ben's layout. Pretend data; `--live` beside `demo` or `sim`; `--watch` listens only |
 | `sim-cameras` | Ravensim's cameras (Bevy, offscreen) on their own: the timing check; `--ros` publishes the car's camera topics (this computer only). `sim` starts them itself |
-| `rviz` | RViz with the driving layout: map, costmaps, path, car |
+| `rviz` | RViz with the driving layout: map, costmaps, path, car. The stock viewer, kept as a reference: nothing opens it by default any more (`nav-view` is ours) |
 | `graph` | a live picture of the nodes and topics |
 
 ### Check that it works
@@ -171,6 +171,7 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `clear` | a person clears a latch: `clear estop`, `clear gate` (the output mux's STOP), `clear geofence` (car back inside), `clear watchdog` (the sensor watchdog's faults); `--sim` after any of them: a simulator on this computer only |
 | `actuator-test` | the actuator tests, on stands and in a lot: `actuator-test --list`. The preflight on stands, every sensor checked: `actuator-test preflight --stands` |
 | `ladder` | the test ladder, with the progress kept between days: `ladder` shows every rung, the simulator's side and the car's; `ladder next`; `ladder run <rung>` runs a rung's simulator twin and records it; `ladder record <rung> pass --car`. It never moves the car ([Proving it](docs/proving-it.md)) |
+| `nav-view` | the navigation view, for a second screen: the developer window's map panel alone in a small window (Bevy): the map, both costmaps, the plan, the car's trail and body, the stop zone's box, the ghost, a goal by click, a scale. Pretend data alone; `--live` beside a simulator here; `--watch` listens only ([what RViz was for](docs/hud.md#rviz-and-ours)) |
 | `ladder-window` | the same ladder in a window (Bevy, no ROS): every rung, the simulator beside the car; **Run in the simulator** with its console and Stop; **Record by hand**; the car's command is only shown, to copy. `--pretend`: sample data ([Proving it](docs/proving-it.md#the-window-pixi-run-ladder-window)) |
 | `dry-run` | the dry run of everything we will do with the car: Ravensim, its picture and the test ladder's window attached to it, in one go; `--panel` adds the hardware panel, `--debug` the debug screen. The window's runs move the car you see. This computer only; Ctrl-C stops everything ([Proving it](docs/proving-it.md#the-dry-run-pixi-run-dry-run)) |
 | `car-test` | phase A on stands, one command and one report: `car-test --stands` runs the preflight, every sensor, the steering, throttle on free wheels and the faults on purpose; `--sim` against its own Ravensim, `--sim --attach` against the one already running here (`pixi run dry-run`), `--no-manual`, `--only` ([docs](docs/actuator-tests.md#car-test-the-whole-stands-test)). Phase B in a measured hallway: `car-test --hallway` (the transfer functions with error bars, the model laid over each pass; `--sim` a pretend hallway; `--analyse <session>`) ([docs](docs/actuator-tests.md#car-test-hallway-the-transfer-functions)) |

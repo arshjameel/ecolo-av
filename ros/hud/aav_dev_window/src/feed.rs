@@ -24,6 +24,7 @@ use map_core::{
     geom::{Point, Pose},
     grid::Grid,
 };
+use nav_core::{body::Body, marker::Outline, zone::ZoneAction};
 use serde::Deserialize;
 
 /// A topic older than this counts as silent, as the HUD's own limit.
@@ -86,6 +87,17 @@ pub enum Update {
     Things(Vec<Thing>),
     /// The street route (`/drivers/nav/route/path`, map): the zoomed-out level's line.
     Route(Vec<Point>),
+    /// The local costmap (`/drivers/nav/costmap/local`): a window rolling with the car, odom.
+    #[cfg_attr(not(feature = "ros"), allow(dead_code))]
+    LocalCostmap(Grid),
+    /// The ghost (`/safety/ghost/marker`) as a line on the ground; `None` once it is gone.
+    Ghost(Option<Outline>),
+    /// The barrier's keep-out circle (barrier-watch's marker); `None` once it is gone.
+    KeepOut(Option<Outline>),
+    /// The stop zone's box in use (`/safety/stop_zone/box`): its frame and corners.
+    StopBox(String, Vec<(f64, f64)>),
+    /// What the stop zone does (`/safety/stop_zone/state`).
+    StopAction(ZoneAction),
 }
 
 /// The road ahead (`/world/road_ahead`, the whole-car design), on the map: where the car
@@ -403,6 +415,32 @@ pub fn lidar_mount() -> Result<[f32; 3], String> {
         .map_err(|e| e.to_string())
 }
 
+/// The car's body, from `vehicle.yaml`: the only place car measurements live.
+pub fn body() -> Result<Body, String> {
+    #[derive(Deserialize)]
+    struct File {
+        vehicle: Vehicle,
+    }
+    #[derive(Deserialize)]
+    struct Vehicle {
+        body: Sizes,
+    }
+    #[derive(Deserialize)]
+    struct Sizes {
+        length: f64,
+        width: f64,
+        rear_overhang: f64,
+    }
+    let text = include_str!("../../../bringup/aav_description/config/vehicle.yaml");
+    serde_yaml_ng::from_str::<File>(text)
+        .map(|file| Body {
+            length: file.vehicle.body.length,
+            width: file.vehicle.body.width,
+            rear_overhang: file.vehicle.body.rear_overhang,
+        })
+        .map_err(|e| e.to_string())
+}
+
 /// Where the driver's view looks from and to, in odom. `mount` is the eyes' place on the car,
 /// and `look` how far the head is turned left and tilted up, radians.
 pub fn driver_eye(car: Pose, mount: [f32; 3], look: [f32; 2]) -> ([f32; 3], [f32; 3]) {
@@ -600,6 +638,12 @@ mod tests {
     fn the_eyes_are_the_lidars_from_the_cars_measurements() {
         let mount = lidar_mount().expect("vehicle.yaml has the lidar's mount");
         assert!(mount[2] > 1.0, "the lidar is on the roof: {mount:?}");
+    }
+
+    #[test]
+    fn the_body_is_the_cars_measurements() {
+        let body = body().expect("vehicle.yaml has the body");
+        assert!(body.length > body.width && body.rear_overhang < body.length);
     }
 
     #[test]

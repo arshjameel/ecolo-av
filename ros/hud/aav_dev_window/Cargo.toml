@@ -47,6 +47,7 @@ lanelet-map = { path = "../../bringup/aav_description/lanelet-map" }  # the lane
 map-chunks = { path = "../../bringup/aav_description/map-chunks" }    # the chunks (--chunks)
 map-edit = { path = "../../bringup/aav_description/map-edit" }        # the map editor's edits
 ladder-core = { path = "crates/ladder-core" }                         # the test ladder's window, its logic
+nav-core = { path = "crates/nav-core" }                               # the top-down view, its logic
 serde = { version = "1", features = ["derive"] }
 serde_yaml_ng = "0.10"
 rclrs = { version = "0.8", optional = true }

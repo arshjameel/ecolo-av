@@ -138,7 +138,7 @@ current): after adding, moving or removing a package, run
 
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
-| [aav_dev_window](../ros/hud/aav_dev_window/README.md) | Rust | The developer window, as a test of Bevy | `crates/ladder-core` | - | - | `config/` |
+| [aav_dev_window](../ros/hud/aav_dev_window/README.md) | Rust | The developer window, as a test of Bevy | `crates/ladder-core`, `crates/nav-core` | - | - | `config/` |
 | [aav_hud](../ros/hud/aav_hud/README.md) | Rust | hud | `crates/debug-app`, `crates/debug-core`, `crates/hud-app`, `crates/hud-core`, `crates/map-app`, `crates/map-core`, `crates/panel-app`, `crates/panel-core` | - | - | `config/`, `launch/` |
 
 ## ros/bringup

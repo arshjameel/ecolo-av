@@ -2680,6 +2680,7 @@ dependencies = [
  "map-chunks",
  "map-core",
  "map-edit",
+ "nav-core",
  "rclrs",
  "ros-env",
  "serde",
@@ -4345,6 +4346,13 @@ dependencies = [
  "num-traits",
  "simba",
  "typenum",
+]
+
+[[package]]
+name = "nav-core"
+version = "0.1.0"
+dependencies = [
+ "map-core",
 ]
 
 [[package]]
