@@ -169,6 +169,7 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 name = "bench-car"
 version = "0.1.0"
 dependencies = [
+ "ibus",
  "spine-core",
  "wheel-core",
 ]
@@ -456,6 +457,13 @@ name = "hermit-abi"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e17592d60ebacc7d5e169f4663c5f84f9161cc90328abcfe8456f41e4dfcb284"
+
+[[package]]
+name = "ibus"
+version = "0.1.0"
+dependencies = [
+ "spine-core",
+]
 
 [[package]]
 name = "indexmap"

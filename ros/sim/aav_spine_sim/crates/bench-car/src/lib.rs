@@ -13,11 +13,13 @@
 pub mod bench;
 pub mod car;
 pub mod plant;
+pub mod rc;
 
 pub use bench::{
     Bench, Frame, BENCH_WHEELS, FEEDBACK_PERIOD_MS, STATUS_PERIOD_MS, WHEEL_PERIOD_MS,
 };
 pub use car::{Car, MeasuredCar};
 pub use plant::{Plant, PlantConfig, Pose};
+pub use rc::{Pad, PadLayout, Receiver, RC_TIMEOUT_MS};
 /// The spine's settings, for a bench that picks its own (the speed loop's profile).
 pub use spine_core::{speed_loop::SpeedLoopProfile, SpineConfig};

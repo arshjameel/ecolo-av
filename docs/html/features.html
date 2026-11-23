@@ -1343,6 +1343,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
+<td><a href="../../ros/sim/aav_spine_sim/README.md#node-rc_pad">The RC's rules without the car</a> (<code>pixi run rc-pad</code>; <code>sim spine:=true rc_pad:=true</code>; <code>aav_spine_sim</code>'s <code>rc_pad</code>, <code>bench-car</code>'s <code>rc::Pad</code>, <code>rc::Receiver</code>)</td>
+<td>No car or receiver at home. A PS4 gamepad plays the FS-i6X: its sticks become the receiver's iBUS channels, which <code>spine_sim</code> reads through the ibus crate's own parser and channel map, so the firmware's RC rules (stop, give, one pedal, the hold, the lost radio) drive the model car or Ravensim's</td>
+<td>Arsh (arshjameel)</td>
+<td>2026-11-23</td>
+<td>sim</td>
+</tr>
+<tr>
 <td>The RC transmitter's stick layout and normal mode's owner (<code>ibus</code>, <code>spine-core</code> <code>RcOwner</code>, <code>RcHold</code>)</td>
 <td>The FS-i6X's left stick doesn't spring back and SwC's wiring is loose. Since 22 Nov the right stick (CH2, which springs back) hands the car over on purpose: down past 88 % is a hard brake and the RC takes the car, up past 88 % with the steering centred for 0.5 s gives it to the computer, decided on the ESP32 so it works with the computer dead. The left stick is one pedal (Ben's idea): forward or back at a fixed, ramped speed, its middle lets the motor slow the car, the other way past 88 % brakes hard, then changes direction once stopped. After any stop the car stays braked until the left stick moves. The transmitter's failsafe (CH6 at 1000, CH2 on its stop) counts as a lost RC (<a href="../designs/2026-11-22_rc-right-stick.md">design</a>)</td>
 <td>Arsh, Ben</td>

@@ -18,6 +18,7 @@ use wheel_core::{ConfigError, WheelConfig, WheelNode};
 
 use crate::car::Car;
 use crate::plant::{Plant, PlantConfig, Pose};
+use crate::rc::{Channels, RcMap, Receiver};
 
 /// How often the spine sends VEHICLE_FEEDBACK (ms), from firmware/can/aav.dbc.
 pub const FEEDBACK_PERIOD_MS: u32 = 20;
@@ -53,6 +54,8 @@ pub struct Bench<C: Car = Plant> {
     wheels: [WheelNode; 2],
     holes_passed: [u64; 2],
     since_wheels_ms: u32,
+    /// The RC receiver, once fitted ([`Bench::fit_rc`]): None = no receiver, as before.
+    rc: Option<Receiver>,
 }
 
 impl Bench<Plant> {
@@ -100,6 +103,7 @@ impl<C: Car> Bench<C> {
             ],
             holes_passed: [0; 2],
             since_wheels_ms: 0,
+            rc: None,
         })
     }
 
@@ -118,6 +122,21 @@ impl<C: Car> Bench<C> {
         self.hw_estop = open;
     }
 
+    /// Fit an RC receiver read with `map`: from now on the spine gets its channels
+    /// ([`Bench::rc_channels`]), and silence past [`crate::rc::RC_TIMEOUT_MS`] is a lost
+    /// RC. Pair it with `SpineConfig::rc_fitted`, as the ESP32 does.
+    pub fn fit_rc(&mut self, map: RcMap) {
+        self.rc = Some(Receiver::new(map));
+    }
+
+    /// One frame's channels from the receiver, now. Ignored until [`Bench::fit_rc`].
+    pub fn rc_channels(&mut self, channels: &Channels) {
+        let now = self.now_ms;
+        if let Some(rc) = self.rc.as_mut() {
+            rc.receive(channels, now);
+        }
+    }
+
     /// Pretend a driver failed: spine_core::faults bits, 0 = all well.
     pub fn set_driver_faults(&mut self, bits: u16) {
         self.driver_faults = bits;
@@ -129,7 +148,7 @@ impl<C: Car> Bench<C> {
         let inputs = Inputs {
             now_ms: self.now_ms,
             hw_estop: self.hw_estop,
-            rc: None,
+            rc: self.rc.as_ref().and_then(|rc| rc.read(self.now_ms)),
             measured_speed: self.plant.speed(),
             measured_steering: self.plant.steering(),
             driver_faults: self.driver_faults,

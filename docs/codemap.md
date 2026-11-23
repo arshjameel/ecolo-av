@@ -130,7 +130,7 @@ current): after adding, moving or removing a package, run
 | [aav_sim_cameras](../ros/sim/aav_sim_cameras/README.md) | Rust | The simulator's cameras | `crates/camera-core` | - | `tests/` | `config/` |
 | [aav_sim_models](../ros/sim/aav_sim_models/README.md) | Python | Ravensim's Python side (Ravensim | `aav_sim_models/(12 modules)` | `aav_sim_models/sim_adapter.py`, `aav_sim_models/sim_camera_relay.py`, `aav_sim_models/sim_esp32.py`, `aav_sim_models/sim_gps.py`, `aav_sim_models/sim_imu.py`, `aav_sim_models/sim_lidar_relay.py`, `aav_sim_models/sim_radar.py`, `aav_sim_models/truth_localizer.py` | `test/` | `launch/` |
 | [aav_simulator](../ros/sim/aav_simulator/README.md) | Rust | Ravensim, our own simulator, in Rust (rclrs) | `crates/sim-core` | `crates/sim-node` | - | - |
-| [aav_spine_sim](../ros/sim/aav_spine_sim/README.md) | Rust | spine_sim, for bench mode | `crates/bench-car`, `crates/spine-sim` | - | - | - |
+| [aav_spine_sim](../ros/sim/aav_spine_sim/README.md) | Rust | spine_sim, for bench mode | `crates/bench-car`, `crates/spine-sim` | - | - | `config/`, `launch/` |
 | [aav_turtlesim](../ros/sim/aav_turtlesim/README.md) | Python | Backend that drives turtlesim like a car (bicycle model) and reports its speed as /vehicle/odom | - | `aav_turtlesim/turtlesim_adapter.py` | - | `launch/` |
 
 ## ros/hud

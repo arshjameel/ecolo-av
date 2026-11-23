@@ -1,0 +1,55 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid (1 m)
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 100
+      Reference Frame: <Fixed Frame>
+    - Class: rviz_default_plugins/Grid
+      Name: Grid (10 m)
+      Enabled: true
+      Cell Size: 10
+      Plane Cell Count: 10
+      Color: 200; 200; 200
+      Reference Frame: <Fixed Frame>
+    - Class: rviz_default_plugins/Odometry
+      Name: The model car (spine_sim's truth)
+      Enabled: true
+      Keep: 300
+      Position Tolerance: 0.2
+      Angle Tolerance: 0.2
+      Shape:
+        Value: Arrow
+        Color: 255; 25; 0
+        Shaft Length: 1.2
+        Shaft Radius: 0.08
+        Head Length: 0.4
+        Head Radius: 0.2
+      Covariance:
+        Value: false
+      Topic:
+        Value: /vehicle/bench/truth
+        Depth: 5
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+  Global Options:
+    Fixed Frame: map
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Measure
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Scale: 15
+      Target Frame: <Fixed Frame>
+      X: 10
+      Y: 0

@@ -10,6 +10,11 @@ publish.workspace = true
 name = "spine_sim"
 path = "src/main.rs"
 
+# A gamepad as the FS-i6X and its receiver, for spine_sim rc:=true (23 Nov).
+[[bin]]
+name = "rc_pad"
+path = "src/rc_pad.rs"
+
 [dependencies]
 anyhow = "1"
 bench-car = { path = "../bench-car" }

@@ -12,6 +12,10 @@
 //! Subscribes  /can/tx                       can_msgs/Frame    what spine_bridge puts on the bus
 //!             /vehicle/bench/hw_estop       std_msgs/Bool     true = the hardware e-stop is pressed
 //!             /vehicle/bench/driver_faults  std_msgs/UInt16   pretend a driver failed (fault bits)
+//!             rc:=true only:
+//!             /vehicle/bench/rc_channels    std_msgs/UInt16MultiArray  the RC receiver's 14 iBUS
+//!                                           channels (µs), from rc_pad: decoded as the board
+//!                                           decodes them; silent 100 ms is a lost RC
 //!             car:=ravensim only:
 //!             /vehicle/sim/wheels        aav_interfaces/WheelSpeeds   Ravensim's wheels: the
 //!                                           front two for the wheel nodes, the rear two's mean
@@ -28,7 +32,9 @@
 //!                                           and steering target, every tick (100 Hz)
 //! Parameters  car (model), wheelbase, track, wheel_radius (m), max_steering (rad), start_x,
 //!             start_y (m), start_yaw (rad), speed_loop (default: the spine's speed loop
-//!             profile, default, smooth, lqi or firm: spine-core SpeedLoopProfile, TODO 27, 3, 163)
+//!             profile, default, smooth, lqi or firm: spine-core SpeedLoopProfile, TODO 27, 3, 163),
+//!             rc (false): an RC receiver fitted, as on the ESP32 (rc_fitted): its channels
+//!             on /vehicle/bench/rc_channels drive the firmware's RC rules (rc_pad, 23 Nov)
 //!
 //! A thread runs the spine at 100 Hz, like the board's main loop; the main thread spins.
 
@@ -42,6 +48,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Result};
+use bench_car::rc::{Channels, RcMap, CHANNELS};
 use bench_car::{
     Bench, Car, MeasuredCar, PlantConfig, Pose, SpeedLoopProfile, SpineConfig, BENCH_WHEELS,
 };
@@ -50,7 +57,7 @@ use ros_env::aav_interfaces::msg::{ActuatorState, SpineOutputs, WheelSpeeds};
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::can_msgs::msg::Frame;
 use ros_env::nav_msgs::msg::Odometry;
-use ros_env::std_msgs::msg::{Bool, UInt16};
+use ros_env::std_msgs::msg::{Bool, UInt16, UInt16MultiArray};
 
 /// The spine's tick, as on the board (ms).
 const TICK_MS: u32 = 10;
@@ -113,10 +120,24 @@ fn main() -> Result<()> {
     let profile: SpeedLoopProfile = profile_name
         .parse()
         .map_err(|e| anyhow!("speed_loop:={profile_name}: {e}"))?;
+    let rc = node
+        .declare_parameter::<bool>("rc")
+        .default(false)
+        .read_only()?
+        .get();
     let spine = SpineConfig {
         speed_loop: profile.config(),
+        // A receiver fitted, as on the ESP32: a lost RC stops the car in normal mode too.
+        rc_fitted: rc,
         ..SpineConfig::default()
     };
+    if rc {
+        log_info!(
+            node.logger(),
+            "An RC receiver is fitted: its channels on /vehicle/bench/rc_channels (rc_pad). \
+             The RC is lost until they come."
+        );
+    }
     log_info!(
         node.logger(),
         "The speed loop's profile: {}",
@@ -140,7 +161,10 @@ fn main() -> Result<()> {
     // The subscriptions live in `_keep`, as long as main.
     let (spine_loop, _keep) = match kind {
         CarKind::Model => {
-            let bench = Bench::new(spine, plant, start, wheels).map_err(bad_wheels)?;
+            let mut bench = Bench::new(spine, plant, start, wheels).map_err(bad_wheels)?;
+            if rc {
+                bench.fit_rc(RcMap::TODAY);
+            }
             log_info!(
                 node.logger(),
                 "The spine's firmware logic, driving a model car (wheelbase {} m). Arm it \
@@ -162,7 +186,10 @@ fn main() -> Result<()> {
         }
         CarKind::Ravensim => {
             let car = MeasuredCar::new(plant.ticks_per_metre);
-            let bench = Bench::with_car(spine, car, wheels).map_err(bad_wheels)?;
+            let mut bench = Bench::with_car(spine, car, wheels).map_err(bad_wheels)?;
+            if rc {
+                bench.fit_rc(RcMap::TODAY);
+            }
             log_info!(
                 node.logger(),
                 "The spine's firmware logic, driving Ravensim's car through the actuator model, \
@@ -235,7 +262,35 @@ fn switches<C: Car + Send + 'static>(node: &Node, bench: &Arc<Mutex<Bench<C>>>) 
             bench.lock().expect(POISONED).set_driver_faults(m.data);
         })?
     };
-    Ok(vec![Box::new(frames_in), Box::new(estop), Box::new(faults)])
+    // The RC receiver's channels (rc_pad). The bench ignores them unless rc:=true fitted one.
+    let rc = {
+        let bench = Arc::clone(bench);
+        node.create_subscription::<UInt16MultiArray, _>(
+            "/vehicle/bench/rc_channels",
+            move |m: UInt16MultiArray| {
+                bench
+                    .lock()
+                    .expect(POISONED)
+                    .rc_channels(&channels_of(&m.data));
+            },
+        )?
+    };
+    Ok(vec![
+        Box::new(frames_in),
+        Box::new(estop),
+        Box::new(faults),
+        Box::new(rc),
+    ])
+}
+
+/// A message's channels as an iBUS frame's: a missing channel is 0, which no stick sends,
+/// so the board's checks read it as a bad stick, as a broken frame would be.
+fn channels_of(data: &[u16]) -> Channels {
+    let mut ch = Channels([0; CHANNELS]);
+    for (c, &v) in ch.0.iter_mut().zip(data) {
+        *c = v;
+    }
+    ch
 }
 
 /// What Ravensim's car measured, from sim_adapter.

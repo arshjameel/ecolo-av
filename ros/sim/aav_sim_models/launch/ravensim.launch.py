@@ -5,7 +5,7 @@ Ravensim as the car: the world, the car, its sensors, the adapter and the camera
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true]
       [radar:=true] [cameras:=true] [chase_camera:=true] [camera_lockstep:=auto]
       [actuator_model:=true] [actuators:=] [payload:=0] [adaptive_brake:=false]
-      [faults:=false] [spine:=false] [arm:=true]
+      [faults:=false] [spine:=false] [arm:=true] [rc_pad:=false] [rc_pad_mode:=high]
       [esp32:=false] [esp32_loop:=pi] [bridge:=rust|python] [legacy_impl:=rust|python]
 
 Ravensim is our own simulator (aav_simulator, Rust; docs/own-simulator.md). It reads the
@@ -40,6 +40,13 @@ on the simulated clock:
   spine_sim ──> /vehicle/sim/spine_outputs ──> sim_adapter (the actuator model) ──> Ravensim
   sim_adapter ──> /vehicle/sim/wheels, /vehicle/sim/steering ──> spine_sim
   spine_sim ──> /can/rx ──> spine_bridge ──> /vehicle/odom, status, steering, wheels...
+
+rc_pad:=true (with spine:=true) fits the spine an RC receiver, as on the ESP32, and a
+PS4 gamepad plays the FS-i6X (aav_spine_sim's rc_pad, 23 Nov): joy's game_controller_node
+reads it, rc_pad turns it into the receiver's channels on /vehicle/bench/rc_channels, and
+spine_sim decodes them as the board does, so the firmware's RC rules drive Ravensim's car.
+rc_pad_mode:= is where its mode switch starts: high (manual, RC direct) or low (normal: the
+right stick up hands the car to the computer, which the 12 s arm_when_open has armed).
 
 esp32:=true puts today's car in the loop instead: the car's own legacy_uart_bridge takes
 ego's commands, and sim_esp32 stands in for the 2025-26 C++ ESP32 firmware (its
@@ -120,8 +127,23 @@ def spine_in_the_loop(context, v, sim_time):
                           'speed_loop': LaunchConfiguration('speed_loop').perform(context),
                           'track': float(v['track']),
                           'wheel_radius': float(v['wheel_diameter']) / 2,
-                          'max_steering': float(v['max_steering_angle'])}, sim_time]),
+                          'max_steering': float(v['max_steering_angle']),
+                          'rc': flag(context, 'rc_pad')}, sim_time]),
     ]
+    if flag(context, 'rc_pad'):
+        # A gamepad as the FS-i6X and its receiver. rc_pad times the gamepad on this
+        # computer's clock (a receiver doesn't wait for the simulated one); spine_sim times
+        # the receiver's silence on the simulated clock, as the board does on its own.
+        actions += [
+            Node(package='joy', executable='game_controller_node', name='rc_pad_joy',
+                 remappings=[('joy', '/drivers/rc_pad/joy'),
+                             ('joy/set_feedback', '/drivers/rc_pad/joy/set_feedback')],
+                 parameters=[sim_time]),
+            Node(package='aav_spine_sim', executable='rc_pad', name='rc_pad',
+                 namespace='/', output='screen',
+                 parameters=[{'mode_start': LaunchConfiguration('rc_pad_mode')
+                              .perform(context)}, sim_time]),
+        ]
     if flag(context, 'arm'):
         # Once the safety gate is OPEN: spine_bridge refuses before. On a steady clock,
         # not the simulated one.
@@ -259,6 +281,10 @@ def launch_setup(context):
     esp32 = flag(context, 'esp32')
     if spine and esp32:
         raise ValueError('spine:=true and esp32:=true are two backends: pick one')
+    if flag(context, 'rc_pad') and not spine:
+        raise ValueError('rc_pad:=true is an RC receiver on the spine: add spine:=true')
+    if LaunchConfiguration('rc_pad_mode').perform(context) not in ('high', 'low'):
+        raise ValueError('rc_pad_mode:= is high (manual) or low (normal)')
     if (spine or esp32) and not flag(context, 'actuator_model'):
         raise ValueError('spine:=true and esp32:=true drive the actuator model: '
                          'leave actuator_model:=true')
@@ -397,6 +423,12 @@ def generate_launch_description():
                                           "(aav_spine_bridge's, or aav_spine's)"),
         DeclareLaunchArgument('arm', default_value='true',
                               description='with spine:=true: arm the spine after 12 s'),
+        DeclareLaunchArgument('rc_pad', default_value='false',
+                              description='with spine:=true: an RC receiver on the spine, '
+                                          'and a PS4 gamepad as the FS-i6X (rc_pad)'),
+        DeclareLaunchArgument('rc_pad_mode', default_value='high',
+                              description="with rc_pad:=true: the mode switch's start, "
+                                          'high (manual) or low (normal)'),
         DeclareLaunchArgument('legacy_impl', default_value=vehicle.DEFAULT_LEGACY_IMPL,
                               description='with esp32:=true: legacy_uart_bridge in rust '
                                           '(aav_legacy_rs) or python (aav_legacy)'),
