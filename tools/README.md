@@ -46,6 +46,7 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `drop_in_check.py`, `drop_in.py` | is what's running a true drop-in: each stream's rate and frame against the contract's `drop_in` rules (`drop_in.py`: the logic, no ROS) | `drop-in` |
 | `layout_check.py` | is every topic in `foxglove/` served by a bridge? | - |
 | `ci_annotate.py` | a failed test log into GitHub annotations | (CI) |
+| `ci_docs_only.py` | does a pull request change the docs only (Markdown, `docs/html/`, `docs/img/`)? Then CI skips the build and the tests | (CI) |
 
 ### Docs
 
