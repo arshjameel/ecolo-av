@@ -630,30 +630,37 @@ The flash overwrites the C++: only with 6a's file checked (4194304 bytes).
 
 ### The RC transmitter {#the-rc-transmitter}
 
-Before 6c, on the FS-i6X (Arsh, 21 Nov; [the rules](firmware.md#the-rc-transmitter-arsh-21-nov)).
+Before 6c, on the FS-i6X (Arsh and Ben, 21 Nov; [the rules](firmware.md#the-rc-transmitter-arsh-21-nov)).
 The Rust reads it differently from the C++:
 
 ```text
-left stick:  pushed away ◄── forward ──┤ the middle ±30 %: BRAKE ├── reverse ──► pulled back
-             (it doesn't spring back: put it in the middle to brake)
-CH6:         low = normal (computer; the RC can take over) · high = manual
+right stick: down past 88 % = HARD BRAKE while held, the RC takes the car (it springs back)
+             up past 88 %, steering centred, 0.5 s = give the car to the computer
+left stick:  pushed away ◄── forward ──┤ the middle ±30 %: throttle off ├── reverse ──► pulled back
+             (it doesn't spring back; past 88 % the other way while moving: the hard brake too)
+CH6:         low = normal (the computer, once given) · high = manual
              (the team's FS-i6X has two positions: RC via ROS, the middle, can't be picked)
 SwC (CH5):   does nothing. The left stick sideways: nothing
 ```
 
+**To stop and stay stopped, use the right stick.** The left stick held all the way back
+brakes, then reverses once the car has stopped.
+
 | # | Do | You should see | If not |
 |---|---|---|---|
-| T1 | Write down the old values first (21 Nov: CH3 55%, CH4 0%, the rest Off), for 6d. Then **System setup → RX setup → Fail safe**: CH6 saved at **-100%** with the switch low, CH3 **0%**, CH4 0%, the rest Off. **Only then** Functions setup → End points → CH6, low side **80%** | Fail safe shows CH6 -100%, CH3 0%, CH4 0% | **don't drive**: the spine can't tell a lost link otherwise. The order matters: the failsafe saves the switch's output as it is |
+| T1 | Write down the old values first (21 Nov: CH3 55%, CH4 0%, the rest Off), for 6d. Then **System setup → RX setup → Fail safe**, the car on (the receiver stores it). Each channel: pick it, OK, UP or DOWN to turn it on, put the stick or switch where it should be, and **hold CANCEL** (a short press doesn't save). CH6 with the switch low (**-100%**); CH3 with the left stick in the middle (**0%**); CH4 0%; CH2 with the right stick **held fully down** (about **+97%**); the rest Off. **Only then** Functions setup → End points → CH6, low side **80%**, hold CANCEL | Fail safe shows CH6 -100%, CH3 0%, CH4 0%, CH2 about +97% | **don't drive**: the spine can't tell a lost link otherwise. The order matters: the failsafe saves the switch's output as it is. CH2 never up: that is the give |
 | T2 | Its display or the ESP32's `STATUS` line (`ch=`): CH6 at each position | about 1100 low, 2000 high | low under 1050 reads as a lost RC: End points CH6 isn't 80% |
 | T3 | The left stick pushed away, then pulled back | CH3 near **1000** pushed away, near 2000 pulled back | the other way round: `throttle_reversed: true` in `ibus::RcMap` (Q7), rebuild |
+| T3a | The right stick up, then down, then let go | CH2 under 1060 up, over 1940 down, 1500 let go | not past 88 %: the stop and the give can't work |
 | T4 | The transmitter off | CH6 reads 1000 for a moment, then `faults` has 256 | the failsafe isn't set, or End points moved it: back to T1 |
-| T5 | The ESP32's `CONFIG` line | `rc_band=0.30 rc_brake_ms=1000 rc_lost_below=1050 rc_fitted=true` | the wrong build |
+| T5 | The ESP32's `CONFIG` line, and its `Ready` line at boot | `rc_band=0.30 rc_brake_ms=1000 rc_lost_below=1050 rc_fitted=true`; `Ready` ends `CH2 stop and give: past 88%` | the wrong build (no CH2: the 21 Nov one) |
 
 Write the values here, so the next person can check them: CH6 low ____, high ____,
 failsafe ____. CH3 pushed away ____, pulled back ____.
 
 **The transmitter must be on for every session with the Rust**, CH6 low and the left stick
-in the middle: in normal mode a lost RC is a hard stop, so without it nothing drives.
+in the middle: in normal mode a lost RC is a hard stop, so without it nothing drives. The
+RC has the car at power-up: the right stick up for half a second gives it to the computer.
 
 ### 6c. The checks, wheels off the ground
 
@@ -662,7 +669,7 @@ fails, and roll back.** Drive from the laptop: `export ROS_DOMAIN_ID=42`, `pixi 
 
 | # | Do | Expect |
 |---|---|---|
-| 1 | Power on, the transmitter on, CH6 low, the left stick in the middle | brake full (3500), steering centred (1950), DAC 0 V; `faults=0x0000` (`mode=Rc` for its first second, then `Manual`) |
+| 1 | Power on, the transmitter on, CH6 low, the left stick in the middle | brake full (3500), steering centred (1950), DAC 0 V; `faults=0x0000`, `mode=Rc`. Then the right stick up, steering centred, for half a second: `mode=Manual` (the computer has the car, not armed yet) |
 | 2 | Unplug a Jrk's I2C, plug it back | red LED; fault 8 (steering) or 16 (brake) while out |
 | 3 | The bridge running, ego stale | stop frames: brake stays full; `frames=` rising, `bad=0` |
 | 4 | Drive slowly from the keyboard | `mode=Computer`, green LED, brake lets go, the wheels turn **forward** |
@@ -674,12 +681,15 @@ fails, and roll back.** Drive from the laptop: `export ROS_DOMAIN_ID=42`, `pixi 
 | 9a | While driving, unplug the Orin's network cable, **the Motor Pi's bridge still running** | within 0.2 s: brake full, `faults` has 1; `frames=` still rising, `repeats=` rising. **The heartbeat (TODO 50)** |
 | 9b | Plug the Orin back in | braked until ego stands still, then it drives |
 | 9c | `pixi run estop` while driving | `estop=true` at once, brake full |
-| 10 | CH6 high (manual), the left stick in the middle, then pushed a little | `mode=Rc`, blue LED; ROS ignored. Pushed before the middle: nothing moves |
-| 10a | The stick back to the middle, at once pulled back | brake full for 1 s from the middle, then reverse |
+| 10 | CH6 high (manual), the left stick in the middle for a second, then pushed a little | `mode=Rc`, blue LED; ROS ignored; the wheels turn forward. Pushed before the middle: nothing moves |
+| 10a | The left stick to the middle | throttle 0, brake released (the motor slows the wheels) |
+| 10b | The left stick all the way back, held | brake full; with no speed on the ESP32, reverse after 1 s |
+| 10c | The right stick down, then let go, the left stick still pushed | brake full at once; still braked after letting go, until the left stick moves |
 | 11 | RC: transmitter off | within 0.1 s: brake full, `faults` has 256 |
-| 12 | CH6 low (normal), stick in the middle; drive slowly from the keyboard | braked for a second, then the computer drives |
-| 12a | While the computer drives, push the left stick | the RC takes over: brake full 1 s, then the stick drives |
-| 12b | The stick to the middle, the keyboard still driving | brake full 1 s, then the computer drives again |
+| 12 | CH6 low (normal), the right stick up for half a second; drive slowly from the keyboard | the computer drives |
+| 12a | While the computer drives, push the left stick | nothing changes: the computer still drives |
+| 12b | The right stick down | brake full at once, `mode=Rc`; let go: still braked until the left stick moves |
+| 12c | The right stick up for half a second, the keyboard still driving | the computer drives again |
 | 13 | The red e-stop button | the car stops by itself |
 | 14 | 10 min of 1-13 mixed | no unexpected reset (`the last reset:` stays the power-on one) |
 
@@ -692,7 +702,7 @@ Any time something is wrong: e-stop, Ctrl-C the bridge, then:
 | 1 | `vendor/cargo-tools/bin/espflash write-bin 0 car-day/esp32/backup-esp32-<date>.bin` | the board as it was: `=== ESP32: AAV Controller ===` in its log |
 | 2 | On the Motor Pi: `frame_version: 1` back, `~/aav-jazzy/aav.sh build` | the C++ reads only the 13-byte frame |
 | 3 | `sudo systemctl start aav_serial_bridge` (theirs), if that's the plan for the rest of the day | |
-| 4 | The transmitter as the C++ had it: End points CH6 low side back to 100%, and Fail safe back to the values T1 wrote down (21 Nov: CH3 55%, CH4 0%, the rest Off) | CH6 low reads about 1000 again |
+| 4 | The transmitter as the C++ had it: End points CH6 low side back to 100%, and Fail safe back to the values T1 wrote down (21 Nov: CH3 55%, CH4 0%, the rest Off, CH2 Off too) | CH6 low reads about 1000 again |
 
 Or the C++ from source: `pixi run -e firmware legacy-esp32 -t upload` (`src/secrets.h` holds
 its WiFi; with the placeholders it can't join the WiFi). The Rust with 13-byte frames:

@@ -1,4 +1,4 @@
-//! From channels to `spine_core::RcInput`: the mode switch, throttle and steering.
+//! From channels to `spine_core::RcInput`: the mode switch, the two sticks and steering.
 //!
 //! The channel numbers are the 2025-26 firmware's (`main.cpp` `loop()`, `rc_handler.cpp`
 //! `handleRCMode()`). It counted channels from 0, as its iBUS library does, so
@@ -7,30 +7,38 @@
 //! | Index | On the transmitter | Use |
 //! |---|---|---|
 //! | 5 | CH6 | mode switch: normal, RC via ROS, manual (RC direct) |
-//! | 2 | CH3 | the left stick, up and down: brake band, forward, reverse |
-//! | 3 | CH4 | steering stick |
+//! | 2 | CH3 | the left stick, up and down: forward, the middle, reverse |
+//! | 3 | CH4 | the right stick, sideways: steering |
+//! | 1 | CH2 | the right stick, up and down: the stop, and giving the car back |
 //! | 4 | CH5 | (SwC) not read: its wiring is loose (Arsh, 21 Nov) |
 //!
-//! **The left stick (Arsh, 21 Nov).** The FS-i6X's left stick does not spring back to
-//! the middle, so where it rests is a choice the driver made:
+//! **The left stick (Arsh and Ben, 21 Nov).** The FS-i6X's left stick does not spring back
+//! to the middle, so where it rests is a choice the driver made:
 //!
 //! ```text
 //!   1000 ◄───────────────────── 1500 ─────────────────────► 2000   (µs, CH3)
-//!   forward, full    forward    brake band (±30 %)   reverse    reverse, full
-//!   throttle 1.0 ◄── 0.0 at the band's edge   0.0 at the band's edge ──► -1.0
+//!   forward    │ full │  forward   middle (±30 %)   reverse  │ full │   reverse
+//!              past 88 %                                       past 88 %
 //! ```
 //!
-//! Inside the band [`RcInput::brake`] is true and the throttle is 0. Outside it the
-//! throttle is rescaled, so it starts from 0 at the band's edge and reaches ±1 at the
-//! stick's end: no jump in speed. Which end is forward follows the C++ (it counted the
-//! throttle below 1500); [`RcMap::throttle_reversed`] swaps them. TODO(Q7): check on
-//! the transmitter.
+//! [`RcInput::middle`] is the middle zone: throttle off. [`RcInput::full`] is past 88 %:
+//! with the car still going the other way, the hard brake. [`RcInput::throttle`] is still
+//! rescaled from 0 at the middle's edge to ±1 at the stick's end, for the uplink; the
+//! spine only reads its sign. Which end is forward follows the C++ (it counted the throttle
+//! below 1500); [`RcMap::throttle_reversed`] swaps them. TODO(Q7): check on the
+//! transmitter.
+//!
+//! **The right stick (CH2) springs back.** Pulled down past 88 % (towards 2000) is
+//! [`RightStick::Stop`]; pushed up past 88 % with the steering (CH4) within 15 % of its
+//! middle is [`RightStick::Give`]. The FS-i6X's CH2 reaches -100 % up and +97 % down
+//! (Arsh, 21 Nov), so 88 % leaves room both ways.
 //!
 //! **The failsafe (Arsh, 21 Nov).** The transmitter's failsafe sets CH6 to 1000 µs, below
 //! anything the switch sends: the FS-i6X can't go past -100%, so the switch's low position
 //! is moved up to 1100 instead (End points CH6, low side 80%). A CH6 under
-//! [`RcMap::lost_below`] (1050) means the radio link is gone, the same as a silent receiver: [`RcMap::rc_input`] gives `None`, and
-//! `spine-core` makes a hard stop (`RC_SIGNAL_LOST`). The car day check is in
+//! [`RcMap::lost_below`] (1050) means the radio link is gone, the same as a silent
+//! receiver: [`RcMap::rc_input`] gives `None`, and `spine-core` makes a hard stop
+//! (`RC_SIGNAL_LOST`). CH2's failsafe is its stop end. The car day check is in
 //! `docs/car-day.md`, "The RC transmitter".
 //!
 //! **The mode switch's three positions (TODO 48).** [`RcMap::TODAY`] reads CH6 as the C++
@@ -47,17 +55,19 @@
 //! A two-position switch on CH6 never reads the middle, so it works the same with both.
 
 use crate::frame::Channels;
-use spine_core::{RcInput, RcSwitch};
+use spine_core::{RcInput, RcSwitch, RightStick};
 
 /// Which channel does what, and where the switches change over.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RcMap {
     /// Channel indexes, from 0 (index 0 is CH1).
     pub mode_switch: usize,
-    /// The left stick's up and down channel: brake band, forward, reverse.
+    /// The left stick's up and down channel: forward, the middle, reverse.
     pub throttle: usize,
-    /// The steering stick's channel.
+    /// The steering stick's channel (the right stick, sideways).
     pub steering: usize,
+    /// The right stick's up and down channel: the stop (down) and giving the car back (up).
+    pub stop_stick: usize,
     /// A channel is usable only strictly between these (the C++: 100 and 2200).
     pub valid_above: u16,
     /// The top of the usable range (µs).
@@ -75,9 +85,15 @@ pub struct RcMap {
     pub centre: u16,
     /// How far a stick travels from its middle to either end (µs).
     pub half_travel: u16,
-    /// The brake band: the left stick this close to its middle, as a share of its
-    /// travel each way, is a brake (0..1).
+    /// The middle zone: the left stick this close to its middle, as a share of its
+    /// travel each way, is throttle off (0..1).
     pub brake_band: f32,
+    /// A stick past this share of its travel is at its end (0..1): the left stick's hard
+    /// brake, the right stick's stop and give.
+    pub full: f32,
+    /// The steering this close to its middle, as a share of its travel, is centred (0..1):
+    /// the right stick can give the car back only then.
+    pub centred: f32,
     /// False: the left stick below its middle (towards 1000) is forward, as the C++ read
     /// it. True: above its middle is forward.
     pub throttle_reversed: bool,
@@ -100,6 +116,7 @@ impl RcMap {
         mode_switch: 5,
         throttle: 2,
         steering: 3,
+        stop_stick: 1,
         valid_above: 100,
         valid_below: 2200,
         lost_below: 1050,
@@ -108,6 +125,8 @@ impl RcMap {
         centre: 1500,
         half_travel: 500,
         brake_band: 0.30,
+        full: 0.88,
+        centred: 0.15,
         throttle_reversed: false,
         steer_right_gain: 1.0,
     };
@@ -136,10 +155,10 @@ impl RcMap {
     /// range, or on the transmitter's failsafe (under `lost_below`).
     ///
     /// - Every position: the switch, and the sticks: throttle and steering, each -1 to
-    ///   1, and whether the left stick is in the brake band. In normal and manual the
-    ///   spine drives from them; via ROS the board sends them up.
-    /// - A stick out of range: the brake band and straight wheels. The C++ did a safe
-    ///   stop here (`jrkSafeStop()`).
+    ///   1, whether the left stick is in its middle or at its end, and the right stick. In
+    ///   normal and manual the spine drives from them; via ROS the board sends them up.
+    /// - A stick out of range: the right stick's stop and straight wheels. The C++ did a
+    ///   safe stop here (`jrkSafeStop()`).
     #[must_use]
     pub fn rc_input(&self, ch: &Channels) -> Option<RcInput> {
         let usable = |index: usize| {
@@ -151,21 +170,25 @@ impl RcMap {
             return None;
         }
         let switch = self.switch(mode);
-        let (Some(throttle), Some(steering)) = (usable(self.throttle), usable(self.steering))
-        else {
+        let (Some(throttle), Some(steering), Some(stop_stick)) = (
+            usable(self.throttle),
+            usable(self.steering),
+            usable(self.stop_stick),
+        ) else {
             return Some(RcInput {
                 switch,
-                throttle: 0.0,
-                steering: 0.0,
-                brake: true,
+                right: RightStick::Stop,
+                ..RcInput::default()
             });
         };
-        let (throttle, brake) = self.left_stick(throttle);
+        let (throttle, middle, full) = self.left_stick(throttle);
         Some(RcInput {
             switch,
             throttle,
             steering: self.steering(steering),
-            brake,
+            middle,
+            full,
+            right: self.right_stick(stop_stick, steering),
         })
     }
 
@@ -185,19 +208,45 @@ impl RcMap {
         (f32::from(self.centre) - f32::from(value)) / f32::from(self.half_travel)
     }
 
-    /// The left stick: the throttle (-1..1, positive forward) and whether it is in the
-    /// brake band. Outside the band the throttle runs from 0 at its edge to 1 at the end.
-    fn left_stick(&self, value: u16) -> (f32, bool) {
+    /// The left stick: the throttle (-1..1, positive forward), whether it is in its
+    /// middle, and whether it is at its end. Outside the middle the throttle runs from 0 at
+    /// its edge to 1 at the end.
+    fn left_stick(&self, value: u16) -> (f32, bool, bool) {
         let push = self.below_centre(value).clamp(-1.0, 1.0);
         let push = if self.throttle_reversed { -push } else { push };
         let band = self.brake_band.clamp(0.0, 0.99);
-        // No `f32::abs` in `no_std` on every toolchain: by hand.
-        let size = if push < 0.0 { -push } else { push };
+        let size = size(push);
         if size <= band {
-            return (0.0, true);
+            return (0.0, true, false);
         }
         let throttle = ((size - band) / (1.0 - band)).clamp(0.0, 1.0);
-        (if push < 0.0 { -throttle } else { throttle }, false)
+        (
+            if push < 0.0 { -throttle } else { throttle },
+            false,
+            size >= self.full,
+        )
+    }
+
+    /// The right stick, up and down: down (towards 2000) past `full` is the stop; up past
+    /// it, with the steering within `centred` of its middle, gives the car back.
+    fn right_stick(&self, value: u16, steering: u16) -> RightStick {
+        let up = self.below_centre(value);
+        if -up >= self.full {
+            RightStick::Stop
+        } else if up >= self.full && size(self.below_centre(steering)) <= self.centred {
+            RightStick::Give
+        } else {
+            RightStick::Centre
+        }
+    }
+}
+
+/// How far from the middle, either way. No `f32::abs` in `no_std` on every toolchain.
+fn size(push: f32) -> f32 {
+    if push < 0.0 {
+        -push
+    } else {
+        push
     }
 }
 
@@ -287,16 +336,16 @@ mod tests {
     }
 
     #[test]
-    fn the_middle_thirty_percent_is_the_brake_band() {
+    fn the_middle_thirty_percent_is_throttle_off() {
         for us in [1350, 1400, 1500, 1600, 1650] {
             let r = rc(ch(MANUAL, us, 1500)).unwrap();
-            assert_eq!((r.throttle, r.brake), (0.0, true), "{us}");
+            assert_eq!((r.throttle, r.middle), (0.0, true), "{us}");
         }
         // Just past either edge: out of the band, barely moving.
         let fwd = rc(ch(MANUAL, 1349, 1500)).unwrap();
-        assert!(!fwd.brake && fwd.throttle > 0.0 && fwd.throttle < 0.01);
+        assert!(!fwd.middle && fwd.throttle > 0.0 && fwd.throttle < 0.01);
         let rev = rc(ch(MANUAL, 1651, 1500)).unwrap();
-        assert!(!rev.brake && rev.throttle < 0.0 && rev.throttle > -0.01);
+        assert!(!rev.middle && rev.throttle < 0.0 && rev.throttle > -0.01);
     }
 
     #[test]
@@ -319,7 +368,7 @@ mod tests {
         };
         assert_eq!(m.rc_input(&ch(MANUAL, 1000, 1500)).unwrap().throttle, -1.0);
         assert_eq!(m.rc_input(&ch(MANUAL, 2000, 1500)).unwrap().throttle, 1.0);
-        assert!(m.rc_input(&ch(MANUAL, 1500, 1500)).unwrap().brake);
+        assert!(m.rc_input(&ch(MANUAL, 1500, 1500)).unwrap().middle);
     }
 
     #[test]
@@ -345,19 +394,66 @@ mod tests {
             let mut c = ch(MANUAL, 1175, 1500);
             c.0[4] = gear;
             let r = rc(c).unwrap();
-            assert!(close(r.throttle, 0.5) && !r.brake, "{gear}");
+            assert!(close(r.throttle, 0.5) && !r.middle, "{gear}");
         }
     }
 
     #[test]
-    fn a_bad_stick_is_the_brake_band() {
+    fn a_bad_stick_is_the_stop() {
         for bad in [0, 100, 2200, 3000] {
-            for c in [ch(MANUAL, bad, 1500), ch(MANUAL, 1000, bad)] {
+            let mut right = ch(MANUAL, 1000, 1500);
+            right.0[1] = bad;
+            for c in [ch(MANUAL, bad, 1500), ch(MANUAL, 1000, bad), right] {
                 let r = rc(c).unwrap();
                 assert_eq!(r.switch, RcSwitch::Direct, "{bad}");
-                assert_eq!((r.throttle, r.steering, r.brake), (0.0, 0.0, true), "{bad}");
+                assert_eq!(
+                    (r.throttle, r.steering, r.middle),
+                    (0.0, 0.0, true),
+                    "{bad}"
+                );
+                assert_eq!(r.right, RightStick::Stop, "{bad}");
             }
         }
+    }
+
+    /// Channels with the right stick's up and down (CH2) at `right`, steering at `steering`.
+    fn right(right: u16, steering: u16) -> RightStick {
+        let mut c = ch(NORMAL, 1500, steering);
+        c.0[1] = right;
+        rc(c).unwrap().right
+    }
+
+    #[test]
+    fn the_right_stick_down_past_88_percent_is_the_stop() {
+        // Down is towards 2000; the FS-i6X reaches +97 % (1985).
+        assert_eq!(right(1939, 1500), RightStick::Centre);
+        assert_eq!(right(1940, 1500), RightStick::Stop);
+        assert_eq!(right(1985, 1500), RightStick::Stop);
+        // Steered hard at the same time: still the stop.
+        assert_eq!(right(1985, 2000), RightStick::Stop);
+        assert_eq!(right(1500, 1500), RightStick::Centre);
+    }
+
+    #[test]
+    fn the_right_stick_up_past_88_percent_gives_only_with_the_steering_centred() {
+        assert_eq!(right(1061, 1500), RightStick::Centre);
+        assert_eq!(right(1060, 1500), RightStick::Give);
+        assert_eq!(right(1000, 1500), RightStick::Give);
+        // Steering within 15 % (75 µs) of its middle.
+        assert_eq!(right(1000, 1425), RightStick::Give);
+        assert_eq!(right(1000, 1575), RightStick::Give);
+        assert_eq!(right(1000, 1424), RightStick::Centre);
+        assert_eq!(right(1000, 1576), RightStick::Centre);
+    }
+
+    #[test]
+    fn the_left_stick_past_88_percent_is_its_end() {
+        let at = |us| rc(ch(MANUAL, us, 1500)).unwrap();
+        assert!(!at(1061).full && at(1060).full && at(1000).full);
+        assert!(!at(1939).full && at(1940).full && at(1985).full);
+        assert!(!at(1500).full);
+        // Both ends still drive the same way as just inside them.
+        assert!(at(1060).throttle > 0.0 && at(1940).throttle < 0.0);
     }
 
     #[test]

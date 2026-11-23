@@ -21,7 +21,7 @@ is tested on a laptop, without a board. The board programs are in `boards/`:
 
 | Crate | What it is | Tests |
 |---|---|---|
-| [`spine-core`](./crates/spine-core/README.md) | the spine's logic: modes, arming, the 100 ms watchdog, the speed loop (closed, or open with no wheel speed), the encoder, the CAN frames, open-loop commands, the state machine and the hardware test mode (`fsm`), normal mode's RC arbiter (`RcOwner`), and the two choices still open (below) | 142 |
+| [`spine-core`](./crates/spine-core/README.md) | the spine's logic: modes, arming, the 100 ms watchdog, the speed loop (closed, or open with no wheel speed), the encoder, the CAN frames, open-loop commands, the state machine and the hardware test mode (`fsm`), normal mode's RC owner (`RcOwner`) and the RC's hold after a stop (`RcHold`), and the two choices still open (below) | 142 |
 | [`adaptive-brake`](./crates/adaptive-brake/README.md) (19 Nov) | the adaptive brake (TODO 258): harder when the car slows less than the model says, never above the brake's safe max; `aav_description`'s `adaptive_brake.py` in Rust, for `legacy_uart_bridge`'s pi loop. Uses `libm` | 6 |
 | [`wheel-core`](./crates/wheel-core/README.md) | the front wheel nodes' logic: Hall sensor pulses to speed, and the WHEEL_SPEED frame | 9 |
 | [`legacy-link`](./crates/legacy-link/README.md) | the 2025-26 UART link: the Motor-Pi's 13-byte frames, and the targets the C++ set for them; versions 2 and 3 (the heartbeat; the steering calibration's rules, `SteerCal`) and the uplink | 121 |
@@ -30,7 +30,7 @@ is tested on a laptop, without a board. The board programs are in `boards/`:
 | [`ad5311`](./crates/ad5311/README.md) | the throttle DAC, over I2C | 10 |
 | [`pca9555`](./crates/pca9555/README.md) | the I/O expander (the direction output), over I2C | 6 |
 | [`mcp2515`](./crates/mcp2515/README.md) | the CAN controller a Pico 2 needs, over SPI: bit timing from the crystal, filters, send, receive, error state | 34 |
-| [`ibus`](./crates/ibus/README.md) | the FlySky RC receiver's iBUS frames | 26 |
+| [`ibus`](./crates/ibus/README.md) | the FlySky RC receiver's iBUS frames | 30 |
 | [`spine-board`](./crates/spine-board/README.md) | the glue: spine-core's outputs to the devices, the devices to its inputs, the `Board` trait a board program implements, and the `CommandLink` trait: CAN or the UART; the tick's timing; what a status line needs; an I2C bus scan; the Pi link's verdict and the boot device check | 119 |
 | [`status-lines`](./crates/status-lines/README.md) (7 Nov) | the ESP32's JSON status lines (`firmware/status`): `hb`, `status`, `event`, `health`, `config`, `devices`, into a fixed buffer, byte for byte as `golden.jsonl`; a few bytes a tick to a slow log | 20 |
 | [`app-update`](./crates/app-update/README.md) (7 Nov) | the checks around the ESP32's firmware update over WiFi (`wifi-update`): a streaming check of an ESP32 app image, a CRC-32 for the read-back, whether the car is parked, the update password's guard | 7 |
@@ -61,8 +61,8 @@ proposes. Change one only with the team; the board program and the bench both fo
 | `IDLE_BRAKE` | `0.0`: with nobody driving, after boot too, the brake lets go once the e-stop input clears | kept it full on (`1.0`) |
 
 The RC gear switch's brake (`RC_GEAR_BRAKE`) went on 21 Nov: the gear switch (SwC) is no
-longer read, and the left stick's brake band is a hard stop (`docs/firmware.md`, "The RC
-transmitter").
+longer read, and the right stick pulled down is the RC's hard stop (`docs/firmware.md`,
+"The RC transmitter").
 
 ## Invariants
 
@@ -76,7 +76,8 @@ transmitter").
   stop. The computer must disarm, then arm, to drive again. On the ESP32 (it has a
   receiver) the RC must stay in normal mode too.
 - In normal mode the RC outranks the computer, decided on the board (`spine-core`'s
-  `RcOwner`), so it works with the computer dead.
+  `RcOwner`): the right stick takes the car and gives it back, so it works with the
+  computer dead.
 - One forward limit, 1.0 m/s, for every driver: `MAX_SPEED` and `ego.yaml`'s `max_speed`.
 - Pins, I2C addresses and calibration live here, in the firmware, never in ROS.
 - The CAN frames are `firmware/can/aav.dbc`'s. `spine-core`'s `protocol` and

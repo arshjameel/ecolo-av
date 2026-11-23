@@ -109,7 +109,7 @@ The same as Computer, plus:
 |---|---|
 | RC signal healthy | the Motor Pi, the Orin, any frame |
 | No e-stop, no driver fault | arming |
-| After any stop, after power-up and after CH6 moves: signal back, the left stick in its brake band (21 Nov) | |
+| After any stop, after power-up and after CH6 moves: signal back, a second, and the left stick moved from where it was (22 Nov) | |
 
 | The left stick (SwC is not read since 21 Nov) | Brake |
 |---|---|
@@ -304,9 +304,9 @@ two give the same frames, byte for byte: `legacy-bridge`'s `tests/vectors.rs`.
 | RC lost: 100 ms silent, or the failsafe's CH6 under 1050 at once; on every position with a receiver fitted | `calibration.rs:147`, `ibus/src/rc.rs` (`lost_below`), `spine.rs` (`rc_fitted`) | `a_silent_receiver_stops_rc`; `with_a_receiver_fitted_a_lost_rc_stops_the_computer_too`; `the_failsafe_on_the_mode_switch_is_no_usable_rc`; QEMU 117-119 ms (silence) |
 | RC direct's own latch | `spine.rs:556-563`, `spine.rs:657` | `rc_direct_stays_stopped_after_a_lost_signal_until_a_person_clears_it` |
 | RC direct beats the computer; the computer still latches | `spine.rs:571-575`, `spine.rs:623-624` | `the_computer_stopping_while_rc_direct_drives_still_latches` |
-| The RC's brake band: full at once (21 Nov) | `ibus/src/rc.rs` (`brake_band`), `spine.rs` (`Authority::Rc`) | `rc_in_the_brake_band_stops_hard_with_no_light_stage`; `the_brake_band_is_the_full_brake_at_once` |
+| The RC's right stick stop: full at once (22 Nov) | `ibus/src/rc.rs` (`full`, `RightStick`), `spine.rs` (`Spine::rc`) | `the_right_stick_down_is_the_full_brake_at_once_and_still_steers`; `the_right_stick_down_past_88_percent_is_the_stop` |
 | Forward and reverse change 1 s after the band | `fsm.rs` (`RC_BRAKE_MS`) | `rc_changes_to_reverse_only_a_second_after_entering_the_band` |
-| Normal mode: the RC outranks the computer | `fsm.rs` (`RcOwner`) | `the_rc_takes_over_from_the_computer_after_a_second_braked`; `a_stick_that_lost_the_race_must_come_back_to_the_band` |
+| Normal mode: the RC outranks the computer, the right stick takes and gives (22 Nov) | `fsm.rs` (`RcOwner`, `RcHold`) | `the_right_stick_down_takes_the_car_from_the_computer_at_once`; `the_left_stick_alone_never_takes_the_car_from_the_computer`; `at_power_up_the_rc_has_the_car_until_the_right_stick_gives_it` |
 | Wheel speed rules off until a speed comes | `spine.rs:433-455` | `a_link_that_never_sends_a_speed_leaves_the_rules_off` |
 | Overspeed: 1.25 m/s, 0.5 brake, 2 s | `spine.rs:189-190`, `fsm.rs:181`, `spine.rs:540-555` | `overspeed_cuts_the_throttle_and_brakes_until_under_the_limit_then_drives_on`; `an_overspeed_that_holds_steady_for_two_seconds_is_a_hard_stop_and_latches` |
 | Driver fault stops; latches the computer | `spine.rs:532-535` | `driver_fault_stops_and_needs_rearm`; `driver_fault_stops_rc_too` |

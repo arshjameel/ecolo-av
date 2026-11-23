@@ -7,7 +7,7 @@
 <!-- Generated from docs/firmware.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Firmware: the spine and its CAN contract</h1>
-<div class="meta">20 min read · 10 sections</div></header>
+<div class="meta">21 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -438,7 +438,7 @@ and the glue between them and <code>spine-core</code>, are written too (10 Octob
 <tr>
 <td><code>ibus</code></td>
 <td>the FlySky RC receiver</td>
-<td>26</td>
+<td>30</td>
 </tr>
 <tr>
 <td><code>mcp2515</code></td>
@@ -631,7 +631,7 @@ reviewed these yet.</strong></p>
 </thead>
 <tbody>
 <tr>
-<td>E-stop, driver fault, the RC's left stick in its brake band</td>
+<td>E-stop, driver fault, the RC's right stick pulled down</td>
 <td>hard stop</td>
 </tr>
 <tr>
@@ -651,10 +651,14 @@ reviewed these yet.</strong></p>
 <p>The table in full: <a href="../../firmware/spine/crates/spine-core/README.md"><code>spine-core</code></a>.</p>
 <h3 id="the-rc-transmitter-arsh-21-nov">The RC transmitter (Arsh, 21 Nov)</h3>
 <p>The FS-i6X's left stick doesn't spring back to the middle, and its SwC switch (CH5) has
-loose wiring. So the left stick alone says brake, forward or reverse, and the ESP32 decides
-between the RC and the computer itself, so it still works with the Motor Pi or the Orin dead.</p>
-<pre class="highlight"><code class="language-text">left stick (CH3):  1000 ◄── forward ──┤ brake band, ±30 % ├── reverse ──► 2000
-                   full throttle    0 at the edge     0 at the edge    full reverse</code></pre>
+loose wiring. The ESP32 decides between the RC and the computer itself, so it still works
+with the Motor Pi or the Orin dead. Since 22 Nov (Arsh and Ben,
+<a href="../designs/2026-11-22_rc-right-stick.md">the design</a>) the right stick's up and down (CH2,
+which springs back) hands the car over, and the left stick is one pedal:</p>
+<pre class="highlight"><code class="language-text">right stick (CH2):  up past 88 % ── give to the computer (steering centred, 0.5 s)
+                    down past 88 % ── hard brake while held; the RC takes the car
+left stick (CH3):   1000 ◄── forward ──┤ middle ±30 %: throttle off ├── reverse ──► 2000
+                    past 88 % the other way, the car still moving: the hard brake too</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -665,15 +669,15 @@ between the RC and the computer itself, so it still works with the Motor Pi or t
 <tbody>
 <tr>
 <td>Low: <strong>normal</strong></td>
-<td>the computer, but the RC outranks it (below). The RC must stay: losing it is a hard stop</td>
+<td>the computer once the right stick has given it the car; the RC takes it back with the right stick down. The RC must stay: losing it is a hard stop</td>
 </tr>
 <tr>
 <td>Middle: RC via ROS</td>
-<td>the computer, from the sticks sent up to ROS (unchanged). The team's FS-i6X has a two-position switch, so it can't pick this</td>
+<td>the computer, from the sticks sent up to ROS. The right stick down still brakes. The team's FS-i6X has a two-position switch, so it can't pick this</td>
 </tr>
 <tr>
 <td>High: <strong>manual</strong> (RC direct)</td>
-<td>the RC only; the computer's commands count for nothing</td>
+<td>the RC only; the computer's commands count for nothing. The right stick up does nothing</td>
 </tr>
 <tr>
 <td>Under 1050: the transmitter's failsafe (1000)</td>
@@ -690,32 +694,36 @@ between the RC and the computer itself, so it still works with the Motor Pi or t
 </thead>
 <tbody>
 <tr>
-<td>The stick in its band</td>
-<td>full brake at once, no light stage (T3.6's 0.33 for 1 s is gone)</td>
+<td>The left stick up or back</td>
+<td>drive that way at a fixed speed (1.0 m/s, 0.5 back), ramped at 0.5 m/s² (<code>RC_ACCEL</code>)</td>
 </tr>
 <tr>
-<td>Forward to reverse, or back</td>
-<td>braked until 1 s (<code>RC_BRAKE_MS</code>) after the stick entered the band; the same way again: at once</td>
+<td>The left stick in its middle</td>
+<td>throttle off, no brake: the motor's own braking (regen, assumed)</td>
 </tr>
 <tr>
-<td>After any stop, at power-up, after the mode switch moves</td>
-<td>the RC waits for the stick to visit the band (<code>rc_hold</code>)</td>
+<td>The left stick the other way, the car still moving</td>
+<td>throttle off; past 88 % the hard brake too. The new way once stopped: under 0.05 m/s for 0.5 s, or with no speed (today's ESP32), the hard brake held 1 s</td>
 </tr>
 <tr>
-<td>Normal: the stick leaves the band while the computer drives</td>
-<td>the RC takes over: braked 1 s, then it drives</td>
+<td>The right stick down</td>
+<td>the hard brake while held, the steering stick still steering. In normal mode the RC takes the car</td>
 </tr>
 <tr>
-<td>Normal: the stick into the band</td>
-<td>braked, and a 1 s window: the first to ask has the car when it ends. The stick leaving the band (the RC wins a tie), or the computer asking to move (armed, over 0.05 m/s, or any throttle on the UART)</td>
+<td>Let go of it; after any other stop, at power-up, after the mode switch moves</td>
+<td>braked at least 1 s (<code>RC_BRAKE_MS</code>), until the left stick leaves the zone it was in (<code>RcHold</code>)</td>
 </tr>
 <tr>
-<td>Normal: the computer won with the stick still out</td>
-<td>the stick must come back to the band before it takes over again</td>
+<td>Normal: the right stick up, steering within ±15 %, held 0.5 s (<code>RC_GIVE_MS</code>)</td>
+<td>the computer has the car (it still needs arming)</td>
 </tr>
 <tr>
-<td>Normal: nobody asks</td>
-<td>the RC keeps the car, fully braked; the hardware test mode may start</td>
+<td>Normal: the left stick alone</td>
+<td>never takes the car from the computer</td>
+</tr>
+<tr>
+<td>A stick out of range (CH2, CH3 or CH4)</td>
+<td>the right stick's stop</td>
 </tr>
 <tr>
 <td>The left stick sideways, SwC (CH5)</td>
