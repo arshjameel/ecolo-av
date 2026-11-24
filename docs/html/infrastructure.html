@@ -7,7 +7,7 @@
 <!-- Generated from docs/infrastructure.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Infrastructure: how the project is put together</h1>
-<div class="meta">22 min read · 11 sections</div></header>
+<div class="meta">23 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -737,6 +737,10 @@ Changes reach <code>main</code> only through a pull request from your own fork a
 <p>CI (<code>.github/workflows/test.yml</code>) runs <code>pixi run test</code> on Linux (x86_64 and 64-bit ARM) for every push to <code>main</code>,
 every pull request and every merge-queue entry, and on a Mac every night. The results are
 on the repo's Actions tab. A docs-only pull request runs only the docs' checks (below).</p>
+<p>Inside <code>pixi run test</code>, <code>tools/test.sh</code> leaves the packages' Python tests to <code>colcon test</code>,
+which runs them right after, so each runs once (24 Nov: 2.5 min a run on Linux, 3.5 on ARM).
+<code>tools/tests/test_colcon_runs_the_tests.py</code> checks that colcon has every test file of a CMake
+package. <code>tools/test.sh</code> on its own still runs them all.</p>
 <p><strong>In your fork too.</strong> Turn Actions on once in your fork (its Actions tab, then "I
 understand my workflows, go ahead and enable them"). From then on every push to a branch
 there runs <code>linux</code>, <code>arm</code> and <code>car-kit</code>, so you see green or red before you open the pull
@@ -767,7 +771,7 @@ request. The nightly <code>mac</code> and <code>sim</code> runs stay in the team
 <td><code>mac</code></td>
 <td>macOS 15, Apple Silicon</td>
 <td>every night (team's repo)</td>
-<td><code>pixi run test</code>, the MCP server</td>
+<td><code>pixi run test</code>, the MCP server; the packages' Python tests twice, from their source folders too (<code>AAV_PYTEST_LOOP=1</code>), as <code>tools/test.sh</code> runs them on a laptop</td>
 </tr>
 <tr>
 <td><code>car-kit</code></td>

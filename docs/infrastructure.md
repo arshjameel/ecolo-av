@@ -207,6 +207,11 @@ CI (`.github/workflows/test.yml`) runs `pixi run test` on Linux (x86_64 and 64-b
 every pull request and every merge-queue entry, and on a Mac every night. The results are
 on the repo's Actions tab. A docs-only pull request runs only the docs' checks (below).
 
+Inside `pixi run test`, `tools/test.sh` leaves the packages' Python tests to `colcon test`,
+which runs them right after, so each runs once (24 Nov: 2.5 min a run on Linux, 3.5 on ARM).
+`tools/tests/test_colcon_runs_the_tests.py` checks that colcon has every test file of a CMake
+package. `tools/test.sh` on its own still runs them all.
+
 **In your fork too.** Turn Actions on once in your fork (its Actions tab, then "I
 understand my workflows, go ahead and enable them"). From then on every push to a branch
 there runs `linux`, `arm` and `car-kit`, so you see green or red before you open the pull
@@ -216,7 +221,7 @@ request. The nightly `mac` and `sim` runs stay in the team's repo.
 |---|---|---|---|
 | `linux` | Ubuntu 24.04, x86_64 | every push to `main`, every pull request, the merge queue, a push to a fork's branch | `pixi run test`, the MCP server |
 | `arm` | Ubuntu 24.04, **64-bit ARM**, like the Orin and the Pis | the same | 12 min: `pixi run test`; the HUD and the map window built as ARM programs, and each drawn once on a virtual screen (picture: the artifact `arm-screens`) |
-| `mac` | macOS 15, Apple Silicon | every night (team's repo) | `pixi run test`, the MCP server |
+| `mac` | macOS 15, Apple Silicon | every night (team's repo) | `pixi run test`, the MCP server; the packages' Python tests twice, from their source folders too (`AAV_PYTEST_LOOP=1`), as `tools/test.sh` runs them on a laptop |
 | `car-kit` | Ubuntu 24.04, 64-bit ARM | the same as `linux` | `pixi run car-kit`, then `car_install.sh --all` with **no network** (its own network namespace), as on the car ([car install](car-install.md)): 6 min |
 | `car-kit-22.04` | Ubuntu **22.04**, 64-bit ARM: the car's own OS (JetPack 6) | the same | the same kit, installed offline on the car's Ubuntu. New 26 Oct: still allowed to fail (`continue-on-error`) |
 | `sim` | Ubuntu 24.04, x86_64 | every night (team's repo) | `sim-check --obstacle` on Ravensim, its cameras in software and in lockstep, and with no cameras, below |
