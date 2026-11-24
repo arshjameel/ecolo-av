@@ -131,13 +131,15 @@ def test_the_tool_prints_a_rungs_newest_session(tmp_path, monkeypatch, capsys):
     out = json.loads(capsys.readouterr().out)
     assert out['rung'] == 'stands' and out['found'] and not out['recorded']
     assert out['steps'][0]['graph']['kind'] == 'steering'
-    assert ladder.main(['session', 'hallway', '--json']) == 0
-    assert not json.loads(capsys.readouterr().out)['found']
+    assert out['answer']['found'] and out['answer']['verdict']['state'] == 'ONE TEST ONLY'
+    assert ladder.main(['session', 'speed', '--json']) == 0
+    unbuilt = json.loads(capsys.readouterr().out)
+    assert not unbuilt['found'] and unbuilt['answer'] is None
     assert ladder.main(['run', 'stands', '--only', 'no-such-test']) == 2
     # The recorded one: none yet; then the folder a result names, though a newer run exists.
     assert ladder.main(['session', 'stands', '--json', '--recorded']) == 0
     none = json.loads(capsys.readouterr().out)
-    assert not none['found'] and 'no recorded session' in none['why']
+    assert not none['found'] and 'no recorded run' in none['why']
     first = str(tmp_path / '2026-11-22-120000-stands-sim')
     ladder.record('stands', 'sim', 'pass', report=first)
     write_session(tmp_path / '2026-11-22-130000-stands-sim')

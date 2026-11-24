@@ -2,104 +2,22 @@
  "file": "/tmp/ladder-fixture/ladder.yaml",
  "rungs": [
   {
-   "id": "code",
-   "title": "The code against the maths",
-   "where": "laptop",
-   "measures": "nothing; every unit test, the pretend car",
-   "passes": "tools/test.sh exits 0",
-   "how": "docs/proving-it.md",
-   "after": "",
-   "tests": [],
-   "sim": {
-    "state": "pass",
-    "when": "2026-11-22 16:56",
-    "commit": "c48caf7b+",
-    "report": "",
-    "override": "",
-    "command": "pixi run bash tools/test.sh",
-    "blocked_by": []
-   },
-   "car": {
-    "state": "pass",
-    "when": "2026-11-22 16:56",
-    "commit": "c48caf7b+",
-    "report": "",
-    "override": "",
-    "command": "",
-    "blocked_by": []
-   }
-  },
-  {
-   "id": "stack",
-   "title": "The whole stack drives in Ravensim",
-   "where": "Ravensim",
-   "measures": "the graph, a drive, a stop",
-   "passes": "every line of sim-check PASS",
-   "how": "docs/tests.md",
-   "after": "",
-   "tests": [],
-   "sim": {
-    "state": "fail",
-    "when": "2026-11-22 16:56",
-    "commit": "c48caf7b+",
-    "report": "",
-    "override": "",
-    "command": "pixi run sim-check",
-    "blocked_by": []
-   },
-   "car": {
-    "state": "fail",
-    "when": "2026-11-22 16:56",
-    "commit": "c48caf7b+",
-    "report": "",
-    "override": "",
-    "command": "",
-    "blocked_by": [
-     "stack has not passed in the simulator"
-    ]
-   }
-  },
-  {
-   "id": "bench",
-   "title": "The bench, the real boards and no car",
-   "where": "bench",
-   "measures": "messages, timing, the locks",
-   "passes": "every line of bench-check PASS; on the car, every box of After the install",
-   "how": "docs/after-install.md",
-   "after": "",
-   "tests": [],
-   "sim": {
-    "state": "not run",
-    "when": "",
-    "commit": "",
-    "report": "",
-    "override": "",
-    "command": "pixi run bench-check",
-    "blocked_by": [
-     "stack has not passed (sim)"
-    ]
-   },
-   "car": {
-    "state": "not run",
-    "when": "",
-    "commit": "",
-    "report": "",
-    "override": "",
-    "command": "",
-    "blocked_by": [
-     "stack has not passed (car)",
-     "bench has not passed in the simulator"
-    ]
-   }
-  },
-  {
    "id": "stands",
-   "title": "Stands, wheels off the ground (phase A)",
-   "where": "stands",
-   "measures": "steering: angle, rate, centre; the wheels follow a speed; faults on purpose",
-   "passes": "car-test --stands, every step PASS",
+   "number": "1",
+   "title": "On stands: accelerate, brake, turn",
+   "question": "Do the actuators follow a command, the right way?",
+   "graphs": [
+    "the wheels' speed, asked for against measured",
+    "the steering angle, asked for against measured",
+    "the brake, asked for against measured",
+    "faults on purpose: did each stop the car, and in how long"
+   ],
+   "passes": "Every step of the stands run passes: the wheels reach each speed step up within 25 % (or 0.05 m/s), the steering tests give their numbers, and every fault tried is caught and the car still inside its limit (2 to 3 s).",
+   "chapter": "The car and its model",
+   "built": true,
+   "today": "",
    "how": "docs/actuator-tests.md",
-   "after": "The last step sets the e-stop, and it stays set, as on the car: a person clears it (pixi run clear estop --sim) before the next test. The car is put on stands for the session, and lowered after.",
+   "after": "The last step presses the e-stop, and it stays pressed, as on the car. Before the next run a person lets it go: pixi run clear estop --sim. The simulated car is lifted onto stands for the run and lowered after it.",
    "tests": [
     {
      "name": "preflight",
@@ -179,185 +97,389 @@
     "when": "",
     "commit": "",
     "report": "",
+    "report_file": "",
     "override": "",
     "command": "pixi run car-test --stands --sim --attach --no-manual",
-    "blocked_by": [
-     "bench has not passed (sim)"
-    ]
+    "blocked_by": []
    },
    "car": {
     "state": "not run",
     "when": "",
     "commit": "",
     "report": "",
+    "report_file": "",
     "override": "",
     "command": "pixi run car-test --stands",
     "blocked_by": [
-     "bench has not passed (car)",
-     "stands has not passed in the simulator"
+     "rung 1 (stands) has not passed in the simulator"
     ]
    }
   },
   {
-   "id": "hallway",
-   "title": "Hallway, the transfer functions (phase B)",
-   "where": "hallway",
-   "measures": "speed up, coast, brake: dead time, lag, stopping distance, with error bars",
-   "passes": "the model's speed within 10 % of the car's, its stop within 0.2 m",
-   "how": "docs/actuator-tests.md",
-   "after": "On the ground: a car left on stands is lowered first. Nobody turns the simulated car round: every pass drives on from where the last one stopped.",
-   "tests": [
-    {
-     "name": "coast",
-     "number": "B2",
-     "title": "hallway: stand still, speed up, coast (the drag)",
-     "command": "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds coast"
-    },
-    {
-     "name": "speed-up",
-     "number": "B1",
-     "title": "hallway: stand still, speed up, brake (throttle lag, dead time, max_accel)",
-     "command": "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds speed-up"
-    },
-    {
-     "name": "brake",
-     "number": "B3",
-     "title": "hallway: stand still, speed up, brake (brake lag, dead time, max_brake, stopping distance)",
-     "command": "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds brake"
-    },
-    {
-     "name": "steer",
-     "number": "B4",
-     "title": "hallway: stand still, roll, steer left, right, left on the ground (steering lag and dead time)",
-     "command": "pixi run car-test --hallway --sim --attach --no-manual --repeats 1 --kinds steer"
-    }
+   "id": "speed",
+   "number": "2",
+   "title": "On the ground: speed up, slow down",
+   "question": "How fast does it speed up and stop?",
+   "graphs": [
+    "speed against time",
+    "stopping distance against speed"
    ],
-   "sim": {
-    "state": "not run",
-    "when": "",
-    "commit": "",
-    "report": "",
-    "override": "",
-    "command": "pixi run car-test --hallway --sim --attach --no-manual",
-    "blocked_by": [
-     "stands has not passed (sim)"
-    ]
-   },
-   "car": {
-    "state": "not run",
-    "when": "",
-    "commit": "",
-    "report": "",
-    "override": "",
-    "command": "pixi run car-test --hallway",
-    "blocked_by": [
-     "stands has not passed (car)",
-     "hallway has not passed in the simulator"
-    ]
-   }
-  },
-  {
-   "id": "lot",
-   "title": "The lot, the same at 2 to 3 m/s",
-   "where": "lot",
-   "measures": "speed-up, brake, circles and a straight line, at speed",
-   "passes": "the hallway's pass rule, at the higher speeds",
-   "how": "docs/actuator-tests.md",
-   "after": "The simulator's twin only: each test passes when it runs to the end. The pass rule at speed (the model within 10 %, the stop within 0.2 m) is read from its summaries.",
-   "tests": [
-    {
-     "name": "speed-up",
-     "number": "4.1",
-     "title": "speed up: time to 1, 2, 3 m/s; acceleration in g",
-     "command": "pixi run car-test --lot --sim --attach --only speed-up"
-    },
-    {
-     "name": "coast",
-     "number": "4.2",
-     "title": "coast: neither throttle nor brake; the drag",
-     "command": "pixi run car-test --lot --sim --attach --only coast"
-    },
-    {
-     "name": "brake",
-     "number": "4.3",
-     "title": "brake: stopping distance and deceleration in g",
-     "command": "pixi run car-test --lot --sim --attach --only brake"
-    },
-    {
-     "name": "throttle-map",
-     "number": "4.4",
-     "title": "throttle map: throttle level vs acceleration",
-     "command": "pixi run car-test --lot --sim --attach --only throttle-map"
-    },
-    {
-     "name": "circles",
-     "number": "4.5",
-     "title": "circles: the real wheel angle per command",
-     "command": "pixi run car-test --lot --sim --attach --only circles"
-    },
-    {
-     "name": "straight",
-     "number": "4.7",
-     "title": "straight line: the sideways drift over 10 m",
-     "command": "pixi run car-test --lot --sim --attach --only straight"
-    }
-   ],
-   "sim": {
-    "state": "not run",
-    "when": "",
-    "commit": "",
-    "report": "",
-    "override": "",
-    "command": "pixi run car-test --lot --sim --attach",
-    "blocked_by": [
-     "hallway has not passed (sim)"
-    ]
-   },
-   "car": {
-    "state": "not run",
-    "when": "",
-    "commit": "",
-    "report": "",
-    "override": "",
-    "command": "",
-    "blocked_by": [
-     "hallway has not passed (car)",
-     "lot has not passed in the simulator"
-    ]
-   }
-  },
-  {
-   "id": "route",
-   "title": "A route, the car driving itself",
-   "where": "route",
-   "measures": "the scorecard: time, metres off the plan, sway, holds",
-   "passes": "the route done at low speed, no takeover needed for safety",
-   "how": "docs/league.md",
-   "after": "The simulator's twin: one scored drive round the test lot through the whole stack, in its own simulator with no picture; it passes when every goal is reached. The scores are in its report (log/controller-compare/).",
+   "passes": "the model's speed within 10 %, its stop within 0.2 m (proposed)",
+   "chapter": "The car and its model",
+   "built": false,
+   "today": "the tests exist (speed-up, brake; car-test --hallway); no rung reads them yet",
+   "how": "docs/wrap-up.md",
+   "after": "",
    "tests": [],
    "sim": {
-    "state": "not run",
+    "state": "not built",
     "when": "",
     "commit": "",
     "report": "",
-    "override": "",
-    "command": "pixi run measure controllers --tours lot",
-    "blocked_by": [
-     "lot has not passed (sim)"
-    ]
-   },
-   "car": {
-    "state": "not run",
-    "when": "",
-    "commit": "",
-    "report": "",
+    "report_file": "",
     "override": "",
     "command": "",
-    "blocked_by": [
-     "lot has not passed (car)",
-     "route has not passed in the simulator"
-    ]
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "straight",
+   "number": "3",
+   "title": "A straight line: speed up, hold, slow down",
+   "question": "Does it hold a speed, and drive straight?",
+   "graphs": [
+    "the speed held",
+    "drift to the side"
+   ],
+   "passes": "wanders under 0.1 m/s; drifts under 0.2 m in 10 m (proposed)",
+   "chapter": "The car and its model",
+   "built": false,
+   "today": "built in part (the straight test); a hold-a-speed test is TODO 266",
+   "how": "docs/wrap-up.md",
+   "after": "",
+   "tests": [],
+   "sim": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "navigate",
+   "number": "4",
+   "title": "Navigate, an empty costmap",
+   "question": "Does the whole stack drive from A to B with nothing in the way?",
+   "graphs": [
+    "the path driven over the plan",
+    "metres off the plan"
+   ],
+   "passes": "reaches the goal; under 0.3 m off the plan (proposed)",
+   "chapter": "Localization and mapping; Planning; Following",
+   "built": false,
+   "today": "the stack does it in the simulator; no rung",
+   "how": "docs/wrap-up.md",
+   "after": "",
+   "tests": [],
+   "sim": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "painted",
+   "number": "5",
+   "title": "Navigate, a hand-painted obstacle",
+   "question": "Does it go round what we drew?",
+   "graphs": [
+    "the path driven over the plan, with the obstacle"
+   ],
+   "passes": "never touches; reaches the goal (proposed)",
+   "chapter": "Planning; Following; Safety",
+   "built": false,
+   "today": "a ghost object only; painting a costmap by hand is to build",
+   "how": "docs/wrap-up.md",
+   "after": "",
+   "tests": [],
+   "sim": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "lidar",
+   "number": "6",
+   "title": "Navigate, the lidar's costmap",
+   "question": "Does it go round what it sees?",
+   "graphs": [
+    "the path driven over the plan, with what the lidar marked"
+   ],
+   "passes": "never touches; reaches the goal (proposed)",
+   "chapter": "Planning; Following; Safety",
+   "built": false,
+   "today": "runs in the simulator; no rung",
+   "how": "docs/wrap-up.md",
+   "after": "",
+   "tests": [],
+   "sim": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "things",
+   "number": "7",
+   "title": "Things around the car, moving ones too",
+   "question": "Does it find them and follow them?",
+   "graphs": [
+    "each thing's track against the truth"
+   ],
+   "passes": "found within 1 s; position within 0.5 m (proposed)",
+   "chapter": "Perception",
+   "built": false,
+   "today": "things are tracked; nothing predicts",
+   "how": "docs/wrap-up.md",
+   "after": "",
+   "tests": [],
+   "sim": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "names",
+   "number": "8",
+   "title": "What is it? (the cameras)",
+   "question": "Does it name what it sees?",
+   "graphs": [
+    "right and wrong names, by kind"
+   ],
+   "passes": "to be proposed with the perception lead",
+   "chapter": "Perception",
+   "built": false,
+   "today": "a detector exists; no rung",
+   "how": "docs/wrap-up.md",
+   "after": "",
+   "tests": [],
+   "sim": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "rules",
+   "number": "9",
+   "title": "Rules of the road (behaviour)",
+   "question": "Does it do the right thing: stop at a stop sign, slow for the road ahead, stop at the goal, stay inside the fence?",
+   "graphs": [
+    "speed against distance to each stop, with the speed cap"
+   ],
+   "passes": "stops within 0.5 m of each mark; never over the cap (proposed)",
+   "chapter": "Behaviour",
+   "built": false,
+   "today": "the behaviour planner runs in the simulator; no rung",
+   "how": "docs/wrap-up.md",
+   "after": "",
+   "tests": [],
+   "sim": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   }
+  },
+  {
+   "id": "sensors",
+   "number": "S",
+   "title": "Sensors: IMU, GPS, cameras, lidar, radar",
+   "question": "Is each one alive, on time, and believable?",
+   "graphs": [
+    "rate and noise for each sensor"
+   ],
+   "passes": "each at its documented rate; still when the car is still (proposed)",
+   "chapter": "Sensors; Localization and mapping",
+   "built": false,
+   "today": "checked inside rung 1 (its first two steps); no rung of its own",
+   "how": "docs/wrap-up.md",
+   "after": "",
+   "tests": [],
+   "sim": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
+   },
+   "car": {
+    "state": "not built",
+    "when": "",
+    "commit": "",
+    "report": "",
+    "report_file": "",
+    "override": "",
+    "command": "",
+    "blocked_by": []
    }
   }
- ]
+ ],
+ "checks": [
+  {
+   "state": "pass",
+   "when": "2026-11-22 16:56",
+   "commit": "0bba08e1+",
+   "report": "",
+   "report_file": "",
+   "override": "",
+   "command": "pixi run bash tools/test.sh",
+   "blocked_by": [],
+   "id": "code",
+   "title": "the code's own tests"
+  },
+  {
+   "state": "fail",
+   "when": "2026-11-22 17:10",
+   "commit": "0bba08e1+",
+   "report": "",
+   "report_file": "",
+   "override": "",
+   "command": "pixi run sim-check",
+   "blocked_by": [],
+   "id": "stack",
+   "title": "the whole stack drives in the simulator"
+  },
+  {
+   "state": "not run",
+   "when": "",
+   "commit": "",
+   "report": "",
+   "report_file": "",
+   "override": "",
+   "command": "pixi run bench-check",
+   "blocked_by": [],
+   "id": "bench",
+   "title": "the bench stand-in: the real boards, no car"
+  }
+ ],
+ "note": "Older results kept in the file and not shown, from rungs that are gone: hallway (1). The new rungs 2 to 4 will be judged by their own graphs."
 }

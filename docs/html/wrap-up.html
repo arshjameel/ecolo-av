@@ -7,7 +7,7 @@
 <!-- Generated from docs/wrap-up.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Wrapping up: the plan</h1>
-<div class="meta">9 min read · 6 sections</div></header>
+<div class="meta">10 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -170,7 +170,8 @@ results. Nothing new is built unless a row here asks for it.</p>
 </ol>
 </blockquote></div>
 <section class="card"><h2 id="1-the-rungs">1. The rungs</h2>
-<p>A rung opens when the ones under it have passed. S runs beside every rung.</p>
+<p>A rung opens when the ones under it have passed. S runs beside every rung. The list the
+tools read is <code>tools/ladder/rungs.yaml</code>; a rung not built is shown as "not built yet".</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -189,7 +190,7 @@ results. Nothing new is built unless a row here asks for it.</p>
 <td>do the actuators follow a command, the right way?</td>
 <td>wheel speed and steering, asked against measured</td>
 <td>each follows within its lag; every fault stops the car</td>
-<td>built (<code>car-test --stands</code>, on jacks in the simulator)</td>
+<td><strong>a rung, in the simulator</strong> (23 Nov): <code>pixi run ladder run 1</code>, or <strong>Run</strong> on the tests screen; its answer is a verdict line, three graphs with their numbers and the faults table, saved as one page (<a href="proving-it.html#rung-1-on-stands-accelerate-brake-turn">Proving it</a>). The car's side is a slot: no car run yet</td>
 </tr>
 <tr>
 <td>2</td>
@@ -397,8 +398,8 @@ that stays). The virtual world takes the car's data in; nothing goes back.</p>
 <tr>
 <td>Tests</td>
 <td>the rungs, run, result, graph, simulator beside car</td>
-<td><code>ladder-window</code></td>
-<td>rebuild round the ten rungs</td>
+<td><code>ladder-window</code>: the ten rungs, and rung 1's answer (23 Nov)</td>
+<td>rungs 2 to 9 and S, one at a time; the car's side of each graph</td>
 </tr>
 <tr>
 <td>In the car</td>
@@ -491,7 +492,7 @@ measured, with its graph; which we chose and why.</p>
 <tr>
 <td>1</td>
 <td>The ladder rebuilt round the ten rungs, virtual only; rungs 1 to 3 first</td>
-<td>each of rungs 1 to 3 runs from the tests screen and saves a graph and a report</td>
+<td>each of rungs 1 to 3 runs from the tests screen and saves a graph and a report. <strong>23 Nov: the ladder is the ten rungs, and rung 1 is done</strong> (run by the tool's own command beside the open simulator; its button was pressed once, on 24 Nov, over another run: that found two faults, both fixed). Rungs 2 and 3: not built</td>
 </tr>
 <tr>
 <td>2</td>

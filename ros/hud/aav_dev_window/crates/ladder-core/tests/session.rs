@@ -38,6 +38,11 @@ impl Root {
     }
 
     /// Every call the tool got, its arguments joined by `|`.
+    /// How many times the whole ladder was asked for.
+    fn tables(&self) -> usize {
+        self.calls().iter().filter(|c| *c == "--json").count()
+    }
+
     fn calls(&self) -> Vec<String> {
         fs::read_to_string(self.0.join("calls.log"))
             .unwrap_or_default()
@@ -70,17 +75,17 @@ fn tick_until(session: &mut Session, done: impl Fn(&Session) -> bool) -> bool {
 fn it_reads_the_ladder_from_the_tool_and_again_every_two_seconds() {
     let root = Root::new("read");
     let mut session = root.session();
-    assert_eq!(session.selected().map(|r| r.id.as_str()), Some("stack"));
-    assert_eq!(root.calls(), ["--json"]);
+    assert_eq!(session.selected().map(|r| r.id.as_str()), Some("stands"));
+    assert_eq!(root.tables(), 1);
 
     // Not before it is due; once it is, exactly one more.
     let later = Instant::now() + READ_EVERY / 2;
     session.tick(later);
     thread::sleep(Duration::from_millis(300));
-    assert_eq!(root.calls(), ["--json"]);
+    assert_eq!(root.tables(), 1);
     session.tick(Instant::now() + READ_EVERY);
-    assert!(tick_until(&mut session, |_| root.calls().len() >= 2));
-    assert_eq!(root.calls(), ["--json", "--json"]);
+    assert!(tick_until(&mut session, |_| root.tables() >= 2));
+    assert_eq!(root.tables(), 2);
 }
 
 #[test]
@@ -97,17 +102,16 @@ fn a_tool_that_fails_is_a_problem_in_words_and_the_old_ladder_stays() {
     assert!(session
         .problem()
         .is_some_and(|why| why.contains("no yaml here")));
-    assert_eq!(session.ladder().map(|l| l.rungs.len()), Some(7));
+    assert_eq!(session.ladder().map(|l| l.rungs.len()), Some(10));
 }
 
 #[test]
 fn a_run_shows_its_lines_ends_and_the_ladder_is_read_again() {
     let root = Root::new("run");
     let mut session = root.session();
-    session.select("code");
     assert!(matches!(session.run_button(), Some(RunButton::Ready(_))));
     session.press_run();
-    assert_eq!(session.running().map(|r| r.rung), Some("code"));
+    assert_eq!(session.running().map(|r| r.rung), Some("stands"));
 
     assert!(tick_until(&mut session, |s| s.running().is_none()));
     assert!(tick_until(&mut session, |s| s.console().len() == 3));
@@ -115,26 +119,30 @@ fn a_run_shows_its_lines_ends_and_the_ladder_is_read_again() {
     assert_eq!(
         console,
         [
-            "$ python3 tools/ladder.py run code",
-            "Running code in the simulator",
-            "Recorded: code pass (sim) at fake",
+            "$ python3 tools/ladder.py run stands",
+            "Running stands in the simulator",
+            "Recorded: stands pass (sim) at fake",
         ]
     );
     assert!(session.last_run().is_some_and(|n| n.good));
-    assert!(tick_until(&mut session, |_| root.calls().len() >= 3));
-    assert_eq!(root.calls()[..3], ["--json", "run|code", "--json"]);
+    assert!(tick_until(&mut session, |_| root.tables() >= 2));
+    let calls = root.calls();
+    let run = calls.iter().position(|c| c == "run|stands");
+    assert!(run.is_some_and(|at| calls[at..].iter().any(|c| c == "--json")));
 }
 
 #[test]
-fn one_run_at_a_time_and_stop_ends_it() {
+fn a_check_runs_like_a_rung_and_one_run_at_a_time_and_stop_ends_it() {
     let root = Root::new("stop");
     let mut session = root.session();
-    session.select("stack");
-    session.press_run();
+    assert!(matches!(
+        session.check_button("stack"),
+        Some(RunButton::Ready(_))
+    ));
+    session.press_run_check("stack");
     assert!(tick_until(&mut session, |s| s.console().len() == 2));
 
     // While it runs, no rung's button is on, and a second press starts nothing.
-    session.select("code");
     assert_eq!(
         session.run_button(),
         Some(RunButton::Off(WhyNot::Running {
@@ -142,6 +150,7 @@ fn one_run_at_a_time_and_stop_ends_it() {
         }))
     );
     session.press_run();
+    session.press_run_check("code");
     assert_eq!(session.running().map(|r| r.rung), Some("stack"));
 
     session.press_stop();
@@ -157,17 +166,29 @@ fn one_run_at_a_time_and_stop_ends_it() {
 }
 
 #[test]
-fn a_shut_rung_never_reaches_the_tools_run() {
-    let root = Root::new("shut");
+fn a_rung_not_built_never_reaches_the_tools_run() {
+    let root = Root::new("not-built");
     let mut session = root.session();
-    session.select("stands");
+    session.select("speed");
     assert!(matches!(
         session.run_button(),
-        Some(RunButton::Off(WhyNot::Shut { .. }))
+        Some(RunButton::Off(WhyNot::NotBuilt { .. }))
     ));
     session.press_run();
     assert!(session.running().is_none());
-    assert_eq!(root.calls(), ["--json"]);
+    assert!(root.calls().iter().all(|c| !c.starts_with("run")));
+}
+
+#[test]
+fn open_the_report_asks_the_tool_and_shows_where_the_page_is() {
+    let root = Root::new("open");
+    let mut session = root.session();
+    session.press_open_report();
+    assert!(tick_until(&mut session, |s| s.opened().is_some()));
+    let opened = session.opened().expect("the tool answered");
+    assert!(opened.good, "{}", opened.text);
+    assert_eq!(opened.text, "/tmp/fake/rung-1-report.html");
+    assert!(root.calls().contains(&"report|stands|--open".to_owned()));
 }
 
 #[test]
@@ -185,12 +206,12 @@ fn a_record_goes_to_the_tool_and_its_refusal_is_shown_word_for_word() {
     assert!(!refusal.good);
     assert_eq!(
         refusal.text,
-        "Shut: bench has not passed (sim). A pass here needs --override \"why\"."
+        "Shut: rung 1 (stands) has not passed in the simulator. A pass here needs --override \"why\"."
     );
     assert_eq!(session.form.note, "by hand", "a refused form is kept");
 
     session.form.place = Place::Car;
-    session.form.override_reason = "the bench was done on paper".into();
+    session.form.override_reason = "the simulator was run last week".into();
     session.press_record();
     assert!(tick_until(&mut session, |s| s.recorded().is_some()));
     let done = session.recorded().expect("the tool answered");
@@ -207,7 +228,7 @@ fn a_record_goes_to_the_tool_and_its_refusal_is_shown_word_for_word() {
         records,
         [
             "record|stands|pass|--note=by hand",
-            "record|stands|pass|--car|--note=by hand|--override=the bench was done on paper",
+            "record|stands|pass|--car|--note=by hand|--override=the simulator was run last week",
         ]
     );
 }

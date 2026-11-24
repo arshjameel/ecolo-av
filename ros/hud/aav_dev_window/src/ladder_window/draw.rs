@@ -1,5 +1,8 @@
-//! The test ladder's window, drawn in egui: the ladder on the left, the chosen rung on the
-//! right, the run's console along the bottom. What each part says is `ladder-core`'s.
+//! The tests screen, drawn in egui: the ladder's ten rungs on the left, the chosen rung in
+//! the middle (its question, its pass mark, its Run), its answer on the right (one verdict
+//! line, a few graphs with their numbers, the faults; the full table of steps folded
+//! under them), the run's console along the bottom. What each part says is `ladder-core`'s,
+//! and every number is the tool's.
 //!
 //! The car's side has words and a Copy button, and nothing that runs. The one switch that
 //! moves anything is "The simulated car": Ravensim's jacks, on only while a simulator runs
@@ -7,8 +10,11 @@
 
 use bevy_egui::egui;
 use ladder_core::{
-    report::tick_label, session::Notice, show::CAR_RULE, CarSide, Cell, Fit, Graph, Jacks, Ladder,
-    Outcome, Place, Report, RunButton, Rung, Session, Side, Source, State, Status, StepRow, Watch,
+    report::tick_label,
+    session::Notice,
+    show::{check_words, CAR_RULE},
+    Answer, AnswerGraph, CarSide, Cell, Faults, Fit, Graph, Jacks, Ladder, Lines, Outcome, Place,
+    Report, RunButton, Rung, Session, Side, Source, State, Status, StepRow, VerdictState, Watch,
     WatchButton, Which,
 };
 
@@ -37,6 +43,8 @@ enum Action {
     Record,
     Jacks,
     RunTest(String),
+    RunCheck(String),
+    OpenReport,
     Watch(Watch),
     Step(String),
     Show(Which),
@@ -78,6 +86,9 @@ pub fn window(ctx: &egui::Context, session: &mut Session) {
     );
     egui::Panel::top("where").show(&mut root, |ui| {
         top(ui, session, ladder.as_ref());
+        if let Some(ladder) = &ladder {
+            before_you_start(ui, session, ladder, &mut actions);
+        }
         jacks(ui, session, &mut actions);
     });
     egui::Panel::bottom("console")
@@ -85,7 +96,7 @@ pub fn window(ctx: &egui::Context, session: &mut Session) {
         .resizable(true)
         .show(&mut root, |ui| console(ui, session, &mut actions));
     egui::Panel::left("ladder")
-        .default_size(450.0)
+        .default_size(470.0)
         .resizable(true)
         .show(&mut root, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| match &ladder {
@@ -98,11 +109,13 @@ pub fn window(ctx: &egui::Context, session: &mut Session) {
     // The results get their own column, so the table and the graph are seen without
     // scrolling past the buttons.
     egui::Panel::right("results")
-        .default_size(720.0)
+        .default_size(800.0)
         .resizable(true)
         .show(&mut root, |ui| {
-            egui::ScrollArea::vertical()
+            // Both ways: a wide table scrolls; it never pushes the panel over the rung.
+            egui::ScrollArea::both()
                 .id_salt("results")
+                .auto_shrink([false, false])
                 .show(ui, |ui| match &chosen {
                     Some(rung) => last_session(ui, session, rung, &mut actions),
                     None => {
@@ -126,6 +139,8 @@ pub fn window(ctx: &egui::Context, session: &mut Session) {
             Action::Record => session.press_record(),
             Action::Jacks => session.press_jacks(),
             Action::RunTest(name) => session.press_run_test(&name),
+            Action::RunCheck(id) => session.press_run_check(&id),
+            Action::OpenReport => session.press_open_report(),
             Action::Watch(watch) => session.press_watch(watch),
             Action::Step(name) => session.select_step(&name),
             Action::Show(which) => session.show(which),
@@ -135,7 +150,7 @@ pub fn window(ctx: &egui::Context, session: &mut Session) {
 
 fn top(ui: &mut egui::Ui, session: &Session, ladder: Option<&Ladder>) {
     ui.horizontal_wrapped(|ui| {
-        ui.heading("The test ladder");
+        ui.heading("The tests: ten rungs, one question each");
         match session.source() {
             Source::Pretend => {
                 pill(
@@ -147,7 +162,10 @@ fn top(ui: &mut egui::Ui, session: &Session, ladder: Option<&Ladder>) {
             }
             Source::Tool { .. } => {
                 if let Some(ladder) = ladder {
-                    ui.label(egui::RichText::new(format!("Progress: {}", ladder.file)).color(GREY));
+                    ui.label(
+                        egui::RichText::new(format!("Results are kept in {}", ladder.file))
+                            .color(GREY),
+                    );
                 }
             }
         }
@@ -159,6 +177,46 @@ fn top(ui: &mut egui::Ui, session: &Session, ladder: Option<&Ladder>) {
                 .color(RED),
         );
         ui.label("The ladder shown is the last one read. Start it with: pixi run ladder-window");
+    }
+}
+
+/// One small line: the checks that move no car, each in words with its own Run. They
+/// never open or shut a rung.
+fn before_you_start(
+    ui: &mut egui::Ui,
+    session: &Session,
+    ladder: &Ladder,
+    actions: &mut Vec<Action>,
+) {
+    ui.horizontal_wrapped(|ui| {
+        ui.strong("Before you start");
+        ui.label(egui::RichText::new("(these move no car, and block no rung):").color(GREY));
+        for check in &ladder.checks {
+            let colour = match check.side.state {
+                State::Pass => GREEN,
+                State::Fail => RED,
+                State::NotRun | State::NotBuilt => GREY,
+            };
+            ui.label(egui::RichText::new(check_words(check)).color(colour));
+            let button = session.check_button(&check.id);
+            let ready = matches!(button, Some(RunButton::Ready(_)));
+            let hover = match &button {
+                Some(RunButton::Off(why)) => format!("Off: {why}"),
+                _ => format!("It runs: {}", check.side.command),
+            };
+            if ui
+                .add_enabled(ready, egui::Button::new("Run").small())
+                .on_hover_text(&hover)
+                .on_disabled_hover_text(&hover)
+                .clicked()
+            {
+                actions.push(Action::RunCheck(check.id.clone()));
+            }
+            ui.add_space(10.0);
+        }
+    });
+    if !ladder.note.is_empty() {
+        ui.label(egui::RichText::new(&ladder.note).small().color(GREY));
     }
 }
 
@@ -192,38 +250,61 @@ fn jacks(ui: &mut egui::Ui, session: &Session, actions: &mut Vec<Action>) {
     });
 }
 
-/// The ladder: the top rung at the top, a row a rung, a column a place.
+/// The ladder: the top rung at the top, a row a rung, a column a place; the sensors'
+/// rung under it, beside every rung.
 fn rungs(ui: &mut egui::Ui, ladder: &Ladder, chosen: Option<&Rung>, actions: &mut Vec<Action>) {
     egui::Grid::new("rungs")
         .num_columns(3)
-        .spacing(egui::vec2(18.0, 14.0))
+        .spacing(egui::vec2(12.0, 10.0))
         .show(ui, |ui| {
-            ui.strong("Rung");
+            ui.strong("Rung: what the car can do");
             for place in Place::ALL {
                 ui.strong(place.heading());
             }
             ui.end_row();
             for rung in ladder.top_first() {
                 let is_chosen = chosen.is_some_and(|c| c.id == rung.id);
-                let name = egui::RichText::new(&rung.id).strong().size(20.0);
-                if ui
-                    .selectable_label(is_chosen, name)
-                    .on_hover_text(&rung.title)
-                    .clicked()
-                {
+                let beside = if rung.is_beside() {
+                    " (beside every rung)"
+                } else {
+                    ""
+                };
+                let name = egui::RichText::new(format!("{}  {}{beside}", rung.number, rung.title));
+                let name = if rung.built {
+                    name.strong()
+                } else {
+                    name.color(GREY)
+                };
+                let label = egui::Button::selectable(is_chosen, name).wrap();
+                let clicked = ui
+                    .allocate_ui_with_layout(
+                        egui::vec2(230.0, 0.0),
+                        egui::Layout::top_down(egui::Align::LEFT),
+                        |ui| {
+                            ui.add(label)
+                                .on_hover_text(format!("The question: {}", rung.question))
+                                .clicked()
+                        },
+                    )
+                    .inner;
+                if clicked {
                     actions.push(Action::Select(rung.id.clone()));
                 }
                 for place in Place::ALL {
-                    cell(ui, &Cell::of(rung.side(place)));
+                    // In a row of its own height: a grid cell would stretch the pill.
+                    ui.horizontal(|ui| cell(ui, &Cell::of(rung.side(place))));
                 }
                 ui.end_row();
             }
         });
     ui.add_space(8.0);
     ui.label(
-        egui::RichText::new("shut: the rungs under it have not passed yet. Hover for why.")
-            .small()
-            .color(GREY),
+        egui::RichText::new(
+            "A rung opens when the rung under it has passed. \"shut\" means not open yet: \
+             hover for why. \"not built yet\" means it cannot be run.",
+        )
+        .small()
+        .color(GREY),
     );
 }
 
@@ -234,6 +315,7 @@ fn cell(ui: &mut egui::Ui, cell: &Cell<'_>) {
         State::Fail => (RED, DARK),
         State::NotRun if cell.shut => (SHUT, BRIGHT),
         State::NotRun => (GREY, DARK),
+        State::NotBuilt => (DARK, GREY),
     };
     let response = pill(ui, &cell.words(), fill, text);
     if cell.shut {
@@ -257,34 +339,54 @@ fn pill(
         .response
 }
 
-/// The chosen rung: what it is, each side, and the form.
+/// A name and its words on one wrapped line.
+fn named(ui: &mut egui::Ui, name: &str, words: &str) {
+    ui.horizontal_wrapped(|ui| {
+        ui.strong(format!("{name}:"));
+        ui.label(words);
+    });
+}
+
+/// The chosen rung: its question, how it is answered, its Run, the car's side, the form.
 fn detail(ui: &mut egui::Ui, session: &mut Session, rung: &Rung, actions: &mut Vec<Action>) {
-    ui.heading(format!("{}: {}", rung.id, rung.title));
-    // A line each, wrapped: this column is narrow beside the results.
-    for (name, words) in [
-        ("Where", &rung.location),
-        ("It measures", &rung.measures),
-        ("It passes when", &rung.passes),
-        ("How, by hand", &rung.how),
-    ] {
-        ui.horizontal_wrapped(|ui| {
-            ui.strong(format!("{name}:"));
-            ui.label(words);
-        });
+    ui.heading(rung.heading());
+    ui.horizontal_wrapped(|ui| {
+        ui.label(egui::RichText::new("The question:").strong().size(21.0));
+        ui.label(egui::RichText::new(&rung.question).size(21.0));
+    });
+    ui.strong("Answered by these graphs:");
+    for graph in &rung.graphs {
+        ui.label(format!("  •  {graph}"));
+    }
+    named(ui, "It passes when", &rung.passes);
+    named(ui, "It goes in the final report's chapter", &rung.chapter);
+    named(ui, "More about it", &rung.how);
+    if !rung.built {
+        ui.add_space(6.0);
+        pill(
+            ui,
+            "NOT BUILT YET: it cannot be run, passed or failed",
+            DARK,
+            AMBER,
+        );
+        named(ui, "What exists today", &rung.today);
+        research(ui, session, actions);
+        return;
     }
 
     ui.separator();
-    ui.heading(Place::Sim.heading());
+    ui.heading("In the simulator");
     side(ui, &rung.sim);
-    match rung.sim.command.as_str() {
-        "" => ui.label("No one command: it is done by hand."),
-        command => ui.label(egui::RichText::new(command).monospace()),
-    };
     let button = session.run_button();
     let ready = matches!(button, Some(RunButton::Ready(_)));
     ui.horizontal_wrapped(|ui| {
-        let run = egui::Button::new(egui::RichText::new("Run in the simulator").strong());
-        if ui.add_enabled(ready, run).clicked() {
+        let words = format!("Run rung {} in the simulator", rung.number);
+        let run = egui::Button::new(egui::RichText::new(words).strong().size(20.0));
+        if ui
+            .add_enabled(ready, run)
+            .on_hover_text(format!("It runs: {}", rung.sim.command))
+            .clicked()
+        {
             actions.push(Action::Run);
         }
         if let Some(RunButton::Off(why)) = &button {
@@ -292,7 +394,7 @@ fn detail(ui: &mut egui::Ui, session: &mut Session, rung: &Rung, actions: &mut V
         }
     });
     if let Some(runs_in) = session.runs_in() {
-        ui.label(runs_in.to_string());
+        ui.add(egui::Label::new(runs_in.to_string()).wrap());
     }
     if !rung.after.is_empty() {
         ui.add(egui::Label::new(egui::RichText::new(&rung.after).color(GREY)).wrap());
@@ -300,7 +402,7 @@ fn detail(ui: &mut egui::Ui, session: &mut Session, rung: &Rung, actions: &mut V
     single_tests(ui, session, rung, actions);
 
     ui.separator();
-    ui.heading(Place::Car.heading());
+    ui.heading("On the car");
     side(ui, &rung.car);
     match CarSide::of(rung) {
         CarSide::Command(command) => {
@@ -318,7 +420,9 @@ fn detail(ui: &mut egui::Ui, session: &mut Session, rung: &Rung, actions: &mut V
     ui.label(egui::RichText::new(CAR_RULE).strong());
 
     ui.separator();
-    record_form(ui, session, rung, actions);
+    egui::CollapsingHeader::new("Write down a result by hand")
+        .id_salt("record")
+        .show(ui, |ui| record_form(ui, session, rung, actions));
     research(ui, session, actions);
 }
 
@@ -369,13 +473,26 @@ fn single_tests(ui: &mut egui::Ui, session: &Session, rung: &Rung, actions: &mut
         return;
     }
     ui.add_space(6.0);
-    ui.strong("Its tests, one at a time (simulator only)");
-    ui.label(
-        egui::RichText::new(
-            "A single test is not recorded: a rung passes whole. The car goes on stands or \
-             to the ground by itself, as the test needs.",
+    egui::CollapsingHeader::new("One part of it at a time (simulator only)")
+        .id_salt("tests")
+        .show(ui, |ui| single_tests_table(ui, session, rung, actions));
+}
+
+fn single_tests_table(
+    ui: &mut egui::Ui,
+    session: &Session,
+    rung: &Rung,
+    actions: &mut Vec<Action>,
+) {
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(
+                "One part alone does not count: a rung passes whole. The car is lifted onto \
+                 stands, or lowered, by itself, as the part needs.",
+            )
+            .color(GREY),
         )
-        .color(GREY),
+        .wrap(),
     );
     egui::Grid::new("tests")
         .num_columns(4)
@@ -403,19 +520,15 @@ fn single_tests(ui: &mut egui::Ui, session: &Session, rung: &Rung, actions: &mut
         });
 }
 
-/// The rung's newest simulator session: the step running now, then each step's result as a
-/// table, the chosen step's graph and numbers, and a hallway session's fits.
+/// The rung's answer from its newest run in the simulator: the verdict, the graphs with
+/// their numbers, the faults; then, folded away, every step of the run.
 fn last_session(ui: &mut egui::Ui, session: &Session, rung: &Rung, actions: &mut Vec<Action>) {
-    ui.heading("The last session in the simulator");
-    // Close rows: fourteen steps and a graph fit one screen.
+    ui.heading(format!("The answer: rung {}", rung.number));
     ui.spacing_mut().item_spacing.y = 4.0;
-    if rung.tests.is_empty() {
+    if !rung.built {
         ui.label(
-            egui::RichText::new(
-                "This rung keeps no steps to show here: its run's lines are in the console, \
-                 and its result is on the ladder.",
-            )
-            .color(GREY),
+            egui::RichText::new("This rung is not built yet: there is nothing to answer with.")
+                .color(GREY),
         );
         return;
     }
@@ -427,7 +540,11 @@ fn last_session(ui: &mut egui::Ui, session: &Session, rung: &Rung, actions: &mut
                 .color(AMBER),
         );
         ui.label(
-            egui::RichText::new("The table below is the session before this run.").color(GREY),
+            egui::RichText::new(
+                "Watch the car in the simulator's picture. What is below is the run before \
+                 this one; the new answer is drawn when this run ends.",
+            )
+            .color(GREY),
         );
     }
     ui.horizontal_wrapped(|ui| {
@@ -435,6 +552,10 @@ fn last_session(ui: &mut egui::Ui, session: &Session, rung: &Rung, actions: &mut
         for which in Which::ALL {
             if ui
                 .selectable_label(session.which() == which, which.words())
+                .on_hover_text(
+                    "A whole run of the rung counts on the ladder. One part run alone, or a \
+                     run typed in a terminal, does not.",
+                )
                 .clicked()
             {
                 actions.push(Action::Show(which));
@@ -442,29 +563,261 @@ fn last_session(ui: &mut egui::Ui, session: &Session, rung: &Rung, actions: &mut
         }
     });
     let Some(report) = session.report() else {
-        ui.label(egui::RichText::new("Reading the last session...").color(GREY));
+        ui.label(egui::RichText::new("Reading the last run...").color(GREY));
         return;
     };
+    if let Some(answer) = &report.answer {
+        self::answer(ui, session, answer, actions);
+    }
     if !report.found {
-        ui.label(egui::RichText::new(&report.why).color(GREY));
+        if report.answer.is_none() {
+            ui.label(egui::RichText::new(&report.why).color(GREY));
+        }
         return;
     }
-    ui.add(
-        egui::Label::new(format!(
-            "{}: {}. {}",
-            report.started, report.counts, report.location
-        ))
-        .wrap(),
-    );
-    ui.label(egui::RichText::new(format!("{} {}", report.standing(), report.folder)).color(GREY));
+    ui.add_space(10.0);
     let chosen = session.step();
-    steps_table(ui, report, chosen, actions);
-    if let Some(step) = chosen {
-        step_detail(ui, step);
+    egui::CollapsingHeader::new(format!(
+        "Every step of the run: the full table ({})",
+        report.counts
+    ))
+    .id_salt("steps-fold")
+    .default_open(report.answer.is_none())
+    .show(ui, |ui| {
+        ui.label(
+            egui::RichText::new(format!("{} {}", report.standing(), report.folder)).color(GREY),
+        );
+        steps_table(ui, report, chosen, actions);
+        if let Some(step) = chosen {
+            step_detail(ui, step);
+        }
+        if !report.fits.is_empty() {
+            fits_table(ui, &report.fits);
+        }
+    });
+}
+
+/// The answer, top to bottom: the verdict in words, what it was judged against, the saved
+/// page, each graph with its numbers beside the car's slot, the faults.
+fn answer(ui: &mut egui::Ui, session: &Session, answer: &Answer, actions: &mut Vec<Action>) {
+    if !answer.found {
+        ui.label(egui::RichText::new(&answer.why).color(GREY));
+        return;
     }
-    if !report.fits.is_empty() {
-        fits_table(ui, &report.fits);
+    let colour = match answer.verdict.state {
+        VerdictState::Pass => GREEN,
+        VerdictState::Fail => RED,
+        VerdictState::NotFinished | VerdictState::OneTestOnly | VerdictState::None => AMBER,
+    };
+    egui::Frame::new()
+        .stroke(egui::Stroke::new(2.5, colour))
+        .corner_radius(5.0)
+        .inner_margin(egui::vec2(12.0, 8.0))
+        .show(ui, |ui| {
+            let words = egui::RichText::new(&answer.verdict.words)
+                .strong()
+                .size(20.0);
+            ui.add(egui::Label::new(words).wrap());
+        });
+    named(ui, "Judged against (the pass mark)", &answer.passes);
+    ui.horizontal_wrapped(|ui| {
+        ui.label(
+            egui::RichText::new(format!(
+                "Run {} in {}. The code's version (commit): {}",
+                answer.started, answer.place, answer.commit
+            ))
+            .color(GREY),
+        );
+    });
+    ui.horizontal_wrapped(|ui| {
+        let open = egui::Button::new(egui::RichText::new("Open the report").strong());
+        if ui
+            .add(open)
+            .on_hover_text(
+                "In the browser: one page to read, print, or paste into the final report",
+            )
+            .clicked()
+        {
+            actions.push(Action::OpenReport);
+        }
+        match session.opened() {
+            Some(notice) => said(ui, notice, "Opened", "NOT OPENED"),
+            None => {
+                ui.label(egui::RichText::new(answer.report_words()).color(GREY));
+            }
+        }
+    });
+    let [mine, other] = answer.places();
+    for graph in &answer.graphs {
+        ui.add_space(12.0);
+        ui.separator();
+        ui.label(egui::RichText::new(&graph.title).strong().size(20.0));
+        ui.label(&graph.asks);
+        beside(ui, mine, other, &graph.car, |ui| answer_graph(ui, graph));
     }
+    if let Some(faults) = &answer.faults {
+        ui.add_space(12.0);
+        ui.separator();
+        ui.label(
+            egui::RichText::new("Faults on purpose: did each stop the car?")
+                .strong()
+                .size(20.0),
+        );
+        ui.label(
+            "The run breaks one thing at a time while the wheels turn, and times how long \
+             the car takes to stand still.",
+        );
+        faults_table(ui, faults, mine, other);
+    }
+}
+
+/// Two columns: this run's side, filled, and the other side's slot (`no car run yet`).
+fn beside(
+    ui: &mut egui::Ui,
+    mine: &str,
+    other: &str,
+    slot: &str,
+    filled: impl FnOnce(&mut egui::Ui),
+) {
+    let whole = ui.available_width();
+    let narrow = (whole * 0.2).clamp(130.0, 220.0);
+    ui.horizontal_top(|ui| {
+        ui.vertical(|ui| {
+            ui.set_width(whole - narrow - 24.0);
+            ui.label(egui::RichText::new(mine).strong().color(GREY));
+            filled(ui);
+        });
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.set_width(narrow - 16.0);
+            ui.vertical(|ui| slot_words(ui, other, slot));
+        });
+    });
+}
+
+fn slot_words(ui: &mut egui::Ui, other: &str, slot: &str) {
+    {
+        {
+            ui.label(egui::RichText::new(other).strong().color(GREY));
+            let words = format!(
+                "{}{}.\nIts graph and numbers go here, beside these, once this rung has \
+                 run there.",
+                slot[..1].to_uppercase(),
+                &slot[1..]
+            );
+            ui.add(egui::Label::new(egui::RichText::new(words).color(GREY)).wrap());
+        }
+    }
+}
+
+/// One graph of the answer, with its numbers under it; or why it was not measured.
+fn answer_graph(ui: &mut egui::Ui, graph: &AnswerGraph) {
+    let Some(lines) = graph.lines() else {
+        ui.label(egui::RichText::new(&graph.missing).strong().color(AMBER));
+        return;
+    };
+    self::graph(
+        ui,
+        lines,
+        &graph.y_label,
+        &graph.unit,
+        [&graph.asked_words, &graph.measured_words],
+        false,
+    );
+    words_table(
+        ui,
+        &graph.id,
+        &graph.columns,
+        graph.rows.iter().map(Vec::as_slice),
+    );
+    for fact in &graph.facts {
+        if let [what, value] = fact.as_slice() {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!("{what}:"));
+                ui.strong(value);
+            });
+        }
+    }
+    ui.add(egui::Label::new(egui::RichText::new(&graph.judged).color(GREY)).wrap());
+    egui::CollapsingHeader::new("How these numbers were made")
+        .id_salt(("notes", &graph.id))
+        .show(ui, |ui| {
+            for note in graph.notes.iter().filter(|n| !n.is_empty()) {
+                ui.add(egui::Label::new(egui::RichText::new(note).color(GREY)).wrap());
+            }
+            let from = format!("From {}.", graph.from);
+            ui.add(egui::Label::new(egui::RichText::new(from).color(GREY)).wrap());
+        });
+}
+
+/// A table of words: the tool's own cells, as it wrote them.
+fn words_table<'a>(
+    ui: &mut egui::Ui,
+    id: &str,
+    columns: &[String],
+    rows: impl Iterator<Item = &'a [String]>,
+) {
+    egui::Grid::new(("words", id))
+        .num_columns(columns.len())
+        .striped(true)
+        .spacing(egui::vec2(16.0, 4.0))
+        .show(ui, |ui| {
+            for column in columns {
+                ui.strong(column);
+            }
+            ui.end_row();
+            for row in rows {
+                for (i, cell) in row.iter().enumerate() {
+                    if i == 0 {
+                        ui.label(cell);
+                    } else {
+                        ui.strong(cell);
+                    }
+                }
+                ui.end_row();
+            }
+        });
+}
+
+/// The faults on purpose: a row each, "yes" or "NO" in words, the time, the time allowed;
+/// the last column is the other place's slot (`no car run yet`).
+fn faults_table(ui: &mut egui::Ui, faults: &Faults, mine: &str, other: &str) {
+    if !faults.missing.is_empty() {
+        ui.label(egui::RichText::new(&faults.missing).strong().color(AMBER));
+        return;
+    }
+    ui.label(egui::RichText::new(mine).strong().color(GREY));
+    egui::Grid::new("faults")
+        .num_columns(5)
+        .striped(true)
+        .spacing(egui::vec2(14.0, 4.0))
+        .show(ui, |ui| {
+            for column in faults.columns.iter().take(4) {
+                ui.strong(column);
+            }
+            ui.label(egui::RichText::new(other).strong().color(GREY));
+            ui.end_row();
+            for row in &faults.rows {
+                let [fault, stopped, seconds, limit, from] = row.cells();
+                ui.label(fault).on_hover_text(&from);
+                let colour = match stopped.as_str() {
+                    "yes" | "caught; the test stopped it" => GREEN,
+                    "not tried" | "not shown" => GREY,
+                    _ => RED,
+                };
+                ui.label(egui::RichText::new(stopped).strong().color(colour));
+                ui.strong(seconds);
+                ui.label(limit);
+                ui.label(egui::RichText::new(&row.car).color(GREY));
+                ui.end_row();
+            }
+        });
+    ui.label(
+        egui::RichText::new(
+            "Hover a fault for what its time is counted from, or why it was not tried.",
+        )
+        .small()
+        .color(GREY),
+    );
 }
 
 /// A step's result on its colour, in its word.
@@ -541,7 +894,14 @@ fn step_detail(ui: &mut egui::Ui, step: &StepRow) {
     });
     ui.add(egui::Label::new(&step.detail).wrap());
     match &step.graph {
-        Some(graph) => self::graph(ui, graph),
+        Some(graph) => self::graph(
+            ui,
+            graph.lines(),
+            &graph.value_label(),
+            &graph.unit,
+            [Graph::COMMANDED, Graph::MEASURED],
+            true,
+        ),
         None => {
             ui.label(
                 egui::RichText::new("No graph: this step keeps no log of speed or steering.")
@@ -595,19 +955,25 @@ fn fits_table(ui: &mut egui::Ui, fits: &[Fit]) {
         });
 }
 
-/// One graph: commanded (dashed) against measured (solid), over the run's time. One value
-/// axis; the axes and the legend say what they are in words; hover reads both lines.
-fn graph(ui: &mut egui::Ui, graph: &Graph) {
+/// One graph: what was asked for (dashed) against what was measured (solid), over the
+/// run's time. One value axis; the axes and the legend say what they are in words; hover
+/// reads both lines.
+fn graph(
+    ui: &mut egui::Ui,
+    graph: Lines<'_>,
+    value_label: &str,
+    unit: &str,
+    legend: [&str; 2],
+    with_gap: bool,
+) {
     let (Some(time), Some(values)) = (graph.time(), graph.values()) else {
         ui.label(egui::RichText::new("No graph: the log has no points.").color(GREY));
         return;
     };
     // The legend: a sample of each line, then its name in the text's own colour.
     ui.horizontal(|ui| {
-        for (words, colour, dashed) in [
-            (Graph::COMMANDED, COMMANDED, true),
-            (Graph::MEASURED, MEASURED, false),
-        ] {
+        for (words, colour, dashed) in [(legend[0], COMMANDED, true), (legend[1], MEASURED, false)]
+        {
             let (sample, _) = ui.allocate_exact_size(egui::vec2(44.0, 14.0), egui::Sense::hover());
             let ends = [sample.left_center(), sample.right_center()];
             let stroke = egui::Stroke::new(2.5, colour);
@@ -620,9 +986,10 @@ fn graph(ui: &mut egui::Ui, graph: &Graph) {
             ui.label(words);
             ui.add_space(14.0);
         }
-        if let Some((when, gap)) = graph.widest_gap() {
+        // The widest gap, for a step's own graph; an answer's graph has its table instead.
+        if let Some((when, gap)) = graph.widest_gap().filter(|_| with_gap) {
             ui.label(
-                egui::RichText::new(format!("widest gap {gap:.2} {} at {when:.1} s", graph.unit))
+                egui::RichText::new(format!("widest gap {gap:.2} {unit} at {when:.1} s"))
                     .color(GREY),
             );
         }
@@ -681,7 +1048,7 @@ fn graph(ui: &mut egui::Ui, graph: &Graph) {
     painter.text(
         egui::pos2(rect.left(), rect.top() + 2.0),
         egui::Align2::LEFT_TOP,
-        graph.value_label(),
+        value_label,
         font.clone(),
         BRIGHT,
     );
@@ -692,17 +1059,16 @@ fn graph(ui: &mut egui::Ui, graph: &Graph) {
         font,
         BRIGHT,
     );
-    let line = |values: &[f64]| -> Vec<egui::Pos2> {
-        graph.points(values).map(|(t, v)| place(t, v)).collect()
-    };
+    let line =
+        |values| -> Vec<egui::Pos2> { graph.points(values).map(|(t, v)| place(t, v)).collect() };
     painter.extend(egui::Shape::dashed_line(
-        &line(&graph.commanded),
+        &line(graph.asked),
         egui::Stroke::new(2.0, COMMANDED),
         8.0,
         5.0,
     ));
     painter.add(egui::Shape::line(
-        line(&graph.measured),
+        line(graph.measured),
         egui::Stroke::new(2.0, MEASURED),
     ));
     // Hover: a crosshair at the nearest sample, and both lines' values in words.
@@ -716,13 +1082,7 @@ fn graph(ui: &mut egui::Ui, graph: &Graph) {
         .map(|(i, &t)| (i, (place(t, values.low).x - pointer.x).abs()))
         .min_by(|a, b| a.1.total_cmp(&b.1))
         .map(|(i, _)| i);
-    let read = nearest.and_then(|i| {
-        Some((
-            *graph.t.get(i)?,
-            *graph.commanded.get(i)?,
-            *graph.measured.get(i)?,
-        ))
-    });
+    let read = nearest.and_then(|i| graph.at(i));
     if let Some((t, asked, got)) = read {
         let x = place(t, values.low).x;
         painter.line_segment(
@@ -730,8 +1090,7 @@ fn graph(ui: &mut egui::Ui, graph: &Graph) {
             egui::Stroke::new(1.0, GREY),
         );
         response.on_hover_text_at_pointer(format!(
-            "{t:.2} s\ncommanded {asked:.3} {unit}\nmeasured {got:.3} {unit}",
-            unit = graph.unit
+            "{t:.2} s\nasked for {asked:.3} {unit}\nmeasured {got:.3} {unit}"
         ));
     }
 }
@@ -742,9 +1101,9 @@ fn side(ui: &mut egui::Ui, side: &Side) {
     if side.state != State::NotRun {
         for (name, words) in [
             ("Last result", &side.when),
-            ("Commit", &side.commit),
-            ("Report", &side.report),
-            ("Override", &side.override_reason),
+            ("The code's version (commit)", &side.commit),
+            ("Its files are in", &side.report),
+            ("Passed although shut, because", &side.override_reason),
         ] {
             if !words.is_empty() {
                 ui.horizontal_wrapped(|ui| {
@@ -760,10 +1119,9 @@ fn side(ui: &mut egui::Ui, side: &Side) {
 }
 
 fn record_form(ui: &mut egui::Ui, session: &mut Session, rung: &Rung, actions: &mut Vec<Action>) {
-    ui.heading("Record by hand");
     ui.label(format!(
-        "For a test a person ran: it goes to the tool, which keeps it for {}.",
-        rung.id
+        "For a test a person ran themselves: the result is kept for rung {}.",
+        rung.number
     ));
     let form = &mut session.form;
     ui.horizontal(|ui| {

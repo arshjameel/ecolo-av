@@ -10,8 +10,9 @@ The detail is in [the testing plan](testing-plan.md), [Every test](tests.md),
 run: it is the map, and the list of what is missing.
 
 > **The short version**
-> 1. **Set 1, the ladder:** does the *car* work? Bench, stands, hallway, lot, route. Each
->    step measures the car and proves the step before.
+> 1. **Set 1, the ladder:** does the *car* work? Ten rungs, named for what the car can do
+>    ([the plan](wrap-up.md), 23 Nov); each answers one question with a graph. **Rung 1 is
+>    built**; the others are listed as "not built yet".
 > 2. **Set 2, the algorithm tests:** which *algorithm* is best? Every one drives the same
 >    tests and is scored the same way.
 > 3. **Every car test has a twin in the simulator**, with the same command and the same
@@ -21,27 +22,126 @@ run: it is the map, and the list of what is missing.
 
 ## Where we are: `pixi run ladder`
 
+Since 23 Nov the rungs are [the plan's ten](wrap-up.md#1-the-rungs). The one list of them
+is `tools/ladder/rungs.yaml`: number, name, the question, its graphs, the pass mark, the
+simulator's command, the car's command, the report chapter it feeds.
+
 ```bash
 pixi run ladder                      # every rung: the simulator's side and the car's
 pixi run ladder next                 # the next open rung and its command (--car: the car's)
-pixi run ladder run stands           # run a rung's simulator twin; the result is recorded
-pixi run ladder run lot --only brake # one of its tests alone; not recorded
-pixi run ladder session stands       # the newest simulator session: each step, its numbers
-pixi run ladder record --from-report ~/aav-tests/<session>    # a car-test session
-pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by hand
+pixi run ladder run 1                # run rung 1 in the simulator (or: run stands); recorded,
+                                     # and its report page saved
+pixi run ladder run 1 --only estop   # one part of it alone; not recorded
+pixi run ladder session 1            # the newest run: its answer and each step
+pixi run ladder report 1 --open      # that run's report page, in the browser
+pixi run ladder run code             # a "before you start" check: code, stack or bench
+pixi run ladder record --from-report ~/aav-tests/<run>      # a car-test run
+pixi run ladder record 1 pass --car --note "on stands, dry" # a rung done by hand
 ```
+
+| # | Rung | State |
+|---|---|---|
+| 1 | On stands: accelerate, brake, turn | **built**: [below](#rung-1-on-stands-accelerate-brake-turn) |
+| 2 to 9, S | [the plan's table](wrap-up.md#1-the-rungs) | **not built yet**: listed, never runnable, never passed or failed |
 
 | Rule | |
 |---|---|
 | Progress is one file, `~/aav-tests/ladder.yaml` | a line a result, with its date, commit and who; never rewritten |
 | The simulator and the car are kept apart | a pass in Ravensim never marks the car's rung |
-| A rung is shut until the rungs under it have passed | a car rung also needs its own simulator twin |
+| A rung is shut until the rungs under it have passed | a car rung also needs its own simulator run |
+| A rung not built is not a rung you can run | `run` and `record` refuse it, with what exists today; no override |
 | A pass on a shut rung needs `--override "why"` | and the why is kept |
 | It never moves the car | for a car rung it prints the command; a person runs it |
-| A simulator run uses the simulator that is open | the rungs' commands carry `--attach`: `car-test` listens to `/system/source` on this computer; SIM: it tests that one; nothing heard: it starts its own, with no picture; anything else (REAL...): refused |
-| A single test never moves the ladder | `run <rung> --only <test>` records nothing: a rung passes whole |
+| A simulator run uses the simulator that is open | the rung's command carries `--attach`: `car-test` listens to `/system/source` on this computer; SIM: it tests that one, the car you see; nothing heard: it starts its own, with no picture; anything else (REAL...): refused |
+| One part alone never moves the ladder | `run <rung> --only <test>` records nothing: a rung passes whole |
 
-The rungs are `tools/ladder/rungs.yaml`.
+### Before you start: the checks that move no car
+
+The old bottom rungs moved no car you could see. They are not rungs any more: one line,
+still runnable, and they never open or shut a rung.
+
+| Check | Runs | `pixi run ladder run ...` |
+|---|---|---|
+| the code's own tests | `tools/test.sh` | `code` |
+| the whole stack drives in the simulator | `pixi run sim-check` (its own simulator, no picture) | `stack` |
+| the bench stand-in: the real boards, no car | `pixi run bench-check` | `bench` |
+
+### What happened to the old rungs and their saved results
+
+Until 23 Nov the rungs were named after places. The progress file is **never rewritten**;
+old lines are read like this:
+
+| Old rung | Now | Its old results |
+|---|---|---|
+| `stands` | rung 1 (the same run, the same pass mark) | still rung 1's |
+| `code`, `stack`, `bench` | the checks above, under the same names | still theirs |
+| `hallway`, `lot`, `route` | gone | kept in the file, **not shown**; `pixi run ladder` says how many. Not mapped forward: those passes were judged by their own sessions' pass marks, which are not the pass marks of rungs 2 to 4 |
+
+Their commands still work from a terminal (`pixi run car-test --hallway --sim`, `--lot`,
+`pixi run measure controllers --tours lot`); rungs 2 to 4 will read their runs.
+
+## Rung 1: On stands: accelerate, brake, turn
+
+**The question: do the actuators follow a command, the right way?**
+
+| | |
+|---|---|
+| What runs | the stands run that existed already: `car-test --stands --sim --attach --no-manual` ([Actuator tests](actuator-tests.md#the-simulated-car-on-stands-pixi-run-jacks)). Nothing new is measured: the answer is read from the run's own files |
+| What you see | the car in the simulator's picture is lifted onto stands; the steering sweeps, the wheels spin; the car stays where it is. About 5 minutes |
+| Passes when | every step of the run passes: the wheels reach each speed step up within 25 % (or 0.05 m/s), the steering tests give their numbers, every fault tried stops the car inside its limit (2 to 3 s) |
+| After it | the last step presses the e-stop, and it stays pressed, as on the car: `pixi run clear estop --sim` before the next run |
+| Feeds | the final report's chapter "The car and its model" (and "Safety": the faults) |
+
+**The answer, top to bottom:**
+
+| Part | Shows | From |
+|---|---|---|
+| The verdict | one line: `PASS: the wheels follow each speed step up (a step down is not judged); the steering follows its commands; 5 of 6 faults tried were caught in time (2 stopped the car by themselves; for 3 the watchdog named the lost sensor and the test stopped the car); NOT SHOWN: ...`; then the pass mark | `report.yaml`: each step's result |
+| Graph 1, the wheels | the speed asked for (dashed) and measured (solid) over time; a row a speed step: delay, 10 to 90 %, measured at the end, off at the end | step 4 `wheel-steps`, `log.csv`: `cmd_speed`, `speed` |
+| Graph 2, the steering | the angle asked for and measured over the sweep; over its 16 steps: the middle, smallest and largest delay, 10 to 90 %, off at the end; and "asked to the left, it went to the left" | step 3a `steer-sweep`, `log.csv`: `cmd_steer`, `steer` |
+| Graph 3, the brake | how hard the brake was asked to press and how hard it did (0 to 1): let go, then pressed; and how long the wheels took to stand still | step 4, `log.csv`: `brake_cmd`, `brake`, `speed` |
+| Faults on purpose | a row a fault: was the car stopped (**yes**: by itself; **caught; the test stopped it**: the watchdog named the lost sensor, then the test stopped the car; **not shown**; NO; not tried), in how long, the time allowed | `report.yaml`: each fault step, and the times in the runner's own sentence |
+| Every step of the run | the full table, folded away | as before |
+
+| The numbers | |
+|---|---|
+| delay | the time until the measured line has moved 10 % of the way to the new value |
+| 10 to 90 % | the time it then takes to get 90 % of the way |
+| off at the end | the mean of the last quarter of the step, less the value asked for |
+| never finer than | the log's sample gap, 0.02 s |
+| nothing invented | no fit, no smoothing. A number the files do not hold is **"not measured"**, with what is missing: a step down the free wheels did not finish, a run that left a step out, a brake that reports no position |
+| where the maths is | `tools/step_response.py` (tested, no ROS); the answer and the page: `tools/rung_answer.py` |
+
+The brake has no pass mark of its own in the stands run: its graph is shown, not judged.
+
+**The saved report.** Each run of the rung writes one page into its own folder,
+`~/aav-tests/<time>-stands-sim/rung-1-report.html`: the question, the verdict, the graphs,
+the numbers, the commit, the command and the date. The ladder's line for the run keeps
+where it is (`report_file`). **Open the report** on the tests screen, or
+`pixi run ladder report 1 --open`.
+
+| Why one HTML page, not Markdown and pictures | |
+|---|---|
+| one file a run | the graphs are inside it (SVG): nothing to lose, nothing to build |
+| it opens with a double-click | on any laptop, with no tool |
+| it pastes | plain headings, tables and figures, no script: into the final report's chapter |
+
+**The simulator beside the car.** Every graph and the faults table have two columns: "In
+the simulator", filled, and "On the car", which says **no car run yet**. No car data is
+drawn until a car run exists; laying the two curves on one graph is step 5 of
+[the plan](wrap-up.md#6-the-order).
+
+**Run on 24 Nov, Ben's MacBook** (`AAV_LADDER_FILE=/tmp/... pixi run dry-run`, then the
+tool's own command, the one the **Run** button starts):
+
+| What | Result |
+|---|---|
+| The run | 12 PASS, 2 SKIPPED (a Pi's link, a cable: not in the simulator), exit 0 |
+| The car in the picture | on stands for the whole run; the wheels reached 0.33 m/s; its true position moved 0.0000 m; lowered at the end |
+| The wheels | asked 0.10, 0.20, 0.30 m/s: reached each within 25 %. Asked down to 0.15: not reached (they coast), and not judged |
+| Faults | caught in time, 5 of 6: the commands lost and the e-stop stopped the car by themselves; for GPS, IMU and lidar the watchdog named the lost sensor and **the test** stopped the car |
+| The camera | **not shown**: the watchdog already called it frozen before it was lost (TODO 274). The step itself says PASS |
+| A second run started over it | refused: one car, one run at a time (`tools/ladder.py` `only_run`). Found on 24 Nov: a Run pressed in the window during a run from a terminal stopped both, and the result went under the wrong run's folder; both fixed |
 
 ## The dry run: `pixi run dry-run`
 
@@ -63,7 +163,7 @@ Which window is which screen, and why no RViz opens:
 |---|---|---|
 | the simulator | `sim.launch.py`, no window of its own; its lines go to `/tmp/aav-dry-run/sim-launch.log` | the car |
 | the simulator's picture | the developer window, live (`pixi run dev-window --live`) | watching the car while a test runs |
-| the ladder window | below | running the tests, reading the results |
+| the tests screen | below | running a rung, reading its answer |
 | `--panel` | the hardware panel (`pixi run hw-panel`) | every sensor's number; the buttons |
 | `--debug` | the debug screen (`pixi run debug-hud`) | the lidar, the localizers |
 
@@ -94,43 +194,47 @@ Any `sim.launch.py` switch can follow the command (`pixi run dry-run world:=empt
 
 **Tested, 22 Nov, Ben's MacBook.** See [what can be dry-run](#what-can-be-dry-run-from-the-screen).
 
-### The window: `pixi run ladder-window`
+### The tests screen: `pixi run ladder-window`
 
 ```bash
-pixi run ladder-window               # the ladder, in a window (the first time: cargo builds Bevy)
+pixi run ladder-window               # the tests screen (the first time: cargo builds Bevy)
 pixi run ladder-window --pretend     # sample data: nothing runs, nothing is recorded
-pixi run dry-run                     # the window beside a simulator you can watch (above)
+pixi run dry-run                     # the screen beside a simulator you can watch (above)
 ```
 
-![The test ladder's window beside a running Ravensim: one stands test's result and its graph](img/ladder-window.png)
+![The tests screen: the ten rungs, rung 1's question, and its answer](img/ladder-window.png)
 
-The picture is the window's own screenshot, 22 Nov, beside the dry run's simulator, after
-`steer-sweep` was run alone. (Taken before the **Show** switch was added.)
+The picture is the window's own screenshot, 24 Nov, beside the dry run's simulator, after
+rung 1 ran.
 
 | Part | Shows | Does |
 |---|---|---|
-| left: the ladder | the top rung at the top; **Simulator** and **The car** side by side; each cell in words: PASS or FAIL with the date, not run, shut | click a rung; hover a shut cell for why |
-| middle: the rung | what it measures, when it passes, the last result (date, commit, report, override), what shuts it | |
-| **Run in the simulator** | on only when the simulator's side is open and has a command; else it says why. Under it: "Runs in the simulator that is open", or "starts its own, with no picture" | `pixi run ladder run <rung>`; one run at a time |
-| **Its tests, one at a time** | the rung's own tests (from `car-test`'s list, not a copy), a **Run** each; simulator only | `pixi run ladder run <rung> --only <test>`; not recorded; the car goes on stands or to the ground by itself |
-| right: **The last session** | while a run goes: **RUNNING NOW** and its step. **Show**: the newest run (a single test too), or the session the ladder recorded. Then that session as a table: step, PASS / FAIL / SKIPPED / NOT RUN, what happened, the `vehicle.yaml` lines it produced | click a step |
-| the chosen step | one graph, **commanded (dashed) against measured (solid)** over time: speed, or the steering angle for the steering tests; axes labelled; the widest gap; hover reads both lines. Then the test's own numbers (stopping distance, lags, dead times) beside `vehicle.yaml`'s | |
-| the session's fits (hallway) | each number as mean ± the passes' spread, n, and **trusted** or **NOT TRUSTED: why** | |
+| top: **Before you start** | the three checks that move no car, each in words: "the code's own tests: passed 23 Nov" | a small **Run** each; they block no rung |
+| top: **The simulated car** | "on the ground" or "ON STANDS", asked every 5 s; off, with the reason, unless a simulator runs on this computer | **Put it on stands** / **Lower it to the ground** (`pixi run jacks up --sim`, `down`); a run does this by itself |
+| left: the ladder | rung 9 at the top, rung 1 at the bottom, S under them; **Simulator** and **The car** side by side; each cell in words: PASS or FAIL with the date, not run, shut, **not built yet** | click a rung |
+| middle: the rung | its question, the graphs that answer it, when it passes, the report chapter it feeds. A rung not built: "NOT BUILT YET", and what exists today | |
+| **Run rung 1 in the simulator** | on when the rung is built, open, and nothing else runs; else it says why. Under it: where it will run ("in the simulator that is open: watch the car in its picture"), and what to do after | `pixi run ladder run <rung>`; one run at a time |
+| **One part of it at a time** (folded) | the rung's own tests (from `car-test`'s list, not a copy), a **Run** each; simulator only | not recorded |
+| **On the car** | its command as text, and "A person starts a car test from the terminal" | **Copy** only |
+| **Write down a result by hand** (folded) | pass or fail, simulator or car, a note, why a shut rung is passed anyway | `pixi run ladder record ...`; a refusal is shown in the tool's words |
+| right: **The answer** | while a run goes: **RUNNING NOW** and its step. Then [rung 1's answer](#rung-1-on-stands-accelerate-brake-turn): the verdict line and its pass mark, **Open the report**, each graph with its numbers beside the car's slot, the faults table | **Show**: the newest run, or the run that counted on the ladder |
+| under it: **Every step of the run** (folded) | the table of steps there was before: PASS / FAIL / SKIPPED / NOT RUN, what happened, the `vehicle.yaml` lines; a step's own graph and numbers | click a step |
 | the console | the run's last lines, "running..." with the step, how it ended | **Stop** ends the run and all it started |
-| **The car** | its command as text, and "A person starts a car test from the terminal" | **Copy** only |
-| **Record by hand** | pass or fail, simulator or car, a note, an override reason | `pixi run ladder record ...`; a refusal is shown in the tool's words |
-| top: **The simulated car** | "on the ground" or "ON STANDS", asked every 5 s; off, with the reason, unless a simulator runs on this computer | **Put it on stands** / **Lower it to the ground**: `pixi run jacks up --sim` or `down`; Ravensim's refusal (wheels still spinning) is shown in its words |
 
 | Rule | |
 |---|---|
 | The window never moves the car | it has no control that starts a car test; every run it starts is the tool's simulator run (`--sim`); the jacks switch is the simulator's only (`--sim`, `--local`, refused when `/system/source` says REAL) |
-| The tool is the only writer, and the only reader of reports | the window reads `ladder --json` every 2 s and `ladder session <rung> --json` when a rung is chosen or a run ends; every rule stays in `tools/ladder.py`, the report's files are read by `tools/ladder_report.py` |
+| The tool is the only writer, and the only reader of a run's files | the window reads `ladder --json` every 2 s and `ladder session <rung> --json` when a rung is chosen or a run ends; every rule stays in `tools/ladder.py`, and every number on the screen is `tools/rung_answer.py`'s, already in words |
 | Colour is never the only signal | every result is a word; the graph's lines differ by their dashes, and the legend says which is which |
-| Closing the window stops its run | a simulator it started is not left behind; one it attached to stays, as its owner's |
+| Closing the window stops its run | a simulator it started is not left behind; one that was already open stays, as its owner's |
 
 The code: `ros/hud/aav_dev_window` (`src/ladder_window/`, and the logic in `crates/ladder-core`).
 
 ## What can be dry-run from the screen
+
+**This section is the record of 22 Nov, under the old rungs' names** (bench, stands,
+hallway, lot, route); the ladder has been [the ten rungs](#where-we-are-pixi-run-ladder)
+since 23 Nov, and of these only the stands run is a rung today.
 
 Ben, 22 Nov: "so I can figure out if we are testing everything". Filled from what was
 built and **run on 22 Nov** (Ben's MacBook, `pixi run dry-run --panel --debug`, the tests
@@ -183,6 +287,10 @@ screen" = the ladder window beside the simulator you can see.
 | A failure is a result | written down the way a pass is |
 
 ## Set 1: the ladder
+
+The chain of evidence below still holds. Since 23 Nov its steps are run as
+[the ten rungs](wrap-up.md#1-the-rungs): steps 0 to 2 are the checks before you start,
+step 3 is rung 1, steps 4 and 5 feed rungs 2 and 3, step 6 rungs 4 to 6.
 
 Each step **uses** the numbers of the step before, and **proves** them by getting the
 result the model said it would.

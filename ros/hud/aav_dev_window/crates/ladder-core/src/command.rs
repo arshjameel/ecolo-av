@@ -3,7 +3,7 @@
 
 use std::{path::Path, process::Command};
 
-use crate::ladder::{Place, Rung, SingleTest};
+use crate::ladder::{Check, Place, Rung, SingleTest};
 
 /// The interpreter: the one on the path (`pixi run ladder-window` puts pixi's first).
 pub const PROGRAM: &str = "python3";
@@ -28,7 +28,7 @@ impl Which {
     pub fn words(self) -> &'static str {
         match self {
             Self::Newest => "the newest run",
-            Self::Recorded => "the session the ladder recorded",
+            Self::Recorded => "the run that counted on the ladder",
         }
     }
 }
@@ -105,6 +105,23 @@ impl ToolCommand {
     /// [`crate::show::test_button`] makes one. The tool's `run --only` has no car side.
     pub(crate) fn run_one_in_simulator(rung: &Rung, test: &SingleTest) -> Self {
         Self::new(["run", &rung.id, "--only", &test.name])
+    }
+
+    /// Run a check that moves no car (the code's own tests, `sim-check`, `bench-check`);
+    /// the tool records it. Only [`crate::show::check_button`] makes one.
+    pub(crate) fn run_check(check: &Check) -> Self {
+        Self::new(["run", &check.id])
+    }
+
+    /// Open a run's report page in the browser; the tool writes the page first when the
+    /// run has none (a run from a terminal). It runs no test.
+    #[must_use]
+    pub fn open_report(rung: &Rung, which: Which) -> Self {
+        let mut command = Self::new(["report", &rung.id, "--open"]);
+        if which == Which::Recorded {
+            command.args.push("--recorded".into());
+        }
+        command
     }
 
     /// One of a rung's simulator sessions, as JSON: the tool reads the report's files.
@@ -194,28 +211,58 @@ mod tests {
 
     #[test]
     fn a_session_is_asked_of_the_tool_and_a_single_test_is_its_run_only() {
-        let lot = rung("lot");
+        let stands = rung("stands");
         assert_eq!(
-            ToolCommand::session(&lot, Which::Newest).args(),
-            ["tools/ladder.py", "session", "lot", "--json"]
+            ToolCommand::session(&stands, Which::Newest).args(),
+            ["tools/ladder.py", "session", "stands", "--json"]
         );
         assert_eq!(
-            ToolCommand::session(&lot, Which::Recorded).args(),
-            ["tools/ladder.py", "session", "lot", "--json", "--recorded"]
+            ToolCommand::session(&stands, Which::Recorded).args(),
+            [
+                "tools/ladder.py",
+                "session",
+                "stands",
+                "--json",
+                "--recorded"
+            ]
         );
-        let brake = lot.test("brake").expect("the pretend lot has brake");
+        let estop = stands.test("estop").expect("stands has the e-stop");
         assert_eq!(
-            ToolCommand::run_one_in_simulator(&lot, brake).args(),
-            ["tools/ladder.py", "run", "lot", "--only", "brake"]
+            ToolCommand::run_one_in_simulator(&stands, estop).args(),
+            ["tools/ladder.py", "run", "stands", "--only", "estop"]
+        );
+    }
+
+    #[test]
+    fn the_report_is_opened_by_the_tool_and_a_check_is_its_run() {
+        let stands = rung("stands");
+        assert_eq!(
+            ToolCommand::open_report(&stands, Which::Newest).args(),
+            ["tools/ladder.py", "report", "stands", "--open"]
+        );
+        assert_eq!(
+            ToolCommand::open_report(&stands, Which::Recorded).args(),
+            [
+                "tools/ladder.py",
+                "report",
+                "stands",
+                "--open",
+                "--recorded"
+            ]
+        );
+        let ladder = pretend::ladder();
+        assert_eq!(
+            ToolCommand::run_check(&ladder.checks[0]).args(),
+            ["tools/ladder.py", "run", "code"]
         );
     }
 
     #[test]
     fn a_plain_record_in_the_simulator() {
-        let command = ToolCommand::record(&rung("stack"), &RecordForm::default());
+        let command = ToolCommand::record(&rung("stands"), &RecordForm::default());
         assert_eq!(
             command.args(),
-            ["tools/ladder.py", "record", "stack", "pass"]
+            ["tools/ladder.py", "record", "stands", "pass"]
         );
     }
 
@@ -224,19 +271,19 @@ mod tests {
         let form = RecordForm {
             outcome: Outcome::Fail,
             place: Place::Car,
-            note: "  2.5 m/s, dry ".into(),
-            override_reason: "--the bench was done last week".into(),
+            note: "  0.3 m/s, on stands ".into(),
+            override_reason: "--the simulator was run last week".into(),
         };
         assert_eq!(
-            ToolCommand::record(&rung("lot"), &form).args(),
+            ToolCommand::record(&rung("stands"), &form).args(),
             [
                 "tools/ladder.py",
                 "record",
-                "lot",
+                "stands",
                 "fail",
                 "--car",
-                "--note=2.5 m/s, dry",
-                "--override=--the bench was done last week",
+                "--note=0.3 m/s, on stands",
+                "--override=--the simulator was run last week",
             ]
         );
     }
@@ -247,13 +294,14 @@ mod tests {
             note: "   ".into(),
             ..RecordForm::default()
         };
-        let command = ToolCommand::record(&rung("code"), &form);
+        let command = ToolCommand::record(&rung("stands"), &form);
         assert!(command.args().iter().all(|a| !a.starts_with("--")));
     }
 
     #[test]
     fn the_form_expects_an_override_only_for_a_pass_on_a_shut_side() {
-        let stands = rung("stands");
+        let mut stands = rung("stands");
+        stands.car.blocked_by = vec!["rung 1 (stands) has not passed in the simulator".into()];
         let mut form = RecordForm {
             place: Place::Car,
             ..RecordForm::default()
@@ -261,7 +309,7 @@ mod tests {
         assert!(form.override_expected(&stands));
         form.outcome = Outcome::Fail;
         assert!(!form.override_expected(&stands));
-        assert!(!RecordForm::default().override_expected(&rung("code")));
+        assert!(!RecordForm::default().override_expected(&stands));
     }
 
     #[test]

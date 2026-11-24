@@ -121,6 +121,9 @@ pub struct Session {
     step: Option<String>,
     /// Which session is shown: the newest run, or the one the ladder recorded.
     which: Which,
+    /// The "Open the report" call in progress, and what the tool last said to one.
+    opening: Option<Pending>,
+    opened: Option<Notice>,
 }
 
 impl Session {
@@ -151,6 +154,8 @@ impl Session {
             report_now: true,
             step: None,
             which: Which::default(),
+            opening: None,
+            opened: None,
         };
         if session.source == Source::Pretend {
             session.jacks = Jacks::Pretend;
@@ -166,6 +171,7 @@ impl Session {
         self.take_ladder();
         self.take_jacks(now);
         self.take_report();
+        self.take_opened();
         let Source::Tool { root } = &self.source else {
             if self.report_now {
                 self.report_now = false;
@@ -228,6 +234,7 @@ impl Session {
         if self.selected.as_deref() != Some(id) {
             self.selected = Some(id.to_owned());
             self.recorded = None;
+            self.opened = None;
             self.report = None;
             self.step = None;
             self.report_now = true;
@@ -350,11 +357,68 @@ impl Session {
         }
     }
 
-    fn start(&mut self, command: &ToolCommand, test: Option<&str>) {
+    /// The Run button beside a check (before you start). It moves no car.
+    #[must_use]
+    pub fn check_button(&self, id: &str) -> Option<RunButton> {
+        let check = self.ladder.as_ref()?.checks.iter().find(|c| c.id == id)?;
+        Some(match self.source {
+            Source::Pretend => RunButton::Off(WhyNot::Pretend),
+            Source::Tool { .. } => {
+                show::check_button(check, self.run.as_ref().map(|r| r.rung.as_str()))
+            }
+        })
+    }
+
+    /// A check's Run was pressed. Nothing starts unless its button is on; the tool
+    /// records its result, which opens and shuts no rung.
+    pub fn press_run_check(&mut self, id: &str) {
+        if let Some(RunButton::Ready(command)) = self.check_button(id) {
+            self.start_named(id.to_owned(), &command, None);
+        }
+    }
+
+    /// "Open the report" was pressed: the tool opens the run's page in the browser, and
+    /// writes it first when the run has none. It runs no test.
+    pub fn press_open_report(&mut self) {
         let (Source::Tool { root }, Some(rung)) = (&self.source, self.selected()) else {
+            self.opened = Some(Notice::bad("pretend data: there is no page to open"));
             return;
         };
-        let rung = rung.id.clone();
+        if self.opening.is_none() {
+            let command = ToolCommand::open_report(rung, self.which);
+            self.opening = Some(process::ask(command.process(root)));
+            self.opened = None;
+        }
+    }
+
+    /// What the tool said to the last "Open the report": where the page is, or why not.
+    #[must_use]
+    pub fn opened(&self) -> Option<&Notice> {
+        self.opened.as_ref()
+    }
+
+    fn take_opened(&mut self) {
+        let Some(answer) = take(&mut self.opening) else {
+            return;
+        };
+        self.report_now = true; // the page may have just been written: show where it is
+        self.opened = Some(match answer {
+            Ok(answer) if answer.succeeded() => Notice::good(answer.stdout.trim()),
+            Ok(answer) => Notice::bad(first_words(&answer.stderr, &answer.stdout)),
+            Err(why) => Notice::bad(why),
+        });
+    }
+
+    fn start(&mut self, command: &ToolCommand, test: Option<&str>) {
+        if let Some(rung) = self.selected().map(|rung| rung.id.clone()) {
+            self.start_named(rung, command, test);
+        }
+    }
+
+    fn start_named(&mut self, rung: String, command: &ToolCommand, test: Option<&str>) {
+        let Source::Tool { root } = &self.source else {
+            return;
+        };
         let process = command.process(root);
         self.console.clear();
         self.say(format!("$ {}", command.line()));
@@ -675,9 +739,10 @@ fn run_notice(run: &Run, status: Result<ExitStatus, String>) -> Notice {
         "the tool recorded it"
     };
     match status.map(|s| s.code()) {
-        Ok(Some(0)) => Notice::good(format!("{what}: the run ended with 0; {kept}")),
+        Ok(Some(0)) => Notice::good(format!("{what}: finished, and passed; {kept}")),
         Ok(Some(code)) => Notice::bad(format!(
-            "{what}: the run ended with {code}; {kept}; see the table and the console"
+            "{what}: finished, and did not pass (exit code {code}); {kept}; see the answer \
+             and the console"
         )),
         Ok(None) if run.stop_asked => {
             Notice::bad(format!("{what}: stopped by you; nothing was recorded"))
@@ -711,8 +776,8 @@ mod tests {
     #[test]
     fn pretend_data_is_there_at_once_and_opens_on_the_work() {
         let session = Session::new(Source::Pretend);
-        assert_eq!(session.ladder().map(|l| l.rungs.len()), Some(7));
-        assert_eq!(session.selected().map(|r| r.id.as_str()), Some("stack"));
+        assert_eq!(session.ladder().map(|l| l.rungs.len()), Some(10));
+        assert_eq!(session.selected().map(|r| r.id.as_str()), Some("stands"));
         assert!(session.problem().is_none());
     }
 
@@ -729,7 +794,7 @@ mod tests {
         session.select_step("estop");
         assert_eq!(session.step().map(|s| s.name.as_str()), Some("estop"));
         // Another rung: its own session, or none; never the last rung's.
-        session.select("code");
+        session.select("speed");
         session.tick(Instant::now());
         assert!(session.report().is_none() && session.step().is_none());
     }
@@ -779,6 +844,20 @@ mod tests {
         );
         session.tick(Instant::now());
         assert!(session.problem().is_none());
+    }
+
+    #[test]
+    fn pretend_data_runs_no_check_and_opens_no_page() {
+        let mut session = Session::new(Source::Pretend);
+        assert_eq!(
+            session.check_button("code"),
+            Some(RunButton::Off(WhyNot::Pretend))
+        );
+        assert_eq!(session.check_button("no-such-check"), None);
+        session.press_run_check("code");
+        assert!(session.running().is_none());
+        session.press_open_report();
+        assert!(session.opened().is_some_and(|n| !n.good));
     }
 
     #[test]
@@ -862,11 +941,11 @@ mod tests {
     fn choosing_another_rung_clears_the_last_records_words() {
         let mut session = Session::new(Source::Pretend);
         session.press_record();
-        session.select("stack");
+        session.select("stands");
         assert!(session.recorded().is_some(), "the same rung: kept");
-        session.select("code");
+        session.select("speed");
         assert!(session.recorded().is_none());
-        assert_eq!(session.selected().map(|r| r.id.as_str()), Some("code"));
+        assert_eq!(session.selected().map(|r| r.id.as_str()), Some("speed"));
     }
 
     #[test]

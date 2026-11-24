@@ -9,6 +9,8 @@ use std::fmt;
 
 use serde::Deserialize;
 
+use crate::answer::Answer;
+
 /// How a step ended, in `car-test`'s own words.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum Status {
@@ -165,22 +167,26 @@ impl Graph {
         format!("{} ({})", self.what, self.unit)
     }
 
+    /// The two lines, for drawing.
+    #[must_use]
+    pub fn lines(&self) -> Lines<'_> {
+        Lines {
+            t: &self.t,
+            asked: &self.commanded,
+            measured: &self.measured,
+        }
+    }
+
     /// The time the lines cover.
     #[must_use]
     pub fn time(&self) -> Option<Span> {
-        Span::of(self.t.iter().copied())
+        self.lines().time()
     }
 
     /// The values both lines cover, zero always in view, with a little room above and below.
     #[must_use]
     pub fn values(&self) -> Option<Span> {
-        let all = self.commanded.iter().chain(&self.measured).copied();
-        let span = Span::of(all.chain(std::iter::once(0.0)))?;
-        let room = (span.width() * 0.08).max(0.01);
-        Some(Span {
-            low: if span.low < 0.0 { span.low - room } else { 0.0 },
-            high: span.high + room,
-        })
+        self.lines().values()
     }
 
     /// One line's points as (time, value), for the lines that have both.
@@ -191,9 +197,56 @@ impl Graph {
     /// The largest gap between the two lines, with when: a number to read beside the graph.
     #[must_use]
     pub fn widest_gap(&self) -> Option<(f64, f64)> {
+        self.lines().widest_gap()
+    }
+}
+
+/// Two lines over one time axis: what was asked for, and what was measured. What a graph
+/// draws, whichever report it comes from.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Lines<'a> {
+    /// Seconds from the start of the run.
+    pub t: &'a [f64],
+    pub asked: &'a [f64],
+    pub measured: &'a [f64],
+}
+
+impl<'a> Lines<'a> {
+    /// The time the lines cover.
+    #[must_use]
+    pub fn time(self) -> Option<Span> {
+        Span::of(self.t.iter().copied())
+    }
+
+    /// The values both lines cover, zero always in view, with a little room above and below.
+    #[must_use]
+    pub fn values(self) -> Option<Span> {
+        let all = self.asked.iter().chain(self.measured).copied();
+        let span = Span::of(all.chain(std::iter::once(0.0)))?;
+        let room = (span.width() * 0.08).max(0.01);
+        Some(Span {
+            low: if span.low < 0.0 { span.low - room } else { 0.0 },
+            high: span.high + room,
+        })
+    }
+
+    /// One line's points as (time, value), for the samples that have both.
+    pub fn points(self, line: &'a [f64]) -> impl Iterator<Item = (f64, f64)> + 'a {
+        self.t.iter().copied().zip(line.iter().copied())
+    }
+
+    /// The sample at an index: (time, asked, measured).
+    #[must_use]
+    pub fn at(self, i: usize) -> Option<(f64, f64, f64)> {
+        Some((*self.t.get(i)?, *self.asked.get(i)?, *self.measured.get(i)?))
+    }
+
+    /// The largest gap between the two lines, with when: a number to read beside the graph.
+    #[must_use]
+    pub fn widest_gap(self) -> Option<(f64, f64)> {
         self.t
             .iter()
-            .zip(self.commanded.iter().zip(&self.measured))
+            .zip(self.asked.iter().zip(self.measured))
             .map(|(&t, (&asked, &got))| (t, (asked - got).abs()))
             .filter(|(_, gap)| gap.is_finite())
             .max_by(|a, b| a.1.total_cmp(&b.1))
@@ -298,6 +351,10 @@ pub struct Report {
     pub recorded: bool,
     pub steps: Vec<StepRow>,
     pub fits: Vec<Fit>,
+    /// The rung's answer from this run: the verdict, the graphs, the numbers. `None`:
+    /// the tool builds no answer for this rung yet.
+    #[serde(default)]
+    pub answer: Option<Answer>,
 }
 
 /// The tool's output was not a session.
@@ -334,9 +391,9 @@ impl Report {
     #[must_use]
     pub fn standing(&self) -> &'static str {
         if self.recorded {
-            "This session is the one the ladder recorded."
+            "This run is the one that counted on the ladder."
         } else {
-            "Not recorded on the ladder: a single test, or a run from a terminal."
+            "This run did not count on the ladder: a single test, or a run from a terminal."
         }
     }
 }

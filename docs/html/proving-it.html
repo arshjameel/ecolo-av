@@ -7,7 +7,7 @@
 <!-- Generated from docs/proving-it.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Proving it: how the tests fit together</h1>
-<div class="meta">23 min read · 8 sections</div></header>
+<div class="meta">32 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -143,7 +143,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#where-we-are-pixi-run-ladder">Where we are: pixi run ladder</a><a href="#the-dry-run-pixi-run-dry-run">The dry run: pixi run dry-run</a><a href="#what-can-be-dry-run-from-the-screen">What can be dry-run from the screen</a><a href="#the-rules-of-evidence">The rules of evidence</a><a href="#set-1-the-ladder">Set 1: the ladder</a><a href="#the-same-test-on-the-car-and-in-the-simulator">The same test, on the car and in the simulator</a><a href="#set-2-the-algorithm-tests">Set 2: the algorithm tests</a><a href="#what-is-missing">What is missing</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#where-we-are-pixi-run-ladder">Where we are: pixi run ladder</a><a href="#rung-1-on-stands-accelerate-brake-turn">Rung 1: On stands: accelerate, brake, turn</a><a href="#the-dry-run-pixi-run-dry-run">The dry run: pixi run dry-run</a><a href="#what-can-be-dry-run-from-the-screen">What can be dry-run from the screen</a><a href="#the-rules-of-evidence">The rules of evidence</a><a href="#set-1-the-ladder">Set 1: the ladder</a><a href="#the-same-test-on-the-car-and-in-the-simulator">The same test, on the car and in the simulator</a><a href="#set-2-the-algorithm-tests">Set 2: the algorithm tests</a><a href="#what-is-missing">What is missing</a></nav>
 <div class="lead"><p><strong>One page for the question "how do we know?"</strong> We have two sets of tests. This page says
 what each is for, how one step proves the step before, and how the same test runs on the
 car and in the simulator. Written 22 November 2026 by Ben Woodhead (Ben: "Testing. Proofs.
@@ -155,8 +155,9 @@ run: it is the map, and the list of what is missing.</p>
 <p><strong>The short version</strong></p>
 <ol>
 <li>
-<p><strong>Set 1, the ladder:</strong> does the <em>car</em> work? Bench, stands, hallway, lot, route. Each
-   step measures the car and proves the step before.</p>
+<p><strong>Set 1, the ladder:</strong> does the <em>car</em> work? Ten rungs, named for what the car can do
+   (<a href="wrap-up.html">the plan</a>, 23 Nov); each answers one question with a graph. <strong>Rung 1 is
+   built</strong>; the others are listed as "not built yet".</p>
 </li>
 <li>
 <p><strong>Set 2, the algorithm tests:</strong> which <em>algorithm</em> is best? Every one drives the same
@@ -173,13 +174,40 @@ run: it is the map, and the list of what is missing.</p>
 </ol>
 </blockquote></div>
 <section class="card"><h2 id="where-we-are-pixi-run-ladder">Where we are: <code>pixi run ladder</code></h2>
+<p>Since 23 Nov the rungs are <a href="wrap-up.html#1-the-rungs">the plan's ten</a>. The one list of them
+is <code>tools/ladder/rungs.yaml</code>: number, name, the question, its graphs, the pass mark, the
+simulator's command, the car's command, the report chapter it feeds.</p>
 <pre class="highlight"><code class="language-bash">pixi run ladder                      # every rung: the simulator's side and the car's
 pixi run ladder next                 # the next open rung and its command (--car: the car's)
-pixi run ladder run stands           # run a rung's simulator twin; the result is recorded
-pixi run ladder run lot --only brake # one of its tests alone; not recorded
-pixi run ladder session stands       # the newest simulator session: each step, its numbers
-pixi run ladder record --from-report ~/aav-tests/&lt;session&gt;    # a car-test session
-pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by hand</code></pre>
+pixi run ladder run 1                # run rung 1 in the simulator (or: run stands); recorded,
+                                     # and its report page saved
+pixi run ladder run 1 --only estop   # one part of it alone; not recorded
+pixi run ladder session 1            # the newest run: its answer and each step
+pixi run ladder report 1 --open      # that run's report page, in the browser
+pixi run ladder run code             # a "before you start" check: code, stack or bench
+pixi run ladder record --from-report ~/aav-tests/&lt;run&gt;      # a car-test run
+pixi run ladder record 1 pass --car --note "on stands, dry" # a rung done by hand</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Rung</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>On stands: accelerate, brake, turn</td>
+<td><strong>built</strong>: <a href="#rung-1-on-stands-accelerate-brake-turn">below</a></td>
+</tr>
+<tr>
+<td>2 to 9, S</td>
+<td><a href="wrap-up.html#1-the-rungs">the plan's table</a></td>
+<td><strong>not built yet</strong>: listed, never runnable, never passed or failed</td>
+</tr>
+</tbody>
+</table></div>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -198,7 +226,11 @@ pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by h
 </tr>
 <tr>
 <td>A rung is shut until the rungs under it have passed</td>
-<td>a car rung also needs its own simulator twin</td>
+<td>a car rung also needs its own simulator run</td>
+</tr>
+<tr>
+<td>A rung not built is not a rung you can run</td>
+<td><code>run</code> and <code>record</code> refuse it, with what exists today; no override</td>
 </tr>
 <tr>
 <td>A pass on a shut rung needs <code>--override "why"</code></td>
@@ -210,15 +242,251 @@ pixi run ladder record lot pass --car --note "2.5 m/s, dry"   # a rung done by h
 </tr>
 <tr>
 <td>A simulator run uses the simulator that is open</td>
-<td>the rungs' commands carry <code>--attach</code>: <code>car-test</code> listens to <code>/system/source</code> on this computer; SIM: it tests that one; nothing heard: it starts its own, with no picture; anything else (REAL...): refused</td>
+<td>the rung's command carries <code>--attach</code>: <code>car-test</code> listens to <code>/system/source</code> on this computer; SIM: it tests that one, the car you see; nothing heard: it starts its own, with no picture; anything else (REAL...): refused</td>
 </tr>
 <tr>
-<td>A single test never moves the ladder</td>
+<td>One part alone never moves the ladder</td>
 <td><code>run &lt;rung&gt; --only &lt;test&gt;</code> records nothing: a rung passes whole</td>
 </tr>
 </tbody>
 </table></div>
-<p>The rungs are <code>tools/ladder/rungs.yaml</code>.</p>
+<h3 id="before-you-start-the-checks-that-move-no-car">Before you start: the checks that move no car</h3>
+<p>The old bottom rungs moved no car you could see. They are not rungs any more: one line,
+still runnable, and they never open or shut a rung.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Runs</th>
+<th><code>pixi run ladder run ...</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the code's own tests</td>
+<td><code>tools/test.sh</code></td>
+<td><code>code</code></td>
+</tr>
+<tr>
+<td>the whole stack drives in the simulator</td>
+<td><code>pixi run sim-check</code> (its own simulator, no picture)</td>
+<td><code>stack</code></td>
+</tr>
+<tr>
+<td>the bench stand-in: the real boards, no car</td>
+<td><code>pixi run bench-check</code></td>
+<td><code>bench</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="what-happened-to-the-old-rungs-and-their-saved-results">What happened to the old rungs and their saved results</h3>
+<p>Until 23 Nov the rungs were named after places. The progress file is <strong>never rewritten</strong>;
+old lines are read like this:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Old rung</th>
+<th>Now</th>
+<th>Its old results</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stands</code></td>
+<td>rung 1 (the same run, the same pass mark)</td>
+<td>still rung 1's</td>
+</tr>
+<tr>
+<td><code>code</code>, <code>stack</code>, <code>bench</code></td>
+<td>the checks above, under the same names</td>
+<td>still theirs</td>
+</tr>
+<tr>
+<td><code>hallway</code>, <code>lot</code>, <code>route</code></td>
+<td>gone</td>
+<td>kept in the file, <strong>not shown</strong>; <code>pixi run ladder</code> says how many. Not mapped forward: those passes were judged by their own sessions' pass marks, which are not the pass marks of rungs 2 to 4</td>
+</tr>
+</tbody>
+</table></div>
+<p>Their commands still work from a terminal (<code>pixi run car-test --hallway --sim</code>, <code>--lot</code>,
+<code>pixi run measure controllers --tours lot</code>); rungs 2 to 4 will read their runs.</p>
+</section>
+<section class="card"><h2 id="rung-1-on-stands-accelerate-brake-turn">Rung 1: On stands: accelerate, brake, turn</h2>
+<p><strong>The question: do the actuators follow a command, the right way?</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What runs</td>
+<td>the stands run that existed already: <code>car-test --stands --sim --attach --no-manual</code> (<a href="actuator-tests.html#the-simulated-car-on-stands-pixi-run-jacks">Actuator tests</a>). Nothing new is measured: the answer is read from the run's own files</td>
+</tr>
+<tr>
+<td>What you see</td>
+<td>the car in the simulator's picture is lifted onto stands; the steering sweeps, the wheels spin; the car stays where it is. About 5 minutes</td>
+</tr>
+<tr>
+<td>Passes when</td>
+<td>every step of the run passes: the wheels reach each speed step up within 25 % (or 0.05 m/s), the steering tests give their numbers, every fault tried stops the car inside its limit (2 to 3 s)</td>
+</tr>
+<tr>
+<td>After it</td>
+<td>the last step presses the e-stop, and it stays pressed, as on the car: <code>pixi run clear estop --sim</code> before the next run</td>
+</tr>
+<tr>
+<td>Feeds</td>
+<td>the final report's chapter "The car and its model" (and "Safety": the faults)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The answer, top to bottom:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Shows</th>
+<th>From</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The verdict</td>
+<td>one line: <code>PASS: the wheels follow each speed step up (a step down is not judged); the steering follows its commands; 5 of 6 faults tried were caught in time (2 stopped the car by themselves; for 3 the watchdog named the lost sensor and the test stopped the car); NOT SHOWN: ...</code>; then the pass mark</td>
+<td><code>report.yaml</code>: each step's result</td>
+</tr>
+<tr>
+<td>Graph 1, the wheels</td>
+<td>the speed asked for (dashed) and measured (solid) over time; a row a speed step: delay, 10 to 90 %, measured at the end, off at the end</td>
+<td>step 4 <code>wheel-steps</code>, <code>log.csv</code>: <code>cmd_speed</code>, <code>speed</code></td>
+</tr>
+<tr>
+<td>Graph 2, the steering</td>
+<td>the angle asked for and measured over the sweep; over its 16 steps: the middle, smallest and largest delay, 10 to 90 %, off at the end; and "asked to the left, it went to the left"</td>
+<td>step 3a <code>steer-sweep</code>, <code>log.csv</code>: <code>cmd_steer</code>, <code>steer</code></td>
+</tr>
+<tr>
+<td>Graph 3, the brake</td>
+<td>how hard the brake was asked to press and how hard it did (0 to 1): let go, then pressed; and how long the wheels took to stand still</td>
+<td>step 4, <code>log.csv</code>: <code>brake_cmd</code>, <code>brake</code>, <code>speed</code></td>
+</tr>
+<tr>
+<td>Faults on purpose</td>
+<td>a row a fault: was the car stopped (<strong>yes</strong>: by itself; <strong>caught; the test stopped it</strong>: the watchdog named the lost sensor, then the test stopped the car; <strong>not shown</strong>; NO; not tried), in how long, the time allowed</td>
+<td><code>report.yaml</code>: each fault step, and the times in the runner's own sentence</td>
+</tr>
+<tr>
+<td>Every step of the run</td>
+<td>the full table, folded away</td>
+<td>as before</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The numbers</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>delay</td>
+<td>the time until the measured line has moved 10 % of the way to the new value</td>
+</tr>
+<tr>
+<td>10 to 90 %</td>
+<td>the time it then takes to get 90 % of the way</td>
+</tr>
+<tr>
+<td>off at the end</td>
+<td>the mean of the last quarter of the step, less the value asked for</td>
+</tr>
+<tr>
+<td>never finer than</td>
+<td>the log's sample gap, 0.02 s</td>
+</tr>
+<tr>
+<td>nothing invented</td>
+<td>no fit, no smoothing. A number the files do not hold is <strong>"not measured"</strong>, with what is missing: a step down the free wheels did not finish, a run that left a step out, a brake that reports no position</td>
+</tr>
+<tr>
+<td>where the maths is</td>
+<td><code>tools/step_response.py</code> (tested, no ROS); the answer and the page: <code>tools/rung_answer.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>The brake has no pass mark of its own in the stands run: its graph is shown, not judged.</p>
+<p><strong>The saved report.</strong> Each run of the rung writes one page into its own folder,
+<code>~/aav-tests/&lt;time&gt;-stands-sim/rung-1-report.html</code>: the question, the verdict, the graphs,
+the numbers, the commit, the command and the date. The ladder's line for the run keeps
+where it is (<code>report_file</code>). <strong>Open the report</strong> on the tests screen, or
+<code>pixi run ladder report 1 --open</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Why one HTML page, not Markdown and pictures</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>one file a run</td>
+<td>the graphs are inside it (SVG): nothing to lose, nothing to build</td>
+</tr>
+<tr>
+<td>it opens with a double-click</td>
+<td>on any laptop, with no tool</td>
+</tr>
+<tr>
+<td>it pastes</td>
+<td>plain headings, tables and figures, no script: into the final report's chapter</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The simulator beside the car.</strong> Every graph and the faults table have two columns: "In
+the simulator", filled, and "On the car", which says <strong>no car run yet</strong>. No car data is
+drawn until a car run exists; laying the two curves on one graph is step 5 of
+<a href="wrap-up.html#6-the-order">the plan</a>.</p>
+<p><strong>Run on 24 Nov, Ben's MacBook</strong> (<code>AAV_LADDER_FILE=/tmp/... pixi run dry-run</code>, then the
+tool's own command, the one the <strong>Run</strong> button starts):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The run</td>
+<td>12 PASS, 2 SKIPPED (a Pi's link, a cable: not in the simulator), exit 0</td>
+</tr>
+<tr>
+<td>The car in the picture</td>
+<td>on stands for the whole run; the wheels reached 0.33 m/s; its true position moved 0.0000 m; lowered at the end</td>
+</tr>
+<tr>
+<td>The wheels</td>
+<td>asked 0.10, 0.20, 0.30 m/s: reached each within 25 %. Asked down to 0.15: not reached (they coast), and not judged</td>
+</tr>
+<tr>
+<td>Faults</td>
+<td>caught in time, 5 of 6: the commands lost and the e-stop stopped the car by themselves; for GPS, IMU and lidar the watchdog named the lost sensor and <strong>the test</strong> stopped the car</td>
+</tr>
+<tr>
+<td>The camera</td>
+<td><strong>not shown</strong>: the watchdog already called it frozen before it was lost (TODO 274). The step itself says PASS</td>
+</tr>
+<tr>
+<td>A second run started over it</td>
+<td>refused: one car, one run at a time (<code>tools/ladder.py</code> <code>only_run</code>). Found on 24 Nov: a Run pressed in the window during a run from a terminal stopped both, and the result went under the wrong run's folder; both fixed</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="the-dry-run-pixi-run-dry-run">The dry run: <code>pixi run dry-run</code></h2>
 <p><strong>Everything we will do with the real car, done first with the simulated one you can see</strong>
@@ -250,9 +518,9 @@ pixi run clear estop --sim           # a person clears the e-stop a test left se
 <td>watching the car while a test runs</td>
 </tr>
 <tr>
-<td>the ladder window</td>
+<td>the tests screen</td>
 <td>below</td>
-<td>running the tests, reading the results</td>
+<td>running a rung, reading its answer</td>
 </tr>
 <tr>
 <td><code>--panel</code></td>
@@ -330,13 +598,13 @@ world for all of them:</p>
 </tbody>
 </table></div>
 <p><strong>Tested, 22 Nov, Ben's MacBook.</strong> See <a href="#what-can-be-dry-run-from-the-screen">what can be dry-run</a>.</p>
-<h3 id="the-window-pixi-run-ladder-window">The window: <code>pixi run ladder-window</code></h3>
-<pre class="highlight"><code class="language-bash">pixi run ladder-window               # the ladder, in a window (the first time: cargo builds Bevy)
+<h3 id="the-tests-screen-pixi-run-ladder-window">The tests screen: <code>pixi run ladder-window</code></h3>
+<pre class="highlight"><code class="language-bash">pixi run ladder-window               # the tests screen (the first time: cargo builds Bevy)
 pixi run ladder-window --pretend     # sample data: nothing runs, nothing is recorded
-pixi run dry-run                     # the window beside a simulator you can watch (above)</code></pre>
-<p><img alt="The test ladder's window beside a running Ravensim: one stands test's result and its graph" src="../img/ladder-window.png" /></p>
-<p>The picture is the window's own screenshot, 22 Nov, beside the dry run's simulator, after
-<code>steer-sweep</code> was run alone. (Taken before the <strong>Show</strong> switch was added.)</p>
+pixi run dry-run                     # the screen beside a simulator you can watch (above)</code></pre>
+<p><img alt="The tests screen: the ten rungs, rung 1's question, and its answer" src="../img/ladder-window.png" /></p>
+<p>The picture is the window's own screenshot, 24 Nov, beside the dry run's simulator, after
+rung 1 ran.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -347,59 +615,59 @@ pixi run dry-run                     # the window beside a simulator you can wat
 </thead>
 <tbody>
 <tr>
+<td>top: <strong>Before you start</strong></td>
+<td>the three checks that move no car, each in words: "the code's own tests: passed 23 Nov"</td>
+<td>a small <strong>Run</strong> each; they block no rung</td>
+</tr>
+<tr>
+<td>top: <strong>The simulated car</strong></td>
+<td>"on the ground" or "ON STANDS", asked every 5 s; off, with the reason, unless a simulator runs on this computer</td>
+<td><strong>Put it on stands</strong> / <strong>Lower it to the ground</strong> (<code>pixi run jacks up --sim</code>, <code>down</code>); a run does this by itself</td>
+</tr>
+<tr>
 <td>left: the ladder</td>
-<td>the top rung at the top; <strong>Simulator</strong> and <strong>The car</strong> side by side; each cell in words: PASS or FAIL with the date, not run, shut</td>
-<td>click a rung; hover a shut cell for why</td>
+<td>rung 9 at the top, rung 1 at the bottom, S under them; <strong>Simulator</strong> and <strong>The car</strong> side by side; each cell in words: PASS or FAIL with the date, not run, shut, <strong>not built yet</strong></td>
+<td>click a rung</td>
 </tr>
 <tr>
 <td>middle: the rung</td>
-<td>what it measures, when it passes, the last result (date, commit, report, override), what shuts it</td>
+<td>its question, the graphs that answer it, when it passes, the report chapter it feeds. A rung not built: "NOT BUILT YET", and what exists today</td>
 <td></td>
 </tr>
 <tr>
-<td><strong>Run in the simulator</strong></td>
-<td>on only when the simulator's side is open and has a command; else it says why. Under it: "Runs in the simulator that is open", or "starts its own, with no picture"</td>
+<td><strong>Run rung 1 in the simulator</strong></td>
+<td>on when the rung is built, open, and nothing else runs; else it says why. Under it: where it will run ("in the simulator that is open: watch the car in its picture"), and what to do after</td>
 <td><code>pixi run ladder run &lt;rung&gt;</code>; one run at a time</td>
 </tr>
 <tr>
-<td><strong>Its tests, one at a time</strong></td>
+<td><strong>One part of it at a time</strong> (folded)</td>
 <td>the rung's own tests (from <code>car-test</code>'s list, not a copy), a <strong>Run</strong> each; simulator only</td>
-<td><code>pixi run ladder run &lt;rung&gt; --only &lt;test&gt;</code>; not recorded; the car goes on stands or to the ground by itself</td>
+<td>not recorded</td>
 </tr>
 <tr>
-<td>right: <strong>The last session</strong></td>
-<td>while a run goes: <strong>RUNNING NOW</strong> and its step. <strong>Show</strong>: the newest run (a single test too), or the session the ladder recorded. Then that session as a table: step, PASS / FAIL / SKIPPED / NOT RUN, what happened, the <code>vehicle.yaml</code> lines it produced</td>
+<td><strong>On the car</strong></td>
+<td>its command as text, and "A person starts a car test from the terminal"</td>
+<td><strong>Copy</strong> only</td>
+</tr>
+<tr>
+<td><strong>Write down a result by hand</strong> (folded)</td>
+<td>pass or fail, simulator or car, a note, why a shut rung is passed anyway</td>
+<td><code>pixi run ladder record ...</code>; a refusal is shown in the tool's words</td>
+</tr>
+<tr>
+<td>right: <strong>The answer</strong></td>
+<td>while a run goes: <strong>RUNNING NOW</strong> and its step. Then <a href="#rung-1-on-stands-accelerate-brake-turn">rung 1's answer</a>: the verdict line and its pass mark, <strong>Open the report</strong>, each graph with its numbers beside the car's slot, the faults table</td>
+<td><strong>Show</strong>: the newest run, or the run that counted on the ladder</td>
+</tr>
+<tr>
+<td>under it: <strong>Every step of the run</strong> (folded)</td>
+<td>the table of steps there was before: PASS / FAIL / SKIPPED / NOT RUN, what happened, the <code>vehicle.yaml</code> lines; a step's own graph and numbers</td>
 <td>click a step</td>
-</tr>
-<tr>
-<td>the chosen step</td>
-<td>one graph, <strong>commanded (dashed) against measured (solid)</strong> over time: speed, or the steering angle for the steering tests; axes labelled; the widest gap; hover reads both lines. Then the test's own numbers (stopping distance, lags, dead times) beside <code>vehicle.yaml</code>'s</td>
-<td></td>
-</tr>
-<tr>
-<td>the session's fits (hallway)</td>
-<td>each number as mean ± the passes' spread, n, and <strong>trusted</strong> or <strong>NOT TRUSTED: why</strong></td>
-<td></td>
 </tr>
 <tr>
 <td>the console</td>
 <td>the run's last lines, "running..." with the step, how it ended</td>
 <td><strong>Stop</strong> ends the run and all it started</td>
-</tr>
-<tr>
-<td><strong>The car</strong></td>
-<td>its command as text, and "A person starts a car test from the terminal"</td>
-<td><strong>Copy</strong> only</td>
-</tr>
-<tr>
-<td><strong>Record by hand</strong></td>
-<td>pass or fail, simulator or car, a note, an override reason</td>
-<td><code>pixi run ladder record ...</code>; a refusal is shown in the tool's words</td>
-</tr>
-<tr>
-<td>top: <strong>The simulated car</strong></td>
-<td>"on the ground" or "ON STANDS", asked every 5 s; off, with the reason, unless a simulator runs on this computer</td>
-<td><strong>Put it on stands</strong> / <strong>Lower it to the ground</strong>: <code>pixi run jacks up --sim</code> or <code>down</code>; Ravensim's refusal (wheels still spinning) is shown in its words</td>
 </tr>
 </tbody>
 </table></div>
@@ -416,8 +684,8 @@ pixi run dry-run                     # the window beside a simulator you can wat
 <td>it has no control that starts a car test; every run it starts is the tool's simulator run (<code>--sim</code>); the jacks switch is the simulator's only (<code>--sim</code>, <code>--local</code>, refused when <code>/system/source</code> says REAL)</td>
 </tr>
 <tr>
-<td>The tool is the only writer, and the only reader of reports</td>
-<td>the window reads <code>ladder --json</code> every 2 s and <code>ladder session &lt;rung&gt; --json</code> when a rung is chosen or a run ends; every rule stays in <code>tools/ladder.py</code>, the report's files are read by <code>tools/ladder_report.py</code></td>
+<td>The tool is the only writer, and the only reader of a run's files</td>
+<td>the window reads <code>ladder --json</code> every 2 s and <code>ladder session &lt;rung&gt; --json</code> when a rung is chosen or a run ends; every rule stays in <code>tools/ladder.py</code>, and every number on the screen is <code>tools/rung_answer.py</code>'s, already in words</td>
 </tr>
 <tr>
 <td>Colour is never the only signal</td>
@@ -425,13 +693,16 @@ pixi run dry-run                     # the window beside a simulator you can wat
 </tr>
 <tr>
 <td>Closing the window stops its run</td>
-<td>a simulator it started is not left behind; one it attached to stays, as its owner's</td>
+<td>a simulator it started is not left behind; one that was already open stays, as its owner's</td>
 </tr>
 </tbody>
 </table></div>
 <p>The code: <code>ros/hud/aav_dev_window</code> (<code>src/ladder_window/</code>, and the logic in <code>crates/ladder-core</code>).</p>
 </section>
 <section class="card"><h2 id="what-can-be-dry-run-from-the-screen">What can be dry-run from the screen</h2>
+<p><strong>This section is the record of 22 Nov, under the old rungs' names</strong> (bench, stands,
+hallway, lot, route); the ladder has been <a href="#where-we-are-pixi-run-ladder">the ten rungs</a>
+since 23 Nov, and of these only the stands run is a rung today.</p>
 <p>Ben, 22 Nov: "so I can figure out if we are testing everything". Filled from what was
 built and <strong>run on 22 Nov</strong> (Ben's MacBook, <code>pixi run dry-run --panel --debug</code>, the tests
 started by the ladder tool's own commands, the ones the window's buttons run). "From the
@@ -611,6 +882,9 @@ screen" = the ladder window beside the simulator you can see.</p>
 </table></div>
 </section>
 <section class="card"><h2 id="set-1-the-ladder">Set 1: the ladder</h2>
+<p>The chain of evidence below still holds. Since 23 Nov its steps are run as
+<a href="wrap-up.html#1-the-rungs">the ten rungs</a>: steps 0 to 2 are the checks before you start,
+step 3 is rung 1, steps 4 and 5 feed rungs 2 and 3, step 6 rungs 4 to 6.</p>
 <p>Each step <strong>uses</strong> the numbers of the step before, and <strong>proves</strong> them by getting the
 result the model said it would.</p>
 <div class="table-wrap"><table>

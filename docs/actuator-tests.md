@@ -548,7 +548,8 @@ Ravensim (the same brake); `firm` 1.22 s.
 | File | Holds |
 |---|---|
 | `report.md` | the table: PASS / FAIL / SKIPPED / NOT RUN per step, what happened, the `vehicle.yaml` lines |
-| `report.yaml` | the same, for tools (`pixi run ladder session <rung>`, the ladder window); a hallway and a lot session write one too, a step a pass |
+| `report.yaml` | the same, for tools (`pixi run ladder session <rung>`, the tests screen); a hallway and a lot session write one too, a step a pass |
+| `rung-1-report.html` | a stands run started by the ladder (`pixi run ladder run 1`, or **Run** on the tests screen): rung 1's answer as one page, the question, the verdict, three graphs with their numbers, the faults table ([Proving it](proving-it.md#rung-1-on-stands-accelerate-brake-turn)). `pixi run ladder report 1` writes it for a run from a terminal |
 | `run.log` | everything printed |
 | `<step>/` | each test's own folder (`log.csv`, `summary.txt`, `meta.yaml`) and `output.log` |
 | `sim-launch.log` | `--sim`: our Ravensim's log |

@@ -17,11 +17,12 @@ results. Nothing new is built unless a row here asks for it.
 
 ## 1. The rungs
 
-A rung opens when the ones under it have passed. S runs beside every rung.
+A rung opens when the ones under it have passed. S runs beside every rung. The list the
+tools read is `tools/ladder/rungs.yaml`; a rung not built is shown as "not built yet".
 
 | # | Rung | The question | Its graph | Passes when (proposed) | Today |
 |---|---|---|---|---|---|
-| 1 | On stands: accelerate, brake, turn | do the actuators follow a command, the right way? | wheel speed and steering, asked against measured | each follows within its lag; every fault stops the car | built (`car-test --stands`, on jacks in the simulator) |
+| 1 | On stands: accelerate, brake, turn | do the actuators follow a command, the right way? | wheel speed and steering, asked against measured | each follows within its lag; every fault stops the car | **a rung, in the simulator** (23 Nov): `pixi run ladder run 1`, or **Run** on the tests screen; its answer is a verdict line, three graphs with their numbers and the faults table, saved as one page ([Proving it](proving-it.md#rung-1-on-stands-accelerate-brake-turn)). The car's side is a slot: no car run yet |
 | 2 | On the ground: speed up, slow down | how fast does it speed up and stop? | speed against time; stopping distance against speed | the model's speed within 10 %, its stop within 0.2 m | built (`speed-up`, `brake`) |
 | 3 | A straight line: speed up, hold, slow down | does it hold a speed, and drive straight? | speed held; drift to the side | wanders under 0.1 m/s; drifts under 0.2 m in 10 m | built in part (hallway session; a hold test is TODO 266) |
 | 4 | Navigate, an empty costmap | does the whole stack drive A to B with nothing in the way? | the path driven over the plan; metres off it | reaches the goal; under 0.3 m off the plan | the stack does it; no rung |
@@ -73,7 +74,7 @@ The old names keep working until the new ones have been used for a while; then t
 | World | the car in its world, 3D and top-down: the map, the plan, the costmap, what it sees | the developer window and `nav-view` | keep; it replaced RViz and Gazebo's picture |
 | Debug | what each layer believes: the localizers, the cubes, who is driving | `debug-hud`, and a debug page in the map window | **needs attention**: one debug screen, its pages named for the layers |
 | Hardware | every sensor's number, the actuators, calibration | `hw-panel` | keep; add "on stands" |
-| Tests | the rungs, run, result, graph, simulator beside car | `ladder-window` | rebuild round the ten rungs |
+| Tests | the rungs, run, result, graph, simulator beside car | `ladder-window`: the ten rungs, and rung 1's answer (23 Nov) | rungs 2 to 9 and S, one at a time; the car's side of each graph |
 | In the car | the driver's HUD and street map | `hud`, `map` (raylib, on the Pi) | keep as they are |
 
 | Editor | For | Today |
@@ -105,7 +106,7 @@ measured, with its graph; which we chose and why.
 
 | Step | What | Done when |
 |---|---|---|
-| 1 | The ladder rebuilt round the ten rungs, virtual only; rungs 1 to 3 first | each of rungs 1 to 3 runs from the tests screen and saves a graph and a report |
+| 1 | The ladder rebuilt round the ten rungs, virtual only; rungs 1 to 3 first | each of rungs 1 to 3 runs from the tests screen and saves a graph and a report. **23 Nov: the ladder is the ten rungs, and rung 1 is done** (run by the tool's own command beside the open simulator; its button was pressed once, on 24 Nov, over another run: that found two faults, both fixed). Rungs 2 and 3: not built |
 | 2 | Rungs 4 to 6, and S | the same |
 | 3 | The commands and screens of sections 3 and 4 | a new person starts the virtual car and its screens with two commands |
 | 4 | Rungs 7 to 9; the algorithm comparisons | the same |

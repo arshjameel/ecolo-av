@@ -35,10 +35,10 @@ simulator; the other choices are made at launch. The plan:
 | `src/map_edit/main.rs` | the map editor (`pixi run map-edit`, TODO 251): its own binary, `map_edit`; no ROS. The edits are the `map-edit` crate's ([docs/map-editor.md](../../../docs/map-editor.md)) |
 | `src/map_edit/tool.rs` | its tools: a drag into a box, an align drag or key: no Bevy, no egui, tested |
 | `src/map_edit/streets.rs` | its street map: the tiles round the map, read once (`map-core`) |
-| `src/ladder_window/main.rs` | the test ladder's window (`pixi run ladder-window`, TODO 271): its own binary, `ladder_window`; no ROS ([Proving it](../../../docs/proving-it.md#the-window-pixi-run-ladder-window)) |
-| `src/ladder_window/draw.rs` | its drawing, in egui: the ladder, the chosen rung with a Run for each of its tests, the last session (a table of steps, the chosen step's graph of commanded against measured, its numbers, a hallway session's fits), the console; at the top "The simulated car: on stands / on the ground" and its one button, on only while a simulator runs on this computer (`pixi run jacks`, TODO 272) |
+| `src/ladder_window/main.rs` | the tests screen (`pixi run ladder-window`, TODO 271, 277): its own binary, `ladder_window`; no ROS ([Proving it](../../../docs/proving-it.md#the-tests-screen-pixi-run-ladder-window)) |
+| `src/ladder_window/draw.rs` | its drawing, in egui: the ladder's ten rungs (a rung not built says so); the chosen rung: its question, its graphs, its pass mark, its Run, each part of it alone (folded); on the right its **answer**: one verdict line, **Open the report**, each graph of asked-for against measured with its numbers beside the car's slot ("no car run yet"), the faults table; under it, folded, every step of the run (the table, a step's own graph and numbers, a hallway run's fits); the console. At the top "Before you start": the checks that move no car, a Run each; and "The simulated car: on stands / on the ground" with its one button, on only while a simulator runs on this computer (`pixi run jacks`, TODO 272) |
 | [`crates/nav-core`](./crates/nav-core/README.md) | the navigation view's logic: the trail, a marker's outline, the stop zone, the body, the scale: no Bevy, no egui, no ROS, tested by `tools/test.sh` |
-| [`crates/ladder-core`](./crates/ladder-core/README.md) | its logic: the tool's JSON as types, each cell and button, a session's steps, graph and fits, the tool's commands, the run as a child: no Bevy, no egui, tested by `tools/test.sh` |
+| [`crates/ladder-core`](./crates/ladder-core/README.md) | its logic: the tool's JSON as types (the rungs, the checks, a rung's answer), each cell and button, a run's steps, graph and fits, the tool's commands, the run as a child: no Bevy, no egui, tested by `tools/test.sh` |
 
 Also: `--map-span M` (metres across at the start), `--title`, `--position X,Y`,
 `--screenshot-every S` (the newest picture of a long run). What the map took over from
@@ -61,7 +61,7 @@ pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lin
 pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, their saved map
 pixi run nav-view --live                           # the map panel alone, in its own window (--map-only): what RViz was for
 pixi run map-edit bags/<drive>/map                         # the map editor: no ROS (docs/map-editor.md)
-pixi run ladder-window                                     # the test ladder: no ROS (docs/proving-it.md)
+pixi run ladder-window                                     # the tests screen: no ROS (docs/proving-it.md)
 pixi run ladder-window --pretend --rung stands --seconds 5 --screenshot /tmp/ladder.png   # sample data, seen without a person
 pixi run dry-run                                           # the ladder window beside a Ravensim to watch
 ```
@@ -190,8 +190,9 @@ from behind the car. The live window [before](../../../docs/img/dev-window-rings
 - `--live` also publishes `/hud/dev_window/heartbeat`: frames drawn, 10 Hz. Only sim's
   `watch_screens:=` reads it.
 - `ladder_window` starts `python3 tools/ladder.py` (`--json` every 2 s; `session <rung>
-  --json` when a rung is chosen or a run ends; `run <rung>` and `run <rung> --only <test>`,
-  the simulator only, and `record` on a press). A run uses the simulator that is open on
+  --json` when a rung is chosen or a run ends; `run <rung>`, `run <rung> --only <test>` and
+  `run <check>`, the simulator only; `record` on a press; `report <rung> --open` for
+  **Open the report**: the tool writes the page if the run has none, and opens the browser). A run uses the simulator that is open on
   this computer (`pixi run dry-run`), or starts its own. It never writes the progress file, and
   it has no control that starts a car test. For the simulated car's jacks it starts
   `tools/ros.sh --local python3 tools/jacks.py status --sim --json` (5 s after each answer),
