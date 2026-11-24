@@ -287,6 +287,10 @@ bench's argument names:
                       model -> Ravensim; its measurements back as CAN frames ->
                       spine_bridge -> /vehicle/*. arm:=true arms it after 12 s;
                       bridge:=python runs aav_spine's Python spine_bridge, not the Rust one
+  rc_pad:=true        with spine:=true: an RC receiver on the spine, and a PS4 gamepad as
+                      the FS-i6X (aav_spine_sim's rc_pad): the firmware's RC rules drive
+                      Ravensim's car. rc_pad_mode:=high (manual, the default) or low
+                      (normal: the right stick up gives the car to the computer)
   esp32:=true         today's car in the loop: ego -> legacy_uart_bridge (the car's own)
                       -> 13-byte frames over local TCP -> sim_esp32 (the 2025-26 C++
                       firmware's logic: its throttle ramp, brake, no timeout) -> the
@@ -608,6 +612,7 @@ def launch_setup(context):
                 noise_seed=arg('noise_seed'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
+                rc_pad=arg('rc_pad'), rc_pad_mode=arg('rc_pad_mode'),
                 arm_when_open_impl=vehicle.check_arm_when_open_impl(
                     arg('arm_when_open_impl')),
                 esp32=arg('esp32'), esp32_loop=arg('esp32_loop'),
@@ -1000,6 +1005,12 @@ def generate_launch_description():
                                           'actuator model'),
         DeclareLaunchArgument('arm', default_value='true',
                               description='with spine:=true: arm the spine after 12 s'),
+        DeclareLaunchArgument('rc_pad', default_value='false',
+                              description='with spine:=true: an RC receiver on the spine, '
+                                          'and a PS4 gamepad as the FS-i6X (rc_pad)'),
+        DeclareLaunchArgument('rc_pad_mode', default_value='high',
+                              description="with rc_pad:=true: the mode switch's start, "
+                                          'high (manual) or low (normal)'),
         DeclareLaunchArgument('esp32', default_value='false',
                               description="today's car in the loop: legacy_uart_bridge and "
                                           'sim_esp32, the C++ firmware standing in'),

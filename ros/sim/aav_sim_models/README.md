@@ -54,7 +54,8 @@ Arguments: `world` (empty, test_lot, road, or a path), `obstacle`, `start_x`, `s
 `start_yaw` (rad), `lidar`, `cameras`, `camera_lockstep` (auto, true, false; auto = on
 under `tools/software_gl.sh`), `graphics` (auto, simple, pretty; auto = pretty on a GPU), `chase_camera`, `radar`, `actuator_model`, `speed_loop`,
 `payload` (kg aboard), `adaptive_brake`, `lag_scale`, `faults`, `spine`, `arm`, `bridge`
-(rust or python), `esp32`, `esp32_loop` (pi or open), `noise_seed`, `wheel_noise`,
+(rust or python), `rc_pad` (with `spine`: an RC receiver on the spine and a PS4 gamepad as
+the FS-i6X, `aav_spine_sim`'s `rc_pad`), `rc_pad_mode` (high or low), `esp32`, `esp32_loop` (pi or open), `noise_seed`, `wheel_noise`,
 `wheel_slip`, `clock_hz`.
 
 ### Nodes

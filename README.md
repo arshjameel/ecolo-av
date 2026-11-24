@@ -112,6 +112,7 @@ reaches a real car on the same network. A family is one command and a word after
 | Command | What it does |
 |---|---|
 | `turtle` | turtlesim plays the car |
+| `rc-pad` | the RC's rules without the car: a PS4 gamepad as the FS-i6X (left stick the pedal, right stick stop, give and steering, R1 the mode switch, L1 held the radio lost), through the firmware's own RC logic, driving `spine_sim`'s model car in rviz. `mode_start:=low` starts in normal |
 | `keyboard` | drive from the keyboard, in a second terminal: `keyboard --local` with `turtle` or `bench`, `keyboard --sim` with `sim`. With no flag it drives whatever shares the ROS domain: on the car's network, the car |
 | `sim` | Ravensim, our own simulator, plays the car (Gazebo went on 16 Nov; with no GPU put `tools/software_gl.sh` in front), driven by our own stack (`stack:=ours`, the default since 14 Nov; `stack:=best` for the champions, [the league](docs/league.md); Nav2 went on 17 Nov); `world:=road`, `hud:=true`, `sim_speed:=3`... |
 | `demo` | the whole simulated car at once: the simulator, RViz, the HUD and the map window. `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |

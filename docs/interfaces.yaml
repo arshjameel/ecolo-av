@@ -33,6 +33,12 @@ topics:
     pub: [joy_node]
     sub: [joy_alive, joy_teleop]
     note: Joystick axes and buttons, 20 Hz while the USB receiver is in - joy_node repeats the last state (autorepeat_rate), so a pad turned off with its receiver still in may repeat a held trigger and stick (TODO 74a). joy_node, joy_alive, teleop_twist_joy_node and joy_teleop run in the namespace /drivers/joy (aav_teleop teleop.launch.py), so their relative topics land here. bench_check.py publishes it itself to play a live, frozen and silent pad (teleop.launch.py joy_device:=false).
+  /drivers/rc_pad/joy:
+    type: sensor_msgs/msg/Joy
+    pub: [game_controller_node]
+    sub: [rc_pad]
+    live: [bench, sim]
+    note: "The gamepad that plays the FS-i6X (rc_pad.launch.py, sim rc_pad:=true) - joy's game_controller_node, named rc_pad_joy, remapped here so it never reaches the joystick's teleop. A DualShock 4's layout - axes 1 the left stick's up and down, 3 and 2 the right stick's, up and left +1; buttons 10 R1, 9 L1 (measured 23 Nov)."
   /drivers/joy/joy_checked:
     type: sensor_msgs/msg/Joy
     pub: [joy_alive]
@@ -667,6 +673,12 @@ topics:
     sub: [mock_imu, mock_gps, mock_camera, mock_radar, mock_lidar]
     live: [bench]
     note: Where the model car really is (map frame, 50 Hz). Only the stand-ins read it; compare it with /localization/odom/global to check the EKFs.
+  /vehicle/bench/rc_channels:
+    type: std_msgs/msg/UInt16MultiArray
+    pub: [rc_pad]
+    sub: [spine_sim]
+    live: [bench, sim]
+    note: "The RC receiver's 14 iBUS channels (µs), 50 Hz - what the car's FlySky receiver sends the ESP32, from a PS4 gamepad playing the FS-i6X (rc_pad, 23 Nov). spine_sim with rc:=true feeds them through the ibus crate's own parser and RcMap::TODAY, as the board does, so the firmware's RC rules run unchanged. CH2 (index 1) stop and give, CH3 (2) the pedal, CH4 (3) steering, CH6 (5) the mode switch - 1100 normal, 1900 manual, 1000 the failsafe. Silent 100 ms is a lost RC. pixi run rc-pad, or sim spine:=true rc_pad:=true."
   /vehicle/bench/hw_estop:
     type: std_msgs/msg/Bool
     pub: []

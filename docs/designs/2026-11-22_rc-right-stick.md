@@ -82,3 +82,28 @@ The failsafe saves where a stick or switch is while CANCEL is **held** (the FS-i
 
 `cargo test` in `firmware/spine`, `cargo clippy`, `cargo fmt`; the QEMU check's offline
 tests. Not run: `pixi run esp qemu-check` (the QEMU here is a Mac build), and nothing on the car.
+
+## Trying it without the car (23 Nov)
+
+A PS4 gamepad plays the FS-i6X, and these rules run unchanged in `spine_sim`
+(`aav_spine_sim`'s `rc_pad`): the sticks become the receiver's channels, which go through
+the ibus crate's own parser and `RcMap::TODAY`, as on the ESP32.
+
+| Command | What runs |
+|---|---|
+| `pixi run rc-pad` | the gamepad, `rc_pad`, `spine_sim`'s model car, rviz: nothing else, so it needs only `aav_spine_sim` built. The mode switch starts high (manual); `mode_start:=low` for normal |
+| `pixi run sim spine:=true rc_pad:=true [rc_pad_mode:=low]` | the same in Ravensim, with the whole stack: in normal, give hands the car to the computer |
+
+| The gamepad | The FS-i6X |
+|---|---|
+| left stick up and down | the left stick: the pedal (CH3) |
+| right stick up and down; left and right | the right stick: stop and give (CH2); steering (CH4) |
+| R1, each press | the mode switch (CH6), high and low |
+| L1, held | the radio lost (CH6 at 1000, the failsafe) |
+
+The gamepad's left stick springs back, so its middle is where it rests; the FS-i6X's stays
+where it's left. When measured, the gamepad's right stick drifted up to 14 % sideways when
+pushed straight up, just inside give's 15 % window: a crooked push up may not give, and
+the FS-i6X may do the same.
+
+Not tested this way: the radio, the real sticks' travel, the ESP32's timing, the car.

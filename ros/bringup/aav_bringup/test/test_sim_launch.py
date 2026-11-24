@@ -942,3 +942,31 @@ def test_diffusion_impl_picks_the_rust_worker_or_says_what_to_pick():
     assert (nav['diffusion_impl'], nav['diffusion_provider']) == ('rust', 'auto')
     with pytest.raises(ValueError, match='diffusion_impl:=cpp: pick one of python, rust'):
         started(SIM, world='test_lot', planner='diffusion', diffusion_impl='cpp')
+
+
+# rc_pad:=true (23 Nov): a PS4 gamepad as the FS-i6X, through the spine's own RC rules.
+def test_rc_pad_fits_the_spine_a_receiver_and_starts_the_gamepad():
+    actions = started(RAVENSIM, spine='true', rc_pad='true')
+    assert {'rc_pad_joy', 'rc_pad', 'spine_sim'} <= names(actions)
+    assert parameters(node(actions, 'spine_sim'))['rc'] is True
+    assert parameters(node(actions, 'rc_pad'))['mode_start'] == 'high'
+    assert parameters(node(actions, 'rc_pad'))['use_sim_time'] is True
+
+
+def test_without_rc_pad_the_spine_has_no_receiver():
+    actions = started(RAVENSIM, spine='true')
+    assert not {'rc_pad_joy', 'rc_pad'} & names(actions)
+    assert parameters(node(actions, 'spine_sim'))['rc'] is False
+
+
+def test_rc_pad_needs_the_spine_and_a_mode_it_knows():
+    with pytest.raises(ValueError, match='spine'):
+        started(RAVENSIM, rc_pad='true')
+    with pytest.raises(ValueError, match='high'):
+        started(RAVENSIM, spine='true', rc_pad='true', rc_pad_mode='middle')
+
+
+def test_sim_passes_rc_pad_to_ravensim():
+    sent = included(started(SIM, spine='true', rc_pad='true', rc_pad_mode='low'))
+    assert sent['ravensim.launch.py']['rc_pad'] == 'true'
+    assert sent['ravensim.launch.py']['rc_pad_mode'] == 'low'

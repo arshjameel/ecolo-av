@@ -9,5 +9,7 @@ publish.workspace = true
 [dependencies]
 # The firmware's own logic, unchanged: the bench runs what the spine board will run.
 spine-core = { path = "../../../../../firmware/spine/crates/spine-core" }
+# The RC receiver's iBUS channels, decoded as the board decodes them (rc.rs).
+ibus = { path = "../../../../../firmware/spine/crates/ibus" }
 # The wheel nodes' logic, unchanged: the bench sends the frames they will.
 wheel-core = { path = "../../../../../firmware/spine/crates/wheel-core" }
