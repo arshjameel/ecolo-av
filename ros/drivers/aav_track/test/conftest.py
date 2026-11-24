@@ -13,9 +13,9 @@ for path in (HERE.parent, HERE, SRC / 'drivers' / 'aav_drive_to_point', SRC / 'e
 
 def pytest_configure(config):
     """
-    Register `timing`: a test that times the trackers on the wall clock.
+    Register `timing`: a test that runs or times a tracker on the wall clock.
 
     Beside other packages' tests (colcon test runs several at once) the clock runs slow, so
     `pixi run test` runs these on their own, after the rest (tools/colcon_test.sh).
     """
-    config.addinivalue_line('markers', 'timing: times a tracker on the wall clock')
+    config.addinivalue_line('markers', 'timing: runs or times a tracker on the wall clock')

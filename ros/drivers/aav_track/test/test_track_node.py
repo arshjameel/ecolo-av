@@ -30,7 +30,10 @@ try:
 except ImportError:      # tools/test.sh, outside pixi's ROS
     HAVE_ROS = False
 
-pytestmark = pytest.mark.skipif(not HAVE_ROS, reason='needs ROS 2 (pixi run test)')
+# The node and its pretend car run on the wall clock, in this process: beside other packages'
+# tests the loop runs slow and the car falls behind (`timing`: run alone, after the rest).
+pytestmark = [pytest.mark.skipif(not HAVE_ROS, reason='needs ROS 2 (pixi run test)'),
+              pytest.mark.timing]
 
 
 class Car:

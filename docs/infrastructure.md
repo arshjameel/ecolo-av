@@ -218,7 +218,7 @@ package. `tools/test.sh` on its own still runs them all.
 | What | How |
 |---|---|
 | No cross-talk | `tools/pytest_plugins/aav_ros_domain.py` gives each pytest run a ROS domain no other process here holds (ROS's `domain_coordinator`, 1 to 100) and sets `ROS_DOMAIN_ID`; a test that picks its own domain takes `AAV_TEST_DOMAIN` first (`tools/tests/test_test_domains.py` checks) |
-| Wall-clock tests | the ones marked `timing` (`aav_track`'s planning-time checks) run after the rest, alone |
+| Wall-clock tests | the ones marked `timing` (`aav_track`'s planning-time checks, and its node driving a pretend car) run after the rest, alone |
 | One at a time again | `AAV_COLCON_TEST_WORKERS=1 pixi run test` |
 
 **In your fork too.** Turn Actions on once in your fork (its Actions tab, then "I
