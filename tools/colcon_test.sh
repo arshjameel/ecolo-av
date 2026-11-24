@@ -3,13 +3,14 @@
 # domain of its own; then the wall-clock timing tests alone; then the results.
 #
 # Until 24 Nov colcon tested one package at a time (17 min on Linux, 18 on ARM): side by
-# side on one domain, two packages' tests heard each other's nodes (24 Oct). Now
+# side on one domain, two packages' tests heard each other's nodes (25 Oct). Now
 # tools/pytest_plugins/aav_ros_domain.py gives each pytest run a domain no other process
 # here holds (ROS's domain_coordinator), and the tests that chose their own take it
 # (AAV_TEST_DOMAIN). Tests marked `timing` time a tracker on the wall clock, which runs
 # slow beside other packages: they run after the rest, alone.
 #
-# usage: tools/colcon_test.sh   (AAV_COLCON_TEST_WORKERS=1 tests one package at a time)
+# usage: tools/colcon_test.sh [colcon test options, e.g. --packages-select aav_ndt aav_track]
+#        (AAV_COLCON_TEST_WORKERS=1 tests one package at a time)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -27,13 +28,16 @@ addopts=${PYTEST_ADDOPTS:-}
 
 echo "colcon test: $workers packages at a time, each pytest run on its own ROS domain"
 PYTEST_ADDOPTS="$addopts -p aav_ros_domain -m 'not timing'" \
-  colcon test --parallel-workers "$workers" --event-handlers console_cohesion- \
+  colcon test --parallel-workers "$workers" --event-handlers console_cohesion- "$@" \
   --pytest-args -p aav_ros_domain -m 'not timing'
 
-echo "colcon test: the timing tests, alone"
-# Their own results folder, so aav_track's results from above stay.
-PYTEST_ADDOPTS="$addopts -p aav_ros_domain -m timing" \
-  colcon test --packages-select aav_track --test-result-base build/timing-tests \
-  --event-handlers console_cohesion- --pytest-args -p aav_ros_domain -m timing
+# The timing tests are aav_track's: none to run when a selection leaves it out.
+if (($# == 0)) || [[ " $* " == *" aav_track "* ]]; then
+  echo "colcon test: the timing tests, alone"
+  # Their own results folder, so aav_track's results from above stay.
+  PYTEST_ADDOPTS="$addopts -p aav_ros_domain -m timing" \
+    colcon test --packages-select aav_track --test-result-base build/timing-tests \
+    --event-handlers console_cohesion- --pytest-args -p aav_ros_domain -m timing
+fi
 
 colcon test-result --verbose

@@ -2,7 +2,7 @@
 A ROS domain of its own for each pytest run inside `pixi run test` (tools/colcon_test.sh).
 
 colcon test runs several packages at once. Two packages' tests on one ROS domain hear each
-other's nodes (24 Oct: the HUD's e-stop found a listener, the guard test saw street_router,
+other's nodes (25 Oct: the HUD's e-stop found a listener, the guard test saw street_router,
 the spine bridge test another package's /vehicle/odom). At the start of each pytest run
 this takes a domain no other process on this computer holds (domain_coordinator, ROS's
 own: a port per domain, 1 to 100, held until pytest ends) and sets ROS_DOMAIN_ID, so
