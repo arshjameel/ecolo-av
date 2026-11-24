@@ -31,7 +31,8 @@ TOPIC = '/test/gps/fix'
 
 
 def env():
-    e = dict(os.environ, ROS_DOMAIN_ID=str(170 + os.getpid() % 30),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(170 + os.getpid() % 30)
+    e = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
              ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: e[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     return e

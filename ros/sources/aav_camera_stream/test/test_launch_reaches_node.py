@@ -65,7 +65,8 @@ def stop(process):
 def test_launch_values_reach_the_node(impl, tmp_path):
     if impl == 'python':
         pytest.importorskip('cv2')
-    env = dict(os.environ, ROS_DOMAIN_ID=str(200 + (os.getpid() + 7) % 20),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(200 + (os.getpid() + 7) % 20)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     log = open(tmp_path / 'launch.log', 'w')

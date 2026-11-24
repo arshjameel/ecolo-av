@@ -212,6 +212,15 @@ which runs them right after, so each runs once (24 Nov: 2.5 min a run on Linux, 
 `tools/tests/test_colcon_runs_the_tests.py` checks that colcon has every test file of a CMake
 package. `tools/test.sh` on its own still runs them all.
 
+`colcon test` then runs through `tools/colcon_test.sh`: three packages at a time on CI's
+4 cores (one package at a time until 24 Nov: 17 min on Linux, 18 on ARM).
+
+| What | How |
+|---|---|
+| No cross-talk | `tools/pytest_plugins/aav_ros_domain.py` gives each pytest run a ROS domain no other process here holds (ROS's `domain_coordinator`, 1 to 100) and sets `ROS_DOMAIN_ID`; a test that picks its own domain takes `AAV_TEST_DOMAIN` first (`tools/tests/test_test_domains.py` checks) |
+| Wall-clock tests | the ones marked `timing` (`aav_track`'s planning-time checks) run after the rest, alone |
+| One at a time again | `AAV_COLCON_TEST_WORKERS=1 pixi run test` |
+
 **In your fork too.** Turn Actions on once in your fork (its Actions tab, then "I
 understand my workflows, go ahead and enable them"). From then on every push to a branch
 there runs `linux`, `arm` and `car-kit`, so you see green or red before you open the pull

@@ -71,7 +71,7 @@ class Run:
                 '-p', 'output_mux:target:=car', '-p', 'output_mux:settle:=0.5',
                 '-p', f'legacy_uart_bridge:port:={port}',
                 '-p', 'legacy_uart_bridge:frame_version:=2']
-        domain = random.randint(150, 230)
+        domain = int(os.environ.get('AAV_TEST_DOMAIN') or random.randint(150, 230))
         rclpy.init(args=args, domain_id=domain)
         self.executor = SingleThreadedExecutor()
         if impl == 'rust':

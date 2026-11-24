@@ -61,7 +61,7 @@ class Run:
     """The muxes, a spine_bridge and a test node, spun together."""
 
     def __init__(self, gazebo=False, bridge='python', role='spine', gazebo_after=0.0):
-        domain = free_domain()
+        domain = int(os.environ.get('AAV_TEST_DOMAIN') or free_domain())
         rclpy.init(args=ARGS + ['-p', f'spine_bridge:role:={role}'], domain_id=domain)
         self.executor = SingleThreadedExecutor()
         self.nodes = [SensorMux(), OutputMux()]

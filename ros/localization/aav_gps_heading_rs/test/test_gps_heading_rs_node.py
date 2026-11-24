@@ -28,7 +28,8 @@ pytestmark = pytest.mark.skipif(rclpy is None, reason='needs ROS sourced: colcon
 
 
 def test_a_heading_while_moving_and_none_when_slow():
-    env = dict(os.environ, ROS_DOMAIN_ID=str(160 + os.getpid() % 10),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(160 + os.getpid() % 10)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     exe = os.path.join(get_package_prefix('aav_gps_heading_rs'), 'lib', 'aav_gps_heading_rs',

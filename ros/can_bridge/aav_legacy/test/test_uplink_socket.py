@@ -9,6 +9,7 @@ Python bridge once read only that much each 10 ms: it fell behind and the uplink
 Each test runs twice (conftest's impl): the Python bridge in this process, the Rust as a process.
 """
 
+import os
 import random
 import socket
 import time
@@ -46,7 +47,7 @@ def test_every_uplink_frame_comes_through_on_socket(impl):
     args = ['--ros-args', '-p', f'legacy_uart_bridge:port:=socket://127.0.0.1:{port}',
             '-p', 'legacy_uart_bridge:frame_version:=2',
             '-p', 'legacy_uart_bridge:uplink:=true']
-    domain = random.randint(150, 230)
+    domain = int(os.environ.get('AAV_TEST_DOMAIN') or random.randint(150, 230))
     rclpy.init(args=args, domain_id=domain)
     executor = SingleThreadedExecutor()
     nodes = ([RustNode('aav_legacy_rs', 'legacy_uart_bridge', args, domain)]

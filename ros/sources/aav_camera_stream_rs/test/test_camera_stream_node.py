@@ -56,7 +56,8 @@ PIPELINE = f'videotestsrc is-live=true pattern=colors ! {CAPS} ! fdsink sync=fal
 
 def environment():
     """Return this test's environment: its own domain, this computer only."""
-    env = dict(os.environ, ROS_DOMAIN_ID=str(200 + os.getpid() % 20),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(200 + os.getpid() % 20)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     env['PYTHONPATH'] = os.pathsep.join(

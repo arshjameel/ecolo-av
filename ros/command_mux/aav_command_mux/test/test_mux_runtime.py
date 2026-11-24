@@ -40,7 +40,7 @@ class Run:
 
     def __init__(self):
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-        self.domain = random.randint(150, 230)
+        self.domain = int(os.environ.get('AAV_TEST_DOMAIN') or random.randint(150, 230))
 
         rclpy.init(domain_id=self.domain)
 

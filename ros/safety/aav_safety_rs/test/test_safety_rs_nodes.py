@@ -37,7 +37,8 @@ MOTION = ['reaction_time:=0.5', 'braking:=1.5', 'max_accel:=1.0', 'max_speed:=2.
 
 
 def env(offset):
-    e = dict(os.environ, ROS_DOMAIN_ID=str(140 + offset + os.getpid() % 10),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(140 + offset + os.getpid() % 10)
+    e = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
              ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: e[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     return e

@@ -59,7 +59,7 @@ class Run:
         args = ['--ros-args', '-p', f'legacy_uart_bridge:port:={port}',
                 '-p', 'legacy_uart_bridge:frame_version:=2',
                 '-p', f'legacy_uart_bridge:uplink:={str(uplink_on).lower()}']
-        domain = random.randint(150, 230)
+        domain = int(os.environ.get('AAV_TEST_DOMAIN') or random.randint(150, 230))
         rclpy.init(args=args, domain_id=domain)
         self.executor = SingleThreadedExecutor()
         if impl == 'rust':

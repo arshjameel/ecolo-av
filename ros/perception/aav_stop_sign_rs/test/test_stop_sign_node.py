@@ -45,7 +45,8 @@ def stop(node):
 
 @pytest.mark.parametrize('impl', ['rust', 'python'])
 def test_a_close_sign_locks_then_lets_go(impl):
-    domain = 200 + (os.getpid() + (impl == 'python')) % 20
+    domain = int(os.environ.get('AAV_TEST_DOMAIN')
+                 or 200 + (os.getpid() + (impl == 'python')) % 20)
     env = dict(os.environ, ROS_DOMAIN_ID=str(domain), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
     package = PACKAGES[impl]
