@@ -7,7 +7,7 @@
 <!-- Generated from docs/wrap-up.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Wrapping up: the plan</h1>
-<div class="meta">8 min read · 6 sections</div></header>
+<div class="meta">9 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -152,7 +152,7 @@ results. Nothing new is built unless a row here asks for it.</p>
 <p><strong>The short version</strong></p>
 <ol>
 <li>
-<p><strong>Nine rungs</strong>, named for what the car can do. Each has one question, one graph, one
+<p><strong>Ten rungs</strong>, named for what the car can do. Each has one question, one graph, one
    pass mark, a result in the simulator and a slot for the car's.</p>
 </li>
 <li>
@@ -246,6 +246,14 @@ results. Nothing new is built unless a row here asks for it.</p>
 <td>right and wrong names, by kind</td>
 <td>proposed with the perception lead</td>
 <td>a detector exists; no rung</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Rules of the road (behaviour)</td>
+<td>does it do the right thing: stop at a stop sign, slow for the road ahead, stop at the goal, stay inside the fence?</td>
+<td>speed against distance to each stop, with the speed cap</td>
+<td>stops within 0.5 m of each mark; never over the cap</td>
+<td>the behaviour planner runs in the simulator; no rung</td>
 </tr>
 <tr>
 <td>S</td>
@@ -390,7 +398,7 @@ that stays). The virtual world takes the car's data in; nothing goes back.</p>
 <td>Tests</td>
 <td>the rungs, run, result, graph, simulator beside car</td>
 <td><code>ladder-window</code></td>
-<td>rebuild round the nine rungs</td>
+<td>rebuild round the ten rungs</td>
 </tr>
 <tr>
 <td>In the car</td>
@@ -458,6 +466,10 @@ that stays). The virtual world takes the car's data in; nothing goes back.</p>
 <td>4 to 6, the followers compared</td>
 </tr>
 <tr>
+<td>Behaviour</td>
+<td>9</td>
+</tr>
+<tr>
 <td>Safety</td>
 <td>1 (the faults), 5, 6</td>
 </tr>
@@ -478,7 +490,7 @@ measured, with its graph; which we chose and why.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td>The ladder rebuilt round the nine rungs, virtual only; rungs 1 to 3 first</td>
+<td>The ladder rebuilt round the ten rungs, virtual only; rungs 1 to 3 first</td>
 <td>each of rungs 1 to 3 runs from the tests screen and saves a graph and a report</td>
 </tr>
 <tr>
@@ -493,7 +505,7 @@ measured, with its graph; which we chose and why.</p>
 </tr>
 <tr>
 <td>4</td>
-<td>Rungs 7 and 8; the algorithm comparisons</td>
+<td>Rungs 7 to 9; the algorithm comparisons</td>
 <td>the same</td>
 </tr>
 <tr>

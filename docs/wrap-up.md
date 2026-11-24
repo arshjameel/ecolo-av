@@ -6,7 +6,7 @@ and then on the car; the commands and screens made simple; a final report from t
 results. Nothing new is built unless a row here asks for it.
 
 > **The short version**
-> 1. **Nine rungs**, named for what the car can do. Each has one question, one graph, one
+> 1. **Ten rungs**, named for what the car can do. Each has one question, one graph, one
 >    pass mark, a result in the simulator and a slot for the car's.
 > 2. **Virtual first.** The laptop runs the car's own software against Ravensim, the same
 >    way the car runs it.
@@ -29,6 +29,7 @@ A rung opens when the ones under it have passed. S runs beside every rung.
 | 6 | Navigate, the lidar's costmap | does it go round what it sees? | the same, with what the lidar marked | never touches; reaches the goal | runs in the simulator; no rung |
 | 7 | Things around the car, moving ones too | does it find them and follow them? | each thing's track against the truth | found within 1 s; position within 0.5 m | things are tracked; nothing predicts |
 | 8 | What is it? (the cameras) | does it name what it sees? | right and wrong names, by kind | proposed with the perception lead | a detector exists; no rung |
+| 9 | Rules of the road (behaviour) | does it do the right thing: stop at a stop sign, slow for the road ahead, stop at the goal, stay inside the fence? | speed against distance to each stop, with the speed cap | stops within 0.5 m of each mark; never over the cap | the behaviour planner runs in the simulator; no rung |
 | S | Sensors: IMU, GPS, cameras, lidar, radar | is each one alive, on time, and believable? | rate and noise for each | each at its documented rate; still when the car is still | checked inside rung 1; no rung of its own |
 
 On top, the same rungs run with one part swapped, to compare algorithms:
@@ -72,7 +73,7 @@ The old names keep working until the new ones have been used for a while; then t
 | World | the car in its world, 3D and top-down: the map, the plan, the costmap, what it sees | the developer window and `nav-view` | keep; it replaced RViz and Gazebo's picture |
 | Debug | what each layer believes: the localizers, the cubes, who is driving | `debug-hud`, and a debug page in the map window | **needs attention**: one debug screen, its pages named for the layers |
 | Hardware | every sensor's number, the actuators, calibration | `hw-panel` | keep; add "on stands" |
-| Tests | the rungs, run, result, graph, simulator beside car | `ladder-window` | rebuild round the nine rungs |
+| Tests | the rungs, run, result, graph, simulator beside car | `ladder-window` | rebuild round the ten rungs |
 | In the car | the driver's HUD and street map | `hud`, `map` (raylib, on the Pi) | keep as they are |
 
 | Editor | For | Today |
@@ -94,6 +95,7 @@ One chapter a layer, the same five parts each, filled from the rungs' results:
 | Perception | 7, 8 |
 | Planning | 4 to 6, lattice against diffusion |
 | Following | 4 to 6, the followers compared |
+| Behaviour | 9 |
 | Safety | 1 (the faults), 5, 6 |
 
 Each chapter: what the layer does; the algorithms we tried; how each works; what we
@@ -103,10 +105,10 @@ measured, with its graph; which we chose and why.
 
 | Step | What | Done when |
 |---|---|---|
-| 1 | The ladder rebuilt round the nine rungs, virtual only; rungs 1 to 3 first | each of rungs 1 to 3 runs from the tests screen and saves a graph and a report |
+| 1 | The ladder rebuilt round the ten rungs, virtual only; rungs 1 to 3 first | each of rungs 1 to 3 runs from the tests screen and saves a graph and a report |
 | 2 | Rungs 4 to 6, and S | the same |
 | 3 | The commands and screens of sections 3 and 4 | a new person starts the virtual car and its screens with two commands |
-| 4 | Rungs 7 and 8; the algorithm comparisons | the same |
+| 4 | Rungs 7 to 9; the algorithm comparisons | the same |
 | 5 | The twin, and the simulator beside the car on one graph | the car's rung 1 beside the simulator's |
 | 6 | The car: the rungs in order | each rung's car result recorded |
 | 7 | The final report | every chapter has its graphs |

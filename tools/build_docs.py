@@ -90,7 +90,7 @@ PAGES = [
      'Every laptop and car computer checked, before the stands'),
     ('testing-plan.md', 'The testing plan', 'Seven phases, stands to campus twin, each automated'),
     ('wrap-up.md', 'Wrapping up: the plan',
-     'Nine rungs, virtual first then the car; fewer commands, four screens; the final report'),
+     'Ten rungs, virtual first then the car; fewer commands, four screens; the final report'),
     ('proving-it.md', 'Proving it',
      'How the tests fit together: the ladder, the algorithm tests, the same test in the sim'),
     ('know-the-car.md', 'Know the car', 'The car tests: the order, and when to stop'),
