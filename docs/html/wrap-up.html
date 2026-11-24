@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wrapping up: the plan · AAV 2026–27</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<!-- Generated from docs/wrap-up.md by tools/build_docs.py. Edit the markdown, not this file. -->
+<header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
+<h1>Wrapping up: the plan</h1>
+<div class="meta">8 min read · 6 sections</div></header>
+<nav class="menu"><a href="index.html">Start here</a>
+<a href="what-we-built.html">What we built</a>
+<a href="overview.html">Overview</a>
+<a href="release-0.4.html">0.4-rc1</a>
+<a href="release-0.4-rc1.html">0.4-rc1 on the car</a>
+<a href="release-0.4-guide.html">The 0.4 guide</a>
+<a href="release-notes.html">Release notes</a>
+<a href="getting-started.html">Getting started</a>
+<a href="first-day.html">Your first day</a>
+<a href="git.html">Git</a>
+<a href="how-it-fits.html">How it fits</a>
+<a href="stack-survey.html">The stack, surveyed</a>
+<a href="how-self-driving-works.html">How self-driving works</a>
+<a href="start-up.html">Bottom-up</a>
+<a href="team.html">Starting points</a>
+<a href="packages.html">Packages</a>
+<a href="modules.html">Every module</a>
+<a href="codemap.html">Code map</a>
+<a href="work.html">Work</a>
+<a href="plan.html">The plan</a>
+<a href="features.html">Features</a>
+<a href="acknowledgements.html">Acknowledgements</a>
+<a href="release-0.2.html">The 0.2 guide</a>
+<a href="whats-new.html">What&#x27;s new</a>
+<a href="audit-friday.html">Audit, 16 Oct</a>
+<a href="audit-questions.html">Audit questions</a>
+<a href="car-evening.html">Tonight: drive as is</a>
+<a href="car-day.html">Car day</a>
+<a href="car-day-2026-11-21.html">Car day, 21 Nov</a>
+<span class="sep">Learn:</span>
+<a href="drive-and-record.html">Drive by hand and record</a>
+<a href="car-setup.html">Car setup</a>
+<a href="rollout.html">Rolling out on the car</a>
+<a href="tests.html">Every test</a>
+<a href="after-install.html">After the install</a>
+<a href="testing-plan.html">The testing plan</a>
+<a class="here" href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
+<a href="know-the-car.html">Know the car</a>
+<a href="recording.html">Recording a mapping drive</a>
+<a href="maps-from-drives.html">Maps from drives</a>
+<a href="map-editor.html">The map editor</a>
+<a href="labelling.html">Labelling after a drive</a>
+<a href="measure-the-car.html">Measure the car</a>
+<a href="decisions.html">Decisions</a>
+<a href="decisions-2026-11-19.html">Decided 18-19 Nov</a>
+<a href="infrastructure.html">Infrastructure</a>
+<a href="learn-car.html">The car, box by box</a>
+<a href="learn-journey.html">A command&#x27;s journey</a>
+<a href="faq.html">Questions</a>
+<a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
+<a href="learn-sensors.html">Learn: sensors</a>
+<a href="learn-gps.html">Learn: GPS</a>
+<a href="learn-localization.html">Learn: localization</a>
+<a href="learn-speed.html">Learn: speed</a>
+<a href="learn-lidar.html">Learn: lidar</a>
+<a href="learn-control.html">Learn: control</a>
+<a href="controllers.html">Controllers</a>
+<a href="campus.html">The campus</a>
+<a href="maps-and-position.html">Maps and position</a>
+<a href="learn-nav2.html">Learn: navigation</a>
+<a href="learn-can.html">Learn: CAN</a>
+<a href="status.html">Status</a>
+<a href="howto-driver.html">Build a driver</a>
+<a href="costmaps.html">Costmaps</a>
+<a href="path-followers.html">Path followers</a>
+<a href="switches.html">Switches</a>
+<a href="trials.html">Trials</a>
+<a href="league.html">The league</a>
+<a href="league-results-2026-11-16.html">League scores, 16 Nov</a>
+<a href="league-results-2026-11-20.html">League scores, 20 Nov</a>
+<a href="mppi-lag.html">MPPI with lag</a>
+<a href="own-costmap.html">Our own costmap</a>
+<a href="own-planner.html">Our own planner</a>
+<a href="own-navigator.html">Our own navigator</a>
+<a href="own-smoother.html">Our own velocity smoother</a>
+<a href="stopping.html">How the car stops</a>
+<a href="a-to-b.html">A to B</a>
+<a href="routes.html">Street routes</a>
+<a href="perception.html">Perception</a>
+<a href="kerbs.html">Kerbs</a>
+<a href="perception-and-hud-map.html">Perception options</a>
+<a href="camera-pipeline.html">Camera pipeline</a>
+<a href="camera-calibration.html">Camera calibration</a>
+<a href="proposal.html">Proposal draft</a>
+<a href="team-todo.html">Team tasks</a>
+<a href="older-code.html">Older code</a>
+<a href="ros2.html">ROS 2</a>
+<a href="languages.html">Languages</a>
+<a href="run.html">Run it</a>
+<a href="mac.html">Your Mac</a>
+<a href="foxglove.html">Watch from a laptop</a>
+<a href="simulation.html">Simulation</a>
+<a href="sim-and-car.html">Sim and the car</a>
+<a href="full-simulation.html">Full simulation</a>
+<a href="own-simulator.html">Our own simulator</a>
+<a href="own-simulator-cameras.html">Our simulator&#x27;s cameras</a>
+<a href="carla.html">CARLA</a>
+<a href="bench.html">Bench mode</a>
+<a href="actuator-tests.html">Actuator tests</a>
+<a href="hardware-debug.html">Hardware debug</a>
+<a href="learn-state-space.html">Learn: state space</a>
+<a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
+<a href="vehicle-model.html">The car as a linear model</a>
+<a href="car-model.html">One car model</a>
+<a href="safety-case.html">The safety case</a>
+<a href="ghost-obstacles.html">Ghost obstacles</a>
+<a href="geofence.html">The geofence</a>
+<a href="sources-and-targets.html">Sources and targets</a>
+<a href="mcp.html">AI apps (MCP)</a>
+<a href="plain-english.html">Plain English</a>
+<a href="model-comparison.html">Newer models</a>
+<a href="onnx.html">ONNX from Rust</a>
+<a href="firmware.html">Firmware</a>
+<a href="can-plan.html">CAN plan</a>
+<a href="rust-firmware.html">Rust firmware</a>
+<a href="esp32-motor-pi-runbook.html">Flash the ESP32, upgrade the Motor Pi</a>
+<a href="rehearsal-2026-11-18.html">Rehearsal for 18 Nov</a>
+<a href="esp32-bench.html">ESP32 first flash</a>
+<a href="esp32-safety.html">ESP32 safety rules</a>
+<a href="esp32-cpp-parity.html">ESP32 C++ parity</a>
+<a href="platforms.html">Platforms</a>
+<a href="bandwidth.html">Bandwidth</a>
+<a href="car-install.html">From a USB stick</a>
+<a href="car-screens.html">The two screens</a>
+<a href="car-photos.html">Car photos</a>
+<a href="conventions.html">Conventions</a>
+<a href="naming.html">Topic areas</a>
+<a href="interfaces.html">Topics</a>
+<a href="car_measurements.html">Car numbers</a>
+<a href="hud.html">HUD</a></nav>
+<main>
+<nav class="toc"><span>On this page:</span><a href="#1-the-rungs">1. The rungs</a><a href="#2-one-software-two-worlds-and-both-at-once">2. One software, two worlds, and both at once</a><a href="#3-the-commands-68-today">3. The commands: 68 today</a><a href="#4-the-screens-and-editors">4. The screens and editors</a><a href="#5-the-final-report">5. The final report</a><a href="#6-the-order">6. The order</a></nav>
+<div class="lead"><p><strong>The capstone has built more than it needs. What is left is to prove it.</strong> This page is the
+plan Ben set on 23 November 2026: one test regime with rungs, in the virtual world first
+and then on the car; the commands and screens made simple; a final report from the
+results. Nothing new is built unless a row here asks for it.</p>
+<blockquote>
+<p><strong>The short version</strong></p>
+<ol>
+<li>
+<p><strong>Nine rungs</strong>, named for what the car can do. Each has one question, one graph, one
+   pass mark, a result in the simulator and a slot for the car's.</p>
+</li>
+<li>
+<p><strong>Virtual first.</strong> The laptop runs the car's own software against Ravensim, the same
+   way the car runs it.</p>
+</li>
+<li>
+<p><strong>Then the car</strong>, the same rungs, with the simulator's curve beside the car's. Where
+   they differ, the model's numbers are fixed.</p>
+</li>
+<li>
+<p><strong>Fewer commands, four screens, one editor.</strong></p>
+</li>
+<li><strong>The final report</strong> is written from the rungs' graphs, one chapter a layer.</li>
+</ol>
+</blockquote></div>
+<section class="card"><h2 id="1-the-rungs">1. The rungs</h2>
+<p>A rung opens when the ones under it have passed. S runs beside every rung.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Rung</th>
+<th>The question</th>
+<th>Its graph</th>
+<th>Passes when (proposed)</th>
+<th>Today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>On stands: accelerate, brake, turn</td>
+<td>do the actuators follow a command, the right way?</td>
+<td>wheel speed and steering, asked against measured</td>
+<td>each follows within its lag; every fault stops the car</td>
+<td>built (<code>car-test --stands</code>, on jacks in the simulator)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>On the ground: speed up, slow down</td>
+<td>how fast does it speed up and stop?</td>
+<td>speed against time; stopping distance against speed</td>
+<td>the model's speed within 10 %, its stop within 0.2 m</td>
+<td>built (<code>speed-up</code>, <code>brake</code>)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A straight line: speed up, hold, slow down</td>
+<td>does it hold a speed, and drive straight?</td>
+<td>speed held; drift to the side</td>
+<td>wanders under 0.1 m/s; drifts under 0.2 m in 10 m</td>
+<td>built in part (hallway session; a hold test is TODO 266)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Navigate, an empty costmap</td>
+<td>does the whole stack drive A to B with nothing in the way?</td>
+<td>the path driven over the plan; metres off it</td>
+<td>reaches the goal; under 0.3 m off the plan</td>
+<td>the stack does it; no rung</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Navigate, a hand-painted obstacle</td>
+<td>does it go round what we drew?</td>
+<td>the same, with the obstacle</td>
+<td>never touches; reaches the goal</td>
+<td>a ghost object only; painting is to build</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Navigate, the lidar's costmap</td>
+<td>does it go round what it sees?</td>
+<td>the same, with what the lidar marked</td>
+<td>never touches; reaches the goal</td>
+<td>runs in the simulator; no rung</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Things around the car, moving ones too</td>
+<td>does it find them and follow them?</td>
+<td>each thing's track against the truth</td>
+<td>found within 1 s; position within 0.5 m</td>
+<td>things are tracked; nothing predicts</td>
+</tr>
+<tr>
+<td>8</td>
+<td>What is it? (the cameras)</td>
+<td>does it name what it sees?</td>
+<td>right and wrong names, by kind</td>
+<td>proposed with the perception lead</td>
+<td>a detector exists; no rung</td>
+</tr>
+<tr>
+<td>S</td>
+<td>Sensors: IMU, GPS, cameras, lidar, radar</td>
+<td>is each one alive, on time, and believable?</td>
+<td>rate and noise for each</td>
+<td>each at its documented rate; still when the car is still</td>
+<td>checked inside rung 1; no rung of its own</td>
+</tr>
+</tbody>
+</table></div>
+<p>On top, the same rungs run with one part swapped, to compare algorithms:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Compare</th>
+<th>On rungs</th>
+<th>Scored by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Path followers: MPPI, MPC, pure pursuit</td>
+<td>4 to 6</td>
+<td>metres off the plan, sway, time</td>
+</tr>
+<tr>
+<td>Planners: lattice, diffusion</td>
+<td>4 to 6</td>
+<td>the path's length and turns, how often the guard refuses</td>
+</tr>
+<tr>
+<td>With and without the barrier and the filter (outside the capstone's scope: Ben's MASc research)</td>
+<td>5, 6</td>
+<td>least gap, who stopped the car</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="2-one-software-two-worlds-and-both-at-once">2. One software, two worlds, and both at once</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>What runs</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Virtual</td>
+<td>the car's software on the laptop, against Ravensim</td>
+<td>works</td>
+</tr>
+<tr>
+<td>Car</td>
+<td>the same software on the car</td>
+<td>being installed</td>
+</tr>
+<tr>
+<td>Both (the twin)</td>
+<td>the laptop listens to the car, and the virtual world shows the car where it really is (its GPS and pose), with the tests' graphs filling live</td>
+<td>to build</td>
+</tr>
+</tbody>
+</table></div>
+<p>One rule for the twin: <strong>the laptop only listens.</strong> Exactly one backend drives the car, and
+a simulator must never publish onto the car's network (the sensor mux refuses it today, and
+that stays). The virtual world takes the car's data in; nothing goes back.</p>
+</section>
+<section class="card"><h2 id="3-the-commands-68-today">3. The commands: 68 today</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Want to</th>
+<th>Today</th>
+<th>Proposed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Start the virtual car</td>
+<td><code>sim</code>, <code>demo</code>, <code>dry-run</code>, <code>ravensim</code>, <code>sim-cameras</code></td>
+<td><strong><code>pixi run sim</code></strong> (the car, virtual); screens are their own command</td>
+</tr>
+<tr>
+<td>Start the real car</td>
+<td><code>car</code></td>
+<td><strong><code>pixi run car</code></strong></td>
+</tr>
+<tr>
+<td>Open the screens</td>
+<td><code>hud</code>, <code>map</code>, <code>debug-hud</code>, <code>hw-panel</code>, <code>dev-window</code>, <code>nav-view</code>, <code>ladder-window</code>, <code>rviz</code></td>
+<td><strong><code>pixi run screens</code></strong>: picks the same four for either car</td>
+</tr>
+<tr>
+<td>Run the tests</td>
+<td><code>ladder</code>, <code>car-test</code>, <code>actuator-test</code>, <code>sim-check</code>, <code>bench-check</code>, <code>measure</code>, <code>barrier-watch</code></td>
+<td><strong><code>pixi run ladder</code></strong> is the front door; the rest stay as what a rung runs</td>
+</tr>
+<tr>
+<td>Watch the car from the laptop</td>
+<td><code>view</code>, <code>dev-window --watch</code></td>
+<td><strong><code>pixi run twin</code></strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>The old names keep working until the new ones have been used for a while; then they go.
+<code>sim.launch.py</code> has 127 switches: the plan is a short list of named set-ups (as
+<code>stacks.yaml</code> does for algorithms), not fewer abilities.</p>
+</section>
+<section class="card"><h2 id="4-the-screens-and-editors">4. The screens and editors</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Screen</th>
+<th>Shows</th>
+<th>Today</th>
+<th>Plan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>World</td>
+<td>the car in its world, 3D and top-down: the map, the plan, the costmap, what it sees</td>
+<td>the developer window and <code>nav-view</code></td>
+<td>keep; it replaced RViz and Gazebo's picture</td>
+</tr>
+<tr>
+<td>Debug</td>
+<td>what each layer believes: the localizers, the cubes, who is driving</td>
+<td><code>debug-hud</code>, and a debug page in the map window</td>
+<td><strong>needs attention</strong>: one debug screen, its pages named for the layers</td>
+</tr>
+<tr>
+<td>Hardware</td>
+<td>every sensor's number, the actuators, calibration</td>
+<td><code>hw-panel</code></td>
+<td>keep; add "on stands"</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>the rungs, run, result, graph, simulator beside car</td>
+<td><code>ladder-window</code></td>
+<td>rebuild round the nine rungs</td>
+</tr>
+<tr>
+<td>In the car</td>
+<td>the driver's HUD and street map</td>
+<td><code>hud</code>, <code>map</code> (raylib, on the Pi)</td>
+<td>keep as they are</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Editor</th>
+<th>For</th>
+<th>Today</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The map editor</td>
+<td>chunks, street map, NDT's map, labels</td>
+<td>built (<code>map-edit</code>)</td>
+</tr>
+<tr>
+<td>Painting a costmap by hand</td>
+<td>rung 5</td>
+<td>to build, inside the map editor</td>
+</tr>
+</tbody>
+</table></div>
+<p>RViz opens only when asked for by name. Gazebo went on 16 Nov.</p>
+</section>
+<section class="card"><h2 id="5-the-final-report">5. The final report</h2>
+<p>One chapter a layer, the same five parts each, filled from the rungs' results:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Chapter</th>
+<th>Its rungs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The car and its model</td>
+<td>1, 2, 3</td>
+</tr>
+<tr>
+<td>Sensors</td>
+<td>S</td>
+</tr>
+<tr>
+<td>Localization and mapping</td>
+<td>S, 4</td>
+</tr>
+<tr>
+<td>Perception</td>
+<td>7, 8</td>
+</tr>
+<tr>
+<td>Planning</td>
+<td>4 to 6, lattice against diffusion</td>
+</tr>
+<tr>
+<td>Following</td>
+<td>4 to 6, the followers compared</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td>1 (the faults), 5, 6</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each chapter: what the layer does; the algorithms we tried; how each works; what we
+measured, with its graph; which we chose and why.</p>
+</section>
+<section class="card"><h2 id="6-the-order">6. The order</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+<th>Done when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The ladder rebuilt round the nine rungs, virtual only; rungs 1 to 3 first</td>
+<td>each of rungs 1 to 3 runs from the tests screen and saves a graph and a report</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Rungs 4 to 6, and S</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The commands and screens of sections 3 and 4</td>
+<td>a new person starts the virtual car and its screens with two commands</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Rungs 7 and 8; the algorithm comparisons</td>
+<td>the same</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The twin, and the simulator beside the car on one graph</td>
+<td>the car's rung 1 beside the simulator's</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The car: the rungs in order</td>
+<td>each rung's car result recorded</td>
+</tr>
+<tr>
+<td>7</td>
+<td>The final report</td>
+<td>every chapter has its graphs</td>
+</tr>
+</tbody>
+</table></div>
+<p>A model of what other cars and people will do next is not in this plan: it is research
+for after the capstone.</p></section>
+<nav class="prevnext"><a class="prev" href="testing-plan.html"><small>Previous</small>← The testing plan</a>
+<a class="next" href="proving-it.html"><small>Next</small>Proving it →</a></nav>
+</main>
+<footer>Source: <code>docs/wrap-up.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
+</body></html>
