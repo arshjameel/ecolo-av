@@ -43,7 +43,8 @@ def ndt_status(word):
 
 
 def test_ndt_leads_then_the_gps_takes_over_when_ndt_is_lost():
-    env = dict(os.environ, ROS_DOMAIN_ID=str(180 + os.getpid() % 40),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(180 + os.getpid() % 40)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     binary = os.path.join(get_package_prefix('aav_pose_check'), 'lib', 'aav_pose_check',

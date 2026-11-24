@@ -58,7 +58,7 @@ class Run:
                 '-p', 'legacy_uart_bridge:frame_version:=3',
                 '-p', 'legacy_uart_bridge:uplink:=true',
                 '-p', f'legacy_uart_bridge:steering_calibration:={where}']
-        domain = random.randint(150, 230)
+        domain = int(os.environ.get('AAV_TEST_DOMAIN') or random.randint(150, 230))
         rclpy.init(args=args, domain_id=domain)
         self.executor = SingleThreadedExecutor()
         self.bridge = (RustNode('aav_legacy_rs', 'legacy_uart_bridge', args, domain)

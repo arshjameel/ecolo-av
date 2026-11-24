@@ -43,7 +43,7 @@ class Run:
 
     def __init__(self, version, allow=False, impl='python'):
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-        self.domain = random.randint(150, 230)
+        self.domain = int(os.environ.get('AAV_TEST_DOMAIN') or random.randint(150, 230))
         self.master, self.slave = os.openpty()
         fcntl.fcntl(self.master, fcntl.F_SETFL,
                     fcntl.fcntl(self.master, fcntl.F_GETFL) | os.O_NONBLOCK)

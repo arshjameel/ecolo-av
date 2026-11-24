@@ -5,6 +5,7 @@ Needs ROS sourced (rclpy and aav_interfaces): `colcon test` runs it, tools/test.
 """
 
 import math
+import time
 
 import pytest
 
@@ -177,7 +178,16 @@ def names(found):
 
 def test_sensors_have_no_way_to_drive(sensors):
     me = (sensors.get_name(), sensors.get_namespace())
-    publishers = names(sensors.get_publisher_names_and_types_by_node(*me))
+    # The graph fills in the background: on a busy computer, right after the node starts it
+    # may hold only /rosout and /parameter_events. Wait for the publishers it must have, so
+    # the checks for the ones it must not have look at the whole node.
+    end = time.monotonic() + 10.0
+    publishers = set()
+    while time.monotonic() < end:
+        publishers = names(sensors.get_publisher_names_and_types_by_node(*me))
+        if {'/vehicle/odom', '/vehicle/wheels'} <= publishers:
+            break
+        time.sleep(0.05)
     assert '/can/tx' not in publishers
     assert '/vehicle/status' not in publishers and '/vehicle/steering' not in publishers
     assert {'/vehicle/odom', '/vehicle/wheels'} <= publishers

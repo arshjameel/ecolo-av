@@ -56,7 +56,9 @@ def test_one_turn_gives_the_pythons_cubes():
     lidar = (base - np.asarray(lot.LIDAR)).astype(np.float32)
     expected = cubes(to_base(lidar.astype(float), *mount), CubeShape(body=BODY))
 
-    env = dict(os.environ, ROS_DOMAIN_ID=str(150 + os.getpid() % 30),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(150 + os.getpid() % 30)
+
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     binary = os.path.join(get_package_prefix('aav_voxels_rs'), 'lib', 'aav_voxels_rs',
@@ -125,7 +127,8 @@ def test_one_turn_gives_the_pythons_cubes():
 
 
 def test_a_missing_mount_stops_the_node():
-    env = dict(os.environ, ROS_DOMAIN_ID=str(150 + os.getpid() % 30),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(150 + os.getpid() % 30)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     binary = os.path.join(get_package_prefix('aav_voxels_rs'), 'lib', 'aav_voxels_rs',
                           'voxels')
@@ -140,7 +143,8 @@ def test_steps_finds_a_kerb():
     xs, ys = np.meshgrid(np.arange(3.0, 9.0, 0.05), np.arange(-2.0, 2.0, 0.05))
     zs = np.where(xs >= 6.0, 0.15, 0.0)
     points = np.stack([xs.ravel(), ys.ravel(), zs.ravel()], axis=1).astype(np.float32)
-    env = dict(os.environ, ROS_DOMAIN_ID=str(150 + os.getpid() % 30),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(150 + os.getpid() % 30)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     binary = os.path.join(get_package_prefix('aav_voxels_rs'), 'lib', 'aav_voxels_rs',

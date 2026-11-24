@@ -123,6 +123,7 @@ def test_lqr_without_its_preview_swings_wider():
     assert worst[2.0] < 0.6 * worst[0.0]
 
 
+@pytest.mark.timing
 def test_mpc_plans_well_inside_a_tick():
     # A step offset: the bounds bind, so the solver runs. Loose, for a busy laptop.
     run = follow(tracker('mpc'), straight(), (0.0, 1.0, 0.0), cruise=3.0)
@@ -191,6 +192,7 @@ def test_mpc_full_stops_on_the_goal_as_the_policy_does():
     check_speed(run, 3.0)
 
 
+@pytest.mark.timing
 def test_mpc_full_plans_inside_a_tick():
     # Loose, for a busy laptop.
     run = follow(tracker('mpc_full'), uturn(), (0.0, 0.0, 0.0), cruise=1.0)
@@ -269,6 +271,7 @@ def test_mpc_lag_keeps_the_commands_inside_a_dead_time():
     assert len(trk.steer_queue) == 4 and len(trk.speed_queue) == 3
 
 
+@pytest.mark.timing
 def test_mpc_lag_plans_inside_a_tick():
     # Loose, for a busy laptop: 50 ms is the whole 20 Hz tick.
     run = follow(tracker('mpc_lag'), uturn(), (0.0, 0.0, 0.0), cruise=2.0)

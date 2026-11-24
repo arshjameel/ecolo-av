@@ -32,7 +32,8 @@ pytestmark = pytest.mark.skipif(rclpy is None, reason='needs ROS sourced: colcon
 
 
 def env():
-    e = dict(os.environ, ROS_DOMAIN_ID=str(200 + os.getpid() % 20),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(200 + os.getpid() % 20)
+    e = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
              ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: e[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     return e

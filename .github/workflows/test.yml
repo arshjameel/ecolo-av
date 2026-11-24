@@ -237,6 +237,10 @@ jobs:
           # No debug info in the tests' debug builds: faster links. The same checks:
           # overflow and debug_assert! stay on.
           CARGO_PROFILE_DEV_DEBUG: "0"
+          # The packages' Python tests run twice here, from their source folders in
+          # tools/test.sh and again in colcon test: tested once a night as people run
+          # tools/test.sh on a laptop. Linux and ARM run them in colcon test only.
+          AAV_PYTEST_LOOP: "1"
         run: pixi run --locked test 2>&1 | tee test.log
       - name: Failures as annotations (readable without signing in)
         # Not when the run failed before the build (GitHub down, say): no log.

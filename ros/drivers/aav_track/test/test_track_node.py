@@ -30,7 +30,10 @@ try:
 except ImportError:      # tools/test.sh, outside pixi's ROS
     HAVE_ROS = False
 
-pytestmark = pytest.mark.skipif(not HAVE_ROS, reason='needs ROS 2 (pixi run test)')
+# The node and its pretend car run on the wall clock, in this process: beside other packages'
+# tests the loop runs slow and the car falls behind (`timing`: run alone, after the rest).
+pytestmark = [pytest.mark.skipif(not HAVE_ROS, reason='needs ROS 2 (pixi run test)'),
+              pytest.mark.timing]
 
 
 class Car:
@@ -80,7 +83,7 @@ def goal(length, y=0.0):
 def ros(request):
     # This computer only, on a domain nobody else is using (CLAUDE.md: shared machines).
     os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-    rclpy.init(domain_id=free_domain())
+    rclpy.init(domain_id=int(os.environ.get('AAV_TEST_DOMAIN') or free_domain()))
     # map_correction on, as these tests were written (TODO 186: off by default since 15 Nov).
     overrides = [Parameter('map_correction', value=True)]
     overrides += [Parameter('live_swap', value=True)] if request.param else []

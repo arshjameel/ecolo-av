@@ -80,7 +80,8 @@ def yaw_of(q):
 
 def test_scans_give_a_pose_near_the_truth():
     assert CONFIG.exists(), CONFIG
-    env = dict(os.environ, ROS_DOMAIN_ID=str(150 + os.getpid() % 20),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(150 + os.getpid() % 20)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     binary = os.path.join(get_package_prefix('aav_amcl_rs'), 'lib', 'aav_amcl_rs', 'amcl')

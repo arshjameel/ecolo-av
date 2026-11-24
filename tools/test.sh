@@ -37,6 +37,15 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
 # Each package's tests import the package, so pytest runs from inside it.
 # (aav_sim_models's adapter test imports ROS messages, so only `colcon test` runs that one.)
+# Inside `pixi run test` (AAV_COLCON_TEST_FOLLOWS=1), colcon test runs these same tests
+# right after, so they run once, there; AAV_PYTEST_LOOP=1 runs them here too (the nightly
+# Mac, so the tests still pass from the source folder). tools/tests/
+# test_colcon_runs_the_tests.py checks colcon has every test file of a CMake package.
+pytest_loop=1
+if [[ ${AAV_COLCON_TEST_FOLLOWS:-0} == 1 && ${AAV_PYTEST_LOOP:-0} != 1 ]]; then
+  pytest_loop=0
+  section "ros/*: the packages' Python tests (in colcon test, next)"
+fi
 for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/can_bridge/aav_legacy \
            ros/sim/aav_sim_models ros/sim/aav_carla \
            ros/drivers/aav_scripted ros/drivers/aav_language ros/drivers/aav_navigation \
@@ -48,6 +57,7 @@ for pkg in ros/ego/aav_ego ros/io_mux/aav_io_mux ros/can_bridge/aav_spine ros/ca
            ros/perception/aav_voxels \
            ros/safety/aav_safety ros/safety/aav_ghost \
            ros/sim/aav_bench; do
+  [[ $pytest_loop == 1 ]] || break
   section "$pkg"
   (cd "$pkg" && python3 -m pytest -q -p no:cacheprovider)
 done

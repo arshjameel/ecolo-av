@@ -45,7 +45,8 @@ def box(x, y):
 
 def environment():
     """Return this test's environment: its own domain, this computer only."""
-    env = dict(os.environ, ROS_DOMAIN_ID=str(160 + os.getpid() % 40),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(160 + os.getpid() % 40)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     return env

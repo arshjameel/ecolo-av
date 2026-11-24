@@ -13,8 +13,8 @@ checks the running processes, for the safety numbers, in both languages:
 | legacy.launch.py | (vehicle.yaml) | /legacy_uart_bridge max_steering_angle, over legacy.yaml's |
 | io_mux.launch.py | target:=bench | /output_mux target bench |
 
-Each run: its own ROS_DOMAIN_ID (200-219) and localhost discovery; stopped by its process
-group.
+Each run: its own ROS_DOMAIN_ID (200-219; in `pixi run test`, the run's, AAV_TEST_DOMAIN)
+and localhost discovery; stopped by its process group.
 """
 
 import os
@@ -39,7 +39,8 @@ pytestmark = pytest.mark.skipif(not HAVE_ROS, reason='needs ROS 2 (pixi run test
 
 def environment():
     """Give this run its own domain, on this computer only."""
-    env = dict(os.environ, ROS_DOMAIN_ID=str(200 + os.getpid() % 20),
+    ros_domain = os.environ.get('AAV_TEST_DOMAIN') or str(200 + os.getpid() % 20)
+    env = dict(os.environ, ROS_DOMAIN_ID=ros_domain,
                ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
     os.environ.update({k: env[k] for k in ('ROS_DOMAIN_ID', 'ROS_AUTOMATIC_DISCOVERY_RANGE')})
     return env

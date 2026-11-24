@@ -83,7 +83,7 @@ class Ros:
 
     def __init__(self, **params):
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
-        rclpy.init(domain_id=random.randint(150, 230))
+        rclpy.init(domain_id=int(os.environ.get('AAV_TEST_DOMAIN') or random.randint(150, 230)))
         self.node = StreetRouter(parameter_overrides=[Parameter(k, value=v)
                                                       for k, v in params.items()])
         self.car = rclpy.create_node('fake_car')
