@@ -756,8 +756,8 @@ package. <code>tools/test.sh</code> on its own still runs them all.</p>
 <td><code>tools/pytest_plugins/aav_ros_domain.py</code> gives each pytest run a ROS domain no other process here holds (ROS's <code>domain_coordinator</code>, 1 to 100) and sets <code>ROS_DOMAIN_ID</code>; a test that picks its own domain takes <code>AAV_TEST_DOMAIN</code> first (<code>tools/tests/test_test_domains.py</code> checks)</td>
 </tr>
 <tr>
-<td>Wall-clock tests</td>
-<td>the ones marked <code>timing</code> (<code>aav_track</code>'s planning-time checks, and its node driving a pretend car) run after the rest, alone</td>
+<td>Run alone, after the rest</td>
+<td><code>aav_mppi_lag</code> (its closed-loop runs use 4 threads each: beside other packages they passed its 600 s limit); the tests marked <code>timing</code>, which run or time a tracker on the wall clock (<code>aav_track</code>'s planning-time checks, and its node driving a pretend car)</td>
 </tr>
 <tr>
 <td>One at a time again</td>
