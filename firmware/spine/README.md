@@ -125,7 +125,9 @@ devices; commands from the Motor-Pi's UART (default) or CAN
 | `pixi run esp build` | builds the program |
 | `pixi run esp flash` | flashes it on the USB cable: bench only (`docs/esp32-bench.md`) |
 
-Untested on the board: nothing has been flashed yet. The C++ stays until it is proven.
+First bench boot 25 Nov 2026: the default build flashes and boots into the safe latched
+state on a bare module (USB only, no devices). Not yet flashed on the car, and not yet
+proven: the C++ stays until it drives the actuators on the bench (`docs/esp32-bench.md`).
 
 ## The Pico 2 board programs: `boards/`
 

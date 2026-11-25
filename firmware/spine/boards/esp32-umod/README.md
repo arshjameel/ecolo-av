@@ -4,8 +4,11 @@
 
 The spine on today's control board: the SparkFun ESP32 MicroMod (the original ESP32,
 Xtensa) on the AAV carrier, beside the Motor-Pi. The Rust replacement for
-`firmware/legacy/aav_umod_esp32`. **Never flashed yet.** The C++ stays until this is proven
-on the car.
+`firmware/legacy/aav_umod_esp32`. **First bench boot 2026-11-25:** flashed to a bare ESP32
+MicroMod (USB only, no devices on the I2C bus) and booted into the safe latched state —
+throttle 0, brake full on, disarmed, `DEVICES 0/4`. **Not yet flashed on the car, and not
+yet proven:** the C++ stays until it drives the real Jrks, DAC and direction pin on the
+bench (`docs/esp32-bench.md`).
 
 It only moves pins: the deciding is in `spine-core`, the devices in `spine-board`.
 
