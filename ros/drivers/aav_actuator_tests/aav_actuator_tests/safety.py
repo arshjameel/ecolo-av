@@ -296,6 +296,21 @@ PREFLIGHT_CHECKLIST = (
     f'The speed is capped at {STANDS_CAP} m/s; the run takes about 40 s',
 )
 
+
+def on_the_ground(kind: Kind, on_jacks: bool) -> bool:
+    """
+    Whether a stand-in's car stands on the ground during a --stands run.
+
+    The bench's pretend car always does. Ravensim's does unless it was put on stands
+    (pixi run jacks up --sim; car-test --stands --sim does it): on_jacks is the person's
+    or the runner's word for that, as --stands is on the real car, and the preflight's
+    live IMU watch checks it either way. The real car: --stands means off the ground.
+    """
+    if kind is Kind.BENCH:
+        return True
+    return kind is Kind.SIM and not on_jacks
+
+
 DRIVEN_WHEELS = 'rear'   # the car is rear-wheel drive (docs/learn-car.md, "The moving parts")
 
 

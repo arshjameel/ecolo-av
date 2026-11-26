@@ -146,3 +146,12 @@ def test_the_preflight_refuses_the_real_car_without_a_driven_wheel_speed():
     assert 'no-timeout' in safety.preflight_refusal(Kind.REAL, True, 'rear', True, 'open')
     assert 'pi' in safety.preflight_refusal(Kind.REAL, True, 'rear', False, 'pi')
     assert safety.preflight_refusal(Kind.REAL, True, 'rear', False, 'open') is None
+
+
+def test_only_ravensim_on_jacks_is_off_the_ground_among_the_stand_ins():
+    assert safety.on_the_ground(Kind.SIM, False)
+    assert not safety.on_the_ground(Kind.SIM, True)
+    # The bench's pretend car has no jacks; the real car's --stands is the person's word.
+    assert safety.on_the_ground(Kind.BENCH, True)
+    assert not safety.on_the_ground(Kind.REAL, False)
+    assert not safety.on_the_ground(Kind.UNKNOWN, False)

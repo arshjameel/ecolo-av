@@ -137,10 +137,20 @@ topics:
     pub: [hw_panel]
     sub: [output_mux]
     note: The hardware panel is alive - the number of frames it has drawn, 10 Hz. Read only with sim watch_screens - a test of what stops the car, refused for the real car
+  /safety/filter/status:
+    type: diagnostic_msgs/msg/DiagnosticStatus
+    pub: [safety_filter]
+    sub: []
+    note: Only with the safety filter running (aav_safety_filter_rs, in shadow until a launch wires it in front of twist_mux - K1, TODO 104). One per command it filters - name safety_filter; hardware_id the driver (nav, point, ai); level OK (passed unchanged) or WARN (trimmed); message the rules that acted (max_speed, speed_barrier, lane_left, lane_right, steering, lyapunov, lane_infeasible, no_road, max_reverse); values every number of its report as text - v_in, w_in, v_out, w_out, speed_now, stop_m (the stopping law's S(speed_now) - checked against recorded stops), h_speed (m to spare after stopping), v_allow, h_left, h_right (m before a lane line at the look-ahead point), w_low, w_high, V, V_dot, slack (the Lyapunov term), offset, twist, curvature, room (the car in the lane), dt, rules. Record it and a drive is scored from its bag (ros/safety/aav_safety_filter_rs/README.md, Testing).
+  /safety/filter/shadow/ai/cmd_vel:
+    type: geometry_msgs/msg/TwistStamped
+    pub: [safety_filter]
+    sub: []
+    note: Only with the safety filter running in shadow (its default out_topic, /safety/filter/shadow/{d}/cmd_vel, one per driver in its drivers - nav, point, ai by default; this entry stands for all three). The command the filter would send for that driver, its header kept. Nothing drives by it. Live (K1), out_topic is /drivers/{d}/cmd_vel and in_topic /drivers/{d}/cmd_vel_raw.
   /safety/stop_zone/state:
     type: nav2_msgs/msg/CollisionMonitorState
     pub: [stop_zone]
-    sub: [stop_hold, controller_compare]
+    sub: [stop_hold, controller_compare, dev_window]
     note: What the stop zone does (aav_stop_zone, the car's since 17 Nov - it replaced Nav2's collision_monitor after stopping every time it did, no later - docs/safety-case.md), on each change, in collision_monitor's message - action_type 0 nothing, 1 stop; polygon_name StopZone, or "invalid source" when a sensor it reads is silent. It decides afresh on every command, so it can flicker between the two at the box's edge - stop_hold holds the stop.
   /safety/stop_zone/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
@@ -150,7 +160,7 @@ topics:
   /safety/stop_zone/box:
     type: geometry_msgs/msg/PolygonStamped
     pub: [stop_zone]
-    sub: []
+    sub: [dev_window]
     note: The box in use in base_link, each command, for RViz and Foxglove (collision_monitor's polygon_pub_topic) - from the front bumper ahead (behind, reversing), 0.2 m wider than the body each side (vehicle.yaml, through aav_description vehicle.py).
   /safety/stop_hold/lock:
     type: std_msgs/msg/Bool
@@ -195,8 +205,8 @@ topics:
   /safety/ghost/marker:
     type: visualization_msgs/msg/Marker
     pub: [ghost_obstacle]
-    sub: []
-    note: The ghost as a purple cylinder in the map frame, for RViz and Lichtblick; DELETE when it goes.
+    sub: [mpc_lag_rs, dev_window]
+    note: The ghost as a purple cylinder in the map frame, for RViz and Lichtblick; DELETE when it goes. mpc_lag_rs reads it only with navigation.launch.py mpc_barriers:=true (research, off by default) - the cylinder's centre and width become a keep-out circle its plan may only creep up to.
   /drivers/scripted/lag_aware:
     type: std_msgs/msg/Bool
     pub: []
@@ -697,6 +707,12 @@ topics:
     sub: [sim_gps, debug_hud, sim_cameras]
     live: [sim]
     note: Where Ravensim's car really is (map frame - the world's origin is the datum - 50 Hz), like the bench's /vehicle/bench/truth. Only the stand-ins read it - sim_gps, for the receiver's velocity (/sensors/gps/fix_velocity), never for a position; tools/sim_check.py compares it with /localization/odom/global. Ravensim's other topics (/vehicle/sim/odom, imu, navsat, cmd_vel, radar/points) only link the simulator (aav_simulator's node simulator), sim_adapter and the sensor nodes (sim_imu, sim_gps, sim_radar, sim_camera_relay, sim_lidar_relay - one process per sensor, as on the car); they were /gazebo/* until Gazebo went on 16 Nov, and the same nodes read them.
+  /vehicle/sim/jacks:
+    type: std_msgs/msg/Bool
+    pub: [simulator]
+    sub: [sim_adapter, jacks_cli]
+    live: [sim]
+    note: Ravensim's. true while the simulated car is on stands (on jacks) - the rear wheels spin and steer as commanded, through the same actuator model, and the body stays put, so the wheels say "moving" while the truth, the IMU, the GPS and the lidar say "still", as on the real car on stands. Latched (reliable, transient local, depth 1) - sent at the start (sim.launch.py on_stands:=true starts it true) and on each change by /vehicle/sim/set_jacks. sim_adapter takes the car's weight off its actuator model by it (free wheels - free_wheel_mass, 20 kg, a guess); pixi run jacks status --sim (tools/jacks.py, the node jacks_cli) prints it. Nothing that drives reads it - on the real car a person says --stands. docs/actuator-tests.md.
   /vehicle/sim/cmd_vel:
     type: geometry_msgs/msg/Twist
     pub: [sim_adapter]
@@ -996,11 +1012,18 @@ topics:
     sub: []
     note: Only with behaviour:=true, 5 Hz - for the screens. name behaviour; message STATE and why; level OK, or WARN with a warning or in ASK. values state (DRIVE, APPROACH, STOPPED, WAIT, GO, ASK), reason (sign, obstacle, fence, goal, moving - anything moving within 10 m or onto the road ahead within 3 s holds the car, with things - a lock's name, the e-stop), cap_mps (what /drivers/nav/speed_limit carries), left_m (to the binding stop's final stop, inf for none), warnings (sign passed, no lock; sign lost; odometry stale). aav_behaviour_rs publishes it by default (behaviour_impl:=rust, since 16 Nov; the Python removed 20 Nov), with the same node name, QoS and answers.
 
+  /drivers/nav/track/barrier_watch/keep_out:
+    type: visualization_msgs/msg/Marker
+    pub: [barrier_watch]
+    sub: [dev_window]
+    live: []
+    note: Research, outside the capstone's scope, the simulator only - the barrier's keep-out circle round the ghost (pixi run barrier-watch, tools/barrier_watch.py; never on the car). A LINE_STRIP on the ground in the map frame, radius the ghost's plus the barrier's body radius and margin (1.12 + 0.2 m, aav_mpc_lag), the same in every mode so the plain run shows what it drives through. Latched (reliable, transient local, depth 1), sent once. Only drawn - the developer window's map panel and pixi run nav-view (and rviz/barrier.rviz with --rviz); nothing drives by it.
+
   # --- our costmaps (aav_costmap, Nav2's ported; docs/own-costmap.md) ---
   /drivers/nav/costmap/local:
     type: nav_msgs/msg/OccupancyGrid
     pub: [costmap]
-    sub: []
+    sub: [dev_window]
     note: Our local costmap (aav_costmap), Nav2's local_costmap rebuilt in Rust from the same nav2.yaml block - odom, a 20 m x 20 m window of 0.1 m cells rolling with the car, the static map, the same obstacle layers and sources (the lidar scan; the radar, cameras, ghost and cubes where they run), inflation with the car's padded outline. Updated at the block's update_frequency (5 Hz), sent at its publish_frequency (2 Hz). Values as Nav2's publisher writes them - 0 free, 1-98 inflated, 99 inscribed, 100 lethal, -1 unknown.
   /drivers/nav/costmap/local_raw:
     type: nav2_msgs/msg/Costmap
@@ -1082,8 +1105,8 @@ topics:
   /diagnostics:
     type: diagnostic_msgs/msg/DiagnosticArray
     pub: [twist_mux, ekf_local, ekf_global, sensor_watchdog, camera_stream_front_left, camera_stream_front_right, localization_health]
-    sub: [language_drive]
-    note: ROS's diagnostics. sensor_watchdog reports each input it watches once a second (OK, WARN, ERROR when it stops the car); for the wheels, also the gaps to the IMU (speed_gap, turn_gap, worst_speed_gap, worst_turn_gap), to tune the cross check on the car. twist_mux reports each lock once a second ("lock locks.estop" locked or free) - the only place a node started after an e-stop can learn it, since /safety/estop is sent a few times and its senders go away. language_drive refuses to move while it says locked, or while it is silent. camera_stream_<camera> reports its stream once a second (status name camera_stream - front_left; ERROR with no pictures, WARN under half the frame rate) - decoder (the one auto picked - gst-mac on a Mac), fps_in, fps_out, dropped, decoder_starts, work_ms, detect_ms, delay_s, and with time_code the measured delays (arrival_* and detection_*_ms - median, p95, max). localization_health reports each of its checks once a second (status name localization_health - gyro_bias, ...; OK, WARN or STALE, never stopping anything), with their numbers (bias_dps, sigma_m, tilt_deg...). pixi run check ignores the topic.
+    sub: [language_drive, car_test]
+    note: car_test listens only with --sim --attach, for twist_mux's e-stop lock, before its first step. ROS's diagnostics. sensor_watchdog reports each input it watches once a second (OK, WARN, ERROR when it stops the car); for the wheels, also the gaps to the IMU (speed_gap, turn_gap, worst_speed_gap, worst_turn_gap), to tune the cross check on the car. twist_mux reports each lock once a second ("lock locks.estop" locked or free) - the only place a node started after an e-stop can learn it, since /safety/estop is sent a few times and its senders go away. language_drive refuses to move while it says locked, or while it is silent. camera_stream_<camera> reports its stream once a second (status name camera_stream - front_left; ERROR with no pictures, WARN under half the frame rate) - decoder (the one auto picked - gst-mac on a Mac), fps_in, fps_out, dropped, decoder_starts, work_ms, detect_ms, delay_s, and with time_code the measured delays (arrival_* and detection_*_ms - median, p95, max). localization_health reports each of its checks once a second (status name localization_health - gyro_bias, ...; OK, WARN or STALE, never stopping anything), with their numbers (bias_dps, sigma_m, tilt_deg...). pixi run check ignores the topic.
 
 services:
   /drivers/nav/costmap/clear_entirely_local:
@@ -1145,6 +1168,10 @@ services:
     type: simulation_interfaces/srv/SetEntityState
     server: simulator
     note: Ravensim - put the car (entity aav) at state.pose in the map frame (x, y and yaw), standing still, as Gazebo's set_pose service does; a non-zero twist is refused. The truth and wheel odometry jump with it. tools/sim_frames.py --simulator own uses it. Sim only.
+  /vehicle/sim/set_jacks:
+    type: std_srvs/srv/SetBool
+    server: simulator
+    note: Ravensim - put the simulated car on stands (data true) or back on the ground (false), where it is. Refused, with the reason in message, unless the wheels (on the ground, the car) are slower than 0.02 m/s and no speed is commanded on /vehicle/sim/cmd_vel - the car never leaps off the stands (aav_simulator sim-core jacks.rs). Asking for what it is already succeeds and changes nothing. The state is on /vehicle/sim/jacks. Called by pixi run jacks up|down --sim (tools/jacks.py, which refuses unless /system/source says SIM), by the ladder window through that tool, and by car-test --stands --sim on its own Ravensim (true before the first step, false after the last). Sim only.
   /track/set_parameters:
     type: rcl_interfaces/srv/SetParameters
     server: track

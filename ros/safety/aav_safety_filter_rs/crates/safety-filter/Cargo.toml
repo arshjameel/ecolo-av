@@ -1,0 +1,17 @@
+[package]
+name = "safety-filter"
+description = "The safety filter's maths, no ROS: trims an automatic driver's (v, w) by the least that keeps the car able to stop (a CBF on the stopping law), inside its lane (a CBF on a look-ahead point) and settling on the lane's line (a soft Lyapunov term)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The stopping law S(v), shared with ego and the behaviour planner: one curve for every stop
+# (docs/designs/2026-11-05_how-the-car-stops.md).
+ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }
+
+[dev-dependencies]
+# MIT/Apache-2.0 (TODO 204), as aav_stop_zone: the guarantees checked on thousands of
+# random drivers.
+proptest = "1"

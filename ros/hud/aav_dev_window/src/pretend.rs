@@ -21,6 +21,11 @@ use map_core::{
     grid::{Grid, GridInfo},
 };
 
+use nav_core::{
+    marker::{self, Action, MarkerParts, Outline, Shape},
+    zone::ZoneAction,
+};
+
 use crate::feed::{self, Feed, Level, RoadAhead, Update};
 
 /// A straight piece of wall on the map, metres.
@@ -302,6 +307,30 @@ impl PretendFeed {
     }
 }
 
+/// The pretend stop zone's box, base_link: from the front bumper ahead.
+const STOP_BOX: [(f64, f64); 4] = [(1.8, -0.7), (4.8, -0.7), (4.8, 0.7), (1.8, 0.7)];
+
+/// A pretend ghost beside where the car will be 4 s in, and a keep-out circle round it,
+/// as `aav_ghost` and `pixi run barrier-watch` send them.
+pub fn ghost_and_keep_out() -> (Option<Outline>, Option<Outline>) {
+    let near = car_at(4.0);
+    let at = nav_core::body::from_pose(near, 0.0, 3.0);
+    let ghost = MarkerParts {
+        frame_id: "map",
+        shape: Shape::Cylinder,
+        action: Action::Add,
+        pose: Pose::new(at.x, at.y, 0.0),
+        scale: (0.5, 0.5),
+        points: &[],
+        rgb: [0.7, 0.3, 1.0],
+    };
+    let keep_out = MarkerParts {
+        scale: (3.14, 3.14),
+        ..ghost.clone()
+    };
+    (marker::outline(&ghost), marker::outline(&keep_out))
+}
+
 impl Feed for PretendFeed {
     fn label(&self) -> &'static str {
         "PRETEND"
@@ -334,6 +363,9 @@ impl Feed for PretendFeed {
             updates.push(Update::RoadAhead(road_ahead()));
             updates.push(Update::Route(route()));
             updates.extend(lot_grid(cost).map(Update::Costmap));
+            let (ghost, keep_out) = ghost_and_keep_out();
+            updates.push(Update::Ghost(ghost));
+            updates.push(Update::KeepOut(keep_out));
             updates.push(Update::Origin(Announcement {
                 announcer: "pretend".to_owned(),
                 entries: vec![Entry {
@@ -366,6 +398,11 @@ impl Feed for PretendFeed {
             updates.extend(ahead_at(t));
             // things sends at 10 Hz too.
             updates.push(Update::Things(things_at(t, car_odom)));
+            // The stop zone's box rides with the car; it says STOP for a second in six.
+            updates.push(Update::StopBox("base_link".to_owned(), STOP_BOX.to_vec()));
+            updates.push(Update::StopAction(ZoneAction::from_code(u8::from(
+                t % 6.0 > 5.0,
+            ))));
         }
         if t >= self.next_slow {
             self.next_slow = t + 0.5;

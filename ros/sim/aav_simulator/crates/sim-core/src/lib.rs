@@ -8,6 +8,7 @@
 //! | `shared_car` (feature `shared`) | `SharedCar`: the shared car-model crate behind the [`car::CarModel`] trait |
 //! | [`lidar`] | the roof lidar and the radar stand-in, by ray casting, packed as Gazebo's |
 //! | [`ground`] | the ground under each wheel: slopes tilt the car, a kerb too high stops it |
+//! | [`jacks`] | the car on stands: which wheels spin, what the odometry reads, when it may come down |
 //! | [`geo`] | the datum, and world positions as latitude and longitude |
 //! | [`sim`] | the loop: step the car, and which stream speaks when; the camera plug-in |
 //! | [`lockstep`] | the cameras' gate: the simulated time waits for a slow picture (software rendering) |
@@ -24,6 +25,7 @@
 pub mod car;
 pub mod geo;
 pub mod ground;
+pub mod jacks;
 pub mod lidar;
 pub mod lockstep;
 pub mod math;

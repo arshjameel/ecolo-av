@@ -36,6 +36,8 @@ import os
 import re
 from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
 
+from aav_actuator_tests import procedures as pr
+
 STILL_FOR = 0.3          # s under analysis.STOPPED: the car stands still
 WATCHDOG_MARGIN = 1.0    # s after an input's max_age for the watchdog to say it
 STILL_AFTER = 3.0        # s from the word (or the fault) to standing still
@@ -180,6 +182,10 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
                    help='phase A: the wheels are off the ground')
     p.add_argument('--hallway', action='store_true',
                    help='phase B: on the ground, in a measured, cleared hallway')
+    p.add_argument('--lot', action='store_true',
+                   help="the lot's simulator twin: the stage-4 tests at up to "
+                        f'{LOT_SPEED:g} m/s, one session, one report. --sim only: on the '
+                        'real car the lot is by hand for now')
     p.add_argument('--ground', action='store_true',
                    help='reserved for the open lot: refused for now')
     p.add_argument('--length', type=float,
@@ -206,6 +212,10 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
                    help='a hallway session folder: its report again, from its files (no ROS)')
     p.add_argument('--sim', action='store_true',
                    help='start Ravensim as the stand-in (this computer only) and test it')
+    p.add_argument('--attach', action='store_true',
+                   help='--sim: use the Ravensim already running on this computer (one '
+                        'you can watch: pixi run dry-run, pixi run sim) instead of starting '
+                        'one; none running: start one, as --sim alone does')
     p.add_argument('--only', nargs='+', default=[], metavar='STEP',
                    help=f'only these steps ({", ".join(NAMES)}; or the groups '
                         f'{", ".join(GROUPS)})')
@@ -219,12 +229,30 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
     if args.ground:
         p.error('--ground (the open lot) is refused for now: phase A on stands, then phase B '
                 'in the hallway (--hallway), first (docs/testing-plan.md)')
-    if args.stands == args.hallway:
-        p.error('add --stands (phase A, wheels off the ground) or --hallway (phase B, in a '
-                'measured hallway): one of them')
+    if args.attach and not args.sim:
+        p.error('--attach is for --sim only: it uses a Ravensim running on this computer. '
+                'The real car needs no --attach, and is never attached to by this flag')
+    if args.attach and (args.sim_actuators or args.wheel_noise or args.wheel_slip):
+        p.error('--attach uses the simulator as it runs: --sim-actuators, --wheel-noise and '
+                '--wheel-slip are for a Ravensim this command starts (drop --attach)')
+    if args.stands + args.hallway + args.lot != 1:
+        p.error('add --stands (phase A, wheels off the ground), --hallway (phase B, in a '
+                "measured hallway) or --lot --sim (the lot's simulator twin): one of them")
+    if args.lot:
+        if not args.sim:
+            p.error("--lot is the simulator's twin only (add --sim): on the real car the "
+                    'lot is by hand for now, one test at a time (docs/actuator-tests.md, '
+                    '"On the car"), capped at 1 m/s')
+        if args.sim_actuators or args.wheel_noise or args.wheel_slip:
+            p.error('--sim-actuators, --wheel-noise and --wheel-slip are for --hallway')
+        unknown = [w for w in args.only if w not in LOT_NAMES]
+        if unknown:
+            p.error(f'--only: no lot test {", ".join(unknown)} (pick from '
+                    f'{", ".join(LOT_NAMES)})')
+        return args
     if args.hallway:
         if args.only:
-            p.error('--only is for --stands; --hallway takes --kinds')
+            p.error('--only is for --stands and --lot; --hallway takes --kinds')
         bad = [k for k in args.kinds if k not in HALL_KINDS]
         if bad:
             p.error(f'--kinds: no {", ".join(bad)} (pick from {", ".join(HALL_KINDS)})')
@@ -251,10 +279,102 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
 
 def report_folder(base: Optional[str], sim: bool, now: datetime.datetime,
                   phase: str = 'stands') -> str:
-    """Return the run's folder: <base>/<time>-<stands|hallway>[-sim] (not made here)."""
+    """Return the run's folder: <base>/<time>-<stands|hallway|lot>[-sim] (not made here)."""
     base = os.path.expanduser(base or os.environ.get('AAV_TESTS_DIR', '~/aav-tests'))
     return os.path.join(base, now.strftime('%Y-%m-%d-%H%M%S') + f'-{phase}'
                         + ('-sim' if sim else ''))
+
+
+# --- --sim --attach: the simulator somebody is watching ------------------------------
+
+class Attach(enum.Enum):
+    ATTACH = 'attach'    # a Ravensim runs on this computer: use it
+    OWN = 'own'          # nothing heard: start our own, as --sim alone does
+    REFUSE = 'refuse'    # something that is not a simulator: nothing starts
+
+
+def attach_choice(kind: str) -> Tuple[Attach, str]:
+    """
+    Decide what --sim --attach does, from what /system/source said on this computer.
+
+    kind: safety.Kind's value (SIM, REAL, BENCH, REPLAY, UNKNOWN = nobody announced).
+    Only SIM is attached to. Anything REAL refuses, even beside a simulator (safety.
+    source_kind already makes that REAL): a test meant for a simulator never reaches a car.
+    """
+    if kind == 'SIM':
+        return Attach.ATTACH, ('a Ravensim is running on this computer (/system/source '
+                               'says SIM): using it, not starting one')
+    if kind == 'UNKNOWN':
+        return Attach.OWN, ('no simulator heard on this computer (nothing on '
+                            '/system/source): starting our own')
+    return Attach.REFUSE, (f'--sim --attach, but /system/source says {kind}: not a '
+                           'simulator. Nothing was started and nothing moved')
+
+
+def estop_locked(statuses: Iterable[Tuple[str, Mapping[str, str]]]) -> Optional[bool]:
+    """
+    Read twist_mux's e-stop lock from one /diagnostics message; None if it isn't twist_mux's.
+
+    statuses: (name, {key: value}) per DiagnosticStatus. twist_mux says, once a second,
+    "lock locks.estop" = " locked (listening to /safety/estop ...)" or " free (...)": the
+    only place a program started after an e-stop can learn it (/safety/estop is sent a
+    few times and its senders go away). The same reading as aav_language's safety.py.
+    """
+    for name, values in statuses:
+        if 'twist mux' not in name.lower() and 'twist_mux' not in name.lower():
+            continue
+        for key, value in values.items():
+            if key.startswith('lock ') and key.split('.')[-1] == 'estop':
+                return value.strip().startswith('locked')
+    return None
+
+
+# Where pixi run dry-run says which process group is its simulator's (tools/dry_run.py).
+DRY_RUN_DIR = '/tmp/aav-dry-run'
+
+
+def attached_launch(env: Mapping[str, str], state_dir: str = DRY_RUN_DIR
+                    ) -> Tuple[str, Optional[int]]:
+    """
+    Return (the launch's log, its process group) of the simulator --attach found, if told.
+
+    From the one who started it: AAV_SIM_LAUNCH_LOG and AAV_SIM_LAUNCH_PGID (pixi run
+    dry-run gives them to the ladder window), else the dry run's own note in `state_dir`
+    (sim-launch.pgid beside sim-launch.log), for a test typed in another terminal. Not
+    told: ('', None), and no process of that simulator is ever signalled.
+    """
+    log, group = env.get('AAV_SIM_LAUNCH_LOG', ''), env.get('AAV_SIM_LAUNCH_PGID', '')
+    if not (log and group):
+        log = os.path.join(state_dir, 'sim-launch.log')
+        try:
+            with open(os.path.join(state_dir, 'sim-launch.pgid')) as f:
+                group = f.read().strip()
+        except OSError:
+            return '', None
+    try:
+        return log, int(group)
+    except ValueError:
+        return '', None
+
+
+# What an attached simulator must show before a step; the wait is short: it is up already.
+ATTACH_WAIT = 30.0      # s
+
+
+def not_ready(missing: Sequence[str], gate: Optional[str], estop: bool = False) -> str:
+    """Say why an attached simulator can't be tested yet, and what a person does about it."""
+    parts = []
+    if missing:
+        parts.append('not heard: ' + ', '.join(missing))
+    if gate is not None and not gate.startswith('OPEN'):
+        parts.append(f'the output gate says "{gate}", not OPEN: pixi run clear gate --sim')
+    if estop:
+        parts.append("its e-stop is set (an earlier test, the stands test's last step, "
+                     'leaves it set): pixi run clear estop --sim')
+    if estop or (gate is not None and not gate.startswith('OPEN')):
+        parts.append('as on the car, a person clears a stop; no test does')
+    return ('the simulator running here is not ready (' + '; '.join(parts) + ')'
+            if parts else 'the simulator running here is not ready')
 
 
 # --- phase B, the hallway ------------------------------------------------------------
@@ -338,6 +458,46 @@ def sim_launch_args(overrides: Mapping[str, float], wheel_noise: float,
             f'wheel_noise:={wheel_noise:g}', f'wheel_slip:={wheel_slip:g}')
 
 
+# --- the lot's simulator twin (the ladder's rung 5) ------------------------------------
+
+LOT_SPEED = 3.0         # m/s: the cap for the session (sim.launch.py sim_speed:=3)
+# Every stage-4 test that is not a hallway pass, in docs/tests.md's order: from the tests'
+# own list, so a new one joins the session.
+LOT_STEPS: Tuple[Step, ...] = tuple(
+    Step(t.name, t.number, t.title, How.TOOL, 'it runs to the end and makes its report',
+         Manner.NONE, Manner.AUTO, (t.name,), why_not='the simulator only, for now')
+    for t in sorted((t for t in pr.TESTS.values() if t.stage == 4 and not t.hallway),
+                    key=lambda t: float(t.number)))
+LOT_NAMES = tuple(s.name for s in LOT_STEPS)
+
+
+def lot_plan(only: Sequence[str]) -> List[Tuple[Step, Optional[str]]]:
+    """Return every lot step in order, each with why it is skipped (None: it runs)."""
+    wanted = set(only) if only else set(LOT_NAMES)
+    return [(s, None if s.name in wanted else 'not asked for (--only)') for s in LOT_STEPS]
+
+
+def lot_args(step: Step, out: str) -> List[str]:
+    """Return actuator_test's arguments for a lot step: --sim always, on the ground."""
+    return [*step.args, '--sim', '--max-speed', f'{LOT_SPEED:g}', '--out', out]
+
+
+def lot_launch_args() -> Tuple[str, ...]:
+    """sim.launch.py's arguments for a pretend lot: flat, empty, ego allowed LOT_SPEED."""
+    return ('world:=empty', 'rviz:=false', 'nav:=false', 'cameras:=false', 'lidar:=false',
+            'radar:=false', 'start_x:=-180', f'sim_speed:={LOT_SPEED:g}')
+
+
+def lot_result(code: int, yaml: str) -> Tuple[Status, str]:
+    """Judge a lot step: it passes when its test ran to the end; say what it gave."""
+    if code != 0:
+        return Status.FAIL, TOOL_CODES.get(code, f'exit code {code}')
+    keys = [ln.split(':', 1)[0].strip() for ln in yaml.splitlines()
+            if ln.startswith('  ') and ':' in ln]
+    gave = f'vehicle.yaml lines: {", ".join(keys)}' if keys else 'no vehicle.yaml lines'
+    return Status.PASS, f'ran to the end; {gave}'
+
+
 # --- the tool steps ------------------------------------------------------------------
 
 TOOL_CODES = {
@@ -361,7 +521,8 @@ def tool_args(step: Step, sim: bool, out: str) -> List[str]:
     if sim:
         args.append('--sim')
         if step.args[:1] == ('preflight',):
-            args += ['--skip', *SIM_SKIP]
+            # The runner's Ravensim is on stands (SIM_ARGS on_stands:=true), as the car.
+            args += ['--skip', *SIM_SKIP, '--on-jacks']
     return args
 
 
@@ -526,23 +687,29 @@ def counts(results: Sequence[Result]) -> Mapping[str, int]:
     return {s.value: sum(r.status is s for r in results) for s in Status}
 
 
-def verdict(results: Sequence[Result]) -> str:
+# How each session's verdict names itself, and what a failure means for the car.
+PHASES = {'car-test --stands': ('phase A', ' The car stays on stands'),
+          'car-test --lot': ("the lot's simulator twin", '')}
+
+
+def verdict(results: Sequence[Result], title: str = 'car-test --stands') -> str:
     c = counts(results)
+    phase, stays = PHASES[title]
     if c['FAIL']:
-        return (f'PHASE A FAILED: {c["FAIL"]} step{"s" if c["FAIL"] != 1 else ""} failed. '
-                'The car stays on stands')
+        return (f'{phase.upper()} FAILED: {c["FAIL"]} step{"s" if c["FAIL"] != 1 else ""} '
+                f'failed.{stays}')
     if c['SKIPPED'] or c['NOT RUN']:
-        return (f'NO STEP FAILED, but {c["SKIPPED"] + c["NOT RUN"]} did not run: phase A is '
+        return (f'NO STEP FAILED, but {c["SKIPPED"] + c["NOT RUN"]} did not run: {phase} is '
                 'not passed until every step has')
-    return 'PHASE A PASSED: every step PASS'
+    return f'{phase.upper()} PASSED: every step PASS'
 
 
-def table(results: Sequence[Result]) -> str:
+def table(results: Sequence[Result], title: str = 'car-test --stands') -> str:
     """Return the final table, for the terminal: one line per step."""
     width = max((len(r.step.name) for r in results), default=4)
     body = [f'  {r.status.value:<8} {r.step.number:<3} {r.step.name:<{width}}  {r.detail}'
             for r in results]
-    return '\n'.join(['car-test --stands', '================='] + body + ['', verdict(results)])
+    return '\n'.join([title, '=' * len(title)] + body + ['', verdict(results, title)])
 
 
 def cell(text: str) -> str:
@@ -550,11 +717,11 @@ def cell(text: str) -> str:
 
 
 def markdown(results: Sequence[Result], where: str, started: str, yaml: Mapping[str, str],
-             notes: Sequence[str] = ()) -> str:
+             notes: Sequence[str] = (), title: str = 'car-test --stands') -> str:
     """report.md: the summary for people (docs are for a dyslexic reader: short, a table)."""
-    out = ['# car-test --stands', '',
+    out = [f'# {title}', '',
            f'- **When:** {started}', f'- **Where:** {where}',
-           f'- **Result:** {verdict(results)}', '',
+           f'- **Result:** {verdict(results, title)}', '',
            '## The steps', '',
            '| # | Step | Result | What happened | Passes when | Files |',
            '|---|---|---|---|---|---|']
@@ -564,7 +731,7 @@ def markdown(results: Sequence[Result], where: str, started: str, yaml: Mapping[
                    f'{cell(r.detail)} | {cell(r.step.passes)} | {files} |')
     if yaml:
         out += ['', '## Lines for vehicle.yaml', '',
-                'Printed by the steering tests. Check them; this tool never writes the file.', '']
+                'Printed by the tests. Check them; this tool never writes the file.', '']
         for name, lines in yaml.items():
             out += [f'### {name}', '', '```yaml', lines, '```', '']
     if notes:

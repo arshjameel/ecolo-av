@@ -11,6 +11,8 @@ publish.workspace = true
 [dependencies]
 car-model = { path = "../../../../bringup/aav_description/car-model" }
 spine-core = { path = "../../../../../firmware/spine/crates/spine-core" }
+# The one stopping law, S(v), that ego and the safety filter use: the barriers' stop rule.
+ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }
 
 [dev-dependencies]
 serde_json = "1"

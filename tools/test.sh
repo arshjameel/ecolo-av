@@ -104,6 +104,8 @@ if command -v cargo >/dev/null; then
   (cd ros/can_bridge/aav_spine_bridge && cargo test -q --locked -p spine-bridge)
   section "ros/can_bridge/aav_legacy_rs: the Rust UART bridge's logic, the Python modules' answers"
   (cd ros/can_bridge/aav_legacy_rs && cargo test -q --locked -p legacy-bridge)
+  section "ros/safety/aav_safety_filter_rs: the safety filter's maths and its guarantees (proptest)"
+  (cd ros/safety/aav_safety_filter_rs && cargo test -q --locked -p safety-filter)
   section "ros/drivers/aav_rc_rs: rc_driver's rules in Rust, rc_drive.py's answers"
   (cd ros/drivers/aav_rc_rs && cargo test -q --locked -p rc-core)
   section "ros/safety/aav_joy_alive_rs: joy_alive's rules in Rust, joy_alive.py's answers"
@@ -164,6 +166,9 @@ if command -v cargo >/dev/null; then
   # Only the logic: the window (raylib) needs a screen's libraries, and colcon builds it.
   section "ros/hud/aav_hud: the HUD's state, GPS, e-stop and formatting; the map's maths; the hardware panel's buttons"
   (cd ros/hud/aav_hud && cargo test -q --locked -p hud-core -p map-core -p debug-core -p panel-core)
+  # Only the logic crate: -p keeps Bevy (the windows themselves) out of the build.
+  section "ros/hud/aav_dev_window: the test ladder's window (TODO 271) and the navigation view (TODO 276): their logic"
+  (cd ros/hud/aav_dev_window && cargo test -q --locked -p ladder-core -p nav-core)
   # Only the logic: the pictures need Bevy and a GPU (cargo test --release there).
   section "ros/sim/aav_sim_cameras: the simulator's cameras: lenses, camera_info, mounts, rates"
   (cd ros/sim/aav_sim_cameras && cargo test -q --locked -p camera-core)
@@ -205,6 +210,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/bringup/aav_description/map-edit
   rust_style ros/bringup/aav_description/lanelet-map
   rust_style ros/safety/aav_stop_zone -p stop-zone
+  rust_style ros/safety/aav_safety_filter_rs -p safety-filter
   rust_style ros/localization/aav_ndt -p ndt-core
   rust_style ros/localization/aav_pose_check -p pose-check-core
   rust_style ros/sim/aav_simulator -p sim-core --features shared
@@ -216,6 +222,7 @@ if command -v cargo >/dev/null; then
   rust_style ros/drivers/aav_navigator -p navigator
   rust_style ros/drivers/aav_smoother -p car-smoother
   rust_style ros/hud/aav_hud -p hud-core -p map-core -p debug-core -p panel-core
+  rust_style ros/hud/aav_dev_window -p ladder-core -p nav-core
   rust_style ros/sim/aav_sim_cameras -p camera-core
   for board in firmware/spine/boards/*/; do
     (cd "$board" && cargo fmt --all --check) || { echo "cargo fmt --check failed in $board"; exit 1; }
@@ -258,7 +265,8 @@ import re
 import sys
 tasks = dict(re.findall(r'^([\w-]+) = \{ cmd = "([^"]*)"', open('pixi.toml').read(), re.M))
 bad = [t for t in ('turtle', 'sim', 'bench', 'bench-check', 'view', 'sim-check', 'sim-fault',
-                   'demo', 'ravensim', 'ndt-map', 'carla-car', 'laptop-bench')
+                   'demo', 'ravensim', 'ndt-map', 'carla-car', 'laptop-bench',
+                   'barrier-watch', 'dry-run', 'jacks')
        if not tasks.get(t, '').startswith('tools/ros.sh --local ')]
 # The families that start Ravensim or drive it: each choice's line in its script.
 for script, choices in (('tools/screen.sh', ('hw-panel',)), ('tools/sim_cameras.sh', ('--ros',)),

@@ -2675,10 +2675,12 @@ dependencies = [
  "bevy_egui",
  "debug-core",
  "hud-core",
+ "ladder-core",
  "lanelet-map",
  "map-chunks",
  "map-core",
  "map-edit",
+ "nav-core",
  "rclrs",
  "ros-env",
  "serde",
@@ -3931,6 +3933,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ladder-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "lalrpop-util"
 version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4335,6 +4346,13 @@ dependencies = [
  "num-traits",
  "simba",
  "typenum",
+]
+
+[[package]]
+name = "nav-core"
+version = "0.1.0"
+dependencies = [
+ "map-core",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 """
 Re-run localization (and optionally Nav2) on a recorded drive, on any laptop.
 
-  ros2 launch aav_bringup replay.launch.py [nav:=false] [rviz:=true]
+  ros2 launch aav_bringup replay.launch.py [nav:=false] [rviz:=false]
   ros2 bag play <bag> --clock --topics /vehicle/odom /sensors/imu/data_raw \
       /sensors/gps/fix /sensors/gps/fix_velocity /tf_static
 
@@ -78,6 +78,6 @@ def launch_setup(context):
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('nav', default_value='false'),
-        DeclareLaunchArgument('rviz', default_value='true'),
+        DeclareLaunchArgument('rviz', default_value='false'),
         OpaqueFunction(function=launch_setup),
     ])

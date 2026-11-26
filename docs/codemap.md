@@ -116,6 +116,7 @@ current): after adding, moving or removing a package, run
 | [aav_ghost](../ros/safety/aav_ghost/README.md) | Python | Ghost obstacles | `aav_ghost/ghost.py` | `aav_ghost/ghost_cli.py`, `aav_ghost/ghost_obstacle.py` | `test/` | `config/` |
 | [aav_joy_alive_rs](../ros/safety/aav_joy_alive_rs/README.md) | Rust | joy_alive in Rust (rclrs) | `crates/joy-alive-core` | `crates/joy-alive-node` | - | - |
 | [aav_safety](../ros/safety/aav_safety/README.md) | Python | The sensor watchdog | `aav_safety/(6 modules)` | - | `test/` | `config/`, `launch/` |
+| [aav_safety_filter_rs](../ros/safety/aav_safety_filter_rs/README.md) | Rust | The safety filter for the automatic drivers, in Rust (rclrs), in shadow by default | `crates/safety-filter` | `crates/safety-filter-node` | - | - |
 | [aav_safety_rs](../ros/safety/aav_safety_rs/README.md) | Rust | The geofence, the stop hold and the goal leash in Rust (rclrs) | `crates/safety-core` | `crates/safety-node` | `test/` | - |
 | [aav_self_test_rs](../ros/safety/aav_self_test_rs/README.md) | Rust | The boot self-test in Rust (rclrs), TODO 255 | `crates/self-test-core` | `crates/self-test-node` | `test/` | `launch/` |
 | [aav_stop_zone](../ros/safety/aav_stop_zone/README.md) | Rust | The stop zone in Rust (rclrs) | `crates/stop-zone` | `crates/stop-zone-node` | - | - |
@@ -128,7 +129,7 @@ current): after adding, moving or removing a package, run
 | [aav_bench](../ros/sim/aav_bench/README.md) | Python | Bench mode's pretend sensors | `aav_bench/(4 modules)` | - | `test/` | `config/` |
 | [aav_carla](../ros/sim/aav_carla/README.md) | Python | CARLA (0.10 on Unreal Engine 5, or 0.9.16) as the car, behind the same topics as the real one, through CARL... | `aav_carla/(5 modules)` | `aav_carla/carla_adapter.py`, `aav_carla/georef.py` | `test/` | `launch/` |
 | [aav_sim_cameras](../ros/sim/aav_sim_cameras/README.md) | Rust | The simulator's cameras | `crates/camera-core` | - | `tests/` | `config/` |
-| [aav_sim_models](../ros/sim/aav_sim_models/README.md) | Python | Ravensim's Python side (Ravensim | `aav_sim_models/(12 modules)` | `aav_sim_models/sim_adapter.py`, `aav_sim_models/sim_camera_relay.py`, `aav_sim_models/sim_esp32.py`, `aav_sim_models/sim_gps.py`, `aav_sim_models/sim_imu.py`, `aav_sim_models/sim_lidar_relay.py`, `aav_sim_models/sim_radar.py`, `aav_sim_models/truth_localizer.py` | `test/` | `launch/` |
+| [aav_sim_models](../ros/sim/aav_sim_models/README.md) | Python | Ravensim's Python side (Ravensim | `aav_sim_models/(13 modules)` | `aav_sim_models/sim_adapter.py`, `aav_sim_models/sim_camera_relay.py`, `aav_sim_models/sim_esp32.py`, `aav_sim_models/sim_gps.py`, `aav_sim_models/sim_imu.py`, `aav_sim_models/sim_lidar_relay.py`, `aav_sim_models/sim_radar.py`, `aav_sim_models/truth_localizer.py` | `test/` | `launch/` |
 | [aav_simulator](../ros/sim/aav_simulator/README.md) | Rust | Ravensim, our own simulator, in Rust (rclrs) | `crates/sim-core` | `crates/sim-node` | - | - |
 | [aav_spine_sim](../ros/sim/aav_spine_sim/README.md) | Rust | spine_sim, for bench mode | `crates/bench-car`, `crates/spine-sim` | - | - | `config/`, `launch/` |
 | [aav_turtlesim](../ros/sim/aav_turtlesim/README.md) | Python | Backend that drives turtlesim like a car (bicycle model) and reports its speed as /vehicle/odom | - | `aav_turtlesim/turtlesim_adapter.py` | - | `launch/` |
@@ -137,7 +138,7 @@ current): after adding, moving or removing a package, run
 
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
-| [aav_dev_window](../ros/hud/aav_dev_window/README.md) | Rust | The developer window, as a test of Bevy | `src` | - | - | `config/` |
+| [aav_dev_window](../ros/hud/aav_dev_window/README.md) | Rust | The developer window, as a test of Bevy | `crates/ladder-core`, `crates/nav-core` | - | - | `config/` |
 | [aav_hud](../ros/hud/aav_hud/README.md) | Rust | hud | `crates/debug-app`, `crates/debug-core`, `crates/hud-app`, `crates/hud-core`, `crates/map-app`, `crates/map-core`, `crates/panel-app`, `crates/panel-core` | - | - | `config/`, `launch/` |
 
 ## ros/bringup

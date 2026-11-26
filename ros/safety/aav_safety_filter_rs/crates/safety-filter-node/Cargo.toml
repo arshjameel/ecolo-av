@@ -1,0 +1,22 @@
+[package]
+name = "safety-filter-node"
+description = "safety_filter: the safety filter as a ROS 2 node, in front of twist_mux for the automatic drivers (K1); in shadow by default"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "safety_filter"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# SIGINT, plus SIGTERM and SIGHUP: rclrs 0.8 has no signal handling of its own yet.
+ctrlc = { version = "3", features = ["termination"] }
+rclrs = "0.8"
+# The message types: compiled from the Rust code that ships with Jazzy (AMENT_PREFIX_PATH).
+ros-env = "0.3"
+safety-filter = { path = "../safety-filter" }
+# The stopping law, built from the car model as ego builds it.
+ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }

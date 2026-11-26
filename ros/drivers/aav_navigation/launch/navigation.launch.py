@@ -61,6 +61,9 @@ Switches:
   mppi_lag_batch:=1000        mppi_lag's samples a tick (empty: 2000; TODO 152)
   mppi_lag_sampling:=smooth   mppi_lag samples the steering's change (TODO 212)
   mpc_lag_tube:=0             mpc_lag_rs's tube off (empty: 0.3 m, tuned 21 Nov)
+  mpc_barriers:=true          mpc_lag_rs keeps off the ghost (research: off by default)
+  mpc_barrier_gamma:=1        with mpc_barriers: the share of the room a tick may use, above
+                              0 up to 1 (empty: 0.05; 1: a plain distance limit, the "step")
   live_swap:=true         aav_track's tracker can change while it runs
   map_correction:=slow    the follower's held map -> odom moves toward the newest slowly
                           (TODO 186)
@@ -118,6 +121,7 @@ Send a goal: RViz "2D Goal Pose" (publishes /goal_pose), or
 
 import atexit
 import json
+import math
 import os
 import tempfile
 
@@ -249,6 +253,23 @@ def diffusion_params(nav2, v, reversing):
             'min_radius': 0.95 * vehicle.min_turning_radius(v),
             'goal_xy': float(goal['xy_goal_tolerance']),
             'goal_yaw': float(goal['yaw_goal_tolerance'])}
+
+
+def barrier_gamma(text):
+    """
+    Return mpc_barrier_gamma:= as a number in (0, 1], or raise ValueError.
+
+    Outside the capstone's scope (Ben's own research, toward his MASc thesis): the
+    barriers' gamma (docs/barriers.md), checked here so a wrong one stops the launch, not
+    the tracker after it started.
+    """
+    try:
+        gamma = float(text)
+    except ValueError:
+        gamma = math.nan
+    if not 0.0 < gamma <= 1.0:
+        raise ValueError(f'mpc_barrier_gamma:={text}: a number above 0, up to 1')
+    return gamma
 
 
 def nodes(context):
@@ -564,6 +585,14 @@ def nodes(context):
         tube = LaunchConfiguration('mpc_lag_tube').perform(context).strip()
         extra = {'mpc_lag.tube': vehicle.check_mpc_lag_tube(tube) if tube
                  else vehicle.MPC_LAG_TUBE}
+        # Barriers (outside the capstone's scope: Ben's MASc research; off by default): the
+        # plan may only creep up to the ghost's keep-out circle, and goes round it where
+        # it can.
+        if LaunchConfiguration('mpc_barriers').perform(context).strip().lower() == 'true':
+            extra['barriers.topic'] = '/safety/ghost/marker'
+            gamma = LaunchConfiguration('mpc_barrier_gamma').perform(context).strip()
+            if gamma:
+                extra['barriers.gamma'] = barrier_gamma(gamma)
         actions.append(Node(
             package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs', namespace='/',
             output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
@@ -785,6 +814,15 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           "(batch_size); empty: nav2.yaml's 2000. 1000, a "
                                           'challenger: half the work a tick (TODO 152)'),
+        DeclareLaunchArgument('mpc_barriers', default_value='false',
+                              description='with tracker:=mpc_lag_rs and ghost:=true: true, '
+                                          'the MPC keeps off the ghost by a control '
+                                          'barrier function (research, off by default)'),
+        DeclareLaunchArgument('mpc_barrier_gamma', default_value='',
+                              description='with mpc_barriers:=true: the share of the room '
+                                          'to the ghost a tick may use, above 0 up to 1; '
+                                          "empty: the tracker's 0.05. 1: only a distance "
+                                          'limit (research, as mpc_barriers)'),
         DeclareLaunchArgument('mpc_lag_tube', default_value='',
                               description='with tracker:=mpc_lag_rs: m each side of the '
                                           'path where being off it costs nothing; empty: '

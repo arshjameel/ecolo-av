@@ -1,7 +1,9 @@
 """
 The preflight's part of actuator_test: a counter on every sensor, its refusals, its report.
 
-    pixi run actuator-test preflight --stands --sim       Gazebo (this computer only)
+    pixi run actuator-test preflight --stands --sim       Ravensim (this computer only)
+    pixi run actuator-test preflight --stands --sim --on-jacks   Ravensim's car on stands
+        (pixi run jacks up --sim first): the stands lines check the real thing
     pixi run actuator-test preflight --stands --bench     bench mode (this computer only)
     pixi run actuator-test preflight --stands --no-drive  the real car, the sensors only:
                                                           nothing moves
@@ -144,8 +146,10 @@ class PreflightRun(Run):
         self.lines = []
         self.end = None
         self.result = 0
-        self.watch = pf.ImuWatch()
+        # The mark follows the IMU's noise in the simulator only (Ben, 23 Nov).
+        self.watch = pf.ImuWatch(by_noise=bool(getattr(args, 'sim', False)))
         self.ground = False
+        self.standin = False
 
     def prepare(self):
         node, a = self.node, self.args
@@ -166,7 +170,10 @@ class PreflightRun(Run):
             return 1
         if not a.no_drive:
             self.checklist = safety.PREFLIGHT_CHECKLIST   # Run prints it on the real car
-        self.ground = kind in (safety.Kind.SIM, safety.Kind.BENCH)
+        # A stand-in's sensors keep their own rates; whether its car is on the ground is
+        # another question (Ravensim's may be on jacks).
+        self.standin = kind in (safety.Kind.SIM, safety.Kind.BENCH)
+        self.ground = safety.on_the_ground(kind, a.on_jacks)
         return super().prepare()
 
     def tick(self):
@@ -241,7 +248,7 @@ class PreflightRun(Run):
         centre = float(acts.get('steer_offset', 0.0))
         tolerance = 2.0 * float(acts.get('steer_deadband', 0.005)) + 0.02
         open_loop = str(self.shaping.get('speed_loop', '')).startswith('none: open loop')
-        lines = pf.sensor_lines(node.samples, self.t0, end, still, lock, self.ground,
+        lines = pf.sensor_lines(node.samples, self.t0, end, still, lock, self.standin,
                                 self.args.skip)
         if self.args.no_drive:
             lines += [pf.Line(pf.Status.SKIP, 'the drive', '--no-drive: nothing moved')]
@@ -268,6 +275,9 @@ class PreflightRun(Run):
             text += (f'\nNOTE: {self.kind.value}: the car is on the ground, so the stands '
                      'lines check the opposite (the IMU and the GPS agree with the wheels)')
         elif not self.args.no_drive:
+            if self.args.on_jacks:
+                text += ("\nNOTE: Ravensim's car is on stands (--on-jacks): the stands lines "
+                         'check what they check on the real car')
             text += ('\nNOTE: if the wheel speed saw the spinning wheels, the sensor watchdog '
                      'has latched DISAGREE against the still GPS: pixi run clear watchdog')
         self.say()

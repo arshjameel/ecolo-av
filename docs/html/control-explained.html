@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a class="here" href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -878,7 +882,7 @@ V' &lt; 0. Then x must go to 0. This is the "maths proof it will resolve".</p>
 <ul>
 <li><strong>Barrier functions (CBF)</strong>, the safety filter idea: like Lyapunov, but proving the car
   never <strong>enters</strong> a bad set (the kerb, another car), instead of always reaching a good
-  one. Each follower's look-ahead is checked against the barriers (Ben's thesis).</li>
+  one. Each follower's look-ahead is checked against the barriers (outside the capstone's scope: Ben's MASc research).</li>
 </ul>
 </section>
 <section class="card"><h2 id="9-the-ekf-where-am-i">9. The EKF: where am I?</h2>
@@ -1047,7 +1051,7 @@ heading.</p>
 <td>7</td>
 <td><strong>The safety filter</strong> (barriers) on every program driver</td>
 <td>safety</td>
-<td>Ben's thesis</td>
+<td>outside the capstone's scope: Ben's MASc research</td>
 </tr>
 </tbody>
 </table></div>
@@ -1117,7 +1121,7 @@ heading.</p>
 pixi run python3 tools/vehicle_model.py         # poles, steps, margins
 pixi run python3 tools/state_space_demo.py      # the state-space teaching example</code></pre></section>
 <nav class="prevnext"><a class="prev" href="learn-state-space.html"><small>Previous</small>← Learn: state space</a>
-<a class="next" href="vehicle-model.html"><small>Next</small>The car as a linear model →</a></nav>
+<a class="next" href="barriers.html"><small>Next</small>Barriers in the MPC →</a></nav>
 </main>
 <footer>Source: <code>docs/control-explained.md</code>. Edit it, then run <code>pixi run docs</code>.</footer>
 </body></html>

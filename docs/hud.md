@@ -13,8 +13,8 @@ Four raylib programs in one package, `ros/hud/aav_hud`, each also its own ROS no
 Orin runs no graphics, so the other two run on a laptop. Laptop screens can be Bevy: the
 **developer window** (`ros/hud/aav_dev_window`, `pixi run dev-window`; not a ROS package)
 is one, live on the simulators since 5 Nov, and `debug_hud` retires once it covers the
-same ground ([design](designs/2026-11-05_one-window.md)). It has no section on this page
-yet: its README is the reference.
+same ground ([design](designs/2026-11-05_one-window.md)). Its README is the reference; what it took
+over from RViz is in [RViz and ours](#rviz-and-ours).
 
 An easter egg hides in three of them: [the little robot](#the-little-robot-easter-egg).
 
@@ -707,6 +707,85 @@ by night:
 Tests (`hud_core::theme`) check that these marks stand out on the 3D view, stay apart
 from each other and from the cubes (a colour distance, OKLab), and keep their hue.
 The pills (OK, STALE, WARN, LOST, E-STOP) are the same on both screens.
+
+## RViz and ours
+
+Ben, 23 Nov: "Why did we keep seeing rviz with nav2 plugin pop up when testing cbf. Didn't
+we port all of this to rust? ... lets finish the port so we don't rely on something that
+pops up in a weird way like rviz does." Since 23 Nov nothing opens RViz unless you ask
+(TODO 276).
+
+| His question | The answer, as checked in the code |
+|---|---|
+| Why did RViz keep popping up? | `pixi run barrier-watch` started `rviz2` itself, and `pixi run demo` and `sim.launch.py` opened it by default (`rviz:=true`). The driving was ported to Rust; the picture was not |
+| Was it a Nav2 plugin? | No. None of our `.rviz` files has a Nav2 panel: only RViz's own Displays, Views and Tool Properties panels, and its own displays (Map, Path, Polygon, Odometry, Marker). It looked like Nav2's screen because our layouts copied that look: a map from above with "2D Goal Pose". One display was left over from Nav2: Footprint read `/local_costmap/published_footprint`, a topic nothing publishes since Nav2 went (17 Nov), so it drew nothing |
+| Why was it flat, not 3D? | Our own layouts chose it: all four (`drive`, `road`, `bench`, `barrier`) set RViz's `TopDownOrtho` view, fixed frame `map`. RViz is a 3D viewer; we only ever used it from above |
+| Do we need RViz's 3D? | No. The 3D scene and the debug view are the developer window's; the top-down map is the part we used, and it is ours now |
+
+| Tool | It is for | It showed | Ours |
+|---|---|---|---|
+| Gazebo (went 16 Nov) | **the world: what is true** | the car, the ground, the walls, what the sensors would see | Ravensim (`ros/sim/aav_simulator`) |
+| RViz (opt-in since 23 Nov) | **the robot's view: what it believes** | the map, the costmaps, the plan, where the car thinks it is | the developer window, and its map alone: the navigation view |
+
+```bash
+pixi run nav-view              # the navigation view, pretend data (no ROS)
+pixi run nav-view --live       # beside a simulator on this computer: a click sends a goal (SIM only)
+pixi run nav-view --watch      # listens only, such as on the car's network: no publishers
+pixi run demo --rviz           # RViz too, only when asked; also rviz:=true, barrier-watch --rviz
+```
+
+One code base: the navigation view is the developer window started with `--map-only`
+(its status strip and its map panel, nothing else). Chosen over a second program so the
+two can never drift apart. Its logic is `aav_dev_window/crates/nav-core` (no Bevy, no ROS,
+tested).
+
+![The navigation view, pretend data](img/nav-view.png)
+
+### What RViz showed, and where it is now
+
+| RViz showed (our layouts) | Topic | In our view | Key or button |
+|---|---|---|---|
+| Grid | - | a grid of round metres, and a scale bar | Q, Grid |
+| Map | `/map` | yes, as before | - |
+| Global costmap | `/drivers/nav/costmap/global` | yes, as before | O, Costmap |
+| Local costmap | `/drivers/nav/costmap/local` | **new**: amber, turned from odom onto the map | J, Local |
+| Planned path | `/plan` | yes, as before; its end is the goal | P, Plan |
+| Local plan | `/ego/plan_ahead`, `/ego/trace` | yes, as before: the squiggly line (what the follower wants, what the car will do) | T, Ahead |
+| Odometry arrows (the car's trail) | `/localization/odom/global` | **new**: an orange line, a point each 0.2 m, the newest 800 m | B, Trail |
+| RobotModel, Footprint | TF; a dead Nav2 topic | **new**: the body's outline from `vehicle.yaml`, under the arrow | - |
+| Stop zone (Polygon) | `/safety/stop_zone/box`, `/state` | **new**: the box, white when clear, red with STOP ZONE: STOP | Z, Safety |
+| Ghost (Marker) | `/safety/ghost/marker` | **new**: a purple disc, named | Z, Safety |
+| Keep-out circle (Marker) | `/drivers/nav/track/barrier_watch/keep_out` | **new**: a purple ring, named; the topic is in the contract now | Z, Safety |
+| Cubes | `/perception/voxels/cubes` | yes, as before | S, Cubes |
+| 2D Goal Pose (tool) | `/goal_pose` | yes: click, DRIVE HERE, CONFIRM (simulator only) | click |
+| Measure (tool) | - | the scale bar and the grid | - |
+
+| Left out | Why |
+|---|---|
+| 2D Pose Estimate | none of our layouts had the tool; nothing used it to place the car |
+| GPS odometry, the truth, TF frames | the debug screen shows each localizer and the truth (`pixi run debug-hud`) |
+| Radar and lidar point clouds, radar boxes | the window draws the cubes the car makes, never raw clouds (Ben, 5 Nov); the things (K) show what was found |
+| Camera pictures | the HUD and the developer window's scene |
+| Publish Point (tool) | nothing listened to it |
+
+The `.rviz` files stay as the reference until our view has been used for a while. Not
+ported: `pixi run view` (the car's model with joint sliders) and `radar_rviz:=true`, both
+asked for by name; `pixi run rviz` still opens the stock viewer.
+
+### The three screens: `pixi run dry-run`
+
+The virtual test platform, treated like the real car ([Proving it](proving-it.md#the-dry-run-pixi-run-dry-run)):
+
+| Screen | Window | Shows | Flag |
+|---|---|---|---|
+| 1: Ravensim | the developer window | the 3D scene; the debug view (what the lidar sees: what we can hit); the map from above | on; `--no-picture` |
+| | the navigation view | that map alone, for another monitor | `--nav` |
+| | the debug screen (raylib) | the in-car debug screen | `--debug` |
+| 2: the hardware | the hardware panel | the car's sensors, switches and lights | on; `--no-panel` |
+| 3: the tests | the ladder window | the rungs, a Run for each test, the last session; and, in a box of its own, "Outside the capstone's scope: Ben's MASc research": `barrier-watch plain`, `step`, `barrier` | always |
+
+The research entries are simulator only, are not rungs, and record nothing: each opens a
+Ravensim of its own (its own ROS domain) with its own navigation view.
 
 ## The debug HUD
 

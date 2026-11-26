@@ -378,6 +378,17 @@ def test_smooth_sampling_reaches_mppi_lag():
     assert tube['mpc_lag.tube'] == 0.0
     with pytest.raises(ValueError, match='mpc_lag_tube'):
         nav_nodes(tracker='mpc_lag_rs', mpc_lag_tube='wide')
+    # The barriers (research): off unless asked; then the ghost's marker is their topic.
+    assert 'barriers.topic' not in given(nav_nodes(tracker='mpc_lag_rs')['mpc_lag_rs'])
+    fenced = given(nav_nodes(tracker='mpc_lag_rs', mpc_barriers='true')['mpc_lag_rs'])
+    assert fenced['barriers.topic'] == '/safety/ghost/marker'
+    # Their gamma: the tracker's own (0.05) unless asked; 1 is the plain distance limit.
+    assert 'barriers.gamma' not in fenced
+    step = given(nav_nodes(tracker='mpc_lag_rs', mpc_barriers='true',
+                           mpc_barrier_gamma='1')['mpc_lag_rs'])
+    assert step['barriers.gamma'] == 1.0
+    with pytest.raises(ValueError, match='mpc_barrier_gamma'):
+        nav_nodes(tracker='mpc_lag_rs', mpc_barriers='true', mpc_barrier_gamma='0')
     p = given(nav_nodes(tracker='mppi_lag', mppi_lag_sampling='smooth')['mppi_lag'])
     assert p['sampling'] == 'smooth'
     with pytest.raises(ValueError, match='mppi_lag_sampling'):

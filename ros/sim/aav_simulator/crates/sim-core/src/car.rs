@@ -53,6 +53,18 @@ pub enum Command {
     Drive(Drive),
 }
 
+impl Command {
+    /// The speed this command asks for (m/s): a twist's own; for the actuators' demands,
+    /// which name no speed, the throttle (0..1) stands in: any push is a wish to move.
+    #[must_use]
+    pub fn asked_speed(&self) -> f64 {
+        match *self {
+            Command::Twist { speed, .. } => speed,
+            Command::Drive(d) => d.throttle,
+        }
+    }
+}
+
 /// The actuators' demands: what the spine (or a stand-in for its speed loop) sends.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Drive {
@@ -106,6 +118,10 @@ pub trait CarModel: Send {
     /// Something stopped the car: put it back at `at`, standing still, its actuators as
     /// they are (a wall stops the car, not the motor).
     fn hold(&mut self, at: &CarState);
+
+    /// The car is on stands: put the body back at (x, y, yaw); the wheels' speed, the
+    /// steering and the actuators stay as they are (`sim::Simulator`, `jacks`).
+    fn pin(&mut self, x: f64, y: f64, yaw: f64);
 }
 
 /// The kinematic bicycle: move `s` on by `dt` at its speed and steering.
@@ -189,6 +205,12 @@ impl CarModel for TwistFollower {
             yaw_rate: 0.0,
             ..*at
         };
+    }
+
+    fn pin(&mut self, x: f64, y: f64, yaw: f64) {
+        self.state.x = x;
+        self.state.y = y;
+        self.state.yaw = yaw;
     }
 
     fn reset(&mut self, x: f64, y: f64, yaw: f64) {
@@ -418,6 +440,12 @@ impl CarModel for ActuatorCar {
             yaw_rate: 0.0,
             ..*at
         };
+    }
+
+    fn pin(&mut self, x: f64, y: f64, yaw: f64) {
+        self.state.x = x;
+        self.state.y = y;
+        self.state.yaw = yaw;
     }
 
     fn actuators(&self) -> Option<ActuatorLevels> {

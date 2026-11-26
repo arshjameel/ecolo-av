@@ -10,6 +10,7 @@
 //! | [`model`] | the car with its lags, in the path's frame: [`model::step`] | `aav_track/lag_model.py` |
 //! | [`qp`] | OSQP's ADMM, dense P, sparse A | `aav_track/qp.py` |
 //! | [`tracker`] | [`MpcLag`]: the estimate, the plan, the QP, the command | `aav_track/trackers/mpc_lag.py` |
+//! | [`barrier`] | [`Circle`], [`Rules`]: keep-out circles the plan's H may only creep up to (a trial) | none: Rust only |
 //! | [`gears`] | [`Gears`]: the path cut at its cusps; a backwards stretch mirrored | `aav_track/gears.py` |
 //! | [`geared`] | [`Geared`]: the MPC forward and back, a stretch at a time | `aav_track/track_node.py`'s gears |
 //!
@@ -30,6 +31,7 @@
 // too, and a pure function's value never dropped.
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::must_use_candidate)]
 
+pub mod barrier;
 pub mod geared;
 pub mod gears;
 pub mod model;
@@ -37,6 +39,7 @@ pub mod path;
 pub mod qp;
 pub mod tracker;
 
+pub use barrier::{Circle, Rules};
 pub use geared::{FollowError, Geared};
 pub use gears::{CuspRules, Direction, Gears, Pose, Stretch};
 pub use model::{LoopError, PiLoop};

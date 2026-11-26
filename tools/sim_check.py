@@ -1589,7 +1589,7 @@ def check_ghost(probe, ahead=15.0, goal=30.0):
                                          lambda m: scan.update(newest=m),
                                          qos_profile_sensor_data)
     newest = {}     # the local costmap, in odom: on the world's origin, as the car started
-    grid_sub = probe.create_subscription(OccupancyGrid, '/local_costmap/costmap',
+    grid_sub = probe.create_subscription(OccupancyGrid, LOCAL_COSTMAP[COSTMAP],
                                          lambda m: newest.update(grid=m), 2)
     x0, y0 = probe.xy(probe.truth)
     h = yaw_of(probe.truth)

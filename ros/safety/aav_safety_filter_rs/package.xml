@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aav_safety_filter_rs</name>
+  <version>0.1.0</version>
+  <description>The safety filter for the automatic drivers, in Rust (rclrs), in shadow by default: trims each command by the least that keeps the car able to stop (a CBF on the stopping law), inside its lane (CBFs on a look-ahead point) and settling on the lane's line (a soft Lyapunov term) (TODO 104, K1). The maths is the safety-filter crate, with no ROS.</description>
+  <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
+  <license>TODO</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- rclrs links rcl; ros-env compiles the Rust message code these packages ship. -->
+  <depend>rcl</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>aav_interfaces</depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

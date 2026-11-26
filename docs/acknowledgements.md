@@ -158,6 +158,12 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 | **ALVINN**: D. Pomerleau, NIPS 1989; **ChauffeurNet**: M. Bansal et al., RSS 2019; **DAgger**: S. Ross, G. Gordon, D. Bagnell, AISTATS 2011 | paper | idea | the guide's learned behaviour: studied |
 | matplotlib; NumPy | PSF-based; BSD-3 | runs | drawing the guide's pictures (`tools/teach_figures.py`) |
 
+## Barriers in the path follower (22 Nov)
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| A. M. Ali, C. Shen, H. A. Hashim, "A linear MPC with control barrier functions for differential drive robots", IET Control Theory & Applications, 2024 | paper (open access) | idea | the barrier's rule in `aav_mpc_lag`'s plan (`barrier.rs`); our model differs, and its proofs don't carry over as they are |
+
 ## Simulators and screens
 
 | Source | Licence | Kind | Where we used it |
@@ -173,6 +179,15 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 | Catppuccin | MIT | data | the screens' Mocha and Latte themes |
 | *Initial D* (S. Shigeno) | - | idea | the red-and-black look of the screens; no art copied |
 | Tesla's driving display | - | idea | the "squiggly line" on the HUD and the developer window (Ben, 7 Nov) |
+
+## The safety filter
+
+| Source | Licence | Kind | Where we used it |
+|---|---|---|---|
+| Ames, Coogan, Egerstedt, Notomista, Sreenath, Tabuada, *Control Barrier Functions: Theory and Applications*, ECC 2019 ([arXiv:1903.11199](https://arxiv.org/abs/1903.11199)) | paper | idea | the barrier condition `ḣ ≥ −α·h` and the minimum-change filter (`aav_safety_filter_rs`) |
+| Mhaskar, El-Farra, Christofides, *Stabilization of nonlinear systems with state and control constraints using Lyapunov-based predictive control*, Systems & Control Letters 2006 | paper | idea | a Lyapunov decrease asked of the applied command (the filter's Lyapunov term, with a slack) |
+| Shen, Shi, Buckham, *Trajectory Tracking Control of an Autonomous Underwater Vehicle Using Lyapunov-Based Model Predictive Control*, IEEE TIE 2018 | paper | idea | the same, on a vehicle |
+| The look-ahead point (the standard feedback-linearising output of the unicycle, from mobile-robot control) | textbook method | idea | `p = e_y + ℓ·sin e_ψ`: the lane barrier that the turn rate moves at once |
 
 ## Tools and the build
 

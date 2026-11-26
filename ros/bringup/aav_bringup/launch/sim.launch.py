@@ -4,7 +4,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
   ros2 launch aav_bringup sim.launch.py [stack:=ours|best|car|]
       [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
-      [teleop:=false] [rviz:=true]
+      [teleop:=false] [rviz:=false]
       [perception:=false] [lane:=false|true] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
@@ -43,7 +43,7 @@ the stack's pick; a single switch given by hand (planner:=) still wins over both
 stack:= (empty): no stack, each switch as given, else the champions'. The real
 car (car.launch.py) keeps its own choices until ours wins there too.
   pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
-  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Ravensim, RViz, navigation, the HUD
+  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Ravensim, navigation, the HUD
   pixi run sim world:=test_lot map:=true           ... and the big screen's map window
 
 world:=empty pairs with the empty map (phase 2); world:=test_lot with
@@ -110,6 +110,10 @@ bench's argument names:
                       jitter (TODO 168)
                       mppi_lag_batch:=1000: mppi_lag's samples a tick (empty: 2000),
                       a challenger: half the work a tick (TODO 152; steer:=mppi_lag_1k)
+                      mpc_barriers:=true: with tracker:=mpc_lag_rs ghost:=true, the
+                      MPC keeps off the ghost (research, off by default)
+                      mpc_barrier_gamma:=1: with mpc_barriers, the share of the room
+                      a tick may use (empty: 0.05; 1: a plain distance limit)
                       mpc_lag_tube:=0: mpc_lag_rs's tube off (empty: 0.3 m, tuned
                       21 Nov: it leaves the car alone that near the path, less sway)
                       mppi_lag_sampling:=smooth: mppi_lag samples the steering's
@@ -312,6 +316,10 @@ bench's argument names:
                       car for the hallway fits to find (car-test --hallway --sim, TODO 248)
   wheel_noise:=0.05 wheel_slip:=0.02 noise_seed:=1  noisy, slipping wheels (Ravensim's;
                       0: off)
+  on_stands:=true     Ravensim's car starts on stands (on jacks): the rear wheels spin and
+                      steer, the car stays put; pixi run jacks down lowers it (TODO 272).
+                      speed_wheels:=front: the odometry reads the front wheels, as today's
+                      car, so 0 on stands; free_wheel_mass:=20: kg the motor moves there
   lag_scale:=2        the actuator model's throttle, brake and steering lags twice
                       vehicle.yaml's, while every driver still reads vehicle.yaml: how a
                       follower copes with a car slower than it was told (1.0: as written)
@@ -612,6 +620,8 @@ def launch_setup(context):
                 payload=arg('payload'), adaptive_brake=arg('adaptive_brake'),
                 lag_scale=arg('lag_scale'), actuators=arg('actuators'),
                 wheel_noise=arg('wheel_noise'), wheel_slip=arg('wheel_slip'),
+                on_stands=arg('on_stands'), speed_wheels=arg('speed_wheels'),
+                free_wheel_mass=arg('free_wheel_mass'),
                 noise_seed=arg('noise_seed'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
@@ -710,6 +720,8 @@ def launch_setup(context):
                                mppi_lag_batch=arg('mppi_lag_batch'),
                                mppi_lag_sampling=arg('mppi_lag_sampling'),
                                mpc_lag_tube=arg('mpc_lag_tube'),
+                               mpc_barriers=arg('mpc_barriers'),
+                               mpc_barrier_gamma=arg('mpc_barrier_gamma'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
@@ -930,7 +942,8 @@ def generate_launch_description():
         DeclareLaunchArgument('nav', default_value='true'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer'),
-        DeclareLaunchArgument('rviz', default_value='true'),
+        # Off: our own navigation view is the nav screen (pixi run nav-view, docs/hud.md).
+        DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher (the ml '
                                           'environment; world:=road)'),
@@ -983,6 +996,14 @@ def generate_launch_description():
                               description='the wheels read this share too far (0: off)'),
         DeclareLaunchArgument('noise_seed', default_value='1',
                               description="the sensors' noise seed"),
+        DeclareLaunchArgument('on_stands', default_value='false',
+                              description="true: Ravensim's car starts on stands: the wheels "
+                                          'spin, the car stays put (pixi run jacks)'),
+        DeclareLaunchArgument('speed_wheels', default_value='rear',
+                              description='the wheels the simulated odometry reads: rear '
+                                          "(driven) or front (today's car: 0 on stands)"),
+        DeclareLaunchArgument('free_wheel_mass', default_value='20.0',
+                              description='kg the motor moves on stands (a GUESS)'),
         DeclareLaunchArgument('lag_scale', default_value='1.0',
                               description="the actuator model's lags times this (a "
                                           'robustness test; the drivers keep vehicle.yaml)'),
@@ -1156,6 +1177,13 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           '(TODO 152): 1000 (steer:=mppi_lag_1k); '
                                           "nav2.yaml's 2000 when nothing sets it"),
+        DeclareLaunchArgument('mpc_barriers', default_value='false',
+                              description='with tracker:=mpc_lag_rs ghost:=true: true, the '
+                                          'MPC keeps off the ghost (research, off by default)'),
+        DeclareLaunchArgument('mpc_barrier_gamma', default_value='',
+                              description='with mpc_barriers:=true: the share of the room '
+                                          'a tick may use, above 0 up to 1 (empty: 0.05; '
+                                          '1: a plain distance limit; research)'),
         DeclareLaunchArgument('mpc_lag_tube', default_value='',
                               description='with tracker:=mpc_lag_rs: m each side of the '
                                           'path where being off it costs nothing (the '

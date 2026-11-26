@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start the whole simulated car on this computer, in one go:
-#   the simulator (ours by default; the car, in the walled test lot), the nav screen (RViz), the HUD, and the
-#   street-map window.
+#   the simulator (ours by default; the car, in the walled test lot), the nav screen (ours:
+#   the navigation view, pixi run nav-view), the HUD, and the street-map window.
 #
 # Everything runs localhost-only (tools/ros.sh --local), so it shares one ROS graph on
 # this computer and never reaches the real car on the network.
@@ -12,6 +12,7 @@
 #                                 # the lidar's cubes, the localizers, every sensor; with
 #                                 # AMCL, a trial tracker, and NDT (if maps/ndt/test_lot.pcd
 #                                 # is there: pixi run ndt-map drive) on (docs/hud.md)
+#   pixi run demo --rviz          # RViz too (drive.rviz): the stock viewer, only when asked
 #   pixi run demo --debug tracker:=mpc ndt:=false   # any sim.launch.py switch, name:=value:
 #                                 # yours come last, so they win (docs/switches.md)
 #   pixi run pick                 # a menu of the switches, instead of remembering them
@@ -25,21 +26,22 @@ cd "$here"
 
 full=false
 debug=false
+rviz=false
 extra=""
 for arg in "$@"; do
   case "$arg" in
     --fullscreen) full=true ;;
     --debug) debug=true ;;
+    --rviz) rviz=true ;;
     *:=*) extra="$extra $arg" ;;
-    *) echo "usage: pixi run demo [--debug] [--fullscreen] [name:=value ...]" >&2; exit 2 ;;
+    *) echo "usage: pixi run demo [--debug] [--rviz] [--fullscreen] [name:=value ...]" >&2; exit 2 ;;
   esac
 done
 # The debug HUD's run: AMCL beside the global EKF, so every layer has something to show
 # (docs/designs/2026-10-29_debug-hud.md). The stack is the default, ours (its follower,
 # mppi_lag, reverses), as every other run; until 15 Nov it took pure_pursuit forward only.
 # The test lot already has nav and the lidar on, as amcl:=true needs.
-# rviz:=false: this script opens RViz itself (step 2, drive.rviz). Without it the launch
-# opens a second one (road.rviz) as well.
+# rviz:=false: the nav screen is ours (step 2). RViz opens only with --rviz, from here.
 sim_args="world:=test_lot rviz:=false"
 steps=4
 if $debug; then
@@ -81,8 +83,12 @@ echo "1/$steps  the simulator (the car, in the test lot) — give it ~20s to spa
 start tools/ros.sh --local ros2 launch aav_bringup sim.launch.py $sim_args
 sleep 20
 
-echo "2/$steps  nav screen (RViz: map, costmaps, path, car)..."
-start tools/ros.sh --local rviz2 -d ros/bringup/aav_bringup/rviz/drive.rviz
+echo "2/$steps  nav screen (ours: map, costmaps, plan, the car's trail; click to pick a goal)..."
+start tools/dev_window.sh --map-only --live
+if $rviz; then
+  echo "      and RViz (asked for with --rviz: the stock viewer, drive.rviz)..."
+  start tools/ros.sh --local rviz2 -d ros/bringup/aav_bringup/rviz/drive.rviz
+fi
 
 echo "3/$steps  HUD (in-car screen)..."
 start tools/ros.sh --local ros2 launch aav_hud hud.launch.py fullscreen:=$full
