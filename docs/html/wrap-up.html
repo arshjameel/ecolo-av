@@ -7,7 +7,7 @@
 <!-- Generated from docs/wrap-up.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Wrapping up: the plan</h1>
-<div class="meta">10 min read · 6 sections</div></header>
+<div class="meta">11 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -143,7 +143,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#1-the-rungs">1. The rungs</a><a href="#2-one-software-two-worlds-and-both-at-once">2. One software, two worlds, and both at once</a><a href="#3-the-commands-68-today">3. The commands: 68 today</a><a href="#4-the-screens-and-editors">4. The screens and editors</a><a href="#5-the-final-report">5. The final report</a><a href="#6-the-order">6. The order</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#1-the-rungs">1. The rungs</a><a href="#2-one-software-two-worlds-and-both-at-once">2. One software, two worlds, and both at once</a><a href="#3-the-commands-71-today-four-for-every-day">3. The commands: 71 today, four for every day</a><a href="#4-the-screens-eight-become-four">4. The screens: eight become four</a><a href="#5-the-final-report">5. The final report</a><a href="#6-the-order">6. The order</a></nav>
 <div class="lead"><p><strong>The capstone has built more than it needs. What is left is to prove it.</strong> This page is the
 plan Ben set on 23 November 2026: one test regime with rungs, in the virtual world first
 and then on the car; the commands and screens made simple; a final report from the
@@ -325,90 +325,98 @@ tools read is <code>tools/ladder/rungs.yaml</code>; a rung not built is shown as
 a simulator must never publish onto the car's network (the sensor mux refuses it today, and
 that stays). The virtual world takes the car's data in; nothing goes back.</p>
 </section>
-<section class="card"><h2 id="3-the-commands-68-today">3. The commands: 68 today</h2>
+<section class="card"><h2 id="3-the-commands-71-today-four-for-every-day">3. The commands: 71 today, four for every day</h2>
+<p>Ben, 25 Nov: "I want to be able to do a full sweet of tests on a virtual car using the full
+ros messaging system."</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Want to</th>
 <th>Today</th>
-<th>Proposed</th>
+<th>The one command</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Start the virtual car</td>
 <td><code>sim</code>, <code>demo</code>, <code>dry-run</code>, <code>ravensim</code>, <code>sim-cameras</code></td>
-<td><strong><code>pixi run sim</code></strong> (the car, virtual); screens are their own command</td>
+<td><strong><code>pixi run sim</code></strong>: Ravensim as the car, every topic the car has (step 1)</td>
 </tr>
 <tr>
 <td>Start the real car</td>
 <td><code>car</code></td>
-<td><strong><code>pixi run car</code></strong></td>
+<td><strong><code>pixi run car &lt;computer&gt;</code></strong></td>
 </tr>
 <tr>
 <td>Open the screens</td>
 <td><code>hud</code>, <code>map</code>, <code>debug-hud</code>, <code>hw-panel</code>, <code>dev-window</code>, <code>nav-view</code>, <code>ladder-window</code>, <code>rviz</code></td>
-<td><strong><code>pixi run screens</code></strong>: picks the same four for either car</td>
+<td><strong><code>pixi run screens</code></strong>: windows 1, 2 and 4 below, for whichever car runs</td>
 </tr>
 <tr>
 <td>Run the tests</td>
-<td><code>ladder</code>, <code>car-test</code>, <code>actuator-test</code>, <code>sim-check</code>, <code>bench-check</code>, <code>measure</code>, <code>barrier-watch</code></td>
-<td><strong><code>pixi run ladder</code></strong> is the front door; the rest stay as what a rung runs</td>
-</tr>
-<tr>
-<td>Watch the car from the laptop</td>
-<td><code>view</code>, <code>dev-window --watch</code></td>
-<td><strong><code>pixi run twin</code></strong></td>
+<td><code>ladder</code>, <code>car-test</code>, <code>actuator-test</code>, <code>sim-check</code>, <code>bench-check</code>, <code>measure</code></td>
+<td><strong><code>pixi run ladder</code></strong>: window 3; <code>ladder all --sim</code> is the full suite on the virtual car, one report</td>
 </tr>
 </tbody>
 </table></div>
-<p>The old names keep working until the new ones have been used for a while; then they go.
-<code>sim.launch.py</code> has 127 switches: the plan is a short list of named set-ups (as
-<code>stacks.yaml</code> does for algorithms), not fewer abilities.</p>
+<p>The rest stay as what a rung runs, or as tools (maps, firmware, set-up). The old names keep
+working until the new ones have been used for a while; then they go. <code>sim.launch.py</code>'s 127
+switches become a short list of named set-ups (as <code>stacks.yaml</code> does for algorithms).</p>
 </section>
-<section class="card"><h2 id="4-the-screens-and-editors">4. The screens and editors</h2>
+<section class="card"><h2 id="4-the-screens-eight-become-four">4. The screens: eight become four</h2>
+<p>Ben, 25 Nov: the HUD and the map are the car's two screens; the hardware panel goes on the
+map's screen; the tests and the hardware belong together; Ravensim, not RViz, shows the car
+moving.</p>
+<p><strong>The rule:</strong> every screen only talks ROS. None knows whether the car is real or Ravensim.</p>
+<pre class="highlight"><code> Ravensim ─┐                                     ┌─ 1 HUD            (car screen 1)
+           ├── the same ROS topics, both ways ───┼─ 2 Map + Hardware (car screen 2)
+ the car ──┘   (/sensors /vehicle /safety ...)    ├─ 3 Test bench     (laptop)
+                                                  └─ 4 World view     (laptop)</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Screen</th>
-<th>Shows</th>
-<th>Today</th>
-<th>Plan</th>
+<th>#</th>
+<th>Window</th>
+<th>Where</th>
+<th>What is in it</th>
+<th>Replaces</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>World</td>
-<td>the car in its world, 3D and top-down: the map, the plan, the costmap, what it sees</td>
-<td>the developer window and <code>nav-view</code></td>
-<td>keep; it replaced RViz and Gazebo's picture</td>
+<td>1</td>
+<td><strong>HUD</strong></td>
+<td>car screen 1 (raylib, Pi)</td>
+<td>the driver's screen</td>
+<td><code>hud</code></td>
 </tr>
 <tr>
-<td>Debug</td>
-<td>what each layer believes: the localizers, the cubes, who is driving</td>
-<td><code>debug-hud</code>, and a debug page in the map window</td>
-<td><strong>needs attention</strong>: one debug screen, its pages named for the layers</td>
+<td>2</td>
+<td><strong>Map + Hardware</strong></td>
+<td>car screen 2 (raylib, Pi)</td>
+<td>the street map; one key flips to the hardware page: every number, commanded against measured as graphs</td>
+<td><code>map</code>, <code>hw-panel</code></td>
 </tr>
 <tr>
-<td>Hardware</td>
-<td>every sensor's number, the actuators, calibration</td>
-<td><code>hw-panel</code></td>
-<td>keep; add "on stands"</td>
+<td>3</td>
+<td><strong>Test bench</strong></td>
+<td>laptop (raylib)</td>
+<td>the ladder: automated tests, Run, results, reports; live graphs; small steps by hand (speed +0.1 m/s, steering +2°)</td>
+<td><code>ladder-window</code>, <code>hw-panel</code>'s drive keys</td>
 </tr>
 <tr>
-<td>Tests</td>
-<td>the rungs, run, result, graph, simulator beside car</td>
-<td><code>ladder-window</code>: the ten rungs, and rung 1's answer (23 Nov)</td>
-<td>rungs 2 to 9 and S, one at a time; the car's side of each graph</td>
-</tr>
-<tr>
-<td>In the car</td>
-<td>the driver's HUD and street map</td>
-<td><code>hud</code>, <code>map</code> (raylib, on the Pi)</td>
-<td>keep as they are</td>
+<td>4</td>
+<td><strong>World view</strong></td>
+<td>laptop (Bevy)</td>
+<td>Ravensim's 3D picture (the real car: the same from its data), with the occupancy, costmaps, plan and lidar cubes on top</td>
+<td><code>dev-window</code>, <code>nav-view</code>, <code>debug-hud</code>, <code>rviz</code></td>
 </tr>
 </tbody>
 </table></div>
+<p>On a laptop, windows 1 and 2 are the very programs the car runs: in the simulator you see
+what the car's screens would show. Windows 2 and 3 share their graphs, in raylib, so the
+test bench can run on the car's screen too. The ESP32's own read-only page (<code>wifi-status</code>)
+stays for the board's direct numbers, on the bench.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -430,7 +438,49 @@ that stays). The virtual world takes the car's data in; nothing goes back.</p>
 </tr>
 </tbody>
 </table></div>
-<p>RViz opens only when asked for by name. Gazebo went on 16 Nov.</p>
+<p>RViz opens only when asked for by name (since 23 Nov). Gazebo went on 16 Nov.</p>
+<h3 id="the-steps-for-the-screens-and-the-virtual-car-ben-25-nov-yes">The steps for the screens and the virtual car (Ben, 25 Nov: "yes")</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What</th>
+<th>Done when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Ravensim as the car</strong>: every topic the car has; <code>pixi run check virtual</code> fails if the simulator ever drifts from the car</td>
+<td>the check passes</td>
+</tr>
+<tr>
+<td>2</td>
+<td>the hardware page into the map program</td>
+<td>the page on the car's screen size</td>
+</tr>
+<tr>
+<td>3</td>
+<td>the test bench: the ladder, the graphs, the small steps</td>
+<td>rung 1 run from it</td>
+</tr>
+<tr>
+<td>4</td>
+<td>the world view takes <code>debug-hud</code> and <code>nav-view</code>; the RViz layouts deleted</td>
+<td>nothing opens RViz</td>
+</tr>
+<tr>
+<td>5</td>
+<td>the four commands; the old names become aliases</td>
+<td>README's command list</td>
+</tr>
+<tr>
+<td>6</td>
+<td>rungs 2 to 9, and the full suite on the virtual car</td>
+<td><code>ladder all --sim</code>: one report</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="5-the-final-report">5. The final report</h2>
 <p>One chapter a layer, the same five parts each, filled from the rungs' results:</p>
