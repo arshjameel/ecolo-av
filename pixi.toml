@@ -27,7 +27,7 @@ lint = { cmd = "tools/lint.sh", description = "Check our Python against ROS's st
 
 # The car and its stand-ins. The stand-ins run on this computer only (tools/ros.sh --local).
 turtle = { cmd = "tools/ros.sh --local ros2 launch aav_bringup turtle.launch.py", description = "turtlesim as the car (this computer only)" }
-sim = { cmd = "tools/ros.sh --local ros2 launch aav_bringup sim.launch.py", description = "A simulator as the car, driven by our stack: Ravensim and stack:=ours by default (with no GPU: tools/software_gl.sh pixi run sim), stack:=best for the champions (this computer only)" }
+sim = { cmd = "tools/ros.sh --local ros2 launch aav_bringup sim.launch.py setup:=car", description = "The virtual car: Ravensim as today's car (setup:=car: world:=road esp32:=true), every topic the car has (pixi run check virtual), driven by stack:=ours. A switch by hand wins (world:=test_lot, esp32:=false); stack:=best for the champions; with no GPU: tools/software_gl.sh pixi run sim. This computer only" }
 bench = { cmd = "tools/ros.sh --local ros2 launch aav_bringup bench.launch.py", description = "The real car's software, with stand-ins for the hardware (bench mode, this computer only)" }
 view = { cmd = "tools/ros.sh --local ros2 launch aav_description view.launch.py", description = "The car model in RViz (this computer only)" }
 carla-car = { cmd = "tools/ros.sh --local ros2 launch aav_bringup carla.launch.py", description = "CARLA as the car: pixi run carla-car host:=<the CARLA computer> [town:=Town10HD_Opt] [osm:=maps/carla/carleton.osm]. Linux x86_64 with CARLA's Python client; ROS stays on this computer, CARLA can be anywhere (docs/carla.md)" }

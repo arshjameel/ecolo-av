@@ -1,7 +1,7 @@
 """
 The whole stack in a simulator: same nodes and configs as the car, simulated hardware.
 
-  ros2 launch aav_bringup sim.launch.py [stack:=ours|best|car|]
+  ros2 launch aav_bringup sim.launch.py [setup:=|car] [stack:=ours|best|car|]
       [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
       [teleop:=false] [rviz:=false]
@@ -28,10 +28,19 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
       [esp32:=false] [esp32_loop:=pi] [legacy_impl:=rust]
       [bridge:=rust|python]
       [ghost:=false] [simulator:=ravensim] [camera_lockstep:=auto] [graphics:=auto]
+  pixi run sim                                     the virtual car: setup:=car (below)
   pixi run sim world:=road                         the road: the car's camera and radar
   pixi run sim world:=campus                       Carleton, every level ours
   pixi run sim stack:=best                         every level's champion (as the car)
   pixi run sim path:=hybrid_rs steer:=mpc_lag      one level's league option each (stacks.yaml)
+
+Named set-ups (setup:=, aav_description's setups.py; docs/wrap-up.md section 3): a few
+switches under one name, as stack:= names the algorithms. `pixi run sim` passes
+setup:=car: Ravensim as today's car (world:=road esp32:=true), every topic the car has
+(pixi run check virtual). With no setup:= (every test, dry-run, sim-check, car-test --sim)
+world:= and esp32:= keep their old defaults, empty and false. world:= and esp32:= are
+declared empty ("the set-up's choice"), so one given by hand wins: pixi run sim
+world:=test_lot is the car's set-up in the test lot.
 
 Ours is the default (Ben, 14 Nov: "Ours default now, then delete"): stack:=ours sets the
 planner, path follower, costmap, navigator, smoother, behaviour and pose at once
@@ -347,7 +356,7 @@ camera's parts need world:=road. Every node runs on simulated time.
 
 import os
 
-from aav_description import stacks, vehicle
+from aav_description import setups, stacks, vehicle
 from aav_description.lane_map import (check_lane_graph, check_lane_source,
                                       DEFAULT_LANE_GRAPH, DEFAULT_LANE_SOURCE)
 from aav_sim_models import worlds
@@ -470,6 +479,11 @@ def launch_setup(context):
     picked = stacks.resolve(league, stack, {n: raw(n) for n in STACK_FALLBACK},
                             STACK_FALLBACK, levels)
     print(f'[sim.launch.py] {stacks.describe(league, stack, levels)}', flush=True)
+
+    # setup:= sets world:= and esp32:= at once; one given by hand still wins.
+    setup = raw('setup')
+    picked.update(setups.resolve(setup, {n: raw(n) for n in setups.FALLBACK}))
+    print(f'[sim.launch.py] {setups.describe(setup, picked)}', flush=True)
 
     def arg(name):
         return picked[name] if name in picked else raw(name)
@@ -958,8 +972,13 @@ def generate_launch_description():
                                 "stack's pick; a single switch given by hand still wins. "
                                 "Empty: the stack's choice")
           for level, options in LEVEL_OPTIONS.items()],
-        DeclareLaunchArgument('world', default_value='empty',
-                              description='empty, test_lot or road'),
+        DeclareLaunchArgument('setup', default_value=setups.NONE,
+                              description='a named set-up (aav_description setups.py): car '
+                                          "(pixi run sim's: world:=road esp32:=true, the "
+                                          'virtual car). Empty: each switch its own default'),
+        DeclareLaunchArgument('world', default_value=setups.CHOSEN,
+                              description='empty, test_lot, road, campus or a twin .sdf. '
+                                          "Empty: the set-up's choice, else empty"),
         DeclareLaunchArgument('nav', default_value='true'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer'),
@@ -1056,9 +1075,10 @@ def generate_launch_description():
         DeclareLaunchArgument('rc_pad_mode', default_value='high',
                               description="with rc_pad:=true: the mode switch's start, "
                                           'high (manual) or low (normal)'),
-        DeclareLaunchArgument('esp32', default_value='false',
+        DeclareLaunchArgument('esp32', default_value=setups.CHOSEN,
                               description="today's car in the loop: legacy_uart_bridge and "
-                                          'sim_esp32, the C++ firmware standing in'),
+                                          'sim_esp32, the C++ firmware standing in. Empty: '
+                                          "the set-up's choice, else false"),
         DeclareLaunchArgument('legacy_impl', default_value=vehicle.DEFAULT_LEGACY_IMPL,
                               description='with esp32:=true: legacy_uart_bridge in rust '
                                           '(aav_legacy_rs) or python (aav_legacy)'),
