@@ -7,7 +7,7 @@
 <!-- Generated from docs/wrap-up.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Wrapping up: the plan</h1>
-<div class="meta">12 min read · 6 sections</div></header>
+<div class="meta">13 min read · 6 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -486,6 +486,33 @@ WHERE AM I, WHAT IT SEES, PLAN), each localizer's car and AMCL's particles, from
 <code>debug-core</code>'s own state (<a href="hud.html#the-debug-hud-into-the-world-view">the table</a>). Left: the
 lidar's own kept cubes (not ported: the car's cubes stand for them), NDT's match as
 ellipses. <code>debug-hud</code>, <code>nav-view</code> and the <code>.rviz</code> layouts stay until step 5.</p>
+<p><strong>Step 5, where it is (26 Nov):</strong> the four commands are in, first in the README's
+<a href="../../README.md#the-four-commands">Every command</a>; every old name still works, marked "old
+name: use ...".</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does now</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixi run sim</code></td>
+<td><code>sim.launch.py setup:=car</code>: the road world and the ESP32, the virtual car. A named set-up (<code>aav_description</code> <code>setups.py</code>), not a new default: with no <code>setup:=</code> the launch file keeps <code>world:=empty esp32:=false</code>, so <code>sim-check</code>, <code>car-test --sim</code>, <code>dry-run</code>, <code>measure</code> and the launch tests start what they did. A switch by hand wins</td>
+</tr>
+<tr>
+<td><code>pixi run screens</code></td>
+<td>the world view, the HUD and the map window, each in its own process group; <code>--sim</code>, <code>--car</code> or asks <code>/system/source</code>. The real car is only watched: the world view <code>--watch</code>, the map without its hardware page, no HUD</td>
+</tr>
+<tr>
+<td><code>pixi run ladder all --sim</code></td>
+<td>every built rung in turn, one report (<code>ladder-all.html</code>); not built yet: skipped, saying so; <code>--car</code> refused. Only rung 1 is built</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>debug-hud</code>, <code>nav-view</code>, <code>ladder-window</code>, <code>rviz</code>, <code>view</code>, <code>demo</code>, <code>dry-run</code> and
+<code>ravensim</code> go once the new commands have been used for a while.</p>
 </section>
 <section class="card"><h2 id="5-the-final-report">5. The final report</h2>
 <p>One chapter a layer, the same five parts each, filled from the rungs' results:</p>

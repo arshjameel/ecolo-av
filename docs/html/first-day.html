@@ -271,17 +271,18 @@ topic, its type, and who publishes and reads it.</p>
 </section>
 <section class="card"><h2 id="4-ravensim-the-simulated-car-15-minutes">4. Ravensim: the simulated car (15 minutes)</h2>
 <p>Stop the turtle first (Ctrl-C in each terminal).</p>
-<pre class="highlight"><code class="language-bash">pixi run sim                        # the same on Linux and on a Mac
-tools/software_gl.sh pixi run sim   # a computer with no GPU (slower than real time)</code></pre>
+<pre class="highlight"><code class="language-bash">pixi run sim                        # the virtual car: the same on Linux and on a Mac
+tools/software_gl.sh pixi run sim   # a computer with no GPU (slower than real time)
+pixi run screens                    # terminal 2: the world view, the HUD and the map</code></pre>
 <p><strong>You should see:</strong></p>
 <ul>
-<li><strong>RViz:</strong> the car model, the map, and the costmaps around the car.</li>
+<li><strong>The world view:</strong> the car on the road, what its lidar sees, the map from above.</li>
+<li><strong>The HUD and the map window:</strong> the car's two screens, as the car shows them.</li>
 </ul>
-<p>Ravensim is our own simulator, in Rust (<a href="own-simulator.html">its page</a>). Watch it in RViz,
-in Lichtblick (<a href="foxglove.html">Foxglove</a>), or in the developer window: <code>pixi run ravensim</code>
-starts the sim and the window together.</p>
+<p>Ravensim is our own simulator, in Rust (<a href="own-simulator.html">its page</a>). <code>pixi run sim</code> starts
+it as today's car (<code>setup:=car</code>): every topic the real car has.</p>
 <p>Drive it with <code>pixi run keyboard --sim</code> in another terminal. Then run
-<code>pixi run check sim</code>: it should say <code>0 failed</code>.</p>
+<code>pixi run check virtual</code>: it should say <code>0 failed</code>.</p>
 </section>
 <section class="card"><h2 id="5-a-goal-through-a-costmap-10-minutes">5. A goal through a costmap (10 minutes)</h2>
 <p>In RViz:</p>

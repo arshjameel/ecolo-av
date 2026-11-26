@@ -120,6 +120,19 @@ WHERE AM I, WHAT IT SEES, PLAN), each localizer's car and AMCL's particles, from
 lidar's own kept cubes (not ported: the car's cubes stand for them), NDT's match as
 ellipses. `debug-hud`, `nav-view` and the `.rviz` layouts stay until step 5.
 
+**Step 5, where it is (26 Nov):** the four commands are in, first in the README's
+[Every command](../README.md#the-four-commands); every old name still works, marked "old
+name: use ...".
+
+| Command | What it does now |
+|---|---|
+| `pixi run sim` | `sim.launch.py setup:=car`: the road world and the ESP32, the virtual car. A named set-up (`aav_description` `setups.py`), not a new default: with no `setup:=` the launch file keeps `world:=empty esp32:=false`, so `sim-check`, `car-test --sim`, `dry-run`, `measure` and the launch tests start what they did. A switch by hand wins |
+| `pixi run screens` | the world view, the HUD and the map window, each in its own process group; `--sim`, `--car` or asks `/system/source`. The real car is only watched: the world view `--watch`, the map without its hardware page, no HUD |
+| `pixi run ladder all --sim` | every built rung in turn, one report (`ladder-all.html`); not built yet: skipped, saying so; `--car` refused. Only rung 1 is built |
+
+`debug-hud`, `nav-view`, `ladder-window`, `rviz`, `view`, `demo`, `dry-run` and
+`ravensim` go once the new commands have been used for a while.
+
 ## 5. The final report
 
 One chapter a layer, the same five parts each, filled from the rungs' results:

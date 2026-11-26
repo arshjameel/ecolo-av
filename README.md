@@ -98,7 +98,19 @@ reaches a real car on the same network. A family is one command and a word after
 (`pixi run get models`): run it with no word and it lists its choices. The full list:
 `pixi task list`.
 
-### Every day
+### The four commands
+
+Four for every day (Ben, 25 Nov; [the plan](docs/wrap-up.md#3-the-commands-71-today-four-for-every-day)).
+The rest are below, grouped by which of the four they belong to.
+
+| Want to | Command | What it does |
+|---|---|---|
+| Start the virtual car | `sim` | Ravensim as today's car (`setup:=car`: the road world and the simulated ESP32), every topic the car has (`pixi run check virtual`), driven by our own stack. A switch by hand wins: `sim world:=test_lot`, `sim stack:=best`, `sim_speed:=3`. With no GPU: `tools/software_gl.sh pixi run sim`. This computer only |
+| Start the real car | `car` | `car orin` (or `motor_pi`, `laptop`, `all`) |
+| Open the screens | `screens` | the world view (Bevy), the HUD and the map window (F2: its hardware page; its LADDER tab is the test bench), for whichever car runs: it asks `/system/source`, or say `--sim` or `--car`. The real car is only watched (no HUD: its heartbeat is the car screen's). `--only world`, `hud` or `map`; `--print`; Ctrl-C stops all three |
+| Run the tests | `ladder` | the test ladder: ten rungs named for what the car can do, the progress kept between days. `ladder all --sim`: the full suite on the virtual car, one report. `ladder next`, `ladder run 1`, `ladder report 1 --open`, `ladder run code`, `ladder record 1 pass --car`. It never moves the car ([Proving it](docs/proving-it.md)) |
+
+### Build and keep the code right
 
 | Command | What it does |
 |---|---|
@@ -107,78 +119,82 @@ reaches a real car on the same network. A family is one command and a word after
 | `lint` | checks our Python against ROS's style rules |
 | `docs` | rebuilds the web pages and the PDFs in `docs/html/` |
 
-### Try it, without the car (this computer only)
+### Start the virtual car: the others (this computer only)
+
+"Old name" means it still works for a while, then goes: use the new one.
 
 | Command | What it does |
 |---|---|
+| `demo` | old name: use `sim` and `screens`. The simulator in the test lot, the nav screen, the HUD and the map window; `--rviz`, `--debug`, `--fullscreen` |
+| `dry-run` | old name: use `sim`, `screens` and `ladder`. Ravensim, its picture and the test ladder's window attached to it; `--panel`, `--debug`. Ctrl-C stops everything ([Proving it](docs/proving-it.md#the-dry-run-pixi-run-dry-run)) |
+| `ravensim` | old name: use `sim` and `screens --only world`. The sim and the developer window live on it; `world:=campus` or any sim switch |
+| `sim-cameras` | Ravensim's cameras (Bevy, offscreen) on their own: the timing check; `--ros` publishes the car's camera topics. `sim` starts them itself |
 | `turtle` | turtlesim plays the car |
-| `rc-pad` | the RC's rules without the car: a PS4 gamepad as the FS-i6X (left stick the pedal, right stick stop, give and steering, R1 the mode switch, L1 held the radio lost), through the firmware's own RC logic, driving `spine_sim`'s model car in rviz. `mode_start:=low` starts in normal |
-| `keyboard` | drive from the keyboard, in a second terminal: `keyboard --local` with `turtle` or `bench`, `keyboard --sim` with `sim`. With no flag it drives whatever shares the ROS domain: on the car's network, the car |
-| `sim` | Ravensim, our own simulator, plays the car (Gazebo went on 16 Nov; with no GPU put `tools/software_gl.sh` in front), driven by our own stack (`stack:=ours`, the default since 14 Nov; `stack:=best` for the champions, [the league](docs/league.md); Nav2 went on 17 Nov); `world:=road`, `hud:=true`, `sim_speed:=3`... |
-| `demo` | the whole simulated car at once: the simulator, the nav screen (ours: `nav-view`), the HUD and the map window. `demo --rviz` adds RViz (only when asked). `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |
-| `pick` | a menu of the switches (who steers, where-am-I, speed loop), so you needn't remember them: prints the command, saves it, runs it; `pick last` runs it again ([Switches](docs/switches.md)) |
 | `bench` | the real car's software, with stand-ins for the hardware |
-| `view` | the car's model in RViz |
 | `carla-car` | CARLA plays the car: `carla-car host:=<the CARLA computer>` |
+| `rc-pad` | the RC's rules without the car: a PS4 gamepad as the FS-i6X (left stick the pedal, right stick stop, give and steering, R1 the mode switch, L1 held the radio lost), through the firmware's own RC logic, driving `spine_sim`'s model car in rviz. `mode_start:=low` starts in normal |
+| `pick` | a menu of the sim's switches (who steers, where-am-I, speed loop): prints the command, saves it, runs it; `pick last` runs it again ([Switches](docs/switches.md)) |
+| `keyboard` | drive from the keyboard, in a second terminal: `keyboard --local` with `turtle` or `bench`, `keyboard --sim` with `sim`. With no flag it drives whatever shares the ROS domain: on the car's network, the car |
 | `drive-to-point` | drive to one point and stop smoothly: `drive-to-point --sim --ahead 20` |
 | `ghost` | a pretend person only navigation sees, to test stopping: `ghost ahead 10` |
 | `sim-fault` | make a simulated sensor fail on purpose: `sim-fault gps stop`, then `sim-fault gps ok` |
-| `jacks` | put Ravensim's car on stands or back on the ground, next to `pixi run sim`: `jacks up --sim` (the rear wheels spin and steer, the car stays put), `jacks down --sim` (refused while the wheels spin), `jacks status --sim`. The simulator only ([docs](docs/actuator-tests.md#the-simulated-car-on-stands-pixi-run-jacks)) |
+| `jacks` | put Ravensim's car on stands or back on the ground, next to `pixi run sim`: `jacks up --sim`, `jacks down --sim` (refused while the wheels spin), `jacks status --sim` ([docs](docs/actuator-tests.md#the-simulated-car-on-stands-pixi-run-jacks)) |
+| `barrier-watch` | watch the barriers in Ravensim (Ben's research, outside the capstone's scope): one drive past a ghost with the follower `plain`, `step` or `barrier`; `--speed 3`, `--offset 0.4`, `--side-by-side`, `--headless` ([Barriers](docs/barriers.md#watch-it-in-ravensim)) |
 
-### The screens
+### Open the screens: one at a time
 
-Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
+Add `--demo` to `hud`, `map`, `debug-hud` or `hw-panel` for pretend data: no ROS, no car, no build.
 
 | Command | What it does |
 |---|---|
-| `hud` | the in-car screen (`fullscreen:=true`) |
-| `map` | the big screen's map window |
-| `debug-hud` | the debug screen: the lidar's cubes, the localizers, every sensor |
-| `hw-panel` | the hardware panel: every sensor's number, and simple buttons (hold Space to drive) for Ravensim or the bench, beside `sim` or `demo --debug` (this computer only) |
-| `ravensim` | watch Ravensim: the sim and the developer window live on it, in one go; `world:=campus` or any sim switch (this computer only) |
-| `barrier-watch` | watch the barriers in Ravensim (Ben's research, outside the capstone's scope): one drive past a ghost with the follower `plain`, `step` (a hard distance limit) or `barrier`; `--speed 3`, `--offset 0.4`, `--side-by-side`, `--headless`; our navigation view from above (the mode in its title; `--rviz` adds RViz) and one line of result (this computer only; [Barriers](docs/barriers.md#watch-it-in-ravensim)) |
-| `dev-window` | the developer window (Bevy): Ben's layout. Pretend data; `--live` beside `demo` or `sim`; `--watch` listens only |
-| `sim-cameras` | Ravensim's cameras (Bevy, offscreen) on their own: the timing check; `--ros` publishes the car's camera topics (this computer only). `sim` starts them itself |
-| `rviz` | RViz with the driving layout: map, costmaps, path, car. The stock viewer, kept as a reference: nothing opens it by default any more (`nav-view` is ours) |
+| `hud` | the in-car screen (`fullscreen:=true`); `screens` opens it |
+| `map` | the big screen's map window, with its hardware page (F2); `screens` opens it |
+| `dev-window` | the world view (Bevy): pretend data; `--live` beside `sim`; `--watch` listens only; `screens` opens it |
+| `debug-hud` | old name: use `screens` (the world view has its pages). The debug screen: the lidar's cubes, the localizers, every sensor |
+| `hw-panel` | old name: use `map` (F2, the hardware page). The hardware panel: every sensor's number, and simple buttons (hold Space to drive) for Ravensim or the bench (this computer only) |
+| `nav-view` | old name: use `screens --only world`. The world view's map panel alone in a small window ([what RViz was for](docs/hud.md#rviz-and-ours)) |
+| `ladder-window` | old name: use `map`'s LADDER tab (the test bench), or `ladder`. The tests screen (Bevy, no ROS): the ten rungs, a rung's **Run**, its answer; `--pretend` ([Proving it](docs/proving-it.md#the-tests-screen-pixi-run-ladder-window)) |
+| `rviz` | old name: use `screens`. RViz with the driving layout; nothing opens it by default |
+| `view` | old name: use `screens --only world`. The car's model in RViz |
 | `graph` | a live picture of the nodes and topics |
 
-### Check that it works
+### Run the tests: what a rung runs, and the checks
 
 | Command | What it does |
 |---|---|
-| `check` | the running graph against the contract: `check turtle` (or `sim`, `road`, `spine`, `car`, `replay`, `bench`) |
+| `car-test` | rung 1's runner: phase A on stands, one command and one report: `car-test --stands` runs the preflight, every sensor, the steering, throttle on free wheels and the faults on purpose; `--sim` against its own Ravensim, `--sim --attach` against the one already running here, `--no-manual`, `--only` ([docs](docs/actuator-tests.md#car-test-the-whole-stands-test)). Phase B in a measured hallway: `car-test --hallway` (`--sim` a pretend hallway; `--analyse <session>`) ([docs](docs/actuator-tests.md#car-test-hallway-the-transfer-functions)) |
+| `actuator-test` | the actuator tests, on stands and in a lot: `actuator-test --list`. The preflight on stands, every sensor checked: `actuator-test preflight --stands` |
+| `check` | the running graph against the contract: `check virtual` beside `sim` (or `turtle`, `sim`, `road`, `spine`, `car`, `replay`, `bench`) |
 | `drop-in` | is what's running a true drop-in? Each stream's rate and frame against the contract; only listens |
+| `sim-check` | starts the road world headless and tests the whole graph in it, on our own stack (2 min); `--stack best` for the champions; with no GPU, `tools/software_gl.sh` in front |
 | `bench-check` | starts bench mode and tests the whole graph: contract, drive, e-stops (2 min) |
-| `sim-check` | starts the road world headless and tests the whole graph in it, on our own stack, on Ravensim (2 min); `--stack best` for the champions; with no GPU, `tools/software_gl.sh` in front |
-| `measure` | `measure controllers`: Pure Pursuit against MPPI (and the trials: docs/trials.md) on the same routes; `measure timing`: are messages on time?; `measure stream`: the camera stream end to end; `measure atob <bag>`: scores an A-to-B run; `measure bandwidth`: every topic's MB/s; `measure diffusion`: the diffusion planner's time a plan against its budget (for the Orin); `measure onnx`: every ONNX model in `models/` on the CPU and Core ML: the same answers, the share of the graph, ms, PASS/WARN/FAIL (`--json`) |
-| `diffusion` | the diffusion planner trial (`planner:=diffusion`): `diffusion data` (the lattice's and Hybrid-A*'s paths on random maps, no simulator), `diffusion train` (the model, scored by its guard, into `models/diffusion/planner.onnx`; `pixi install --locked -e learn` first), `diffusion score`, `diffusion replay <folder>` (a sim run's recorded plans through a model, offline), `diffusion export --fp16` |
-| `campus` | Carleton for the simulators, navigation and NDT, from OpenStreetMap, into `maps/campus/`: then `pixi run sim world:=campus` ([docs](docs/campus.md)) |
-| `campus-route` | directions on the campus, without ROS: `campus-route "Mackenzie Building"` (from P4), `--from`, `--waypoints`, `--list`; the same graph as `street_router router:=campus` ([docs](docs/routes.md#on-the-campus)) |
-| `ndt-map` | NDT's map of the simulator's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
-| `record-drive` | record a mapping drive: every raw sensor at full rate, checked before (disk, rates, clocks, frames), summarised after (good for the map, SLAM, labelling, the transfer functions); `--sim` tests it in Ravensim ([docs](docs/recording.md)) |
-| `map-drive` | a map from a recorded drive, no ROS: KISS-SLAM's path with its loop closures, NDT's map and a 2D map for the planner, in 64 m chunks, placed by the GPS where it is good; `--merge` two or more drives' maps (NDT: what two saw; the 2D maps merged) ([docs](docs/maps-from-drives.md)) |
-| `map-area` | one area's map from several drives, offline: `map-drive` each, fitted together, then occupancy across passes (a parked car one drive saw and another saw through is removed; what only one drive saw is kept and labelled `seen_in`); NDT's map, the 2D map, chunks, `labels.yaml` and one `report.md` in `maps/<area>/`, ready for `map-edit` ([docs](docs/maps-from-drives.md#many-drives-of-one-area)) |
-| `map-edit` | the map editor (Bevy, no ROS): a `map-drive` map over the street map, to line up, delete parked cars in a box, label, then approve and save as a new folder with its edit log and chunks ([docs](docs/map-editor.md)) |
-| `label-drive` | (ml env) label what's around after a drive: OWLv2's boxes onto the lidar points, into the map folder's `labels.yaml` for `map-edit`; `--sim-drive` makes a drive from Ravensim alone, scored against its truth ([docs](docs/labelling.md)) |
-| `label-train` | (ml env) our small point segmenter from the reviewed `labels.yaml` of one or more maps: scored on held-out frames, ONNX checked on the CPU and Core ML ([docs](docs/labelling.md)) |
-| `twin-world` | a Ravensim world from a labelled map (buildings, trees, poles; parked cars left out): then `pixi run sim world:=maps/twins/<name>/twin.sdf` ([docs](docs/labelling.md#the-twin-todo-253)) |
+| `measure` | `measure controllers`: the path followers on the same routes; `measure timing`: are messages on time?; `measure stream`: the camera stream end to end; `measure atob <bag>`: scores an A-to-B run; `measure bandwidth`: every topic's MB/s; `measure diffusion`: the diffusion planner's time a plan (for the Orin); `measure onnx`: every ONNX model on the CPU and Core ML, PASS/WARN/FAIL (`--json`) |
+| `link-check` | did the Motor Pi's frames reach the ESP32? `link-check <bag> --esp32 <file>`: PASS, FAIL or NOT TESTED; a parked car is never a PASS ([docs](docs/hardware-debug.md)) |
 
 ### At the car
 
 | Command | What it does |
 |---|---|
-| `car` | the real car: `car orin` (or `motor_pi`, `laptop`, `all`) |
 | `estop` | block every driver (the car brakes) |
 | `clear` | a person clears a latch: `clear estop`, `clear gate` (the output mux's STOP), `clear geofence` (car back inside), `clear watchdog` (the sensor watchdog's faults); `--sim` after any of them: a simulator on this computer only |
-| `actuator-test` | the actuator tests, on stands and in a lot: `actuator-test --list`. The preflight on stands, every sensor checked: `actuator-test preflight --stands` |
-| `ladder` | the test ladder, with the progress kept between days: ten rungs named for what the car can do ([the plan](docs/wrap-up.md)). `ladder` shows every rung, the simulator's side and the car's; `ladder next`; `ladder run 1` runs rung 1 in the simulator, records it and saves its report page (the question, the verdict, the graphs); `ladder report 1 --open`; `ladder run code` (a check that moves no car); `ladder record 1 pass --car`. A rung not built is listed, never run. It never moves the car ([Proving it](docs/proving-it.md)) |
-| `nav-view` | the navigation view, for a second screen: the developer window's map panel alone in a small window (Bevy): the map, both costmaps, the plan, the car's trail and body, the stop zone's box, the ghost, a goal by click, a scale. Pretend data alone; `--live` beside a simulator here; `--watch` listens only ([what RViz was for](docs/hud.md#rviz-and-ours)) |
-| `ladder-window` | the tests screen (Bevy, no ROS): the ten rungs, the simulator beside the car; a rung's question and its **Run**, with the console and Stop; its answer: a verdict line, graphs with their numbers, the faults, **Open the report**; the car's command is only shown, to copy. `--pretend`: sample data ([Proving it](docs/proving-it.md#the-tests-screen-pixi-run-ladder-window)) |
-| `dry-run` | the dry run of everything we will do with the car: Ravensim, its picture and the test ladder's window attached to it, in one go; `--panel` adds the hardware panel, `--debug` the debug screen. The window's runs move the car you see. This computer only; Ctrl-C stops everything ([Proving it](docs/proving-it.md#the-dry-run-pixi-run-dry-run)) |
-| `car-test` | phase A on stands, one command and one report: `car-test --stands` runs the preflight, every sensor, the steering, throttle on free wheels and the faults on purpose; `--sim` against its own Ravensim, `--sim --attach` against the one already running here (`pixi run dry-run`), `--no-manual`, `--only` ([docs](docs/actuator-tests.md#car-test-the-whole-stands-test)). Phase B in a measured hallway: `car-test --hallway` (the transfer functions with error bars, the model laid over each pass; `--sim` a pretend hallway; `--analyse <session>`) ([docs](docs/actuator-tests.md#car-test-hallway-the-transfer-functions)) |
 | `calibrate-camera` | calibrate a streamed camera: `calibrate-camera board` prints the checkerboard |
 | `doctor` | can this computer join the car's ROS network? Says what to fix |
-| `link-check` | did the Motor Pi's frames reach the ESP32? `link-check <bag> --esp32 <file>`: PASS, FAIL or NOT TESTED; a parked car is never a PASS ([docs](docs/hardware-debug.md)) |
+
+### Maps and learning
+
+| Command | What it does |
+|---|---|
+| `diffusion` | the diffusion planner trial (`planner:=diffusion`): `diffusion data` (the lattice's and Hybrid-A*'s paths on random maps, no simulator), `diffusion train` (into `models/diffusion/planner.onnx`; `pixi install --locked -e learn` first), `diffusion score`, `diffusion replay <folder>`, `diffusion export --fp16` |
+| `campus` | Carleton for the simulators, navigation and NDT, from OpenStreetMap, into `maps/campus/`: then `pixi run sim world:=campus` ([docs](docs/campus.md)) |
+| `campus-route` | directions on the campus, without ROS: `campus-route "Mackenzie Building"` (from P4), `--from`, `--waypoints`, `--list` ([docs](docs/routes.md#on-the-campus)) |
+| `ndt-map` | NDT's map of the simulator's test lot: `drive` the mapping route headless, or `build` from a bag; into `maps/ndt/` |
+| `record-drive` | record a mapping drive: every raw sensor at full rate, checked before, summarised after; `--sim` tests it in Ravensim ([docs](docs/recording.md)) |
+| `map-drive` | a map from a recorded drive, no ROS: KISS-SLAM's path with its loop closures, NDT's map and a 2D map, in 64 m chunks, placed by the GPS; `--merge` two or more drives ([docs](docs/maps-from-drives.md)) |
+| `map-area` | one area's map from several drives, offline: parked cars removed, what only one drive saw labelled `seen_in`; one `report.md` in `maps/<area>/` ([docs](docs/maps-from-drives.md#many-drives-of-one-area)) |
+| `map-edit` | the map editor (Bevy, no ROS): line up, delete parked cars in a box, label, approve and save as a new folder ([docs](docs/map-editor.md)) |
+| `label-drive` | (ml env) label what's around after a drive: OWLv2's boxes onto the lidar points, into `labels.yaml`; `--sim-drive` from Ravensim alone ([docs](docs/labelling.md)) |
+| `label-train` | (ml env) our small point segmenter from the reviewed `labels.yaml` ([docs](docs/labelling.md)) |
+| `twin-world` | a Ravensim world from a labelled map: then `pixi run sim world:=maps/twins/<name>/twin.sdf` ([docs](docs/labelling.md#the-twin-todo-253)) |
 
 ### Before car day
 

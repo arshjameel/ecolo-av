@@ -37,6 +37,7 @@ pixi run ladder report 1 --open      # that run's report page, in the browser
 pixi run ladder run code             # a "before you start" check: code, stack or bench
 pixi run ladder record --from-report ~/aav-tests/<run>      # a car-test run
 pixi run ladder record 1 pass --car --note "on stands, dry" # a rung done by hand
+pixi run ladder all --sim            # the full suite on the virtual car: one report
 ```
 
 | # | Rung | State |
@@ -54,6 +55,20 @@ pixi run ladder record 1 pass --car --note "on stands, dry" # a rung done by han
 | It never moves the car | for a car rung it prints the command; a person runs it |
 | A simulator run uses the simulator that is open | the rung's command carries `--attach`: `car-test` listens to `/system/source` on this computer; SIM: it tests that one, the car you see; nothing heard: it starts its own, with no picture; anything else (REAL...): refused |
 | One part alone never moves the ladder | `run <rung> --only <test>` records nothing: a rung passes whole |
+
+### The full suite: `pixi run ladder all --sim`
+
+Every built rung in turn, bottom first, on the virtual car (wrap-up step 5).
+
+| What | How |
+|---|---|
+| Each rung | run and recorded as `ladder run <rung>` does, its report page saved |
+| One at a time | one lock for the whole session: nothing else runs between the rungs |
+| Not built yet | skipped, and the report says so (today: rungs 2 to 9 and S) |
+| Shut | skipped, with which rung under it failed |
+| Ctrl-C | the rung's own command stops its simulator and is waited for; nothing is recorded for it; the rest are skipped |
+| The report | one page: `~/aav-tests/<time>-all-sim/ladder-all.html` (and `.yaml`): each rung, its result, its time, a link to its own page |
+| The car | `ladder all --car` is refused: the car's rungs are run by a person, one at a time |
 
 ### Before you start: the checks that move no car
 
