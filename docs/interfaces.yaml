@@ -382,7 +382,7 @@ topics:
     type: nav_msgs/msg/Odometry
     drop_in: {min_hz: 45, frame: odom}
     pub: [spine_bridge, encoder_udp, turtlesim_adapter, sim_adapter, carla_adapter]
-    sub: [ekf_local, ekf_global, actuator_test, sensor_watchdog, gps_heading, legacy_uart_bridge, debug_hud, localization_health, ego, kinematic_icp]
+    sub: [ekf_local, ekf_global, actuator_test, sensor_watchdog, gps_heading, legacy_uart_bridge, debug_hud, dev_window, localization_health, ego, kinematic_icp]
     live: [turtle, sim, car, replay, bench]
     note: Twist only (vx, vy = 0, vyaw) in base_link, with covariances; pose covariance 1e3 (not measured). On the car, vx comes from the front wheel nodes when fresh, else from the spine's VEHICLE_FEEDBACK. With today's wiring (car.launch.py actuators:=uart, spine_bridge role:=sensors on the Orin) only from the two wheels while both are fresh, with no yaw rate (covariance 1e3 - the steering angle isn't on the bus). In Ravensim's spine profile spine_bridge publishes it from spine_sim's frames, as on the car; /vehicle/status, steering, throttle, brake and wheels likewise. legacy_uart_bridge reads it only with speed_loop.mode pi, to close its speed loop on vx.
   /vehicle/status:
@@ -438,7 +438,7 @@ topics:
   /vehicle/wheels:
     type: aav_interfaces/msg/WheelSpeeds
     pub: [sim_adapter, spine_bridge, carla_adapter]
-    sub: [actuator_test, debug_hud, hw_panel, localization_health]
+    sub: [actuator_test, debug_hud, dev_window, hw_panel, localization_health]
     live: [sim, bench]
     note: Each wheel's ground speed (m/s, signed), NaN where not measured or stale. Ravensim gives all four (its wheel joints). spine_bridge gives the front two, from the CAN wheel nodes (0x200, 0x201) at about 100 Hz; their mean, when fresh, is the speed in /vehicle/odom. With today's wiring the front two come from the wheel sensors' Arduino on the Orin's CAN bus (spine_bridge role:=sensors). The 2025-26 car's UDP encoder (aav_legacy encoder_udp, off since 23 Oct) is read only as /vehicle/odom.
   /vehicle/joint_states:
@@ -482,14 +482,14 @@ topics:
     type: sensor_msgs/msg/Imu
     drop_in: {min_hz: 45, max_hz: 220, frame: imu_link}
     pub: [imu_filter_madgwick]
-    sub: [ekf_local, ekf_global, sensor_watchdog, navsat_transform, debug_hud, actuator_test, hw_panel, localization_health]
+    sub: [ekf_local, ekf_global, sensor_watchdog, navsat_transform, debug_hud, dev_window, actuator_test, hw_panel, localization_health]
     live: [sim, car, replay, bench]
     note: Adds a relative orientation (no magnetometer). The EKFs fuse the yaw rate only.
   /sensors/gps/fix:
     type: sensor_msgs/msg/NavSatFix
     drop_in: {min_hz: 4.5, max_hz: 12, frame: gps_link}
     pub: [ublox_gps, gps_nmea, ublox_nav_sat_fix_hp, sim_gps, mock_gps, carla_adapter]
-    sub: [navsat_transform, hud, language_drive, actuator_test, sensor_watchdog, point_driver, debug_hud, hw_panel, localization_health, pose_check]
+    sub: [navsat_transform, hud, language_drive, actuator_test, sensor_watchdog, point_driver, debug_hud, dev_window, hw_panel, localization_health, pose_check]
     live: [sim, car, replay, bench]
     note: Lat/lon of the antenna (gps_link). On the car, from the driver gps_driver:= picks - ublox_gps (ublox, the default; Tentative, Q18), gps_nmea (nmea) or ublox_nav_sat_fix_hp (ublox_dgnss). ublox_gps publishes it reliable (depth 1), ublox_dgnss best-effort (SensorDataQoS), so subscribe best effort.
   /sensors/gps/fix_velocity:
@@ -611,7 +611,7 @@ topics:
   /perception/voxels/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [voxels]
-    sub: [debug_hud]
+    sub: [debug_hud, dev_window]
     note: The voxels trial after every cloud - name voxels, level OK (the road fitted) or WARN (no good fit - taken as flat, as lidar_scan does); values ms (wall clock, the cloud read to the cubes published), cubes, ground_cubes, points (finite, off the car, in range), fitted, roll_deg, pitch_deg (the body's lean on the fitted road, REP-103), clouds_dropped (from the stamps); with kerbs:=true also steps (the step points published). sim-check --voxels and measure controllers --voxels read it; so does the debug HUD (its costmap's cubes section and row).
   /perception/radar/clusters:
     type: sensor_msgs/msg/PointCloud2
@@ -712,7 +712,7 @@ topics:
   /vehicle/sim/truth:
     type: nav_msgs/msg/Odometry
     pub: [simulator]
-    sub: [sim_gps, debug_hud, sim_cameras]
+    sub: [sim_gps, debug_hud, dev_window, sim_cameras]
     live: [sim]
     note: Where Ravensim's car really is (map frame - the world's origin is the datum - 50 Hz), like the bench's /vehicle/bench/truth. Only the stand-ins read it - sim_gps, for the receiver's velocity (/sensors/gps/fix_velocity), never for a position; tools/sim_check.py compares it with /localization/odom/global. Ravensim's other topics (/vehicle/sim/odom, imu, navsat, cmd_vel, radar/points) only link the simulator (aav_simulator's node simulator), sim_adapter and the sensor nodes (sim_imu, sim_gps, sim_radar, sim_camera_relay, sim_lidar_relay - one process per sensor, as on the car); they were /gazebo/* until Gazebo went on 16 Nov, and the same nodes read them.
   /vehicle/sim/jacks:
@@ -847,12 +847,12 @@ topics:
   /localization/amcl/pose:
     type: geometry_msgs/msg/PoseWithCovarianceStamped
     pub: [amcl]
-    sub: [controller_compare, debug_hud, pose_check]
+    sub: [controller_compare, debug_hud, dev_window, pose_check]
     note: A trial (docs/trials.md) - AMCL's particle filter on the 2D map and the lidar scan, map frame (its amcl_pose, renamed). The node amcl is ours, aav_amcl_rs (since 18 Nov, TODO 231; stock nav2_amcl removed 20 Nov, TODO 232), with stock's topics, parameters and frames. Only with amcl:=true (sim.launch.py world:=test_lot nav:=true lidar:=true). Its tf_broadcast is false - ekf_global keeps map -> odom - so nothing drives by it; measure controllers --amcl scores it against the sim's truth. Published only once the car has moved (update_min_d, update_min_a).
   /localization/amcl/particles:
     type: nav2_msgs/msg/ParticleCloud
     pub: [amcl]
-    sub: [debug_hud]
+    sub: [debug_hud, dev_window]
     note: AMCL's particles, for RViz, Foxglove and the debug HUD (small orange arrows; its particle_cloud, renamed). Best effort. amcl:=true only.
   /localization/amcl/map:
     type: nav_msgs/msg/OccupancyGrid
@@ -923,7 +923,7 @@ topics:
   /localization/health:
     type: std_msgs/msg/String
     pub: [localization_health]
-    sub: [debug_hud]
+    sub: [debug_hud, dev_window]
     live: [turtle, sim, car, replay, bench]
     note: localization_health (aav_localization_health_rs) once a second - OK, or WARN and each check that isn't OK (gyro_bias parked, imu_mounting, gps_quality, timestamps, frames, tf, wheels, motion; STALE where an input it needs went quiet). Warn only - nothing drives from it, and it changes nothing in the EKFs. The same checks, with their numbers, on /diagnostics. The debug HUD shows it (green OK, amber WARN with each check). With localization_health_impl:=rust (localization.launch.py, sim.launch.py) aav_localization_health_rs publishes it instead, with the same node name, QoS and answers (TODO 185).
 
@@ -992,7 +992,7 @@ topics:
   /drivers/nav/track/status:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [track, mppi_lag, mpc_lag_rs]
-    sub: [controller_compare, debug_hud, sensor_watchdog]
+    sub: [controller_compare, debug_hud, dev_window, sensor_watchdog]
     note: aav_track's debug, every tick while it follows a path (20 Hz) - name track, message the tracker's name; values tracker, loop_ms (this tick's work), loop_ms_max, missed_ticks (since the path came, by the node's clock), cross_track_m (+ left of the path), heading_error_rad, steer_rad, speed_mps, left_m (along the path to its end). Only with tracker:= on. aav_mppi_lag's mppi_lag (tracker:=mppi_lag) publishes the same keys, message mppi_lag, and adds model (lag or ideal), est_steering_rad (its model's wheel angle), best_cost and collided_share (MPPI's cheapest sample, the share of samples that hit the costmap). aav_mpc_lag's mpc_lag_rs (tracker:=mpc_lag_rs) publishes the same keys, message mpc_lag_rs, and the Python mpc_lag's debug ones - solve_ms, iterations, solved, wheels_est_rad, speed_limit_mps, feed_forward_rad - and map_gap_m.
   /drivers/point/plan:
     type: nav_msgs/msg/Path
@@ -1090,7 +1090,7 @@ topics:
   /tf:
     type: tf2_msgs/msg/TFMessage
     pub: [ekf_local, ekf_global, robot_state_publisher]
-    sub: [debug_hud]
+    sub: [debug_hud, dev_window]
     live: [turtle, sim, car, replay, bench]
     note: map -> odom (ekf_global), odom -> base_link (ekf_local), moving joints (robot_state_publisher).
   /tf_static:

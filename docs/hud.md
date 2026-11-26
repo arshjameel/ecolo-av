@@ -14,7 +14,8 @@ Orin runs no graphics, so the other two run on a laptop. Laptop screens can be B
 **developer window** (`ros/hud/aav_dev_window`, `pixi run dev-window`; not a ROS package)
 is one, live on the simulators since 5 Nov, and `debug_hud` retires once it covers the
 same ground ([design](designs/2026-11-05_one-window.md)). Its README is the reference; what it took
-over from RViz is in [RViz and ours](#rviz-and-ours).
+over from RViz is in [RViz and ours](#rviz-and-ours). Since 25 Nov (wrap-up step 4) it is
+the **world view**, with the debug screen's pages: [what moved, and what is left](#the-debug-hud-into-the-world-view).
 
 An easter egg hides in three of them: [the little robot](#the-little-robot-easter-egg).
 
@@ -823,6 +824,26 @@ Ravensim of its own (its own ROS domain) with its own navigation view.
 one window. It only listens: it never touches an actuator. Ben, 29 Oct: "the low level
 hud ... should connect directly to the ros node at the sensor". Design:
 [2026-10-29_debug-hud.md](designs/2026-10-29_debug-hud.md).
+
+### The debug HUD into the world view
+
+Wrap-up step 4 (25 Nov): the world view (the developer window, Bevy, laptops) takes the
+debug screen's job. It reads the same topics into the same `debug-core` state, and shows
+them as four pages: SENSORS, WHERE AM I, WHAT IT SEES, PLAN. `debug_hud` keeps working
+until step 5 makes its name an alias.
+
+![The world view's WHERE AM I page, pretend data](img/world-view-where.png)
+
+| The debug screen | The world view |
+|---|---|
+| the sensor panel (key L) | SENSORS, WHERE AM I, PLAN |
+| each localizer's car in 3D and from above; AMCL's particles | key W; key A |
+| NDT's score, the health checks, the costmap cubes' road fit | WHERE AM I; WHAT IT SEES |
+| the costmap's cubes, the ground hidden, NDT's map, keys 1-4 | there already (V, G, N and M, SWAP) |
+| the lidar's own cubes, kept and fading | not ported: the world view draws the car's cubes, never the raw cloud (Ben, 5 Nov) |
+| NDT's match as ellipses | not ported yet: its share on the map is a row |
+
+Every row of it: [the developer window's README](../ros/hud/aav_dev_window/README.md#the-world-view-the-debug-screens-pages).
 
 ### What it shows
 

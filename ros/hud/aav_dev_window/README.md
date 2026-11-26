@@ -2,7 +2,9 @@
 
 ## Overview
 
-The developer window, in Bevy and egui: one screen for laptops. Pretend data and live ROS
+The developer window, in Bevy and egui: one screen for laptops, and the **world view** of
+the four screens (wrap-up step 4, [the plan](../../../docs/wrap-up.md#4-the-screens-eight-become-four)):
+since 25 Nov it also has the debug screen's pages. Pretend data and live ROS
 are drop-ins for each other, behind one `Feed`. SWAP (15 Nov) swaps `aav_track`'s follower live in the
 simulator; the other choices are made at launch. The plan:
 [our own simulator](../../../docs/designs/2026-11-05_own-simulator.md).
@@ -15,9 +17,12 @@ simulator; the other choices are made at launch. The plan:
 │                            ├──────────────────────┤
 ├────────────────────────────┤ the map: click to go │
 │ console                    ├──────────────────────┤
-│                            │ keys | algorithms    │
+│                            │ the pages | keys |   │
+│                            │ algorithms           │
 └────────────────────────────┴──────────────────────┘
 ```
+
+The pages: SENSORS, WHERE AM I, WHAT IT SEES, PLAN ([below](#the-world-view-the-debug-screens-pages)).
 
 ## Subdirectories & Boundaries
 
@@ -26,6 +31,7 @@ simulator; the other choices are made at launch. The plan:
 | `src/main.rs` | the app: options, the cubes, the 3D camera, the speed test |
 | `src/panels.rs` | the layout and every panel, in egui |
 | `src/feed.rs` | what the window is told, and the gates on commands: no Bevy, no ROS, tested |
+| `src/pages.rs` | the world view's four pages, row by row, from `debug-core`'s `DebugState`: no Bevy, no egui, tested |
 | `src/pretend.rs` | pretend data, as a `Feed`: no Bevy, no ROS, tested |
 | `src/map_nav.rs` | how the map panel moves: follow the car, the whole map, or free; drag, wheel, pinch, F: no Bevy, no egui, tested |
 | `src/chunks.rs` | the chunks loaded (`map_chunks::wanted`), their outlines, labels and saved maps: no Bevy, no egui, tested |
@@ -44,8 +50,9 @@ Also: `--map-span M` (metres across at the start), `--title`, `--position X,Y`,
 `--screenshot-every S` (the newest picture of a long run). What the map took over from
 RViz: [RViz and ours](../../../docs/hud.md#rviz-and-ours).
 
-It shares logic with the raylib screens: `debug-core` (the cubes' bands, the camera),
-`map-core` (map to screen and back), `hud-core` (a picture message into RGBA).
+It shares logic with the raylib screens: `debug-core` (the cubes' bands, the camera; since
+25 Nov its whole `DebugState` and the sensor rows' `words`), `map-core` (map to screen and
+back), `hud-core` (a picture message into RGBA; the localizers' colours).
 
 ## Interface
 
@@ -59,6 +66,7 @@ pixi run dev-window --live --map-whole             # the map panel starts on the
 pixi run dev-window --cubes 60000 --seconds 8 --screenshot /tmp/window.png
 pixi run dev-window --live --lanes maps/campus/campus.osm   # the lane map's lines (pixi run campus)
 pixi run dev-window --live --chunks maps/campus/chunks     # the chunks loaded, their saved map
+pixi run dev-window --page where                   # starts on a page: sensors, where, sees or plan
 pixi run nav-view --live                           # the map panel alone, in its own window (--map-only): what RViz was for
 pixi run map-edit bags/<drive>/map                         # the map editor: no ROS (docs/map-editor.md)
 pixi run ladder-window                                     # the tests screen: no ROS (docs/proving-it.md)
@@ -80,7 +88,64 @@ map window's debug page (key D) shows the whole command path.
 | H | the chunks loaded, their saved map, and the route (on) | L | the lane map's lines (on) |
 | F | the map: follow the car, or the whole map (also its buttons) | B | the car's trail on the map (on) |
 | J | the local costmap on the map, amber (on) | Z | the ghost, the keep-out circle, the stop zone's box (on) |
-| Q | the map's grid of round metres (on) | | |
+| Q | the map's grid of round metres (on) | W | where each localizer puts the car, 3D and map (on) |
+| A | AMCL's particles, 3D (off) | | |
+
+### The world view: the debug screen's pages
+
+Wrap-up step 4 (Ben, 25 Nov): the world view takes over the debug screen (`debug_hud`).
+The corner's tabs gained four pages, named for the layer each comes from. Their rows are
+`src/pages.rs`, built from `debug-core`'s own `DebugState`: the same logic, the same words.
+
+![WHERE AM I: each localizer's car, map > odom, NDT, the health checks (pretend data)](../../../docs/img/world-view-where.png)
+
+| Page | Rows | Light |
+|---|---|---|
+| SENSORS | IMU, GPS, lidar, wheels, wheel odom, vehicle | OK, STALE, NEVER; lidar OFF (below) |
+| WHERE AM I | EKF local, EKF global, truth, AMCL, NDT (each: x, y, heading, metres from EKF local); map > odom; NDT match; loc. health | WARN when NDT is LOST or poor, or a health check isn't OK |
+| WHAT IT SEES | costmap cubes; the road's fit; the share of cubes on NDT's map; the things | WARN when the road is taken as flat, or under half the cubes land on NDT's map |
+| PLAN | who drives; the plan (points, length, its end); the tracker (cross track, loop time, metres left) | WARN when the tracker misses ticks |
+
+| SENSORS | WHAT IT SEES | PLAN |
+|---|---|---|
+| ![SENSORS](../../../docs/img/world-view-sensors.png) | ![WHAT IT SEES](../../../docs/img/world-view-sees.png) | ![PLAN](../../../docs/img/world-view-plan.png) |
+
+Pictures: pretend data, `dev_window --page <page> --seconds 8 --screenshot FILE` (25 Nov,
+Ben's MacBook); the pages cut out of the window. The plan says "no plan" because the
+pretend car gets one only from a click. `pixi run dev-window --page where` starts on a page.
+
+**Every debug screen feature, and where it is now:**
+
+| The debug screen (`debug_hud`) | In the world view |
+|---|---|
+| the costmap's cubes, red wireframes (V) | already: V |
+| the ground hidden (G); the car's box; the plan; the trail | already: G; the box; P; B |
+| NDT's map as wireframes (M) | already: N (NDT's cells in 3D), M (on the map) |
+| NDT's score: TRACKING, LOST, score, ms | already over the cubes; now a WHERE AM I row too |
+| EKF global, AMCL, NDT, truth: an outline, an arrow, a pole each, in 3D | **added**: W |
+| AMCL's particles (A) | **added**: A (they need map > odom from `/tf`) |
+| the legend: each localizer's distance from EKF local | **added**: WHERE AM I |
+| the lidar map from above, every localizer's car | already the map panel (M); the cars **added** (W) |
+| the costmap cubes' status: road fit, count, ms | **added**: WHAT IT SEES |
+| localization health: OK, or WARN and each check | **added**: WHERE AM I |
+| the sensor panel (key L): IMU, GPS, wheels, wheel odom, vehicle, each estimate, map > odom, tracker | **added**: SENSORS, WHERE AM I, PLAN |
+| a pose in the wrong frame | **added**: a WHERE AM I "frames" row |
+| keys 1-4: swap the sim's tracker | already: ALGORITHMS, SWAP (the same rule: SIM only) |
+| the camera: chase, follow, free; drag, wheel | already: C, R, drag, wheel |
+| the key legend (H) | already: the KEYS tab |
+| the lidar's own cubes, kept and fading (K) | **not ported**: the window draws the cubes the car makes, never the raw cloud (Ben, 5 Nov; about 9 MB/s over WiFi). The lidar row says OFF and why |
+| NDT's match as ellipses, the scan green or red over them | **not ported yet**: the share on the map is a row; the ellipses are left |
+| themes (latte), the little robot | not ported: the world view is dark only; the robot is the car screens' |
+
+**What it reads, new** (`config/dev_window.yaml`, the debug screen's names): `/tf` (map >
+odom only), `/sensors/imu/data`, `/sensors/gps/fix`, `/vehicle/wheels`, `/vehicle/odom`,
+`/vehicle/sim/truth`, `/localization/amcl/pose`, `/localization/amcl/particles`,
+`/localization/health`, `/perception/voxels/status`, `/drivers/nav/track/status`. Only
+subscriptions: no new publisher, no new call. The IMU, wheels, truth and `/tf` reach the
+window at most 10 times a second: a row needs only its freshness.
+
+`debug-hud` and RViz stay for now: step 5 turns the old names into aliases once this has
+been used.
 
 ### The squiggly line (Ben, 7 Nov)
 
@@ -214,3 +279,16 @@ pixi run dev-window --live --click-goal 14,0 --seconds 60    # a click and two p
 
 `tools/test.sh` tests only `ladder-core` here (`cargo test -p ladder-core`), so Bevy
 doesn't slow every test run.
+
+With ROS (`ros` feature), after `pixi run build`, as `aav_hud`'s README does it:
+
+```sh
+pixi run bash -c 'source install/setup.bash && cd ros/hud/aav_dev_window \
+  && export LIBRARY_PATH=$(ls -d $PWD/../../../install/*/lib | tr "\n" ":")$CONDA_PREFIX/lib \
+  && cargo clippy --release --features ros --all-targets -- -D warnings'
+```
+
+Tested 25 Nov (the pages): `cargo test --release` (58 tests), `cargo clippy --all-targets`
+with and without `ros`; the four pages' pictures above; and live, on ROS domain 147 kept on
+the Mac: `ros2 topic pub` of the IMU, the GPS, the health checks and the tracker, the
+window `--live` without `--developer`: the IMU and GPS rows OK with their words.

@@ -114,6 +114,12 @@ RViz opens only when asked for by name (since 23 Nov). Gazebo went on 16 Nov.
 | 5 | the four commands; the old names become aliases | README's command list |
 | 6 | rungs 2 to 9, and the full suite on the virtual car | `ladder all --sim`: one report |
 
+**Step 4, where it is (25 Nov):** the world view has the debug screen's pages (SENSORS,
+WHERE AM I, WHAT IT SEES, PLAN), each localizer's car and AMCL's particles, from
+`debug-core`'s own state ([the table](hud.md#the-debug-hud-into-the-world-view)). Left: the
+lidar's own kept cubes (not ported: the car's cubes stand for them), NDT's match as
+ellipses. `debug-hud`, `nav-view` and the `.rviz` layouts stay until step 5.
+
 ## 5. The final report
 
 One chapter a layer, the same five parts each, filled from the rungs' results:

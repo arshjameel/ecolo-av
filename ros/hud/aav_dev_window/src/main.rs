@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! dev_window [--live] [--developer] [--ndt-map FILE] [--click-goal X,Y] [--cubes N] [--all-layers]
-//!            [--map-whole] [--seconds S] [--screenshot FILE]
+//!            [--map-whole] [--page sensors|where|sees|plan] [--seconds S] [--screenshot FILE]
 //! ```
 //!
 //! Without `--live`: pretend data, with no ROS. `--live` (the `ros` feature) is the node
@@ -20,6 +20,7 @@ mod chunks;
 mod feed;
 mod lanes;
 mod map_nav;
+mod pages;
 mod panels;
 mod pretend;
 #[cfg(feature = "ros")]
@@ -39,7 +40,7 @@ use bevy::{
     window::PresentMode,
 };
 use bevy_egui::{EguiGlobalSettings, EguiPlugin, EguiPrimaryContextPass, PrimaryEguiContext};
-use debug_core::{cubes::Band, ndt::MapFile};
+use debug_core::{cubes::Band, ndt::MapFile, state::Localizer};
 use map_core::geom::Point;
 use wgpu_types::BlendState;
 
@@ -48,7 +49,7 @@ use crate::feed::{Feed, Update};
 const USAGE: &str = "usage: dev_window [--live] [--developer] [--ndt-map FILE] \
                      [--click-goal X,Y] [--cubes N] \
                      [--all-layers] [--map-whole] [--map-only] [--map-span M] [--title WORDS] [--position X,Y] \
-                     [--seconds S] [--screenshot FILE] [--screenshot-every S]";
+                     [--page sensors|where|sees|plan] [--seconds S] [--screenshot FILE] [--screenshot-every S]";
 /// One NDT map cube's edge on screen, metres: at 1 m a kerb looked as big as a building.
 const NDT_CELL: f64 = 0.5;
 /// The most outlines drawn in red. Drawing lines costs more than drawing cubes.
@@ -64,6 +65,9 @@ const NDT_REACH: f64 = 40.0;
 const NEAR_MOVE: f64 = 5.0;
 /// A pool cube is this big already; a map cell scales it up to its own size.
 const POOL_CUBE: f32 = pretend::CUBE_SIDE * 0.9;
+/// AMCL's particles: the most drawn, and each arrow's length, metres (the debug screen's).
+const MAX_PARTICLES_DRAWN: usize = 2_000;
+const PARTICLE_LEN: f32 = 0.45;
 /// A cell is drawn a little smaller than itself, so its neighbours show as separate blocks.
 const CELL_FILL: f32 = 0.92;
 
@@ -92,6 +96,8 @@ struct Options {
     map_span: Option<f64>,
     /// Where the window opens on the screen, in pixels from its top left.
     position: Option<[i32; 2]>,
+    /// The corner's page at the start: sensors, where, sees or plan (wrap-up step 4).
+    page: Option<pages::Page>,
 }
 
 impl Options {
@@ -113,6 +119,7 @@ impl Options {
             title: None,
             map_span: None,
             position: None,
+            page: None,
         };
         let mut args = args;
         while let Some(arg) = args.next() {
@@ -168,6 +175,13 @@ impl Options {
                         .and_then(|(x, y)| Some([x.trim().parse().ok()?, y.trim().parse().ok()?]));
                     options.position =
                         Some(parsed.ok_or(format!("--position {text}: use X,Y in pixels"))?);
+                }
+                "--page" => {
+                    let word = value()?;
+                    options.page = Some(
+                        pages::Page::from_word(&word)
+                            .ok_or(format!("--page {word}: sensors, where, sees or plan"))?,
+                    );
                 }
                 other => return Err(format!("unknown option {other}")),
             }
@@ -290,6 +304,10 @@ fn main() -> AppExit {
     }
     ui_state.layers.nav2_cubes = options.all_layers;
     ui_state.layers.ground |= options.all_layers;
+    ui_state.layers.particles |= options.all_layers;
+    if let Some(page) = options.page {
+        ui_state.tab = panels::Tab::Page(page);
+    }
     if options.map_whole {
         ui_state.map.show_whole();
     }
@@ -741,6 +759,18 @@ fn draw_wireframes(state: Res<panels::UiState>, mut gizmos: Gizmos) {
             );
         }
     }
+    if state.layers.localizers {
+        draw_localizers(world, &mut gizmos);
+    }
+    if state.layers.particles {
+        // AMCL's particles: small orange arrows, as on the debug screen (key A).
+        let colour = bevy_colour(panels::localizer_rgb(Localizer::Amcl));
+        for p in world.debug.0.particles_in_odom().take(MAX_PARTICLES_DRAWN) {
+            let at = Vec3::new(p.position.x as f32, p.position.y as f32, 0.08);
+            let way = Vec3::new(p.yaw.cos() as f32, p.yaw.sin() as f32, 0.0);
+            gizmos.arrow(at, at + way * PARTICLE_LEN, colour);
+        }
+    }
     if state.layers.nav2_cubes {
         for cube in world.cubes.cubes.iter().take(MAX_OUTLINES) {
             gizmos.cube(
@@ -749,6 +779,46 @@ fn draw_wireframes(state: Res<panels::UiState>, mut gizmos: Gizmos) {
                 Color::srgb(0.9, 0.15, 0.15),
             );
         }
+    }
+}
+
+/// An egui colour as Bevy's.
+fn bevy_colour(c: bevy_egui::egui::Color32) -> Color {
+    Color::srgb_u8(c.r(), c.g(), c.b())
+}
+
+/// Where the other localizers put the car (key W): an outline the car's size, an arrow and
+/// a pole each, in its colour (EKF global green, truth white, AMCL orange, NDT purple).
+/// Their poses are on the map; they come into odom as everything else on the map does, by
+/// the car's two newest poses. The car's own box is EKF local's.
+fn draw_localizers(world: &panels::WorldNews, gizmos: &mut Gizmos) {
+    let turn = world.car_odom.yaw - world.car_map.yaw;
+    for who in [
+        Localizer::Global,
+        Localizer::Truth,
+        Localizer::Amcl,
+        Localizer::Ndt,
+    ] {
+        let Some(pose) = world.debug.0.pose_in_map(who) else {
+            continue;
+        };
+        let at = feed::odom_to_map(
+            [pose.position.x as f32, pose.position.y as f32],
+            world.car_map,
+            world.car_odom,
+        );
+        let yaw = (pose.yaw + turn) as f32;
+        let colour = bevy_colour(panels::localizer_rgb(who));
+        let centre = Vec3::new(at.x as f32, at.y as f32, 0.02);
+        gizmos.rect(
+            Isometry3d::new(centre, Quat::from_rotation_z(yaw)),
+            Vec2::new(2.6, 1.2),
+            colour,
+        );
+        let way = Vec3::new(yaw.cos(), yaw.sin(), 0.0);
+        gizmos.arrow(centre, centre + way * 2.0, colour);
+        // A pole, so each one is found from far off.
+        gizmos.line(centre, centre + Vec3::Z * 2.2, colour);
     }
 }
 

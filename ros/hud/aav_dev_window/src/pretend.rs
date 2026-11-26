@@ -7,7 +7,12 @@ use std::{f64::consts::TAU, time::Instant};
 use debug_core::{
     cubes::{Band, Cube, CubeScan, Metres},
     frames::Stamp,
+    localization_health::Verdict,
     ndt::{MapCells, NdtStatus},
+    state::{Localizer, Source, Update as DebugUpdate},
+    track::TrackStatus,
+    voxels::VoxelStatus,
+    words,
 };
 use hud_core::{
     origin::{Announcement, Entry, Origin},
@@ -75,6 +80,77 @@ pub fn car_at(t: f64) -> Pose {
         12.0 + RADIUS * angle.sin(),
         (angle + TAU / 4.0).rem_euclid(TAU),
     )
+}
+
+/// The debug screen's news at `t`, for the world view's pages (wrap-up step 4): every
+/// sensor's row, map -> odom, the truth, AMCL a little off with its particles, the health
+/// checks (a WARN for 3 s in every 12), the voxels node's and the tracker's status.
+pub fn debug_news(t: f64, car_map: Pose) -> Vec<DebugUpdate> {
+    let pose = |who, pose, frame: &str| DebugUpdate::Pose {
+        who,
+        pose,
+        frame: frame.to_owned(),
+        speed: None,
+    };
+    let heard = |source, detail: String| DebugUpdate::Heard { source, detail };
+    let (x, y, yaw) = (car_map.position.x, car_map.position.y, car_map.yaw);
+    // AMCL wanders round the truth, up to 0.4 m.
+    let amcl = Pose::new(
+        x + 0.4 * (t * 0.7).sin(),
+        y + 0.25 * (t * 0.5).cos(),
+        yaw + 0.03,
+    );
+    let particles = (0..300)
+        .map(|i| {
+            let (a, b, c) = (noise(i, 7), noise(i, 8), noise(i, 9));
+            Pose::new(
+                amcl.position.x + f64::from(a - 0.5) * 1.6,
+                amcl.position.y + f64::from(b - 0.5) * 1.6,
+                amcl.yaw + f64::from(c - 0.5) * 0.4,
+            )
+        })
+        .collect();
+    let health = if t % 12.0 > 9.0 {
+        "WARN gyro_bias WARN: the IMU's yaw rate drifts 0.6 deg/s while still"
+    } else {
+        "OK"
+    };
+    vec![
+        DebugUpdate::MapToOdom(Pose::new(ODOM_SHIFT.0, ODOM_SHIFT.1, 0.0)),
+        pose(Localizer::Truth, Pose::new(x - 0.05, y + 0.03, yaw), "map"),
+        pose(Localizer::Amcl, amcl, "map"),
+        DebugUpdate::Particles {
+            poses: particles,
+            frame: "map".to_owned(),
+        },
+        heard(Source::Imu, words::imu(0.35 * (t * 0.4).sin())),
+        heard(Source::Gps, words::gps(0, 2.25, 2.0)),
+        heard(
+            Source::Wheels,
+            words::wheels([1.0, 1.02, f32::NAN, f32::NAN]),
+        ),
+        heard(Source::WheelOdom, words::speed(1.01)),
+        DebugUpdate::LocalizationHealth(Verdict::parse(health)),
+        DebugUpdate::VoxelsStatus(VoxelStatus::from_message(
+            0,
+            "road fitted",
+            [
+                ("cubes", "412"),
+                ("ground_cubes", "1630"),
+                ("ms", "4.2"),
+                ("points", "28800"),
+            ],
+        )),
+        DebugUpdate::Track(TrackStatus::from_values(
+            "mppi_lag",
+            [
+                ("cross_track_m", "0.04"),
+                ("loop_ms", "1.8"),
+                ("left_m", "14.0"),
+                ("missed_ticks", "0"),
+            ],
+        )),
+    ]
 }
 
 /// A repeatable number in 0..1 for a cube.
@@ -325,7 +401,8 @@ pub fn ghost_and_keep_out() -> (Option<Outline>, Option<Outline>) {
         rgb: [0.7, 0.3, 1.0],
     };
     let keep_out = MarkerParts {
-        scale: (3.14, 3.14),
+        // A pretend keep-out circle, 3.2 m across.
+        scale: (3.2, 3.2),
         ..ghost.clone()
     };
     (marker::outline(&ghost), marker::outline(&keep_out))
@@ -409,6 +486,7 @@ impl Feed for PretendFeed {
             let (level, line) = log_line(self.next_line);
             self.next_line = self.next_line.wrapping_add(1);
             updates.push(Update::Log(level, line));
+            updates.extend(debug_news(t, car_map).into_iter().map(Update::Debug));
             updates.push(Update::Ndt(NdtStatus::from_message(
                 0,
                 "TRACKING",

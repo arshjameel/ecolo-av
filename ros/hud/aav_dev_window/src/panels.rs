@@ -6,10 +6,12 @@ use std::time::Instant;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiTextureHandle};
 use debug_core::{
+    config::DebugConfig,
     cubes::{Band, CubeScan, Metres},
     flat::{ground_the_flat, FlatRule},
     ndt::{MapCells, NdtStatus},
     orbit::Orbit,
+    state::{DebugState, Localizer, Update as DebugUpdate},
     swap::Tracker,
 };
 use hud_core::{
@@ -37,6 +39,7 @@ use crate::{
     chunks,
     feed::{self, Heard, Level, Update},
     map_nav::{Gesture, MapNav},
+    pages::{self, Light as RowLight, Page},
     set_viewport, CubesCamera, PictureImage, Source,
 };
 
@@ -49,6 +52,11 @@ const SCENE_SHARE: f32 = 0.68;
 /// The right column, top to bottom: the cubes, then the map; the rest is keys.
 const CUBES_SHARE: f32 = 0.34;
 const MAP_SHARE: f32 = 0.44;
+/// The same while a page (SENSORS, WHERE AM I...) shows: the rest, a third, is the page.
+const PAGE_CUBES_SHARE: f32 = 0.32;
+const PAGE_MAP_SHARE: f32 = 0.34;
+/// A page row's name column, points.
+const PAGE_NAME_WIDTH: f32 = 120.0;
 /// The driver's view at rest: a little down, as the lidar's eyes are level with a wall's top.
 const LOOK_DOWN: [f32; 2] = [0.0, -0.18];
 /// The view from the car, top to bottom, radians: wide, as Ben preferred. The wheel zooms.
@@ -146,6 +154,11 @@ pub struct Layers {
     pub safety: bool,
     /// The map's grid of round metres (key Q). The scale bar always shows.
     pub grid: bool,
+    /// Where each localizer puts the car: EKF global, truth, AMCL and NDT, each in its
+    /// colour, in 3D and on the map (key W, "where am I").
+    pub localizers: bool,
+    /// AMCL's particles, small orange arrows in 3D (key A, as on the debug screen).
+    pub particles: bool,
 }
 
 impl Default for Layers {
@@ -166,6 +179,8 @@ impl Default for Layers {
             local_costmap: true,
             safety: true,
             grid: true,
+            localizers: true,
+            particles: false,
         }
     }
 }
@@ -192,9 +207,11 @@ impl Goal {
     }
 }
 
-/// The corner's two tabs.
+/// The corner's tabs: the world view's four pages (wrap-up step 4), then the keys and
+/// the algorithms.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Tab {
+    Page(Page),
     #[default]
     Keys,
     Algorithms,
@@ -371,6 +388,28 @@ pub struct WorldNews {
     /// Who is driving (the command mux's state).
     driving: Heard,
     console: Vec<(Level, String)>,
+    /// What the debug screen keeps (debug-core's own state): the world view's pages and
+    /// the other localizers (wrap-up step 4).
+    pub debug: DebugNews,
+}
+
+/// debug-core's [`DebugState`], with the debug screen's built-in settings.
+pub struct DebugNews(pub DebugState);
+
+impl Default for DebugNews {
+    fn default() -> Self {
+        Self(DebugState::new(&DebugConfig::default()))
+    }
+}
+
+/// A pose for the debug state, from a topic whose frame the window has already checked.
+fn estimate(who: Localizer, pose: Pose) -> DebugUpdate {
+    DebugUpdate::Pose {
+        who,
+        pose,
+        frame: String::new(),
+        speed: None,
+    }
 }
 
 impl WorldNews {
@@ -429,6 +468,7 @@ impl WorldNews {
 
     /// One piece of news. The picture isn't here: it goes straight into its image.
     pub fn apply(&mut self, update: Update, now: Instant) {
+        self.mirror(&update, now);
         match update {
             Update::Cubes(scan) => {
                 self.cubes = scan;
@@ -484,7 +524,28 @@ impl WorldNews {
                 self.things_heard = Some(now);
             }
             Update::Route(points) => self.route = points,
+            Update::Debug(news) => self.debug.0.apply(news, now),
         }
+    }
+
+    /// The news the debug state needs too: the car's poses, NDT, the car's status, where
+    /// the data comes from, and the costmap's cubes. Each topic is read once.
+    fn mirror(&mut self, update: &Update, now: Instant) {
+        let debug = &mut self.debug.0;
+        let news = match update {
+            Update::CarInOdom(pose) => estimate(Localizer::Local, *pose),
+            Update::CarInMap(pose) => estimate(Localizer::Global, *pose),
+            Update::NdtPose(pose) => estimate(Localizer::Ndt, *pose),
+            Update::Ndt(status) => DebugUpdate::Ndt(status.clone()),
+            Update::Vehicle(status) => DebugUpdate::Vehicle(*status),
+            Update::Origin(announcement) => DebugUpdate::Origin(announcement.clone()),
+            Update::Cubes(scan) => {
+                debug.set_nav2_cubes(scan.clone(), now);
+                return;
+            }
+            _ => return,
+        };
+        debug.apply(news, now);
     }
 
     /// The goal someone else sent (sim-check, the tools, RViz, the map window): the end of a
@@ -591,7 +652,8 @@ pub struct UiState {
     /// F was pressed: the map panel follows the car, or shows the whole map, next frame.
     map_follow_key: bool,
     goal: Goal,
-    tab: Tab,
+    /// The corner's tab: a page, the keys or the algorithms (`--page` starts on a page).
+    pub tab: Tab,
     console_floor: Level,
     styled: bool,
     picks: [usize; ALGORITHMS.len()],
@@ -682,13 +744,18 @@ pub fn draw(
         egui::vec2(left.width(), left.height() * SCENE_SHARE),
     );
     let console_rect = egui::Rect::from_min_max(picture_rect.left_bottom(), left.max);
+    // A page has more rows than the keys: the corner grows into the map's room.
+    let (cubes_share, map_share) = match state.tab {
+        Tab::Page(_) => (PAGE_CUBES_SHARE, PAGE_MAP_SHARE),
+        Tab::Keys | Tab::Algorithms => (CUBES_SHARE, MAP_SHARE),
+    };
     let cubes_rect = egui::Rect::from_min_size(
         right.min,
-        egui::vec2(right.width(), right.height() * CUBES_SHARE),
+        egui::vec2(right.width(), right.height() * cubes_share),
     );
     let map_rect = egui::Rect::from_min_size(
         cubes_rect.left_bottom(),
-        egui::vec2(right.width(), right.height() * MAP_SHARE),
+        egui::vec2(right.width(), right.height() * map_share),
     );
     let corner_rect = egui::Rect::from_min_max(map_rect.left_bottom(), right.max);
 
@@ -782,6 +849,8 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
             (egui::Key::J, &mut layers.local_costmap),
             (egui::Key::Z, &mut layers.safety),
             (egui::Key::Q, &mut layers.grid),
+            (egui::Key::W, &mut layers.localizers),
+            (egui::Key::A, &mut layers.particles),
         ] {
             if input.key_pressed(key) {
                 *layer = !*layer;
@@ -1489,8 +1558,47 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         egui::Stroke::new(1.5, egui::Color32::WHITE),
     ));
 
+    if layers.localizers {
+        paint_localizers(&painter, &world.debug.0, reach, to);
+    }
+
     let world_goal = state.world.goal_elsewhere(Instant::now());
     goal_buttons(ui, rect, state, feed, world_goal);
+}
+
+/// Where the other localizers put the car, on the map (key W): an open arrow each in its
+/// colour, `reach` metres long, so a jump between them shows at any zoom. The car's own
+/// arrow is EKF global's, so it isn't drawn twice.
+fn paint_localizers(
+    painter: &egui::Painter,
+    debug: &DebugState,
+    reach: f64,
+    to: impl Fn(Point) -> egui::Pos2,
+) {
+    for who in [Localizer::Truth, Localizer::Amcl, Localizer::Ndt] {
+        let Some(pose) = debug.pose_in_map(who) else {
+            continue;
+        };
+        let (sin, cos) = pose.yaw.sin_cos();
+        let at = pose.position;
+        let nose = Point::new(at.x + reach * cos, at.y + reach * sin);
+        let side = |d: f64| {
+            Point::new(
+                at.x - reach * 0.6 * cos - d * sin,
+                at.y - reach * 0.6 * sin + d * cos,
+            )
+        };
+        let outline = vec![
+            to(nose),
+            to(side(reach * 0.6)),
+            to(side(-reach * 0.6)),
+            to(nose),
+        ];
+        painter.add(egui::Shape::line(
+            outline,
+            egui::Stroke::new(2.0, localizer_rgb(who)),
+        ));
+    }
 }
 
 /// The car's trail: a warm line, apart from the plan's blue and the trace's green.
@@ -1734,7 +1842,11 @@ fn confirm(state: &mut UiState, feed: &mut dyn feed::Feed, at: Point) -> Goal {
 }
 
 fn corner_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) {
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
+        for page in Page::ALL {
+            ui.selectable_value(&mut state.tab, Tab::Page(page), page.title());
+        }
+        ui.separator();
         ui.selectable_value(&mut state.tab, Tab::Keys, "KEYS");
         ui.selectable_value(&mut state.tab, Tab::Algorithms, "ALGORITHMS");
     });
@@ -1742,9 +1854,97 @@ fn corner_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Fee
     egui::ScrollArea::vertical()
         .auto_shrink(false)
         .show(ui, |ui| match state.tab {
+            Tab::Page(page) => page_tab(ui, page, &state.world),
             Tab::Keys => keys_tab(ui, state),
             Tab::Algorithms => algorithms_tab(ui, state, feed),
         });
+}
+
+/// One of the world view's pages: a row each, its name, a light, and what it said.
+fn page_tab(ui: &mut egui::Ui, page: Page, world: &WorldNews) {
+    let now = Instant::now();
+    let debug = &world.debug.0;
+    let on_map = world
+        .map_match
+        .share_on_map(world.cubes.cubes.len())
+        .map(|share| (share, world.cubes.cubes.len()));
+    let extras = pages::Extras {
+        on_map,
+        things: world.things_now(now).len(),
+        driving: world.driving.fresh(now),
+        plan: &world.plan,
+        car_map: world.car_map,
+    };
+    let rows = match page {
+        Page::Sensors => pages::sensors(debug, now),
+        Page::WhereAmI => pages::where_am_i(debug, now),
+        Page::WhatItSees => pages::what_it_sees(debug, &extras, now),
+        Page::Plan => pages::plan(debug, &extras, now),
+    };
+    for row in rows {
+        let (fill, ink) = light_colours(row.light);
+        ui.horizontal_top(|ui| {
+            ui.add_sized(
+                [PAGE_NAME_WIDTH, 20.0],
+                egui::Label::new(egui::RichText::new(row.name).strong()),
+            );
+            // A fixed-width pill, so the words start in one column.
+            let pill = egui::RichText::new(format!("{:^5}", row.light.word()))
+                .monospace()
+                .strong()
+                .color(ink)
+                .background_color(fill);
+            ui.label(pill);
+            let words = egui::RichText::new(row.words);
+            ui.add(
+                egui::Label::new(match row.light {
+                    RowLight::Warn => words.color(egui::Color32::from_rgb(255, 194, 26)),
+                    RowLight::Stale | RowLight::Never | RowLight::Off => words.weak(),
+                    RowLight::Ok => words,
+                })
+                .wrap(),
+            );
+        });
+    }
+    if page == Page::WhereAmI {
+        localizer_legend(ui);
+    }
+}
+
+/// A row's pill: green OK, amber WARN and STALE, grey NEVER and OFF.
+fn light_colours(light: RowLight) -> (egui::Color32, egui::Color32) {
+    match light {
+        RowLight::Ok => (egui::Color32::from_rgb(30, 140, 70), egui::Color32::WHITE),
+        RowLight::Warn | RowLight::Stale => {
+            (egui::Color32::from_rgb(255, 194, 26), egui::Color32::BLACK)
+        }
+        RowLight::Never | RowLight::Off => {
+            (egui::Color32::from_gray(60), egui::Color32::from_gray(210))
+        }
+    }
+}
+
+/// Each localizer's colour, as on the debug screen (`hud_core::theme`, Mocha's, the
+/// same in every theme): local blue, global green, truth white, AMCL orange, NDT purple.
+pub fn localizer_rgb(who: Localizer) -> egui::Color32 {
+    let l = hud_core::theme::MOCHA.scene.localizers;
+    rgba_colour(match who {
+        Localizer::Local => l.local,
+        Localizer::Global => l.global,
+        Localizer::Truth => l.truth,
+        Localizer::Amcl => l.amcl,
+        Localizer::Ndt => l.ndt,
+    })
+}
+
+/// The colours' key, under the WHERE AM I page.
+fn localizer_legend(ui: &mut egui::Ui) {
+    ui.horizontal_wrapped(|ui| {
+        ui.label("Drawn (key W):");
+        for who in Localizer::ALL {
+            ui.label(egui::RichText::new(format!("■ {}", who.label())).color(localizer_rgb(who)));
+        }
+    });
 }
 
 fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
@@ -1785,6 +1985,12 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
             on(layers.safety),
         ),
         ("Q", "the map's grid of round metres", on(layers.grid)),
+        (
+            "W",
+            "where each localizer puts the car (3D and map)",
+            on(layers.localizers),
+        ),
+        ("A", "AMCL's particles (3D)", on(layers.particles)),
         (
             "F",
             "map: follow the car, or the whole map",

@@ -32,11 +32,15 @@ use std::{
 use debug_core::{
     cloud::{CloudView, Field},
     cubes::{CubeScan, Metres},
-    frames::{Stamp, StaticFrames},
+    frames::{frame_name, Stamp, StaticFrames},
+    localization_health::Verdict,
     ndt::NdtStatus,
     poses::PoseBuffer,
     scan::ScanError,
-    voxels::{self, VoxelSettings},
+    state::{Localizer, Source, Update as DebugUpdate},
+    track::TrackStatus,
+    voxels::{self, VoxelSettings, VoxelStatus},
+    words,
 };
 use hud_core::{
     ahead::{StopMark, Summary},
@@ -58,7 +62,7 @@ use nav_core::{
 };
 use rclrs::*;
 use ros_env::aav_interfaces::msg::{
-    DataSource, RoadAhead as RoadAheadMsg, Things, VehicleStatus as VehicleStatusMsg,
+    DataSource, RoadAhead as RoadAheadMsg, Things, VehicleStatus as VehicleStatusMsg, WheelSpeeds,
 };
 use ros_env::action_msgs::srv::{CancelGoal, CancelGoal_Request, CancelGoal_Response};
 use ros_env::builtin_interfaces::msg::Time;
@@ -67,11 +71,14 @@ use ros_env::geometry_msgs::msg::{
     PolygonStamped, Pose as PoseMsg, PoseStamped, PoseWithCovarianceStamped,
 };
 use ros_env::nav2_msgs::msg::CollisionMonitorState;
+use ros_env::nav2_msgs::msg::ParticleCloud;
 use ros_env::nav_msgs::msg::{OccupancyGrid, Odometry, Path};
 use ros_env::rcl_interfaces::msg::{Log, Parameter, ParameterType, ParameterValue};
 use ros_env::rcl_interfaces::srv::{SetParameters, SetParameters_Request, SetParameters_Response};
 use ros_env::sensor_msgs::msg::{Image, PointCloud2};
+use ros_env::sensor_msgs::msg::{Imu, NavSatFix};
 use ros_env::std_msgs::msg::{Bool, String as StringMsg, UInt64};
+use ros_env::tf2_msgs::msg::TFMessage;
 use ros_env::visualization_msgs::msg::Marker;
 use serde::Deserialize;
 
@@ -125,6 +132,70 @@ struct Topics {
     keep_out: String,
     stop_box: String,
     stop_state: String,
+    // The world view's pages (wrap-up step 4): the debug screen's topics.
+    tf: String,
+    imu: String,
+    gps: String,
+    wheels: String,
+    wheel_odom: String,
+    truth: String,
+    amcl: String,
+    amcl_particles: String,
+    health: String,
+    voxels_status: String,
+    track_status: String,
+}
+
+/// The most a fast sensor's row is sent a second: a row needs only its freshness and its
+/// newest words, and the IMU's 200 Hz would crowd the window's queue.
+const ROW_GAP: Duration = Duration::from_millis(100);
+
+/// Lets one message through each `gap`: the rest are dropped.
+struct Throttle {
+    gap: Duration,
+    last: Mutex<Option<Instant>>,
+}
+
+impl Throttle {
+    fn new(gap: Duration) -> Self {
+        Self {
+            gap,
+            last: Mutex::new(None),
+        }
+    }
+
+    /// Whether this message goes on.
+    fn due(&self) -> bool {
+        let now = Instant::now();
+        let mut last = self.last.lock().unwrap_or_else(PoisonError::into_inner);
+        if last.is_some_and(|t| now.saturating_duration_since(t) < self.gap) {
+            return false;
+        }
+        *last = Some(now);
+        true
+    }
+}
+
+/// A row of the SENSORS page.
+fn heard(source: Source, detail: String) -> Update {
+    Update::Debug(DebugUpdate::Heard { source, detail })
+}
+
+/// A localizer's pose, in the frame its message says (the debug state checks it).
+fn estimate(who: Localizer, frame: &str, p: &PoseMsg) -> Update {
+    Update::Debug(DebugUpdate::Pose {
+        who,
+        pose: pose(p),
+        frame: frame.to_owned(),
+        speed: None,
+    })
+}
+
+/// A DiagnosticStatus's key-value pairs, as debug-core reads them.
+fn values(m: &DiagnosticStatus) -> impl Iterator<Item = (&str, &str)> {
+    m.values
+        .iter()
+        .map(|kv| (kv.key.as_str(), kv.value.as_str()))
 }
 
 /// A Marker as the view's line on the ground; `None` when it is deleted or not drawn.
@@ -779,6 +850,111 @@ fn spin(
             );
         }
     })?;
+
+    // The world view's pages (wrap-up step 4): what the debug screen read. Listened to only.
+    let _tf = node.create_subscription(topics.tf.as_str().qos(log_qos), {
+        let (tx, throttle) = (tx.clone(), Throttle::new(ROW_GAP));
+        move |m: TFMessage| {
+            let found = m.transforms.iter().find(|t| {
+                frame_name(&t.header.frame_id) == "map" && frame_name(&t.child_frame_id) == "odom"
+            });
+            if let Some(t) = found.filter(|_| throttle.due()) {
+                let (at, q) = (&t.transform.translation, &t.transform.rotation);
+                let q = Quaternion {
+                    x: q.x,
+                    y: q.y,
+                    z: q.z,
+                    w: q.w,
+                };
+                let odom_in_map = Pose::from_ros(at.x, at.y, q);
+                send(&tx, Update::Debug(DebugUpdate::MapToOdom(odom_in_map)));
+            }
+        }
+    })?;
+    let _imu = node.create_subscription(topics.imu.as_str().sensor_data_qos(), {
+        let (tx, throttle) = (tx.clone(), Throttle::new(ROW_GAP));
+        move |m: Imu| {
+            if throttle.due() {
+                send(&tx, heard(Source::Imu, words::imu(m.angular_velocity.z)));
+            }
+        }
+    })?;
+    let _gps = node.create_subscription(topics.gps.as_str().sensor_data_qos(), {
+        let tx = tx.clone();
+        move |m: NavSatFix| {
+            let c = &m.position_covariance;
+            send(
+                &tx,
+                heard(Source::Gps, words::gps(m.status.status, c[0], c[4])),
+            );
+        }
+    })?;
+    let _wheels = node.create_subscription(topics.wheels.as_str().sensor_data_qos(), {
+        let (tx, throttle) = (tx.clone(), Throttle::new(ROW_GAP));
+        move |m: WheelSpeeds| {
+            if throttle.due() {
+                let speeds = [m.front_left, m.front_right, m.rear_left, m.rear_right];
+                send(&tx, heard(Source::Wheels, words::wheels(speeds)));
+            }
+        }
+    })?;
+    let _wheel_odom = node.create_subscription(topics.wheel_odom.as_str().sensor_data_qos(), {
+        let (tx, throttle) = (tx.clone(), Throttle::new(ROW_GAP));
+        move |m: Odometry| {
+            if throttle.due() {
+                let v = m.twist.twist.linear.x;
+                send(&tx, heard(Source::WheelOdom, words::speed(v)));
+            }
+        }
+    })?;
+    let _truth = node.create_subscription(topics.truth.as_str().sensor_data_qos(), {
+        let (tx, throttle) = (tx.clone(), Throttle::new(ROW_GAP));
+        move |m: Odometry| {
+            if throttle.due() {
+                let who = Localizer::Truth;
+                send(&tx, estimate(who, &m.header.frame_id, &m.pose.pose));
+            }
+        }
+    })?;
+    let _amcl = node.create_subscription(topics.amcl.as_str().reliable(), {
+        let tx = tx.clone();
+        move |m: PoseWithCovarianceStamped| {
+            let who = Localizer::Amcl;
+            send(&tx, estimate(who, &m.header.frame_id, &m.pose.pose));
+        }
+    })?;
+    let _particles =
+        node.create_subscription(topics.amcl_particles.as_str().sensor_data_qos(), {
+            let tx = tx.clone();
+            move |m: ParticleCloud| {
+                let poses = m.particles.iter().map(|p| pose(&p.pose)).collect();
+                let frame = m.header.frame_id;
+                send(&tx, Update::Debug(DebugUpdate::Particles { poses, frame }));
+            }
+        })?;
+    let _health = node.create_subscription(topics.health.as_str().sensor_data_qos(), {
+        let tx = tx.clone();
+        move |m: StringMsg| {
+            let verdict = Verdict::parse(&m.data);
+            send(&tx, Update::Debug(DebugUpdate::LocalizationHealth(verdict)));
+        }
+    })?;
+    let _voxels_status =
+        node.create_subscription(topics.voxels_status.as_str().sensor_data_qos(), {
+            let tx = tx.clone();
+            move |m: DiagnosticStatus| {
+                let status = VoxelStatus::from_message(m.level, &m.message, values(&m));
+                send(&tx, Update::Debug(DebugUpdate::VoxelsStatus(status)));
+            }
+        })?;
+    let _track_status =
+        node.create_subscription(topics.track_status.as_str().sensor_data_qos(), {
+            let tx = tx.clone();
+            move |m: DiagnosticStatus| {
+                let status = TrackStatus::from_values(&m.message, values(&m));
+                send(&tx, Update::Debug(DebugUpdate::Track(status)));
+            }
+        })?;
 
     let commands = if developer {
         let estop_qos = QoSProfile::topics_default().reliable().keep_last(10);
