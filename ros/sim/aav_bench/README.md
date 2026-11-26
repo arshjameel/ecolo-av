@@ -36,7 +36,9 @@ ahead on the right, and (with `obstacle:=true`) a 1 m box in the lane 15 m ahead
 | `mock_lidar` | `/vehicle/bench/truth` | UDP VLP-16 packets to `127.0.0.1:2369`, 754 a second | `lidar_link` |
 
 Every node also publishes, once and latched, a `DataSource` on `/system/source`
-saying its topic is `BENCH`. The HUD shows a BENCH banner.
+saying its topic is `BENCH`. The HUD shows a BENCH banner. With the parameter
+`source: sim` it says `SIM` instead: Ravensim borrows `mock_battery` that way in
+`sim esp32:=true`, so the output mux sees one source. A stand-in never says `REAL`.
 
 ### Parameters
 

@@ -173,7 +173,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>sensor_msgs/msg/Joy</code></td>
 <td><code>game_controller_node</code></td>
 <td><code>rc_pad</code></td>
-<td>bench, sim</td>
+<td>bench</td>
 <td>The gamepad that plays the FS-i6X (rc_pad.launch.py, sim rc_pad:=true) - joy's game_controller_node, named rc_pad_joy, remapped here so it never reaches the joystick's teleop. A DualShock 4's layout - axes 1 the left stick's up and down, 3 and 2 the right stick's, up and left +1; buttons 10 R1, 9 L1 (measured 23 Nov).</td>
 </tr>
 <tr>
@@ -413,7 +413,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>diagnostic_msgs/msg/DiagnosticStatus</code></td>
 <td><code>boot_self_test</code></td>
 <td><code>spine_bridge</code>, <code>hud</code></td>
-<td>-</td>
+<td>car, virtual</td>
 <td>The boot self-test (aav_self_test_rs boot_self_test, TODO 255; Ben, 19 Nov - "make sure we have control over everything"), 2 Hz, on the car next to the mux - name boot_self_test; level OK and message READY once every check has passed for 2 s without a break, else ERROR and "NOT READY - " with each failing check and why; one value per check (OK, or why not) - sensors (the sensor watchdog heard within 1 s and not saying STOP - every sensor at its rate, by its rules), actuators (status - /vehicle/status within 0.5 s with no steering, brake, throttle or CAN driver fault, the CAN spine; link - the UART bridge's /control/car/link_frame within 0.5 s, today's car, which can't hear the ESP32 without its uplink), each lock alive (watchdog, geofence, output_gate - its state line within 1 s, whatever it says; stop_zone - a publisher on /safety/stop_zone/state, where navigation runs it), each clock (imu, gps, odom - a stamp within 0.5 s of this computer's clock). spine_bridge with require_ready (car.launch.py, both languages) refuses /spine/arm until it said READY within 2 s - silence refuses too; disarming and the e-stop never wait. It only reads - it moves nothing. Not run in Ravensim or the bench (their spine_bridge has require_ready false; arm_when_open arms them once the gate opens). The TODO 0b caveat - the spine's own self-test passes after one tick, so a fault-free status says only that no driver reported a fault yet. The HUD (aav_hud hud, reliable, depth 1) shows a small green READY at level OK, else a red NOT READY banner with the line's why; SELF-TEST SILENT once heard and then quiet for 2 s; nothing when never heard.</td>
 </tr>
 <tr>
@@ -845,7 +845,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>sensor_msgs/msg/BatteryState</code></td>
 <td><code>battery_state_publisher</code>, <code>mock_battery</code></td>
 <td><code>hud</code>, <code>actuator_test</code>, <code>hw_panel</code></td>
-<td>bench</td>
+<td>bench, virtual</td>
 <td>aav_battery_victron's node is battery_state_publisher (the Victron VE.Direct cable).</td>
 </tr>
 <tr>
@@ -1085,7 +1085,7 @@ Check a running system against it with <code>pixi run check &lt;turtle|sim|road|
 <td><code>std_msgs/msg/UInt16MultiArray</code></td>
 <td><code>rc_pad</code></td>
 <td><code>spine_sim</code></td>
-<td>bench, sim</td>
+<td>bench</td>
 <td>The RC receiver's 14 iBUS channels (µs), 50 Hz - what the car's FlySky receiver sends the ESP32, from a PS4 gamepad playing the FS-i6X (rc_pad, 23 Nov). spine_sim with rc:=true feeds them through the ibus crate's own parser and RcMap::TODAY, as the board does, so the firmware's RC rules run unchanged. CH2 (index 1) stop and give, CH3 (2) the pedal, CH4 (3) steering, CH6 (5) the mode switch - 1100 normal, 1900 manual, 1000 the failsafe. Silent 100 ms is a lost RC. pixi run rc-pad, or sim spine:=true rc_pad:=true.</td>
 </tr>
 <tr>

@@ -1524,7 +1524,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Today's car in the loop (<code>sim esp32:=true</code>, <code>sim_esp32</code>)</td>
-<td>Today's car runs the 2025-26 C++ ESP32, not the spine: the simulator drives through the real UART bridge and that firmware's throttle ramp and brake, so its speed loop is tested before car day</td>
+<td>Today's car runs the 2025-26 C++ ESP32, not the spine: the simulator drives through the real UART bridge and that firmware's throttle ramp and brake, so its speed loop is tested before car day. Since 25 Nov it is the virtual car: the boot self-test and a battery stand-in (saying SIM) run as on the car, and <code>pixi run check virtual</code> fails if any car topic is missing (Ben, 25 Nov: "a full sweet of tests on a virtual car using the full ros messaging system")</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
@@ -1785,7 +1785,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td>Live graph check (<code>pixi run check</code>)</td>
-<td>Compares the running graph with <code>docs/interfaces.yaml</code>, so a wrong topic shows at once</td>
+<td>Compares the running graph with <code>docs/interfaces.yaml</code>, so a wrong topic shows at once; the <code>virtual</code> profile (25 Nov) asks Ravensim for every car topic, each exception with its reason (<code>not_virtual</code>)</td>
 <td>Ben</td>
 <td>2026-10-09</td>
 <td>sim</td>

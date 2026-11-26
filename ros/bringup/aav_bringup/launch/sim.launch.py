@@ -304,7 +304,8 @@ bench's argument names:
                       actuator model -> Ravensim. esp32_loop:= is the bridge's
                       speed_loop.mode: pi (the default here) or open (the 2025-26 mapping)
                       legacy_impl:=rust (the default, aav_legacy_rs) or python picks the
-                      bridge's language
+                      bridge's language. Like the car, it also runs the boot self-test
+                      (actuators: the bridge's frames) and a battery stand-in (mock_battery)
   ghost:=true        a pretend person only navigation sees (aav_ghost), for stopping tests
                       with nothing in the world: pixi run ghost ahead 10, pixi run ghost off.
                       Its own costmap layer and stop zone source: it only adds
@@ -351,6 +352,7 @@ from aav_description.lane_map import (check_lane_graph, check_lane_source,
                                       DEFAULT_LANE_GRAPH, DEFAULT_LANE_SOURCE)
 from aav_sim_models import worlds
 from aav_spine import bridges
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
@@ -838,6 +840,25 @@ def launch_setup(context):
                                geofence_impl=vehicle.check_geofence_impl(
                                    arg('geofence_impl')),
                                use_sim_time='true'))
+    if arg('esp32').lower() == 'true':
+        # Today's car in the loop runs what the car runs beside its mux (car.launch.py), so
+        # Ravensim gives the screens every topic the car does (docs/wrap-up.md, step 1):
+        # the boot self-test, judging the UART bridge's frames as on the car ('link'),
+        # and the bench's battery stand-in (the car's Victron part is optional), saying SIM.
+        locks = ([lock for lock, on in (('watchdog', flag['watchdog']),
+                                        ('geofence', flag['geofence'])) if on]
+                 + ['output_gate']
+                 + (['stop_zone'] if flag['nav'] and (radar or lidar or flag['ghost'])
+                    else []))
+        actions += [
+            include(context, 'aav_self_test_rs', 'self_test.launch.py', use_sim_time='true',
+                    self_test_actuators='link', self_test_locks=','.join(locks),
+                    self_test_clocks='imu,odom,gps'),
+            Node(package='aav_bench', executable='mock_battery', name='mock_battery',
+                 parameters=[os.path.join(get_package_share_directory('aav_bench'),
+                                          'config', 'bench.yaml'),
+                             {'use_sim_time': True, 'source': 'sim'}]),
+        ]
     if flag['teleop']:
         actions.append(include(context, 'aav_teleop', 'teleop.launch.py', use_sim_time='true'))
     if flag['perception']:

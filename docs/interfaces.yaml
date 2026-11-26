@@ -12,6 +12,9 @@
 #   spine = sim.launch.py world:=road spine:=true: the road world with the spine in the
 #   loop (spine_bridge, the CAN topics, spine_sim on Ravensim's car). Whatever is live in
 #   sim and road must be live there too
+#   virtual = sim.launch.py world:=road esp32:=true: Ravensim as today's car, so the screens
+#   and tests see the car's own graph (docs/wrap-up.md, step 1). Whatever is live in sim,
+#   road and car must be live there too, except a topic marked not_virtual: <why>
 # drop_in: what a stream must be, beyond name and type, so anything can replace what makes it:
 #   Ravensim, the real sensor (Ben, 5 Nov). The floors are Gazebo's rates (Ravensim's
 #   model, until it went on 16 Nov) measured 5 Nov, less a margin; the ceilings are the car's (docs/bandwidth.md) plus a margin.
@@ -37,7 +40,7 @@ topics:
     type: sensor_msgs/msg/Joy
     pub: [game_controller_node]
     sub: [rc_pad]
-    live: [bench, sim]
+    live: [bench]
     note: "The gamepad that plays the FS-i6X (rc_pad.launch.py, sim rc_pad:=true) - joy's game_controller_node, named rc_pad_joy, remapped here so it never reaches the joystick's teleop. A DualShock 4's layout - axes 1 the left stick's up and down, 3 and 2 the right stick's, up and left +1; buttons 10 R1, 9 L1 (measured 23 Nov)."
   /drivers/joy/joy_checked:
     type: sensor_msgs/msg/Joy
@@ -196,6 +199,7 @@ topics:
     type: diagnostic_msgs/msg/DiagnosticStatus
     pub: [boot_self_test]
     sub: [spine_bridge, hud]
+    live: [car, virtual]
     note: The boot self-test (aav_self_test_rs boot_self_test, TODO 255; Ben, 19 Nov - "make sure we have control over everything"), 2 Hz, on the car next to the mux - name boot_self_test; level OK and message READY once every check has passed for 2 s without a break, else ERROR and "NOT READY - " with each failing check and why; one value per check (OK, or why not) - sensors (the sensor watchdog heard within 1 s and not saying STOP - every sensor at its rate, by its rules), actuators (status - /vehicle/status within 0.5 s with no steering, brake, throttle or CAN driver fault, the CAN spine; link - the UART bridge's /control/car/link_frame within 0.5 s, today's car, which can't hear the ESP32 without its uplink), each lock alive (watchdog, geofence, output_gate - its state line within 1 s, whatever it says; stop_zone - a publisher on /safety/stop_zone/state, where navigation runs it), each clock (imu, gps, odom - a stamp within 0.5 s of this computer's clock). spine_bridge with require_ready (car.launch.py, both languages) refuses /spine/arm until it said READY within 2 s - silence refuses too; disarming and the e-stop never wait. It only reads - it moves nothing. Not run in Ravensim or the bench (their spine_bridge has require_ready false; arm_when_open arms them once the gate opens). The TODO 0b caveat - the spine's own self-test passes after one tick, so a fault-free status says only that no driver reported a fault yet. The HUD (aav_hud hud, reliable, depth 1) shows a small green READY at level OK, else a red NOT READY banner with the line's why; SELF-TEST SILENT once heard and then quiet for 2 s; nothing when never heard.
   /safety/ghost/scan:
     type: sensor_msgs/msg/LaserScan
@@ -286,6 +290,7 @@ topics:
     pub: [output_mux]
     sub: [spine_bridge, legacy_uart_bridge, hw_panel]
     live: [car]
+    not_virtual: "a simulator never sends the real car's commands: Ravensim's are /control/sim/actuator_cmd (the output mux's lock)"
     note: The real car's commands - ego's /ego/actuator_cmd, passed on unchanged by output_mux target:=car, and only while the sensor mux says every source is REAL and nothing on /system/source says otherwise. Anything else and it sends nothing - latched until /safety/output_mux/clear on evidence (an announcement of another source, the sensor mux's problems), only held shut on doubt (the sensor mux not heard or quiet for 3 s, or its doubts); the backends' own timeouts brake (spine_bridge 0.1 s then the spine's 100 ms, legacy_uart_bridge 0.3 s). The real backends read only this topic (spine_bridge with source real), so a simulator's ego can't reach them. The hardware panel's GRAPHS page only reads it (the mux hop - equal to ego's, paired by stamp).
   /control/car/link_frame:
     type: aav_interfaces/msg/LinkFrame
@@ -297,6 +302,7 @@ topics:
     pub: [output_mux]
     sub: [legacy_uart_bridge]
     live: [car]
+    not_virtual: "made only beside /control/car/actuator_cmd, which a simulator never sends"
     note: The Orin's heartbeat (TODO 50) - one message for each command output_mux target:=car passes on to /control/car/actuator_cmd, so only while its gate is OPEN; counter +1 each time (u8, 255 then 0), header copied from the command. legacy_uart_bridge (the Motor Pi) copies the last counter into every version 2 serial frame and never makes one up, so a stuck or cut-off Pi can't fake it. The Rust ESP32 firmware brakes, latched, when the counter hasn't changed for 100 ms (docs/rust-firmware.md, "The heartbeat"). spine_bridge doesn't read it - DRIVE_CMD has its own counter.
   /control/sim/actuator_cmd:
     type: ackermann_msgs/msg/AckermannDriveStamped
@@ -513,7 +519,7 @@ topics:
     type: sensor_msgs/msg/BatteryState
     pub: [battery_state_publisher, mock_battery]
     sub: [hud, actuator_test, hw_panel]
-    live: [bench]
+    live: [bench, virtual]
     note: aav_battery_victron's node is battery_state_publisher (the Victron VE.Direct cable).
   /vehicle/battery/heartbeat:
     type: std_msgs/msg/String
@@ -568,6 +574,7 @@ topics:
     pub: [lidar_driver]
     sub: [lidar_cloud]
     live: [car]
+    not_virtual: "Ravensim draws the lidar's points (/sensors/lidar/points), not the Velodyne's UDP packets"
     note: The roof Velodyne VLP-16's UDP packets as they come (the stock velodyne_driver, aav_sensors sensors.launch.py lidar:=true), one turn (0.1 s, about 76 packets) a message, frame lidar_link. It reads only packets from lidar_ip (192.168.1.201, the 16 Oct audit) on lidar_port (2368), so it runs on the computer they're sent to - the Jetson. lidar_cloud turns them into /sensors/lidar/points. In bench mode (lidar:=true), mock_lidar sends it the bench world's packets on 127.0.0.1:2369, so the same driver runs.
   /sensors/lidar/points:
     type: sensor_msgs/msg/PointCloud2
@@ -648,6 +655,7 @@ topics:
     pub: [stop_sign_watcher]
     sub: [twist_mux, hud, language_drive, behaviour]
     live: [car]
+    not_virtual: "needs the object detector: sim perception:=true in the ml environment (pixi run -e ml)"
     note: true while the car stops for a stop sign. A twist_mux lock at priority 30 - it holds navigation and the AI slot, never a person; never expires on silence. On the car, the stop_signs part - one watcher, on the machine with the mux. Since 17 Nov aav_stop_sign_rs (Rust) publishes it; the Python node removed 22 Nov.
   /perception/stop_sign/distance:
     type: geometry_msgs/msg/PointStamped
@@ -687,7 +695,7 @@ topics:
     type: std_msgs/msg/UInt16MultiArray
     pub: [rc_pad]
     sub: [spine_sim]
-    live: [bench, sim]
+    live: [bench]
     note: "The RC receiver's 14 iBUS channels (µs), 50 Hz - what the car's FlySky receiver sends the ESP32, from a PS4 gamepad playing the FS-i6X (rc_pad, 23 Nov). spine_sim with rc:=true feeds them through the ibus crate's own parser and RcMap::TODAY, as the board does, so the firmware's RC rules run unchanged. CH2 (index 1) stop and give, CH3 (2) the pedal, CH4 (3) steering, CH6 (5) the mode switch - 1100 normal, 1900 manual, 1000 the failsafe. Silent 100 ms is a lost RC. pixi run rc-pad, or sim spine:=true rc_pad:=true."
   /vehicle/bench/hw_estop:
     type: std_msgs/msg/Bool
