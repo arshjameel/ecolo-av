@@ -346,6 +346,34 @@ since 25 Nov), its numbers, graphs and buttons.
 | A command | only while the window draws frames (hud-core's heartbeat) |
 | E-STOP | only true; its key (E) works only on the hardware page (on the map, E is a letter for the search) |
 | One or the other | run the map's page or `pixi run hw-panel` on one ROS network, not both: both nodes are called `hw_panel` |
+| On the real car | **watch-only**: numbers and graphs, E-STOP; no driving, no calibrating, no ladder runs ([below](#who-may-do-what-where)) |
+
+#### Who may do what, where
+
+Ben, 26 Nov (option A): "Watch-only on the car: calibration stays laptop-only." The
+car's dash screen runs the map; there the hardware page only **shows** while the car is
+REAL. Calibrate and drive from a laptop (`hw_panel`).
+
+| Where | Source | Drive buttons | STEERING CAL buttons | LADDER: RUN, jacks | LADDER: STOP its own run | E-STOP |
+|---|---|---|---|---|---|---|
+| `hw_panel` (a laptop) | any | its own rules | its own rules | its own rules | yes | yes |
+| the map's HARDWARE page | SIM, BENCH, REPLAY | its own rules | its own rules | its own rules | yes | yes |
+| the map's HARDWARE page | **REAL**, or not heard yet | **off** | **off** | **off** | yes | yes |
+
+- "Its own rules": the gate, the calibration page's checks, ladder-core. The table only
+  takes buttons away.
+- Not heard yet counts as REAL (fail safe).
+- Off buttons are grey, and the page says why: "watch-only on the car's screen: calibrate
+  and drive from a laptop". The readings, the graphs, MEASURE and the ladder's table, question
+  and answers still show.
+- The source turning REAL while the calibration page asks ends what it asks, as leaving
+  the page does.
+- STOP and E-STOP stay: stopping is always allowed. The tab's STOP only ever stops a run
+  it started itself.
+- The rule: panel-core's `controls` (`Controls::for_host`), tested for every host and
+  source.
+- See it with pretend data: `map --demo --demo-real --hardware-page --hardware-tab calibration`.
+  Picture not taken yet: on 26 Nov the Mac's screen was locked, so no window could open.
 
 `map.launch.py hardware:=false` (or `map --no-hardware`): no page and no second node.
 The pictures: `map --demo --screenshot` and `map --demo --hardware-page --screenshot` on

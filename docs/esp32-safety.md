@@ -202,6 +202,7 @@ Works with **no Pi and no Orin**. The ESP32 reads the receiver itself.
 | Can a laptop run the output mux for the real car? | **Yes, since 20 Nov**: `pixi run car laptop_orin` (below). Never tried on the car |
 | What a laptop can do | drive (`pixi run keyboard`), watch (`pixi run tools/ros.sh ros2 launch aav_hud hw_panel.launch.py stands:=true`; not `pixi run hw-panel`, which stays on the laptop), e-stop |
 | hw_panel's speed buttons on the real car | **off** (on stands too, until a driven-wheel speed exists, TODO 49b) |
+| The dash screen (the map's HARDWARE page) on the real car | **watch-only** (Ben, 26 Nov): no drive, calibration or ladder buttons; E-STOP only. Calibrate from a laptop (`docs/hud.md`, "Who may do what, where") |
 
 ### The command that works today, with no Orin
 
