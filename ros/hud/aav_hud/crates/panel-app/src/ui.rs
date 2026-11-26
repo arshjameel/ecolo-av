@@ -49,6 +49,8 @@ use panel_core::{
 };
 use raylib::prelude::*;
 
+use crate::page::Host;
+
 /// Fonts tried in order; raylib's own small pixel font if none is there.
 const FONT_FILES: [&str; 4] = [
     "/System/Library/Fonts/Supplemental/Verdana Bold.ttf", // macOS
@@ -112,6 +114,8 @@ pub enum Button {
     Freeze,
     /// The measure page: the odometer and the tape back to zero.
     Reset,
+    /// In the map window only: back to the map (F2 too).
+    Leave,
 }
 
 impl Button {
@@ -132,6 +136,7 @@ impl Button {
             Self::Save => "SAVE",
             Self::Freeze => "FREEZE (P)",
             Self::Reset => "RESET (R)",
+            Self::Leave => "MAP (F2)",
             Self::Press(Press::SpeedUp) => "SPEED +",
             Self::Press(Press::SpeedDown) => "SPEED -",
             Self::Press(Press::Left) => "< LEFT",
@@ -145,7 +150,8 @@ impl Button {
 }
 
 /// Where each button is, in a window `w` wide: the same for drawing and for the mouse.
-pub fn layout(w: f32, page: Page) -> Vec<(Button, Rectangle)> {
+/// First the E-STOP and the tabs (and, in the map window, MAP), then the page's own.
+pub fn layout(w: f32, page: Page, host: Host) -> Vec<(Button, Rectangle)> {
     let mut buttons = vec![(
         Button::Estop,
         Rectangle::new(w - MARGIN - 240.0, 14.0, 240.0, 84.0),
@@ -156,6 +162,11 @@ pub fn layout(w: f32, page: Page) -> Vec<(Button, Rectangle)> {
         let x = tab_x + i as f32 * (tab_w + 8.0);
         buttons.push((Button::Tab(p), Rectangle::new(x, 58.0, tab_w, 36.0)));
     }
+    if host == Host::Map {
+        // Above the tabs, left of the E-STOP: right of the title and its pills.
+        let x = w - MARGIN - 240.0 - 16.0 - tab_w;
+        buttons.push((Button::Leave, Rectangle::new(x, 14.0, tab_w, 36.0)));
+    }
     match page {
         Page::Drive => buttons.extend(drive_layout(w)),
         Page::Calibration => buttons.extend(calibration::layout(w)),
@@ -163,6 +174,11 @@ pub fn layout(w: f32, page: Page) -> Vec<(Button, Rectangle)> {
         Page::Measure => buttons.extend(measure::layout(w)),
     }
     buttons
+}
+
+/// How many of [`layout`]'s buttons are on every page: the E-STOP, the tabs, and MAP.
+fn header_len(host: Host) -> usize {
+    1 + Page::ALL.len() + usize::from(host == Host::Map)
 }
 
 /// The drive page's buttons.
@@ -240,6 +256,8 @@ pub struct Frame<'a> {
     pub wheels_note: Option<&'a str>,
     pub stands: bool,
     pub page: Page,
+    /// `hw_panel`, or the map window's HARDWARE page (a MAP button).
+    pub host: Host,
     pub cal: &'a CalPage,
     /// Whether the software allows the calibration page to ask now, and on what.
     pub cal_allowance: &'a Allowance,
@@ -347,7 +365,7 @@ impl Ui {
         let left = w * CAR_FROM;
         let place = Placement::bottom_right(left, 0.0, w - MARGIN - left, h - 40.0);
         paint::faint_car(d, t, place, 2.0, paint::Under::Words);
-        let buttons = layout(w, f.page);
+        let buttons = layout(w, f.page, f.host);
         let speed_on = matches!(f.gate, Gate::On { .. });
 
         // Title, the source, the label.
@@ -381,7 +399,7 @@ impl Ui {
         }
 
         // The E-STOP and the tabs, on every page.
-        let header = 1 + Page::ALL.len();
+        let header = header_len(f.host);
         for &(b, r) in buttons.iter().take(header) {
             self.button(d, b, r, f, true);
         }
@@ -620,7 +638,7 @@ impl Ui {
         }
         let size = match b {
             Button::Estop => 34.0,
-            Button::Tab(_) => 18.0,
+            Button::Tab(_) | Button::Leave => 18.0,
             Button::Cal(_) | Button::Save | Button::Freeze | Button::Reset => 21.0,
             _ => 26.0,
         };
@@ -690,9 +708,12 @@ mod tests {
 
     #[test]
     fn the_buttons_never_overlap() {
-        for page in Page::ALL {
-            for w in [1100.0, 1280.0, 1920.0] {
-                let buttons = layout(w, page);
+        for (page, host) in Page::ALL
+            .into_iter()
+            .flat_map(|p| [(p, Host::Standalone), (p, Host::Map)])
+        {
+            for w in [1100.0, 1280.0, 1600.0, 1920.0] {
+                let buttons = layout(w, page, host);
                 for (i, (a, ra)) in buttons.iter().enumerate() {
                     assert!(ra.x >= 0.0 && ra.x + ra.width <= w, "{a:?} at {w}");
                     for (b, rb) in &buttons[i + 1..] {
@@ -704,7 +725,14 @@ mod tests {
                 }
             }
         }
-        assert_eq!(layout(1280.0, Page::Drive).len(), 12);
+        assert_eq!(layout(1280.0, Page::Drive, Host::Standalone).len(), 12);
+        assert_eq!(layout(1280.0, Page::Drive, Host::Map).len(), 13);
+        // MAP only in the map window, and among the buttons on every page.
+        assert!(layout(1280.0, Page::Drive, Host::Standalone)
+            .iter()
+            .all(|(b, _)| *b != Button::Leave));
+        let map = layout(1280.0, Page::Graphs, Host::Map);
+        assert_eq!(map[header_len(Host::Map) - 1].0, Button::Leave);
     }
 
     #[test]
@@ -733,8 +761,11 @@ mod tests {
         assert_eq!(room.corner, None);
         assert_eq!(room.lane, None);
         // The E-STOP and four tabs, then each page's own.
-        assert_eq!(layout(1280.0, Page::Calibration).len(), 5 + 12);
-        assert_eq!(layout(1280.0, Page::Graphs).len(), 5 + 1);
-        assert_eq!(layout(1280.0, Page::Measure).len(), 5 + 2);
+        assert_eq!(
+            layout(1280.0, Page::Calibration, Host::Standalone).len(),
+            5 + 12
+        );
+        assert_eq!(layout(1280.0, Page::Graphs, Host::Standalone).len(), 5 + 1);
+        assert_eq!(layout(1280.0, Page::Measure, Host::Standalone).len(), 5 + 2);
     }
 }
