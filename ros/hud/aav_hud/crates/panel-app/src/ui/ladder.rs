@@ -30,6 +30,8 @@ use ladder_core::{
 };
 use raylib::prelude::*;
 
+use panel_core::controls::{Action, WATCH_ONLY};
+
 use super::{fit, wrap, Button, Frame, Room, Ui, MARGIN};
 use crate::ladder::{views, View};
 
@@ -202,7 +204,7 @@ impl Ui {
         let state = fit(&self.font, &jacks.to_string(), left - 236.0, 15.0);
         self.text(d, &state, MARGIN, TOP + 49.0, 15.0, ink);
         if let Some(r) = find(buttons, Button::Jacks) {
-            let on = session.jacks_button().is_some();
+            let on = session.jacks_button().is_some() && f.controls.allows(Action::Jacks);
             self.button_with(d, Button::Jacks, r, f, on, jacks.button_words());
         }
         if let Some(said) = session.jacks_said() {
@@ -327,7 +329,8 @@ impl Ui {
         let button = session.run_button();
         let running = session.running();
         if let Some(r) = find(buttons, Button::RunRung) {
-            let on = matches!(button, Some(RunButton::Ready(_)));
+            let on =
+                matches!(button, Some(RunButton::Ready(_))) && f.controls.allows(Action::RunLadder);
             let words = format!("RUN RUNG {} IN THE SIMULATOR", rung.number);
             self.button_with(d, Button::RunRung, r, f, on, &words);
         }
@@ -337,9 +340,12 @@ impl Ui {
             } else {
                 "STOP THE RUN"
             };
-            self.button_with(d, Button::StopRun, r, f, running.is_some(), words);
+            let on = running.is_some() && f.controls.allows(Action::StopOwnRun);
+            self.button_with(d, Button::StopRun, r, f, on, words);
         }
+        let watch_only = f.controls.why_not(Action::RunLadder);
         let (why, ink) = match (&button, session.runs_in()) {
+            _ if watch_only.is_some() => (format!("Off: {WATCH_ONLY}"), t.warn),
             (Some(RunButton::Off(why)), _) => (format!("Off: {why}"), t.warn),
             (_, Some(runs_in)) => (runs_in.to_string(), t.dim),
             _ => (String::new(), t.dim),

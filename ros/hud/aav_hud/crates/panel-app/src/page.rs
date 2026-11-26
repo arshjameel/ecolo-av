@@ -25,6 +25,7 @@ use panel_core::{
     buttons::{Buttons, Command, Press, Steps, World, Zeroed},
     calibration::{self, CalPage, CalPress, NotReady, Request},
     config::PanelConfig,
+    controls::{Action, Controls},
     easter_egg::{self, PassWatch},
     gate::{self, Caps, Gate, Situation},
     graphs::Freezer,
@@ -81,14 +82,9 @@ pub const CAL_KEYS: [(KeyboardKey, CalPress); 9] = [
 /// The key that flips the map window between its MAP and HARDWARE pages.
 pub const FLIP_KEY: KeyboardKey = KeyboardKey::KEY_F2;
 
-/// Which window the page is in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Host {
-    /// `hw_panel`: the page is the whole program.
-    Standalone,
-    /// The map window: a MAP (F2) button goes back to the map.
-    Map,
-}
+/// Which window the page is in: panel-core's, as it decides what each host may do
+/// ([`Controls::for_host`]).
+pub use panel_core::controls::Host;
 
 /// The panel between the source and the window: news in, where it may drive, the
 /// buttons, what to send. The window adds the keys, the mouse and the drawing; the
@@ -110,10 +106,13 @@ pub struct Panel {
     odometer: Odometer,
     tape: Entry,
     measure_saved: Option<String>,
+    /// `hw_panel`'s own window, or the map's HARDWARE page: with the source, what a
+    /// person may do here ([`Self::controls`]).
+    host: Host,
 }
 
 impl Panel {
-    pub fn new(config: &PanelConfig, vehicle: &Vehicle, stands: bool) -> Self {
+    pub fn new(config: &PanelConfig, vehicle: &Vehicle, stands: bool, host: Host) -> Self {
         Self {
             state: PanelState::new(config.stale_after()),
             buttons: Buttons::new(Steps {
@@ -137,7 +136,14 @@ impl Panel {
             odometer: Odometer::default(),
             tape: Entry::default(),
             measure_saved: None,
+            host,
         }
+    }
+
+    /// What a person may do here now: the map's page on the real car (or nothing
+    /// announced) only watches (Ben, 26 Nov, option A).
+    pub fn controls(&self) -> Controls {
+        Controls::for_host(self.host, self.state.kind())
     }
 
     /// What the panel has heard.
@@ -197,7 +203,9 @@ impl Panel {
     ) -> Option<Request> {
         let ready = self.cal_ready(now);
         let position = self.position(now);
-        for p in presses {
+        // Watch-only: no press reaches the page (news has already ended its mode).
+        let allowed = self.controls().allows(Action::Calibrate);
+        for p in presses.into_iter().filter(|_| allowed) {
             self.cal.press(p, now, position, &ready);
         }
         self.cal.tick(now, self.state.fresh_raw(now), &ready)
@@ -269,6 +277,15 @@ impl Panel {
             self.buttons.zero(Zeroed::SourceChanged);
         }
         self.last_kind = Some(kind);
+        let controls = self.controls();
+        if controls.is_watch_only() && self.cal.is_asking() {
+            // Watch-only now (the source went REAL): end what the calibration page asks,
+            // as leaving it does.
+            self.end_calibration(now);
+        }
+        if !controls.allows(Action::Drive) {
+            return Gate::Off(gate::Off::WatchOnly);
+        }
         gate::gate(
             &Situation {
                 kind,
@@ -291,8 +308,9 @@ impl Panel {
         presses: impl IntoIterator<Item = Press>,
         go: bool,
     ) -> Option<Command> {
-        // The calibration page has no drive buttons: GO is never held there.
-        let drive = self.page == Page::Drive;
+        // The calibration page has no drive buttons: GO is never held there. Watch-only:
+        // none anywhere.
+        let drive = self.page == Page::Drive && self.controls().allows(Action::Drive);
         for p in presses.into_iter().filter(|_| drive) {
             self.buttons.press(p, now, gate);
         }
@@ -387,7 +405,7 @@ impl HardwarePage {
         egg.drive_across(now);
         let ladder = LadderTab::open(source.is_pretend());
         Self {
-            panel: Panel::new(&config, vehicle, stands),
+            panel: Panel::new(&config, vehicle, stands, host),
             ui,
             source,
             host,
@@ -513,13 +531,19 @@ impl HardwarePage {
         }
         // The ladder page: a rung, RUN, STOP, the jacks, the answer's views. ladder-core
         // decides whether each may act; Up and Down choose a rung.
+        // Watch-only: no RUN and no jacks; STOP still stops a run this tab started.
         if panel.page == Page::Ladder {
+            let controls = panel.controls();
             let ladder = &mut self.ladder;
             match clicked {
                 Some(Button::Rung(row)) => ladder.select_row(row),
-                Some(Button::RunRung) => ladder.press_run(),
-                Some(Button::StopRun) => ladder.press_stop(),
-                Some(Button::Jacks) => ladder.press_jacks(),
+                Some(Button::RunRung) if controls.allows(Action::RunLadder) => {
+                    ladder.press_run();
+                }
+                Some(Button::StopRun) if controls.allows(Action::StopOwnRun) => {
+                    ladder.press_stop();
+                }
+                Some(Button::Jacks) if controls.allows(Action::Jacks) => ladder.press_jacks(),
                 Some(Button::View(i)) => ladder.show_view(i),
                 _ => {}
             }
@@ -557,7 +581,7 @@ impl HardwarePage {
         panel.odometer.update(seen, now);
         let command = panel.act(now, &self.gate, input.presses, input.go);
         let calibration = panel.calibrate(now, input.cal_presses);
-        if input.save {
+        if input.save && panel.controls().allows(Action::Calibrate) {
             panel.save();
         }
         self.ladder
@@ -616,6 +640,7 @@ impl HardwarePage {
             wheel_diameter: panel.vehicle.wheel_diameter,
             measure_saved: panel.measure_saved.as_deref(),
             ladder: &self.ladder,
+            controls: panel.controls(),
         };
         let room = self.ui.draw(d, &panel.state, &frame);
         robot::draw(d, self.config.theme.theme(), step.show, &room);
@@ -696,7 +721,12 @@ mod tests {
     fn the_first_announcement_is_not_a_source_change() {
         use hud_core::origin::Origin;
         let t = Instant::now();
-        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
+        let mut panel = Panel::new(
+            &PanelConfig::default(),
+            &Vehicle::default(),
+            false,
+            Host::Standalone,
+        );
         let mut quiet = Script(vec![]);
         assert!(matches!(panel.news(&mut quiet, t), Gate::Off(_)));
         // Ravensim announces late, while GO is already held: no zero.
@@ -745,7 +775,12 @@ mod tests {
     #[test]
     fn the_calibration_page_never_drives_and_leaving_it_ends_the_mode() {
         let t = Instant::now();
-        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
+        let mut panel = Panel::new(
+            &PanelConfig::default(),
+            &Vehicle::default(),
+            false,
+            Host::Standalone,
+        );
         let gate = panel.news(&mut calibration_news(), t);
         panel.show(Page::Calibration, t);
         assert_eq!(panel.act(t, &gate, [Press::SpeedUp], true), None);
@@ -760,7 +795,12 @@ mod tests {
     fn hiding_the_page_ends_the_calibration_as_leaving_it_does() {
         // HardwarePage::hide without a window: the same steps on the Panel.
         let t = Instant::now();
-        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
+        let mut panel = Panel::new(
+            &PanelConfig::default(),
+            &Vehicle::default(),
+            false,
+            Host::Standalone,
+        );
         panel.news(&mut calibration_news(), t);
         panel.show(Page::Calibration, t);
         assert_eq!(panel.calibrate(t, [CalPress::Limp]), Some(Request::Limp));
@@ -775,7 +815,12 @@ mod tests {
         // Hidden: no presses and no GO (Input::default). Driving stops at once: zeros,
         // then nothing.
         let t = Instant::now();
-        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
+        let mut panel = Panel::new(
+            &PanelConfig::default(),
+            &Vehicle::default(),
+            false,
+            Host::Standalone,
+        );
         let mut sim = Script(vec![announce(hud_core::origin::Origin::Sim)]);
         let gate = panel.news(&mut sim, t);
         assert!(panel.act(t, &gate, [Press::SpeedUp], true).is_some());
@@ -794,7 +839,12 @@ mod tests {
     fn run_cal_self_test(bind: Option<u16>) -> (bool, Option<panel_core::sweep::Outcome>) {
         let t0 = Instant::now();
         let mut demo = Demo::new(t0, bind, true);
-        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
+        let mut panel = Panel::new(
+            &PanelConfig::default(),
+            &Vehicle::default(),
+            false,
+            Host::Standalone,
+        );
         panel.show(Page::Calibration, t0);
         let mut script = CalScript::new(bind.is_some());
         let mut now = t0;
@@ -823,6 +873,108 @@ mod tests {
             }
             other => panic!("{other:?}"),
         }
+    }
+
+    /// The calibration news, announced as `origin`.
+    fn calibration_news_from(origin: hud_core::origin::Origin) -> Script {
+        let mut news = calibration_news();
+        news.0[0] = announce(origin);
+        news
+    }
+
+    #[test]
+    fn the_maps_page_on_the_real_car_only_watches() {
+        use hud_core::origin::Origin;
+        let t = Instant::now();
+        let mut panel = Panel::new(
+            &PanelConfig::default(),
+            &Vehicle::default(),
+            false,
+            Host::Map,
+        );
+        // Nothing heard yet: as the real car.
+        assert_eq!(
+            panel.news(&mut Script(vec![]), t),
+            Gate::Off(Off::WatchOnly)
+        );
+        assert_eq!(panel.controls(), Controls::WatchOnly);
+        let gate = panel.news(&mut calibration_news_from(Origin::Real), t);
+        assert_eq!(gate, Gate::Off(Off::WatchOnly));
+        assert_eq!(
+            panel.act(t, &gate, [Press::SpeedUp, Press::Left], true),
+            None
+        );
+        assert_eq!(
+            panel.buttons().asked_steer(),
+            0.0,
+            "no steering press reaches it"
+        );
+        panel.show(Page::Calibration, t);
+        for press in [
+            CalPress::Limp,
+            CalPress::StepLeft,
+            CalPress::Hold,
+            CalPress::Check,
+        ] {
+            assert_eq!(panel.calibrate(t, [press]), None, "{press:?}");
+        }
+        assert!(!panel.cal().is_asking());
+    }
+
+    #[test]
+    fn the_maps_page_on_sim_or_bench_keeps_every_control() {
+        use hud_core::origin::Origin;
+        for origin in [Origin::Sim, Origin::Bench] {
+            let t = Instant::now();
+            let mut panel = Panel::new(
+                &PanelConfig::default(),
+                &Vehicle::default(),
+                false,
+                Host::Map,
+            );
+            let gate = panel.news(&mut calibration_news_from(origin), t);
+            assert!(matches!(gate, Gate::On { .. }), "{origin:?}");
+            assert_eq!(panel.controls(), Controls::Full);
+            panel.show(Page::Calibration, t);
+            assert_eq!(panel.calibrate(t, [CalPress::Limp]), Some(Request::Limp));
+        }
+    }
+
+    #[test]
+    fn hw_panel_on_the_real_car_keeps_its_own_rules() {
+        use hud_core::origin::Origin;
+        let t = Instant::now();
+        let mut panel = Panel::new(
+            &PanelConfig::default(),
+            &Vehicle::default(),
+            false,
+            Host::Standalone,
+        );
+        let gate = panel.news(&mut calibration_news_from(Origin::Real), t);
+        assert_eq!(gate, Gate::Off(Off::OnTheGround), "the gate's own reason");
+        assert_eq!(panel.controls(), Controls::Full);
+        panel.show(Page::Calibration, t);
+        assert_eq!(panel.calibrate(t, [CalPress::Limp]), Some(Request::Limp));
+    }
+
+    #[test]
+    fn the_source_going_real_ends_the_maps_calibration() {
+        use hud_core::origin::Origin;
+        let t = Instant::now();
+        let mut panel = Panel::new(
+            &PanelConfig::default(),
+            &Vehicle::default(),
+            false,
+            Host::Map,
+        );
+        panel.news(&mut calibration_news(), t);
+        panel.show(Page::Calibration, t);
+        assert_eq!(panel.calibrate(t, [CalPress::Limp]), Some(Request::Limp));
+        let mut real = Script(vec![announce(Origin::Real)]);
+        assert_eq!(panel.news(&mut real, t), Gate::Off(Off::WatchOnly));
+        assert!(!panel.cal().is_asking());
+        assert_eq!(panel.calibrate(t, [CalPress::Limp]), Some(Request::Off));
+        assert_eq!(panel.calibrate(t + END_FOR, []), None);
     }
 
     #[test]

@@ -57,7 +57,7 @@
 //! sends news over a channel (ros.rs). `--demo` swaps the ROS node for pretend data.
 //! The maths (map to screen, the distance left) is in map-core.
 //!
-//! usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
+//! usage: map [--demo [--demo-real]] [--fullscreen] [--monitor NAME|N] [--list-monitors]
 //!            [--whole-map] [--config FILE] [--vehicle FILE]
 //!            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
 //!            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
@@ -108,7 +108,7 @@ use crate::{
 };
 
 const USAGE: &str = "\
-usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
+usage: map [--demo [--demo-real]] [--fullscreen] [--monitor NAME|N] [--list-monitors]
            [--whole-map] [--config FILE] [--vehicle FILE]
            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
@@ -116,6 +116,8 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
            [--hardware-page] [--hardware-tab TAB] [--no-hardware] [--ros-args ...]
 
   --demo             pretend data: no ROS, no car
+  --demo-real        with --demo: the pretend car says REAL, so the HARDWARE page
+                     only watches, as on the car's dash screen
   --fullscreen       fill the screen (F11 switches too)
   --monitor NAME|N   open on this monitor: its name exactly (HDMI-2, as xrandr says) or
                      its number (0 = the first). Not there: an error that lists them
@@ -164,6 +166,8 @@ const KEY_ZOOM: f64 = 1.25;
 #[derive(Debug, Default)]
 struct Options {
     demo: bool,
+    /// The demo's car announces REAL: the dash screen's watch-only page.
+    demo_real: bool,
     fullscreen: bool,
     monitor: Option<Monitor>,
     list_monitors: bool,
@@ -204,6 +208,7 @@ impl Options {
             match arg.as_str() {
                 "--ros-args" => break,
                 "--demo" => opts.demo = true,
+                "--demo-real" => opts.demo_real = true,
                 "--fullscreen" => opts.fullscreen = true,
                 "--list-monitors" => opts.list_monitors = true,
                 "--monitor" => opts.monitor = Some(value("--monitor")?.parse()?),
@@ -266,6 +271,9 @@ impl Options {
                 }
                 other => bail!("unknown option {other:?}\n{USAGE}"),
             }
+        }
+        if opts.demo_real && !opts.demo {
+            bail!("--demo-real needs --demo: it is for the pretend car only");
         }
         if opts.pick.is_some() && opts.search.is_none() {
             bail!("--pick needs --search");
@@ -350,6 +358,7 @@ fn open_hardware(opts: &Options, args: Vec<String>) -> Result<Option<Hardware>> 
     };
     let source_options = SourceOptions {
         demo: opts.demo,
+        demo_real: opts.demo_real,
         ..SourceOptions::default()
     };
     match panel_app::open_source(args, PanelConfig::default(), &source_options, "map") {
@@ -763,6 +772,11 @@ mod tests {
 
     #[test]
     fn options_stop_at_ros_args() {
+        assert!(
+            Options::parse(&args(&["--demo-real"])).is_err(),
+            "needs --demo"
+        );
+        assert!(Options::parse(&args(&["--demo", "--demo-real"])).is_ok_and(|o| o.demo_real));
         let o = Options::parse(&args(&["--demo", "--ros-args", "--whatever"])).expect("valid");
         assert!(o.demo);
         assert!(!o.fullscreen);

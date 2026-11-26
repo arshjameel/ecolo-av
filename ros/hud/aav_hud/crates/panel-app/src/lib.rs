@@ -46,6 +46,8 @@ pub struct SourceOptions {
     pub demo: bool,
     /// The demo's stiff spot in the steering, counts.
     pub demo_bind: Option<u16>,
+    /// The demo announces REAL, not SIM: the real car's rules on pretend data.
+    pub demo_real: bool,
     /// `--esp32 ws://...`: wins over `esp32_url` in the config or the parameters.
     pub esp32: Option<String>,
 }
@@ -66,7 +68,10 @@ pub fn open_source(
     let (source, mut config): (Box<dyn DataSource>, PanelConfig) = if opts.demo {
         // With a real ESP32's lines, the demo pretends none of its own.
         let lines = config.esp32_url.trim().is_empty();
-        let demo = Demo::new(Instant::now(), opts.demo_bind, lines);
+        let mut demo = Demo::new(Instant::now(), opts.demo_bind, lines);
+        if opts.demo_real {
+            demo = demo.announcing(hud_core::origin::Origin::Real);
+        }
         (Box::new(demo), config)
     } else {
         start_node(args, config, who)?
