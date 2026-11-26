@@ -60,6 +60,7 @@ use debug_core::{
     swap::{Reply, Tracker},
     track::TrackStatus,
     voxels::{self, VoxelSettings, VoxelStatus},
+    words,
 };
 use hud_core::{
     origin::{Announcement, Entry, Origin},
@@ -594,13 +595,7 @@ fn spin(
     // The panel: each sensor from its own topic.
     let _imu = node.create_subscription(topic(Topic::Imu).as_str().sensor_data_qos(), {
         let tx = tx.clone();
-        move |m: Imu| {
-            let rate = m.angular_velocity.z.to_degrees();
-            send(
-                &tx,
-                heard(Source::Imu, format!("yaw rate {rate:+.1} deg/s")),
-            )
-        }
+        move |m: Imu| send(&tx, heard(Source::Imu, words::imu(m.angular_velocity.z)))
     })?;
     let _gps = node.create_subscription(topic(Topic::Gps).as_str().sensor_data_qos(), {
         let tx = tx.clone();
@@ -615,7 +610,7 @@ fn spin(
             let tx = tx.clone();
             move |m: Odometry| {
                 let v = m.twist.twist.linear.x;
-                send(&tx, heard(Source::WheelOdom, format!("{v:+.2} m/s")))
+                send(&tx, heard(Source::WheelOdom, words::speed(v)))
             }
         })?;
     let _vehicle =
@@ -740,33 +735,18 @@ fn odometry(who: Localizer, m: &Odometry) -> Update {
     }
 }
 
-/// The fix's kind (sensor_msgs/NavSatStatus) and its horizontal spread.
+/// The fix's kind and its horizontal spread (debug-core's `words`).
 fn gps_detail(m: &NavSatFix) -> String {
-    let kind = match m.status.status {
-        s if s < 0 => "no fix",
-        0 => "fix",
-        1 => "SBAS fix",
-        _ => "RTK / GBAS fix",
-    };
-    let spread = m.position_covariance[0].max(m.position_covariance[4]);
-    if spread.is_finite() && spread > 0.0 {
-        format!("{kind}, {:.1} m", spread.sqrt())
-    } else {
-        kind.to_owned()
-    }
+    words::gps(
+        m.status.status,
+        m.position_covariance[0],
+        m.position_covariance[4],
+    )
 }
 
-/// The measured wheels' mean speed.
+/// The measured wheels' mean speed (debug-core's `words`).
 fn wheels_detail(m: &WheelSpeeds) -> String {
-    let measured: Vec<f32> = [m.front_left, m.front_right, m.rear_left, m.rear_right]
-        .into_iter()
-        .filter(|v| v.is_finite())
-        .collect();
-    if measured.is_empty() {
-        return "none measured".to_owned();
-    }
-    let mean = measured.iter().sum::<f32>() / measured.len() as f32;
-    format!("{mean:+.2} m/s ({} wheels)", measured.len())
+    words::wheels([m.front_left, m.front_right, m.rear_left, m.rear_right])
 }
 
 fn vehicle(m: &VehicleStatusMsg) -> VehicleStatus {
