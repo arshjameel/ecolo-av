@@ -322,6 +322,7 @@ fn main() -> Result<()> {
     let source_options = SourceOptions {
         demo: opts.demo,
         demo_bind: opts.demo_bind,
+        demo_real: false,
         esp32: opts.esp32.clone(),
     };
     // The ESP32's status lines beside it: --esp32, or esp32_url (a ROS parameter too).
@@ -522,7 +523,12 @@ mod tests {
         let config = PanelConfig::default();
         let (source, config) = panel_app::ros::RosSource::start(vec!["hw_panel".into()], config)?;
         let mut source: Box<dyn DataSource> = Box::new(source);
-        let mut panel = Panel::new(&config, &Vehicle::default(), false);
+        let mut panel = Panel::new(
+            &config,
+            &Vehicle::default(),
+            false,
+            panel_app::Host::Standalone,
+        );
         let started = Instant::now();
         loop {
             let now = Instant::now();

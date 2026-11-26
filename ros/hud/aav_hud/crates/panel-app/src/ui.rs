@@ -43,6 +43,7 @@ use hud_core::{
 use panel_core::{
     buttons::{Buttons, Press},
     calibration::{Allowance, CalPage, CalPress},
+    controls::{Action, Controls},
     gate::Gate,
     graphs::Freezer,
     measure::{Entry, Odometer},
@@ -317,6 +318,8 @@ pub struct Frame<'a> {
     pub measure_saved: Option<&'a str>,
     /// The ladder page: the tool's session, or why there is none.
     pub ladder: &'a crate::ladder::LadderTab,
+    /// What a person may do here: watch-only on the map's page on the real car.
+    pub controls: Controls,
 }
 
 /// The little robot's room (the easter egg): where nothing else is drawn this frame.
@@ -484,10 +487,12 @@ impl Ui {
             self.text(d, caption, x, 146.0, 17.0, t.caption);
         }
 
+        // Watch-only: every drive button is off; the gate's line says why.
+        let drive = f.controls.allows(Action::Drive);
         for &(b, r) in &buttons[header..] {
             let enabled = match b {
-                Button::Press(Press::Stop | Press::Centre) => true,
-                Button::Go | Button::Press(_) => speed_on,
+                Button::Press(Press::Stop | Press::Centre) => drive,
+                Button::Go | Button::Press(_) => speed_on && drive,
                 _ => true,
             };
             self.button(d, b, r, f, enabled);

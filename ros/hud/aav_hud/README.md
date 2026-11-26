@@ -14,7 +14,9 @@ node (rclrs):
   **debug page** (TODO 247): who is driving, what it asks, what ego sends, the gate, what
   the car did, the locks, the sensors, real or simulated. F2 (or the HARDWARE PAGE
   button) flips to the **HARDWARE page**: `hw_panel` itself, with its own node `hw_panel`
-  in the map's process (25 Nov; `--no-hardware`, `hardware:=false`: without it);
+  in the map's process (25 Nov; `--no-hardware`, `hardware:=false`: without it). On the
+  real car (or nothing announced) that page is **watch-only** (Ben, 26 Nov): numbers,
+  graphs and the E-STOP; no drive, calibration or ladder buttons;
 - `debug_hud`, the debug screen, which opens as the **seeing screen**: the lidar's cubes
   in 3D (kept and fading), where each localizer puts the car (NDT too), AMCL's particles,
   NDT's map, the plan, the costmap's cubes (the voxels trial's, red wireframes, key V);
@@ -182,6 +184,7 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
 | `pixi run hud [fullscreen:=true] [monitor:=HDMI-1]` | `hud.launch.py` |
 | `pixi run map [fullscreen:=true] [monitor:=HDMI-1] [streets:=] [places:=] [hardware:=false]` | `map.launch.py`, with `vehicle.yaml`, `navsat.yaml` and `hw_panel.yaml` (the HARDWARE page's node) |
 | `map --demo --hardware-page` | the map window on its HARDWARE page (F2 flips), the panel's pretend car |
+| `map --demo --demo-real --hardware-page` | the same, the pretend car saying REAL: the page watch-only, as on the car's dash screen |
 | `cargo run -p hud-app --no-default-features -- --demo` | the HUD with pretend data, no ROS |
 | `cargo run -p map-app --no-default-features -- --demo [--bench 6]` | the map with pretend data; `--bench` prints the frame rate (the blur's test) |
 | `map --demo --debug-page` | the map window's debug page (key D) with pretend drivers: the navigator, a person on the keyboard, the sensors lock, on a 30 s loop |
@@ -217,7 +220,10 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
 - `debug_hud` publishes nothing and never touches an actuator. Its one call swaps a
   **simulated** trial tracker (keys 1-4), and only while `/system/source` says SIM.
 - The node `hw_panel` drives only from the hardware panel: its own window, or the map
-  window's HARDWARE page (the same code). Hidden, that page gets no keys, clicks or GO,
+  window's HARDWARE page (the same code). On the real car, or with nothing announced,
+  the map's page is watch-only (panel-core's `controls`: no drive, calibration, RUN or
+  jacks; E-STOP and STOP of its own run stay); `hw_panel` keeps its own rules.
+  Hidden, that page gets no keys, clicks or GO,
   and hiding it ends the calibration page's mode. Run one or the other on a network.
 - `hw_panel` is the only screen that drives, and only through twist_mux (slot 45), ego
   and the spine. The car moves only while GO is held; a frozen window stops it (the

@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">82 min read · 10 sections</div></header>
+<div class="meta">84 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -887,8 +887,74 @@ since 25 Nov), its numbers, graphs and buttons.</p>
 <td>One or the other</td>
 <td>run the map's page or <code>pixi run hw-panel</code> on one ROS network, not both: both nodes are called <code>hw_panel</code></td>
 </tr>
+<tr>
+<td>On the real car</td>
+<td><strong>watch-only</strong>: numbers and graphs, E-STOP; no driving, no calibrating, no ladder runs (<a href="#who-may-do-what-where">below</a>)</td>
+</tr>
 </tbody>
 </table></div>
+<h4 id="who-may-do-what-where">Who may do what, where</h4>
+<p>Ben, 26 Nov (option A): "Watch-only on the car: calibration stays laptop-only." The
+car's dash screen runs the map; there the hardware page only <strong>shows</strong> while the car is
+REAL. Calibrate and drive from a laptop (<code>hw_panel</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Source</th>
+<th>Drive buttons</th>
+<th>STEERING CAL buttons</th>
+<th>LADDER: RUN, jacks</th>
+<th>LADDER: STOP its own run</th>
+<th>E-STOP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hw_panel</code> (a laptop)</td>
+<td>any</td>
+<td>its own rules</td>
+<td>its own rules</td>
+<td>its own rules</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>the map's HARDWARE page</td>
+<td>SIM, BENCH, REPLAY</td>
+<td>its own rules</td>
+<td>its own rules</td>
+<td>its own rules</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>the map's HARDWARE page</td>
+<td><strong>REAL</strong>, or not heard yet</td>
+<td><strong>off</strong></td>
+<td><strong>off</strong></td>
+<td><strong>off</strong></td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>"Its own rules": the gate, the calibration page's checks, ladder-core. The table only
+  takes buttons away.</li>
+<li>Not heard yet counts as REAL (fail safe).</li>
+<li>Off buttons are grey, and the page says why: "watch-only on the car's screen: calibrate
+  and drive from a laptop". The readings, the graphs, MEASURE and the ladder's table, question
+  and answers still show.</li>
+<li>The source turning REAL while the calibration page asks ends what it asks, as leaving
+  the page does.</li>
+<li>STOP and E-STOP stay: stopping is always allowed. The tab's STOP only ever stops a run
+  it started itself.</li>
+<li>The rule: panel-core's <code>controls</code> (<code>Controls::for_host</code>), tested for every host and
+  source.</li>
+<li>See it with pretend data: <code>map --demo --demo-real --hardware-page --hardware-tab calibration</code>.
+  Picture not taken yet: on 26 Nov the Mac's screen was locked, so no window could open.</li>
+</ul>
 <p><code>map.launch.py hardware:=false</code> (or <code>map --no-hardware</code>): no page and no second node.
 The pictures: <code>map --demo --screenshot</code> and <code>map --demo --hardware-page --screenshot</code> on
 Ben's MacBook (25 Nov), the window at 1600 x 900; the car's map screen is 1920 x 1080.</p>
