@@ -34,8 +34,8 @@ cd "$(dirname "$0")/.."
 ROOT=$PWD
 
 ESPUP_VERSION=0.19.0
-ESPFLASH_VERSION=4.3.0          # 4.4 and later need rustc 1.95
-XTENSA_RUST_VERSION=1.97.0.0
+ESPFLASH_VERSION=4.7.0          # needs rustc 1.95 or newer: Pixi's is 1.98 (21 Nov)
+XTENSA_RUST_VERSION=1.97.0.0     # 1.100.0.0 builds, but its firmware never boots in QEMU (21 Nov)
 XTENSA_GCC_VERSION=16.2.0_20261109
 
 # Espressif's QEMU fork (GPL-2.0; a tool here, never linked in), from Espressif's
@@ -169,7 +169,7 @@ case "${1:-}" in
     # The qemu-check's build: stand-in devices, so the features say qemu.
     build -q --features qemu,uplink --target-dir target/qemu
     image=$BOARD/target/qemu/flash.bin
-    "$TOOLS/espflash" save-image --chip esp32 --merge --flash-size 4mb \
+    "$TOOLS/espflash" save-image --chip esp32 --merge --flash-size "${AAV_ESP_FLASH_SIZE:-4mb}" \
       "$BOARD/target/qemu/xtensa-esp32-none-elf/release/spine-esp32-umod" "$image" \
       >/dev/null 2>&1
     qemu_env
@@ -196,7 +196,7 @@ case "${1:-}" in
     # With the uplink: the check reads its frames on UART1, and feeds iBUS on UART2.
     build -q --features qemu,uplink --target-dir target/qemu
     image=$BOARD/target/qemu/flash.bin
-    "$TOOLS/espflash" save-image --chip esp32 --merge --flash-size 4mb \
+    "$TOOLS/espflash" save-image --chip esp32 --merge --flash-size "${AAV_ESP_FLASH_SIZE:-4mb}" \
       "$BOARD/target/qemu/xtensa-esp32-none-elf/release/spine-esp32-umod" "$image" \
       >/dev/null 2>&1
     qemu_env

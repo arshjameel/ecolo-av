@@ -7,7 +7,7 @@
 <!-- Generated from docs/car-day.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Car day: the runbook</h1>
-<div class="meta">89 min read · 33 sections</div></header>
+<div class="meta">87 min read · 33 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1365,7 +1365,7 @@ reflash to JetPack 7.2 (Q24), and the engine built again there (an engine is tie
 its TensorRT version).</p>
 </div>
 <h3 id="4e-the-motor-pi">4e. The Motor Pi</h3>
-<p>🔒 H1: is it CORTEX (.120)? Then the same kit, the same steps 4b and 4c there.</p>
+<p>🔒 H1: is it CORTEX (.145 on 21 Nov, by WiFi: check <code>hosts.txt</code>)? Then the same kit, the same steps 4b and 4c there.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1378,7 +1378,7 @@ its TensorRT version).</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>ssh &lt;user&gt;@192.168.1.120</code>, then <code>uname -m</code></td>
+<td><code>ssh &lt;user&gt;@192.168.1.145</code>, then <code>uname -m</code></td>
 <td><code>aarch64</code></td>
 <td><code>armv7l</code>: a 32-bit OS, the kit can't run: write it down</td>
 </tr>
@@ -1860,17 +1860,13 @@ agree. <strong>All of Day A: version 2.</strong></p>
 </tbody>
 </table></div>
 <h3 id="the-rc-transmitter">The RC transmitter</h3>
-<p>Before 6c, on the FS-i6X (Arsh and Ben, 21 Nov; <a href="firmware.html#the-rc-transmitter-arsh-21-nov">the rules</a>).
+<p>Before 6c, on the FS-i6X (Arsh, 21 Nov; <a href="firmware.html#the-rc-transmitter-arsh-21-nov">the rules</a>).
 The Rust reads it differently from the C++:</p>
-<pre class="highlight"><code class="language-text">right stick: down past 88 % = HARD BRAKE while held, the RC takes the car (it springs back)
-             up past 88 %, steering centred, 0.5 s = give the car to the computer
-left stick:  pushed away ◄── forward ──┤ the middle ±30 %: throttle off ├── reverse ──► pulled back
-             (it doesn't spring back; past 88 % the other way while moving: the hard brake too)
-CH6:         low = normal (the computer, once given) · high = manual
+<pre class="highlight"><code class="language-text">left stick:  pushed away ◄── forward ──┤ the middle ±30 %: BRAKE ├── reverse ──► pulled back
+             (it doesn't spring back: put it in the middle to brake)
+CH6:         low = normal (computer; the RC can take over) · high = manual
              (the team's FS-i6X has two positions: RC via ROS, the middle, can't be picked)
 SwC (CH5):   does nothing. The left stick sideways: nothing</code></pre>
-<p><strong>To stop and stay stopped, use the right stick.</strong> The left stick held all the way back
-brakes, then reverses once the car has stopped.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1883,9 +1879,9 @@ brakes, then reverses once the car has stopped.</p>
 <tbody>
 <tr>
 <td>T1</td>
-<td>Write down the old values first (21 Nov: CH3 55%, CH4 0%, the rest Off), for 6d. Then <strong>System setup → RX setup → Fail safe</strong>, the car on (the receiver stores it). Each channel: pick it, OK, UP or DOWN to turn it on, put the stick or switch where it should be, and <strong>hold CANCEL</strong> (a short press doesn't save). CH6 with the switch low (<strong>-100%</strong>); CH3 with the left stick in the middle (<strong>0%</strong>); CH4 0%; CH2 with the right stick <strong>held fully down</strong> (about <strong>+97%</strong>); the rest Off. <strong>Only then</strong> Functions setup → End points → CH6, low side <strong>80%</strong>, hold CANCEL</td>
-<td>Fail safe shows CH6 -100%, CH3 0%, CH4 0%, CH2 about +97%</td>
-<td><strong>don't drive</strong>: the spine can't tell a lost link otherwise. The order matters: the failsafe saves the switch's output as it is. CH2 never up: that is the give</td>
+<td>Write down the old values first (21 Nov: CH3 55%, CH4 0%, the rest Off), for 6d. Then <strong>System setup → RX setup → Fail safe</strong>: CH6 saved at <strong>-100%</strong> with the switch low, CH3 <strong>0%</strong>, CH4 0%, the rest Off. <strong>Only then</strong> Functions setup → End points → CH6, low side <strong>80%</strong></td>
+<td>Fail safe shows CH6 -100%, CH3 0%, CH4 0%</td>
+<td><strong>don't drive</strong>: the spine can't tell a lost link otherwise. The order matters: the failsafe saves the switch's output as it is</td>
 </tr>
 <tr>
 <td>T2</td>
@@ -1900,12 +1896,6 @@ brakes, then reverses once the car has stopped.</p>
 <td>the other way round: <code>throttle_reversed: true</code> in <code>ibus::RcMap</code> (Q7), rebuild</td>
 </tr>
 <tr>
-<td>T3a</td>
-<td>The right stick up, then down, then let go</td>
-<td>CH2 under 1060 up, over 1940 down, 1500 let go</td>
-<td>not past 88 %: the stop and the give can't work</td>
-</tr>
-<tr>
 <td>T4</td>
 <td>The transmitter off</td>
 <td>CH6 reads 1000 for a moment, then <code>faults</code> has 256</td>
@@ -1913,17 +1903,16 @@ brakes, then reverses once the car has stopped.</p>
 </tr>
 <tr>
 <td>T5</td>
-<td>The ESP32's <code>CONFIG</code> line, and its <code>Ready</code> line at boot</td>
-<td><code>rc_band=0.30 rc_brake_ms=1000 rc_lost_below=1050 rc_fitted=true</code>; <code>Ready</code> ends <code>CH2 stop and give: past 88%</code></td>
-<td>the wrong build (no CH2: the 21 Nov one)</td>
+<td>The ESP32's <code>CONFIG</code> line</td>
+<td><code>rc_band=0.30 rc_brake_ms=1000 rc_lost_below=1050 rc_fitted=true</code></td>
+<td>the wrong build</td>
 </tr>
 </tbody>
 </table></div>
 <p>Write the values here, so the next person can check them: CH6 low <strong><em>_, high </em></strong>_,
 failsafe <strong><em>_. CH3 pushed away </em></strong>_, pulled back ____.</p>
 <p><strong>The transmitter must be on for every session with the Rust</strong>, CH6 low and the left stick
-in the middle: in normal mode a lost RC is a hard stop, so without it nothing drives. The
-RC has the car at power-up: the right stick up for half a second gives it to the computer.</p>
+in the middle: in normal mode a lost RC is a hard stop, so without it nothing drives.</p>
 <h3 id="6c-the-checks-wheels-off-the-ground">6c. The checks, wheels off the ground</h3>
 <p>From <a href="esp32-bench.html">First flash on the bench</a>, in order. <strong>Stop at the first that
 fails, and roll back.</strong> Drive from the laptop: <code>export ROS_DOMAIN_ID=42</code>, <code>pixi run keyboard</code>.</p>
@@ -1939,7 +1928,7 @@ fails, and roll back.</strong> Drive from the laptop: <code>export ROS_DOMAIN_ID
 <tr>
 <td>1</td>
 <td>Power on, the transmitter on, CH6 low, the left stick in the middle</td>
-<td>brake full (3500), steering centred (1950), DAC 0 V; <code>faults=0x0000</code>, <code>mode=Rc</code>. Then the right stick up, steering centred, for half a second: <code>mode=Manual</code> (the computer has the car, not armed yet)</td>
+<td>brake full (3500), steering centred (1950), DAC 0 V; <code>faults=0x0000</code> (<code>mode=Rc</code> for its first second, then <code>Manual</code>)</td>
 </tr>
 <tr>
 <td>2</td>
@@ -1998,23 +1987,13 @@ fails, and roll back.</strong> Drive from the laptop: <code>export ROS_DOMAIN_ID
 </tr>
 <tr>
 <td>10</td>
-<td>CH6 high (manual), the left stick in the middle for a second, then pushed a little</td>
-<td><code>mode=Rc</code>, blue LED; ROS ignored; the wheels turn forward. Pushed before the middle: nothing moves</td>
+<td>CH6 high (manual), the left stick in the middle, then pushed a little</td>
+<td><code>mode=Rc</code>, blue LED; ROS ignored. Pushed before the middle: nothing moves</td>
 </tr>
 <tr>
 <td>10a</td>
-<td>The left stick to the middle</td>
-<td>throttle 0, brake released (the motor slows the wheels)</td>
-</tr>
-<tr>
-<td>10b</td>
-<td>The left stick all the way back, held</td>
-<td>brake full; with no speed on the ESP32, reverse after 1 s</td>
-</tr>
-<tr>
-<td>10c</td>
-<td>The right stick down, then let go, the left stick still pushed</td>
-<td>brake full at once; still braked after letting go, until the left stick moves</td>
+<td>The stick back to the middle, at once pulled back</td>
+<td>brake full for 1 s from the middle, then reverse</td>
 </tr>
 <tr>
 <td>11</td>
@@ -2023,23 +2002,18 @@ fails, and roll back.</strong> Drive from the laptop: <code>export ROS_DOMAIN_ID
 </tr>
 <tr>
 <td>12</td>
-<td>CH6 low (normal), the right stick up for half a second; drive slowly from the keyboard</td>
-<td>the computer drives</td>
+<td>CH6 low (normal), stick in the middle; drive slowly from the keyboard</td>
+<td>braked for a second, then the computer drives</td>
 </tr>
 <tr>
 <td>12a</td>
 <td>While the computer drives, push the left stick</td>
-<td>nothing changes: the computer still drives</td>
+<td>the RC takes over: brake full 1 s, then the stick drives</td>
 </tr>
 <tr>
 <td>12b</td>
-<td>The right stick down</td>
-<td>brake full at once, <code>mode=Rc</code>; let go: still braked until the left stick moves</td>
-</tr>
-<tr>
-<td>12c</td>
-<td>The right stick up for half a second, the keyboard still driving</td>
-<td>the computer drives again</td>
+<td>The stick to the middle, the keyboard still driving</td>
+<td>brake full 1 s, then the computer drives again</td>
 </tr>
 <tr>
 <td>13</td>
@@ -2081,7 +2055,7 @@ fails, and roll back.</strong> Drive from the laptop: <code>export ROS_DOMAIN_ID
 </tr>
 <tr>
 <td>4</td>
-<td>The transmitter as the C++ had it: End points CH6 low side back to 100%, and Fail safe back to the values T1 wrote down (21 Nov: CH3 55%, CH4 0%, the rest Off, CH2 Off too)</td>
+<td>The transmitter as the C++ had it: End points CH6 low side back to 100%, and Fail safe back to the values T1 wrote down (21 Nov: CH3 55%, CH4 0%, the rest Off)</td>
 <td>CH6 low reads about 1000 again</td>
 </tr>
 </tbody>

@@ -1843,6 +1843,20 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
+<td><code>pixi run espflash</code>, <code>pixi run -e firmware esptool</code></td>
+<td>Ben, 21 Nov, at the car: <code>espflash</code> and <code>esptool</code> typed alone gave "command not found", as both live inside the repo. Now each is a task: <code>pixi run espflash list-ports</code> says whether this computer sees a board at all</td>
+<td>Ben</td>
+<td>2026-11-21</td>
+<td>built</td>
+</tr>
+<tr>
+<td>The first check knows the RC rework (<code>esp32_first_check.py</code>, <code>esp walk</code>)</td>
+<td>21 Nov: the first flash on the car was rolled back. The check called the board's two new idle states failures: <code>mode=Rc</code> (the transmitter on, the RC holding the car braked) and safety <code>Degraded</code> (the transmitter off or not set up). Now PASS, and NOT YET with no roll back; the walk reads again; <code>car-day-build</code> runs the check in QEMU with the transmitter on</td>
+<td>Ben</td>
+<td>2026-11-21</td>
+<td>built</td>
+</tr>
+<tr>
 <td><a href="a-to-b.html">A-to-B scorer</a> (<code>pixi run measure atob</code>)</td>
 <td>Numbers for how well the car sped up, held its speed and stopped on B, the same for Gazebo and car runs; a tape-measured stop splits the GPS error from the control error</td>
 <td>Ben</td>

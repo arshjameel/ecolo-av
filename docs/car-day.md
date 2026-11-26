@@ -441,11 +441,11 @@ The same venv also runs the engine once on the test stop sign, with the score an
 
 ### 4e. The Motor Pi
 
-🔒 H1: is it CORTEX (.120)? Then the same kit, the same steps 4b and 4c there.
+🔒 H1: is it CORTEX (.145 on 21 Nov, by WiFi: check `hosts.txt`)? Then the same kit, the same steps 4b and 4c there.
 
 | # | Do | You should see | If not |
 |---|---|---|---|
-| 1 | `ssh <user>@192.168.1.120`, then `uname -m` | `aarch64` | `armv7l`: a 32-bit OS, the kit can't run: write it down |
+| 1 | `ssh <user>@192.168.1.145`, then `uname -m` | `aarch64` | `armv7l`: a 32-bit OS, the kit can't run: write it down |
 | 2 | 4b steps 1-4 there | 30-60 min on a Pi 4 | |
 | 3 | 4c there (`eth0`, probably: CORTEX has WiFi too?) | | |
 

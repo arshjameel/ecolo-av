@@ -1,15 +1,17 @@
 # The Jetson Orin in the middle of the car: the decision-making parts, and perception.
-# TODO: set imu/gps/teleop/camera to wherever those USB devices are actually plugged in.
+# Where the USB devices are (seen 21 Nov): the IMU, the GPS and the radar on the
+# localization Pi, the joystick on the Motor Pi, the front cameras on the camera Pi. Only
+# the lidar comes straight here, by Ethernet.
 parts:
   description: true
   mux: true
   ego: true
-  teleop: false         # the joystick receiver: see laptop.yaml
+  teleop: false         # the joystick is on the Motor Pi (motor_pi.yaml), or a laptop's own
   scripted: true
   drive_to_point: true  # drive to a GPS point and stop (aav_drive_to_point): next to the mux
   imu: false            # the IMU is on the localization Pi (.113): machines/localization.yaml
   gps: false            # the u-blox is on the localization Pi (.113): machines/localization.yaml
-  radar: false          # perception, later
+  radar: false          # perception, later; it is plugged into the localization Pi
   lidar: true           # the roof Velodyne VLP-16: it sends its UDP packets to the Jetson only
   battery: false
   camera: false         # a USB camera here (usb_cam): the front ones come by camera_stream
