@@ -208,6 +208,11 @@ The steps: [car day](docs/car-day.md), [know the car](docs/know-the-car.md),
 ## 9. Ideas kept, not picked
 
 | Idea | When |
+| 279 **Ravensim's views for the job** (Ben, 26 Nov: "multiple views ... the nav screen when we are doing algo testing, the debug screen like ndt when we want to look at that"): named view set-ups, `view:=drive` (chase camera + the HUD), `view:=algo` (the world view's map and PLAN page beside the scene), `view:=where` (NDT's cubes, WHERE AM I), `view:=sensors`; one key cycles them; each test names the view it wants | after step 5's `pixi run screens` has been used |
+| 280 **Grass that looks like grass** (Ben, 26 Nov): blades on the green parts (GPU instancing, dense near the camera, the noise grain far off), a little wind; the cameras see it too, so the lane finder and detector learn real edges | after the screens |
+| 281 **Better trees**: today's are cartoony; kinds from OpenStreetMap's tags (leaf or needle), a few shapes each, their size from NDT's points where we have drives (`twin-world`) | with 280 |
+| 282 **Weather and light for perception tests** (Ottawa): time of day and the sun's shadows; night with headlights; rain (a wet road's shine, drops on the lens); snow on the grass and the road's edges. Each one a switch, so a rung can ask for it | after the learned lane finder is scored |
+| 283 **A lived-in campus**: parked cars in the lots, people on the paths and cyclists (moving, for behaviour's tests), faded paint, cracks and manhole covers, signs from OpenStreetMap, windows on buildings by their storeys | a nice-looking campus, down the road (Ben, 26 Nov) |
 |---|---|
 | 108 Shadow mode: the drivers score themselves while a person drives | after real recordings |
 | 96 A model builds our own algorithms from our recordings | after the car's data |
