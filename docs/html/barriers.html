@@ -7,7 +7,7 @@
 <!-- Generated from docs/barriers.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Barriers in the MPC: keeping the car off things</h1>
-<div class="meta">24 min read · 8 sections</div></header>
+<div class="meta">25 min read · 8 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -899,6 +899,11 @@ that cell, earlier ones too.</p>
 <td>22</td>
 <td><strong>One plain run passed 0.96 m beside the ghost on the line</strong>: the car was lost, 1.8 m off its line from the start</td>
 <td>localization, not the follower. The likely cause, not proved: the follower's log shows its map-to-odom correction jumping by 10° to 25° in 6 of the last 23 runs. <code>truth_pose:=true</code> takes it out</td>
+</tr>
+<tr>
+<td>23</td>
+<td><strong>On a busy computer a tick overruns</strong> (25 Nov): the pretend-car run that goes round the object, 53.7 ms mean and 403 ms worst with a Rust build beside it on Ben's MacBook (the 50 ms tick); one GitHub ARM run failed the same test. The test <code>a_tick_with_a_barrier_fits_well_inside_the_period</code> (under 25 ms mean) is now run by hand on a quiet machine (<code>-- --ignored</code>)</td>
+<td>the solver's time is the next thing to fix before the barrier could drive (finding 5, 14)</td>
 </tr>
 </tbody>
 </table></div>

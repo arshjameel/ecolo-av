@@ -277,6 +277,7 @@ that cell, earlier ones too.
 | 20 | **At 1 m/s the stop zone alone leaves 0 to 0.25 m**; the stop rule before it leaves 0.6 to 0.8 m | R3's result again, in more runs |
 | 21 | **The step is the worst to watch**: it stops closest (0.23 m once), stops for a ghost 1.0 m aside that the others pass, and once backed up and crept round | what a barrier adds to a plain limit, in one picture |
 | 22 | **One plain run passed 0.96 m beside the ghost on the line**: the car was lost, 1.8 m off its line from the start | localization, not the follower. The likely cause, not proved: the follower's log shows its map-to-odom correction jumping by 10° to 25° in 6 of the last 23 runs. `truth_pose:=true` takes it out |
+| 23 | **On a busy computer a tick overruns** (25 Nov): the pretend-car run that goes round the object, 53.7 ms mean and 403 ms worst with a Rust build beside it on Ben's MacBook (the 50 ms tick); one GitHub ARM run failed the same test. The test `a_tick_with_a_barrier_fits_well_inside_the_period` (under 25 ms mean) is now run by hand on a quiet machine (`-- --ignored`) | the solver's time is the next thing to fix before the barrier could drive (finding 5, 14) |
 
 **What stops a go-round, and what does not**
 
