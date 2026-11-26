@@ -15,7 +15,6 @@ owns the shared launch file and config both twins use.
 | Executable | Does |
 |---|---|
 | `spine_bridge` | the bridge (topics below) |
-| `arm_when_open` | calls `/spine/arm` each `retry` s (1.0) until armed or `give_up` s (120.0); exits 0 or 1. Stand-ins only. The Rust one (`aav_spine_bridge`'s) is the default since 18 Nov; `arm_when_open_impl:=python` runs this one |
 
 ### `spine_bridge` topics (role `spine`)
 
@@ -66,7 +65,6 @@ only), and `spine_bridge`.
 | Module | ROS? | Holds |
 |---|---|---|
 | `spine_bridge.py` | yes | the node `SpineBridge` |
-| `arm_when_open.py` | yes | the arming helper |
 | `can_codec.py` | no | `pack`, `unpack`, `FRAMES`, the CAN ids, `crc8_sae_j1850`, `counter_step`; VEHICLE_STATUS's modes `MODE_MANUAL` 0, `MODE_RC` 1, `MODE_COMPUTER` 2, `MODE_TEST` 3 |
 | `wheel_speed.py` | no | `FrontWheels`, `Reading`, `drive_sign`, `rear_axle_speed` |
 | `output_gate.py` | no | `OutputGate`, `try_again`, `GATE_SHUT`; `ReadyGate`, `NOT_READY` (the boot self-test) |
@@ -88,7 +86,9 @@ only), and `spine_bridge`.
 - Arming sends a few `armed=0` frames before `armed=1`: the spine arms on the edge.
 - Gate times use a steady clock, never the node's (simulated time may pause).
 - `/vehicle/odom`'s speed: the front wheels' mean while both are fresh, else the spine's.
-- `arm_when_open` never retries after an e-stop refusal, and never arms twice.
+- `arm_when_open` (Rust, in `aav_spine_bridge`; the Python one here was removed on 22 Nov,
+  tag `save/python-fallbacks-1`) never retries after an e-stop refusal, and never arms twice.
+  Its rule, `try_again`, is still in `output_gate.py`, with its tests.
 - The logic modules have no ROS imports.
 
 ## Side Effects

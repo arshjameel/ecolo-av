@@ -1,7 +1,7 @@
 """
 ego's lead: ask a little ahead, so the slow actuators answer about when the driver wanted.
 
-No ROS imports, so the tests run anywhere. The node: ego_node.py; the page:
+No ROS imports, so the tests run anywhere. The node: aav_ego_rs's ego; the page:
 docs/vehicle-model.md, "ego's lead".
 
 The car's actuators answer late: the throttle, brake and steering each wait their dead time,

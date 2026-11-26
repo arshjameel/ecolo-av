@@ -14,12 +14,11 @@ setup(
     zip_safe=True,
     maintainer='AAV 2026-27 team',
     maintainer_email='aav-team@todo.invalid',
-    description='The roof lidar as a 2D scan for Nav2.',
+    description='The flat lidar scan\'s maths (scan.py, ground.py); the node is aav_lidar_rs.',
     license='TODO',
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
-            'lidar_scan = aav_lidar.lidar_scan:main',
         ],
     },
 )

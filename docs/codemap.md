@@ -40,13 +40,13 @@ current): after adding, moving or removing a package, run
 
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
-| [aav_detector](../ros/perception/aav_detector/README.md) | Python | The object detector | `aav_detector/(6 modules)` | `aav_detector/camera_obstacles.py`, `aav_detector/detector.py`, `aav_detector/stop_sign_watcher.py` | `test/` | `config/`, `launch/` |
+| [aav_detector](../ros/perception/aav_detector/README.md) | Python | The object detector | `aav_detector/(6 modules)` | `aav_detector/camera_obstacles.py`, `aav_detector/detector.py` | `test/` | `config/`, `launch/` |
 | [aav_detector_rs](../ros/perception/aav_detector_rs/README.md) | Rust | The object detector in Rust (rclrs) | `crates/detector-core`, `crates/onnx-session` | `crates/detector-node` | - | - |
-| [aav_lane_finder](../ros/perception/aav_lane_finder/README.md) | Python | The lane finder | `aav_lane_finder/(2 modules)` | `aav_lane_finder/lane_finder.py` | `test/` | `config/`, `launch/` |
+| [aav_lane_finder](../ros/perception/aav_lane_finder/README.md) | Python | The lane finder's launch file (lane_finder.launch.py), its config (lane_finder.yaml) and its maths in Pytho... | `aav_lane_finder/(2 modules)` | - | `test/` | `config/`, `launch/` |
 | [aav_lane_finder_learned](../ros/perception/aav_lane_finder_learned/README.md) | Rust | The learned lane_finder (TODO 262b), a challenger (lane_finder_impl:=learned) | `crates/ufld-core` | `crates/ufld-node` | `test/` | - |
 | [aav_lane_finder_rs](../ros/perception/aav_lane_finder_rs/README.md) | Rust | lane_finder in Rust (rclrs) | `crates/lane-core` | `crates/lane-node` | `test/` | - |
 | [aav_lane_geometry](../ros/perception/aav_lane_geometry/README.md) | messages | The LaneGeometry message | - | - | - | - |
-| [aav_lidar](../ros/perception/aav_lidar/README.md) | Python | The roof lidar for Nav2 | `aav_lidar/(2 modules)` | `aav_lidar/lidar_scan.py` | `test/` | - |
+| [aav_lidar](../ros/perception/aav_lidar/README.md) | Python | The flat lidar scan's maths, no ROS | `aav_lidar/(2 modules)` | - | `test/` | - |
 | [aav_lidar_rs](../ros/perception/aav_lidar_rs/README.md) | Rust | lidar_scan in Rust (rclrs) | `crates/lidar-scan` | `crates/lidar-scan-node` | `test/` | - |
 | [aav_radar_clusters](../ros/perception/aav_radar_clusters/README.md) | Rust | radar_clusters in Rust (rclrs) | `crates/radar-clustering` | `crates/clusters-node` | `test/` | `launch/` |
 | [aav_stop_sign_rs](../ros/perception/aav_stop_sign_rs/README.md) | Rust | stop_sign_watcher in Rust (rclrs) | `crates/stop-sign-core` | `crates/stop-sign-node` | `test/` | - |
@@ -63,7 +63,7 @@ current): after adding, moving or removing a package, run
 | [aav_costmap](../ros/drivers/aav_costmap/README.md) | Rust | Our own costmap in Rust (rclrs) | `crates/costmap` | `crates/costmap-node` | - | - |
 | [aav_diffusion_planner](../ros/drivers/aav_diffusion_planner/README.md) | Python | diffusion_planner | `aav_diffusion_planner/(4 modules)` | `aav_diffusion_planner/planner_node.py`, `aav_diffusion_planner/worker.py` | `test/` | - |
 | [aav_diffusion_rs](../ros/drivers/aav_diffusion_rs/README.md) | Rust | The diffusion planner's model worker in Rust | `crates/diffusion-core` | - | - | - |
-| [aav_drive_to_point](../ros/drivers/aav_drive_to_point/README.md) | Python | Drive-to-point driver | `aav_drive_to_point/(5 modules)` | `aav_drive_to_point/point_cli.py`, `aav_drive_to_point/point_driver.py` | `test/` | `config/`, `launch/` |
+| [aav_drive_to_point](../ros/drivers/aav_drive_to_point/README.md) | Python | Drive to one GPS or map point and stop there | `aav_drive_to_point/(5 modules)` | - | `test/` | `config/`, `launch/` |
 | [aav_drive_to_point_rs](../ros/drivers/aav_drive_to_point_rs/README.md) | Rust | point_driver and drive_to_point in Rust (rclrs) | `crates/point-core` | `crates/point-node` | - | - |
 | [aav_language](../ros/drivers/aav_language/README.md) | Python | Plain-English driving | `aav_language/(9 modules)` | `aav_language/agent.py`, `aav_language/drive_server.py`, `aav_language/run_eval.py` | `test/` | - |
 | [aav_mpc_lag](../ros/drivers/aav_mpc_lag/README.md) | Rust | mpc_lag_rs in Rust (rclrs) | `crates/mpc-lag` | `crates/mpc-node` | - | `config/` |
@@ -90,14 +90,14 @@ current): after adding, moving or removing a package, run
 
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
-| [aav_ego](../ros/ego/aav_ego/README.md) | Python | ego | `aav_ego/(9 modules)` | `aav_ego/ego_node.py`, `aav_ego/look_ahead_node.py` | `test/` | `config/`, `launch/` |
+| [aav_ego](../ros/ego/aav_ego/README.md) | Python | ego's launch file (ego.launch.py), config (ego.yaml) and maths in Python with no ROS (ackermann.py, dynamic... | `aav_ego/(9 modules)` | - | `test/` | `config/`, `launch/` |
 | [aav_ego_rs](../ros/ego/aav_ego_rs/README.md) | Rust | ego and look_ahead in Rust (rclrs), one process with both nodes | `crates/ego-core` | `crates/ego-node` | `test/` | - |
 
 ## ros/io_mux
 
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
-| [aav_io_mux](../ros/io_mux/aav_io_mux/README.md) | Python | The muxes at the two edges of the stack | `aav_io_mux/(4 modules)` | `aav_io_mux/output_mux.py`, `aav_io_mux/sensor_mux.py` | `test/` | `launch/` |
+| [aav_io_mux](../ros/io_mux/aav_io_mux/README.md) | Python | The muxes at the two edges of the stack | `aav_io_mux/(4 modules)` | - | `test/` | `launch/` |
 | [aav_io_mux_rs](../ros/io_mux/aav_io_mux_rs/README.md) | Rust | The sensor mux and the output mux in Rust (rclrs) | `crates/io-mux-core` | `crates/io-mux-node` | `test/` | - |
 
 ## ros/can_bridge
@@ -106,7 +106,7 @@ current): after adding, moving or removing a package, run
 |---|---|---|---|---|---|---|
 | [aav_legacy](../ros/can_bridge/aav_legacy/README.md) | Python | Interim backend for the 2025-26 hardware | `aav_legacy/(5 modules)` | `aav_legacy/encoder_udp.py`, `aav_legacy/legacy_uart_bridge.py`, `aav_legacy/steering_limits.py` | `test/` | `config/`, `launch/` |
 | [aav_legacy_rs](../ros/can_bridge/aav_legacy_rs/README.md) | Rust | legacy_uart_bridge in Rust (rclrs) | `crates/legacy-bridge` | `crates/legacy-node` | - | - |
-| [aav_spine](../ros/can_bridge/aav_spine/README.md) | Python | Backend for the real car on the CAN spine | `aav_spine/(4 modules)` | `aav_spine/arm_when_open.py`, `aav_spine/spine_bridge.py` | `test/` | `config/`, `launch/` |
+| [aav_spine](../ros/can_bridge/aav_spine/README.md) | Python | Backend for the real car on the CAN spine | `aav_spine/(4 modules)` | `aav_spine/spine_bridge.py` | `test/` | `config/`, `launch/` |
 | [aav_spine_bridge](../ros/can_bridge/aav_spine_bridge/README.md) | Rust | spine_bridge in Rust (rclrs) | `crates/spine-bridge` | `crates/bridge-node` | - | - |
 
 ## ros/safety

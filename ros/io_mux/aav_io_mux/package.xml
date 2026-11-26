@@ -3,16 +3,17 @@
 <package format="3">
   <name>aav_io_mux</name>
   <version>0.1.0</version>
-  <description>The muxes at the two edges of the stack. sensor_mux checks that every sensor comes from the one source a run asks for (source:=real, sim, bench or replay) and says so on /system/sensor_mux/state; output_mux passes ego's /ego/actuator_cmd on to one target's /control/target/actuator_cmd (target:=car, gazebo, bench, turtle or carla), and to the real car only while every source is REAL, else a latched stop. So simulated data can never drive the real car.</description>
+  <description>The muxes at the two edges of the stack: their launch file (io_mux.launch.py), their rules in Python with no ROS (provenance.py, heartbeat.py, muxes.py), free_domain() for tests, and the real-backend guard test. The nodes are aav_io_mux_rs's (Rust); the Python nodes were removed on 22 Nov 2026. sensor_mux checks that every sensor comes from the one source a run asks for (source:=real, sim, bench or replay) and says so on /system/sensor_mux/state; output_mux passes ego's /ego/actuator_cmd on to one target's /control/target/actuator_cmd (target:=car, gazebo, bench, turtle or carla), and to the real car only while every source is REAL, else a latched stop. So simulated data can never drive the real car.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
+  <!-- domains.py (free_domain) uses rclpy; the guard test uses the messages. -->
   <exec_depend>rclpy</exec_depend>
   <exec_depend>ackermann_msgs</exec_depend>
   <exec_depend>aav_interfaces</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
-  <!-- io_mux.launch.py: io_mux_impl:= (vehicle.IO_MUX_IMPLS); rust, the Rust twins. -->
+  <!-- io_mux.launch.py: io_mux_impl:= (vehicle.IO_MUX_IMPLS); rust, the only muxes. -->
   <exec_depend>aav_description</exec_depend>
   <exec_depend>aav_io_mux_rs</exec_depend>
   <exec_depend>launch</exec_depend>

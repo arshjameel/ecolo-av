@@ -256,8 +256,8 @@ def test_the_defaults_start_what_pixi_run_sim_always_has():
     assert sent['ravensim.launch.py']['world'] == 'empty'
     # ego's commands reach Ravensim through the output mux, only while everything is SIM.
     assert sent['io_mux.launch.py'] == {'target': 'sim', 'source': 'sim', 'io_mux_impl': 'rust'}
-    back = included(started(SIM, io_mux_impl='Python'))['io_mux.launch.py']
-    assert back['io_mux_impl'] == 'python'
+    with pytest.raises(ValueError, match='io_mux_impl:=Python'):   # removed 22 Nov
+        started(SIM, io_mux_impl='Python')
     nav = sent['navigation.launch.py']
     assert (nav['radar'], nav['lidar'], nav['stop_zone'], nav['camera_obstacles']) == (
         'false', 'false', 'false', 'false')
@@ -885,8 +885,10 @@ def test_lane_pose_runs_the_lane_finder_and_feeds_the_global_ekf():
     assert sent['localization.launch.py']['lane_map'].endswith('road.lanes.yaml')
     assert sent['lane_finder.launch.py'] == {'lane_finder_impl': 'rust'}
     assert included(started(SIM, world='road', lane_pose='true',
-                            lane_finder_impl='python'))['lane_finder.launch.py'] == {
-        'lane_finder_impl': 'python'}
+                            lane_finder_impl='learned'))['lane_finder.launch.py'] == {
+        'lane_finder_impl': 'learned'}
+    with pytest.raises(ValueError, match='lane_finder_impl:=python'):   # removed 22 Nov
+        started(SIM, world='road', lane_pose='true', lane_finder_impl='python')
     assert 'lane_follower.launch.py' not in sent        # nothing steers by the lane
     with pytest.raises(ValueError, match='lane_pose'):
         started(SIM, world='road', lane_pose='true', cameras='false')

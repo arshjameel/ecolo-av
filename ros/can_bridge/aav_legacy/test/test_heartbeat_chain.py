@@ -9,9 +9,10 @@ pseudo-terminal this test reads, byte for byte what the ESP32 would get.
   ego stops                    -> frames still come at 50 Hz: stops, the counter frozen
   Gazebo announces SIM as well -> the gate shuts: not one heartbeat, the counter never moves
 
-Each test runs twice (conftest's impl): the Python bridge and muxes in this process, and the
-Rust ones (aav_legacy_rs, aav_io_mux_rs: the car's defaults since 17 Nov) as processes:
-the Rust-to-Rust heartbeat chain.
+Each test runs twice (conftest's impl): the Python bridge in this process, and the Rust one
+(aav_legacy_rs, the car's default since 17 Nov) as a process. The muxes are aav_io_mux_rs's
+both times, as processes (the Python muxes went on 22 Nov): with the Rust bridge, the
+Rust-to-Rust heartbeat chain.
 """
 
 import fcntl
@@ -24,8 +25,6 @@ import pytest
 
 try:
     from aav_interfaces.msg import DataSource, Heartbeat, SensorSource
-    from aav_io_mux.output_mux import OutputMux
-    from aav_io_mux.sensor_mux import SensorMux
     from aav_legacy.legacy_protocol import FRAME_V2_LEN, SYNC, unpack_frame_v2
     from aav_legacy.legacy_uart_bridge import LegacyUartBridge
     from ackermann_msgs.msg import AckermannDriveStamped
@@ -74,12 +73,12 @@ class Run:
         domain = int(os.environ.get('AAV_TEST_DOMAIN') or random.randint(150, 230))
         rclpy.init(args=args, domain_id=domain)
         self.executor = SingleThreadedExecutor()
+        self.nodes = [RustNode('aav_io_mux_rs', 'sensor_mux', args, domain),
+                      RustNode('aav_io_mux_rs', 'output_mux', args, domain)]
         if impl == 'rust':
-            self.nodes = [RustNode('aav_io_mux_rs', 'sensor_mux', args, domain),
-                          RustNode('aav_io_mux_rs', 'output_mux', args, domain),
-                          RustNode('aav_legacy_rs', 'legacy_uart_bridge', args, domain)]
+            self.nodes.append(RustNode('aav_legacy_rs', 'legacy_uart_bridge', args, domain))
         else:
-            self.nodes = [SensorMux(), OutputMux(), LegacyUartBridge()]
+            self.nodes.append(LegacyUartBridge())
         self.test = rclpy.create_node('heartbeat_test')
         self.nodes.append(self.test)
         self.heartbeats = []

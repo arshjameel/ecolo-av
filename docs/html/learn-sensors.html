@@ -567,7 +567,7 @@ what it's good and bad at, which driver reads it, and whether Ravensim can prete
 </tr>
 <tr>
 <td><strong>Driver</strong></td>
-<td>the stock <code>velodyne</code> package (<code>aav_sensors lidar:=true</code>), then <code>lidar_scan</code> (<code>aav_lidar</code>) for the costmap and the stop zone. On by default on the car. Tested against <code>tools/fake_vlp16.py</code>; <span class="badge b-untested">untested</span> with the real lidar</td>
+<td>the stock <code>velodyne</code> package (<code>aav_sensors lidar:=true</code>), then <code>lidar_scan</code> (<code>aav_lidar_rs</code>) for the costmap and the stop zone. On by default on the car. Tested against <code>tools/fake_vlp16.py</code>; <span class="badge b-untested">untested</span> with the real lidar</td>
 </tr>
 <tr>
 <td><strong>Used by</strong></td>
@@ -663,7 +663,7 @@ what it's good and bad at, which driver reads it, and whether Ravensim can prete
 </tr>
 <tr>
 <td>The lidar's scan for the costmap</td>
-<td><code>ros/perception/aav_lidar</code></td>
+<td><code>ros/perception/aav_lidar_rs</code></td>
 </tr>
 <tr>
 <td>Sensor positions</td>

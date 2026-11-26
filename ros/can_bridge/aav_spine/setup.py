@@ -24,7 +24,6 @@ setup(
     entry_points={
         'console_scripts': [
             'spine_bridge = aav_spine.spine_bridge:main',
-            'arm_when_open = aav_spine.arm_when_open:main',
         ],
     },
 )

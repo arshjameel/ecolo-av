@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_stop_sign_rs</name>
   <version>0.1.0</version>
-  <description>stop_sign_watcher in Rust (rclrs): the default since 17 Nov (Ben: "I don't think we want to do this again later"), beside aav_detector's Python one (stop_sign_impl:=rust|python). The same node name, topics and parameters: the detector's boxes become twist_mux's stop-sign lock (/perception/stop_sign) and the sign's point (/perception/stop_sign/distance). The rules are the stop-sign-core crate, with no ROS, checked against stop_sign.py's answers.</description>
+  <description>stop_sign_watcher in Rust (rclrs): the default since 17 Nov (Ben: "I don't think we want to do this again later"), in place of aav_detector's Python one (removed 22 Nov 2026). The same node name, topics and parameters: the detector's boxes become twist_mux's stop-sign lock (/perception/stop_sign) and the sign's point (/perception/stop_sign/distance). The rules are the stop-sign-core crate, with no ROS, checked against stop_sign.py's answers.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

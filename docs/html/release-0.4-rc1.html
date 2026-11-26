@@ -268,7 +268,7 @@ then <code>pixi run build</code>). Then:</p>
 <td>2</td>
 <td>a Rust node misbehaves</td>
 <td>-</td>
-<td>e-stop, stop the launch, start again with that node's fall-back: <code>~/aav-jazzy/aav.sh car orin -- ego_impl:=python</code> (the <code>--</code> is needed)</td>
+<td>e-stop, stop the launch, if it has a fall-back (below), start again with it: <code>~/aav-jazzy/aav.sh car motor_pi -- legacy_impl:=python</code> (the <code>--</code> is needed); if it has none, the car stays stopped until the Rust is fixed</td>
 </tr>
 <tr>
 <td>3</td>
@@ -278,7 +278,8 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 </tbody>
 </table></div>
-<p>The fall-backs, one per node (the others stay Rust):</p>
+<p>The fall-backs, one per node (the others stay Rust). Since 22 Nov only the ESP32's bridge,
+<code>rc_driver</code> and <code>camera_stream</code> have one:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -289,7 +290,7 @@ then <code>pixi run build</code>). Then:</p>
 <tbody>
 <tr>
 <td>ego + look_ahead</td>
-<td><code>ego_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>behaviour</td>
@@ -305,7 +306,7 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>lidar_scan</td>
-<td><code>lidar_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>things</td>
@@ -313,7 +314,7 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>sensor mux + output mux (the ESP32's heartbeat)</td>
-<td><code>io_mux_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>legacy_uart_bridge (the ESP32's UART, the Motor Pi)</td>
@@ -325,7 +326,7 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>lane_finder (lane keeping, the lane pose)</td>
-<td><code>lane_finder_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>joy_alive (the joystick's check, between joy_node and teleop)</td>
@@ -333,15 +334,15 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>stop_sign_watcher (twist_mux's stop-sign lock)</td>
-<td><code>stop_sign_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>point_driver (drive to a point; the Orin) and its client</td>
-<td><code>drive_to_point_impl:=python</code>; <code>pixi run drive-to-point --python ...</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>arm_when_open (bench and Ravensim's spine only)</td>
-<td><code>arm_when_open_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>camera_stream (each camera Pi stream; Rust only with <code>detector: none</code>: with RF-DETR the Python runs anyway)</td>

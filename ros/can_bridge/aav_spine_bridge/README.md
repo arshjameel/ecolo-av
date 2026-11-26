@@ -32,7 +32,7 @@ Parameters: `aav_spine`'s `config/spine.yaml`, plus `wheelbase` and `track` from
 
 ### `arm_when_open`
 
-`aav_spine`'s `arm_when_open.py` in Rust (18 Nov), the default in bench mode and Ravensim's `spine:=true` (`arm_when_open_impl:=python` falls back): it asks `/spine/arm` each `retry` s while the gate alone refuses, for `give_up` s; exits 0 once armed, 1 otherwise. The rule is `spine-bridge`'s `try_again`, tested with the Python's cases.
+`aav_spine`'s `arm_when_open.py` in Rust (18 Nov), the default in bench mode and Ravensim's `spine:=true` (the only one: the Python was removed on 22 Nov, tag `save/python-fallbacks-1`): it asks `/spine/arm` each `retry` s while the gate alone refuses, for `give_up` s; exits 0 once armed, 1 otherwise. The rule is `spine-bridge`'s `try_again`, tested with the Python's cases.
 
 Where it differs from the Python, on purpose:
 

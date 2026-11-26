@@ -854,16 +854,18 @@ def generate_launch_description():
                               description='true (with the lidar): the costmap reads the lidar as '
                                           '0.25 m cubes (aav_voxels) instead of the flat scan'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
-                              description='python or rust: which lidar_scan flattens the '
-                                          'lidar (aav_lidar, or aav_lidar_rs)'),
+                              description='rust (aav_lidar_rs; the Python removed 22 Nov): '
+                                          'which lidar_scan flattens the lidar'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
-                              description='rust or python: which point_driver drives to a '
-                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
+                              description='rust (aav_drive_to_point_rs; the Python '
+                                          'removed 22 Nov): which point_driver drives to '
+                                          'a point'),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
-                              description='rust or python: which lane_finder finds the lane '
-                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+                              description='rust (aav_lane_finder_rs; the Python removed '
+                                          '22 Nov) or learned (a challenger): which '
+                                          'lane_finder finds the lane lines'),
         DeclareLaunchArgument('camera_stream_impl',
                               default_value=vehicle.DEFAULT_CAMERA_STREAM_IMPL,
                               description='rust or python: which camera_stream pulls each '
@@ -875,10 +877,11 @@ def generate_launch_description():
         DeclareLaunchArgument('voxels_impl', default_value=vehicle.DEFAULT_VOXELS_IMPL,
                               description='python or rust: which voxels node cuts the '
                                           'cubes (aav_voxels, or aav_voxels_rs)'),
-        # Rust by default on the car too (Ben, 16 Nov); python falls back, one switch each.
+        # Rust on the car too (Ben, 16 Nov). The Python twins went on 20 and 22 Nov; the
+        # ESP32's bridge and rc_driver still fall back (legacy_impl, rc_impl).
         DeclareLaunchArgument('ego_impl', default_value=vehicle.DEFAULT_EGO_IMPL,
                               description='rust (aav_ego_rs, ego and look_ahead in one '
-                                          'process) or python (aav_ego)'),
+                                          'process; the Python removed 22 Nov)'),
         DeclareLaunchArgument('behaviour_impl', default_value=vehicle.DEFAULT_BEHAVIOUR_IMPL,
                               description='rust (aav_behaviour_rs; the Python removed 20 Nov), '
                                           'where navigation runs with behaviour:=true'),
@@ -886,7 +889,7 @@ def generate_launch_description():
                               description='rust (aav_watchdog_rs; the Python removed 20 Nov): '
                                           'the sensor watchdog'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
-                              description='rust (aav_io_mux_rs) or python (aav_io_mux): '
+                              description='rust (aav_io_mux_rs; the Python removed 22 Nov): '
                                           'the sensor mux and the output mux'),
         # Ben, 17 Nov ("Rust tomorrow"): the ESP32's UART bridge and rc_driver too.
         DeclareLaunchArgument('legacy_impl', default_value=vehicle.DEFAULT_LEGACY_IMPL,
@@ -908,7 +911,7 @@ def generate_launch_description():
                               description='rust (aav_joy_alive_rs; the Python removed 20 Nov): '
                                           'joy_alive, between joy_node and teleop_twist_joy'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
-                              description='rust (aav_stop_sign_rs) or python (aav_detector): '
+                              description='rust (aav_stop_sign_rs; the Python removed 22 Nov): '
                                           'stop_sign_watcher, the stop_signs part'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.DEFAULT_LOCALIZATION_HEALTH_IMPL,

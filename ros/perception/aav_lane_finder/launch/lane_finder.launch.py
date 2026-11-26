@@ -11,13 +11,13 @@ It finds the lane; the costmap draws its lines as lane costs (lane_source:=camer
 264) and aav_lane_pose reads them. sim.launch.py and bench.launch.py lane:=true start it
 (sim's lanes:=camera too). The lane follower that steered by it went on 19 Nov.
 
-lane_finder_impl: rust (aav_lane_finder_rs, the default since 18 Nov: the same node name,
-topics, parameters and lanes, no OpenCV), python (this package's own node), or learned
+lane_finder_impl: rust (aav_lane_finder_rs, the default since 18 Nov: no OpenCV) or learned
 (aav_lane_finder_learned, a challenger: our model through ONNX Runtime, the same message;
-it needs models/lane-ufld.onnx, made by tools/lane_train.py).
+it needs models/lane-ufld.onnx, made by tools/lane_train.py). This package's own Python
+node went on 22 Nov (tag save/python-fallbacks-1); its maths, config and this file stay.
 
 The camera's place on the car (camera_left_link) and the wheelbase come from
-aav_description's vehicle.yaml; the rest from config/lane_finder.yaml (both languages).
+aav_description's vehicle.yaml; the rest from config/lane_finder.yaml.
 """
 
 import os
@@ -31,7 +31,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def finder(context):
-    """Return lane_finder, in the language lane_finder_impl picks."""
+    """Return lane_finder: the one lane_finder_impl picks (rust, or learned)."""
     impl = vehicle.check_lane_finder_impl(context.launch_configurations.get(
         'lane_finder_impl', vehicle.DEFAULT_LANE_FINDER_IMPL))
     car = vehicle.load()
@@ -57,7 +57,7 @@ def generate_launch_description():
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
                               description='lane_finder in rust (aav_lane_finder_rs, the '
-                                          'default), python (aav_lane_finder) or learned '
+                                          'default; the Python removed 22 Nov) or learned '
                                           '(aav_lane_finder_learned, a challenger)'),
         OpaqueFunction(function=finder),
     ])

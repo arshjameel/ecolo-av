@@ -189,11 +189,12 @@ bench's argument names:
   voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
-  lidar_impl:=python  the Python lidar_scan (aav_lidar) in the Rust one's place (the
-                      default since 17 Nov): the same scan
-  lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
-                      one's place (the default since 18 Nov), with lane:=true or
-                      lane_pose:=true: the same topics and lanes
+  lidar_impl:=rust    lidar_scan is aav_lidar_rs's (the default since 17 Nov; the Python
+                      one went on 22 Nov, tag save/python-fallbacks-1)
+  lane_finder_impl:=learned  the learned lane_finder (aav_lane_finder_learned, a
+                      challenger) in the Rust one's place (aav_lane_finder_rs, the default
+                      since 18 Nov; the Python one went on 22 Nov), with lane:=true or
+                      lane_pose:=true: the same topics
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
@@ -201,18 +202,20 @@ bench's argument names:
                       place, a challenger: the same name and topics (docs/onnx.md)
   ego_impl:=rust      ego and look_ahead in Rust, one process (aav_ego_rs), in the Python
                       nodes' place: the same node names, topics and answers (TODO 185);
-                      the default on the car and here since 16 Nov (python: aav_ego's two nodes)
+                      the default on the car and here since 16 Nov; the only one since
+                      22 Nov (aav_ego's two Python nodes removed)
   behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), with behaviour on
                       (TODO 185); the only one since the Python went on 20 Nov
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs): the same topics and
                       answers as the Python's had; the only one since 20 Nov (Ben, 16 Nov:
                       "watchdog in rust sure")
   stop_sign_impl:=rust  with perception:=true, stop_sign_watcher in Rust (aav_stop_sign_rs):
-                      the same node name, topics and answers; the default since 17 Nov
-                      (python: aav_detector's)
+                      the default since 17 Nov, the only one since 22 Nov (the Python,
+                      aav_detector's, removed; tag save/python-fallbacks-1)
   io_mux_impl:=rust  the sensor mux and the output mux in Rust (aav_io_mux_rs): the same
                       node names, topics and answers; the default on the car and here
-                      since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
+                      since 17 Nov (Ben: "Rust tomorrow"); the only ones since 22 Nov
+                      (the Python, aav_io_mux's, removed)
   localization_health_impl:=rust  localization_health in Rust
                       (aav_localization_health_rs): warn only (TODO 185); the only one
                       since the Python went on 20 Nov
@@ -1055,20 +1058,22 @@ def generate_launch_description():
                               description='true: the costmap reads the lidar as 0.25 m cubes '
                                           '(aav_voxels, a trial) instead of the flat scan'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
-                              description='python or rust: which lidar_scan flattens the '
-                                          'lidar (aav_lidar, or aav_lidar_rs)'),
+                              description='rust (aav_lidar_rs; the Python removed 22 Nov): '
+                                          'which lidar_scan flattens the lidar'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
-                              description='rust or python: which point_driver drives to a '
-                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
+                              description='rust (aav_drive_to_point_rs; the Python '
+                                          'removed 22 Nov): which point_driver drives to '
+                                          'a point'),
         DeclareLaunchArgument('arm_when_open_impl',
                               default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
-                              description='rust or python: which arm_when_open arms the spine '
-                                          "(aav_spine_bridge's, or aav_spine's)"),
+                              description='rust: arm_when_open, which arms the spine '
+                                          "(aav_spine_bridge's; the Python removed 22 Nov)"),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
-                              description='rust or python: which lane_finder finds the lane '
-                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+                              description='rust (aav_lane_finder_rs; the Python removed '
+                                          '22 Nov) or learned (a challenger): which '
+                                          'lane_finder finds the lane lines'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='rust (aav_things_rs): which things node tracks '
                                           'the cubes (the Python removed 20 Nov)'),
@@ -1092,12 +1097,12 @@ def generate_launch_description():
                               description='rust (aav_watchdog_rs): which sensor watchdog '
                                           'runs (the Python removed 20 Nov)'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
-                              description='python or rust: which stop_sign_watcher runs, '
-                                          'with perception:=true (aav_detector, or '
-                                          'aav_stop_sign_rs)'),
+                              description='rust (aav_stop_sign_rs; the Python removed 22 Nov): '
+                                          'which stop_sign_watcher runs, with '
+                                          'perception:=true'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
-                              description='python or rust: which sensor mux and output mux '
-                                          'run (aav_io_mux, or aav_io_mux_rs)'),
+                              description='rust (aav_io_mux_rs; the Python removed 22 Nov): '
+                                          'which sensor mux and output mux run'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL,
                               description='rust (aav_localization_health_rs): which '
@@ -1107,8 +1112,8 @@ def generate_launch_description():
                               description='rust (aav_behaviour_rs): which behaviour node '
                                           'runs, with behaviour on'),
         DeclareLaunchArgument('ego_impl', default_value=vehicle.SIM_DEFAULT_EGO_IMPL,
-                              description='python or rust: which ego runs (aav_ego, or '
-                                          'aav_ego_rs: ego and look_ahead in one process)'),
+                              description='rust: which ego runs (aav_ego_rs: ego and look_ahead '
+                                          'in one process; the Python removed 22 Nov)'),
         DeclareLaunchArgument('ghost', default_value='false',
                               description='a pretend person only navigation sees (aav_ghost); '
                                           'place it with pixi run ghost ahead 10'),

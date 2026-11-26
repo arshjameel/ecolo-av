@@ -57,7 +57,7 @@ On University Drive (16 Nov, 3 runs each), ours with `path:=lane` (now its defau
 | Lanes (16 Nov) | `path:=lane`: the plan follows the right lane's centre on mapped road (the lot falls back to the lattice); now `ours`' path |
 | Map chunks (16 Nov) | NDT on the campus loads 64 m chunks (ready in 0.02 s, not 2.5 s); the things list drops low cubes on the map's walls (9.9 things to 1.7, every person still found); the dev window draws the chunks (key H) |
 | Safety (16 Nov) | the watchdog latches OVERSPEED (a stuck throttle) as it does STUCK steering |
-| Rust (17-18 Nov) | the Python nodes the car runs alone, ported: `joy_alive`, the stop-sign watcher, the lane finder, the point driver, `arm_when_open`, `camera_stream`; each Python one falls back with `*_impl:=python` |
+| Rust (17-18 Nov) | the Python nodes the car runs alone, ported: `joy_alive`, the stop-sign watcher, the lane finder, the point driver, `arm_when_open`, `camera_stream`; each Python one fell back with `*_impl:=python` until its removal (20 and 22 Nov; `camera_stream`'s stays) |
 | AMCL (18 Nov) | ours in Rust (`aav_amcl_rs`), the default; a tie with stock `nav2_amcl` on the lot (TODO 231) |
 | Navigator (18 Nov) | a follower's feedback counts from the moment a path is sent, so a lost answer no longer aborts a drive (TODO 240) |
 | Speed loop (18 Nov) | `speed_loop_model:=`: the car runs one loop while the planners model another (TODO 163) |

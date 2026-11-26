@@ -97,3 +97,8 @@ change, never the logic:
   now: the object detector (RF-DETR Nano by default, YOLO with `detector:=yolo`), the
   stop-sign watcher and camera_obstacles. It still said a YOLO detector with the stock
   YOLO11 model.
+- 2026-11-22: `aav_detector/stop_sign_watcher.py` (the node) removed, with its
+  `console_scripts` entry (Ben: "lets start removing the python fall back after being
+  tested enough times"; git tag `save/python-fallbacks-1`). `aav_stop_sign_rs`'s Rust node,
+  the default since 17 Nov, is the only one. `stop_sign.py` and its tests stay: the Rust is
+  checked against their answers.

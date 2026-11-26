@@ -367,7 +367,7 @@ its place. **It's on by default (15 Oct)** in the road and test_lot worlds:
 
 ```text
  /sensors/lidar/points ─► lidar_scan ─► /sensors/lidar/scan ─┬─► local costmap: lidar_layer
-  (0.9 MB, 10 Hz,          (aav_lidar)   (720 ranges, 3 kB)   └─► the stop zone (aav_stop_zone)
+  (0.9 MB, 10 Hz,          (aav_lidar_rs)(720 ranges, 3 kB)   └─► the stop zone (aav_stop_zone)
    reliable)
 ```
 

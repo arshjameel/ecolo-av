@@ -148,7 +148,7 @@ into `odom` with TF at the stamp, then matches it against its plan.
 | `aav_sim_models/test/test_actuator_model.py` | the simulated car is unchanged |
 | `aav_ego/test/test_lag_lead.py` | the lead: when it runs, its limits, ego's limits after it |
 | `aav_ego/test/test_trace_ahead.py` | the trace and the twin |
-| `aav_ego/test/test_ego_node.py` | the node: `/ego/trace`; the lead off for a lag-aware driver |
+| `aav_ego_rs/test/test_ego_rs_node.py` | the node (Rust): a command drives, both nodes answer |
 
 After changing either side:
 

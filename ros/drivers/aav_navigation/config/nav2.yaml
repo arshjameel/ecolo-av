@@ -8,7 +8,7 @@
 #   planner_server.GridBased / Lattice    aav_planner (vehicle.planner_params)
 #   velocity_smoother                     aav_smoother's car_smoother (its node name)
 #   collision_monitor                     aav_stop_zone (vehicle.stop_zone_params)
-#   lidar_scan, voxels                    aav_lidar, aav_voxels (their node names)
+#   lidar_scan, voxels                    aav_lidar_rs, aav_voxels (their node names)
 #
 # navigation.launch.py fills in from aav_description/config/vehicle.yaml (so don't edit
 # these here):
@@ -17,7 +17,7 @@
 #                             steering to spare (Hybrid-A*; vehicle.PLAN_TURN_MARGIN)
 #   min_turning_r             wheelbase / tan(max steer)   (MPPI: the car's own lock)
 #   StopZone.points           the box ahead of the bumper  (the stop zone)
-#   min_height, max_height    the lidar's obstacle heights (lidar_scan, aav_lidar)
+#   min_height, max_height    the lidar's obstacle heights (lidar_scan, aav_lidar_rs)
 # Where a radar runs (radar:=true), it also turns on the local costmap's obstacle_layer and
 # the stop zone; with camera_obstacles:=true, the camera_layer. Where a lidar runs
 # (lidar:=true), it starts lidar_scan, keeps the lidar_layer and adds the lidar to the stop
@@ -354,7 +354,7 @@ local_costmap:
       always_send_full_costmap: true
 
 # The roof lidar's cloud, flattened into a 2D scan around base_link for the local costmap
-# and collision_monitor (navigation.launch.py lidar:=true; aav_lidar lidar_scan). 28,800
+# and collision_monitor (navigation.launch.py lidar:=true; aav_lidar_rs lidar_scan). 28,800
 # points at 10 Hz become 720 ranges: Nav2's two readers get 3 kB each instead of 9 MB/s,
 # and the road and anything over the car are gone. One reader of the full cloud.
 lidar_scan:

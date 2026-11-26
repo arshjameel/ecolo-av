@@ -2,12 +2,13 @@
 
 ## Overview
 
-Finds objects in the camera pictures, and uses what it finds. Three nodes:
+Finds objects in the camera pictures, and uses what it finds. Two nodes (the third, the
+Python `stop_sign_watcher`, was removed on 22 Nov 2026: Ben, "lets start removing the python
+fall back after being tested enough times"; git tag `save/python-fallbacks-1`):
 
 | Node | Does | Needs PyTorch? |
 |---|---|---|
 | `detector` (runs as `object_detector`) | a model finds boxes in each picture: RF-DETR Nano by default, YOLO as an option | yes (the `ml` environment) |
-| `stop_sign_watcher` | holds the autonomous drivers at a stop sign, through a twist_mux lock. Its Rust twin, [`aav_stop_sign_rs`](../aav_stop_sign_rs/README.md), is the default since 17 Nov; this one with `stop_sign_impl:=python` | no |
 | `camera_obstacles` | puts each box on the road as points, for the local costmap | no |
 
 It began as the 2024-25 team's `yolo_ros2` (see `PROVENANCE.md`). The model comparison
@@ -25,9 +26,6 @@ is in `docs/model-comparison.md`. Its Rust twin, a challenger, is `aav_detector_
 | detector | in | each topic in `extra_images` (the rear camera) | `sensor_msgs/Image` |
 | detector | out | `/perception/detections` | `vision_msgs/Detection2DArray`, the picture's header |
 | detector | out | `/perception/detections/image` | `sensor_msgs/Image`, boxes drawn on |
-| stop_sign_watcher | in | `/perception/detections` | `vision_msgs/Detection2DArray` |
-| stop_sign_watcher | in | `camera_info_topics` (front_left, front_right, rear) | `sensor_msgs/CameraInfo` |
-| stop_sign_watcher | out | `/perception/stop_sign`, 10 Hz | `std_msgs/Bool` |
 | camera_obstacles | in | `/perception/detections` | `vision_msgs/Detection2DArray` |
 | camera_obstacles | in | `camera_info_topics` (front_left, rear) | `sensor_msgs/CameraInfo` |
 | camera_obstacles | in | TF `base_link` to each camera frame | |
@@ -44,9 +42,6 @@ is in `docs/model-comparison.md`. Its Rust twin, a challenger, is `aav_detector_
 | detector | `confidence` | 0.5 | lowest score kept, 0 to 1 |
 | detector | `labels` | empty | labels to keep, comma-separated; empty keeps all |
 | detector | `image_size`, `publish_image`, `compressed`, `extra_images` | 640, true, false, empty | |
-| stop_sign_watcher | `stop_distance_m` | 4.7 m | a sign this close stops the car |
-| stop_sign_watcher | `sign_height_m`, `focal_px` | 0.75 m, 343 px | `focal_px` only for a camera with no CameraInfo |
-| stop_sign_watcher | `min_score`, `hold_s`, `ignore_s` | 0.5, 4 s, 10 s | |
 | camera_obstacles | `classes`, `min_score` | COCO road users, 0.5 | stop signs never count |
 | camera_obstacles | `max_range`, `view_range`, `step`, `max_age` | 12 m, 12 m, 0.1 m, 1 s | `config/camera_obstacles.yaml` |
 
@@ -65,15 +60,15 @@ is in `docs/model-comparison.md`. Its Rust twin, a challenger, is `aav_detector_
 | `detr.py` | yes | RF-DETR pre- and post-processing for exported models (NumPy only) |
 | `ground.py` | yes | pinhole camera over a flat road: `Lens`, `Mount`, `box_points`, `view_edge`, `counts` |
 | `recent.py` | yes | `Recent`: each camera's newest points, dropped after `max_age` |
-| `stop_sign.py` | yes | `StopRule`, `StopSignWatcher`: CLEAR, STOPPING, PASSING. The Rust is checked against its answers: after a change, run `aav_stop_sign_rs/gen_vectors.py` (`test_stop_sign_vectors.py` fails until you do) |
-| `detector.py`, `stop_sign_watcher.py`, `camera_obstacles.py` | no | the nodes |
+| `stop_sign.py` | yes | `StopRule`, `StopSignWatcher`: CLEAR, STOPPING, PASSING: the rules of the stop-sign watcher, which runs in Rust ([`aav_stop_sign_rs`](../aav_stop_sign_rs/README.md)). The Rust is checked against its answers: after a change, run `aav_stop_sign_rs/gen_vectors.py` (`test_stop_sign_vectors.py` fails until you do) |
+| `detector.py`, `camera_obstacles.py` | no | the nodes |
 
 ## Invariants
 
 - The logic modules have no ROS imports, and their own tests.
 - The stop sign lock is twist_mux priority 30. It holds the point driver (25), navigation (20) and the AI slot
   (10), never a person or a test script. It can only stop the car.
-- The lock never expires on silence: if `stop_sign_watcher` dies while on, the car stays stopped.
+- The stop-sign lock never expires on silence: if `stop_sign_watcher` (`aav_stop_sign_rs`) dies while on, the car stays stopped.
 - Stop rule: distance = `focal_px` x `sign_height_m` / box height. Lock on for `hold_s`,
   then signs ignored for `ignore_s`.
 - Stop signs never become camera obstacles.

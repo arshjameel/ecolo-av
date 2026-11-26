@@ -4,8 +4,11 @@ Ported for `ecolo-av` on 2026-11-18: a Rust rewrite of our own Python nodes and 
 (Ben's code): `ros/drivers/aav_drive_to_point`'s `point_driver.py`, `point_cli.py`,
 `approach.py`, `line.py`, `drive.py`, `rules.py` and `run.py`, at commit `09aa2c28` (with
 `run.py`, the drive's ticks moved out of `point_driver.py` the same day). No outside code:
-nothing new for `docs/acknowledgements.md`. The Python stays, as the fall-back
-(`drive_to_point_impl:=python`).
+nothing new for `docs/acknowledgements.md`.
+
+**22 Nov:** the Python node and client (`point_driver.py`, `point_cli.py`) were removed
+(Ben: "lets start removing the python fall back after being tested enough times"; git tag `save/python-fallbacks-1`).
+The maths modules stay in `aav_drive_to_point`, so `gen_vectors.py` still runs.
 
 | Part | From the Python |
 |---|---|

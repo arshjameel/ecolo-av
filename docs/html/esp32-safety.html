@@ -202,8 +202,9 @@ against the code; the proofs are in the last table.</p>
 </tbody>
 </table></div>
 <p><strong>Rust by default</strong> (Ben, 17 Nov: "Rust tomorrow"): the output mux (<code>aav_io_mux_rs</code>),
-the bridge (<code>aav_legacy_rs</code>) and <code>rc_driver</code> (<code>aav_rc_rs</code>) run in Rust; each
-<code>*_impl:=python</code> falls back. The bridge packs its frames with the firmware's own
+the bridge (<code>aav_legacy_rs</code>) and <code>rc_driver</code> (<code>aav_rc_rs</code>) run in Rust. The bridge and
+<code>rc_driver</code> fall back (<code>legacy_impl:=python</code>, <code>rc_impl:=python</code>); the Python muxes were
+removed on 22 Nov. The bridge packs its frames with the firmware's own
 <code>legacy-link</code>, so the Pi and the ESP32 share one copy of the bytes.</p>
 <p><strong>The heartbeat is the output mux's counter.</strong> Wherever the output mux runs (the Orin,
 or the Motor Pi with <code>machine:=motor_pi_alone</code>), that machine is the heartbeat.</p>
@@ -1077,7 +1078,7 @@ two give the same frames, byte for byte: <code>legacy-bridge</code>'s <code>test
 </tr>
 <tr>
 <td>ego sends at 50 Hz and stops on 0.3 s of quiet</td>
-<td><code>ros/ego/aav_ego/aav_ego/ego_node.py:112-130</code>, <code>ego.yaml:19</code></td>
+<td><code>ros/ego/aav_ego_rs/crates/ego-node/src/ego.rs</code> (<code>cmd_timeout</code>), <code>ego.yaml:19</code></td>
 <td></td>
 </tr>
 <tr>

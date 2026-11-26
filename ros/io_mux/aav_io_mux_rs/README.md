@@ -8,8 +8,9 @@ answers.
 
 **A safety lock.** The output mux makes the heartbeat the ESP32 brakes without. Ben
 decided (17 Nov: "Rust tomorrow ... I don't think we want to do this again later"): Rust
-on the car (the Motor Pi alone too) and in the simulator. `io_mux_impl:=python` falls
-back, both muxes together, until a car day proves it.
+on the car (the Motor Pi alone too) and in the simulator. The only muxes since 22 Nov:
+the Python nodes were removed (tag `save/python-fallbacks-1`); `aav_io_mux` keeps the
+launch file and the rules in Python.
 
 ```
 /system/source + the ROS graph ──► sensor_mux ──► /system/sensor_mux/state ──┐
@@ -37,13 +38,13 @@ colcon builds it through `CMakeLists.txt` (`cargo build --release --locked`), in
 
 ### Picking it
 
-`io_mux.launch.py io_mux_impl:=rust|python` (default `rust`, `vehicle.DEFAULT_IO_MUX_IMPL`).
+`io_mux.launch.py io_mux_impl:=rust` (`vehicle.DEFAULT_IO_MUX_IMPL`; the only value, a hook).
 `car.launch.py` and `sim.launch.py` declare it and pass it on; the other profiles (bench,
 turtle, carla, replay) take it from the command line the same way.
 
 ### Nodes
 
-The same as the Python's (`aav_io_mux`'s README): every topic, QoS, parameter and
+As `aav_io_mux`'s README lists them (the Python's, as they were): every topic, QoS, parameter and
 default, and the clear service. Nothing added. The parameters are read only.
 
 ### `io-mux-core`
@@ -57,11 +58,10 @@ default, and the clear service. Nothing added. The parameters are read only.
 ## Invariants
 
 - **The same answers as the Python, exactly.** `aav_io_mux`'s `muxes.py` is the nodes'
-  work without ROS (the Python nodes call it too). `gen_vectors.py` runs it and writes
+  work without ROS (the Python nodes called it too, until 22 Nov). `gen_vectors.py` runs it and writes
   `vectors.json`; `tests/vectors.rs` replays every step in Rust, and `aav_io_mux`'s
   `test_vectors.py` checks the Python still writes the same file. No tolerance: text as
   text. Change one, change both.
-- Same node names and topics: nothing downstream can tell which runs. Only one runs.
 - Fail-safe as the Python, and where the Python would crash: a ROS graph that can't be
   read skips that judgement (the sensor mux publishes nothing, so the output mux waits);
   a clear is refused.
@@ -127,6 +127,6 @@ pixi run build && colcon test --packages-select aav_io_mux_rs && colcon test-res
 | `tests/vectors.rs` | the Python's answers, step by step (above) |
 | `lib.rs`'s unit test | the counter wraps in a byte |
 | `test/test_io_mux_rs_nodes.py` | the two processes, target car: OPEN, commands and a +1 heartbeat; a SIM announcement: STOP, nothing goes on, clear refused; it goes: still STOP, cleared, OPEN; a clean Ctrl-C |
-| `aav_io_mux`'s `test_real_backend_guard.py`, `aav_legacy`'s `test_heartbeat_chain.py` | the Python muxes with the real backends (the fall-back) |
+| `aav_io_mux`'s `test_real_backend_guard.py`, `aav_legacy`'s `test_heartbeat_chain.py` | these muxes with the real backends: `spine_bridge` and `legacy_uart_bridge`, each in Rust and in Python |
 
 In the simulator: `pixi run sim` (the default). Not yet run on the car.

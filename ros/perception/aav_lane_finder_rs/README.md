@@ -2,8 +2,8 @@
 
 ## Overview
 
-`lane_finder` in Rust (rclrs): a **drop-in** for `aav_lane_finder`'s Python node. The
-same node name, topics, QoS, parameters and answers. Ben, 18 Nov: "the aav_lane_finder
+`lane_finder` in Rust (rclrs): the classic lane finder, a port of `aav_lane_finder`'s
+Python node (removed 22 Nov). The same node name, topics, QoS, parameters and answers. Ben, 18 Nov: "the aav_lane_finder
 might be nice to have since it helps the car stay on the correct side"; Rust where
 possible, for trust and speed on the car's ARM computers.
 
@@ -16,7 +16,10 @@ possible, for trust and speed on the car's ARM computers.
 ```
 
 **The default** wherever the lane finder runs (`lane:=true`, `lane_pose:=true`, the car's
-`lane`, bench `lane:=true`); `lane_finder_impl:=python` runs the Python one instead.
+`lane`, bench `lane:=true`). The Python node was removed on 22 Nov (Ben: "lets start
+removing the python fall back after being tested enough times"; tag
+`save/python-fallbacks-1`); `aav_lane_finder` keeps the launch file, the config and the
+Python maths, so `gen_vectors.py` and the node test still run.
 
 No OpenCV: the warp, the mask and the windows are a few loops, and the fit is `nalgebra`'s
 SVD. So it builds anywhere `cargo` does, the car kit included, with nothing in C++.
@@ -112,8 +115,7 @@ the lane never lost.
 
 - The same answers as the Python modules: `tests/vectors.rs` reads `vectors.json`, which
   `gen_vectors.py` writes from them. Change one, change both, write the vectors again.
-- The same node name and topics as the Python: only one of the two runs
-  (`lane_finder_impl:=`).
+- One `lane_finder` runs: this one, or the learned challenger (`lane_finder_impl:=learned`).
 - `lane-core` has no ROS and no OpenCV; `cargo fmt` and `cargo clippy -D warnings` clean.
 - REP-103: x forward, y left, metres; the offset + when the car is left of the centre.
 

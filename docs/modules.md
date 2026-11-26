@@ -195,7 +195,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 
 | | |
 |---|---|
-| **Does** | an action that drives to one point B (lat/lon or map x/y) and stops there: speed up gently, hold, slow down by the distance left at half the measured braking |
+| **Does** | an action that drives to one point B (lat/lon or map x/y) and stops there: speed up gently, hold, slow down by the distance left at half the measured braking. The node and client are Rust (`aav_drive_to_point_rs`; the Python ones removed 22 Nov); this package holds the launch file, config and Python maths |
 | **Why** | the main goal (Ben, 15 Oct): GPS A to B with a smooth stop, tests.md 5.2 |
 | **Runs on** | the Orin, next to the mux |
 | **In → out** | the action `/drive_to_point`, `/localization/odom/global`, `/sensors/gps/fix` → `/drivers/point/cmd_vel` (twist_mux priority 25) |
@@ -259,7 +259,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 | **In → out** | `/ego/actuator_cmd`, `/system/source`, the ROS graph → `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` |
 | **Origin** | ours (the proposal's sensor and output muxes) |
 | **Status** | [[works]] in its tests and in every profile; [[untested]] on the car |
-| **Run alone** | `ros2 launch aav_io_mux io_mux.launch.py target:=car` (Rust, `aav_io_mux_rs`, the default since 17 Nov; `io_mux_impl:=python` for these) |
+| **Run alone** | `ros2 launch aav_io_mux io_mux.launch.py target:=car` (Rust, `aav_io_mux_rs`: the only muxes since 22 Nov, when this package's Python nodes were removed) |
 | **Test** | `test/test_provenance.py`, `test_vectors.py` (in `tools/test.sh`), `test/test_real_backend_guard.py` (`pixi run test`); the Rust: `cargo test -p io-mux-core` (the shared vectors) |
 | **Read first** | `aav_io_mux/provenance.py`, then [Sources and targets](sources-and-targets.md) |
 
@@ -267,7 +267,7 @@ The cards themselves were not checked again after 25 Oct, apart from the lines c
 
 | | |
 |---|---|
-| **Does** | turns the chosen speed and turn rate into a speed and steering angle the car can do, with limits, ramps and a timeout |
+| **Does** | turns the chosen speed and turn rate into a speed and steering angle the car can do, with limits, ramps and a timeout. The nodes are Rust (`aav_ego_rs`; the Python ones removed 22 Nov); this package holds the launch file, config and Python maths |
 | **Why** | the drivers never need to know which car they drive |
 | **Runs on** | the Orin |
 | **In → out** | `/control/cmd_vel` → `/ego/actuator_cmd` (AckermannDriveStamped, 50 Hz) |
@@ -361,7 +361,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 
 | | |
 |---|---|
-| **Does** | three nodes: `object_detector` (RF-DETR Nano on camera pictures by default; YOLO with `detector:=yolo`), `stop_sign_watcher` (locks the mux at a close stop sign), `camera_obstacles` (boxes as points on the road for the costmap) |
+| **Does** | two nodes: `object_detector` (RF-DETR Nano on camera pictures by default; YOLO with `detector:=yolo`), `camera_obstacles` (boxes as points on the road for the costmap); and `stop_sign.py`, the rules of `stop_sign_watcher` (which locks the mux at a close stop sign; the node is `aav_stop_sign_rs`'s since 22 Nov) |
 | **Why** | the car must stop at stop signs, and see people and cars |
 | **Runs on** | the detector: the Orin (TensorRT, after the reflash) or a laptop (Core ML); the watcher: the Orin |
 | **In → out** | `/sensors/camera/front_left/image_raw` → `/perception/detections` → `/perception/stop_sign`, `/perception/camera_obstacles`, `/perception/camera_view` |
@@ -389,7 +389,7 @@ Exactly one runs at a time. Each reads ego's commands from the output mux, on it
 
 | | |
 |---|---|
-| **Does** | finds the lane lines in the front camera's picture (classic OpenCV, no model) |
+| **Does** | the lane finder's launch file, config and Python maths (classic OpenCV, no model); the node that finds the lane lines is `aav_lane_finder_rs`'s (the Python node removed 22 Nov) |
 | **Why** | lane keeping needs to know where the car sits in its lane |
 | **Runs on** | with the camera (`lane: false` everywhere: it drives whenever it sees a lane) |
 | **In → out** | `/sensors/camera/front_left/image_raw`, `.../camera_info` → `/perception/lane/geometry`, `/perception/lane/image` |
@@ -505,8 +505,8 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
 | `aav_routes` | street routes (Valhalla) as GPS waypoints for the navigator | `ros/drivers/aav_routes/README.md`, then [Routes](routes.md) |
 | `aav_spine_bridge` | `spine_bridge` in Rust, the default; the same node as `aav_spine`'s Python one | `ros/can_bridge/aav_spine_bridge/README.md` |
-| `aav_lidar` | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | `ros/perception/aav_lidar/README.md` |
-| `aav_lidar_rs` | `lidar_scan` in Rust, the default (`lidar_impl:=`): the same scan | `ros/perception/aav_lidar_rs/README.md` |
+| `aav_lidar` | the flat scan's maths in Python (`scan.py`, `ground.py`); its node removed 22 Nov | `ros/perception/aav_lidar/README.md` |
+| `aav_lidar_rs` | `lidar_scan` in Rust, the only one (the Python removed 22 Nov): the roof lidar's cloud as a 2D scan for the costmap and the stop zone | `ros/perception/aav_lidar_rs/README.md` |
 | `aav_voxels_rs` | `voxels` in Rust: the lidar's cubes, the Python node's drop-in (`voxels_impl:=rust`) | `ros/perception/aav_voxels_rs/README.md` |
 | `aav_safety` | the sensor watchdog: a twist_mux lock (30) when a sensor fails | `ros/safety/aav_safety/README.md`, then [Simulation](simulation.md#the-sensor-watchdog) |
 | `aav_ghost` | ghost obstacles: a pretend person only navigation sees | `ros/safety/aav_ghost/README.md`, then [Ghost obstacles](ghost-obstacles.md) |
@@ -526,18 +526,18 @@ These have no card here yet. Each package's README answers the same questions.
 | `aav_simulator` | Ravensim, our own simulator in Rust: the only one since Gazebo went (16 Nov) | `ros/sim/aav_simulator/README.md`, then [Ravensim](own-simulator.md) |
 | `aav_sim_cameras` | Ravensim's cameras (Bevy, offscreen; needs a GPU); a cargo program, not a colcon package | `ros/sim/aav_sim_cameras/README.md`, then [its page](own-simulator-cameras.md) |
 | `aav_dev_window` | the developer window (Bevy), for a laptop: `pixi run dev-window`; a cargo program, not a colcon package | `ros/hud/aav_dev_window/README.md` |
-| `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (`ego_impl:=python` falls back) | `ros/ego/aav_ego_rs/README.md` |
+| `aav_ego_rs` | `ego` and `look_ahead` in Rust, the default (the Python removed 22 Nov) | `ros/ego/aav_ego_rs/README.md` |
 | `aav_watchdog_rs` | the sensor watchdog in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_watchdog_rs/README.md` |
-| `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (`io_mux_impl:=python` falls back) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
+| `aav_io_mux_rs` | the sensor mux and the output mux in Rust, the default (the Python removed 22 Nov) | `ros/io_mux/aav_io_mux_rs/README.md`, then [Sources and targets](sources-and-targets.md) |
 | `aav_legacy_rs` | `legacy_uart_bridge` in Rust, the default (`legacy_impl:=python` falls back) | `ros/can_bridge/aav_legacy_rs/README.md` |
 | `aav_rc_rs` | `rc_driver` in Rust, the default (`rc_impl:=python` falls back) | `ros/drivers/aav_rc_rs/README.md` |
 | `aav_joy_alive_rs` | `joy_alive` in Rust, the default (the Python removed 20 Nov) | `ros/safety/aav_joy_alive_rs/README.md` |
-| `aav_safety_rs` | `geofence`, `stop_hold`, `goal_leash` in Rust, the defaults (`*_impl:=python` falls back) | `ros/safety/aav_safety_rs/README.md` |
+| `aav_safety_rs` | `geofence`, `stop_hold`, `goal_leash` in Rust, the defaults (the Python removed 20 Nov) | `ros/safety/aav_safety_rs/README.md` |
 | `aav_mux_state` | `command_mux_state` (Rust): who twist_mux passes on, on `/control/command_mux/state`, for the debug screen | `ros/command_mux/aav_mux_state/README.md` |
-| `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (`stop_sign_impl:=python` falls back) | `ros/perception/aav_stop_sign_rs/README.md` |
-| `aav_lane_finder_rs` | `lane_finder` in Rust, the default (`lane_finder_impl:=python` falls back) | `ros/perception/aav_lane_finder_rs/README.md` |
+| `aav_stop_sign_rs` | `stop_sign_watcher` in Rust, the default (the Python removed 22 Nov) | `ros/perception/aav_stop_sign_rs/README.md` |
+| `aav_lane_finder_rs` | `lane_finder` in Rust, the default (the Python removed 22 Nov) | `ros/perception/aav_lane_finder_rs/README.md` |
 | `aav_camera_stream_rs` | `camera_stream` in Rust, the default with no detector (`camera_stream_impl:=python` falls back) | `ros/sources/aav_camera_stream_rs/README.md`, then [Camera pipeline](camera-pipeline.md) |
-| `aav_drive_to_point_rs` | `point_driver` and `drive_to_point` in Rust, the default (`drive_to_point_impl:=python` falls back) | `ros/drivers/aav_drive_to_point_rs/README.md`, then [A to B](a-to-b.md) |
+| `aav_drive_to_point_rs` | `point_driver` and `drive_to_point` in Rust, the default (the Python removed 22 Nov) | `ros/drivers/aav_drive_to_point_rs/README.md`, then [A to B](a-to-b.md) |
 | `aav_detector_rs` | the detector in Rust through ONNX Runtime, a challenger (`detector_impl:=rust`) | `ros/perception/aav_detector_rs/README.md`, then [ONNX](onnx.md) |
 | `aav_amcl_rs` | AMCL in Rust, the default AMCL (stock `nav2_amcl` removed 20 Nov); a trial, `amcl:=true` | `ros/localization/aav_amcl_rs/README.md`, then [Trials](history/trials-log.md#18-nov-amcl-in-rust-against-stock) |
 | `aav_lane_pose` | `lane_pose`: the lane finder's offset as a sideways pose for the global EKF (`stack:=ours`) | `ros/localization/aav_lane_pose/README.md` |

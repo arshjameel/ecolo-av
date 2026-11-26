@@ -378,8 +378,9 @@ off (<code>legacy_encoder: false</code>). So with only the ESP32 and the Motor P
 </div>
 </section>
 <section class="card"><h2 id="if-the-rust-nodes-misbehave">If the Rust nodes misbehave</h2>
-<p>Since 17 Nov the Motor Pi's nodes run in Rust by default. Each has the Python as a
-fall-back, one switch away (<a href="release-0.4-rc1.html">0.4 on the car</a>):</p>
+<p>Since 17 Nov the Motor Pi's nodes run in Rust by default. The bridge and the RC driver
+have the Python as a fall-back, one switch away; the others have none since 20 and 22 Nov
+(<a href="release-0.4-rc1.html">0.4 on the car</a>):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -390,7 +391,7 @@ fall-back, one switch away (<a href="release-0.4-rc1.html">0.4 on the car</a>):<
 <tbody>
 <tr>
 <td>The muxes (output and sensor)</td>
-<td><code>~/aav-jazzy/aav.sh car motor_pi_alone -- io_mux_impl:=python</code></td>
+<td>none since 22 Nov: the Python was removed (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>The ESP32's UART bridge</td>
@@ -406,11 +407,11 @@ fall-back, one switch away (<a href="release-0.4-rc1.html">0.4 on the car</a>):<
 </tr>
 <tr>
 <td>The stop-sign watcher</td>
-<td><code>~/aav-jazzy/aav.sh car motor_pi_alone -- stop_sign_impl:=python</code></td>
+<td>none since 22 Nov: the Python was removed (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>The point driver (on the Orin, not the Motor Pi)</td>
-<td><code>~/aav-jazzy/aav.sh car orin -- drive_to_point_impl:=python</code></td>
+<td>none since 22 Nov: the Python was removed (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>The others (ego, the watchdog...)</td>

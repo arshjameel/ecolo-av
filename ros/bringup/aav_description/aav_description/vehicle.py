@@ -418,9 +418,10 @@ def check_voxels_impl(impl):
 
 
 # Which lidar_scan flattens the lidar (lidar:=true, lidar_impl:=): rust (aav_lidar_rs, the
-# default since 17 Nov: the same node name, topics and ranges, 2 % of a core against 5 %)
-# or python (aav_lidar, the fallback). Each one's package.
-LIDAR_IMPLS = {'python': 'aav_lidar', 'rust': 'aav_lidar_rs'}
+# default since 17 Nov: the same node name, topics and ranges, 2 % of a core against 5 %).
+# The Python node (aav_lidar's) went on 22 Nov (tag save/python-fallbacks-1); aav_lidar
+# keeps scan.py and ground.py, which other code imports. The switch stays, a hook.
+LIDAR_IMPLS = {'rust': 'aav_lidar_rs'}
 DEFAULT_LIDAR_IMPL = 'rust'
 
 
@@ -497,9 +498,10 @@ def check_detector_impl(impl):
 
 # Which ego runs (ego.launch.py, car.launch.py, sim.launch.py ego_impl:=): rust
 # (aav_ego_rs: ego and look_ahead in one process; the default on the car and in the
-# simulator, Ben, 16 Nov) or python (aav_ego's two nodes: the same node names, topics and
-# answers; kept selectable until a car day proves the Rust). Each one's package.
-EGO_IMPLS = {'python': 'aav_ego', 'rust': 'aav_ego_rs'}
+# simulator, Ben, 16 Nov). The Python nodes (aav_ego's two) went on 22 Nov (tag
+# save/python-fallbacks-1); aav_ego keeps the launch file, the config and the maths.
+# The switch stays, a hook.
+EGO_IMPLS = {'rust': 'aav_ego_rs'}
 DEFAULT_EGO_IMPL = 'rust'
 # The simulator's default: the car's since 16 Nov (the name stays for sim.launch.py).
 SIM_DEFAULT_EGO_IMPL = DEFAULT_EGO_IMPL
@@ -541,10 +543,11 @@ def check_watchdog_impl(impl):
 
 # Which sensor mux and output mux run (io_mux.launch.py, car.launch.py, sim.launch.py
 # io_mux_impl:=): rust (aav_io_mux_rs, the default on the car and in the simulator since
-# Ben decided, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later")
-# or python (aav_io_mux: the same node names, topics and answers; kept selectable until a
-# car day proves the Rust). Both muxes switch together. Each one's package.
-IO_MUX_IMPLS = {'python': 'aav_io_mux', 'rust': 'aav_io_mux_rs'}
+# Ben decided, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later").
+# The Python nodes (aav_io_mux's) went on 22 Nov (tag save/python-fallbacks-1); that
+# package keeps the launch file and the rules. Both muxes switch together; the switch
+# stays, a hook.
+IO_MUX_IMPLS = {'rust': 'aav_io_mux_rs'}
 DEFAULT_IO_MUX_IMPL = 'rust'
 
 
@@ -588,9 +591,10 @@ def check_rc_impl(impl):
 
 # Which point_driver drives to one point (drive_to_point.launch.py, and the sim, bench and car
 # profiles that start it; drive_to_point_impl:=): rust (aav_drive_to_point_rs, the default
-# since 18 Nov: the same node name, action, topics and answers) or python
-# (aav_drive_to_point, the fall-back). Each one's package.
-DRIVE_TO_POINT_IMPLS = {'python': 'aav_drive_to_point', 'rust': 'aav_drive_to_point_rs'}
+# since 18 Nov). The Python node and client (aav_drive_to_point's) went on 22 Nov (tag
+# save/python-fallbacks-1); that package keeps the launch file, the config and the maths.
+# The switch stays, a hook.
+DRIVE_TO_POINT_IMPLS = {'rust': 'aav_drive_to_point_rs'}
 DEFAULT_DRIVE_TO_POINT_IMPL = 'rust'
 
 
@@ -605,8 +609,9 @@ def check_drive_to_point_impl(impl):
 
 # Which arm_when_open arms the stand-ins' spine (bench.launch.py arm:=true, ravensim.launch.py
 # spine:=true; arm_when_open_impl:=): rust (aav_spine_bridge's, beside the Rust bridge, the
-# default since 18 Nov) or python (aav_spine's). Each one's package.
-ARM_WHEN_OPEN_IMPLS = {'python': 'aav_spine', 'rust': 'aav_spine_bridge'}
+# default since 18 Nov). The Python (aav_spine's) went on 22 Nov (tag
+# save/python-fallbacks-1); the switch stays, a hook.
+ARM_WHEN_OPEN_IMPLS = {'rust': 'aav_spine_bridge'}
 DEFAULT_ARM_WHEN_OPEN_IMPL = 'rust'
 
 
@@ -622,12 +627,11 @@ def check_arm_when_open_impl(impl):
 # Which lane_finder finds the lane lines (lane_finder.launch.py, and every profile that starts
 # it: lane:=true, lane_pose:=true, the car's lane part; lane_finder_impl:=): rust
 # (aav_lane_finder_rs, the default since Ben, 18 Nov: "it helps the car stay on the correct
-# side"; the same node name, topics, parameters and lanes, no OpenCV) or python
-# (aav_lane_finder, the fallback); or learned (aav_lane_finder_learned, a challenger, TODO
-# 262b: our UFLD-v2-style model through ONNX Runtime, the same message; needs
-# models/lane-ufld.onnx). Each one's package.
-LANE_FINDER_IMPLS = {'python': 'aav_lane_finder', 'rust': 'aav_lane_finder_rs',
-                     'learned': 'aav_lane_finder_learned'}
+# side"; no OpenCV) or learned (aav_lane_finder_learned, a challenger, TODO 262b: our
+# UFLD-v2-style model through ONNX Runtime, the same message; needs models/lane-ufld.onnx).
+# Each one's package. The Python node (aav_lane_finder's) went on 22 Nov (tag
+# save/python-fallbacks-1); that package keeps the launch file, the config and the maths.
+LANE_FINDER_IMPLS = {'rust': 'aav_lane_finder_rs', 'learned': 'aav_lane_finder_learned'}
 DEFAULT_LANE_FINDER_IMPL = 'rust'
 
 
@@ -742,9 +746,10 @@ def check_gps_heading_impl(impl):
 
 # Which stop_sign_watcher runs (car.launch.py's stop_signs, sim.launch.py and
 # bench.launch.py with perception; stop_sign_impl:=): rust (aav_stop_sign_rs, the default
-# since Ben, 17 Nov) or python (aav_detector's: the same node name, topics, parameters and
-# answers). Each one's package.
-STOP_SIGN_IMPLS = {'python': 'aav_detector', 'rust': 'aav_stop_sign_rs'}
+# since Ben, 17 Nov). The Python node (aav_detector's) went on 22 Nov (tag
+# save/python-fallbacks-1); its rules, stop_sign.py, stay there as the Rust's yardstick.
+# The switch stays, a hook.
+STOP_SIGN_IMPLS = {'rust': 'aav_stop_sign_rs'}
 DEFAULT_STOP_SIGN_IMPL = 'rust'
 
 

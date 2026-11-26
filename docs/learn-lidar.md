@@ -154,8 +154,8 @@ The band comes from `vehicle.yaml`: the body is 1.5 m tall, plus a 0.5 m margin
 
 ### The plain way: `lidar_scan`, no cubes
 
-Without cubes (`voxels:=false`, the car's default), `lidar_scan` (`aav_lidar_rs`; Python:
-`aav_lidar`) does the same job a simpler way: in each of **720 directions** (every 0.5°), it keeps the **nearest point
+Without cubes (`voxels:=false`, the car's default), `lidar_scan` (`aav_lidar_rs`; the same sums in Python:
+`aav_lidar`'s `scan.py`) does the same job a simpler way: in each of **720 directions** (every 0.5°), it keeps the **nearest point
 inside the band**.
 
 | | |
@@ -324,7 +324,7 @@ it starts. Built on the raylib HUD (`ros/hud/aav_hud`).
 | Piece | State | Where |
 |---|---|---|
 | VLP-16 → `/sensors/lidar/points` | ✅ built; the simulator and a fake lidar; never the real one | `aav_sensors` `sensors.launch.py` |
-| Points → 2D scan → costmap and the stop zone | ✅ built; the simulator | `aav_lidar_rs` (`aav_lidar` in Python) `lidar_scan`, `nav2.yaml` |
+| Points → 2D scan → costmap and the stop zone | ✅ built; the simulator | `aav_lidar_rs` `lidar_scan`, `nav2.yaml` |
 | Cubes from the lidar | ✅ built; the simulator | `aav_voxels`, `aav_voxels_rs` |
 | Cubes drawn on the camera picture | ✅ on the debug HUD; on the car, needs calibration | `hud-core` `picture.rs`, research pick 4 |
 | Cubes into named objects | ✅ built (`/world/things`); names from the camera's boxes | `aav_things`, `aav_things_rs` |
@@ -342,7 +342,7 @@ it starts. Built on the raylib HUD (`ros/hud/aav_hud`).
 |---|---|
 | The lidar's topics | `docs/interfaces.yaml`: `/sensors/lidar/points`, `/sensors/lidar/scan` |
 | The driver | `ros/sources/aav_sensors/launch/sensors.launch.py` (`lidar:=true`) |
-| Points into a scan | `ros/perception/aav_lidar` (`scan.py`: the sums, no ROS) |
+| Points into a scan | `ros/perception/aav_lidar_rs` (the node); `ros/perception/aav_lidar` (`scan.py`: the sums in Python, no ROS) |
 | The lowest rings and body roll | `aav_lidar` `ground.py` |
 | The costmap's layers | `ros/drivers/aav_navigation/config/nav2.yaml` |
 | Where the lidar sits; the height band | `vehicle.yaml` `lidar_link`; `aav_description` `vehicle.py` |

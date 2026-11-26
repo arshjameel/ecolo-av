@@ -4,6 +4,18 @@ Ego is the virtual car between the command mux and the backends. It turns the on
 velocity command, `/control/cmd_vel` (v, w), into one Ackermann command,
 `/ego/actuator_cmd` (speed, steering angle), within the car's limits.
 
+The nodes `ego` and `look_ahead` run in Rust: [`aav_ego_rs`](../aav_ego_rs/README.md), one
+process. This package's two Python nodes were removed on 22 Nov 2026 (Ben: "lets start
+removing the python fall back after being tested enough times"; git tag
+`save/python-fallbacks-1`).
+
+| Here | What |
+|---|---|
+| `launch/ego.launch.py` | starts the Rust process; every profile includes it |
+| `config/ego.yaml` | ego's parameters (navigation, the geofence, the HUD and tools read it too) |
+| `ackermann.py`, `dynamics.py`, `vehicle_model.py` | maths other packages and tools import |
+| `pedal.py`, `lag_lead.py`, `road_limit.py`, `trace_ahead.py`, `stop_ahead.py`, `look_ahead.py` | the rest of the maths: the Rust's yardstick (`aav_ego_rs`' `gen_vectors.py`) |
+
 ```
 twist_mux -> /control/cmd_vel -> ego -> /ego/actuator_cmd (50 Hz, always)
           -> output mux (aav_io_mux) -> one backend: spine, legacy serial, Ravensim, turtlesim, CARLA
@@ -20,7 +32,7 @@ speed, reverse speed, acceleration, jerk, steering angle and rate, and a body mo
 
 | Item | What |
 |---|---|
-| Node `ego` | `ros2 launch aav_ego ego.launch.py [use_sim_time:=false] [max_speed:=0.3] [sim_max_speed:=]` |
+| Node `ego` (`aav_ego_rs`) | `ros2 launch aav_ego ego.launch.py [use_sim_time:=false] [max_speed:=0.3] [sim_max_speed:=]` |
 | Subscribes | `/control/cmd_vel` (`geometry_msgs/TwistStamped`; plain `Twist` when the parameter `use_stamped` is false, in `ego.yaml`: not a launch argument) |
 | | `/vehicle/odom` (`nav_msgs/Odometry`): the measured speed, for the trace's twin |
 | | `/drivers/<d>/lag_aware` (`std_msgs/Bool`, latched) and `/drivers/<d>/cmd_vel`, for each `d` in `lag_aware_drivers`: is a lag-aware driver driving? |
@@ -29,7 +41,7 @@ speed, reverse speed, acceleration, jerk, steering angle and rate, and a body mo
 | Publishes | `/ego/actuator_cmd` (`ackermann_msgs/AckermannDriveStamped`) at `rate_hz`: speed (m/s), steering_angle (rad, + left), acceleration (m/s²: the limit used; while speeding up with `max_jerk` > 0, the eased acceleration now), steering_angle_velocity (`max_steering_rate`) |
 | | `/ego/trace` (`nav_msgs/Path`, frame `base_link`) at `trace_rate_hz`: where the car goes over `trace_horizon` s |
 | | `/ego/stop_point` (`geometry_msgs/PoseStamped`, frame `base_link`, with each trace): where a full brake now stops the car |
-| Node `look_ahead` | started by `ego.launch.py` (`look_ahead:=true`, the default): the squiggly line's numbers for the screens. Subscribes `/ego/trace`, `/ego/stop_point`, `/drivers/nav/local_plan`, `/plan`, `/local_costmap/costmap`, `/world/road_ahead`, TF; publishes `/ego/plan_ahead` (Path, base_link) and `/ego/ahead` (DiagnosticStatus: gap_m, plan, stop_m, goal_m, obstacle_m, room_m, front_m, rear_m, half_width_m, road_mps, road_m, road_why). Parameters in its docstring (`look_ahead_node.py`) |
+| Node `look_ahead` (`aav_ego_rs`) | started by `ego.launch.py` (`look_ahead:=true`, the default): the squiggly line's numbers for the screens. Subscribes `/ego/trace`, `/ego/stop_point`, `/drivers/nav/local_plan`, `/plan`, `/local_costmap/costmap`, `/world/road_ahead`, TF; publishes `/ego/plan_ahead` (Path, base_link) and `/ego/ahead` (DiagnosticStatus: gap_m, plan, stop_m, goal_m, obstacle_m, room_m, front_m, rear_m, half_width_m, road_mps, road_m, road_why). Parameters in its docstring (`look_ahead_node.py`) |
 
 Launch arguments:
 
@@ -40,7 +52,7 @@ Launch arguments:
 | `look_ahead` | `true`: also start `look_ahead` (the screens' squiggly line); `false`: ego alone |
 | `road_ahead` | `false`; `true`: hold navigation to `/world/road_ahead` (`sim.launch.py` sets it with `behaviour:=true`, its writer) |
 | `speed_loop` | `default`: the spine's speed loop profile the car runs (`default`, `smooth`, `lqi`, `firm`), set as `trace_speed_loop` over `ego.yaml`'s, so the trace's twin assumes it; `sim.launch.py` and `bench.launch.py` pass theirs (TODO 163). An unknown name is refused |
-| `ego_impl` | `rust`: [`aav_ego_rs`](../aav_ego_rs/README.md), ego and look_ahead in one Rust process with the same names, topics and answers (the default since Ben, 16 Nov; `sim.launch.py` and `car.launch.py` pass it on); `python`: this package's two nodes |
+| `ego_impl` | `rust` only: [`aav_ego_rs`](../aav_ego_rs/README.md), ego and look_ahead in one Rust process (the default since Ben, 16 Nov; `sim.launch.py` and `car.launch.py` pass it on). `python` is refused since 22 Nov; the switch stays as a hook |
 
 Parameters. From `config/ego.yaml`:
 
@@ -81,8 +93,6 @@ Modules:
 | `trace_ahead.py` | `Twin` (ego's copy of the car), `trace(...)` -> poses in `base_link`, `ego_commands` |
 | `stop_ahead.py` | `stop_point(cfg, state)` -> `StopPoint` (where a full brake now stops, base_link; the car model), `s_of_v` (the design's S(v)) |
 | `look_ahead.py` | the squiggly line's maths: `crop_ahead`, `gap`, `grade`, `to_goal`, `Grid`, `first_hit`, `extend`, `describe` |
-| `look_ahead_node.py` | the ROS node `look_ahead` |
-| `ego_node.py` | the ROS node `Ego` |
 
 ## Invariants
 
@@ -136,4 +146,3 @@ it; `test_ego_launch.py` skips without ROS). `pixi run test` runs everything.
 | `test_trace_ahead.py` | the trace and the twin |
 | `test_stop_ahead.py` | the stop point: parked, S(v), dead time, turning, backwards, no brake |
 | `test_look_ahead.py` | the plan cut ahead, the gap and its grade, the goal, the costmap's first obstacle |
-| `test_ego_node.py` | the node in this process: `/ego/trace`; the lead off for a lag-aware driver (needs ROS) |

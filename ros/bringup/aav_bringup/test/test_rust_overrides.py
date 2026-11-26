@@ -1,10 +1,11 @@
 """
-A launch value reaches the node, Rust or Python: each launch started, its parameter read back.
+A launch value reaches the node: each launch started, its parameter read back.
 
 rclrs lets a YAML's entry under the node's own name beat launch's `/**` dicts; every Rust
 Node() with several parameter sources therefore has `namespace='/'` (docs/languages.md,
 "Launch overrides"; tools/tests/test_rust_launch_params.py checks the source). This test
-checks the running processes, for the safety numbers, in both languages:
+checks the running processes, for the safety numbers (legacy.launch.py in both
+languages; ego and the muxes are Rust only since 22 Nov):
 
 | Launch | Argument | The node's parameter |
 |---|---|---|
@@ -93,9 +94,11 @@ def params(node, target, names, timeout=30.0):
 
 # Both languages: the Python twins must keep their values too.
 IMPLS = pytest.mark.parametrize('impl', ['rust', 'python'])
+# ego and the muxes: their Python nodes went on 22 Nov.
+RUST = pytest.mark.parametrize('impl', ['rust'])
 
 
-@IMPLS
+@RUST
 def test_ego_max_speed_reaches_ego(ros, impl):
     run = Launched('aav_ego', 'ego.launch.py', f'ego_impl:={impl}', 'look_ahead:=false',
                    'max_speed:=0.3')
@@ -125,7 +128,7 @@ def test_legacy_port_frame_and_steering_reach_the_bridge(ros, impl):
     assert got == {'port': port, 'frame_version': 2, 'max_steering_angle': steering}
 
 
-@IMPLS
+@RUST
 def test_output_mux_target_reaches_the_mux(ros, impl):
     run = Launched('aav_io_mux', 'io_mux.launch.py', f'io_mux_impl:={impl}', 'target:=bench',
                    'source:=bench')

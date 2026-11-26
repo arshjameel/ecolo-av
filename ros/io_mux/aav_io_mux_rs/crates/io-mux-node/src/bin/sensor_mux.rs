@@ -1,7 +1,7 @@
 //! sensor_mux in Rust: checks that every sensor comes from the one source this run asked
 //! for. A drop-in for aav_io_mux's sensor_mux.py: the same node name, topics, QoS,
 //! parameters and answers. The logic is `io-mux-core`, with no ROS.
-//! **A safety lock**: the default since Ben, 17 Nov; `io_mux_impl:=python` falls back.
+//! **A safety lock**: the default since Ben, 17 Nov; the Python removed 22 Nov.
 //!
 //! Subscribes  system/source            aav_interfaces/DataSource (reliable, transient
 //!                                      local, depth 50): who says what is REAL, SIM,
