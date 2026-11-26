@@ -14,6 +14,11 @@ vehicle.yaml. Where map (0, 0) is on the Earth: aav_localization's navsat.yaml, 
 datum navsat_transform uses. It needs a screen: on a computer without one, it fails.
 monitor: as in hud.launch.py, by name or number. On the car, tools/car_screen.sh starts
 it at boot (docs/car-screens.md).
+F2 (or the HARDWARE PAGE button) flips to the HARDWARE page: the hardware panel
+itself, with its own node hw_panel in this process (config/hw_panel.yaml, the same
+topics, QoS and rules as pixi run hw-panel; no stands: the real car's speed buttons stay
+off). hardware:=false: no page and no hw_panel node. Run either this page or
+pixi run hw-panel on one ROS network, not both: two nodes would be called hw_panel.
 Keys: / search for a place (ottawa.db: pixi run get places), then DRIVE HERE and
 CONFIRM publish Nav2's goal on /goal_pose; F follow the car / whole map, S streets
 on / off, + - or the mouse wheel zoom, drag to move.
@@ -36,6 +41,8 @@ def map_node(context):
     arguments = ['--vehicle', vehicle, '--navsat', navsat]
     if IfCondition(LaunchConfiguration('fullscreen')).evaluate(context):
         arguments.append('--fullscreen')
+    if not IfCondition(LaunchConfiguration('hardware')).evaluate(context):
+        arguments.append('--no-hardware')
     for name, option in (('monitor', '--monitor'), ('streets', '--streets'),
                          ('places', '--places')):
         value = LaunchConfiguration(name).perform(context).strip()
@@ -44,10 +51,12 @@ def map_node(context):
     return [Node(
         package='aav_hud',
         executable='map',
-        name='map',
+        name='map', namespace='/',
         arguments=arguments,
         parameters=[
             PathJoinSubstitution([FindPackageShare('aav_hud'), 'config', 'map.yaml']),
+            # Keyed hw_panel: only the HARDWARE page's node reads it.
+            PathJoinSubstitution([FindPackageShare('aav_hud'), 'config', 'hw_panel.yaml']),
         ],
         output='screen',
     )]
@@ -60,6 +69,9 @@ def generate_launch_description():
         DeclareLaunchArgument('monitor', default_value='',
                               description='The monitor, by name (HDMI-2) or number (1); '
                                           'empty: wherever the desktop puts it'),
+        DeclareLaunchArgument('hardware', default_value='true',
+                              description='The HARDWARE page (F2) and its hw_panel node; '
+                                          'false: the map alone'),
         DeclareLaunchArgument('streets', default_value='',
                               description="The street map (PMTiles); empty: map.yaml's"),
         DeclareLaunchArgument('places', default_value='',

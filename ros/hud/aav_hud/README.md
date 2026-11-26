@@ -12,7 +12,9 @@ node (rclrs):
 - `map`, the big screen's map window: the navigation map over an offline street map, the car,
   the plan, the goal, the distance left, and a place search. Key D swaps the map for the
   **debug page** (TODO 247): who is driving, what it asks, what ego sends, the gate, what
-  the car did, the locks, the sensors, real or simulated;
+  the car did, the locks, the sensors, real or simulated. F2 (or the HARDWARE PAGE
+  button) flips to the **HARDWARE page**: `hw_panel` itself, with its own node `hw_panel`
+  in the map's process (25 Nov; `--no-hardware`, `hardware:=false`: without it);
 - `debug_hud`, the debug screen, which opens as the **seeing screen**: the lidar's cubes
   in 3D (kept and fading), where each localizer puts the car (NDT too), AMCL's particles,
   NDT's map, the plan, the costmap's cubes (the voxels trial's, red wireframes, key V);
@@ -63,7 +65,7 @@ blue, global green, AMCL orange, NDT purple). docs/hud.md, "Themes".
 | [`debug-core`](./crates/debug-core/README.md) | the debug HUD's logic: cubes (kept, fading), frames, poses at a stamp, NDT's status and map, the keys, the camera; no ROS, no raylib |
 | `crates/debug-app` | binary `debug_hud`: the window (`ui.rs`, instanced cubes, the seeing screen's top-downs), the node (`ros.rs`), `--demo` |
 | [`panel-core`](./crates/panel-core/README.md) | the hardware panel's logic: the buttons, where they may drive (`gate`), every sensor's number, `safety.py`'s rules ported, the steering calibration page (`calibration`, `steering_limits`, `sweep`), the graphs page (`graphs`, `esp32`, `ws`); no ROS, no raylib |
-| `crates/panel-app` | binary `hw_panel`: the window (`ui.rs`, the calibration page in `ui/calibration.rs`, the graphs in `ui/graphs.rs`), the node (`ros.rs`), the ESP32's WebSocket (`esp32.rs`, its own thread, read only), `--demo`, `--self-test`, `--cal-self-test` (`cal_script.rs`) |
+| `crates/panel-app` | the library `panel_app` (`HardwarePage`: the whole panel for any window, used by `hw_panel` and by `map`'s HARDWARE page; `open_source`; `ros_args`: the node's arguments inside `map`) and the binary `hw_panel`: the window (`ui.rs`, the calibration page in `ui/calibration.rs`, the graphs in `ui/graphs.rs`), the node (`ros.rs`), the ESP32's WebSocket (`esp32.rs`, its own thread, read only), `--demo`, `--self-test`, `--cal-self-test` (`cal_script.rs`) |
 
 ### Node `hud` (topic names from `config/hud.yaml`)
 
@@ -171,7 +173,8 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
 | Command | Starts |
 |---|---|
 | `pixi run hud [fullscreen:=true] [monitor:=HDMI-1]` | `hud.launch.py` |
-| `pixi run map [fullscreen:=true] [monitor:=HDMI-1] [streets:=] [places:=]` | `map.launch.py`, with `vehicle.yaml` and `navsat.yaml` |
+| `pixi run map [fullscreen:=true] [monitor:=HDMI-1] [streets:=] [places:=] [hardware:=false]` | `map.launch.py`, with `vehicle.yaml`, `navsat.yaml` and `hw_panel.yaml` (the HARDWARE page's node) |
+| `map --demo --hardware-page` | the map window on its HARDWARE page (F2 flips), the panel's pretend car |
 | `cargo run -p hud-app --no-default-features -- --demo` | the HUD with pretend data, no ROS |
 | `cargo run -p map-app --no-default-features -- --demo [--bench 6]` | the map with pretend data; `--bench` prints the frame rate (the blur's test) |
 | `map --demo --debug-page` | the map window's debug page (key D) with pretend drivers: the navigator, a person on the keyboard, the sensors lock, on a 30 s loop |
@@ -205,6 +208,9 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
 - The logic lives in `hud-core`, `map-core`, `debug-core` and `panel-core`, tested without ROS or a screen.
 - `debug_hud` publishes nothing and never touches an actuator. Its one call swaps a
   **simulated** trial tracker (keys 1-4), and only while `/system/source` says SIM.
+- The node `hw_panel` drives only from the hardware panel: its own window, or the map
+  window's HARDWARE page (the same code). Hidden, that page gets no keys, clicks or GO,
+  and hiding it ends the calibration page's mode. Run one or the other on a network.
 - `hw_panel` is the only screen that drives, and only through twist_mux (slot 45), ego
   and the spine. The car moves only while GO is held; a frozen window stops it (the
   command goes out only while the frame count rises). An e-stop, a takeover or a source

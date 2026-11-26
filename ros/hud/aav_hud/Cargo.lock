@@ -855,6 +855,8 @@ dependencies = [
  "hud-app",
  "hud-core",
  "map-core",
+ "panel-app",
+ "panel-core",
  "raylib",
  "rclrs",
  "ros-env",

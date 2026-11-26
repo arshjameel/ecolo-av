@@ -13,7 +13,7 @@ path = "src/main.rs"
 # colcon builds with ROS. `--no-default-features` builds a map window that only runs
 # --demo, on any computer, with no ROS sourced.
 default = ["ros"]
-ros = ["dep:rclrs", "dep:ros-env", "dep:ctrlc"]
+ros = ["dep:rclrs", "dep:ros-env", "dep:ctrlc", "panel-app/ros"]
 
 [dependencies]
 anyhow = "1"
@@ -21,6 +21,10 @@ hud-core = { path = "../hud-core" }
 # Only its library: the window's monitor and full screen, shared with the HUD.
 hud-app = { path = "../hud-app", default-features = false }
 map-core = { path = "../map-core" }
+# The HARDWARE page (F2): the hardware panel itself, its library, with its own node
+# `hw_panel` when built with ROS.
+panel-app = { path = "../panel-app", default-features = false }
+panel-core = { path = "../panel-core" }
 # The same raylib as hud-app: blank images (the map's texture), TrueType fonts, and
 # --screenshot.
 raylib = { version = "6", features = [

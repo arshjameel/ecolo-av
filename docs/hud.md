@@ -318,7 +318,36 @@ navigation.
 | mouse wheel, + and - | zoom |
 | drag | move the map (a free view; F goes back to the car) |
 | D | the [debug page](#the-debug-page-who-is-driving) over the map, and back |
+| F2, or HARDWARE PAGE | the [hardware page](#the-hardware-page-f2): the hardware panel on this screen; F2 or MAP comes back |
 | F11 | full screen |
+
+### The hardware page (F2)
+
+Ben, 25 Nov: "The hardware panel could also be used on the same screen as the map (not at
+the same time but have it there to watch commands instead of laptop or along side)".
+Step 2 of [the screens' plan](wrap-up.md#4-the-screens-eight-become-four).
+
+| Page | How to get there | Picture |
+|---|---|---|
+| MAP | the start; MAP (F2) on the hardware page | ![The map page, --demo](img/map-page-map.png) |
+| HARDWARE | F2, or the HARDWARE PAGE button above KEYS (`--hardware-page` starts there) | ![The hardware page, --demo](img/map-page-hardware.png) |
+
+The hardware page **is** the [hardware panel](#the-hardware-panel): the same code
+(panel-app's `HardwarePage`), its four pages (Tab), its numbers, graphs and buttons.
+
+| Rule | In the map window |
+|---|---|
+| Its node | `hw_panel`, a second node in the map's process: the same topics, QoS and parameters (`config/hw_panel.yaml`) |
+| Speed buttons | SIM and BENCH only, as in `hw_panel`; no `--stands` here, so the real car's stay off |
+| GO | only while held, on the showing page, in a window with focus |
+| Hidden | no keys, no clicks, no GO; driving stops (0.5 s of zeros); the calibration page's mode ends, as on leaving it |
+| A command | only while the window draws frames (hud-core's heartbeat) |
+| E-STOP | only true; its key (E) works only on the hardware page (on the map, E is a letter for the search) |
+| One or the other | run the map's page or `pixi run hw-panel` on one ROS network, not both: both nodes are called `hw_panel` |
+
+`map.launch.py hardware:=false` (or `map --no-hardware`): no page and no second node.
+The pictures: `map --demo --screenshot` and `map --demo --hardware-page --screenshot` on
+Ben's MacBook (25 Nov), the window at 1600 x 900; the car's map screen is 1920 x 1080.
 
 ### The debug page (who is driving)
 
@@ -908,7 +937,8 @@ Moved to [the hud log](history/hud-log.md#tested-1-november-bens-mac-the-costmap
 `ros/hud/aav_hud`, binary `hw_panel`: one screen to **test every sensor** and **work
 every actuator** with very simple buttons (Ben, 29 Oct: "We need very simple buttons").
 The only screen that drives, and only through twist_mux, ego and the spine. Design:
-[2026-10-29_two-screens.md](designs/2026-10-29_two-screens.md).
+[2026-10-29_two-screens.md](designs/2026-10-29_two-screens.md). Since 25 Nov it is also
+the map window's [HARDWARE page](#the-hardware-page-f2): the same code and rules.
 
 ![The hardware panel, with a pretend car (--demo), driving at 0.3 m/s](img/hw-panel-demo.png)
 
@@ -1117,7 +1147,7 @@ The lines' format is `firmware/status/README.md`; the reader is tested on its
 | Part | What it does |
 |---|---|
 | `crates/panel-core` | the logic, no ROS, no raylib: `buttons`, `gate`, `rules` (safety.py's), `state` (every sensor's number), `config`, `vehicle`; the calibration page's `calibration`, `steering_limits` (steering_limits.py's, on shared vectors) and `sweep` (the lock-to-lock check); the graphs page's `graphs` (the lines, the numbers, the verdicts, FREEZE), `esp32` (the status lines) and `ws` (the WebSocket's frames). `cargo test -p panel-core` |
-| `crates/panel-app` | the window (raylib) and the node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst; `esp32.rs` reads the ESP32's WebSocket on its own thread |
+| `crates/panel-app` | a library and the binary `hw_panel`. The library's `HardwarePage` is the whole panel for any window (news, keys, the rules, drawing, the command out): `hw_panel` fills its own window with it, `map` shows it as its HARDWARE page. The node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst; `esp32.rs` reads the ESP32's WebSocket on its own thread |
 | `config/hw_panel.yaml` | every topic name, the steps (0.1 m/s, 0.05 rad), the creep, the caps (1.0, 0.3 m/s); the calibration page's jog step and range, and the check's speed and stops |
 
 ### Tested (29 October, Ben's Mac)

@@ -43,6 +43,16 @@
 //! /control/cmd_vel, /ego/actuator_cmd, the output mux's state, /vehicle/status and
 //! /system/algorithms.
 //!
+//! The HARDWARE page (F2, or the HARDWARE PAGE button; MAP or F2 goes back; Ben, 25 Nov):
+//! the hardware panel itself (panel-app's `HardwarePage`, the very code `hw_panel` runs),
+//! so the car's second screen can watch every number and the commands against what was
+//! measured. With ROS it brings its own node, `hw_panel`, in this process, with the
+//! panel's topics, QoS and parameters (config/hw_panel.yaml) unchanged, and every one of
+//! its rules: the buttons drive only on SIM and BENCH (this program has no --stands), GO
+//! only while held on the showing page, a command only while frames are drawn, the
+//! E-STOP only true. Hidden, the page gets no keys, clicks or GO; hiding it ends the
+//! calibration page's mode. `--no-hardware`: no page and no second node.
+//!
 //! raylib owns the main thread (macOS needs that); rclrs spins on its own thread and
 //! sends news over a channel (ros.rs). `--demo` swaps the ROS node for pretend data.
 //! The maths (map to screen, the distance left) is in map-core.
@@ -52,7 +62,7 @@
 //!            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
 //!            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
 //!            [--bench SECONDS] [--robot-now] [--debug-page]
-//!            [--ros-args ...]
+//!            [--hardware-page] [--no-hardware] [--ros-args ...]
 
 mod demo;
 mod frost;
@@ -83,6 +93,11 @@ use map_core::{
 };
 use raylib::prelude::*;
 
+use panel_app::{
+    page::FLIP_KEY, source::DataSource as PanelSource, HardwarePage, Host, Input, SourceOptions,
+};
+use panel_core::{config::PanelConfig, vehicle::Vehicle};
+
 use crate::{
     demo::Demo,
     search::Search,
@@ -97,7 +112,7 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
            [--bench SECONDS] [--robot-now] [--debug-page]
-           [--ros-args ...]
+           [--hardware-page] [--no-hardware] [--ros-args ...]
 
   --demo             pretend data: no ROS, no car
   --fullscreen       fill the screen (F11 switches too)
@@ -123,12 +138,16 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
                      (the frosted glass's test: 60 fps or more)
   --debug-page       start on the debug page: who drives, what it asks, what ego sends,
                      the gate, the car, the locks (D switches; for screenshots)
+  --hardware-page    start on the HARDWARE page: the hardware panel (F2 switches)
+  --no-hardware      no HARDWARE page, and no hw_panel node in this program
   --ros-args ...     passed to ROS, e.g. --ros-args -p plan_topic:=/plan
 
 keys: / search for a place (Esc closes; Up Down and Enter pick; Enter: DRIVE HERE, then
       CONFIRM), F follow the car / whole map, S streets on / off, + - or the wheel zoom,
-      drag to move, D the debug page, F11 full screen
-touch: tap the search box for the on-screen keyboard; tap a result, DRIVE HERE, CONFIRM";
+      drag to move, D the debug page, F2 the HARDWARE page (its own keys: hw_panel --help),
+      F11 full screen
+touch: tap the search box for the on-screen keyboard; tap a result, DRIVE HERE, CONFIRM;
+       HARDWARE PAGE, and MAP to come back";
 
 /// When --screenshot saves its picture: once the data has had time to arrive.
 const SCREENSHOT_AFTER: Duration = Duration::from_secs(4);
@@ -160,6 +179,8 @@ struct Options {
     bench: Option<Duration>,
     robot_now: bool,
     debug_page: bool,
+    hardware_page: bool,
+    no_hardware: bool,
 }
 
 impl Options {
@@ -192,6 +213,8 @@ impl Options {
                 "--keyboard" => opts.keyboard = true,
                 "--robot-now" => opts.robot_now = true,
                 "--debug-page" => opts.debug_page = true,
+                "--hardware-page" => opts.hardware_page = true,
+                "--no-hardware" => opts.no_hardware = true,
                 "--pick" => {
                     let n: usize = it
                         .next()
@@ -233,6 +256,9 @@ impl Options {
         if opts.pick.is_some() && opts.search.is_none() {
             bail!("--pick needs --search");
         }
+        if opts.hardware_page && opts.no_hardware {
+            bail!("--hardware-page and --no-hardware: one or the other");
+        }
         Ok(opts)
     }
 }
@@ -270,7 +296,14 @@ fn main() -> Result<()> {
             .unwrap_or(Path::new("the built-in navsat.yaml"));
         format!("the datum, in {}", file.display())
     })?;
+    let hardware_args = panel_app::ros_args::for_hosted_panel(&args);
     let (source, mut config) = open_source(&opts, args, config)?;
+    // After the map's own node, so Ctrl-C stops the map first (one handler a process).
+    let hardware = if opts.no_hardware {
+        None
+    } else {
+        open_hardware(&opts, hardware_args)?
+    };
     if opts.robot_now {
         config.car_marker = map_core::robot::CarMarker::Robot;
     }
@@ -282,7 +315,40 @@ fn main() -> Result<()> {
         eprintln!("map: no place search: {why}");
     }
     let search = Search::new(places, datum);
-    run(&opts, source, config, car, streets, search)
+    run(&opts, source, config, car, streets, search, hardware)
+}
+
+/// What the HARDWARE page needs before the window opens.
+struct Hardware {
+    source: Box<dyn PanelSource>,
+    config: PanelConfig,
+    /// The same vehicle.yaml as the map's car.
+    vehicle: Vehicle,
+}
+
+/// The HARDWARE page's source: the demo with --demo, else the node `hw_panel`. If it
+/// can't start, the map runs without the page, and says why.
+fn open_hardware(opts: &Options, args: Vec<String>) -> Result<Option<Hardware>> {
+    let vehicle = match &opts.vehicle {
+        Some(path) => Vehicle::from_vehicle_yaml(&read(path)?)
+            .with_context(|| format!("in {}", path.display()))?,
+        None => Vehicle::default(),
+    };
+    let source_options = SourceOptions {
+        demo: opts.demo,
+        ..SourceOptions::default()
+    };
+    match panel_app::open_source(args, PanelConfig::default(), &source_options, "map") {
+        Ok((source, config)) => Ok(Some(Hardware {
+            source,
+            config,
+            vehicle,
+        })),
+        Err(e) => {
+            eprintln!("map: no HARDWARE page: {e:#}");
+            Ok(None)
+        }
+    }
 }
 
 /// A data file (the street map, the places): the option, or config/map.yaml's. A
@@ -328,6 +394,7 @@ fn run(
     car: CarShape,
     mut streets: StreetMap,
     mut search: Search,
+    hardware: Option<Hardware>,
 ) -> Result<()> {
     let (mut rl, thread) = raylib::init()
         .size(1600, 900)
@@ -349,7 +416,30 @@ fn run(
         config.theme.theme(),
         config.blur,
         config.car_marker,
+        hardware.is_some(),
     );
+    let started = Instant::now();
+    // The HARDWARE page (F2): the hardware panel, the same as hw_panel's window.
+    let mut hardware = hardware.map(|h| {
+        let mut egg = h.config.easter_egg_settings();
+        if opts.robot_now {
+            egg.on = true;
+        }
+        HardwarePage::new(
+            &mut rl,
+            &thread,
+            h.source,
+            h.config,
+            &h.vehicle,
+            // No --stands here: the stricter rule (the real car's speed buttons stay off).
+            false,
+            Host::Map,
+            egg,
+            started,
+        )
+    });
+    let mut on_hardware = opts.hardware_page && hardware.is_some();
+    let mut hardware_stopped = false;
     let mut state = MapState::new(config);
     let mut view = View::default();
     if opts.whole_map {
@@ -361,7 +451,6 @@ fn run(
     // Nav2's map is drawn see-through over the streets: redrawn when they come or go.
     let mut over_streets = streets.visible();
     let mut dragging = false;
-    let started = Instant::now();
     let mut frames: u64 = 0;
     // --search waits for the first news (the car), so the distances show.
     let mut prefill = opts.search.clone();
@@ -388,153 +477,194 @@ fn run(
             }
         }
 
-        let banner = state.origins.banner().is_some();
-        let layout = Layout::new(rl.get_screen_width(), rl.get_screen_height(), banner);
-        let vp = layout.map;
-        let mouse = rl.get_mouse_position();
-        let mouse = ScreenPoint::new(f64::from(mouse.x), f64::from(mouse.y));
-        let over_map = vp.contains(mouse);
-
-        // The place search first: while typing, every key is a letter for it.
-        if let Some(query) = prefill.take() {
-            search.prefill(&query, &state, &mut view, source.as_mut(), now);
-            if let Some(n) = opts.pick {
-                search.choose(n - 1, &state, &mut view, source.as_mut(), now);
-            }
-        }
-        // --keyboard: after --search, so the words are there.
-        if prefill.is_none() && std::mem::take(&mut open_keyboard) {
-            if !search.finder.is_typing() {
-                search.key(Key::Open, &state, &mut view, source.as_mut(), now);
-            }
-            keyboard_on = true;
-        }
-        if let Some(query) = send_goal.clone() {
-            if state.grid.is_some() && state.car.is_some() {
-                send_goal = None;
-                match search.send_first(&query, &state, source.as_mut(), now) {
-                    Ok(said) => println!("map: --send-goal: {said}"),
-                    Err(why) => eprintln!("map: --send-goal {query:?}: {why}"),
-                }
-            } else if now.duration_since(started) > SEND_GOAL_WAIT {
-                send_goal = None;
-                eprintln!("map: --send-goal {query:?}: no map or no car position after {SEND_GOAL_WAIT:?}");
-            }
-        }
-        let typed: Vec<char> = std::iter::from_fn(|| rl.get_char_pressed()).collect();
-        for key in search_keys(
-            &rl,
-            &typed,
-            search.finder.is_typing(),
-            search.finder.is_open(),
-        ) {
-            search.key(key, &state, &mut view, source.as_mut(), now);
-        }
-        // The keyboard goes away once a place is picked, or the box shuts.
-        keyboard_on &= search.finder.is_typing();
-        let keyboard = keyboard_on.then(|| layout.keyboard());
-        let on_keyboard = keyboard.as_ref().filter(|kb| kb.contains(mouse));
-        let boxes = SearchLayout::new(&layout, &search.finder, keyboard.as_ref());
-        let over_search = boxes.contains(mouse) || on_keyboard.is_some();
-        if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) && !debug_page {
-            if let Some(kb) = on_keyboard {
-                // A tap on a key (between keys: nothing, and not the map either).
-                match kb.key_at(mouse).map(|cap| cap.press()) {
-                    Some(Press::Search(key)) => {
-                        search.key(key, &state, &mut view, source.as_mut(), now)
-                    }
-                    Some(Press::Close) => keyboard_on = false,
-                    None => {}
-                }
-            } else if let Some(click) = boxes.click(mouse) {
-                match click {
-                    ui::Click::Field => {
-                        search.key(Key::Open, &state, &mut view, source.as_mut(), now);
-                        keyboard_on = true;
-                    }
-                    ui::Click::Result(i) => {
-                        search.choose(i, &state, &mut view, source.as_mut(), now)
-                    }
-                    ui::Click::Button => {
-                        search.key(Key::Enter, &state, &mut view, source.as_mut(), now)
-                    }
-                    ui::Click::Cancel => {
-                        search.key(Key::Escape, &state, &mut view, source.as_mut(), now)
-                    }
-                }
+        if let Some(page) = hardware.as_mut() {
+            page.news(now);
+            if page.has_stopped() && !hardware_stopped {
+                hardware_stopped = true;
+                eprintln!("map: the hardware page's node stopped; the map goes on");
             }
         }
 
-        // The map's own keys, unless they're letters for the search box.
-        let map_keys = !search.finder.is_typing();
-        if rl.is_key_pressed(KeyboardKey::KEY_F11) {
-            window::toggle_fullscreen(&mut rl);
-        }
-        if map_keys && rl.is_key_pressed(KeyboardKey::KEY_F) {
-            view.toggle_follow();
-        }
-        if map_keys && rl.is_key_pressed(KeyboardKey::KEY_S) {
-            streets.shown = !streets.shown;
-        }
-        if map_keys && rl.is_key_pressed(KeyboardKey::KEY_D) {
-            debug_page = !debug_page;
-        }
-        let wheel = rl.get_mouse_wheel_move();
-        if wheel != 0.0 && over_map && !over_search {
-            view.zoom(WHEEL_ZOOM.powf(f64::from(wheel)), Some(mouse), &vp);
-        }
-        let zoom_in = [KeyboardKey::KEY_EQUAL, KeyboardKey::KEY_KP_ADD];
-        let zoom_out = [KeyboardKey::KEY_MINUS, KeyboardKey::KEY_KP_SUBTRACT];
-        if map_keys && zoom_in.into_iter().any(|k| rl.is_key_pressed(k)) {
-            view.zoom(KEY_ZOOM, None, &vp);
-        }
-        if map_keys && zoom_out.into_iter().any(|k| rl.is_key_pressed(k)) {
-            view.zoom(1.0 / KEY_ZOOM, None, &vp);
-        }
-        // Drag to move: only a drag that starts on the map, not on the search box.
-        if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
-            dragging = over_map && !over_search;
-        }
-        if !rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
-            dragging = false;
-        }
-        if dragging {
-            let d = rl.get_mouse_delta();
-            view.pan(f64::from(d.x), f64::from(d.y));
-        }
-        if let Some(c) = &state.car {
-            ui.roll(c.pose);
-        }
-        let car_centre = state.car.as_ref().map(|c| car.centre(c.pose));
-        let map_bounds = state.grid.as_ref().map(|g| g.info.bounds());
-        view.update(car_centre, map_bounds, &vp);
+        if let Some(page) = hardware.as_mut().filter(|_| on_hardware) {
+            // The HARDWARE page: the hardware panel, its keys and its buttons.
+            let input = page.read_input(&mut rl, now);
+            if rl.is_key_pressed(KeyboardKey::KEY_F11) {
+                window::toggle_fullscreen(&mut rl);
+            }
+            let leave = input.leave;
+            let step = page.step(now, input);
+            let mut d = rl.begin_drawing(&thread);
+            page.draw(&mut d, now, &step);
+            drop(d);
+            page.frame_drawn(&step);
+            if leave {
+                page.hide(now);
+                on_hardware = false;
+            }
+        } else {
+            let banner = state.origins.banner().is_some();
+            let layout = Layout::new(rl.get_screen_width(), rl.get_screen_height(), banner);
+            let vp = layout.map;
+            let mouse = rl.get_mouse_position();
+            let mouse = ScreenPoint::new(f64::from(mouse.x), f64::from(mouse.y));
+            let over_map = vp.contains(mouse);
 
-        let label = source.label();
-        let tiles = streets.frame(&view, &vp);
-        // After this frame's taps: the keyboard as it is now, and the key held down.
-        keyboard_on &= search.finder.is_typing();
-        let keyboard = keyboard_on.then(|| layout.keyboard());
-        let held = keyboard
-            .as_ref()
-            .filter(|_| rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT))
-            .and_then(|kb| kb.key_at(mouse));
-        ui.prepare(&mut rl, &thread);
-        let mut d = rl.begin_drawing(&thread);
-        ui.draw(
-            &mut d,
-            &thread,
-            &state,
-            &view,
-            &car,
-            now,
-            label,
-            &streets,
-            &tiles,
-            &search,
-            keyboard.as_ref().map(|kb| (kb, held)),
-            debug_page,
-        );
-        drop(d);
+            // The place search first: while typing, every key is a letter for it.
+            if let Some(query) = prefill.take() {
+                search.prefill(&query, &state, &mut view, source.as_mut(), now);
+                if let Some(n) = opts.pick {
+                    search.choose(n - 1, &state, &mut view, source.as_mut(), now);
+                }
+            }
+            // --keyboard: after --search, so the words are there.
+            if prefill.is_none() && std::mem::take(&mut open_keyboard) {
+                if !search.finder.is_typing() {
+                    search.key(Key::Open, &state, &mut view, source.as_mut(), now);
+                }
+                keyboard_on = true;
+            }
+            if let Some(query) = send_goal.clone() {
+                if state.grid.is_some() && state.car.is_some() {
+                    send_goal = None;
+                    match search.send_first(&query, &state, source.as_mut(), now) {
+                        Ok(said) => println!("map: --send-goal: {said}"),
+                        Err(why) => eprintln!("map: --send-goal {query:?}: {why}"),
+                    }
+                } else if now.duration_since(started) > SEND_GOAL_WAIT {
+                    send_goal = None;
+                    eprintln!("map: --send-goal {query:?}: no map or no car position after {SEND_GOAL_WAIT:?}");
+                }
+            }
+            let typed: Vec<char> = std::iter::from_fn(|| rl.get_char_pressed()).collect();
+            for key in search_keys(
+                &rl,
+                &typed,
+                search.finder.is_typing(),
+                search.finder.is_open(),
+            ) {
+                search.key(key, &state, &mut view, source.as_mut(), now);
+            }
+            // The keyboard goes away once a place is picked, or the box shuts.
+            keyboard_on &= search.finder.is_typing();
+            let keyboard = keyboard_on.then(|| layout.keyboard());
+            let on_keyboard = keyboard.as_ref().filter(|kb| kb.contains(mouse));
+            let boxes = SearchLayout::new(&layout, &search.finder, keyboard.as_ref());
+            let over_search = boxes.contains(mouse) || on_keyboard.is_some();
+            if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) && !debug_page {
+                if let Some(kb) = on_keyboard {
+                    // A tap on a key (between keys: nothing, and not the map either).
+                    match kb.key_at(mouse).map(|cap| cap.press()) {
+                        Some(Press::Search(key)) => {
+                            search.key(key, &state, &mut view, source.as_mut(), now)
+                        }
+                        Some(Press::Close) => keyboard_on = false,
+                        None => {}
+                    }
+                } else if let Some(click) = boxes.click(mouse) {
+                    match click {
+                        ui::Click::Field => {
+                            search.key(Key::Open, &state, &mut view, source.as_mut(), now);
+                            keyboard_on = true;
+                        }
+                        ui::Click::Result(i) => {
+                            search.choose(i, &state, &mut view, source.as_mut(), now)
+                        }
+                        ui::Click::Button => {
+                            search.key(Key::Enter, &state, &mut view, source.as_mut(), now)
+                        }
+                        ui::Click::Cancel => {
+                            search.key(Key::Escape, &state, &mut view, source.as_mut(), now)
+                        }
+                    }
+                }
+            }
+
+            // The HARDWARE PAGE button, or F2 (not a letter: it works while typing too).
+            let tapped_hardware = rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT)
+                && layout
+                    .hardware_button()
+                    .check_collision_point_rec(rl.get_mouse_position());
+            if hardware.is_some() && (rl.is_key_pressed(FLIP_KEY) || tapped_hardware) {
+                on_hardware = true;
+            }
+
+            // The map's own keys, unless they're letters for the search box.
+            let map_keys = !search.finder.is_typing();
+            if rl.is_key_pressed(KeyboardKey::KEY_F11) {
+                window::toggle_fullscreen(&mut rl);
+            }
+            if map_keys && rl.is_key_pressed(KeyboardKey::KEY_F) {
+                view.toggle_follow();
+            }
+            if map_keys && rl.is_key_pressed(KeyboardKey::KEY_S) {
+                streets.shown = !streets.shown;
+            }
+            if map_keys && rl.is_key_pressed(KeyboardKey::KEY_D) {
+                debug_page = !debug_page;
+            }
+            let wheel = rl.get_mouse_wheel_move();
+            if wheel != 0.0 && over_map && !over_search {
+                view.zoom(WHEEL_ZOOM.powf(f64::from(wheel)), Some(mouse), &vp);
+            }
+            let zoom_in = [KeyboardKey::KEY_EQUAL, KeyboardKey::KEY_KP_ADD];
+            let zoom_out = [KeyboardKey::KEY_MINUS, KeyboardKey::KEY_KP_SUBTRACT];
+            if map_keys && zoom_in.into_iter().any(|k| rl.is_key_pressed(k)) {
+                view.zoom(KEY_ZOOM, None, &vp);
+            }
+            if map_keys && zoom_out.into_iter().any(|k| rl.is_key_pressed(k)) {
+                view.zoom(1.0 / KEY_ZOOM, None, &vp);
+            }
+            // Drag to move: only a drag that starts on the map, not on the search box.
+            if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
+                dragging = over_map && !over_search;
+            }
+            if !rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
+                dragging = false;
+            }
+            if dragging {
+                let d = rl.get_mouse_delta();
+                view.pan(f64::from(d.x), f64::from(d.y));
+            }
+            if let Some(c) = &state.car {
+                ui.roll(c.pose);
+            }
+            let car_centre = state.car.as_ref().map(|c| car.centre(c.pose));
+            let map_bounds = state.grid.as_ref().map(|g| g.info.bounds());
+            view.update(car_centre, map_bounds, &vp);
+
+            let label = source.label();
+            let tiles = streets.frame(&view, &vp);
+            // After this frame's taps: the keyboard as it is now, and the key held down.
+            keyboard_on &= search.finder.is_typing();
+            let keyboard = keyboard_on.then(|| layout.keyboard());
+            let held = keyboard
+                .as_ref()
+                .filter(|_| rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT))
+                .and_then(|kb| kb.key_at(mouse));
+            ui.prepare(&mut rl, &thread);
+            let mut d = rl.begin_drawing(&thread);
+            ui.draw(
+                &mut d,
+                &thread,
+                &state,
+                &view,
+                &car,
+                now,
+                label,
+                &streets,
+                &tiles,
+                &search,
+                keyboard.as_ref().map(|kb| (kb, held)),
+                debug_page,
+            );
+            drop(d);
+            // The hidden HARDWARE page: no keys, no clicks, no GO; news and the
+            // buttons' zeros still go through its rules.
+            if let Some(page) = hardware.as_mut() {
+                let step = page.step(now, Input::default());
+                page.frame_drawn(&step);
+            }
+        }
 
         frames += 1;
         if let Some(length) = opts.bench {
@@ -704,6 +834,16 @@ mod tests {
                 .debug_page
         );
         assert!(Options::parse(&args(&["--monitor", " "])).is_err());
+    }
+
+    #[test]
+    fn options_take_the_hardware_page() {
+        let o = Options::parse(&args(&["--hardware-page"])).expect("valid");
+        assert!(o.hardware_page && !o.no_hardware);
+        let o = Options::parse(&args(&["--no-hardware"])).expect("valid");
+        assert!(o.no_hardware);
+        assert!(Options::parse(&args(&["--hardware-page", "--no-hardware"])).is_err());
+        assert!(USAGE.contains("F2 the HARDWARE page"));
     }
 
     #[test]

@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">75 min read · 10 sections</div></header>
+<div class="meta">78 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -813,11 +813,83 @@ navigation.</p>
 <td>the <a href="#the-debug-page-who-is-driving">debug page</a> over the map, and back</td>
 </tr>
 <tr>
+<td>F2, or HARDWARE PAGE</td>
+<td>the <a href="#the-hardware-page-f2">hardware page</a>: the hardware panel on this screen; F2 or MAP comes back</td>
+</tr>
+<tr>
 <td>F11</td>
 <td>full screen</td>
 </tr>
 </tbody>
 </table></div>
+<h3 id="the-hardware-page-f2">The hardware page (F2)</h3>
+<p>Ben, 25 Nov: "The hardware panel could also be used on the same screen as the map (not at
+the same time but have it there to watch commands instead of laptop or along side)".
+Step 2 of <a href="wrap-up.html#4-the-screens-eight-become-four">the screens' plan</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>How to get there</th>
+<th>Picture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MAP</td>
+<td>the start; MAP (F2) on the hardware page</td>
+<td><img alt="The map page, --demo" src="../img/map-page-map.png" /></td>
+</tr>
+<tr>
+<td>HARDWARE</td>
+<td>F2, or the HARDWARE PAGE button above KEYS (<code>--hardware-page</code> starts there)</td>
+<td><img alt="The hardware page, --demo" src="../img/map-page-hardware.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<p>The hardware page <strong>is</strong> the <a href="#the-hardware-panel">hardware panel</a>: the same code
+(panel-app's <code>HardwarePage</code>), its four pages (Tab), its numbers, graphs and buttons.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>In the map window</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Its node</td>
+<td><code>hw_panel</code>, a second node in the map's process: the same topics, QoS and parameters (<code>config/hw_panel.yaml</code>)</td>
+</tr>
+<tr>
+<td>Speed buttons</td>
+<td>SIM and BENCH only, as in <code>hw_panel</code>; no <code>--stands</code> here, so the real car's stay off</td>
+</tr>
+<tr>
+<td>GO</td>
+<td>only while held, on the showing page, in a window with focus</td>
+</tr>
+<tr>
+<td>Hidden</td>
+<td>no keys, no clicks, no GO; driving stops (0.5 s of zeros); the calibration page's mode ends, as on leaving it</td>
+</tr>
+<tr>
+<td>A command</td>
+<td>only while the window draws frames (hud-core's heartbeat)</td>
+</tr>
+<tr>
+<td>E-STOP</td>
+<td>only true; its key (E) works only on the hardware page (on the map, E is a letter for the search)</td>
+</tr>
+<tr>
+<td>One or the other</td>
+<td>run the map's page or <code>pixi run hw-panel</code> on one ROS network, not both: both nodes are called <code>hw_panel</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>map.launch.py hardware:=false</code> (or <code>map --no-hardware</code>): no page and no second node.
+The pictures: <code>map --demo --screenshot</code> and <code>map --demo --hardware-page --screenshot</code> on
+Ben's MacBook (25 Nov), the window at 1600 x 900; the car's map screen is 1920 x 1080.</p>
 <h3 id="the-debug-page-who-is-driving">The debug page (who is driving)</h3>
 <p>Our professor's idea (TODO 247): the map screen doubles as a debug screen, like the
 hardware panel. <strong>Press D.</strong> The map goes behind frosted glass and two columns of cards
@@ -2237,7 +2309,8 @@ the car's cable. Not the Orin's own screen: it runs no graphics (Ben, 5 Nov).</p
 <p><code>ros/hud/aav_hud</code>, binary <code>hw_panel</code>: one screen to <strong>test every sensor</strong> and <strong>work
 every actuator</strong> with very simple buttons (Ben, 29 Oct: "We need very simple buttons").
 The only screen that drives, and only through twist_mux, ego and the spine. Design:
-<a href="../designs/2026-10-29_two-screens.md">2026-10-29_two-screens.md</a>.</p>
+<a href="../designs/2026-10-29_two-screens.md">2026-10-29_two-screens.md</a>. Since 25 Nov it is also
+the map window's <a href="#the-hardware-page-f2">HARDWARE page</a>: the same code and rules.</p>
 <p><img alt="The hardware panel, with a pretend car (--demo), driving at 0.3 m/s" src="../img/hw-panel-demo.png" /></p>
 <h3 id="the-buttons">The buttons</h3>
 <div class="table-wrap"><table>
@@ -2662,7 +2735,7 @@ hw_panel --demo --page graphs                     # a pretend path, every hop OK
 </tr>
 <tr>
 <td><code>crates/panel-app</code></td>
-<td>the window (raylib) and the node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst; <code>esp32.rs</code> reads the ESP32's WebSocket on its own thread</td>
+<td>a library and the binary <code>hw_panel</code>. The library's <code>HardwarePage</code> is the whole panel for any window (news, keys, the rules, drawing, the command out): <code>hw_panel</code> fills its own window with it, <code>map</code> shows it as its HARDWARE page. The node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst; <code>esp32.rs</code> reads the ESP32's WebSocket on its own thread</td>
 </tr>
 <tr>
 <td><code>config/hw_panel.yaml</code></td>

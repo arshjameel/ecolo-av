@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">155 min read · 15 sections</div></header>
+<div class="meta">156 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1657,8 +1657,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="hud.html#the-hardware-panel">Hardware panel</a> (<code>hw_panel</code>, <code>pixi run hw-panel</code>): every sensor's number from its own node with OK / STALE / NEVER, and very simple buttons (Speed +/-, steering, CENTRE, STOP, hold Space to drive, E-STOP) through twist_mux's buttons slot (45), ego and the spine; speed only on SIM and BENCH (1.0 m/s), off on the real car until TODO 49b, with the reason on screen; an e-stop, a takeover or a source change zeroes it. Since 1 Nov in the screens' theme (<code>theme:</code> mocha or latte). 15 Nov, a fourth page, <strong>MEASURE</strong> (TODO 71): speed, distance, top and mean speed since RESET, a tape run typed in, and the wheel diameter's check (know-the-car test 3: PASS within 1 %, or the diameter to copy); SAVE writes a file, never vehicle.yaml</td>
-<td>Test every sensor and work every actuator from one screen with simple buttons (Ben, 29 Oct: "one screen just to test all the sensors and operate all the actuators", "We need very simple buttons"), without going around the car's caps and e-stop; and measure the car there too, so <code>wheel_diameter</code> is fitted on car day without a laptop's maths</td>
+<td><a href="hud.html#the-hardware-panel">Hardware panel</a> (<code>hw_panel</code>, <code>pixi run hw-panel</code>): every sensor's number from its own node with OK / STALE / NEVER, and very simple buttons (Speed +/-, steering, CENTRE, STOP, hold Space to drive, E-STOP) through twist_mux's buttons slot (45), ego and the spine; speed only on SIM and BENCH (1.0 m/s), off on the real car until TODO 49b, with the reason on screen; an e-stop, a takeover or a source change zeroes it. Since 1 Nov in the screens' theme (<code>theme:</code> mocha or latte). 15 Nov, a fourth page, <strong>MEASURE</strong> (TODO 71): speed, distance, top and mean speed since RESET, a tape run typed in, and the wheel diameter's check (know-the-car test 3: PASS within 1 %, or the diameter to copy); SAVE writes a file, never vehicle.yaml. 25 Nov, also the map window's <strong>HARDWARE page</strong> (F2, or its button; <code>--hardware-page</code>): the same code (panel-app's <code>HardwarePage</code>) and rules, its node <code>hw_panel</code> inside the map's process; hidden, it gets no input and ends the calibration page's mode</td>
+<td>Test every sensor and work every actuator from one screen with simple buttons (Ben, 29 Oct: "one screen just to test all the sensors and operate all the actuators", "We need very simple buttons"), without going around the car's caps and e-stop; and measure the car there too, so <code>wheel_diameter</code> is fitted on car day without a laptop's maths. On the car's map screen too (Ben, 25 Nov: "have it there to watch commands instead of laptop or along side"; wrap-up step 2)</td>
 <td>Ben</td>
 <td>2026-10-29</td>
 <td>sim</td>
