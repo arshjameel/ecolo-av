@@ -52,7 +52,7 @@
 //!
 //! usage: hw_panel [--demo [--demo-bind COUNTS]] [--stands] [--fullscreen] [--monitor NAME|N]
 //!                 [--list-monitors] [--config FILE] [--vehicle FILE]
-//!                 [--page drive|calibration|graphs|measure] [--esp32 ws://HOST:PORT/]
+//!                 [--page drive|calibration|graphs|measure|ladder] [--esp32 ws://HOST:PORT/]
 //!                 [--screenshot FILE [--after S]] [--self-test SPEED:SECONDS]
 //!                 [--cal-self-test] [--robot-now] [--ros-args ...]
 
@@ -80,13 +80,15 @@ use raylib::prelude::*;
 const USAGE: &str = "\
 usage: hw_panel [--demo [--demo-bind COUNTS]] [--stands] [--fullscreen] [--monitor NAME|N]
                 [--list-monitors] [--config FILE] [--vehicle FILE]
-                [--page drive|calibration|graphs|measure] [--esp32 ws://HOST:PORT/]
+                [--page drive|calibration|graphs|measure|ladder] [--esp32 ws://HOST:PORT/]
                 [--screenshot FILE [--after S]] [--self-test SPEED:SECONDS]
                 [--cal-self-test] [--robot-now] [--ros-args ...]
 
   --demo             a pretend car: no ROS, no car
   --demo-bind COUNTS the demo's steering has a stiff spot there (the check finds it)
-  --page PAGE        open on this page: drive, calibration (steering), graphs or measure
+  --page PAGE        open on this page: drive, calibration (steering), graphs, measure
+                     or ladder (the test ladder: its tool in this repository; with
+                     --demo, pretend data: nothing runs)
   --esp32 URL        also read the ESP32's status lines from its WebSocket, such as
                      ws://192.168.4.1:81/ (read only: the GRAPHS page; esp32_url too)
   --stands           the car's wheels are off the ground (the speed buttons stay off on
@@ -168,15 +170,12 @@ impl Options {
                 "--cal-self-test" => opts.cal_self_test = true,
                 "--robot-now" => opts.robot_now = true,
                 "--page" => {
-                    opts.page = Some(match value("--page")?.as_str() {
-                        "calibration" => Page::Calibration,
-                        "drive" => Page::Drive,
-                        "graphs" => Page::Graphs,
-                        "measure" => Page::Measure,
-                        other => {
-                            bail!("--page: drive, calibration, graphs or measure, not {other:?}")
-                        }
-                    })
+                    let name = value("--page")?;
+                    opts.page = Some(Page::from_name(&name).with_context(|| {
+                        format!(
+                            "--page: drive, calibration, graphs, measure or ladder, not {name:?}"
+                        )
+                    })?)
                 }
                 "--esp32" => {
                     let url = value("--esp32")?;

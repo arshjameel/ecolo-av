@@ -32,7 +32,14 @@ node (rclrs):
   got), FREEZE, and the counts that prove the wire. `--esp32 ws://...` reads the ESP32's
   own status lines, read only. Its fourth, **MEASURE** (TODO 71), counts speed and
   distance since RESET; type a tape run's metres and it checks `wheel_diameter`
-  (know-the-car test 3: within 1 %, or the diameter to copy). SAVE writes a file.
+  (know-the-car test 3: within 1 %, or the diameter to copy). SAVE writes a file. Its
+  fifth, **LADDER** (25 Nov, the test bench), is the test ladder beside the hardware: the
+  ten rungs (simulator and car), a rung's question, RUN in the simulator and STOP, the last
+  run's verdict, its graphs with their numbers and the faults, the simulated car's jacks.
+  Its logic is `ladder-core` (in `../aav_dev_window/crates/`, a path dependency: no Bevy,
+  no ROS), the same as `ladder_window`'s; `tools/ladder.py` stays the only writer, and
+  the car's command is only shown. `--demo`: pretend data; no `tools/ladder.py` above the
+  folder or the program: the tab says so.
 
 It was called `aav_hud_raylib` until 25 Oct, when the 2025-26 Flutter app and its Flask
 back end (then `aav_hud`) went to `archive/2026-27-flutter-hud/` and this package took
@@ -65,7 +72,7 @@ blue, global green, AMCL orange, NDT purple). docs/hud.md, "Themes".
 | [`debug-core`](./crates/debug-core/README.md) | the debug HUD's logic: cubes (kept, fading), frames, poses at a stamp, NDT's status and map, the keys, the camera; no ROS, no raylib |
 | `crates/debug-app` | binary `debug_hud`: the window (`ui.rs`, instanced cubes, the seeing screen's top-downs), the node (`ros.rs`), `--demo` |
 | [`panel-core`](./crates/panel-core/README.md) | the hardware panel's logic: the buttons, where they may drive (`gate`), every sensor's number, `safety.py`'s rules ported, the steering calibration page (`calibration`, `steering_limits`, `sweep`), the graphs page (`graphs`, `esp32`, `ws`); no ROS, no raylib |
-| `crates/panel-app` | the library `panel_app` (`HardwarePage`: the whole panel for any window, used by `hw_panel` and by `map`'s HARDWARE page; `open_source`; `ros_args`: the node's arguments inside `map`) and the binary `hw_panel`: the window (`ui.rs`, the calibration page in `ui/calibration.rs`, the graphs in `ui/graphs.rs`), the node (`ros.rs`), the ESP32's WebSocket (`esp32.rs`, its own thread, read only), `--demo`, `--self-test`, `--cal-self-test` (`cal_script.rs`) |
+| `crates/panel-app` | the library `panel_app` (`HardwarePage`: the whole panel for any window, used by `hw_panel` and by `map`'s HARDWARE page; `open_source`; `ros_args`: the node's arguments inside `map`; `ladder`: the LADDER tab's session, drawn by `ui/ladder.rs`) and the binary `hw_panel`: the window (`ui.rs`, the calibration page in `ui/calibration.rs`, the graphs in `ui/graphs.rs`), the node (`ros.rs`), the ESP32's WebSocket (`esp32.rs`, its own thread, read only), `--demo`, `--self-test`, `--cal-self-test` (`cal_script.rs`) |
 
 ### Node `hud` (topic names from `config/hud.yaml`)
 
@@ -185,6 +192,7 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
 | `map`, `hw_panel`, `debug_hud` `--demo --robot-now` | the little robot (the easter egg) at once, for screenshots (docs/hud.md, "The little robot") |
 | `hw_panel --demo --page graphs [--esp32 ws://HOST:81/]` | the GRAPHS page with a pretend path (every hop OK); with `--esp32`, the real board's lines instead of the pretend ones |
 | `hw_panel --demo --page measure` | the MEASURE page (speed and distance, the tape, the wheel diameter's check) |
+| `hw_panel --demo --page ladder`; `map --demo --hardware-page --hardware-tab ladder` | the LADDER page with ladder-core's pretend data (nothing runs); without `--demo` it reads `tools/ladder.py` in this repository |
 | `hw_panel --demo --page calibration [--demo-bind 2800] [--cal-self-test]` | the steering calibration page with a pretend steering actuator; the self-test limps, marks, holds and runs the lock-to-lock check (with a stiff spot it must stop) |
 
 `sim.launch.py hud:=true` and `map:=true` start them too. On the car,
@@ -224,6 +232,10 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
   the page ends its mode. Jog targets stay in `jog_min`..`jog_max`, the check's inside
   the measured limits; the check stops and holds on resistance. It never writes
   vehicle.yaml or the firmware: SAVE writes a file for a person to copy.
+- `hw_panel`'s LADDER page starts simulator runs only, and only when ladder-core's
+  button is on (the same rules as `ladder_window`); it has no control that starts a car
+  test. It asks `tools/ladder.py` only while it shows or its own run goes on, and closing
+  the window stops that run.
 - `hw_panel`'s GRAPHS page and its ESP32 reader only read. The ESP32's lines feed the
   graphs and the status strip, never the buttons, the gate or the calibration page's
   rules. A value that never changed is NOT TESTED: a parked car never shows OK.
@@ -243,6 +255,8 @@ it; never vehicle.yaml); the MEASURE page's SAVE, `~/.local/share/aav/measuremen
 - `hw_panel` publishes `/hud/hw_panel/heartbeat`; only sim's `watch_screens:=` reads it.
 - Publishes `/safety/estop`, `/hud/heartbeat` and `/goal_pose` (a goal drives the car);
   `hw_panel` publishes `/drivers/buttons/cmd_vel` (the buttons drive the car).
+- The LADDER page starts `python3 tools/ladder.py` (and `tools/ros.sh --local python3
+  tools/jacks.py`) in the repository's root, as `ladder_window` does.
 - `map` reads the PMTiles and SQLite files from disk; `debug_hud` reads `ndt_map` (a PCD)
   once at start-up, if it is there.
 - On Linux the build needs X11 and OpenGL headers; without them CMake skips this

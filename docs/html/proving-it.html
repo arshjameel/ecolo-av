@@ -7,7 +7,7 @@
 <!-- Generated from docs/proving-it.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Proving it: how the tests fit together</h1>
-<div class="meta">32 min read · 9 sections</div></header>
+<div class="meta">33 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -698,6 +698,13 @@ rung 1 ran.</p>
 </tbody>
 </table></div>
 <p>The code: <code>ros/hud/aav_dev_window</code> (<code>src/ladder_window/</code>, and the logic in <code>crates/ladder-core</code>).</p>
+<p><strong>Also on the hardware panel (25 Nov, the test bench, <a href="wrap-up.html#4-the-screens-eight-become-four">wrap-up step 3</a>).</strong>
+The hardware panel has a <strong>LADDER</strong> tab: the ten rungs, a rung's question, Run in the
+simulator and Stop, the answer's verdict, its graphs and numbers, the faults, and the
+jacks switch. The same <code>ladder-core</code>, so the same rules; the car's command is only shown.
+It is there in <code>hw_panel</code> and in the map window's HARDWARE page
+(<a href="hud.html#the-ladder-page-the-test-bench">the LADDER page</a>). Not there yet: the checks'
+Runs, one test at a time, Record by hand, Open the report: those are still this window's.</p>
 </section>
 <section class="card"><h2 id="what-can-be-dry-run-from-the-screen">What can be dry-run from the screen</h2>
 <p><strong>This section is the record of 22 Nov, under the old rungs' names</strong> (bench, stands,

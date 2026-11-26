@@ -230,6 +230,14 @@ rung 1 ran.
 
 The code: `ros/hud/aav_dev_window` (`src/ladder_window/`, and the logic in `crates/ladder-core`).
 
+**Also on the hardware panel (25 Nov, the test bench, [wrap-up step 3](wrap-up.md#4-the-screens-eight-become-four)).**
+The hardware panel has a **LADDER** tab: the ten rungs, a rung's question, Run in the
+simulator and Stop, the answer's verdict, its graphs and numbers, the faults, and the
+jacks switch. The same `ladder-core`, so the same rules; the car's command is only shown.
+It is there in `hw_panel` and in the map window's HARDWARE page
+([the LADDER page](hud.md#the-ladder-page-the-test-bench)). Not there yet: the checks'
+Runs, one test at a time, Record by hand, Open the report: those are still this window's.
+
 ## What can be dry-run from the screen
 
 **This section is the record of 22 Nov, under the old rungs' names** (bench, stands,

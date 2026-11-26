@@ -9,6 +9,7 @@
 //! | [`open_source`] | starts either, with the ESP32's lines beside it when asked |
 //! | [`ros_args`] | the ROS arguments the node `hw_panel` gets inside another program |
 //! | [`ui`] | the drawing, raylib |
+//! | [`ladder`] | the LADDER tab: the test ladder's session (ladder-core), found or pretend |
 //!
 //! The rules (where the buttons may drive, the heartbeat, the e-stop) are panel-core's,
 //! the same in both hosts.
@@ -16,6 +17,7 @@
 pub mod cal_script;
 pub mod demo;
 mod esp32;
+pub mod ladder;
 pub mod page;
 mod robot;
 #[cfg(feature = "ros")]

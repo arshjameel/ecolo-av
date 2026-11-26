@@ -15,10 +15,11 @@
 //! +--------------------------------------------------------------+
 //! ```
 //!
-//! Three pages, by the tabs or Tab: DRIVE (above), STEERING CALIBRATION
+//! Five pages, by the tabs or Tab: DRIVE (above), STEERING CALIBRATION
 //! ([`calibration`]: find the steering actuator's ends and centre, the limits, the
-//! lock-to-lock check) and GRAPHS ([`graphs`]: what the Pi wrote and the ESP32 got, hop
-//! by hop, over 60 s).
+//! lock-to-lock check), GRAPHS ([`graphs`]: what the Pi wrote and the ESP32 got, hop
+//! by hop, over 60 s), MEASURE ([`measure`]) and LADDER ([`ladder`]: the test ladder,
+//! its Run and Stop, a rung's answer with its graphs and numbers).
 //!
 //! Every colour comes from the theme (`hud_core::theme`, `theme:` in
 //! config/hw_panel.yaml), as the HUD's: the pills, the buttons, the E-STOP's red. In
@@ -28,6 +29,7 @@
 
 mod calibration;
 mod graphs;
+mod ladder;
 mod measure;
 
 use std::time::{Duration, Instant};
@@ -72,6 +74,8 @@ pub enum Page {
     Graphs,
     /// Speed and distance, a tape run, the wheel diameter's check (TODO 71).
     Measure,
+    /// The test ladder (wrap-up step 3): the rungs, Run in the simulator, the answer.
+    Ladder,
 }
 
 impl Page {
@@ -81,10 +85,30 @@ impl Page {
             Self::Calibration => "STEERING CAL",
             Self::Graphs => "GRAPHS",
             Self::Measure => "MEASURE",
+            Self::Ladder => "LADDER",
         }
     }
 
-    pub const ALL: [Page; 4] = [Page::Drive, Page::Calibration, Page::Graphs, Page::Measure];
+    pub const ALL: [Page; 5] = [
+        Page::Drive,
+        Page::Calibration,
+        Page::Graphs,
+        Page::Measure,
+        Page::Ladder,
+    ];
+
+    /// A page by its name on a command line: `drive`, `calibration`, `graphs`, `measure`,
+    /// `ladder`.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "drive" => Self::Drive,
+            "calibration" => Self::Calibration,
+            "graphs" => Self::Graphs,
+            "measure" => Self::Measure,
+            "ladder" => Self::Ladder,
+            _ => return None,
+        })
+    }
 
     /// The next page (Tab).
     pub fn next(self) -> Self {
@@ -92,7 +116,8 @@ impl Page {
             Self::Drive => Self::Calibration,
             Self::Calibration => Self::Graphs,
             Self::Graphs => Self::Measure,
-            Self::Measure => Self::Drive,
+            Self::Measure => Self::Ladder,
+            Self::Ladder => Self::Drive,
         }
     }
 }
@@ -116,6 +141,16 @@ pub enum Button {
     Reset,
     /// In the map window only: back to the map (F2 too).
     Leave,
+    /// The ladder page: a row of the rungs' table, top first.
+    Rung(usize),
+    /// The ladder page: run the chosen rung in the simulator (ladder-core decides if on).
+    RunRung,
+    /// The ladder page: stop the run.
+    StopRun,
+    /// The ladder page: the simulated car on stands, or on the ground.
+    Jacks,
+    /// The ladder page: one of the answer's views (a graph, or the faults).
+    View(usize),
 }
 
 impl Button {
@@ -137,6 +172,10 @@ impl Button {
             Self::Freeze => "FREEZE (P)",
             Self::Reset => "RESET (R)",
             Self::Leave => "MAP (F2)",
+            Self::RunRung => "RUN IN THE SIMULATOR",
+            Self::StopRun => "STOP THE RUN",
+            // Drawn with their own words (the rung's, the view's, the jacks' state).
+            Self::Rung(_) | Self::Jacks | Self::View(_) => "",
             Self::Press(Press::SpeedUp) => "SPEED +",
             Self::Press(Press::SpeedDown) => "SPEED -",
             Self::Press(Press::Left) => "< LEFT",
@@ -172,6 +211,7 @@ pub fn layout(w: f32, page: Page, host: Host) -> Vec<(Button, Rectangle)> {
         Page::Calibration => buttons.extend(calibration::layout(w)),
         Page::Graphs => buttons.extend(graphs::layout(w)),
         Page::Measure => buttons.extend(measure::layout(w)),
+        Page::Ladder => buttons.extend(ladder::layout(w)),
     }
     buttons
 }
@@ -275,6 +315,8 @@ pub struct Frame<'a> {
     pub tape: &'a Entry,
     pub wheel_diameter: Option<f64>,
     pub measure_saved: Option<&'a str>,
+    /// The ladder page: the tool's session, or why there is none.
+    pub ladder: &'a crate::ladder::LadderTab,
 }
 
 /// The little robot's room (the easter egg): where nothing else is drawn this frame.
@@ -407,6 +449,7 @@ impl Ui {
             Page::Calibration => return self.draw_calibration(d, state, f, &buttons[header..]),
             Page::Graphs => return self.draw_graphs(d, state, f, &buttons[header..]),
             Page::Measure => return self.draw_measure(d, state, f, &buttons[header..]),
+            Page::Ladder => return self.draw_ladder(d, f, &buttons[header..]),
             Page::Drive => {}
         }
 
@@ -618,12 +661,26 @@ impl Ui {
         f: &Frame<'_>,
         enabled: bool,
     ) {
+        self.button_with(d, b, r, f, enabled, b.label());
+    }
+
+    /// A button with its own words: the ones whose words change.
+    fn button_with(
+        &self,
+        d: &mut RaylibDrawHandle,
+        b: Button,
+        r: Rectangle,
+        f: &Frame<'_>,
+        enabled: bool,
+        label: &str,
+    ) {
         let t = self.theme;
         let down = f.held == Some(b)
             || (b == Button::Go && f.buttons.is_driving())
             || b == Button::Tab(f.page)
             || (b == Button::Cal(CalPress::ConfirmStill) && f.cal.still_confirmed())
-            || (b == Button::Freeze && f.freezer.frozen().is_some());
+            || (b == Button::Freeze && f.freezer.frozen().is_some())
+            || b == Button::View(f.ladder.view_index());
         let (fill, ink) = match (b, enabled, down) {
             (Button::Estop, _, true) => (t.stop_fill_alt, t.stop_ink),
             (Button::Estop, _, false) => (t.stop_fill, t.stop_ink),
@@ -638,15 +695,22 @@ impl Ui {
         }
         let size = match b {
             Button::Estop => 34.0,
-            Button::Tab(_) | Button::Leave => 18.0,
-            Button::Cal(_) | Button::Save | Button::Freeze | Button::Reset => 21.0,
+            Button::Tab(_) | Button::Leave | Button::View(_) => 18.0,
+            Button::Cal(_)
+            | Button::Save
+            | Button::Freeze
+            | Button::Reset
+            | Button::Jacks
+            | Button::RunRung
+            | Button::StopRun
+            | Button::Rung(_) => 21.0,
             _ => 26.0,
         };
-        let label = b.label();
-        let tw = self.font.measure(label, size);
+        let label = fit(&self.font, label, r.width - 4.0, size);
+        let tw = self.font.measure(&label, size);
         self.text(
             d,
-            label,
+            &label,
             r.x + (r.width - tw) / 2.0,
             r.y + (r.height - size) / 2.0,
             size,
@@ -725,8 +789,8 @@ mod tests {
                 }
             }
         }
-        assert_eq!(layout(1280.0, Page::Drive, Host::Standalone).len(), 12);
-        assert_eq!(layout(1280.0, Page::Drive, Host::Map).len(), 13);
+        assert_eq!(layout(1280.0, Page::Drive, Host::Standalone).len(), 13);
+        assert_eq!(layout(1280.0, Page::Drive, Host::Map).len(), 14);
         // MAP only in the map window, and among the buttons on every page.
         assert!(layout(1280.0, Page::Drive, Host::Standalone)
             .iter()
@@ -760,12 +824,16 @@ mod tests {
         let room = Room::new(1280.0, 860.0, 850.0, 800.0, &wide);
         assert_eq!(room.corner, None);
         assert_eq!(room.lane, None);
-        // The E-STOP and four tabs, then each page's own.
+        // The E-STOP and five tabs, then each page's own.
         assert_eq!(
             layout(1280.0, Page::Calibration, Host::Standalone).len(),
-            5 + 12
+            6 + 12
         );
-        assert_eq!(layout(1280.0, Page::Graphs, Host::Standalone).len(), 5 + 1);
-        assert_eq!(layout(1280.0, Page::Measure, Host::Standalone).len(), 5 + 2);
+        assert_eq!(layout(1280.0, Page::Graphs, Host::Standalone).len(), 6 + 1);
+        assert_eq!(layout(1280.0, Page::Measure, Host::Standalone).len(), 6 + 2);
+        assert_eq!(
+            layout(1280.0, Page::Ladder, Host::Standalone).len(),
+            6 + ladder::ROWS + 3 + ladder::VIEWS
+        );
     }
 }

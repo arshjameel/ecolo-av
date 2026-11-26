@@ -7,7 +7,7 @@ Four raylib programs in one package, `ros/hud/aav_hud`, each also its own ROS no
 | [The HUD](#the-hud-in-rust-raylib) | `hud` | the small ~7" touchscreen | speed, GO / STOP, the e-stop button, the camera, the topics |
 | [The map window](#the-map-window-big-screen) | `map` | the big ~15" monitor | the navigation map over Ottawa's streets, the plan, place search |
 | [The debug HUD](#the-debug-hud) (the seeing screen) | `debug_hud` | a laptop | the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor |
-| [The hardware panel](#the-hardware-panel) | `hw_panel` | a wired laptop | every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path |
+| [The hardware panel](#the-hardware-panel) | `hw_panel` | a wired laptop | every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path; the test ladder (LADDER) |
 
 **Where each runs (Ben, 5 Nov):** the HUD and the map stay raylib, on the dash Pi. The
 Orin runs no graphics, so the other two run on a laptop. Laptop screens can be Bevy: the
@@ -333,7 +333,8 @@ Step 2 of [the screens' plan](wrap-up.md#4-the-screens-eight-become-four).
 | HARDWARE | F2, or the HARDWARE PAGE button above KEYS (`--hardware-page` starts there) | ![The hardware page, --demo](img/map-page-hardware.png) |
 
 The hardware page **is** the [hardware panel](#the-hardware-panel): the same code
-(panel-app's `HardwarePage`), its four pages (Tab), its numbers, graphs and buttons.
+(panel-app's `HardwarePage`), its five pages (Tab; the fifth, [LADDER](#the-ladder-page-the-test-bench),
+since 25 Nov), its numbers, graphs and buttons.
 
 | Rule | In the map window |
 |---|---|
@@ -1141,6 +1142,47 @@ hw_panel --demo --page graphs                     # a pretend path, every hop OK
 
 The lines' format is `firmware/status/README.md`; the reader is tested on its
 `golden.jsonl`.
+
+### The LADDER page (the test bench)
+
+Ben, 25 Nov: "a testing ladder screen ... could be merged with the hardware screen".
+Step 3 of [the screens' plan](wrap-up.md#4-the-screens-eight-become-four): the hardware,
+its graphs, the small steps by hand and the automated tests on one screen.
+
+![The LADDER page, --demo: the ten rungs, rung 1's question, its verdict and its wheels graph](img/hw-panel-ladder.png)
+
+```bash
+pixi run hw-panel --demo --page ladder   # pretend data: nothing runs, nothing is recorded
+pixi run hw-panel                        # then Tab to LADDER: the real ladder (tools/ladder.py)
+map --demo --hardware-page --hardware-tab ladder   # the same page in the map window
+```
+
+| Part | Shows | Does |
+|---|---|---|
+| top left | PRETEND DATA, or where the results are kept; a problem reading the tool | |
+| **Simulated car** | on the ground or ON STANDS (asked every 5 s) | **Put it on stands** / **Lower it**: on only while a simulator runs on this computer |
+| the table | rung 9 at the top, S at the bottom; **Simulator** and **The car**, each cell in words (PASS 23 Nov, not run, shut, not built yet) | click a row, or Up / Down |
+| the rung | its question, when it passes | |
+| **RUN RUNG n IN THE SIMULATOR** | on only when ladder-core says so; off: the reason ("shut: ...", "not built yet", "pretend data") | `pixi run ladder run <rung>`; one run at a time |
+| **STOP THE RUN** | on while a run goes | stops its process group; again: kills it |
+| **On the car** | the car's command as text, and "A person starts a car test from the terminal" | nothing: no button runs a car test |
+| the answer | the verdict line in a box of its colour, when and which commit; RUNNING NOW while a run goes | |
+| WHEELS, STEERING, BRAKE, FAULTS | one graph (asked dashed, measured solid) and the tool's numbers under it; or the faults table; the car's slot beside ("no car run yet") | click a tab |
+| THE RUN | running... with its step, or how the last run ended; its last lines | |
+
+| Rule | |
+|---|---|
+| The same logic as the ladder window | `ladder-core` (`ros/hud/aav_dev_window/crates/ladder-core`) decides every button; `tools/ladder.py` stays the only writer and holds every rule |
+| No car test | ladder-core has no function that returns one; the car's side is words only |
+| Asked only when needed | the tool is asked (every 2 s) only while this page shows, or while its own run goes on |
+| No repository here | the page says so in words ("No tools/ladder.py here ..."); every other tab works |
+| Closing the window | stops its run, as the ladder window does |
+
+![The same LADDER page inside the map window's HARDWARE page, --demo](img/map-page-ladder.png)
+
+The pictures: `hw_panel --demo --page ladder --screenshot` (1280 x 860) and
+`map --demo --hardware-page --hardware-tab ladder --screenshot` (1600 x 900), Ben's
+MacBook, 25 Nov, pretend data only. Not yet run against the real tool from this page.
 
 ### How it's built
 

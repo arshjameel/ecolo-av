@@ -62,7 +62,7 @@
 //!            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
 //!            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
 //!            [--bench SECONDS] [--robot-now] [--debug-page]
-//!            [--hardware-page] [--no-hardware] [--ros-args ...]
+//!            [--hardware-page] [--hardware-tab TAB] [--no-hardware] [--ros-args ...]
 
 mod demo;
 mod frost;
@@ -94,7 +94,8 @@ use map_core::{
 use raylib::prelude::*;
 
 use panel_app::{
-    page::FLIP_KEY, source::DataSource as PanelSource, HardwarePage, Host, Input, SourceOptions,
+    page::FLIP_KEY, source::DataSource as PanelSource, ui::Page as HardwareTab, HardwarePage, Host,
+    Input, SourceOptions,
 };
 use panel_core::{config::PanelConfig, vehicle::Vehicle};
 
@@ -112,7 +113,7 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
            [--navsat FILE] [--streets FILE] [--places FILE] [--zoom PX_PER_M]
            [--search TEXT [--pick N]] [--keyboard] [--send-goal TEXT] [--screenshot FILE]
            [--bench SECONDS] [--robot-now] [--debug-page]
-           [--hardware-page] [--no-hardware] [--ros-args ...]
+           [--hardware-page] [--hardware-tab TAB] [--no-hardware] [--ros-args ...]
 
   --demo             pretend data: no ROS, no car
   --fullscreen       fill the screen (F11 switches too)
@@ -139,6 +140,8 @@ usage: map [--demo] [--fullscreen] [--monitor NAME|N] [--list-monitors]
   --debug-page       start on the debug page: who drives, what it asks, what ego sends,
                      the gate, the car, the locks (D switches; for screenshots)
   --hardware-page    start on the HARDWARE page: the hardware panel (F2 switches)
+  --hardware-tab TAB the HARDWARE page opens on this tab: drive, calibration, graphs,
+                     measure or ladder (the test ladder); with --hardware-page, shown at once
   --no-hardware      no HARDWARE page, and no hw_panel node in this program
   --ros-args ...     passed to ROS, e.g. --ros-args -p plan_topic:=/plan
 
@@ -180,6 +183,8 @@ struct Options {
     robot_now: bool,
     debug_page: bool,
     hardware_page: bool,
+    /// The HARDWARE page's tab to open on.
+    hardware_tab: Option<HardwareTab>,
     no_hardware: bool,
 }
 
@@ -214,6 +219,15 @@ impl Options {
                 "--robot-now" => opts.robot_now = true,
                 "--debug-page" => opts.debug_page = true,
                 "--hardware-page" => opts.hardware_page = true,
+                "--hardware-tab" => {
+                    let name = value("--hardware-tab")?;
+                    opts.hardware_tab = Some(HardwareTab::from_name(&name).with_context(|| {
+                        format!(
+                            "--hardware-tab: drive, calibration, graphs, measure or ladder, \
+                             not {name:?}"
+                        )
+                    })?);
+                }
                 "--no-hardware" => opts.no_hardware = true,
                 "--pick" => {
                     let n: usize = it
@@ -256,8 +270,8 @@ impl Options {
         if opts.pick.is_some() && opts.search.is_none() {
             bail!("--pick needs --search");
         }
-        if opts.hardware_page && opts.no_hardware {
-            bail!("--hardware-page and --no-hardware: one or the other");
+        if (opts.hardware_page || opts.hardware_tab.is_some()) && opts.no_hardware {
+            bail!("--hardware-page (or --hardware-tab) and --no-hardware: one or the other");
         }
         Ok(opts)
     }
@@ -438,6 +452,9 @@ fn run(
             started,
         )
     });
+    if let (Some(page), Some(tab)) = (hardware.as_mut(), opts.hardware_tab) {
+        page.show(tab, started);
+    }
     let mut on_hardware = opts.hardware_page && hardware.is_some();
     let mut hardware_stopped = false;
     let mut state = MapState::new(config);
@@ -843,6 +860,10 @@ mod tests {
         let o = Options::parse(&args(&["--no-hardware"])).expect("valid");
         assert!(o.no_hardware);
         assert!(Options::parse(&args(&["--hardware-page", "--no-hardware"])).is_err());
+        let o = Options::parse(&args(&["--hardware-tab", "ladder"])).expect("valid");
+        assert_eq!(o.hardware_tab, Some(HardwareTab::Ladder));
+        assert!(Options::parse(&args(&["--hardware-tab", "car"])).is_err());
+        assert!(Options::parse(&args(&["--hardware-tab", "ladder", "--no-hardware"])).is_err());
         assert!(USAGE.contains("F2 the HARDWARE page"));
     }
 

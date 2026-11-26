@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">78 min read · 10 sections</div></header>
+<div class="meta">81 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -177,7 +177,7 @@
 <td><a href="#the-hardware-panel">The hardware panel</a></td>
 <td><code>hw_panel</code></td>
 <td>a wired laptop</td>
-<td>every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path</td>
+<td>every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path; the test ladder (LADDER)</td>
 </tr>
 </tbody>
 </table></div>
@@ -848,7 +848,8 @@ Step 2 of <a href="wrap-up.html#4-the-screens-eight-become-four">the screens' pl
 </tbody>
 </table></div>
 <p>The hardware page <strong>is</strong> the <a href="#the-hardware-panel">hardware panel</a>: the same code
-(panel-app's <code>HardwarePage</code>), its four pages (Tab), its numbers, graphs and buttons.</p>
+(panel-app's <code>HardwarePage</code>), its five pages (Tab; the fifth, <a href="#the-ladder-page-the-test-bench">LADDER</a>,
+since 25 Nov), its numbers, graphs and buttons.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -2720,6 +2721,109 @@ hw_panel --demo --page graphs                     # a pretend path, every hop OK
 </table></div>
 <p>The lines' format is <code>firmware/status/README.md</code>; the reader is tested on its
 <code>golden.jsonl</code>.</p>
+<h3 id="the-ladder-page-the-test-bench">The LADDER page (the test bench)</h3>
+<p>Ben, 25 Nov: "a testing ladder screen ... could be merged with the hardware screen".
+Step 3 of <a href="wrap-up.html#4-the-screens-eight-become-four">the screens' plan</a>: the hardware,
+its graphs, the small steps by hand and the automated tests on one screen.</p>
+<p><img alt="The LADDER page, --demo: the ten rungs, rung 1's question, its verdict and its wheels graph" src="../img/hw-panel-ladder.png" /></p>
+<pre class="highlight"><code class="language-bash">pixi run hw-panel --demo --page ladder   # pretend data: nothing runs, nothing is recorded
+pixi run hw-panel                        # then Tab to LADDER: the real ladder (tools/ladder.py)
+map --demo --hardware-page --hardware-tab ladder   # the same page in the map window</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Shows</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>top left</td>
+<td>PRETEND DATA, or where the results are kept; a problem reading the tool</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Simulated car</strong></td>
+<td>on the ground or ON STANDS (asked every 5 s)</td>
+<td><strong>Put it on stands</strong> / <strong>Lower it</strong>: on only while a simulator runs on this computer</td>
+</tr>
+<tr>
+<td>the table</td>
+<td>rung 9 at the top, S at the bottom; <strong>Simulator</strong> and <strong>The car</strong>, each cell in words (PASS 23 Nov, not run, shut, not built yet)</td>
+<td>click a row, or Up / Down</td>
+</tr>
+<tr>
+<td>the rung</td>
+<td>its question, when it passes</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>RUN RUNG n IN THE SIMULATOR</strong></td>
+<td>on only when ladder-core says so; off: the reason ("shut: ...", "not built yet", "pretend data")</td>
+<td><code>pixi run ladder run &lt;rung&gt;</code>; one run at a time</td>
+</tr>
+<tr>
+<td><strong>STOP THE RUN</strong></td>
+<td>on while a run goes</td>
+<td>stops its process group; again: kills it</td>
+</tr>
+<tr>
+<td><strong>On the car</strong></td>
+<td>the car's command as text, and "A person starts a car test from the terminal"</td>
+<td>nothing: no button runs a car test</td>
+</tr>
+<tr>
+<td>the answer</td>
+<td>the verdict line in a box of its colour, when and which commit; RUNNING NOW while a run goes</td>
+<td></td>
+</tr>
+<tr>
+<td>WHEELS, STEERING, BRAKE, FAULTS</td>
+<td>one graph (asked dashed, measured solid) and the tool's numbers under it; or the faults table; the car's slot beside ("no car run yet")</td>
+<td>click a tab</td>
+</tr>
+<tr>
+<td>THE RUN</td>
+<td>running... with its step, or how the last run ended; its last lines</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The same logic as the ladder window</td>
+<td><code>ladder-core</code> (<code>ros/hud/aav_dev_window/crates/ladder-core</code>) decides every button; <code>tools/ladder.py</code> stays the only writer and holds every rule</td>
+</tr>
+<tr>
+<td>No car test</td>
+<td>ladder-core has no function that returns one; the car's side is words only</td>
+</tr>
+<tr>
+<td>Asked only when needed</td>
+<td>the tool is asked (every 2 s) only while this page shows, or while its own run goes on</td>
+</tr>
+<tr>
+<td>No repository here</td>
+<td>the page says so in words ("No tools/ladder.py here ..."); every other tab works</td>
+</tr>
+<tr>
+<td>Closing the window</td>
+<td>stops its run, as the ladder window does</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="The same LADDER page inside the map window's HARDWARE page, --demo" src="../img/map-page-ladder.png" /></p>
+<p>The pictures: <code>hw_panel --demo --page ladder --screenshot</code> (1280 x 860) and
+<code>map --demo --hardware-page --hardware-tab ladder --screenshot</code> (1600 x 900), Ben's
+MacBook, 25 Nov, pretend data only. Not yet run against the real tool from this page.</p>
 <h3 id="how-its-built_3">How it's built</h3>
 <div class="table-wrap"><table>
 <thead>

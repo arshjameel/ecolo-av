@@ -799,6 +799,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ladder-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1058,6 +1067,7 @@ dependencies = [
  "ctrlc",
  "hud-app",
  "hud-core",
+ "ladder-core",
  "panel-core",
  "raylib",
  "rclrs",

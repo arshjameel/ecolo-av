@@ -36,6 +36,7 @@ use panel_core::{
 use raylib::prelude::*;
 
 use crate::{
+    ladder::LadderTab,
     robot,
     source::DataSource,
     ui::{self, Button, Frame, Page, Ui},
@@ -334,6 +335,9 @@ pub struct Input {
     touched: bool,
     /// The MAP button, or its key ([`Host::Map`] only): back to the map.
     pub leave: bool,
+    /// The page shows this frame (from [`HardwarePage::read_input`]): the LADDER tab asks
+    /// its tool only then, or while a run it started goes on.
+    shown: bool,
 }
 
 /// What one frame decided: what to send, and what to draw.
@@ -357,6 +361,9 @@ pub struct HardwarePage {
     passes: PassWatch,
     /// Where the speed buttons may drive, from this frame's news.
     gate: Gate,
+    /// The LADDER tab: the test ladder's session (pretend with the demo car), or why
+    /// there is none here.
+    ladder: LadderTab,
 }
 
 impl HardwarePage {
@@ -378,6 +385,7 @@ impl HardwarePage {
         let mut egg = EasterEgg::new(egg, now);
         // It drives across once at start-up, then peeks when all is quiet.
         egg.drive_across(now);
+        let ladder = LadderTab::open(source.is_pretend());
         Self {
             panel: Panel::new(&config, vehicle, stands),
             ui,
@@ -387,7 +395,13 @@ impl HardwarePage {
             egg,
             passes: PassWatch::default(),
             gate: Gate::Off(gate::Off::Unannounced),
+            ladder,
         }
+    }
+
+    /// The LADDER tab's state.
+    pub fn ladder(&self) -> &LadderTab {
+        &self.ladder
     }
 
     pub fn panel(&self) -> &Panel {
@@ -399,7 +413,7 @@ impl HardwarePage {
         &self.gate
     }
 
-    /// Opens one of the panel's own pages (DRIVE, STEERING CAL, GRAPHS, MEASURE).
+    /// Opens one of the panel's own pages (DRIVE, STEERING CAL, GRAPHS, MEASURE, LADDER).
     pub fn show(&mut self, page: Page, now: Instant) {
         self.panel.show(page, now);
     }
@@ -497,6 +511,25 @@ impl HardwarePage {
                 panel.save_measure();
             }
         }
+        // The ladder page: a rung, RUN, STOP, the jacks, the answer's views. ladder-core
+        // decides whether each may act; Up and Down choose a rung.
+        if panel.page == Page::Ladder {
+            let ladder = &mut self.ladder;
+            match clicked {
+                Some(Button::Rung(row)) => ladder.select_row(row),
+                Some(Button::RunRung) => ladder.press_run(),
+                Some(Button::StopRun) => ladder.press_stop(),
+                Some(Button::Jacks) => ladder.press_jacks(),
+                Some(Button::View(i)) => ladder.show_view(i),
+                _ => {}
+            }
+            if rl.is_key_pressed(KeyboardKey::KEY_UP) {
+                ladder.select_next(-1);
+            }
+            if rl.is_key_pressed(KeyboardKey::KEY_DOWN) {
+                ladder.select_next(1);
+            }
+        }
         if clicked == Some(Button::Estop) || rl.is_key_pressed(KeyboardKey::KEY_E) {
             self.source.press_estop();
         }
@@ -511,6 +544,7 @@ impl HardwarePage {
             save: on_cal && save_key,
             touched,
             leave,
+            shown: true,
         }
     }
 
@@ -526,6 +560,8 @@ impl HardwarePage {
         if input.save {
             panel.save();
         }
+        self.ladder
+            .tick(now, input.shown && panel.page == Page::Ladder);
         if self.passes.just_passed(&panel.cal) {
             self.egg.drive_across(now);
         }
@@ -534,6 +570,7 @@ impl HardwarePage {
             Page::Calibration => 1,
             Page::Graphs => 2,
             Page::Measure => 3,
+            Page::Ladder => 4,
         };
         let watch = easter_egg::watch(
             &panel.state,
@@ -578,6 +615,7 @@ impl HardwarePage {
             tape: &panel.tape,
             wheel_diameter: panel.vehicle.wheel_diameter,
             measure_saved: panel.measure_saved.as_deref(),
+            ladder: &self.ladder,
         };
         let room = self.ui.draw(d, &panel.state, &frame);
         robot::draw(d, self.config.theme.theme(), step.show, &room);

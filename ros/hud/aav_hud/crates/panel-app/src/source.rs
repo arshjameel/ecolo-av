@@ -12,6 +12,11 @@ pub trait DataSource {
     /// A short label for the corner: "ROS" or "DEMO".
     fn label(&self) -> &'static str;
 
+    /// The pretend car (`--demo`): the LADDER tab shows pretend data too, and runs nothing.
+    fn is_pretend(&self) -> bool {
+        false
+    }
+
     /// Everything that arrived since the last call. Never blocks.
     fn drain(&mut self, now: Instant) -> Vec<Update>;
 
@@ -39,6 +44,10 @@ pub struct WithEsp32 {
 impl DataSource for WithEsp32 {
     fn label(&self) -> &'static str {
         self.inner.label()
+    }
+
+    fn is_pretend(&self) -> bool {
+        self.inner.is_pretend()
     }
 
     fn drain(&mut self, now: Instant) -> Vec<Update> {

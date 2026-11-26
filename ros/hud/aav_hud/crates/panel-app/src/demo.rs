@@ -400,6 +400,10 @@ impl DataSource for Demo {
         "DEMO"
     }
 
+    fn is_pretend(&self) -> bool {
+        true
+    }
+
     fn drain(&mut self, now: Instant) -> Vec<Update> {
         self.step(now);
         self.ticks += 1;
