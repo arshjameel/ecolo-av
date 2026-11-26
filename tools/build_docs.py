@@ -186,9 +186,11 @@ PAGES = [
     ('control-explained.md', 'Control, explained',
      'Models, feedforward, PI, LQR, LQI, MPC, MPPI, stability, the EKF: to learn from'),
     ('barriers.md', 'Barriers in the MPC',
-     'Outside the capstone (Ben, MASc): a control barrier function in the path follower, what it did, what it assumes'),
+     'Outside the capstone (Ben, MASc): a control barrier function in the path follower, '
+     'what it did, what it assumes'),
     ('barriers-test-plan.md', 'Barriers: the test plan',
-     'Outside the capstone (Ben, MASc): the claims, baselines, pass marks and repeats, rung by rung'),
+     'Outside the capstone (Ben, MASc): the claims, baselines, pass marks and repeats, '
+     'rung by rung'),
     ('vehicle-model.md', 'The car as a linear model',
      'Transfer functions, state space, poles and margins (SYSC 3600)'),
     ('car-model.md', 'One car model', "The lags, ego's lead and its trace, in Python and Rust"),
