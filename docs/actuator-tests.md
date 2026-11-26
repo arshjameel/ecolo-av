@@ -42,7 +42,8 @@ slot: below every person (joystick, RC, keyboard), above navigation and every ot
 | `wheel-steps` | 3.14 | stands | 0.1, 0.2, 0.3, 0.15 m/s, 4 s each: throttle on free wheels | does the wheel speed follow; no `vehicle.yaml` lines |
 
 The steering tests creep at 0.2 m/s: ego only turns the wheels while the car moves. On
-stands the wheels spin slowly; in the simulator the car crawls in arcs.
+stands the wheels spin slowly. In the simulator the car crawls in arcs, unless it is
+[on jacks](#the-simulated-car-on-stands-pixi-run-jacks): then its wheels spin and it stays put.
 
 ## In Ravensim
 
@@ -55,6 +56,44 @@ pixi run actuator-test speed-up --sim                                      # ter
 - `--sim` keeps ROS on this computer and uses the simulator's clock. The script refuses to run
   without it when the simulator announces SIM, and with it when anything announces REAL.
 - `nav:=false`: nothing else drives. The empty world has room for the circles.
+
+### The simulated car on stands: `pixi run jacks`
+
+Ravensim's car can be put on stands ("on jacks") and taken off, like the real one
+(Ben, 22 Nov; TODO 272).
+
+```bash
+pixi run sim on_stands:=true        # start it on stands, or:
+pixi run jacks up --sim             # lift it while it runs (next to pixi run sim)
+pixi run jacks status --sim         # on stands, or on the ground?
+pixi run jacks down --sim           # lower it
+```
+
+| On stands | The simulator says | As on the real car? |
+|---|---|---|
+| rear (driven) wheels | spinning, at the speed the actuator model gives | ✅ |
+| front (free) wheels | still | ✅ nothing turns them |
+| steering, throttle, brake feedback | as commanded, through the same lags | ✅ |
+| `/vehicle/odom` | "moving": it reads the rear wheels (`speed_wheels:=rear`) | ⚠️ the car the stands test needs (TODO 49b). Today's car reads the **front** wheels: `speed_wheels:=front` gives its 0 |
+| truth, IMU, GPS, lidar, cameras | still, where the car stood | ✅ (no shake from the motor) |
+| the weight on the wheels | gone: the motor moves 20 kg, not 181 kg, so the wheels answer 9 times faster | ⚠️ 20 kg is a **guess** (`free_wheel_mass:=`); `drag` is the ground's |
+| the stack | the wheels and the GPS disagree, so the sensor watchdog latches **odom DISAGREE**; the local EKF follows the wheels away | ✅ the same on the car: `pixi run clear watchdog` after |
+| the cameras' pictures | identical frame after frame, so the watchdog says **camera FROZEN** while the wheels turn | ❌ a real camera has noise (TODO 274) |
+
+"As on the real car?" is what the design and the pages say the car does: **the car has not
+been on stands with this software yet.**
+
+| Rule | Why |
+|---|---|
+| `jacks down` is **refused** while the wheels spin (over 0.02 m/s) or a speed is commanded | the car must not leap off the stands |
+| `jacks up` is refused while the car moves | nobody lifts a moving car |
+| Lowered, the car starts from rest | even if a refusal were missed |
+| `--sim` is needed, and `/system/source` must say only SIM | the real car goes on real stands, by hand |
+| The task is `--local` | it can't reach a car's network |
+
+The car is not raised: its height stays the ground's. The code: `aav_simulator`'s
+`sim-core/src/jacks.rs` (the rule, which wheels spin), `aav_sim_models/jacks.py` (free
+wheels), `tools/jacks.py`.
 
 ## On the car
 
@@ -312,6 +351,7 @@ One run before the car goes on the ground (Ben, 29 Oct; the design:
 
 ```bash
 pixi run actuator-test preflight --stands --sim                          # Ravensim (pixi run sim first)
+pixi run actuator-test preflight --stands --sim --on-jacks               # Ravensim on stands (pixi run jacks up --sim first)
 pixi run actuator-test preflight --stands --bench                        # bench mode (pixi run bench first)
 pixi run actuator-test preflight --stands --no-drive --skip steering     # the car today: the sensors only
 pixi run actuator-test preflight --stands --skip steering gps lidar      # the car, once it has a rear-wheel speed
@@ -333,7 +373,7 @@ Then one line per check: `PASS`, `FAIL`, `WARN` or `SKIP`.
 | speeds up, holds, slows, brakes | 80% of the cap; within 25% in the hold (the open-loop ESP32: a WARN with its throttle gain); still within 5 s |
 | steers | left and right measured, centre within `steer_offset` ± (2 x `steer_deadband` + 0.02 rad); no sensor: it asks you |
 | stands: IMU still | its speed change while speeding up under 0.4 x the wheels' |
-| stands: GPS still | Doppler under 0.1 m/s; with no Doppler only a WARN |
+| stands: GPS still | the Doppler speed's **median** under 0.1 m/s (not its largest: a still receiver's noise passes 0.1 one reading in seven); with no Doppler only a WARN |
 
 !!! warning "On the car, the drive is refused today"
     The car is rear-wheel drive; its wheel sensors are on the **front**. On stands
@@ -342,8 +382,19 @@ Then one line per check: `PASS`, `FAIL`, `WARN` or `SKIP`.
     `--no-drive`: the sensors only, nothing moves. Also refused: the C++ ESP32 (its
     no-timeout lock), and the bridge on `speed_loop.mode pi`.
 
-In the simulator and on the bench the car is **on the ground**, so the stands lines check the
-opposite (the IMU and GPS agree with the wheels) and say so. Who must be there on the car:
+On the bench, and in the simulator unless it is on jacks, the car is **on the ground**, so
+the stands lines check the opposite (the IMU and GPS agree with the wheels) and say so.
+With `--sim --on-jacks` (Ravensim's car lifted: `pixi run jacks up --sim`) they check what
+they check on the car, and the live IMU watch runs too. `--on-jacks` is your word, as
+`--stands` is on the car: the watch stops the run if the IMU says the car moves.
+
+**The live IMU watch** stops the run when the IMU's speed change over 2 s passes 0.15 m/s.
+**On the real car the mark is a fixed 0.15 m/s** (Ben, 23 Nov), until its IMU's noise at
+rest is measured. In the simulator (`--sim`) a noisy IMU reaches that standing still, so
+there the mark is the larger of 0.15 and 5 x what its own noise at rest adds up to, and
+never over 0.25 (the cap is 0.3).
+
+Who must be there on the car:
 the **e-stop person** (they are the stop), someone watching the **rear wheels** with a
 tachometer app, the laptop person; run it on the Orin (ssh + tmux) or a wired laptop.
 The word to type: `preflight`. If the car is still moving 5 s after the stop, it prints
@@ -365,6 +416,7 @@ Phase A of [the testing plan](testing-plan.md#phase-a-the-car-on-stands) in one 
 ```bash
 pixi run car-test --stands                       # the real car, wheels off the ground
 pixi run car-test --stands --sim --no-manual     # its own Ravensim (this computer only)
+pixi run car-test --stands --sim --attach --no-manual   # the Ravensim already running here
 pixi run car-test --stands --only faults         # some steps (or a group: steering, faults)
 ```
 
@@ -374,6 +426,7 @@ pixi run car-test --stands --only faults         # some steps (or a group: steer
 | 2 | every sensor | `actuator-test preflight --stands --no-drive` (15 s still) | each at its documented rate |
 | 3a-c | steering | `steer-sweep`, `steer-rate`, `steer-centre` | its `vehicle.yaml` lines printed |
 | 4 | throttle on free wheels | `wheel-steps` (new, 3.14): 0.1, 0.2, 0.3, 0.15 m/s, 4 s each | the wheel speed follows: each step up within 25 % (or 0.05 m/s), the step down slower |
+| end | `--sim`: off the stands | the runner asks its Ravensim to lower the car | noted in the report; Ravensim refuses while the wheels spin |
 | 5a | the Orin is lost | car: a person pulls the Orin's cable to the Motor Pi. Sim: the runner pauses its own output mux | car: the ESP32 brakes, and **holds** while still asked to roll once the cable is back. Sim: still within 2 s |
 | 5b-d | GPS, IMU, camera lost | car: a person unplugs it. Sim: `fault.<sensor> stop` | the sensor watchdog names it within its `max_age` + 1 s; still 3 s later |
 | 5e | lidar lost | car: a person unplugs it. Sim: `fault.lidar stop` | the sensor watchdog names it (its `lidar` input, since 19 Nov) within 1.0 s + 1 s; still 3 s later |
@@ -401,7 +454,92 @@ gate) and **how soon the car stood still**.
 | A person's step prints what to do and waits for Enter; `skip` skips it | the e-stop person stays at the button |
 | `--no-manual`: every person's step is SKIPPED, and listed | for the stand-in and CI |
 | `--sim`: its own Ravensim, its own ROS domain (`AAV_SIM_DOMAIN`, or a free one), `--local` | never reaches a car |
+| `--sim`: that Ravensim's car is **on stands** from the start (`on_stands:=true`) and lowered at the end | the simulated test tests what the real one does: wheels spin, the car stays put (TODO 272) |
 | The e-stop is the last step | it latches: nothing drives after it |
+
+### `--sim --attach`: the simulator you can watch
+
+`--sim` starts a Ravensim nobody sees. `--sim --attach` tests **the one already running on
+this computer**, such as [the dry run's](proving-it.md#the-dry-run-pixi-run-dry-run), so the
+car moves in its picture (TODO 273). `--hallway` and `--lot` take it too.
+
+| It hears on `/system/source`, this computer only | It does |
+|---|---|
+| SIM | tests that simulator, on its ROS domain; never starts or stops it |
+| nothing | starts its own, as `--sim` alone |
+| REAL, BENCH or REPLAY | **refused**: nothing starts, nothing moves |
+
+| Attached | |
+|---|---|
+| the car goes on stands for phase A and comes down after; down first for phase B and the lot | Ravensim refuses while the wheels spin: then the session is refused |
+| the e-stop an earlier test left set | the session is **refused** (twist_mux's own word on `/diagnostics`). A person clears it, as on the car: `pixi run clear estop --sim` (`--sim`: this computer only) |
+| step 5a, the heartbeat | pauses the simulator's output mux only when its owner said which process group is its own (`pixi run dry-run` does); else **SKIPPED**, with why |
+| `--sim-actuators`, `--wheel-noise`, `--wheel-slip` | refused with `--attach`: the simulator runs as it was started |
+| the simulated car is never turned round or put back | every pass drives on from where the last stopped; the dry run's world has 340 m |
+
+Tested 22 Nov, Ben's MacBook, attached to a running Ravensim (road world): `--stands` 12
+PASS, 2 SKIPPED (5f, 5g: no Pi, no cables), the heartbeat step included; `--hallway` 12 of
+12 passes, the fitted model matching all 12 (refused first, while the e-stop was still set).
+
+### `car-test --lot --sim`: the lot's simulator twin
+
+The ladder's lot rung in one command: every stage-4 test that is not a hallway pass
+(`speed-up`, `coast`, `brake`, `throttle-map`, `circles`, `straight`: from the tests' own
+list), up to 3 m/s, one session, one report in the stands report's form
+(`~/aav-tests/<time>-lot-sim/`). `--only brake circles` picks some; `--attach` as above.
+
+| Rule | Why |
+|---|---|
+| `--sim` required | on the real car the lot stays by hand, one test at a time, capped at 1 m/s |
+| a step passes when its test **ran to the end** and made its report | the hallway's pass rule (model within 10 %, stop within 0.2 m) is **not judged** here: read each summary |
+| any FAIL ends the session | as phase A |
+
+!!! warning "22 Nov: it fails today, and that is a finding"
+    `speed-up` stops itself at 3 m/s ("the speed rose 2.86 -> 3.04 m/s while the command
+    fell (3.00 -> 0.00): a stuck throttle?"), `brake` at 2 m/s, `throttle-map` at 1.5 m/s.
+    `coast`, `circles` and `straight` pass. The rule (`safety.runaway`) is unchanged: a
+    safety rule. **Ben chose, 23 Nov: hold the top speed longer.** The three tests now hold
+    it 2.5 s before the command falls; the rule and the loop are unchanged; the lot's twin
+    passes with the `default` loop, 6 of 6 (TODO 275). At 3 m/s a run needs up to 7.5 m more.
+
+#### Why it fails (23 Nov)
+
+Ben, 23 Nov: "Fix the speed loop". Looked there first. Nothing was changed: the fix that
+exists is the real car's firmware, and already has a decision (25 Oct, TODO 27).
+
+| | |
+|---|---|
+| Which loop | the simulated car runs the spine's `default` profile (`car_model.py` `SpeedLoop`, the same code as `spine-core`, line for line) |
+| Cause 1 | that profile's **known overshoot** ([the speed loop's profile](#the-speed-loops-profile-todo-27)): its integral fills during ego's 1 m/s² ramp and empties slowly. The speed is still climbing when the test drops its command |
+| Cause 2 | the rule compares the speed with **1 s before**. The tests drop the command 1.0 s (`speed-up`, `throttle-map`) or 1.5 s (`brake`) after 95 % of the speed. So the rise it sees happened **during the hold**, while the command was still up |
+| After the command fell | the speed rose **0.003 m/s** (3.034 to 3.037: the throttle's 0.1 s lag), then fell. The loop cuts the throttle at once and brakes |
+
+Measured in Ravensim (23 Nov, Ben's MacBook, `world:=empty nav:=false sim_speed:=3`):
+
+| Test, command | `default`: speed when the command drops | Result | `smooth`: speed then | Result | `firm` |
+|---|---|---|---|---|---|
+| `speed-up` 3 m/s | 3.03 | **stopped by the rule** | 2.89 | ran to the end | ran to the end |
+| `brake` 1 m/s | 1.11 | ran | 0.97 | ran | ran |
+| `brake` 2 m/s | 2.20 | **stopped by the rule** | 1.94 | ran | ran |
+| `brake` 3 m/s | not reached | | 2.90 | ran | ran |
+| `throttle-map` 0.75 m/s | 0.80 | ran | 0.72 | ran | ran |
+| `throttle-map` 1.5 m/s | 1.60 | **stopped by the rule** | 1.44 | ran | ran |
+| `throttle-map` 2.25, 3 m/s | not reached | | 2.17, 2.89 | ran | ran |
+| `car-test --lot --sim` | | **FAIL** at step 4.1 (its own simulator) | | **PASS**, 6 of 6 (`--attach` to `pixi run sim ... speed_loop:=smooth`) | not run |
+
+The stops are no slower: from 2 m/s, `default` on the car model 2.10 s; `smooth` 2.14 s in
+Ravensim (the same brake); `firm` 1.22 s.
+
+!!! note "`smooth` is not a full cure"
+    On the car model alone, a quick loop with 1 % overshoot still trips the rule in
+    `speed-up` at 2 and 3 m/s: from 95 % to 100 % of 3 m/s is 0.15 m/s, inside the rule's
+    second. `smooth` passes because it is slow at the end: 2.89 m/s when the command drops.
+
+| Choice | Changes | Cost |
+|---|---|---|
+| (a) hold the top speed longer than the rule's 1 s before slowing | the tests' procedure (the hallway passes hold 2.5 s) | longer runs: more room in the lot |
+| (b) the lot's twin runs `speed_loop:=smooth` | the simulator's car only | the twin no longer tests the loop the car's spine runs |
+| (c) `smooth` becomes the spine's default | **the real car's firmware**, every model of it, the shared vectors | decided 25 Oct to wait for the stands (TODO 27) |
 
 ### The report folder
 
@@ -410,7 +548,8 @@ gate) and **how soon the car stood still**.
 | File | Holds |
 |---|---|
 | `report.md` | the table: PASS / FAIL / SKIPPED / NOT RUN per step, what happened, the `vehicle.yaml` lines |
-| `report.yaml` | the same, for tools |
+| `report.yaml` | the same, for tools (`pixi run ladder session <rung>`, the tests screen); a hallway and a lot session write one too, a step a pass |
+| `rung-1-report.html` | a stands run started by the ladder (`pixi run ladder run 1`, or **Run** on the tests screen): rung 1's answer as one page, the question, the verdict, three graphs with their numbers, the faults table ([Proving it](proving-it.md#rung-1-on-stands-accelerate-brake-turn)). `pixi run ladder report 1` writes it for a run from a terminal |
 | `run.log` | everything printed |
 | `<step>/` | each test's own folder (`log.csv`, `summary.txt`, `meta.yaml`) and `output.log` |
 | `sim-launch.log` | `--sim`: our Ravensim's log |
@@ -430,7 +569,7 @@ safety lock, the runner:
   wheels must stay braked (the ESP32's latch), and `/vehicle/status` say disarmed or
   `CMD_TIMEOUT`.
 
-### Tested, 19 Nov (Ravensim only)
+### Tested, 19 Nov (Ravensim only, the car on the ground)
 
 `pixi run car-test --stands --sim --no-manual`, Ben's MacBook, its own Ravensim (road world,
 domain 110), about 7 minutes:
@@ -446,7 +585,33 @@ domain 110), about 7 minutes:
 | 5f-g Pi, cable | SKIPPED: not in Ravensim |
 | 5h e-stop | PASS: still 0.67 s after it |
 
-The first runs found: Ravensim's cameras build on first use (the runner now waits for the
+### Tested, 22 Nov (Ravensim, the car on jacks)
+
+`pixi run car-test --stands --sim --no-manual`, Ben's MacBook, its own Ravensim started
+`on_stands:=true` (road world, domain 88): **12 PASS, 2 SKIPPED** (a Pi's link, a cable).
+
+| Step | Result |
+|---|---|
+| before | Ravensim said "the car is on stands already" |
+| 1 preflight | PASS. stands: IMU still (its speed change 0.07 m/s, the wheels' 0.29); stands: GPS still (Doppler's median 0.06 m/s of 562 readings, the largest 0.13) |
+| 3a-c steering | PASS: the same `vehicle.yaml` lines as on the ground |
+| 4 wheel-steps | PASS: 0.10 → 0.11, 0.20 → 0.20, 0.30 → 0.30, 0.15 → 0.22 m/s |
+| 5a heartbeat | PASS: still 0.33 s after the output mux paused |
+| 5b-e GPS, IMU, camera, lidar | PASS: named 2.06, 0.53, 0.87, 1.10 s after the last message |
+| 5h e-stop | PASS: still 0.50 s after it |
+| after | Ravensim said "the car is now on the ground" |
+
+| What the run on jacks showed | Means |
+|---|---|
+| Run 1: "stands: GPS still" FAILED on a still car (Doppler at most 0.13 m/s) | the mark was the largest reading; now the median |
+| Run 2: the live IMU watch stopped a still car (0.16 m/s in 2 s) | noise: about one run in three at Ravensim's 0.2 m/s²; the mark now allows for the IMU's own noise |
+| Every watchdog line starts `odom DISAGREE` (wheels 0.24 m/s, GPS 0.02) | right on stands, and latched: on the car too, `pixi run clear watchdog` after |
+| The watchdog also says `camera FROZEN` while the wheels turn | Ravensim's pictures have no noise, so a still car's are identical; a real camera's are not. **Step 5d passes on that word here, so on jacks it does not prove a lost camera is caught** (TODO 274) |
+
+Nothing here has run on the real car: "as on the car" above is what the design says, not
+a measurement.
+
+The first runs (19 Nov) found: Ravensim's cameras build on first use (the runner now waits for the
 camera), and the watchdog writes `STOP: gps STALE (...)`, not `STOP - ...` as the contract
 said (fixed there). **On the car: untested.**
 

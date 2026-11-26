@@ -7,7 +7,7 @@
 <!-- Generated from docs/features.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Features: what the car&#x27;s software does, and why</h1>
-<div class="meta">144 min read · 15 sections</div></header>
+<div class="meta">155 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -453,7 +457,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td>Lane finder (<code>aav_lane_finder</code>)</td>
+<td>Lane finder (<code>aav_lane_finder</code>: the launch file, config and Python maths; the node is <code>aav_lane_finder_rs</code>'s since 22 Nov)</td>
 <td>Classic OpenCV finds the lane in 0.78 ms a picture, with no model to train</td>
 <td>Ben</td>
 <td>2026-10-10</td>
@@ -502,15 +506,15 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td>Lidar to a 2D scan (<code>aav_lidar</code> <code>lidar_scan</code>)</td>
+<td>Lidar to a 2D scan (<code>lidar_scan</code>: <code>aav_lidar_rs</code> since 17 Nov; <code>aav_lidar</code>'s Python node removed 22 Nov, its maths kept)</td>
 <td>The costmap and the stop zone need a flat scan, without the car's own body in it</td>
 <td>Ben</td>
 <td>2026-10-15</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/perception/aav_lidar_rs/README.md">The flat scan in Rust</a> (<code>aav_lidar_rs</code> <code>lidar_scan</code>, <code>lidar_impl:=</code>), the default</td>
-<td>Ben, 17 Nov: "lets port the 4 expensive things to rust ... so we get our performance under control" (TODO 185). The same ranges as the Python, all 6,600 (7 made-up and 3 Ravensim clouds); the same node, topics and QoS. Ravensim, <code>/clock</code> 100 Hz: 2.0 % of a core and 46-53 MB against 4.8-5.1 % and 152-162 MB, road and campus. Since 17 Nov the default in the simulator and on the car; <code>lidar_impl:=python</code> falls back</td>
+<td><a href="../../ros/perception/aav_lidar_rs/README.md">The flat scan in Rust</a> (<code>aav_lidar_rs</code> <code>lidar_scan</code>), the only one</td>
+<td>Ben, 17 Nov: "lets port the 4 expensive things to rust ... so we get our performance under control" (TODO 185). The same ranges as the Python, all 6,600 (7 made-up and 3 Ravensim clouds); the same node, topics and QoS. Ravensim, <code>/clock</code> 100 Hz: 2.0 % of a core and 46-53 MB against 4.8-5.1 % and 152-162 MB, road and campus. Since 17 Nov the default in the simulator and on the car; the only one since 22 Nov, when the Python node was removed (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>)</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>
@@ -537,8 +541,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../../ros/perception/aav_lane_finder_rs/README.md">The lane finder in Rust</a> (<code>aav_lane_finder_rs</code> <code>lane_finder</code>, <code>lane_finder_impl:=</code>), the default</td>
-<td>Ben, 18 Nov: "the aav_lane_finder might be nice to have since it helps the car stay on the correct side"; Rust where possible, for trust and speed on the car's ARM computers. The bird's-eye warp, the paint mask, the sliding windows and the fits ported with no OpenCV (its fixed-point remap and lens model rewritten, so the masks are the same pixels; numpy's polyfit through nalgebra): the same lanes as the Python on 50 pictures (made up: straight, curved, dashed, one line, none, noise, night, tilted and distorted lenses; and 5 Ravensim frames), within 2e-14 m. Ravensim, University Drive, both side by side on the same 1,535 pictures: the same lanes to float32, 3.7 % of a core and 37 MB against 17.4 % and 175 MB. Since 18 Nov the default wherever the lane finder runs (<code>lane:=true</code>, the lane pose, the car's lane part, the bench); <code>lane_finder_impl:=python</code> falls back. Since 19 Nov (TODO 264) both twins also say each line's paint, white or yellow, from its pixels' colour (<code>left_paint</code>, <code>right_paint</code> in <code>LaneGeometry</code>), so the costmap can price a yellow centre line apart from a white edge line</td>
+<td><a href="../../ros/perception/aav_lane_finder_rs/README.md">The lane finder in Rust</a> (<code>aav_lane_finder_rs</code> <code>lane_finder</code>), the default (<code>lane_finder_impl:=learned</code> for the challenger)</td>
+<td>Ben, 18 Nov: "the aav_lane_finder might be nice to have since it helps the car stay on the correct side"; Rust where possible, for trust and speed on the car's ARM computers. The bird's-eye warp, the paint mask, the sliding windows and the fits ported with no OpenCV (its fixed-point remap and lens model rewritten, so the masks are the same pixels; numpy's polyfit through nalgebra): the same lanes as the Python on 50 pictures (made up: straight, curved, dashed, one line, none, noise, night, tilted and distorted lenses; and 5 Ravensim frames), within 2e-14 m. Ravensim, University Drive, both side by side on the same 1,535 pictures: the same lanes to float32, 3.7 % of a core and 37 MB against 17.4 % and 175 MB. Since 18 Nov the default wherever the lane finder runs (<code>lane:=true</code>, the lane pose, the car's lane part, the bench); the Python node was removed on 22 Nov (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>), its maths kept as the yardstick. Since 19 Nov (TODO 264) both twins also say each line's paint, white or yellow, from its pixels' colour (<code>left_paint</code>, <code>right_paint</code> in <code>LaneGeometry</code>), so the costmap can price a yellow centre line apart from a white edge line</td>
 <td>Ben</td>
 <td>2026-11-19</td>
 <td>sim</td>
@@ -601,8 +605,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/drivers/aav_drive_to_point_rs/README.md">Drive to point in Rust</a> (<code>aav_drive_to_point_rs</code> <code>point_driver</code> and <code>drive_to_point</code>, <code>drive_to_point_impl:=</code>) and <code>arm_when_open</code> in Rust (<code>aav_spine_bridge</code>, <code>arm_when_open_impl:=</code>), the defaults</td>
-<td>Rust where possible (Ben, 16 Nov), for trust on the car's ARM computers. The speed plan, pure pursuit, the corridor, every refusal and stop, and whole drives (to B, an e-stop, a cancel, a stuck car, speeding, a GPS jump, the stopping law, a turn round) give the Python's numbers to 1e-12 and its words exactly (shared vectors; the drive's ticks moved into <code>run.py</code>, no ROS, so both share them). TODO 94 kept as it is. <code>drive_to_point_impl:=python</code>, <code>arm_when_open_impl:=python</code> and <code>pixi run drive-to-point --python</code> fall back</td>
+<td><a href="../../ros/drivers/aav_drive_to_point_rs/README.md">Drive to point in Rust</a> (<code>aav_drive_to_point_rs</code> <code>point_driver</code> and <code>drive_to_point</code>) and <code>arm_when_open</code> in Rust (<code>aav_spine_bridge</code>), the only ones</td>
+<td>Rust where possible (Ben, 16 Nov), for trust on the car's ARM computers. The speed plan, pure pursuit, the corridor, every refusal and stop, and whole drives (to B, an e-stop, a cancel, a stuck car, speeding, a GPS jump, the stopping law, a turn round) give the Python's numbers to 1e-12 and its words exactly (shared vectors; the drive's ticks moved into <code>run.py</code>, no ROS, so both share them). TODO 94 kept as it is. The Python nodes (<code>point_driver</code>, its client, <code>arm_when_open</code>) were removed on 22 Nov (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>); <code>aav_drive_to_point</code>'s maths stays, the yardstick</td>
 <td>Ben</td>
 <td>2026-11-18</td>
 <td>sim</td>
@@ -651,7 +655,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </tr>
 <tr>
 <td><a href="actuator-tests.html#car-test-the-whole-stands-test">car-test: the whole stands test</a> (<code>pixi run car-test --stands</code>)</td>
-<td>Our professor asked for one automated testing system: phase A (the preflight, every sensor, the steering, throttle on free wheels, faults on purpose) in one command with one report, stopping at the first failure, so every stands day is run and recorded the same way</td>
+<td>Our professor asked for one automated testing system: phase A (the preflight, every sensor, the steering, throttle on free wheels, faults on purpose) in one command with one report, stopping at the first failure, so every stands day is run and recorded the same way. Since 22 Nov <code>--sim</code> runs with Ravensim's car on stands (TODO 272), as the real test does; <code>--sim --attach</code> tests the Ravensim already running on this computer, so the car moves where you watch (TODO 273; anything not SIM is refused); <code>--lot --sim</code> is the lot's simulator twin: the stage-4 tests at up to 3 m/s, one report</td>
 <td>Ben Woodhead</td>
 <td>2026-11-19</td>
 <td>sim</td>
@@ -661,6 +665,27 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben, 19 Nov: "measuring all the acceleration and braking in the car and the imu data and the forces. and getting the transfer functions correct". Phase B in a measured hallway: the top speed from its length, every pass fenced to stop inside it; 10 s still for the IMU's offset, the slope from both ways, the IMU blended with the wheels (a Kalman filter), F = m a; drag, max_accel, max_brake, each lag and dead time with error bars and a trust flag; each pass replayed through the car model (10 % speed, 0.2 m stop); only trusted lines to paste. Ravensim's car can take its own numbers (<code>actuators:=</code>) so the fits are proven to find them</td>
 <td>Ben Woodhead</td>
 <td>2026-11-19</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="proving-it.html#where-we-are-pixi-run-ladder">The test ladder, with saved progress</a> (<code>pixi run ladder</code>, <code>tools/ladder.py</code>, <code>tools/ladder/rungs.yaml</code>; <a href="proving-it.html#the-tests-screen-pixi-run-ladder-window">the window</a>: <code>pixi run ladder-window</code>, <code>ros/hud/aav_dev_window</code>)</td>
+<td>Ben, 22 Nov: "spin up the testing and then start working through the rungs saving our progress as we go". The rungs from the laptop to a route, the simulator's side and the car's kept apart; a rung is shut until the ones under it pass; every result kept with its commit. It never moves the car. The window (Ben, 22 Nov: "an actual window"): every rung, Run in the simulator with its console and Stop, Record by hand; the car's command is only shown; the tool stays the only writer. Since 22 Nov also "The simulated car: on stands / on the ground", on only while a simulator runs on this computer; and (TODO 273) a rung's run uses the simulator that is open, each of its tests has its own Run (simulator only, not recorded), the last session is a table of steps with the <code>vehicle.yaml</code> lines, the chosen step a graph of commanded against measured with its numbers, a hallway session's fits with their error bars; the lot and the route have one-command simulator twins. <strong>23 Nov, <a href="wrap-up.html">the plan</a> step 1</strong> (Ben: "it doesn't make a lot of sense ... we don't see it actually doing anything"; "a testing regime that produces graphs and has a rung system"): the rungs are the plan's ten, named for what the car can do, each with its question, graphs, pass mark and report chapter; a rung not built is listed as "not built yet"; the checks that move no car are one "before you start" line. Rung 1 (on stands) is the pattern: its result is an answer (a verdict line, three graphs of asked-for against measured with delay, 10 to 90 % and end error, the faults table), saved as one report page a run, with the car's side a slot that says "no car run yet" (<code>tools/rung_answer.py</code>, <code>tools/step_response.py</code>). Rung 1 is built, in the simulator; rungs 2 to 9 and S are not</td>
+<td>Ben Woodhead</td>
+<td>2026-11-24</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="proving-it.html#the-dry-run-pixi-run-dry-run">The dry run</a> (<code>pixi run dry-run</code>, <code>tools/dry_run.py</code>; <code>pixi run clear &lt;latch&gt; --sim</code>)</td>
+<td>Ben, 22 Nov: "control the car in ravensim the same way we would control the actual car ... a dry run of everything we will do in real life". One command opens the three screens (23 Nov): Ravensim's picture, the hardware panel and the ladder window attached to it (<code>--nav</code>, <code>--debug</code>: the navigation view alone, the debug screen), on this computer only; the window's tests move the car you see; Ctrl-C stops every process group it started. As on the car, a test never clears a stop: a person does (<code>clear estop --sim</code>). Its first night found that the stage-4 tests stop themselves above 1 m/s (TODO 275)</td>
+<td>Ben Woodhead</td>
+<td>2026-11-22</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><a href="hud.html#rviz-and-ours">Our own navigation view</a> (<code>pixi run nav-view</code>; the developer window's map panel, <code>ros/hud/aav_dev_window</code>, its logic in <code>crates/nav-core</code>)</td>
+<td>Ben, 23 Nov: "Why did we keep seeing rviz with nav2 plugin pop up when testing cbf. Didn't we port all of this to rust? ... lets finish the port so we don't rely on something that pops up in a weird way like rviz does". The top-down view is ours: the map, both costmaps, the plan, the car's trail and body, the stop zone's box and state, the ghost and the barrier's keep-out circle, a goal by click, a scale and grid; inside the developer window and alone in its own window, one code base. <code>pixi run demo</code>, <code>barrier-watch</code> and <code>sim</code> open it, or nothing; RViz opens only when asked (<code>rviz:=true</code>, <code>--rviz</code>)</td>
+<td>Ben Woodhead</td>
+<td>2026-11-23</td>
 <td>sim</td>
 </tr>
 </tbody>
@@ -747,6 +772,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="barriers.html">Barriers in the MPC</a> (<code>aav_mpc_lag</code>'s <code>barrier.rs</code>, <code>MpcLag::set_barriers</code>; <code>mpc_barriers:=true</code> with the ghost, <code>mpc_barrier_gamma:=</code>; off by default; to watch it in Ravensim: <code>pixi run barrier-watch plain</code>, <code>step</code> or <code>barrier</code>)</td>
+<td><strong>Outside the capstone's scope</strong>: Ben's own research, toward his MASc thesis (not a team deliverable; nothing turns it on). The tracker follows its path into an object. A control barrier function in the plan (Ali, Shen, Hashim 2024) lets the room to a keep-out circle shrink only by a share a tick, and a stop rule stands the car still while there is room. On a pretend car: 36 of 36 runs kept off the object. In Ravensim at 3 m/s (22 Nov): the plain tracker drives through the ghost, a hard distance limit stops close before it, the barrier goes round (11 of 11); below 2.5 m/s it stops</td>
+<td>Ben</td>
+<td>2026-11-22</td>
+<td>built</td>
 </tr>
 <tr>
 <td><a href="../../ros/drivers/aav_mppi_lag/README.md">Smooth MPPI</a> (<code>aav_mppi_lag</code>, <code>mppi_lag_sampling:=smooth</code>; the league's steer option <code>mppi_lag_smooth</code>)</td>
@@ -941,7 +973,7 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 </thead>
 <tbody>
 <tr>
-<td>ego, the virtual car (<code>aav_ego</code>), with Ackermann output</td>
+<td>ego, the virtual car (<code>aav_ego_rs</code> since 22 Nov; <code>aav_ego</code> keeps the launch file, config and maths), with Ackermann output</td>
 <td>Only ego talks to a backend, and every backend takes the same Ackermann message</td>
 <td>Ben</td>
 <td>2026-10-09</td>
@@ -1018,8 +1050,8 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>built</td>
 </tr>
 <tr>
-<td><a href="../../ros/ego/aav_ego_rs/README.md">ego and look_ahead in Rust</a> (<code>aav_ego_rs</code>, <code>ego_impl:=rust</code>): both nodes in one process, the default</td>
-<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust". The same answers as the Python modules (0 difference, but the trace's f32 speed loop: 4e-8); our simulator's road world, /clock at 100 Hz: 2.4 % of a core against 17 % (ego 10.5, look_ahead 6.5); at 1000 Hz 4 % against 58 %; the same scripted drive (5.83 m, 0.00 m to the side). 16 Nov: the simulator's default (sim-check and the scores on lot and university_box no worse than the Python's); the car's default too (Ben, 16 Nov), <code>ego_impl:=python</code> falls back</td>
+<td><a href="../../ros/ego/aav_ego_rs/README.md">ego and look_ahead in Rust</a> (<code>aav_ego_rs</code>): both nodes in one process, the only ego</td>
+<td>Ben, 14 Nov: "convert anything that uses a lot of resources to rust". The same answers as the Python modules (0 difference, but the trace's f32 speed loop: 4e-8); our simulator's road world, /clock at 100 Hz: 2.4 % of a core against 17 % (ego 10.5, look_ahead 6.5); at 1000 Hz 4 % against 58 %; the same scripted drive (5.83 m, 0.00 m to the side). 16 Nov: the simulator's default (sim-check and the scores on lot and university_box no worse than the Python's); the car's default too (Ben, 16 Nov). The only ego since 22 Nov: the Python nodes were removed (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>), the maths kept as the yardstick</td>
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>sim</td>
@@ -1059,6 +1091,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben</td>
 <td>2026-11-15</td>
 <td>sim</td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_safety_filter_rs/README.md">The safety filter for untrusted drivers</a> (<code>aav_safety_filter_rs</code> <code>safety-filter</code>, no ROS; node <code>safety_filter</code>, in shadow by default): trims an automatic driver's (v, w) by the least that keeps the car able to stop (a CBF on the stopping law), inside its lane (CBFs on a look-ahead point) and settling on the line (a soft Lyapunov term); every decision on <code>/safety/filter/status</code></td>
+<td><strong>Outside the capstone's scope</strong>: Ben's own research, toward his MASc thesis (not a team deliverable; in shadow by default). TODO 104: the AI and LLM drivers can ask for anything, and the locks only stop the car; a filter that changes their commands as little as possible keeps them safe to try. In front of twist_mux (K1), so a person is never trimmed. a candidate for Ben's thesis (20 Nov)</td>
+<td>Ben</td>
+<td>2026-11-20</td>
+<td>built</td>
 </tr>
 <tr>
 <td>Command mux and e-stop lock (<code>aav_command_mux</code>, twist_mux)</td>
@@ -1103,22 +1142,22 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="sources-and-targets.html">Sensor mux and output mux</a> (<code>aav_io_mux</code>)</td>
+<td><a href="sources-and-targets.html">Sensor mux and output mux</a> (<code>aav_io_mux_rs</code>; <code>aav_io_mux</code> keeps the launch file and the rules in Python)</td>
 <td>Simulated data can never drive the real car, and the spine won't arm while the gate is shut</td>
 <td>Ben</td>
 <td>2026-10-23</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/io_mux/aav_io_mux_rs/README.md">The sensor mux and output mux in Rust</a> (<code>aav_io_mux_rs</code>, <code>io_mux_impl:=rust</code>), the default</td>
-<td>Ben, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later": the Motor Pi alone runs the safety path that makes the ESP32's heartbeat, so it goes to Rust before the Rust ESP32 is flashed. A safety lock, so it answers exactly as the Python: 6,500 steps of shared vectors (every SourceCheck and log line, every state line, each command passed or held with its heartbeat counter, each clear; the latches, NOT SIM / WAIT, the 30 s start-up grace, the screens refused for the car, each limit exactly). sim-check's road world passes with both; 4-5 % of a core each against 17-22 % for the Python. The default on the car and in the simulator; <code>io_mux_impl:=python</code> falls back until a car day proves it</td>
+<td><a href="../../ros/io_mux/aav_io_mux_rs/README.md">The sensor mux and output mux in Rust</a> (<code>aav_io_mux_rs</code>), the only ones</td>
+<td>Ben, 17 Nov: "Rust tomorrow ... I don't think we want to do this again later": the Motor Pi alone runs the safety path that makes the ESP32's heartbeat, so it goes to Rust before the Rust ESP32 is flashed. A safety lock, so it answers exactly as the Python: 6,500 steps of shared vectors (every SourceCheck and log line, every state line, each command passed or held with its heartbeat counter, each clear; the latches, NOT SIM / WAIT, the 30 s start-up grace, the screens refused for the car, each limit exactly). sim-check's road world passes with both; 4-5 % of a core each against 17-22 % for the Python. The default on the car and in the simulator since 17 Nov; the only ones since 22 Nov, when the Python nodes were removed (Ben: "lets start removing the python fall back after being tested enough times"; tag <code>save/python-fallbacks-1</code>). Not yet run on the car</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>
 </tr>
 <tr>
-<td><a href="../../ros/perception/aav_stop_sign_rs/README.md"><code>joy_alive</code> and <code>stop_sign_watcher</code> in Rust</a> (<code>aav_joy_alive_rs</code>, <code>joy_alive_impl:=rust</code>; <code>aav_stop_sign_rs</code>, <code>stop_sign_impl:=rust</code>), the defaults</td>
-<td>Ben, 17 Nov: the Motor Pi alone's Python nodes become Rust by default ("I don't think we want to do this again later"): the joystick's check and the stop-sign lock. Each gives the Python's answers on shared vectors (6,982 joystick events; 2,400 watcher steps, sign points, lidar matches); a chain test drives ego through each joy_alive, a process test locks and lets go with each watcher. the Python nodes removed 20 Nov (<code>save/python-safety-nodes</code>). Rust; the Python removed 20 Nov (<code>save/</code> tags in the package READMEs)</td>
+<td><a href="../../ros/perception/aav_stop_sign_rs/README.md"><code>joy_alive</code> and <code>stop_sign_watcher</code> in Rust</a> (<code>aav_joy_alive_rs</code>, <code>aav_stop_sign_rs</code>), the only ones</td>
+<td>Ben, 17 Nov: the Motor Pi alone's Python nodes become Rust by default ("I don't think we want to do this again later"): the joystick's check and the stop-sign lock. Each gives the Python's answers on shared vectors (6,982 joystick events; 2,400 watcher steps, sign points, lidar matches); a chain test drives ego through each joy_alive, a process test locks and lets go with the watcher. The Python <code>joy_alive</code> was removed on 20 Nov (<code>save/python-safety-nodes</code>), the Python <code>stop_sign_watcher</code> on 22 Nov (<code>save/python-fallbacks-1</code>; Ben: "lets start removing the python fall back after being tested enough times")</td>
 <td>Ben</td>
 <td>2026-11-17</td>
 <td>sim</td>
@@ -1547,6 +1586,13 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>sim</td>
 </tr>
 <tr>
+<td><a href="actuator-tests.html#the-simulated-car-on-stands-pixi-run-jacks">The simulated car on stands</a> (<code>pixi run jacks up --sim</code>, <code>down</code>, <code>status</code>, <code>sim on_stands:=true</code>; <code>aav_simulator</code>'s <code>jacks.rs</code>, <code>aav_sim_models/jacks.py</code>; the ladder window's switch)</td>
+<td>Ben, 22 Nov: "put the car on jacks and take it off jacks type thing ... test it just like the real car using the real commands". Lifted, the rear wheels spin and steer through the same actuator model and the car stays put: the wheels say moving, the IMU, GPS, lidar and truth say still, and the stack sees that disagreement as it would on the real stands. Lowering is refused while the wheels spin. <code>car-test --stands --sim</code> runs on it, so the stands rung's simulator twin tests what the real one does; its first run found two checks that a still car's sensor noise failed. Rust for the rule and the simulator, Python for the car model's free wheels and the tool</td>
+<td>Ben Woodhead</td>
+<td>2026-11-22</td>
+<td>sim</td>
+</tr>
+<tr>
 <td><a href="own-simulator-cameras.html">Ravensim's cameras</a> (<code>aav_sim_cameras</code>, <code>pixi run sim-cameras</code>)</td>
 <td>Ben, 7 Nov: replace Gazebo with our own Rust simulator, every sensor. Bevy draws each car camera offscreen with Gazebo's picture, lens, rate and frame, so the detector and stop-sign watcher can't tell them apart. Joined to the core (8 Nov): they draw the same world files (test lot, road, campus: boxes, cylinders, planes, OBJ meshes and their pictures), so Ravensim runs perception, lane and faults. Models placed while running (<code>spawn_entity</code>, the obstacle) are drawn too, from <code>/vehicle/sim/entities</code>. Since 15 Nov they draw with no GPU too, on Mesa's lavapipe (<code>tools/software_gl.sh</code>; TODO 183: Gazebo's last job), and say which adapter draws. <strong>Camera lockstep (16 Nov):</strong> drawn in software they ran at 1.6 Hz on CI, skipping poses, while Gazebo drew in lockstep; now Ravensim's clock waits for each picture (<code>camera_lockstep:=auto</code> under <code>tools/software_gl.sh</code>), so every camera keeps 10 Hz in sim time and the world runs slower instead. <strong>Prettier (17 Nov, TODO 244; Ben: "its pretty ugly and flat looking"):</strong> <code>graphics:=pretty</code>, the default on a GPU, adds grain on grass, asphalt, concrete and paint (made in code, each keeping its average colour), a sky with haze and the sun's glow, haze past 50 m, a warm sun and sharper shadows, the campus's bump maps, and the campus's stop lines painted where the Lanelet2 map has them; <code>simple</code> (the default in software) is the plain look. Only the pictures change: the lidar and radar read the same shapes</td>
 <td>Ben</td>
@@ -1840,6 +1886,20 @@ Add a row in the same commit as the feature (<code>CLAUDE.md</code>).
 <td>Ben, 7 Nov: "reading isn't my strong suit. I need you to walk me through it": the first flash of the Rust ESP32 is scary, so the whole bench page comes one short step at a time, in bold colour and spoken aloud (macOS <code>say</code>). It runs the copy of the C++, the build, the flash (only once <code>flash</code> is typed) and the first check, says each row ("Brake: pass. The brake is on.") and the board's settings, asks the hands-on checks one by one, rolls back on a STOP or a no, and writes a record in <code>bench-logs/</code>. <code>--dry-run</code> runs nothing</td>
 <td>Ben</td>
 <td>2026-11-07</td>
+<td>built</td>
+</tr>
+<tr>
+<td><code>pixi run espflash</code>, <code>pixi run -e firmware esptool</code></td>
+<td>Ben, 21 Nov, at the car: <code>espflash</code> and <code>esptool</code> typed alone gave "command not found", as both live inside the repo. Now each is a task: <code>pixi run espflash list-ports</code> says whether this computer sees a board at all</td>
+<td>Ben</td>
+<td>2026-11-21</td>
+<td>built</td>
+</tr>
+<tr>
+<td>The first check knows the RC rework (<code>esp32_first_check.py</code>, <code>esp walk</code>)</td>
+<td>21 Nov: the first flash on the car was rolled back. The check called the board's two new idle states failures: <code>mode=Rc</code> (the transmitter on, the RC holding the car braked) and safety <code>Degraded</code> (the transmitter off or not set up). Now PASS, and NOT YET with no roll back; the walk reads again; <code>car-day-build</code> runs the check in QEMU with the transmitter on</td>
+<td>Ben</td>
+<td>2026-11-21</td>
 <td>built</td>
 </tr>
 <tr>

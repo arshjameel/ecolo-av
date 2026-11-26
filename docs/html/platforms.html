@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -282,7 +286,7 @@ the ESP32, and the CAN bus goes to the Orin with the wheel sensors on it
 </tr>
 <tr>
 <td><code>motor_pi.yaml</code></td>
-<td><code>legacy_uart_bridge</code>: the ESP32 is wired to it. The 2025-26 UDP encoder (<code>encoder_udp</code>) is off: the wheels are on CAN now</td>
+<td><code>legacy_uart_bridge</code>: the ESP32 is wired to it. The joystick too (<code>teleop</code>): it is plugged into this Pi (seen 21 Nov); a laptop's own joystick is instead of it, never beside it. The 2025-26 UDP encoder (<code>encoder_udp</code>) is off: the wheels are on CAN now</td>
 </tr>
 <tr>
 <td><code>motor_pi_alone.yaml</code></td>

@@ -25,6 +25,14 @@ use map_core::{
     view::{Mode as MapMode, ScreenPoint, Viewport as MapViewport},
 };
 
+use nav_core::{
+    body::{self, Body},
+    marker::{Frame, Outline},
+    scale::{self, ScaleBar},
+    trail::Trail,
+    zone::StopZone,
+};
+
 use crate::{
     chunks,
     feed::{self, Heard, Level, Update},
@@ -129,6 +137,15 @@ pub struct Layers {
     pub things: bool,
     /// The chunks loaded and their saved maps (`--chunks`; key H), and the route.
     pub chunks: bool,
+    /// The car's trail on the map: where it has been (key B).
+    pub trail: bool,
+    /// The local costmap: the window rolling with the car (key J).
+    pub local_costmap: bool,
+    /// The safety drawings: the ghost, the barrier's keep-out circle, the stop zone's
+    /// box and state (key Z).
+    pub safety: bool,
+    /// The map's grid of round metres (key Q). The scale bar always shows.
+    pub grid: bool,
 }
 
 impl Default for Layers {
@@ -145,6 +162,10 @@ impl Default for Layers {
             ahead: true,
             things: true,
             chunks: true,
+            trail: true,
+            local_costmap: true,
+            safety: true,
+            grid: true,
         }
     }
 }
@@ -239,6 +260,57 @@ impl GridLayer {
     }
 }
 
+impl GridLayer {
+    /// Paints a grid that is turned or in another frame: its picture on the four corners
+    /// `place` gives for the grid's own corners (`nav_core::body::quad`'s order).
+    fn paint_turned(
+        &mut self,
+        ui: &egui::Ui,
+        name: &str,
+        palette: &Palette,
+        painter: &egui::Painter,
+        place: impl Fn(Point) -> egui::Pos2,
+    ) {
+        let Some(grid) = &self.grid else { return };
+        if self.fresh || self.texture.is_none() {
+            let image = egui::ColorImage::from_rgba_unmultiplied(
+                [grid.info.width as usize, grid.info.height as usize],
+                &grid.to_rgba(palette),
+            );
+            match &mut self.texture {
+                Some(texture) => texture.set(image, egui::TextureOptions::NEAREST),
+                None => {
+                    self.texture = Some(ui.ctx().load_texture(
+                        name,
+                        image,
+                        egui::TextureOptions::NEAREST,
+                    ));
+                }
+            }
+            self.fresh = false;
+        }
+        let Some(texture) = &self.texture else { return };
+        let info = &grid.info;
+        let corners = body::quad(
+            info.origin,
+            f64::from(info.width) * info.resolution,
+            f64::from(info.height) * info.resolution,
+        );
+        // The picture's top row is the grid's highest: (0, 1) is cell (0, 0)'s corner.
+        let uv = [(0.0, 1.0), (1.0, 1.0), (1.0, 0.0), (0.0, 0.0)];
+        let mut mesh = egui::Mesh::with_texture(texture.id());
+        for (corner, (u, v)) in corners.into_iter().zip(uv) {
+            mesh.vertices.push(egui::epaint::Vertex {
+                pos: place(corner),
+                uv: egui::pos2(u, v),
+                color: egui::Color32::WHITE,
+            });
+        }
+        mesh.indices.extend([0, 1, 2, 0, 2, 3]);
+        painter.add(egui::Shape::mesh(mesh));
+    }
+}
+
 /// Everything the feed has said.
 #[derive(Default)]
 pub struct WorldNews {
@@ -281,6 +353,17 @@ pub struct WorldNews {
     summary_heard: Option<Instant>,
     map: GridLayer,
     costmap: GridLayer,
+    /// The local costmap, in odom: turned onto the map with the car's two poses.
+    local_costmap: GridLayer,
+    /// Where the car has been, on the map.
+    pub trail: Trail,
+    /// The ghost and the barrier's keep-out circle, as lines on the ground.
+    pub ghost: Option<Outline>,
+    pub keep_out: Option<Outline>,
+    /// The stop zone's box and what it does.
+    pub zone: StopZone,
+    /// The car's body (`vehicle.yaml`), for its outline on the map.
+    pub body: Option<Body>,
     origins: Origins,
     vehicle: Option<VehicleStatus>,
     gate: Heard,
@@ -361,7 +444,15 @@ impl WorldNews {
                 self.ground_the_waves();
             }
             Update::CarInOdom(pose) => self.car_odom = pose,
-            Update::CarInMap(pose) => self.car_map = pose,
+            Update::CarInMap(pose) => {
+                self.car_map = pose;
+                self.trail.push(pose.position);
+            }
+            Update::LocalCostmap(grid) => self.local_costmap.set(grid),
+            Update::Ghost(outline) => self.ghost = outline,
+            Update::KeepOut(outline) => self.keep_out = outline,
+            Update::StopBox(frame, corners) => self.zone.set_box(&frame, &corners, now),
+            Update::StopAction(action) => self.zone.set_action(action, now),
             Update::Picture(_) => {}
             Update::Log(level, line) => self.push_line(level, line),
             Update::Ndt(status) => self.ndt_status = Some(status),
@@ -495,6 +586,8 @@ pub struct UiState {
     pub world: WorldNews,
     /// The map panel's view: following the car, the whole map, or free (`map_nav`).
     pub map: MapNav,
+    /// Only the status strip and the map panel: the navigation view (`pixi run nav-view`).
+    pub map_only: bool,
     /// F was pressed: the map panel follows the car, or shows the whole map, next frame.
     map_follow_key: bool,
     goal: Goal,
@@ -515,6 +608,7 @@ impl Default for UiState {
             eyes: [0.0, 0.0, 1.5],
             world: WorldNews::default(),
             map: MapNav::default(),
+            map_only: false,
             map_follow_key: false,
             goal: Goal::default(),
             tab: Tab::default(),
@@ -609,6 +703,12 @@ pub fn draw(
     let strip_rect = egui::Rect::from_min_size(whole.min, egui::vec2(whole.width(), STRIP));
     let feed = source.0.as_mut();
     panel(&mut root, strip_rect, |ui| status_strip(ui, state, feed));
+    if state.map_only {
+        // The navigation view: the same strip and the same map panel, alone.
+        camera.0.is_active = false;
+        panel(&mut root, body, |ui| map_panel(ui, state, feed));
+        return Ok(());
+    }
     panel(&mut root, picture_rect, |ui| {
         picture_panel(ui, picture_id, state.world.picture_size);
     });
@@ -678,6 +778,10 @@ fn read_keys(ctx: &egui::Context, state: &mut UiState) {
             (egui::Key::T, &mut layers.ahead),
             (egui::Key::K, &mut layers.things),
             (egui::Key::H, &mut layers.chunks),
+            (egui::Key::B, &mut layers.trail),
+            (egui::Key::J, &mut layers.local_costmap),
+            (egui::Key::Z, &mut layers.safety),
+            (egui::Key::Q, &mut layers.grid),
         ] {
             if input.key_pressed(key) {
                 *layer = !*layer;
@@ -1096,7 +1200,8 @@ fn screen(p: ScreenPoint) -> egui::Pos2 {
 
 fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) {
     let (mut follow_clicked, mut whole_clicked) = (false, false);
-    ui.horizontal(|ui| {
+    // Wrapped: a narrow window (the navigation view) gets a second row, not a cut one.
+    ui.horizontal_wrapped(|ui| {
         title(ui, "THE MAP: click to pick a goal");
         let mode = state.map.view.mode;
         follow_clicked = ui
@@ -1107,14 +1212,18 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
             .clicked();
         let layers = &mut state.layers;
         ui.toggle_value(&mut layers.costmap, "Costmap");
+        ui.toggle_value(&mut layers.local_costmap, "Local");
         ui.toggle_value(&mut layers.ndt_map, "NDT");
         ui.toggle_value(&mut layers.scan, "Cubes");
         ui.toggle_value(&mut layers.plan, "Plan");
         ui.toggle_value(&mut layers.ahead, "Ahead");
         ui.toggle_value(&mut layers.things, "Things");
+        ui.toggle_value(&mut layers.trail, "Trail");
+        ui.toggle_value(&mut layers.safety, "Safety");
+        ui.toggle_value(&mut layers.grid, "Grid");
     });
 
-    let rect = ui.available_rect_before_wrap();
+    let rect = ui.available_rect_before_wrap().intersect(ui.clip_rect());
     let viewport = MapViewport {
         x: f64::from(rect.left()),
         y: f64::from(rect.top()),
@@ -1211,6 +1320,17 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
         world
             .costmap
             .paint(ui, "costmap", &COST_COLOURS, &painter, to);
+    }
+    if layers.local_costmap {
+        let (odom, on_map) = (world.car_odom, world.car_map);
+        world
+            .local_costmap
+            .paint_turned(ui, "local costmap", &LOCAL_COST_COLOURS, &painter, |p| {
+                to(Frame::Odom.place(p, odom, on_map))
+            });
+    }
+    if layers.grid {
+        paint_grid(&painter, rect, &view, &viewport);
     }
     if layers.ndt_map {
         if let Some(cells) = &world.ndt {
@@ -1323,6 +1443,16 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
             );
         }
     }
+    if layers.trail && world.trail.len() >= 2 {
+        let line: Vec<_> = world.trail.points().map(to).collect();
+        painter.add(egui::Shape::line(
+            line,
+            egui::Stroke::new(2.5, colour(TRAIL_RGB)),
+        ));
+    }
+    if layers.safety {
+        paint_safety(&painter, world, to);
+    }
     if layers.ahead {
         if let Some(squiggle) = world.ahead_now(Instant::now()) {
             let place = |p: (f64, f64)| to(feed::from_base(car, p));
@@ -1334,6 +1464,15 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
     } else if let Some(goal) = world.goal_elsewhere(Instant::now()) {
         painter.circle_stroke(to(goal), 7.0, egui::Stroke::new(2.5, egui::Color32::GOLD));
     }
+    // The car's body, to scale (the footprint), under its arrow.
+    if let Some(body) = world.body {
+        let line: Vec<_> = body.outline(car).into_iter().map(to).collect();
+        painter.add(egui::Shape::line(
+            line,
+            egui::Stroke::new(1.5, egui::Color32::WHITE),
+        ));
+    }
+    paint_scale(&painter, rect, k);
     // The car as an arrow, big enough to find whatever the zoom.
     let (sin, cos) = car.yaw.sin_cos();
     let reach = f64::from(10.0 / k).max(1.5);
@@ -1352,6 +1491,151 @@ fn map_panel(ui: &mut egui::Ui, state: &mut UiState, feed: &mut dyn feed::Feed) 
 
     let world_goal = state.world.goal_elsewhere(Instant::now());
     goal_buttons(ui, rect, state, feed, world_goal);
+}
+
+/// The car's trail: a warm line, apart from the plan's blue and the trace's green.
+const TRAIL_RGB: [u8; 3] = [255, 170, 60];
+/// The stop zone's box: white while clear, red while it stops or slows the car.
+const ZONE_CLEAR_RGB: [u8; 3] = [235, 235, 235];
+const ZONE_ACTS_RGB: [u8; 3] = [255, 60, 60];
+/// The local costmap's: amber, so it reads apart from the global costmap's wall colour.
+const LOCAL_COST_COLOURS: Palette = Palette {
+    free: [255, 190, 60, 0],
+    occupied: [255, 190, 60, 200],
+    unknown: [0, 0, 0, 0],
+};
+/// The scale bar is at most this long, and the grid's lines at least this far apart, points.
+const SCALE_BAR_MOST: f64 = 140.0;
+const GRID_LEAST: f64 = 48.0;
+
+/// The ghost, the barrier's keep-out circle, and the stop zone's box with its state.
+fn paint_safety(painter: &egui::Painter, world: &WorldNews, to: impl Fn(Point) -> egui::Pos2) {
+    let (odom, on_map) = (world.car_odom, world.car_map);
+    let font = egui::FontId::proportional(13.0);
+    // The circle's name above it, the ghost's below the ghost: they share a middle.
+    for (outline, width, fill, name, side, align) in [
+        (
+            &world.keep_out,
+            2.0,
+            false,
+            "keep-out",
+            1.0,
+            egui::Align2::CENTER_BOTTOM,
+        ),
+        (
+            &world.ghost,
+            2.5,
+            true,
+            "ghost",
+            -1.0,
+            egui::Align2::CENTER_TOP,
+        ),
+    ] {
+        let Some(outline) = outline else { continue };
+        let line: Vec<_> = outline.on_map(odom, on_map).map(&to).collect();
+        let tint = colour(outline.rgb);
+        if fill {
+            painter.add(egui::Shape::convex_polygon(
+                line.clone(),
+                tint.gamma_multiply(0.45),
+                egui::Stroke::NONE,
+            ));
+        }
+        painter.add(egui::Shape::line(line, egui::Stroke::new(width, tint)));
+        let edge = Point::new(outline.centre.x, outline.centre.y + side * outline.radius());
+        painter.text(
+            to(Frame::place(outline.frame, edge, odom, on_map)),
+            align,
+            name,
+            font.clone(),
+            tint,
+        );
+    }
+    let zone = world.zone.outline(odom, on_map, Instant::now());
+    if zone.len() >= 4 {
+        let acts = world
+            .zone
+            .action()
+            .is_some_and(nav_core::zone::ZoneAction::acts);
+        let tint = colour(if acts { ZONE_ACTS_RGB } else { ZONE_CLEAR_RGB });
+        let line: Vec<_> = zone.iter().map(|p| to(*p)).collect();
+        if acts {
+            painter.add(egui::Shape::convex_polygon(
+                line.clone(),
+                tint.gamma_multiply(0.25),
+                egui::Stroke::NONE,
+            ));
+        }
+        painter.text(
+            line[1],
+            egui::Align2::LEFT_CENTER,
+            format!("  {}", world.zone.words()),
+            font,
+            tint,
+        );
+        painter.add(egui::Shape::line(line, egui::Stroke::new(2.0, tint)));
+    }
+}
+
+/// The grid: a faint line each round number of metres, the spacing chosen by the zoom.
+fn paint_grid(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    view: &map_core::view::View,
+    viewport: &MapViewport,
+) {
+    let Some(step) = scale::grid_step(view.scale.0, GRID_LEAST) else {
+        return;
+    };
+    let corner =
+        |p: egui::Pos2| view.to_map(ScreenPoint::new(f64::from(p.x), f64::from(p.y)), viewport);
+    let (a, b) = (corner(rect.left_bottom()), corner(rect.right_top()));
+    let stroke = egui::Stroke::new(1.0, egui::Color32::from_white_alpha(22));
+    for x in scale::grid_lines(a.x.min(b.x), a.x.max(b.x), step) {
+        let at = screen(view.to_screen(Point::new(x, a.y), viewport)).x;
+        painter.line_segment(
+            [egui::pos2(at, rect.top()), egui::pos2(at, rect.bottom())],
+            stroke,
+        );
+    }
+    for y in scale::grid_lines(a.y.min(b.y), a.y.max(b.y), step) {
+        let at = screen(view.to_screen(Point::new(a.x, y), viewport)).y;
+        painter.line_segment(
+            [egui::pos2(rect.left(), at), egui::pos2(rect.right(), at)],
+            stroke,
+        );
+    }
+    painter.text(
+        rect.right_bottom() + egui::vec2(-10.0, -30.0),
+        egui::Align2::RIGHT_BOTTOM,
+        format!("grid {}", scale::length_label(step)),
+        egui::FontId::proportional(12.0),
+        egui::Color32::from_gray(170),
+    );
+}
+
+/// The scale bar, bottom right: a round length at this zoom (`k` points a metre).
+fn paint_scale(painter: &egui::Painter, rect: egui::Rect, k: f32) {
+    let Some(bar) = ScaleBar::fit(f64::from(k), SCALE_BAR_MOST) else {
+        return;
+    };
+    let right = rect.right_bottom() + egui::vec2(-10.0, -12.0);
+    let left = right - egui::vec2(bar.pixels as f32, 0.0);
+    let stroke = egui::Stroke::new(2.0, egui::Color32::WHITE);
+    painter.line_segment([left, right], stroke);
+    for end in [left, right] {
+        painter.line_segment(
+            [end - egui::vec2(0.0, 5.0), end + egui::vec2(0.0, 5.0)],
+            stroke,
+        );
+    }
+    painter.text(
+        egui::pos2((left.x + right.x) / 2.0, right.y - 6.0),
+        egui::Align2::CENTER_BOTTOM,
+        bar.label(),
+        egui::FontId::proportional(13.0),
+        egui::Color32::WHITE,
+    );
 }
 
 /// The two presses a goal needs, over the map's bottom edge. The gates are checked at the
@@ -1493,6 +1777,14 @@ fn keys_tab(ui: &mut egui::Ui, state: &UiState) {
             "squiggly line: trace, plan ahead, stop",
             on(layers.ahead),
         ),
+        ("B", "the car's trail on the map", on(layers.trail)),
+        ("J", "local costmap on the map", on(layers.local_costmap)),
+        (
+            "Z",
+            "ghost, keep-out circle, stop zone's box",
+            on(layers.safety),
+        ),
+        ("Q", "the map's grid of round metres", on(layers.grid)),
         (
             "F",
             "map: follow the car, or the whole map",

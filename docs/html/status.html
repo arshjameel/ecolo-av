@@ -7,7 +7,7 @@
 <!-- Generated from docs/status.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Status: what works and what doesn&#x27;t yet</h1>
-<div class="meta">38 min read · 7 sections</div></header>
+<div class="meta">39 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -756,7 +760,7 @@ page. All of these are trials or sim-only unless the row says "default".</p>
 </tr>
 <tr>
 <td>Rust by default (16-18 Nov)</td>
-<td>ego, behaviour, the watchdog, localization_health, the muxes, the Motor Pi's bridge and RC, <code>lidar_scan</code>, things, <code>joy_alive</code>, the stop-sign watcher, the lane finder, the point driver, <code>arm_when_open</code>, <code>camera_stream</code>, AMCL; <code>*_impl:=python</code> falls back</td>
+<td>ego, behaviour, the watchdog, localization_health, the muxes, the Motor Pi's bridge and RC, <code>lidar_scan</code>, things, <code>joy_alive</code>, the stop-sign watcher, the lane finder, the point driver, <code>arm_when_open</code>, <code>camera_stream</code>, AMCL. Only three Python fall-backs are left since 22 Nov: the Motor Pi's bridge (<code>legacy_impl:=python</code>), RC (<code>rc_impl:=python</code>) and <code>camera_stream</code> (<code>camera_stream_impl:=python</code>); the other Python nodes were removed on 20 and 22 Nov</td>
 <td><span class="badge b-works">works</span> against the Python's answers (shared vectors) and in Ravensim; <span class="badge b-untested">untested</span> on the car (<a href="languages.html">Languages</a>)</td>
 </tr>
 <tr>

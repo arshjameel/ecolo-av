@@ -23,7 +23,8 @@ TwistStamped on /drivers/tests/cmd_vel and logs what the car did.
                       in time to stop inside the hallway's room (stop_room)
 
 Steering can only change while the car moves (ego holds it below 0.05 m/s), so the
-stage-3 tests creep along: on stands the wheels spin slowly, in Gazebo the car crawls.
+stage-3 tests creep along: on stands the wheels spin slowly (Ravensim's too, on jacks);
+on the ground the car crawls.
 """
 
 from __future__ import annotations
@@ -224,6 +225,13 @@ def still() -> Step:
     return Step('wait until still', 0.0, until=Until.STOPPED, hold=1.0, timeout=10.0)
 
 
+# s at the top speed before a stage-4 test lets its command fall (Ben, 23 Nov): well over
+# safety.RUNAWAY_WINDOW, so the speed a second before the fall is the plateau's, not the
+# climb's. With 1 to 1.5 s the spine's default speed loop was still settling, and the
+# runaway rule, rightly unchanged, stopped the tests above 1 m/s (TODO 275).
+PLATEAU = 2.5
+
+
 def speed_up_to(v: float, hold: float, phase: str) -> Step:
     # 95% of the target: a speed loop settles just under it.
     return Step(phase, v, until=Until.REACHED, value=0.95 * v, hold=hold,
@@ -265,7 +273,7 @@ def steer_centre(s: Settings) -> List[Step]:
 
 def speed_up(s: Settings) -> List[Step]:
     v = max(s.speed_list((s.cap,)))
-    return [still(), speed_up_to(v, 1.0, f'speed up to {v:g}'), stop()]
+    return [still(), speed_up_to(v, PLATEAU, f'speed up to {v:g}'), stop()]
 
 
 def coast(s: Settings) -> List[Step]:
@@ -279,7 +287,7 @@ def coast(s: Settings) -> List[Step]:
 def brake(s: Settings) -> List[Step]:
     steps = []
     for v in s.speed_list((1.0, 2.0, 3.0)):
-        steps += [still(), speed_up_to(v, 1.5, f'speed up to {v:g}'),
+        steps += [still(), speed_up_to(v, PLATEAU, f'speed up to {v:g}'),
                   Step(f'brake from {v:g}', 0.0, until=Until.STOPPED, hold=0.5,
                        timeout=15.0)]
     return steps
@@ -288,7 +296,8 @@ def brake(s: Settings) -> List[Step]:
 def throttle_map(s: Settings) -> List[Step]:
     steps = []
     for v in s.speed_list(tuple(s.cap * f for f in (0.25, 0.5, 0.75, 1.0))):
-        steps += [still(), speed_up_to(v, 1.0, f'speed up to {v:g}'), stop(f'stop from {v:g}')]
+        steps += [still(), speed_up_to(v, PLATEAU, f'speed up to {v:g}'),
+                  stop(f'stop from {v:g}')]
     return steps
 
 

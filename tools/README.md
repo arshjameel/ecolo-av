@@ -76,7 +76,11 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | `survey_car.sh` | runs that on every machine in a hosts file | - |
 | `keychain_askpass.sh` | ssh's password helper: the login from the Mac's Keychain | (survey_car.sh) |
 | `actuator_test.sh` | the actuator tests, stages 3-4 (`--sim`, `--stands`), and the preflight | `actuator-test` |
-| `clear.sh` | a person clears the e-stop or a safety latch | `clear <estop, gate, geofence, watchdog>` |
+| `ladder.py`, `ladder/rungs.yaml` | the test ladder and its saved progress: the plan's ten rungs (each its question, graphs, pass mark, commands, report chapter; `built: false` = listed only) and the checks that move no car; `run <rung>` (in the simulator, recorded, its report page saved; `--only <test>`: one part, not recorded), `record`, `session <rung>` (the newest run and its answer), `report <rung> [--open]`, `--json` for the tests screen. It never moves the car (`docs/proving-it.md`) | `ladder` |
+| `rung_answer.py` | a rung's answer from one run's own files: the verdict line, the graphs with their numbers, the faults table, and the run's report page (one HTML file, graphs inline). Built for rung 1; a number the files do not hold is "not measured" (no ROS, tested) | (`ladder session`, `ladder report`) |
+| `step_response.py` | the maths under it: the steps in what was asked, and for each the delay, the 10 to 90 % time and how far off it ended; nothing fitted or smoothed (no ROS, no files, tested) | - |
+| `ladder_report.py` | a session's report folder read for a screen: each step, its numbers, its `vehicle.yaml` lines, one graph (commanded against measured), a hallway's fits; a rung's single tests from `car-test`'s own lists (no ROS, tested) | (`ladder session`) |
+| `clear.sh` | a person clears the e-stop or a safety latch; `--sim`: a simulator on this computer only (`tools/ros.sh --local`) | `clear <estop, gate, geofence, watchdog> [--sim]` |
 | `drive_to_point.sh` | drive to one point and stop (`--sim`) | `drive-to-point` |
 | `keyboard.sh` | teleop_twist_keyboard into `/drivers/keyboard/cmd_vel` (`--sim`, `--local`) | `keyboard` |
 | `record.sh` | records a drive into `bags/` (MCAP): inputs, commands, and what the stack saw and decided (the front camera as JPEG, the locks, the road ahead); what the Motor Pi wrote for `link_check.py`. Run it through pixi (`pixi run tools/record.sh`): pixi sets Cyclone's participant limit | - |
@@ -92,13 +96,16 @@ so add `--local`: `pixi run tools/ros.sh --local python3 tools/<script>.py`.
 | Script | Does | Task |
 |---|---|---|
 | `ros.sh` | the workspace sourced; `--local` for stand-ins | (most tasks) |
-| `dev_window.sh` | the developer window (Bevy): pretend data, `--live` beside a sim here, or `--watch` | `dev-window` |
+| `dev_window.sh` | the developer window (Bevy): pretend data, `--live` beside a sim here, or `--watch`; `--map-only` first: the navigation view | `dev-window`, `nav-view` |
 | `sim_cameras.sh` | our simulator's cameras (Bevy, offscreen): the timing check, `--bench`, `--save`; `--ros` publishes the camera topics, here only | `sim-cameras` |
 | `screen.sh` | one of the four raylib screens, live or with pretend data (`--demo`) | `hud`, `map`, `debug-hud`, `hw-panel` |
 | `ravensim.sh` | Ravensim and the developer window live on it, one process group; sim switches pass through (`world:=campus` adds its RavenTiles and lanes) | `ravensim` |
-| `demo_all.sh` | Ravensim, RViz, the HUD and the map window in one go (`--debug`: the debug HUD too) | `demo` |
+| `barrier_watch.py` | **outside the capstone's scope (Ben's research)**: one drive past a ghost in Ravensim with the follower plain, with a hard distance limit, or with the barrier; our navigation view from above (`--rviz`: RViz too, `rviz/barrier.rviz`), one line of result, a CSV in `/tmp/aav-barrier-watch/`; `--side-by-side`, `--headless` ([Barriers](../docs/barriers.md)). The maths: `barrier_run.py` (no ROS, tested) | `barrier-watch` |
+| `dry_run.py` | the dry run (TODO 273): Ravensim (`world:=road nav:=false faults:=true sim_speed:=3`), its picture (the developer window), the hardware panel and the test ladder's window, each in its own process group: the three screens; `--nav`, `--debug`, `--no-panel`, `--no-picture`; Ctrl-C stops them all. The ladder's runs attach to it | `dry-run` |
+| `demo_all.sh` | Ravensim, the nav screen (ours, `nav-view`), the HUD and the map window in one go (`--debug`: the debug HUD too; `--rviz`: RViz too) | `demo` |
 | `pick.py` | a plain-words menu of the sim's switches (route, follower, where-am-I, speed loop): prints, saves and runs the command (`docs/switches.md`) | `pick` |
 | `sim_fault.sh` | make a simulated sensor fail on purpose, or mend it | `sim-fault` |
+| `jacks.py` | Ravensim's car on stands or on the ground: `up`, `down`, `status`, always `--sim`; refuses unless `/system/source` says only SIM | `jacks` |
 | `software_gl.sh` | Mesa's software renderer with no GPU: Vulkan (lavapipe) for Ravensim's cameras, which then run in lockstep (it exports `AAV_SOFTWARE_GL=1`); `--force` even beside a GPU, a Mac too | - (put in front) |
 | `fake_vlp16.py` | pretends to be the VLP-16 lidar: its UDP packets | - |
 | `controller_compare.py` | the path follower (`mppi_lag`) against the trial trackers, planners, AMCL, NDT and KISS-ICP (`--trackers`, `--planners`, `--runs`, `--amcl`, `--ndt` (`--ndt-map`: another map), `--ndt-ekf`, `--ndt-leads`, `--gps-off`, `--gps-fault` (stop, jump, drift), `--voxels`, `--kiss-icp`), same routes | `measure controllers` |
@@ -202,7 +209,7 @@ Each lands outside git, checksum pinned where the script says.
 
 ## Invariants
 
-- **Stand-ins stay local.** turtle, sim, bench, view, demo, ravensim and their checks run through
+- **Stand-ins stay local.** turtle, sim, bench, view, demo, ravensim, dry-run, jacks, barrier-watch and their checks run through
   `tools/ros.sh --local`; so do `hw-panel`, `sim-cameras --ros` and the simulator measurements, inside `screen.sh`
   and `measure.sh`. `test.sh` checks the list; give any new stand-in task the same.
 - **A family's script lists its choices** when run with no word or a wrong one, and

@@ -44,7 +44,7 @@ switched on by `navigation.launch.py`.
 |---|---|---|---|---|
 | `obstacle_layer` | `/sensors/radar/points` (in `radar_link`) | `radar:=true`: the bench always; the car where the machine file that runs `navigation` also runs `radar`; in the sim where the world has the radar stand-in (`road`, `test_lot`, `campus`; `radar:=false` drops it) | each point 0.3-8.4 m from the radar, -0.5 to 2 m high | the cells between the radar and each point |
 | `camera_layer` | `/perception/camera_obstacles`, `/perception/camera_view` | `camera_obstacles:=true`: the bench's argument, or the car's `camera_obstacles` part next to `navigation`. Off until the cameras are calibrated (Q22) | where each detected object stands on the road, out to 12 m | everything the camera sees, out to 12 m, before it marks |
-| `lidar_layer` | `/sensors/lidar/scan` (from `lidar_scan`, `aav_lidar`) | where the lidar runs: on by default on the car (the Orin) and in Ravensim; `lidar:=true` on the bench | points 0.3 m or more above the road ([below](#body-roll-and-the-lidar-todo-52e)), out to 12 m | along each beam, out to 15 m |
+| `lidar_layer` | `/sensors/lidar/scan` (from `lidar_scan`, `aav_lidar_rs`) | where the lidar runs: on by default on the car (the Orin) and in Ravensim; `lidar:=true` on the bench | points 0.3 m or more above the road ([below](#body-roll-and-the-lidar-todo-52e)), out to 12 m | along each beam, out to 15 m |
 | `ghost_layer` | `/safety/ghost/scan` | `ghost:=true` only ([Ghost obstacles](ghost-obstacles.md)) | the pretend person | only old ghosts |
 
 Why the radar's numbers:

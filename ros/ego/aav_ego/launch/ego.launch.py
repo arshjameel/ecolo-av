@@ -6,20 +6,21 @@ ego: /control/cmd_vel (TwistStamped from twist_mux) -> /ego/actuator_cmd (Ackerm
                                 [speed_loop:=default]
 
 ego_impl (rust): aav_ego_rs, ego and look_ahead in one Rust process, the default on the
-car and in the simulator (Ben, 16 Nov). python runs aav_ego's two nodes instead, with the
-same node names, topics, parameters and answers: the fall-back until a car day proves the
-Rust. The Rust process's parameters go in a file of their own (both nodes have a rate_hz),
-with vehicle.yaml's path and the body outline, which the Python nodes read themselves.
+car and in the simulator (Ben, 16 Nov). This package's two Python nodes went on 22 Nov
+(tag save/python-fallbacks-1); its maths, config and this file stay. The process's
+parameters go in a file of their own (both nodes have a rate_hz), with vehicle.yaml's path
+and the body outline.
 
 road_ahead (false): true holds Nav2's commands to /world/road_ahead's speed limit
-(ego_node.py, road_limit.py); sim.launch.py sets it with behaviour:=true, its writer.
+(aav_ego_rs; road_limit.py is the Python yardstick); sim.launch.py sets it with
+behaviour:=true, its writer.
 
 speed_loop (default): the spine's speed loop profile the car runs (default, smooth, lqi,
 firm), which the trace's twin assumes (trace_speed_loop, over ego.yaml's); sim.launch.py
 and bench.launch.py pass theirs on (TODO 163). An unknown name is refused.
 
 look_ahead (true) also starts look_ahead: the squiggly line's numbers for the screens
-(/ego/plan_ahead, /ego/ahead; look_ahead_node.py). It only listens and publishes those two.
+(/ego/plan_ahead, /ego/ahead; aav_ego_rs). It only listens and publishes those two.
 
 max_speed (m/s) caps the forward speed below config/ego.yaml's, for a first drive on
 stands; empty (the default) keeps ego.yaml's. It can only lower the cap, never raise it.
@@ -83,15 +84,10 @@ def ego_node(context):
     if context.launch_configurations.get('road_ahead', 'false').strip().lower() == 'true':
         params.append({'road_ahead': True})
     look_ahead = context.launch_configurations.get('look_ahead', 'true').strip().lower() == 'true'
-    impl = vehicle.check_ego_impl(context.launch_configurations.get(
+    # rust only since the Python nodes went (22 Nov); the check refuses anything else.
+    vehicle.check_ego_impl(context.launch_configurations.get(
         'ego_impl', vehicle.DEFAULT_EGO_IMPL))
-    if impl == 'rust':
-        return [rust_node(context, params, car, look_ahead)]
-    nodes = [Node(package='aav_ego', executable='ego', name='ego', parameters=params)]
-    if look_ahead:
-        nodes.append(Node(package='aav_ego', executable='look_ahead', name='look_ahead',
-                          parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}]))
-    return nodes
+    return [rust_node(context, params, car, look_ahead)]
 
 
 def rust_node(context, params, car, look_ahead):
@@ -129,8 +125,8 @@ def generate_launch_description():
         DeclareLaunchArgument('look_ahead', default_value='true',
                               description='also start look_ahead (the squiggly line)'),
         DeclareLaunchArgument('ego_impl', default_value=vehicle.DEFAULT_EGO_IMPL,
-                              description='rust or python: which ego runs (aav_ego_rs: ego and '
-                                          'look_ahead in one process, or aav_ego)'),
+                              description='rust: which ego runs (aav_ego_rs: ego and look_ahead '
+                                          'in one process; the Python removed 22 Nov)'),
         DeclareLaunchArgument('speed_loop', default_value=vehicle.DEFAULT_SPEED_LOOP,
                               description="the spine's speed loop profile the car runs "
                                           '(default, smooth, lqi, firm): the trace assumes it'),

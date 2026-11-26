@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -268,7 +272,7 @@ then <code>pixi run build</code>). Then:</p>
 <td>2</td>
 <td>a Rust node misbehaves</td>
 <td>-</td>
-<td>e-stop, stop the launch, start again with that node's fall-back: <code>~/aav-jazzy/aav.sh car orin -- ego_impl:=python</code> (the <code>--</code> is needed)</td>
+<td>e-stop, stop the launch, if it has a fall-back (below), start again with it: <code>~/aav-jazzy/aav.sh car motor_pi -- legacy_impl:=python</code> (the <code>--</code> is needed); if it has none, the car stays stopped until the Rust is fixed</td>
 </tr>
 <tr>
 <td>3</td>
@@ -278,7 +282,8 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 </tbody>
 </table></div>
-<p>The fall-backs, one per node (the others stay Rust):</p>
+<p>The fall-backs, one per node (the others stay Rust). Since 22 Nov only the ESP32's bridge,
+<code>rc_driver</code> and <code>camera_stream</code> have one:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -289,7 +294,7 @@ then <code>pixi run build</code>). Then:</p>
 <tbody>
 <tr>
 <td>ego + look_ahead</td>
-<td><code>ego_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>behaviour</td>
@@ -305,7 +310,7 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>lidar_scan</td>
-<td><code>lidar_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>things</td>
@@ -313,7 +318,7 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>sensor mux + output mux (the ESP32's heartbeat)</td>
-<td><code>io_mux_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>legacy_uart_bridge (the ESP32's UART, the Motor Pi)</td>
@@ -325,7 +330,7 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>lane_finder (lane keeping, the lane pose)</td>
-<td><code>lane_finder_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>joy_alive (the joystick's check, between joy_node and teleop)</td>
@@ -333,15 +338,15 @@ then <code>pixi run build</code>). Then:</p>
 </tr>
 <tr>
 <td>stop_sign_watcher (twist_mux's stop-sign lock)</td>
-<td><code>stop_sign_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>point_driver (drive to a point; the Orin) and its client</td>
-<td><code>drive_to_point_impl:=python</code>; <code>pixi run drive-to-point --python ...</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>arm_when_open (bench and Ravensim's spine only)</td>
-<td><code>arm_when_open_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>camera_stream (each camera Pi stream; Rust only with <code>detector: none</code>: with RF-DETR the Python runs anyway)</td>

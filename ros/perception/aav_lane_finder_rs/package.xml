@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_lane_finder_rs</name>
   <version>0.1.0</version>
-  <description>lane_finder in Rust (rclrs): a drop-in for aav_lane_finder's Python node, the default (lane_finder_impl:=python falls back). The same topics, QoS, parameters and answers: the front left camera's pictures and camera_info in; /perception/lane/geometry and the debug picture out. The maths is the lane-core crate, with no ROS and no OpenCV.</description>
+  <description>lane_finder in Rust (rclrs): the classic lane finder, the default; a port of aav_lane_finder's Python node (removed 22 Nov 2026). The same topics, QoS, parameters and answers: the front left camera's pictures and camera_info in; /perception/lane/geometry and the debug picture out. The maths is the lane-core crate, with no ROS and no OpenCV.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

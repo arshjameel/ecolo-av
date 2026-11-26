@@ -7,7 +7,7 @@
 <!-- Generated from docs/languages.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Python and Rust (and the C++ we don&#x27;t write)</h1>
-<div class="meta">13 min read · 7 sections</div></header>
+<div class="meta">14 min read · 7 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -172,17 +176,17 @@ programs only meet through messages.</p></div>
 <tr>
 <td>ego + look_ahead, behaviour, the sensor watchdog, localization_health</td>
 <td>Rust (<code>rclrs</code>): <code>aav_ego_rs</code>, <code>aav_behaviour_rs</code>, <code>aav_watchdog_rs</code>, <code>aav_localization_health_rs</code></td>
-<td>Ports of the Python nodes, the same answers. The default on the car and in the simulator since 16 Nov (Ben); <code>*_impl:=python</code> falls back until a car day proves them</td>
+<td>Ports of the Python nodes, the same answers. The default on the car and in the simulator since 16 Nov (Ben). The only ones: the Python behaviour, watchdog and localization_health removed 20 Nov, the Python ego and look_ahead 22 Nov (ego's maths stays in <code>aav_ego</code>)</td>
 </tr>
 <tr>
 <td>The sensor mux and the output mux, <code>aav_io_mux_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>Ports of <code>aav_io_mux</code>'s nodes (Ben, 17 Nov: "Rust tomorrow"): the same answers, step by step. The default; <code>io_mux_impl:=python</code> falls back</td>
+<td>Ports of <code>aav_io_mux</code>'s nodes (Ben, 17 Nov: "Rust tomorrow"): the same answers, step by step. The only ones: the Python nodes removed 22 Nov (their rules stay in <code>aav_io_mux</code>, the yardstick)</td>
 </tr>
 <tr>
 <td>The point driver and its client, <code>aav_drive_to_point_rs</code>; arm_when_open (<code>aav_spine_bridge</code>)</td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>Ports of <code>aav_drive_to_point</code>'s two nodes and <code>aav_spine</code>'s <code>arm_when_open</code> (18 Nov): the same answers, drive for drive. The default; <code>drive_to_point_impl:=python</code>, <code>arm_when_open_impl:=python</code> fall back</td>
+<td>Ports of <code>aav_drive_to_point</code>'s two nodes and <code>aav_spine</code>'s <code>arm_when_open</code> (18 Nov): the same answers, drive for drive. The only ones: the Python nodes removed 22 Nov (<code>aav_drive_to_point</code> keeps its maths, launch file and config)</td>
 </tr>
 <tr>
 <td>The ESP32's UART bridge and rc_driver, <code>aav_legacy_rs</code>, <code>aav_rc_rs</code></td>
@@ -192,7 +196,7 @@ programs only meet through messages.</p></div>
 <tr>
 <td><code>joy_alive</code>, the stop-sign watcher, <code>aav_joy_alive_rs</code>, <code>aav_stop_sign_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>Ports (Ben, 17 Nov: "I don't think we want to do this again later"): the same answers on shared vectors. The default; <code>stop_sign_impl:=python</code> falls back; the Python joy_alive removed 20 Nov</td>
+<td>Ports (Ben, 17 Nov: "I don't think we want to do this again later"): the same answers on shared vectors. The only ones: the Python joy_alive removed 20 Nov, the Python stop-sign watcher 22 Nov (its rules, <code>stop_sign.py</code>, stay in <code>aav_detector</code>)</td>
 </tr>
 <tr>
 <td>The geofence, the stop hold, the goal leash, <code>aav_safety_rs</code></td>
@@ -207,7 +211,7 @@ programs only meet through messages.</p></div>
 <tr>
 <td>The lane finder, <code>aav_lane_finder_rs</code></td>
 <td>Rust (<code>rclrs</code>), no OpenCV</td>
-<td>A port of <code>aav_lane_finder</code> (18 Nov): the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 %. The default; <code>lane_finder_impl:=python</code> falls back</td>
+<td>A port of <code>aav_lane_finder</code> (18 Nov): the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 %. The only classic one: the Python node removed 22 Nov (its maths stays in <code>aav_lane_finder</code>, the yardstick)</td>
 </tr>
 <tr>
 <td>The camera stream, <code>aav_camera_stream_rs</code></td>
@@ -252,7 +256,7 @@ programs only meet through messages.</p></div>
 <tr>
 <td>The flat scan and the things, <code>aav_lidar_rs</code>, <code>aav_things_rs</code></td>
 <td>Rust (<code>rclrs</code>)</td>
-<td>Ports of <code>aav_lidar</code>'s and <code>aav_things</code>' Python nodes (TODO 185, 17 Nov): the same scan and things, at a third and a fifth of the CPU. The default in the simulator and on the car; <code>lidar_impl:=python</code> falls back; the Python things removed 20 Nov</td>
+<td>Ports of <code>aav_lidar</code>'s and <code>aav_things</code>' Python nodes (TODO 185, 17 Nov): the same scan and things, at a third and a fifth of the CPU. The only ones, in the simulator and on the car: the Python things removed 20 Nov, the Python <code>lidar_scan</code> 22 Nov (<code>aav_lidar</code> keeps <code>scan.py</code> and <code>ground.py</code>)</td>
 </tr>
 <tr>
 <td>The CAN bridge, <code>aav_spine_bridge</code></td>

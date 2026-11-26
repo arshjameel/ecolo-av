@@ -5,3 +5,5 @@
 parts:
   imu: true    # the Yahboom IMU (aav_imu_yahboom), on this Pi's USB
   gps: true    # the u-blox ZED-F9R (ublox_gps), on this Pi's USB
+  radar: false # the TI radar is plugged into this Pi too (/dev/aav/radar_cmd, radar_data:
+               # seen 21 Nov). Off until perception uses it; turn it on here, not on the Orin

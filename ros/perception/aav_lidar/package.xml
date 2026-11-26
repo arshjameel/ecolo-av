@@ -3,13 +3,10 @@
 <package format="3">
   <name>aav_lidar</name>
   <version>0.1.0</version>
-  <description>The roof lidar for Nav2: lidar_scan flattens /sensors/lidar/points into /sensors/lidar/scan, the nearest thing in each direction between the road and just over the roof.</description>
+  <description>The flat lidar scan's maths, no ROS: scan.py (the nearest thing in each direction between the road and just over the roof; the car's own outline) and ground.py (body roll). The node, lidar_scan, is aav_lidar_rs's; the Python node was removed on 22 Nov 2026.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>sensor_msgs_py</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>aav_description</exec_depend>
 

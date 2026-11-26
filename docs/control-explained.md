@@ -448,7 +448,7 @@ V' < 0. Then x must go to 0. This is the "maths proof it will resolve".
 
 - **Barrier functions (CBF)**, the safety filter idea: like Lyapunov, but proving the car
   never **enters** a bad set (the kerb, another car), instead of always reaching a good
-  one. Each follower's look-ahead is checked against the barriers (Ben's thesis).
+  one. Each follower's look-ahead is checked against the barriers (outside the capstone's scope: Ben's MASc research).
 
 ## 9. The EKF: where am I?
 
@@ -523,7 +523,7 @@ heading.
 | 4 | **A speed feedforward** from the measured throttle map | faster speed response | 1 |
 | 5 | **Tune the EKFs' Q and R** from recorded drives | where-am-I | car day's bags |
 | 6 | **The costmap in the MPC's cost** (kerb wall, yellow line) | lane keeping | after car day |
-| 7 | **The safety filter** (barriers) on every program driver | safety | Ben's thesis |
+| 7 | **The safety filter** (barriers) on every program driver | safety | outside the capstone's scope: Ben's MASc research |
 
 ## Glossary
 

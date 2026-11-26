@@ -40,9 +40,11 @@ use std::time::Instant;
 use car_model::{ActuatorConfig, CarState, Command as CarCommand, SpeedLoop};
 use spine_core::speed_loop::SpeedLoopProfile;
 
+use crate::barrier::{room_to_stop, Circle, Rules};
 use crate::model::{self, row, Input, PiLoop, State, NU, NX};
 use crate::path::{wrap, Foot, Path};
 use crate::qp::{self, RowMatrix};
+use ego_core::stop_law::StopCurve;
 
 /// The share of full braking a plan uses (aav_drive_to_point approach.py BRAKE_FRACTION,
 /// docs/tests.md 5.2).
@@ -52,6 +54,13 @@ pub const BRAKE_FRACTION: f64 = 0.5;
 const COSTED: [usize; 4] = [row::E_Y, row::E_TH, row::WHEELS, row::V];
 /// m: how far ahead the foot is searched for (path.py's window).
 const SEARCH: f64 = 10.0;
+/// m² of H a whole unit of every planned input moves: below it a barrier's row is left
+/// out (the inputs don't reach that tick).
+/// m/s³: the stopping law's jerk until `set_barriers` gives the car's own (ego's default).
+const STOP_JERK: f64 = 2.0;
+const NO_REACH: f64 = 1.0e-3;
+/// Times the QP's iterations with barriers on.
+const FENCED_ITER: usize = 4;
 
 /// The steering's limits (vehicle.yaml; the tighter of ego's rate and the motor's).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -211,6 +220,14 @@ pub struct Report {
     pub feed_forward: f64,
     /// Where the car is on the path.
     pub foot: Option<Foot>,
+    /// m from the body's point to the nearest barrier's edge now (below 0: inside it);
+    /// `None` with no barriers.
+    pub barrier: Option<f64>,
+    /// m²: the most the plan broke the barriers' rule by (0: it held all along the plan).
+    pub barrier_slack: f64,
+    /// The stop rule asked a stop this tick: straight on, the car could no longer stand
+    /// still short of a barrier a tick later.
+    pub barrier_stop: bool,
 }
 
 /// One tick's command.
@@ -231,6 +248,8 @@ struct Solved {
     solved: bool,
     feed_forward: f64,
     speed_limit: f64,
+    /// m²: the largest slack the barriers' rule took.
+    slack: f64,
 }
 
 /// The lag-aware MPC.
@@ -260,6 +279,9 @@ pub struct MpcLag {
     predicted: Vec<[f64; 4]>,
     /// Set speed 0 (within the ramp), whatever the plan says: at a cusp (`geared`).
     holding: bool,
+    /// The keep-out circles, in the path's frame (none: the tracker as it always was).
+    barriers: Vec<Circle>,
+    rules: Rules,
 }
 
 impl MpcLag {
@@ -304,6 +326,9 @@ impl MpcLag {
             return Err(TrackError::Setting(name));
         }
         let pi = PiLoop::from_profile(s.speed_loop).map_err(TrackError::Loop)?;
+        // Until set_barriers gives the car's own: the stopping law from these settings.
+        let stop = StopCurve::from_numbers(s.max_brake, s.decel, STOP_JERK)
+            .map_err(|_| TrackError::Setting("max_brake"))?;
         let model = ActuatorConfig {
             wheelbase: limits.wheelbase,
             max_steering: limits.max_steer,
@@ -335,7 +360,58 @@ impl MpcLag {
             warm_y: None,
             predicted: Vec::new(),
             holding: false,
+            barriers: Vec::new(),
+            rules: Rules::new(stop),
         })
+    }
+
+    /// Hold these keep-out circles from the next tick on (`barrier`): the plan's H may
+    /// shrink by at most `rules.gamma` of itself a tick. None: the tracker as it was.
+    ///
+    /// # Errors
+    ///
+    /// [`TrackError::Setting`] for rules that can't be used, or a circle with no radius.
+    pub fn set_barriers(&mut self, rules: Rules, circles: &[Circle]) -> Result<(), TrackError> {
+        if !rules.valid() {
+            return Err(TrackError::Setting("barrier rules"));
+        }
+        if circles
+            .iter()
+            .any(|c| !(c.radius > 0.0 && c.s.is_finite() && c.e_y.is_finite()))
+        {
+            return Err(TrackError::Setting("barrier circle"));
+        }
+        self.rules = rules;
+        self.barriers = circles.to_vec();
+        Ok(())
+    }
+
+    /// Hold round things of the world, each (x, y, radius) in the path's own frame of
+    /// reference (odom), put on the path now running ([`Circle::from_world`]); with no
+    /// path, none. Call it again when the path changes or moves.
+    ///
+    /// # Errors
+    ///
+    /// As [`MpcLag::set_barriers`].
+    pub fn fence(&mut self, rules: Rules, things: &[(f64, f64, f64)]) -> Result<(), TrackError> {
+        let circles: Vec<Circle> = self.path.as_ref().map_or_else(Vec::new, |path| {
+            things
+                .iter()
+                .map(|&(x, y, radius)| Circle::from_world(path, x, y, radius))
+                .collect()
+        });
+        self.set_barriers(rules, &circles)
+    }
+
+    /// Hold no barriers: the tracker as it always was.
+    pub fn clear_barriers(&mut self) {
+        self.barriers.clear();
+    }
+
+    /// The keep-out circles held now.
+    #[must_use]
+    pub fn barriers(&self) -> &[Circle] {
+        &self.barriers
     }
 
     /// The settings.
@@ -626,9 +702,19 @@ impl MpcLag {
 
     /// M (4N x 2N, row k * 4 + c): how each planned input moves the costed states.
     fn condense(&self, a: &[[[f64; NX]; NX]], b: &[[[f64; NU]; NX]]) -> Vec<f64> {
+        self.condense_rows(a, b, &COSTED)
+    }
+
+    /// The same for any states (`rows.len()` N x 2N, row k * rows.len() + c).
+    fn condense_rows(
+        &self,
+        a: &[[[f64; NX]; NX]],
+        b: &[[[f64; NU]; NX]],
+        rows: &[usize],
+    ) -> Vec<f64> {
         let n = self.settings.horizon;
         let cols = 2 * n;
-        let mut m = vec![0.0; 4 * n * cols];
+        let mut m = vec![0.0; rows.len() * n * cols];
         let mut acc = vec![0.0; NX * cols];
         let mut next = vec![0.0; NX * cols];
         for k in 0..n {
@@ -655,8 +741,8 @@ impl MpcLag {
                     acc[i * cols + n + j] += b[k][i][row::SPEED];
                 }
             }
-            for (c, &r) in COSTED.iter().enumerate() {
-                let dst = (k * 4 + c) * cols;
+            for (c, &r) in rows.iter().enumerate() {
+                let dst = (k * rows.len() + c) * cols;
                 m[dst..dst + cols].copy_from_slice(&acc[r * cols..(r + 1) * cols]);
             }
         }
@@ -678,6 +764,7 @@ impl MpcLag {
         let mut plan = self.nominal_inputs(&x0, seen.steer);
         let (mut iterations, mut solved) = (0, true);
         let (mut feed_forward, mut speed_limit) = (0.0, 0.0);
+        let mut slack = 0.0_f64;
         for _ in 0..self.settings.sqp {
             let s = self.solve(&x0, &plan, seen.steer, (&steer_buf, &speed_buf))?;
             plan = s.plan;
@@ -685,6 +772,7 @@ impl MpcLag {
             solved &= s.solved;
             feed_forward = s.feed_forward;
             speed_limit = s.speed_limit;
+            slack = slack.max(s.slack);
         }
 
         // Exactly within the limits: the steering's lock and rate, the speed's.
@@ -697,6 +785,27 @@ impl MpcLag {
             self.sent.1 + self.settings.accel * tick,
         );
         let speed = model::clip(speed, 0.0, self.settings.cruise);
+        // The stop rule (barrier.rs): the plan above may creep (the speed loop coasts
+        // through a small overspeed, and a linear plan can't see its stop). A stop asked
+        // in time can't: so ask it while there is still room to stand still.
+        let ahead = self.rules.ahead;
+        let (e_y, e_th, along, v) = (x0[row::E_Y], x0[row::E_TH], x0[row::S], x0[row::V]);
+        // The tracker's own dead time, this tick's answer, and the tick the car moves
+        // before the next look.
+        let wait = self.d_speed as f64 * period + 2.0 * tick;
+        let room = room_to_stop(&self.rules.stop, v, wait);
+        // The bend the car is on against the path's: its wheels now, held.
+        let bend = x0[row::WHEELS].tan() / self.limits.wheelbase
+            - self.path.as_ref().map_or(0.0, |p| p.curvature_at(along));
+        let barrier_stop = self
+            .barriers
+            .iter()
+            .any(|c| c.met_within(e_y, e_th, along, ahead, bend, room));
+        let speed = if barrier_stop {
+            (self.sent.1 - self.settings.decel * tick).max(0.0)
+        } else {
+            speed
+        };
         self.sent = (steer, speed);
         self.acting = (
             passed(&mut self.steer_queue, steer),
@@ -715,6 +824,13 @@ impl MpcLag {
                 speed_limit,
                 feed_forward,
                 foot: Some(foot),
+                barrier: self
+                    .barriers
+                    .iter()
+                    .map(|c| c.clearance(x0[row::E_Y], x0[row::E_TH], x0[row::S], self.rules.ahead))
+                    .reduce(f64::min),
+                barrier_slack: slack,
+                barrier_stop,
             },
         })
     }
@@ -774,7 +890,9 @@ impl MpcLag {
         }
 
         // The cost in z = [dU_steer (N), dU_speed (N), slack (N)].
-        let nz = 3 * n;
+        // With barriers, a slack a tick more: z = [.., barrier slack (N)].
+        let fenced = !self.barriers.is_empty();
+        let nz = if fenced { 4 * n } else { 3 * n };
         let mut p = vec![0.0; nz * nz];
         let mut qv = vec![0.0; nz];
         // M' W M and M' W err, on the first 2N.
@@ -818,6 +936,10 @@ impl MpcLag {
             qv[ci] += s.r_speed * dt_c[i];
             let k = 2 * n + i;
             p[k * nz + k] = s.w_slack;
+            if fenced {
+                let k = 3 * n + i;
+                p[k * nz + k] = self.rules.weight;
+            }
         }
 
         // The constraints: lo <= A z <= hi.
@@ -869,6 +991,65 @@ impl MpcLag {
             lo.push(f64::NEG_INFINITY);
             hi.push(v_lim[k] - xs[k][row::V]);
         }
+        if fenced {
+            // The barriers (barrier.rs): H_k - (1 - gamma) H_(k-1) + slack_k >= 0, H linear
+            // in the plan's change through e_y, e_theta and s. H before the first tick is
+            // the car's own, now.
+            let ms = self.condense_rows(&a, &b, &[row::S]);
+            let (keep, ahead) = (1.0 - self.rules.gamma, self.rules.ahead);
+            for i in 0..n {
+                am.push_row([(3 * n + i, 1.0)]); // slack >= 0
+                lo.push(0.0);
+                hi.push(f64::INFINITY);
+            }
+            let at = |x: &State| (x[row::E_Y], x[row::E_TH], x[row::S]);
+            let far = s.cruise * period * n as f64;
+            let mut now = vec![0.0; cols];
+            let mut before = vec![0.0; cols];
+            for circle in &self.barriers {
+                let (e_y, e_th, along) = at(x0);
+                let mut h_before = circle.h(e_y, e_th, along, ahead);
+                before.fill(0.0);
+                for (k, x) in xs.iter().enumerate() {
+                    let (e_y, e_th, along) = at(x);
+                    let h = circle.h(e_y, e_th, along, ahead);
+                    let g = circle.gradient(e_y, e_th, along, ahead);
+                    let m_y = &m[(k * 4) * cols..(k * 4 + 1) * cols];
+                    let m_th = &m[(k * 4 + 1) * cols..(k * 4 + 2) * cols];
+                    let m_s = &ms[k * cols..(k + 1) * cols];
+                    for (j, out) in now.iter_mut().enumerate() {
+                        *out = g[0] * m_y[j] + g[1] * m_th[j] + g[2] * m_s[j];
+                    }
+                    // A tick no planned input reaches yet (the dead time), or barely, has
+                    // no row: nothing here can hold it.
+                    // The row scaled to the size of the others (the QP converges on rows
+                    // alike in size); the slack keeps its meaning, m².
+                    let size = now
+                        .iter()
+                        .zip(&before)
+                        .map(|(a, b)| (a - keep * b).powi(2))
+                        .sum::<f64>()
+                        .sqrt();
+                    // And a tick farther from the circle than the whole plan can travel
+                    // has none either: the rule can't bind there, and every row slows the QP.
+                    let near = circle.clearance(e_y, e_th, along, ahead) < far;
+                    if size > NO_REACH && near {
+                        am.push_row(
+                            now.iter()
+                                .zip(&before)
+                                .map(|(a, b)| (a - keep * b) / size)
+                                .enumerate()
+                                .filter(|(_, c)| *c != 0.0)
+                                .chain(std::iter::once((3 * n + k, 1.0 / size))),
+                        );
+                        lo.push((keep * h_before - h) / size);
+                        hi.push(f64::INFINITY);
+                    }
+                    h_before = h;
+                    std::mem::swap(&mut now, &mut before);
+                }
+            }
+        }
         for (h, &l) in hi.iter_mut().zip(&lo) {
             *h = h.max(l);
         }
@@ -876,7 +1057,8 @@ impl MpcLag {
         let warm = self.warm_y.as_deref().filter(|y| y.len() == lo.len());
         let settings = qp::Settings {
             eps: 1e-4,
-            max_iter: s.max_iter,
+            // The barriers' rows are dense: the QP needs more turns to settle on them.
+            max_iter: s.max_iter * if fenced { FENCED_ITER } else { 1 },
             rho: s.rho,
             ..qp::Settings::default()
         };
@@ -905,6 +1087,11 @@ impl MpcLag {
             solved: res.solved,
             feed_forward: r[0],
             speed_limit: v_lim[0],
+            slack: if fenced {
+                res.z[3 * n..].iter().copied().fold(0.0, f64::max)
+            } else {
+                0.0
+            },
         })
     }
 }

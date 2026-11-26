@@ -96,17 +96,18 @@ session 6 anyway. `services` refuses while the 2025-26 `aav_serial_bridge` is en
 
 ## If the Rust nodes misbehave
 
-Since 17 Nov the Motor Pi's nodes run in Rust by default. Each has the Python as a
-fall-back, one switch away ([0.4 on the car](release-0.4-rc1.md)):
+Since 17 Nov the Motor Pi's nodes run in Rust by default. The bridge and the RC driver
+have the Python as a fall-back, one switch away; the others have none since 20 and 22 Nov
+([0.4 on the car](release-0.4-rc1.md)):
 
 | Node | Fall-back |
 |---|---|
-| The muxes (output and sensor) | `~/aav-jazzy/aav.sh car motor_pi_alone -- io_mux_impl:=python` |
+| The muxes (output and sensor) | none since 22 Nov: the Python was removed (`save/python-fallbacks-1`) |
 | The ESP32's UART bridge | `~/aav-jazzy/aav.sh car motor_pi_alone -- legacy_impl:=python` |
 | The RC driver | `~/aav-jazzy/aav.sh car motor_pi_alone -- rc_impl:=python` |
 | The joystick's check (joy_alive) | none since 20 Nov: the Python was removed (`save/python-safety-nodes`) |
-| The stop-sign watcher | `~/aav-jazzy/aav.sh car motor_pi_alone -- stop_sign_impl:=python` |
-| The point driver (on the Orin, not the Motor Pi) | `~/aav-jazzy/aav.sh car orin -- drive_to_point_impl:=python` |
+| The stop-sign watcher | none since 22 Nov: the Python was removed (`save/python-fallbacks-1`) |
+| The point driver (on the Orin, not the Motor Pi) | none since 22 Nov: the Python was removed (`save/python-fallbacks-1`) |
 | The others (ego, the watchdog...) | the list in [0.4 on the car](release-0.4-rc1.md) |
 
 ## Rollback

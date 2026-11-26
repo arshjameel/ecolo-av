@@ -289,9 +289,10 @@ def test_the_sensor_watchdog_runs_wherever_the_mux_does():
             assert sent['mux.launch.py'].get('sensor_lock', 'true') == 'true', machine
 
 
-def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
+def test_the_rust_nodes_are_the_cars_and_only_the_esp32s_python_is_a_switch_away():
     # Ben, 16 Nov: ego, behaviour, the watchdog and localization_health in Rust on the car
-    # too; each *_impl:=python falls back, one switch each (docs/car-day.md).
+    # too. Their Python twins went on 20 and 22 Nov: each *_impl:=python is refused. The
+    # ESP32's bridge and rc_driver still fall back (docs/car-day.md).
     switches = {'ego.launch.py': 'ego_impl', 'navigation.launch.py': 'behaviour_impl',
                 'watchdog.launch.py': 'watchdog_impl',
                 'localization.launch.py': 'localization_health_impl',
@@ -302,12 +303,8 @@ def test_the_rust_nodes_are_the_cars_default_and_python_one_switch_away():
     sent = included(started(CAR, machine='all'))
     for name, switch in switches.items():
         assert sent[name][switch] == 'rust', name
-    # Still one switch away: ego and the muxes. The others' Python went on 20 Nov.
-    still = ('ego_impl', 'io_mux_impl')
-    back = included(started(CAR, machine='all', **dict.fromkeys(still, 'python')))
-    for name, switch in switches.items():
-        assert back[name][switch] == ('python' if switch in still else 'rust'), name
-    for gone in ('behaviour_impl', 'watchdog_impl', 'localization_health_impl'):
+    for gone in ('ego_impl', 'behaviour_impl', 'watchdog_impl', 'localization_health_impl',
+                 'io_mux_impl'):
         with pytest.raises(ValueError, match=gone):
             started(CAR, machine='all', **{gone: 'python'})
     for impl in legacy:
@@ -329,7 +326,7 @@ def test_joy_alive_is_rust_by_default_and_python_one_switch_away():
         started(CAR, machine='motor_pi_alone', joy_alive_impl='python')
 
 
-def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
+def test_stop_sign_watcher_is_rust_and_the_python_is_refused():
     # Ben, 17 Nov: the Motor Pi alone's stop_signs part in Rust too (stop_sign_impl).
     def watcher(**args):
         actions = started(CAR, machine='motor_pi_alone', **args)
@@ -338,7 +335,9 @@ def test_stop_sign_watcher_is_rust_by_default_and_python_one_switch_away():
         return found[0]
 
     assert watcher() == 'aav_stop_sign_rs'
-    assert watcher(stop_sign_impl='python') == 'aav_detector'
+    assert watcher(stop_sign_impl='Rust') == 'aav_stop_sign_rs'
+    with pytest.raises(ValueError, match='stop_sign_impl:=python'):   # removed 22 Nov
+        started(CAR, machine='motor_pi_alone', stop_sign_impl='python')
     with pytest.raises(ValueError, match='stop_sign_impl'):
         started(CAR, machine='motor_pi_alone', stop_sign_impl='c')
 
@@ -387,11 +386,13 @@ def test_lane_keeping_is_off_until_a_machine_file_turns_it_on(monkeypatch):
         assert 'lane_finder.launch.py' not in included(started(CAR, machine=machine))
     monkeypatch.setattr(CAR, 'load_machine', lambda machine: {'parts': {'lane': True}})
     sent = included(started(CAR, machine='orin'))
-    # The Rust lane_finder by default (Ben, 18 Nov); lane_finder_impl:=python falls back.
+    # The Rust lane_finder by default (Ben, 18 Nov); the Python went on 22 Nov: refused.
     assert sent['lane_finder.launch.py'] == {'debug_image': 'false',
                                              'lane_finder_impl': 'rust'}
-    back = included(started(CAR, machine='orin', lane_finder_impl='python'))
-    assert back['lane_finder.launch.py']['lane_finder_impl'] == 'python'
+    learned = included(started(CAR, machine='orin', lane_finder_impl='learned'))
+    assert learned['lane_finder.launch.py']['lane_finder_impl'] == 'learned'
+    with pytest.raises(ValueError, match='lane_finder_impl:=python'):
+        started(CAR, machine='orin', lane_finder_impl='python')
     with pytest.raises(ValueError, match='lane_finder_impl'):
         started(CAR, machine='orin', lane_finder_impl='c')
     assert 'lane_follower.launch.py' not in sent
@@ -851,3 +852,11 @@ def test_the_dash_starts_the_two_screens_and_nothing_that_drives():
 def test_a_camera_pi_starts_nothing_in_ros_and_the_battery_pi_only_the_sensors():
     assert not included(started(CAR, machine='camera_pi'))
     assert set(included(started(CAR, machine='battery_pi'))) == {'sensors.launch.py'}
+
+
+def test_the_joystick_runs_on_the_motor_pi_where_it_is_plugged_in():
+    # Seen on the car, 21 Oct and 21 Nov: /dev/input/js0 on the Motor Pi. The Orin has
+    # the mux and no joystick; the localization Pi has neither.
+    assert 'teleop.launch.py' in included(started(CAR, machine='motor_pi'))
+    assert 'teleop.launch.py' not in included(started(CAR, machine='orin'))
+    assert 'teleop.launch.py' not in included(started(CAR, machine='localization'))

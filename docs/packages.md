@@ -32,8 +32,8 @@ each one's README has its topics.
 | `aav_rc` | drivers | the RC transmitter, on "RC via ROS", as a driver (priority 95, proposed) | built 24 Oct; off until the hardware lead confirms the wire (H9) | new |
 | `aav_actuator_tests` | drivers | the stage 3-4 tests, as a driver (priority 60) | [[works]] Gazebo; [[untested]] on the car | new |
 | `aav_scripted` | drivers | scripted drives: speed up, hold, slow down | [[works]] turtle and the bench | new |
-| `aav_drive_to_point` | drivers | drive to one GPS or map point B, and stop there smoothly | [[works]] in Gazebo (15 Oct); [[untested]] on the car | new |
-| `aav_drive_to_point_rs` | drivers | `point_driver` and `drive_to_point` in Rust, the default (18 Nov; `drive_to_point_impl:=python` falls back) | [[works]] the Python's numbers on shared vectors; [[untested]] on the car | new: a port of `aav_drive_to_point` |
+| `aav_drive_to_point` | drivers | the point driver's launch file, config and Python maths (its Python node and client removed 22 Nov) | [[works]] in Gazebo (15 Oct); [[untested]] on the car | new |
+| `aav_drive_to_point_rs` | drivers | `point_driver` and `drive_to_point` in Rust, the default (18 Nov; the Python removed 22 Nov): drive to one GPS or map point B, and stop there smoothly | [[works]] the Python's numbers on shared vectors; [[untested]] on the car | new: a port of `aav_drive_to_point` |
 | `aav_language` | drivers | plain English: a local model plans drive tools, you say yes | [[works]] Gazebo and the turtle | new |
 | `aav_navigation` | drivers | our navigation, set up for a car (each node a port of a Nav2 server), and the maps | [[works]] goals reached in Ravensim | new |
 | `aav_routes` | drivers | street routes (Valhalla) as GPS waypoints for the navigator; directions on the campus (`router:=campus`) | [[works]] in Gazebo | new |
@@ -48,10 +48,10 @@ each one's README has its topics.
 | `aav_behaviour_rs` | drivers | `behaviour` in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers | [[works]] against the Python's answers, and in Ravensim | new: a port of `aav_behaviour` |
 | `aav_command_mux` | command_mux | twist_mux: the priorities, the e-stop lock and the other locks | [[works]] | new |
 | `aav_mux_state` | command_mux | `command_mux_state` (Rust): who twist_mux passes on, its age, the locks on and whom they hold (TODO 247) | [[works]] beside a real twist_mux (its colcon test) and in the sim; [[untested]] on the car | new: twist_mux's rule, rewritten in Rust |
-| `aav_io_mux` | io_mux | the sensor mux and the output mux: simulated data never drives the real car | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
-| `aav_io_mux_rs` | io_mux | `sensor_mux` and `output_mux` in Rust, the default (Ben, 17 Nov) beside `aav_io_mux`'s (`io_mux_impl:=python`): the same topics and answers | [[works]] against the Python's answers, step by step; sim-check; [[untested]] on the car | new: a port of `aav_io_mux` |
-| `aav_ego` | ego | one command → speed and steering the car can do | [[works]] | new |
-| `aav_ego_rs` | ego | `ego` and `look_ahead` in Rust, the default (16 Nov; `ego_impl:=python` falls back): the same topics and answers | [[works]] against the Python's answers; Ravensim; [[untested]] on the car | new: a port of `aav_ego` |
+| `aav_io_mux` | io_mux | the muxes' launch file, their rules in Python and the real-backend guard test (its Python nodes removed 22 Nov) | [[works]] turtle, Gazebo and the bench; [[untested]] on the car | new |
+| `aav_io_mux_rs` | io_mux | `sensor_mux` and `output_mux` in Rust, the default (Ben, 17 Nov; the Python removed 22 Nov): simulated data never drives the real car | [[works]] against the Python's answers, step by step; sim-check; [[untested]] on the car | new: a port of `aav_io_mux` |
+| `aav_ego` | ego | ego's launch file, config and maths in Python (its Python nodes removed 22 Nov) | [[works]] its unit tests | new |
+| `aav_ego_rs` | ego | `ego` and `look_ahead` in Rust, the default (16 Nov; the Python removed 22 Nov): one command → speed and steering the car can do | [[works]] against the Python's answers; Ravensim; [[untested]] on the car | new: a port of `aav_ego` |
 | `aav_spine` | can_bridge | the CAN spine: ego's commands as CAN frames. Its Python `spine_bridge`, the config and the launch file | [[works]] on the bench, against `spine_sim`; no spine board yet | new |
 | `aav_spine_bridge` | can_bridge | the same `spine_bridge` in Rust, on the firmware's own CAN code (`spine-core`); the default since 23 Oct (`bridge:=python` for the other) | [[works]] on the bench, against `spine_sim`; no spine board yet | new: a port of `aav_spine`'s node (T1.8) |
 | `aav_legacy` | can_bridge | today's car: the 2025-26 ESP32 over UART, through the Motor Pi | [[untested]] on the car | new, for the 2025-26 protocols |
@@ -66,7 +66,7 @@ each one's README has its topics.
 | `aav_bench` | sim | pretend sensors: IMU, GPS, battery, camera, radar, lidar | [[works]] | new |
 | `aav_safety` | safety | the sensor watchdog: a twist_mux lock (30) when a sensor is stale, NaN, frozen or jumps | [[works]] Gazebo and the bench | new |
 | `aav_joy_alive_rs` | safety | `joy_alive` in Rust, the default (17 Nov; the Python removed 20 Nov) | [[works]] against the Python's answers; [[untested]] on the car | new: a port of `aav_safety`'s `joy_alive` |
-| `aav_safety_rs` | safety | `geofence`, `stop_hold` and `goal_leash` in Rust, the defaults (19 Nov; `*_impl:=python` falls back) | [[works]] against the Python's answers, to the bit; [[untested]] on the car | new: a port of `aav_safety`'s three nodes |
+| `aav_safety_rs` | safety | `geofence`, `stop_hold` and `goal_leash` in Rust, the defaults (19 Nov; the Python removed 20 Nov) | [[works]] against the Python's answers, to the bit; [[untested]] on the car | new: a port of `aav_safety`'s three nodes |
 | `aav_watchdog_rs` | safety | `sensor_watchdog` in Rust, the default (Ben, 16 Nov; the Python removed 20 Nov): the same topics and answers | [[works]] against the Python's answers, tick by tick | new: a port of `aav_safety`'s watchdog |
 | `aav_ghost` | safety | ghost obstacles: a pretend person only navigation sees | [[works]] in Gazebo | new |
 | `aav_stop_zone` | safety | the stop zone (Rust): zeroes navigation's command when the radar or lidar sees points just ahead, or goes silent; the lock since 17 Nov | [[works]] in Ravensim: stopped every time Nav2's `collision_monitor` did, in its shadow run ([Nav2, as it was](history/nav2-as-it-was.md)) | new: a port of Nav2's `collision_monitor` |
@@ -74,16 +74,16 @@ each one's README has its topics.
 | `aav_bringup` | bringup | the six profiles, `stack.launch.py`, Foxglove, the machine files, the RViz layouts | [[works]] turtle, sim, replay, bench | new |
 | `aav_run_info` | bringup | `run_info`: which algorithms this run uses, on `/system/algorithms`, for the screens | built 3 Nov | new |
 | `aav_detector` | perception | RF-DETR (the default) or YOLO on the camera's images, and the stop-sign watcher | [[works]] on the bench | 2024-25 `camera_ros2_ws` |
-| `aav_stop_sign_rs` | perception | `stop_sign_watcher` in Rust, the default (17 Nov; `stop_sign_impl:=python` falls back) | [[works]] against the Python's answers, and a process test | new: a port of `aav_detector`'s watcher |
+| `aav_stop_sign_rs` | perception | `stop_sign_watcher` in Rust, the default (17 Nov; the Python removed 22 Nov) | [[works]] against the Python's answers, and a process test | new: a port of `aav_detector`'s watcher |
 | `aav_radar_clusters` | perception | radar clustering (DBSCAN), with a box round each object (Rust) | [[works]] on the bench and in Gazebo | new: a rewrite of the 2025-26 `Nav_Radar` C++ node |
-| `aav_lidar` | perception | `lidar_scan`: the roof lidar's cloud as a 2D scan for the costmap and the stop zone | [[works]] in Gazebo and the bench | new |
+| `aav_lidar` | perception | the flat scan's maths in Python (`scan.py`, `ground.py`), imported by launch files, `aav_voxels` and tools; its node removed 22 Nov | [[works]] its unit tests | new |
 | `aav_voxels` | perception | a trial beside `aav_lidar` (`voxels:=true`): the lidar's cloud as 0.25 m cubes for the costmap | built 30 Oct; a trial, off by default | new |
 | `aav_voxels_rs` | perception | `voxels` in Rust: the lidar as 0.25 m cubes, a drop-in for `aav_voxels`' (`voxels_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_voxels` |
-| `aav_lidar_rs` | perception | `lidar_scan` in Rust: the lidar flattened to a 720-ray scan, a drop-in for `aav_lidar`'s (`lidar_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_lidar` |
+| `aav_lidar_rs` | perception | `lidar_scan` in Rust: the roof lidar's cloud flattened to a 720-ray scan for the costmap and the stop zone; the only one (the Python removed 22 Nov) | [[works]] against the Python's answers | new: a port of `aav_lidar` |
 | `aav_things_rs` | perception | `things` in Rust: the cubes as tracked things, a drop-in for `aav_things`' (`things_impl:=rust`) | [[works]] against the Python's answers | new: a port of `aav_things` |
 | `aav_detector_rs` | perception | the detector in Rust, a challenger (`detector_impl:=rust`): RF-DETR's ONNX through ONNX Runtime ([ONNX](onnx.md)) | [[works]] in Ravensim (Core ML); TensorRT [[untested]] | new: a port of `aav_detector`'s `detector` |
-| `aav_lane_finder` | perception | the lane lines in the camera's pictures, as `/perception/lane/geometry` (OpenCV) | [[works]] on the bench | new |
-| `aav_lane_finder_rs` | perception | `lane_finder` in Rust, the default (18 Nov; `lane_finder_impl:=python` falls back): no OpenCV | [[works]] the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 % in Ravensim | new: a port of `aav_lane_finder` |
+| `aav_lane_finder` | perception | the lane finder's launch file, config and Python maths (OpenCV); its node removed 22 Nov | [[works]] on the bench | new |
+| `aav_lane_finder_rs` | perception | `lane_finder` in Rust, the default (18 Nov; the Python removed 22 Nov): the lane lines in the camera's pictures, as `/perception/lane/geometry`; no OpenCV | [[works]] the Python's lanes on 45 pictures; 3.7 % of a core against 17.4 % in Ravensim | new: a port of `aav_lane_finder` |
 | `aav_lane_geometry` | perception | the `LaneGeometry` message (its lane follower removed 19 Nov, TODO 264) | [[works]] | 2025-26 `Lane_Detection_ROS2` |
 | `aav_hud` | hud | the in-car screens in Rust (raylib): the HUD (node `hud`) and the map window (node `map`) | [[works]] on a Mac: `--demo`, fed topics, bench mode. [[untested]] on a Pi and on the car | new |
 | `aav_dev_window` | hud | the developer window (Bevy), for a laptop: `pixi run dev-window`. A cargo program, not a colcon package | built 5 Nov | new |
@@ -121,12 +121,12 @@ each one's README has its topics.
 | keyboard (`tools/keyboard.sh`) | your keys | `/drivers/keyboard/cmd_vel` | `pixi run keyboard` |
 | `aav_actuator_tests` | `/vehicle/odom`, `/vehicle/steering`, `/throttle`, `/brake`, `/wheels`, the IMU, `/localization/odom/local`, GPS, `/safety/estop`, `/control/cmd_vel`, `/system/source` | `/drivers/tests/cmd_vel` | `pixi run actuator-test`: the stage 3-4 tests; prints `vehicle.yaml` lines ([Actuator tests](actuator-tests.md)) |
 | `aav_scripted` | `/localization/odom/local` | `/drivers/scripted/cmd_vel` | the action `/scripted_drive` |
-| `aav_drive_to_point` | `/localization/odom/global`, `/sensors/gps/fix`, `/safety/estop`, the watchdog's lock, `/system/source`, `/control/cmd_vel` | `/drivers/point/cmd_vel` | the action `/drive_to_point`; calls `/fromLL` for a lat/lon B. `pixi run drive-to-point` ([A to B](a-to-b.md)) |
+| `aav_drive_to_point_rs`: `point_driver` | `/localization/odom/global`, `/sensors/gps/fix`, `/safety/estop`, the watchdog's lock, `/system/source`, `/control/cmd_vel` | `/drivers/point/cmd_vel` | the action `/drive_to_point`; calls `/fromLL` for a lat/lon B. `pixi run drive-to-point` ([A to B](a-to-b.md)) |
 | `aav_language` | your words; odometry, GPS, `/diagnostics`, `/vehicle/status` | `/safety/estop` (true only) | calls `/scripted_drive` and `/follow_gps_waypoints`; never publishes a velocity |
 | `aav_navigation` | `/localization/odom/local`, `/map`, `/goal_pose` | `/drivers/nav/cmd_vel`, `/plan` | Smac State Lattice (Hybrid-A* if forward only) and MPPI (or Regulated Pure Pursuit); GPS waypoints through `/follow_gps_waypoints` |
 | `aav_command_mux` (twist_mux) | every `/drivers/<driver>/cmd_vel`, `/safety/estop` | `/control/cmd_vel` | priorities: [Build a driver](howto-driver.md) |
-| `aav_ego` | `/control/cmd_vel` | `/ego/actuator_cmd`, 50 times a second | 1.0 m/s top speed, ±0.5 rad, brakes after 0.3 s without a command |
-| `aav_io_mux` | `/ego/actuator_cmd`, `/system/source`, who publishes each sensor | `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` | the real car's commands only while every source is REAL: [Sources and targets](sources-and-targets.md) |
+| `aav_ego_rs`: `ego` | `/control/cmd_vel` | `/ego/actuator_cmd`, 50 times a second | 1.0 m/s top speed, ±0.5 rad, brakes after 0.3 s without a command |
+| `aav_io_mux_rs` | `/ego/actuator_cmd`, `/system/source`, who publishes each sensor | `/control/<target>/actuator_cmd`, `/system/sensor_mux/state`, `/safety/output_mux/state` | the real car's commands only while every source is REAL: [Sources and targets](sources-and-targets.md) |
 
 ## Perception
 
@@ -135,9 +135,9 @@ each one's README has its topics.
 | Package | Reads | Publishes | Notes |
 |---|---|---|---|
 | `aav_detector`: `object_detector` | `/sensors/camera/front_left/image_raw` | `/perception/detections`, `/perception/detections/image` | `detector:=rfdetr` (the default: a `.pth`, or its `rf-detr-*.mlpackage` or `.engine`) or `yolo` (a `.pt`, `.mlpackage` or `.engine`); needs the `ml` environment, or JetPack's PyTorch and TensorRT |
-| `aav_detector`: `stop_sign_watcher` | `/perception/detections` | `/perception/stop_sign` | twist_mux's stop-sign lock, priority 30 |
+| `aav_stop_sign_rs`: `stop_sign_watcher` | `/perception/detections` | `/perception/stop_sign` | twist_mux's stop-sign lock, priority 30 |
 | `aav_radar_clusters`: `radar_clusters` | `/sensors/radar/points` | `/perception/radar/clusters`, `/perception/radar/cluster_boxes` | DBSCAN, in Rust; eps 0.8 m, 15 points (5 on the bench and in Gazebo) |
-| `aav_lane_finder`: `lane_finder` | `/sensors/camera/front_left/image_raw`, `/sensors/camera/front_left/camera_info` | `/perception/lane/geometry`, `/perception/lane/image` | a bird's-eye view, sliding windows, a curve per line; the camera's place from `vehicle.yaml` |
+| `aav_lane_finder_rs`: `lane_finder` | `/sensors/camera/front_left/image_raw`, `/sensors/camera/front_left/camera_info` | `/perception/lane/geometry`, `/perception/lane/image` | a bird's-eye view, sliding windows, a curve per line; the camera's place from `vehicle.yaml` |
 
 ## Backends
 

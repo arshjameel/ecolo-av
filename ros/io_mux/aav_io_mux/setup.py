@@ -22,8 +22,6 @@ setup(
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
-            'sensor_mux = aav_io_mux.sensor_mux:main',
-            'output_mux = aav_io_mux.output_mux:main',
         ],
     },
 )

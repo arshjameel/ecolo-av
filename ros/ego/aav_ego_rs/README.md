@@ -5,8 +5,9 @@
 ego and look_ahead in Rust (rclrs), **one process holding both nodes**: the default, in
 place of `aav_ego`'s two Python nodes. The same node names, topics, QoS, parameters and
 answers. Ben, 14 Nov: "convert anything that uses a lot of resources to rust" (TODO 185).
-The simulator's default since 16 Nov (below), and the car's too (Ben, 16 Nov);
-`ego_impl:=python` falls back until a car day proves this one.
+The simulator's default since 16 Nov (below), and the car's too (Ben, 16 Nov). The only
+ego since 22 Nov: the Python nodes were removed (tag `save/python-fallbacks-1`);
+`aav_ego` keeps the launch file, the config and the Python maths.
 
 ```
 /control/cmd_vel ──► ego ──► /ego/actuator_cmd (50 Hz)          one process: `ego`
@@ -85,9 +86,8 @@ name (`/ego:`, `/look_ahead:`): both have a `rate_hz`, and a plain dict would re
 
 - The same answers as the Python modules: `tests/vectors.rs` reads `vectors.json`, which
   `gen_vectors.py` writes from them. Change one, change both, and write the vectors again.
-- The same node names and topics as the Python, so nothing downstream can tell which
-  runs. Only one of the two runs at a time (`ego_impl:=`). The watchdog's `node_ego` and
-  `node_look_ahead` find both.
+- The node names and topics the Python had. `ego_impl:=` takes `rust` only (a hook). The
+  watchdog's `node_ego` and `node_look_ahead` find both nodes.
 - The safety rules are ego's own, unchanged: a stale command stops at full deceleration;
   braking is never softened; a change of direction passes through a stop; the lead never
   touches a stop.

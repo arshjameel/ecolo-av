@@ -7,6 +7,19 @@ car_test: phases A and B of docs/testing-plan.md, one command, one report. The R
     pixi run car-test --hallway                     phase B in a measured hallway (TODO 248)
     pixi run car-test --hallway --sim --no-manual   the same in its own Ravensim
     pixi run car-test --analyse <session>           a hallway session's report again
+    pixi run car-test --stands --sim --attach       the Ravensim already running here (one
+                                                    you can watch: pixi run dry-run)
+
+--sim --attach: it listens to /system/source on this computer first (car_test.
+attach_choice). SIM: that simulator is tested, on its ROS domain; it is never started or
+stopped here, and its car is put on stands for phase A (lowered after) and on the ground
+for phase B. Nothing heard: it starts its own, as --sim alone. Anything else (REAL, BENCH,
+REPLAY): refused, nothing starts. The heartbeat step pauses the simulator's output mux only
+when the one who started it says which process group is its own (AAV_SIM_LAUNCH_LOG and
+AAV_SIM_LAUNCH_PGID, or the dry run's note in /tmp/aav-dry-run); else that step is
+SKIPPED. An e-stop an earlier test left set stays set, as on the car: the session is
+refused until a person clears it (pixi run clear estop --sim). --lot --sim (LotTest): the
+lot's simulator twin, every stage-4 test that is not a hallway pass, up to 3 m/s.
 
 --hallway (HallwayTest): asks the hallway's measured length (or --length) and works out
 its top speed (safety.hallway_limits: speed up + stop + margin, within 1.0 m/s); then each
@@ -38,11 +51,16 @@ Subscribes  everything the preflight does (PreflightNode: every sensor, counted)
             safety/sensor_watchdog/lock   std_msgs/Bool
             vehicle/status                aav_interfaces/VehicleStatus: armed, e-stop, faults
             safety/output_mux/state       std_msgs/String: the gate (OPEN before a step)
+            /diagnostics                  diagnostic_msgs/DiagnosticArray, --sim --attach only,
+                                          before the first step: twist_mux's e-stop lock
             (never a simulator's own topic, such as /control/sim/heartbeat: tools/drop_in.py)
 Publishes   drivers/tests/cmd_vel  geometry_msgs/TwistStamped: the faults' slow roll, 50 Hz
             safety/estop           std_msgs/Bool, true only: when the car won't stop; and
                                    in --sim the e-stop step's press, standing in for a person
-Calls       /<node>/set_parameters  --sim only: fault.<sensor> stop, then ok, on Ravensim's
+Calls       /vehicle/sim/set_jacks  --sim only, phase A: std_srvs/SetBool on its own Ravensim,
+                                   true before the first step (it starts on stands:
+                                   on_stands:=true), false after the last
+            /<node>/set_parameters  --sim only: fault.<sensor> stop, then ok, on Ravensim's
                                     sensor node (aav_sim_models faults.NODES)
 Signals     --sim only: its own Ravensim's output_mux, SIGSTOP then SIGCONT (the heartbeat
             step), found in its own launch's log and checked in its own process group:
@@ -79,6 +97,7 @@ from rclpy.parameter import Parameter
 from rclpy.parameter_client import AsyncParameterClient
 from rclpy.signals import SignalHandlerOptions
 from std_msgs.msg import Bool, String
+from std_srvs.srv import SetBool
 import yaml
 
 ODOM_STALE = 0.5       # s
@@ -90,7 +109,10 @@ SIM_UP = 600.0         # s for our Ravensim to come up (its cameras may build fi
 MEND_TIME = 30.0       # s for the watchdog to say OK again after a fault is mended
 # What the watchdog's inputs are called in the preflight's sensor counts (preflight.SENSORS).
 COUNTED = {'gps': 'gps', 'imu': 'imu_filtered', 'camera': 'camera', 'lidar': 'lidar'}
-SIM_ARGS = ('world:=road', 'rviz:=false', 'faults:=true', 'nav:=false')
+# on_stands:=true: our Ravensim's car is on stands (on jacks) from the start, as the real
+# car is for phase A: the rear wheels spin and steer, the car stays put (TODO 272).
+SIM_ARGS = ('world:=road', 'rviz:=false', 'faults:=true', 'nav:=false', 'on_stands:=true')
+JACKS_SERVICE = '/vehicle/sim/set_jacks'   # Ravensim's own: only ever called in --sim
 
 
 class Tee:
@@ -114,6 +136,8 @@ class Tee:
 class SimLaunch:
     """Our own Ravensim: its own process group and log, so we only ever touch our own."""
 
+    attached = False
+
     def __init__(self, folder, say, args=SIM_ARGS):
         self.log_path = os.path.join(folder, 'sim-launch.log')
         self.proc = None
@@ -130,15 +154,7 @@ class SimLaunch:
 
     def pid_of(self, name):
         """Return a node's pid from our launch's log, only if it is in our process group."""
-        with open(self.log_path) as f:
-            found = re.findall(rf'\[{name}-\d+\]: process started with pid \[(\d+)\]', f.read())
-        if not found:
-            return None
-        pid = int(found[-1])
-        try:
-            return pid if os.getpgid(pid) == self.proc.pid else None
-        except ProcessLookupError:
-            return None
+        return pid_in_log(self.log_path, name, self.proc.pid)
 
     def stop(self):
         if self.proc is None:
@@ -152,6 +168,49 @@ class SimLaunch:
         except (ProcessLookupError, PermissionError):
             # Gone already (macOS says EPERM for a group whose leader has exited, 20 Nov).
             pass
+
+
+def pid_in_log(log_path, name, group):
+    """Return a node's pid from a launch's log, only if it is in that process group."""
+    try:
+        with open(log_path) as f:
+            found = re.findall(rf'\[{name}-\d+\]: process started with pid \[(\d+)\]',
+                               f.read())
+    except OSError:
+        return None
+    if not found:
+        return None
+    pid = int(found[-1])
+    try:
+        return pid if os.getpgid(pid) == group else None
+    except ProcessLookupError:
+        return None
+
+
+class AttachedSim:
+    """
+    A Ravensim somebody else started on this computer (--attach): never started or stopped here.
+
+    Its launch's log and process group come from the one who started it (pixi run dry-run:
+    car_test.attached_launch); without them no process of it is ever signalled.
+    """
+
+    attached = True
+
+    def __init__(self, say):
+        self.say = say
+        self.log_path, self.group = ct.attached_launch(os.environ)
+
+    def start(self):
+        pass
+
+    def pid_of(self, name):
+        if not self.log_path or self.group is None:
+            return None
+        return pid_in_log(self.log_path, name, self.group)
+
+    def stop(self):
+        self.say('The simulator stays up: this runner did not start it.')
 
 
 class CarTestNode(PreflightNode):
@@ -192,6 +251,8 @@ class CarTestNode(PreflightNode):
 class CarTest:
     """The whole run: the checks before, each step, the stops, the report."""
 
+    title = 'car-test --stands'
+
     def __init__(self, node, args, folder, sim, out):
         self.node, self.args, self.folder, self.sim, self.out = node, args, folder, sim, out
         self.say = out.say
@@ -206,6 +267,7 @@ class CarTest:
         self.interrupted = False
         self.inputs = watchdog_inputs()
         self.still_since = None
+        self.on_stands = False     # --sim: our Ravensim's car, once it has said so
 
     # --- before -----------------------------------------------------------------------
 
@@ -216,15 +278,22 @@ class CarTest:
             self.say('Waiting for our Ravensim: /system/source SIM, the speed, the camera, '
                      'the sensor watchdog, and the output gate OPEN (the first run on a '
                      'computer also builds its cameras: minutes) ...')
-            up = node.spin_for(SIM_UP, lambda: (
-                safety.source_kind(node.sources) is safety.Kind.SIM and self.fresh_odom()
-                and bool(node.samples['camera'].times)
-                and node.watchdog is not None and node.gate is not None
-                and node.gate[1].startswith('OPEN')))
-            if not up:
-                return (f'Ravensim did not come up in {SIM_UP:.0f} s (see '
-                        f'{self.sim.log_path})')
+            needs = {'the speed (/vehicle/odom)': self.fresh_odom,
+                     'the camera': lambda: bool(node.samples['camera'].times),
+                     'the sensor watchdog': lambda: node.watchdog is not None}
+            why = self.wait_for_sim(needs)
+            if why:
+                return why
             node.spin_for(5.0)   # the rest settles
+            # Asking for what it should be already changes nothing, and says so.
+            ok, word = self.jacks(True)
+            if not ok:
+                return f"our Ravensim's car is not on stands: {word}"
+            self.say(f'Ravensim: {word}')
+            self.on_stands = True
+            self.notes.append("Ravensim's car was on stands (on jacks) for every step, as the "
+                              'real car: the rear wheels spun and steered, the car stayed '
+                              'put (sim.launch.py on_stands:=true)')
             self.notes.append(f'Ravensim has no {", ".join(ct.SIM_SKIP)}: the preflight '
                               'steps skip it (--skip)')
         else:
@@ -252,14 +321,114 @@ class CarTest:
                 return 'cancelled: nothing moved'
         return None
 
+    def wait_for_sim(self, needs):
+        """
+        --sim: wait for the simulator: SIM, each of `needs`, the gate OPEN; why not, or None.
+
+        Our own gets SIM_UP (it is starting); an attached one is up already: ATTACH_WAIT,
+        then what is missing in words (car_test.not_ready).
+        """
+        node = self.node
+
+        def gate_open():
+            return node.gate is not None and node.gate[1].startswith('OPEN')
+
+        attached = self.sim.attached
+        up = node.spin_for(ct.ATTACH_WAIT if attached else SIM_UP, lambda: (
+            safety.source_kind(node.sources) is safety.Kind.SIM and gate_open()
+            and all(ready() for ready in needs.values())))
+        if up and attached and self.estop_is_set():
+            return ct.not_ready([], node.gate[1], estop=True)
+        if up:
+            return None
+        if not attached:
+            return f'Ravensim did not come up in {SIM_UP:.0f} s (see {self.sim.log_path})'
+        missing = [name for name, ready in needs.items() if not ready()]
+        if node.gate is None:
+            missing.append('the output gate (/safety/output_mux/state)')
+        return ct.not_ready(missing, node.gate[1] if node.gate else None)
+
+    def estop_is_set(self, seconds=3.0):
+        """
+        --attach: return True when twist_mux says its e-stop lock is locked (/diagnostics).
+
+        An attached simulator has a past: the stands test's last step leaves the e-stop
+        set. Nothing here clears it: a person does, as on the car. Not heard: not set.
+        """
+        from diagnostic_msgs.msg import DiagnosticArray
+        heard = []
+
+        def on_diagnostics(msg):
+            locked = ct.estop_locked(
+                [(s.name, {kv.key: kv.value for kv in s.values}) for s in msg.status])
+            if locked is not None:
+                heard.append(locked)
+
+        sub = self.node.create_subscription(DiagnosticArray, '/diagnostics',
+                                            on_diagnostics, 10)
+        try:
+            self.node.spin_for(seconds, lambda: bool(heard))
+        finally:
+            self.node.destroy_subscription(sub)
+        return bool(heard) and heard[-1]
+
+    def jacks(self, up):
+        """--sim only: our Ravensim's car on stands (True) or back down; (ok, its words)."""
+        client = self.node.create_client(SetBool, JACKS_SERVICE)
+        try:
+            if not client.wait_for_service(timeout_sec=10.0):
+                return False, f'no {JACKS_SERVICE}'
+            sent = client.call_async(SetBool.Request(data=up))
+            self.node.spin_for(10.0, sent.done)
+            if not sent.done():
+                return False, f'{JACKS_SERVICE} did not answer'
+            return sent.result().success, sent.result().message
+        finally:
+            self.node.destroy_client(client)
+
+    def to_ground(self):
+        """
+        --sim --attach, before a test on the ground: lower the car; why not, or None.
+
+        An attached car may have been left on stands. Ravensim refuses while the wheels
+        spin or a speed is commanded: then nothing runs.
+        """
+        if not self.sim.attached:
+            return None
+        ok, word = self.jacks(False)
+        if not ok:
+            return f"the simulator's car is not on the ground: {word}"
+        self.say(f'Ravensim: {word}')
+        self.notes.append('Attached to the Ravensim already running on this computer: its '
+                          'world, its start, its own actuator numbers. Its car was put on '
+                          f'the ground first: {word}')
+        return None
+
+    def lower(self):
+        """
+        --sim only, at the end: take our Ravensim's car off the stands, as a person would.
+
+        The car has been stopped (stop_car). Ravensim refuses while the wheels spin or a
+        speed is commanded: that would be the car leaping off the stands, so it is noted.
+        """
+        if not self.sim or not self.on_stands:
+            return
+        ok, word = self.jacks(False)
+        self.say(f'Ravensim: {word}')
+        self.notes.append(f'At the end the car was lowered off the stands: {word}' if ok else
+                          f'NOT LOWERED at the end: {word}')
+
     def fresh_odom(self):
         t = self.node.odom_time
         return t is not None and self.node.seconds() - t < ODOM_STALE
 
     # --- the run ----------------------------------------------------------------------
 
+    def steps(self):
+        return ct.plan(self.args.only, bool(self.args.sim), self.args.no_manual)
+
     def run(self):
-        steps = ct.plan(self.args.only, bool(self.args.sim), self.args.no_manual)
+        steps = self.steps()
         why = self.prepare()
         if why:
             self.say(f'REFUSED: {why}')
@@ -565,6 +734,11 @@ class CarTest:
         """Pause our Ravensim's output mux: its commands and heartbeat stop together."""
         node = self.node
         pid = self.sim.pid_of('output_mux')
+        if pid is None and self.sim.attached:
+            return ct.Result(step, ct.Status.SKIPPED,
+                             'attached to a simulator this runner did not start, and '
+                             'nobody said which process is its output mux (pixi run '
+                             'dry-run does; or run without --attach): nothing was paused')
         if pid is None:
             return ct.Result(step, ct.Status.FAIL, "no output_mux in our launch's log")
         roll = min(ct.ROLL, self.cap)
@@ -722,10 +896,10 @@ class CarTest:
     # --- after ------------------------------------------------------------------------
 
     def report(self, started, where):
-        text = ct.table(self.results)
+        text = ct.table(self.results, self.title)
         self.say()
         self.say(text)
-        md = ct.markdown(self.results, where, started, self.yaml, self.notes)
+        md = ct.markdown(self.results, where, started, self.yaml, self.notes, self.title)
         with open(os.path.join(self.folder, 'report.md'), 'w') as f:
             f.write(md)
         with open(os.path.join(self.folder, 'report.yaml'), 'w') as f:
@@ -752,13 +926,13 @@ class HallwayTest(CarTest):
         if self.sim:
             self.say('Waiting for our Ravensim: /system/source SIM, the speed, the output '
                      'gate OPEN ...')
-            up = node.spin_for(SIM_UP, lambda: (
-                safety.source_kind(node.sources) is safety.Kind.SIM and self.fresh_odom()
-                and node.gate is not None and node.gate[1].startswith('OPEN')))
-            if not up:
-                return (f'Ravensim did not come up in {SIM_UP:.0f} s (see '
-                        f'{self.sim.log_path})')
+            why = self.wait_for_sim({'the speed (/vehicle/odom)': self.fresh_odom})
+            if why:
+                return why
             node.spin_for(3.0)
+            why = self.to_ground()
+            if why:
+                return why
         else:
             node.spin_for(3.0, lambda: bool(node.sources))
             node.spin_for(1.0)
@@ -873,10 +1047,79 @@ class HallwayTest(CarTest):
         self.session = hallway.analyse(self.folder, info)
         hallway.write(self.session)
         self.say(hallway.text_table(self.session))
+        # The same report.yaml as phase A, a step a pass, so one reader takes both
+        # (tools/ladder.py: record --from-report, session).
+        steps = []
+        for number, e in enumerate(self.passes, 1):
+            run = ct.only_folder(os.path.join(self.folder, e['pass']))
+            steps.append({'step': e['pass'], 'number': str(number),
+                          'status': e.get('status', 'NOT RUN'),
+                          'detail': e.get('detail', ''),
+                          'files': os.path.relpath(run, self.folder) if run else ''})
+        counts = {word: sum(1 for s in steps if s['status'] == word)
+                  for word in ('PASS', 'FAIL', 'SKIPPED', 'NOT RUN')}
+        with open(os.path.join(self.folder, 'report.yaml'), 'w') as f:
+            yaml.safe_dump({'started': started, 'where': where, 'counts': counts,
+                            'steps': steps}, f, sort_keys=False)
         self.say(f'Saved in {self.folder} (report.md, vehicle-yaml.txt, overlays/)')
 
     def failed(self):
         return any(e.get('status') == 'FAIL' for e in self.passes) or not self.passes
+
+
+class LotTest(CarTest):
+    """The lot's simulator twin: every stage-4 test at speed, each an actuator_test child."""
+
+    title = 'car-test --lot'
+
+    def steps(self):
+        return ct.lot_plan(self.args.only)
+
+    def prepare(self):
+        """Every check before anything moves; returns why not, or None. Simulators only."""
+        node = self.node
+        self.say('Waiting for Ravensim: /system/source SIM, the speed, the output gate '
+                 'OPEN ...')
+        why = self.wait_for_sim({'the speed (/vehicle/odom)': self.fresh_odom})
+        if why:
+            return why
+        node.spin_for(3.0)
+        kind = safety.source_kind(node.sources)
+        d = safety.decide(kind, True, False, 4, ct.LOT_SPEED)
+        if not d.allowed:
+            return d.reason
+        if d.real or kind is not safety.Kind.SIM:
+            return f'--lot is for Ravensim only; /system/source says {kind.value}'
+        self.cap, self.real = d.cap, False
+        why = self.to_ground()
+        if why:
+            return why
+        self.notes.append('Each step passes when its test ran to the end and made its '
+                          "report. The hallway's pass rule (the model's speed within 10 %, "
+                          'its stop within 0.2 m) is NOT judged here: read each summary')
+        self.say(f'Driving: {d.reason} ({kind.value}); every step on the ground, capped at '
+                 f'{d.cap:g} m/s')
+        return None
+
+    def tool(self, step):
+        sub = os.path.join(self.folder, step.name)
+        os.makedirs(sub, exist_ok=True)
+        cmd = [sys.executable, '-m', 'aav_actuator_tests.actuator_test',
+               *ct.lot_args(step, sub)]
+        self.say(f'$ actuator-test {" ".join(cmd[3:])}')
+        code = self.child(cmd, os.path.join(sub, 'output.log'))
+        run = ct.only_folder(sub)
+        files = os.path.relpath(run, self.folder) if run else step.name
+        lines = ''
+        if run and os.path.exists(os.path.join(run, 'summary.txt')):
+            with open(os.path.join(run, 'summary.txt')) as f:
+                lines = ct.yaml_lines_of(f.read())
+        if lines:
+            self.yaml[step.name] = lines
+        return ct.Result(step, *ct.lot_result(code, lines), files)
+
+    def lower(self):
+        """Nothing to lower: the lot is on the ground."""
 
 
 class Waiting:
@@ -920,37 +1163,91 @@ def pick_domain():
     return str(free_domain())
 
 
+def heard_source(seconds=4.0):
+    """
+    --attach: listen to /system/source on this computer; return safety.Kind.
+
+    Its own short-lived node, before anything is started. LOCALHOST only, on the ROS
+    domain this command was started on (a simulator a person watches runs there).
+    """
+    from aav_interfaces.msg import DataSource
+    from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+    os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
+    rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
+    node = rclpy.create_node('car_test_listen')
+    sources = {}
+    try:
+        latched = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE,
+                             durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        node.create_subscription(
+            DataSource, 'system/source',
+            lambda msg: sources.update({msg.announcer: [s.source for s in msg.sensors]}),
+            latched)
+        end = time.monotonic() + seconds
+        while time.monotonic() < end and not sources:
+            rclpy.spin_once(node, timeout_sec=0.05)
+        end = time.monotonic() + 1.0     # the other announcers: one REAL is enough
+        while time.monotonic() < end:
+            rclpy.spin_once(node, timeout_sec=0.05)
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+    return safety.source_kind(sources)
+
+
 def main(argv=None):
     args = ct.parse(sys.argv[1:] if argv is None else argv)
     if args.analyse:
         return hallway.main([args.analyse])
+    attach = False
+    if args.sim and args.attach:
+        kind = heard_source()
+        choice, why = ct.attach_choice(kind.value)
+        print(why, flush=True)
+        if choice is ct.Attach.REFUSE:
+            print('REFUSED: nothing moved', flush=True)
+            return 1
+        attach = choice is ct.Attach.ATTACH
     now = datetime.datetime.now()
-    phase = 'hallway' if args.hallway else 'stands'
+    phase = 'hallway' if args.hallway else 'lot' if args.lot else 'stands'
     folder = ct.report_folder(args.out, args.sim, now, phase)
     os.makedirs(folder, exist_ok=True)
     out = Tee(os.path.join(folder, 'run.log'))
     started = now.strftime('%Y-%m-%d %H:%M:%S')
     sim = None
-    if args.sim:
+    if attach:
+        os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
+        sim = AttachedSim(out.say)
+    elif args.sim:
         os.environ['ROS_DOMAIN_ID'] = pick_domain()
         os.environ['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
         launch = (ct.sim_launch_args(ct.sim_overrides(args.sim_actuators), args.wheel_noise,
                                      args.wheel_slip)
-                  if args.hallway else SIM_ARGS)
+                  if args.hallway else ct.lot_launch_args() if args.lot else SIM_ARGS)
         sim = SimLaunch(folder, out.say, launch)
         sim.start()
-    if args.hallway:
+    domain = os.environ.get('ROS_DOMAIN_ID', '0')
+    if attach:
+        where = ('the Ravensim already running on this computer (attached, not started '
+                 f'by the runner; ROS domain {domain}, this computer only)'
+                 + (f', a pretend {args.length:g} m hallway' if args.hallway
+                    else ', a pretend lot' if args.lot else ', the car on stands'))
+    elif args.lot:
+        where = (f"Ravensim's empty world, a pretend lot, up to {ct.LOT_SPEED:g} m/s (ROS "
+                 f'domain {domain}, this computer only)')
+    elif args.hallway:
         where = (f"Ravensim's empty world, a pretend {args.length:g} m hallway (ROS domain "
-                 f"{os.environ.get('ROS_DOMAIN_ID')}, this computer only)" if args.sim
+                 f'{domain}, this computer only)' if args.sim
                  else 'the real car, in the hallway')
     else:
-        where = (f"Ravensim's road world, started by the runner (ROS domain "
-                 f"{os.environ.get('ROS_DOMAIN_ID')}, this computer only)" if args.sim
+        where = ("Ravensim's road world, the car on stands, started by the runner (ROS "
+                 f'domain {domain}, this computer only)' if args.sim
                  else 'the real car, on stands')
     out.say(f'car-test --{phase}: {where}. Report folder: {folder}')
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     node = CarTestNode(bool(args.sim))
-    run = (HallwayTest if args.hallway else CarTest)(node, args, folder, sim, out)
+    kind = HallwayTest if args.hallway else LotTest if args.lot else CarTest
+    run = kind(node, args, folder, sim, out)
     try:
         run.run()
     except KeyboardInterrupt:
@@ -959,6 +1256,7 @@ def main(argv=None):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:
             run.stop_car()
+            run.lower()
             run.report(started, where)
         finally:
             node.destroy_node()

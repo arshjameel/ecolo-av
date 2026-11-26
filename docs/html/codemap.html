@@ -7,7 +7,7 @@
 <!-- Generated from docs/codemap.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The code map</h1>
-<div class="meta">17 min read · 15 sections</div></header>
+<div class="meta">18 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -354,7 +358,7 @@ current): after adding, moving or removing a package, run
 <td>Python</td>
 <td>The object detector</td>
 <td><code>aav_detector/(6 modules)</code></td>
-<td><code>aav_detector/camera_obstacles.py</code>, <code>aav_detector/detector.py</code>, <code>aav_detector/stop_sign_watcher.py</code></td>
+<td><code>aav_detector/camera_obstacles.py</code>, <code>aav_detector/detector.py</code></td>
 <td><code>test/</code></td>
 <td><code>config/</code>, <code>launch/</code></td>
 </tr>
@@ -370,9 +374,9 @@ current): after adding, moving or removing a package, run
 <tr>
 <td><a href="../../ros/perception/aav_lane_finder/README.md">aav_lane_finder</a></td>
 <td>Python</td>
-<td>The lane finder</td>
+<td>The lane finder's launch file (lane_finder.launch.py), its config (lane_finder.yaml) and its maths in Pytho...</td>
 <td><code>aav_lane_finder/(2 modules)</code></td>
-<td><code>aav_lane_finder/lane_finder.py</code></td>
+<td>-</td>
 <td><code>test/</code></td>
 <td><code>config/</code>, <code>launch/</code></td>
 </tr>
@@ -406,9 +410,9 @@ current): after adding, moving or removing a package, run
 <tr>
 <td><a href="../../ros/perception/aav_lidar/README.md">aav_lidar</a></td>
 <td>Python</td>
-<td>The roof lidar for Nav2</td>
+<td>The flat lidar scan's maths, no ROS</td>
 <td><code>aav_lidar/(2 modules)</code></td>
-<td><code>aav_lidar/lidar_scan.py</code></td>
+<td>-</td>
 <td><code>test/</code></td>
 <td>-</td>
 </tr>
@@ -531,9 +535,9 @@ current): after adding, moving or removing a package, run
 <tr>
 <td><a href="../../ros/drivers/aav_drive_to_point/README.md">aav_drive_to_point</a></td>
 <td>Python</td>
-<td>Drive-to-point driver</td>
+<td>Drive to one GPS or map point and stop there</td>
 <td><code>aav_drive_to_point/(5 modules)</code></td>
-<td><code>aav_drive_to_point/point_cli.py</code>, <code>aav_drive_to_point/point_driver.py</code></td>
+<td>-</td>
 <td><code>test/</code></td>
 <td><code>config/</code>, <code>launch/</code></td>
 </tr>
@@ -718,9 +722,9 @@ current): after adding, moving or removing a package, run
 <tr>
 <td><a href="../../ros/ego/aav_ego/README.md">aav_ego</a></td>
 <td>Python</td>
-<td>ego</td>
+<td>ego's launch file (ego.launch.py), config (ego.yaml) and maths in Python with no ROS (ackermann.py, dynamic...</td>
 <td><code>aav_ego/(9 modules)</code></td>
-<td><code>aav_ego/ego_node.py</code>, <code>aav_ego/look_ahead_node.py</code></td>
+<td>-</td>
 <td><code>test/</code></td>
 <td><code>config/</code>, <code>launch/</code></td>
 </tr>
@@ -755,7 +759,7 @@ current): after adding, moving or removing a package, run
 <td>Python</td>
 <td>The muxes at the two edges of the stack</td>
 <td><code>aav_io_mux/(4 modules)</code></td>
-<td><code>aav_io_mux/output_mux.py</code>, <code>aav_io_mux/sensor_mux.py</code></td>
+<td>-</td>
 <td><code>test/</code></td>
 <td><code>launch/</code></td>
 </tr>
@@ -808,7 +812,7 @@ current): after adding, moving or removing a package, run
 <td>Python</td>
 <td>Backend for the real car on the CAN spine</td>
 <td><code>aav_spine/(4 modules)</code></td>
-<td><code>aav_spine/arm_when_open.py</code>, <code>aav_spine/spine_bridge.py</code></td>
+<td><code>aav_spine/spine_bridge.py</code></td>
 <td><code>test/</code></td>
 <td><code>config/</code>, <code>launch/</code></td>
 </tr>
@@ -864,6 +868,15 @@ current): after adding, moving or removing a package, run
 <td>-</td>
 <td><code>test/</code></td>
 <td><code>config/</code>, <code>launch/</code></td>
+</tr>
+<tr>
+<td><a href="../../ros/safety/aav_safety_filter_rs/README.md">aav_safety_filter_rs</a></td>
+<td>Rust</td>
+<td>The safety filter for the automatic drivers, in Rust (rclrs), in shadow by default</td>
+<td><code>crates/safety-filter</code></td>
+<td><code>crates/safety-filter-node</code></td>
+<td>-</td>
+<td>-</td>
 </tr>
 <tr>
 <td><a href="../../ros/safety/aav_safety_rs/README.md">aav_safety_rs</a></td>
@@ -949,7 +962,7 @@ current): after adding, moving or removing a package, run
 <td><a href="../../ros/sim/aav_sim_models/README.md">aav_sim_models</a></td>
 <td>Python</td>
 <td>Ravensim's Python side (Ravensim</td>
-<td><code>aav_sim_models/(12 modules)</code></td>
+<td><code>aav_sim_models/(13 modules)</code></td>
 <td><code>aav_sim_models/sim_adapter.py</code>, <code>aav_sim_models/sim_camera_relay.py</code>, <code>aav_sim_models/sim_esp32.py</code>, <code>aav_sim_models/sim_gps.py</code>, <code>aav_sim_models/sim_imu.py</code>, <code>aav_sim_models/sim_lidar_relay.py</code>, <code>aav_sim_models/sim_radar.py</code>, <code>aav_sim_models/truth_localizer.py</code></td>
 <td><code>test/</code></td>
 <td><code>launch/</code></td>
@@ -1002,7 +1015,7 @@ current): after adding, moving or removing a package, run
 <td><a href="../../ros/hud/aav_dev_window/README.md">aav_dev_window</a></td>
 <td>Rust</td>
 <td>The developer window, as a test of Bevy</td>
-<td><code>src</code></td>
+<td><code>crates/ladder-core</code>, <code>crates/nav-core</code></td>
 <td>-</td>
 <td>-</td>
 <td><code>config/</code></td>

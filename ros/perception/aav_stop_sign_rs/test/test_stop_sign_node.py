@@ -1,8 +1,8 @@
 """
-The stop_sign_watcher process, in each language: a close stop sign locks, then lets go.
+The stop_sign_watcher process: a close stop sign locks, then lets go.
 
-It starts the built node (the Rust binary, or aav_detector's Python) on its own ROS
-domain, on this computer only, with hold_s 1 s, gives it the front camera's lens
+It starts the built node (the Rust binary; aav_detector's Python went on 22 Nov) on its
+own ROS domain, on this computer only, with hold_s 1 s, gives it the front camera's lens
 (CameraInfo) and plays the detector: a stop sign 100 px tall (2.57 m with that lens).
 /perception/stop_sign/distance must say where the sign is (while CLEAR), the lock must go
 on, and come off after hold_s while the same sign is still seen (PASSING ignores it).
@@ -29,7 +29,7 @@ except ImportError:
 pytestmark = pytest.mark.skipif(rclpy is None, reason='needs ROS sourced: colcon test')
 
 FRAME = 'camera_front_left_link'
-PACKAGES = {'rust': 'aav_stop_sign_rs', 'python': 'aav_detector'}
+PACKAGES = {'rust': 'aav_stop_sign_rs'}
 
 
 def stop(node):
@@ -43,7 +43,7 @@ def stop(node):
     return None
 
 
-@pytest.mark.parametrize('impl', ['rust', 'python'])
+@pytest.mark.parametrize('impl', ['rust'])
 def test_a_close_sign_locks_then_lets_go(impl):
     domain = int(os.environ.get('AAV_TEST_DOMAIN')
                  or 200 + (os.getpid() + (impl == 'python')) % 20)

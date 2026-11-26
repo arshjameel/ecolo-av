@@ -18,13 +18,11 @@ setup(
     zip_safe=True,
     maintainer='AAV 2026-27 team',
     maintainer_email='aav-team@todo.invalid',
-    description='ego: Twist from the mux to Ackermann commands for the backends.',
+    description="ego's launch file, config and maths in Python; the nodes are aav_ego_rs's.",
     license='TODO',
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
-            'ego = aav_ego.ego_node:main',
-            'look_ahead = aav_ego.look_ahead_node:main',
         ],
     },
 )

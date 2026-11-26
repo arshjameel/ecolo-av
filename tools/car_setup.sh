@@ -6,7 +6,7 @@
 # usage: bash car_setup.sh <role> [step...] [--apply] [options]
 #
 #   roles   orin          the Jetson AGX Orin (JETSON, .140)
-#           motor_pi      the Pi wired to the ESP32 (CORTEX, .120; H1)
+#           motor_pi      the Pi wired to the ESP32 (CORTEX, .145 by WiFi on 21 Nov; H1)
 #           localization  the IMU and GPS Pi (LOCALIZATION, .113)
 #           dash          the dashboard Pi with the two screens (aav-desktop, .196)
 #           camera_pi     a camera Pi on Pi OS, MediaMTX (CAM1-PI .108, CAM2-PI .118)

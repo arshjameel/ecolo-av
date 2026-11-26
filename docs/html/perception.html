@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -185,7 +189,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 <tbody>
 <tr>
 <td>Roof lidar</td>
-<td><code>lidar_scan</code> (<code>aav_lidar_rs</code>; <code>aav_lidar</code> with <code>lidar_impl:=python</code>)</td>
+<td><code>lidar_scan</code> (<code>aav_lidar_rs</code>, Rust; the Python removed 22 Nov)</td>
 <td><code>/sensors/lidar/scan</code></td>
 <td>the local costmap's <code>lidar_layer</code>; the stop zone; AMCL (<code>amcl:=true</code>); <code>behaviour</code> (<code>behaviour:=true</code>)</td>
 </tr>
@@ -345,7 +349,7 @@ a person can still look at it in RViz or Lichtblick.</p>
 <td><span class="badge b-works">works</span> on the bench</td>
 </tr>
 <tr>
-<td><code>aav_lidar</code></td>
+<td><code>aav_lidar_rs</code> (maths also in Python: <code>aav_lidar</code>)</td>
 <td>ours</td>
 <td>the roof lidar's points into a scan for the costmap and the stop zone (<a href="#the-roof-lidar">below</a>)</td>
 <td><span class="badge b-works">works</span> against a fake lidar</td>
@@ -945,7 +949,8 @@ didn't change.</p>
   <span class="badge b-untested">untested</span> on the Orin, whose cores are slower: expect a few ms.</li>
 <li><strong>The code:</strong> <code>ros/perception/aav_lane_finder</code>. <code>birds_eye.py</code> and <code>lane_lines.py</code>
   hold the maths, with no ROS, and 21 tests, most on pictures of known lanes: straight,
-  off centre, turned, curved, one line, none. <code>lane_finder.py</code> is the node.</li>
+  off centre, turned, curved, one line, none. The node is Rust: <code>aav_lane_finder_rs</code>
+  (the Python node was removed on 22 Nov).</li>
 </ul>
 <h3 id="what-it-sends-perceptionlanegeometry">What it sends: /perception/lane/geometry</h3>
 <div class="table-wrap"><table>
@@ -1200,7 +1205,7 @@ Jetson only). We write no driver: the stock ROS <code>velodyne</code> package (B
 reads it. There is no Rust ROS driver for it; if one appears, it can replace this behind
 the same topic.</p>
 <pre class="highlight"><code>VLP-16 --UDP 2368--&gt; lidar_driver --/sensors/lidar/packets--&gt; lidar_cloud --/sensors/lidar/points--&gt;
-    lidar_scan (aav_lidar) --/sensors/lidar/scan--&gt; the costmap's lidar_layer and the stop zone</code></pre>
+    lidar_scan (aav_lidar_rs) --/sensors/lidar/scan--&gt; the costmap's lidar_layer and the stop zone</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>

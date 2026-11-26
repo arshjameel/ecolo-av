@@ -702,6 +702,10 @@ def parse(argv):
                         'has a driven-wheel speed)')
     p.add_argument('--stands', action='store_true',
                    help='the wheels are off the ground (stage 3): speed capped at 0.3 m/s')
+    p.add_argument('--on-jacks', action='store_true',
+                   help="--sim, preflight: Ravensim's car really is on stands (pixi run jacks "
+                        'up --sim), so the stands lines check the real thing: the wheels '
+                        'spin, the IMU and the GPS stay still')
     p.add_argument('--max-speed', type=float, default=None,
                    help='m/s: the speed cap (default 1.0 on the car, at most 1.0; '
                         '3.0 in Gazebo, at most 5.0)')
@@ -725,6 +729,9 @@ def parse(argv):
         p.error('name a test (--list shows them)')
     if args.test != 'preflight' and (args.skip or args.no_drive):
         p.error('--skip and --no-drive are for the preflight only')
+    if args.on_jacks and not (args.sim and args.test == 'preflight'):
+        p.error('--on-jacks is for the preflight in Ravensim (--sim): on the real car '
+                '--stands already says the wheels are off the ground')
     hall = args.test in pr.HALL_TESTS
     if hall and args.hallway is None:
         p.error(f'{args.test} runs in a hallway: add --hallway LENGTH (m, measured)')

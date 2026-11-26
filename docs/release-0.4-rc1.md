@@ -55,27 +55,28 @@ Undo: `rm -rf ~/aav-jazzy`. Nothing else changes, no sudo. (Installed with `--sc
 | # | Check | You should see | If not |
 |---|---|---|---|
 | 1 | which language runs ([car day 4f](car-day.md#4f-the-rust-nodes-are-the-ones-running)) | `languages: ego_impl:=rust ... things_impl:=rust` in `car.launch.py`'s first lines | a Rust package didn't build: `~/aav-jazzy/build.log` |
-| 2 | a Rust node misbehaves | - | e-stop, stop the launch, start again with that node's fall-back: `~/aav-jazzy/aav.sh car orin -- ego_impl:=python` (the `--` is needed) |
+| 2 | a Rust node misbehaves | - | e-stop, stop the launch, if it has a fall-back (below), start again with it: `~/aav-jazzy/aav.sh car motor_pi -- legacy_impl:=python` (the `--` is needed); if it has none, the car stays stopped until the Rust is fixed |
 | 3 | the clocks | `chronyc tracking` on every computer | [Car day](car-day.md#the-clocks) |
 
-The fall-backs, one per node (the others stay Rust):
+The fall-backs, one per node (the others stay Rust). Since 22 Nov only the ESP32's bridge,
+`rc_driver` and `camera_stream` have one:
 
 | Node | Fall back to Python |
 |---|---|
-| ego + look_ahead | `ego_impl:=python` |
+| ego + look_ahead | none: the Python removed 22 Nov (`save/python-fallbacks-1`) |
 | behaviour | none: the Python removed 20 Nov (`save/python-behaviour`) |
 | sensor watchdog | none: the Python removed 20 Nov (`save/python-safety-nodes`) |
 | localization_health | none: the Python removed 20 Nov (`save/python-localization-health`) |
-| lidar_scan | `lidar_impl:=python` |
+| lidar_scan | none: the Python removed 22 Nov (`save/python-fallbacks-1`) |
 | things | none: the Python removed 20 Nov (`save/python-things`) |
-| sensor mux + output mux (the ESP32's heartbeat) | `io_mux_impl:=python` |
+| sensor mux + output mux (the ESP32's heartbeat) | none: the Python removed 22 Nov (`save/python-fallbacks-1`) |
 | legacy_uart_bridge (the ESP32's UART, the Motor Pi) | `legacy_impl:=python` |
 | rc_driver (RC via ROS) | `rc_impl:=python` |
-| lane_finder (lane keeping, the lane pose) | `lane_finder_impl:=python` |
+| lane_finder (lane keeping, the lane pose) | none: the Python removed 22 Nov (`save/python-fallbacks-1`) |
 | joy_alive (the joystick's check, between joy_node and teleop) | none: the Python removed 20 Nov (`save/python-safety-nodes`) |
-| stop_sign_watcher (twist_mux's stop-sign lock) | `stop_sign_impl:=python` |
-| point_driver (drive to a point; the Orin) and its client | `drive_to_point_impl:=python`; `pixi run drive-to-point --python ...` |
-| arm_when_open (bench and Ravensim's spine only) | `arm_when_open_impl:=python` |
+| stop_sign_watcher (twist_mux's stop-sign lock) | none: the Python removed 22 Nov (`save/python-fallbacks-1`) |
+| point_driver (drive to a point; the Orin) and its client | none: the Python removed 22 Nov (`save/python-fallbacks-1`) |
+| arm_when_open (bench and Ravensim's spine only) | none: the Python removed 22 Nov (`save/python-fallbacks-1`) |
 | camera_stream (each camera Pi stream; Rust only with `detector: none`: with RF-DETR the Python runs anyway) | `camera_stream_impl:=python` |
 
 ## Untested on the car (everything since 13 Nov)

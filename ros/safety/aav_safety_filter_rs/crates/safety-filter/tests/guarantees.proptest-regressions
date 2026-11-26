@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 52be4e034aa4250596c68ae6a6035f0a09e8d24ac8bbc5fd7df33b673769090f # shrinks to driver = Hostile { pieces: [(2.7579002506139427, -0.09505525071709515), (0.01856879439669645, -1.2389701371307913), (2.9041956209582316, 0.0)], hold: 3.550266885039675 }, car = Car { x: 1.0, y: 0.0, yaw: 0.0, v: 0.0, steer: 0.0 }

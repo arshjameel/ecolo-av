@@ -23,8 +23,6 @@ setup(
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
-            'point_driver = aav_drive_to_point.point_driver:main',
-            'drive_to_point = aav_drive_to_point.point_cli:main',
         ],
     },
 )

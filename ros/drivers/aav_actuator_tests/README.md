@@ -60,7 +60,7 @@ bars and lays the model over each pass (`hallway.py`; `docs/actuator-tests.md`,
 Executable `actuator_test` (`ros2 run aav_actuator_tests actuator_test`, wrapped by
 `tools/actuator_test.sh`). Options: `<test>`, `--list`, `--sim`, `--bench`, `--stands`,
 `--max-speed`, `--speeds`, `--angles`, `--max-distance`, `--max-time`, `--out`, `--bag`,
-`--analyse RUN_FOLDER`; for `actuator-test preflight --stands` only, `--skip SENSOR...` and `--no-drive`;
+`--analyse RUN_FOLDER`; for `actuator-test preflight --stands` only, `--skip SENSOR...`, `--no-drive` and, with `--sim`, `--on-jacks` (Ravensim's car is on stands: the stands lines check the real thing);
 for the `hall-*` tests, `--hallway LENGTH` (required), `--margin` (3 m) and `--direction there|back`.
 
 Executable `car_test` (wrapped by `tools/car_test.sh`):

@@ -2,7 +2,7 @@
 
 Ported for `ecolo-av` on 2026-11-17 (TODO 185): a Rust rewrite of our own Python node,
 `aav_lidar` (`ros/perception/aav_lidar` at commit `3e1aa38e`). No outside code: nothing to
-add to `docs/acknowledgements.md`. The Python stays, selectable with `lidar_impl:=python`.
+add to `docs/acknowledgements.md`.
 
 | Part | From the Python |
 |---|---|
@@ -25,3 +25,6 @@ add to `docs/acknowledgements.md`. The Python stays, selectable with `lidar_impl
 
 - 2026-11-17: written; `scan.py`'s ranges the same float32 on 7 clouds; `lidar_impl:=` in
   `navigation.launch.py`, `sim.launch.py` and `car.launch.py`.
+- 2026-11-22: the Python node (`aav_lidar/lidar_scan.py`) removed (Ben: "lets start removing
+  the python fall back after being tested enough times"; tag `save/python-fallbacks-1`).
+  `scan.py` and `ground.py` stay in `aav_lidar`, so `gen_vectors.py` still runs.

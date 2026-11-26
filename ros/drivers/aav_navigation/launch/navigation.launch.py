@@ -37,8 +37,8 @@ lifecycle node: each respawns 1 s after it dies, and while one is down the car s
   stop_hold         with the stop zone (aav_safety_rs): holds its stops until the zone
                     stays clear for 1 s, through twist_mux's stop_zone lock
   lidar_scan        with lidar:=true (aav_lidar_rs): the roof lidar's cloud ->
-                    /sensors/lidar/scan, for the costmap and the stop zone;
-                    lidar_impl:=python for the Python node (aav_lidar)
+                    /sensors/lidar/scan, for the costmap and the stop zone (the
+                    Python node, aav_lidar's, went on 22 Nov)
 
 The settings are config/nav2.yaml's, in Nav2's layout: our ports read the blocks they were
 tuned with (vehicle.nav2_tuned writes the car into a temporary copy; vehicle.rewrite the
@@ -61,6 +61,9 @@ Switches:
   mppi_lag_batch:=1000        mppi_lag's samples a tick (empty: 2000; TODO 152)
   mppi_lag_sampling:=smooth   mppi_lag samples the steering's change (TODO 212)
   mpc_lag_tube:=0             mpc_lag_rs's tube off (empty: 0.3 m, tuned 21 Nov)
+  mpc_barriers:=true          mpc_lag_rs keeps off the ghost (research: off by default)
+  mpc_barrier_gamma:=1        with mpc_barriers: the share of the room a tick may use, above
+                              0 up to 1 (empty: 0.05; 1: a plain distance limit, the "step")
   live_swap:=true         aav_track's tracker can change while it runs
   map_correction:=slow    the follower's held map -> odom moves toward the newest slowly
                           (TODO 186)
@@ -118,6 +121,7 @@ Send a goal: RViz "2D Goal Pose" (publishes /goal_pose), or
 
 import atexit
 import json
+import math
 import os
 import tempfile
 
@@ -249,6 +253,23 @@ def diffusion_params(nav2, v, reversing):
             'min_radius': 0.95 * vehicle.min_turning_radius(v),
             'goal_xy': float(goal['xy_goal_tolerance']),
             'goal_yaw': float(goal['yaw_goal_tolerance'])}
+
+
+def barrier_gamma(text):
+    """
+    Return mpc_barrier_gamma:= as a number in (0, 1], or raise ValueError.
+
+    Outside the capstone's scope (Ben's own research, toward his MASc thesis): the
+    barriers' gamma (docs/barriers.md), checked here so a wrong one stops the launch, not
+    the tracker after it started.
+    """
+    try:
+        gamma = float(text)
+    except ValueError:
+        gamma = math.nan
+    if not 0.0 < gamma <= 1.0:
+        raise ValueError(f'mpc_barrier_gamma:={text}: a number above 0, up to 1')
+    return gamma
 
 
 def nodes(context):
@@ -409,9 +430,9 @@ def nodes(context):
     if lidar and (amcl or not voxels):
         # Not a lifecycle node: it runs from the start. With voxels:=true only AMCL still
         # reads its scan.
-        # lidar_impl:=rust: the Rust port, the same name and topics; it reads no
-        # vehicle.yaml, so the lidar's mount and the car's outline come with it.
-        car = voxels_car(cfg) if lidar_impl == 'rust' else {}
+        # The Rust node (the only one since 22 Nov) reads no vehicle.yaml, so the
+        # lidar's mount and the car's outline come with it.
+        car = voxels_car(cfg)
         actions.append(Node(package=vehicle.LIDAR_IMPLS[lidar_impl], executable='lidar_scan',
                             name='lidar_scan', namespace='/', output='screen',
                             parameters=[params, {'use_sim_time': use_sim_time, **car}]))
@@ -564,6 +585,14 @@ def nodes(context):
         tube = LaunchConfiguration('mpc_lag_tube').perform(context).strip()
         extra = {'mpc_lag.tube': vehicle.check_mpc_lag_tube(tube) if tube
                  else vehicle.MPC_LAG_TUBE}
+        # Barriers (outside the capstone's scope: Ben's MASc research; off by default): the
+        # plan may only creep up to the ghost's keep-out circle, and goes round it where
+        # it can.
+        if LaunchConfiguration('mpc_barriers').perform(context).strip().lower() == 'true':
+            extra['barriers.topic'] = '/safety/ghost/marker'
+            gamma = LaunchConfiguration('mpc_barrier_gamma').perform(context).strip()
+            if gamma:
+                extra['barriers.gamma'] = barrier_gamma(gamma)
         actions.append(Node(
             package='aav_mpc_lag', executable='mpc_lag_rs', name='mpc_lag_rs', namespace='/',
             output='screen', respawn=True, respawn_delay=RESPAWN_DELAY,
@@ -730,9 +759,8 @@ def generate_launch_description():
                               description='rust (aav_safety_rs, the default) or python '
                                           '(aav_safety): which stop_hold runs'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
-                              description='python (aav_lidar) or rust (aav_lidar_rs, the same '
-                                          'node in Rust): which lidar_scan runs, with '
-                                          'lidar:=true'),
+                              description='rust (aav_lidar_rs; the Python removed 22 Nov): '
+                                          'which lidar_scan runs, with lidar:=true'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='rust (aav_things_rs; the Python removed 20 Nov): '
                                           'which things node runs, with things:=true'),
@@ -786,6 +814,15 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           "(batch_size); empty: nav2.yaml's 2000. 1000, a "
                                           'challenger: half the work a tick (TODO 152)'),
+        DeclareLaunchArgument('mpc_barriers', default_value='false',
+                              description='with tracker:=mpc_lag_rs and ghost:=true: true, '
+                                          'the MPC keeps off the ghost by a control '
+                                          'barrier function (research, off by default)'),
+        DeclareLaunchArgument('mpc_barrier_gamma', default_value='',
+                              description='with mpc_barriers:=true: the share of the room '
+                                          'to the ghost a tick may use, above 0 up to 1; '
+                                          "empty: the tracker's 0.05. 1: only a distance "
+                                          'limit (research, as mpc_barriers)'),
         DeclareLaunchArgument('mpc_lag_tube', default_value='',
                               description='with tracker:=mpc_lag_rs: m each side of the '
                                           'path where being off it costs nothing; empty: '

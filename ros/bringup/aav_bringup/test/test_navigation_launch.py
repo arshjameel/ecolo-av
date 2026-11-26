@@ -378,6 +378,17 @@ def test_smooth_sampling_reaches_mppi_lag():
     assert tube['mpc_lag.tube'] == 0.0
     with pytest.raises(ValueError, match='mpc_lag_tube'):
         nav_nodes(tracker='mpc_lag_rs', mpc_lag_tube='wide')
+    # The barriers (research): off unless asked; then the ghost's marker is their topic.
+    assert 'barriers.topic' not in given(nav_nodes(tracker='mpc_lag_rs')['mpc_lag_rs'])
+    fenced = given(nav_nodes(tracker='mpc_lag_rs', mpc_barriers='true')['mpc_lag_rs'])
+    assert fenced['barriers.topic'] == '/safety/ghost/marker'
+    # Their gamma: the tracker's own (0.05) unless asked; 1 is the plain distance limit.
+    assert 'barriers.gamma' not in fenced
+    step = given(nav_nodes(tracker='mpc_lag_rs', mpc_barriers='true',
+                           mpc_barrier_gamma='1')['mpc_lag_rs'])
+    assert step['barriers.gamma'] == 1.0
+    with pytest.raises(ValueError, match='mpc_barrier_gamma'):
+        nav_nodes(tracker='mpc_lag_rs', mpc_barriers='true', mpc_barrier_gamma='0')
     p = given(nav_nodes(tracker='mppi_lag', mppi_lag_sampling='smooth')['mppi_lag'])
     assert p['sampling'] == 'smooth'
     with pytest.raises(ValueError, match='mppi_lag_sampling'):
@@ -748,7 +759,7 @@ def test_the_sim_and_the_car_pass_voxels_impl_on():
         sent_to_navigation(SIM, voxels_impl='go')
 
 
-def test_lidar_scan_and_things_in_either_language():
+def test_lidar_scan_and_things_are_rust():
     nodes = nav_nodes(lidar='true', things='true')
     assert nodes['lidar_scan']._Node__package == vehicle.LIDAR_IMPLS[vehicle.DEFAULT_LIDAR_IMPL]
     assert nodes['things']._Node__package == vehicle.THINGS_IMPLS[vehicle.DEFAULT_THINGS_IMPL]
@@ -762,8 +773,9 @@ def test_lidar_scan_and_things_in_either_language():
     assert len(given(scan)['body']) == 3
     # The things: the same settings either way.
     assert given(things)['background'] == given(nodes['things'])['background']
-    python = nav_nodes(lidar='true', lidar_impl='python')['lidar_scan']
-    assert python._Node__package == 'aav_lidar' and 'lidar_xyz' not in given(python)
+    # The Python lidar_scan went on 22 Nov: refused, as any other name.
+    with pytest.raises(ValueError, match='lidar_impl:=python'):
+        nav_nodes(lidar='true', lidar_impl='python')
     with pytest.raises(ValueError, match='lidar_impl'):
         nav_nodes(lidar='true', lidar_impl='c++')
     with pytest.raises(ValueError, match='things_impl'):
@@ -776,8 +788,9 @@ def test_the_sim_and_the_car_pass_lidar_impl_and_things_impl_on():
         assert sent_to_navigation(SIM)[key] == default
         assert sent_to_navigation(SIM, world='road', **{key: 'Rust'})[key] == 'rust'
         assert sent_to_navigation(CAR, machine='all')[key] == default
-        if key == 'lidar_impl':   # the Python things went on 20 Nov
-            assert sent_to_navigation(CAR, machine='all', **{key: 'python'})[key] == 'python'
+        # The Python things went on 20 Nov, the Python lidar_scan on 22 Nov.
+        with pytest.raises(ValueError, match=f'{key}:=python'):
+            sent_to_navigation(CAR, machine='all', **{key: 'python'})
         with pytest.raises(ValueError, match=key):
             sent_to_navigation(SIM, **{key: 'go'})
 

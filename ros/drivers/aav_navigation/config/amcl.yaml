@@ -18,7 +18,7 @@ amcl:
     global_frame_id: map
     odom_frame_id: odom
     base_frame_id: base_link          # not Nav2's base_footprint
-    scan_topic: /sensors/lidar/scan   # lidar_scan (aav_lidar), 720 ranges in base_link
+    scan_topic: /sensors/lidar/scan   # lidar_scan (aav_lidar_rs), 720 ranges in base_link
     # map_topic: NOT here. The launch file sets it (amcl_map:= gives AMCL its own map), and
     # under sim.launch.py's global use_sim_time a value here beat the launch file's: the
     # 29 Oct own-map runs read Nav2's 0.25 m /map. Its default, map, is /map.

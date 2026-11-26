@@ -64,8 +64,8 @@ programs drive as on a supervised stand: there is no car to run away.
 Still one backend: spine_bridge alone reads ego's commands (/control/sim/actuator_cmd,
 from the output mux); bridge:= picks its language, rust (aav_spine_bridge, the default)
 or python (aav_spine). arm:=true (the default) arms the spine 12 s after start-up, as
-the bench does, once the output mux says OPEN (aav_spine's arm_when_open: spine_bridge
-refuses while the safety gate is shut); /spine/arm arms it again after a stop. The
+the bench does, once the output mux says OPEN (aav_spine_bridge's arm_when_open:
+spine_bridge refuses while the safety gate is shut); /spine/arm arms it again after a stop. The
 hardware e-stop and driver faults are the bench's: /vehicle/bench/hw_estop and
 /vehicle/bench/driver_faults.
 
@@ -242,6 +242,11 @@ def simulator_node(context, share, world, car, lidar, radar, lockstep, lidar_rel
                                  LaunchConfiguration('wheel_noise').perform(context)),
                              'wheel_slip': float(
                                  LaunchConfiguration('wheel_slip').perform(context)),
+                             # The car on stands (TODO 272): from the start, or by
+                             # /vehicle/sim/set_jacks while it runs.
+                             'on_stands': flag(context, 'on_stands'),
+                             'speed_wheels': LaunchConfiguration('speed_wheels').perform(
+                                 context),
                              'wheelbase': float(v['wheelbase']), 'track': float(v['track']),
                              'wheel_radius': float(v['wheel_diameter']) / 2.0,
                              'max_steering': float(v['max_steering_angle']),
@@ -310,6 +315,8 @@ def launch_setup(context):
                           'payload': float(LaunchConfiguration('payload').perform(context)),
                           'adaptive_brake': flag(context, 'adaptive_brake'),
                           'lag_scale': float(LaunchConfiguration('lag_scale').perform(context)),
+                          'free_wheel_mass': float(
+                              LaunchConfiguration('free_wheel_mass').perform(context)),
                           'actuators': LaunchConfiguration('actuators').perform(context),
                           'spine': spine, 'esp32': esp32}, sim_time]),
         # Each sensor in a process of its own, as on the car: none waits behind another.
@@ -399,6 +406,18 @@ def generate_launch_description():
                                           ', "throttle_lag=0.3,drag=0.2": a known car to '
                                           'measure (car-test --hallway --sim); the drivers '
                                           'keep vehicle.yaml'),
+        DeclareLaunchArgument('on_stands', default_value='false',
+                              description='true: the car starts on stands (on jacks): the '
+                                          'rear wheels spin, the car stays put; pixi run '
+                                          'jacks down lowers it'),
+        DeclareLaunchArgument('speed_wheels', default_value='rear',
+                              choices=['rear', 'front'],
+                              description='the wheels the odometry reads. rear: the driven '
+                                          "ones, the car the stands test needs; front: today's"
+                                          ' car (vehicle.yaml speed_wheels), 0 on stands'),
+        DeclareLaunchArgument('free_wheel_mass', default_value='20.0',
+                              description='kg the motor moves with the car on stands (the '
+                                          'spinning parts, as if on the tyres): a GUESS'),
         DeclareLaunchArgument('lag_scale', default_value='1.0',
                               description="the actuator model's throttle, brake and steering "
                                           'lags times this (a robustness test)'),
@@ -419,8 +438,8 @@ def generate_launch_description():
                                           'pi or open'),
         DeclareLaunchArgument('arm_when_open_impl',
                               default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
-                              description='rust or python: which arm_when_open arms the spine '
-                                          "(aav_spine_bridge's, or aav_spine's)"),
+                              description='rust: arm_when_open, which arms the spine '
+                                          "(aav_spine_bridge's; the Python removed 22 Nov)"),
         DeclareLaunchArgument('arm', default_value='true',
                               description='with spine:=true: arm the spine after 12 s'),
         DeclareLaunchArgument('rc_pad', default_value='false',

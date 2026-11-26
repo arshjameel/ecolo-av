@@ -18,13 +18,12 @@ setup(
     zip_safe=True,
     maintainer='AAV 2026-27 team',
     maintainer_email='aav-team@todo.invalid',
-    description="The lane finder: the lane lines in the front camera's pictures, with classic "
-                'OpenCV, published as /perception/lane/geometry for lane keeping.',
+    description="The lane finder's launch file, config and Python maths (classic OpenCV); "
+                'the node is aav_lane_finder_rs (the Python node removed 22 Nov 2026).',
     license='TODO',
     extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
-            'lane_finder = aav_lane_finder.lane_finder:main',
         ],
     },
 )

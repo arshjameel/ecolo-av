@@ -27,7 +27,6 @@ setup(
     entry_points={
         'console_scripts': [
             'detector = aav_detector.detector:main',
-            'stop_sign_watcher = aav_detector.stop_sign_watcher:main',
             'camera_obstacles = aav_detector.camera_obstacles:main',
         ],
     },

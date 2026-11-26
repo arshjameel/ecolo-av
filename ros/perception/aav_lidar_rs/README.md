@@ -2,8 +2,8 @@
 
 ## Overview
 
-`lidar_scan` in Rust (rclrs): a **drop-in** for `aav_lidar`'s Python node. The same node
-name, topics, QoS, frame and ranges. Ben, 17 Nov: "lets port the 4 expensive things to
+`lidar_scan` in Rust (rclrs): the only one. A port of `aav_lidar`'s Python node: the same
+node name, topics, QoS, frame and ranges. Ben, 17 Nov: "lets port the 4 expensive things to
 rust ... so we get our performance under control" (TODO 185).
 
 ```
@@ -11,8 +11,8 @@ rust ... so we get our performance under control" (TODO 185).
    (0.9 MB cloud)                                  (720 ranges round base_link)
 ```
 
-The default since 17 Nov, in the simulator and on the car; `lidar_impl:=python`
-(`navigation.launch.py`, `sim.launch.py`, `car.launch.py`) runs the Python one instead.
+The default since 17 Nov, in the simulator and on the car. The Python node was removed on
+22 Nov (tag `save/python-fallbacks-1`); `aav_lidar` keeps `scan.py` and `ground.py`.
 
 ## Interface
 
@@ -42,7 +42,7 @@ It reuses `aav_voxels_rs`'s `voxels` crate: `Point`, `Body`, the lidar's `Mount`
 | `lidar_xyz`, `lidar_rpy` | none: must be given | `vehicle.yaml`'s `lidar_link` |
 | `body` | none: must be given | the car's own outline: [x from, x to, half width] |
 
-The Python reads `vehicle.yaml` itself; the launch file passes the Rust node the same
+The node reads no `vehicle.yaml`: the launch file passes it the car's
 numbers (`voxels_car`, as for `aav_voxels_rs`).
 
 ## How it matches the Python
@@ -69,7 +69,7 @@ Ravensim, `things:=true`, `/clock` at 100 Hz, standing; 60 s of `ps` after 75 s
 
 - The same ranges as `scan.py`: `tests/vectors.rs` reads `vectors.json`, which
   `gen_vectors.py` writes from the Python. Change one, change both, write the vectors again.
-- The same node name and topics as the Python: only one of the two runs (`lidar_impl:=`).
+- `lidar_impl:=` takes `rust` only; it stays as a challenger's hook.
 - `lidar-scan` has no ROS; `cargo fmt` and `cargo clippy -D warnings` clean.
 
 ## Verification

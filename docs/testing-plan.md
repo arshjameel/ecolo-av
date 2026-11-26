@@ -68,7 +68,7 @@ the day itself in [Car day](car-day.md); the checks after an install in
 | The bench | `pixi run bench`, `pixi run bench-check` | by hand | Built |
 | After the install | [one page of checks](after-install.md) (phase 0) | after each upgrade | Written; untested on the car |
 | On stands | `pixi run actuator-test preflight --stands` | by hand | Built; **untested on the car** |
-| On stands, all of phase A | `pixi run car-test --stands` (`--sim --no-manual`: against its own Ravensim) | by hand | Built 19 Nov; against Ravensim 11 PASS, 3 SKIPPED (car only); **untested on the car** |
+| On stands, all of phase A | `pixi run car-test --stands` (`--sim --no-manual`: against its own Ravensim, its car on jacks since 22 Nov: the wheels spin, the car stays put) | by hand | Built 19 Nov; against Ravensim 11 PASS, 3 SKIPPED (car only); **untested on the car** |
 | In the hallway, all of phase B | `pixi run car-test --hallway` (`--sim --no-manual`: a pretend hallway) | by hand | Built 19 Nov (TODO 248); **untested on the car** |
 | On the ground | `pixi run actuator-test speed-up / coast / brake / circles / straight` | by hand, in a lot | Built; **untested on the car** |
 | A mapping drive | `pixi run record-drive` (`--sim`: its own test) | by hand | Built 19 Nov; **untested on the car** |

@@ -87,7 +87,7 @@ twist_mux:
                                 # no geofence (the turtle, CARLA) start the mux with
                                 # geofence_lock:=false: no_geofence_lock.yaml, timeout 0.
                                 # docs/geofence.md
-      stop_sign:                # aav_detector's stop_sign_watcher: true while the car stops for a
+      stop_sign:                # aav_stop_sign_rs's stop_sign_watcher: true while the car stops for a
         topic: /perception/stop_sign # sign. Priority 30 holds Nav2 (20) and the AI slot (10), never a
         timeout: 0.0            # person (100, 90), a test (60, 50, 40) or the buttons (45). Never expires on silence:
         priority: 30            # if the watcher dies while true, the car stays stopped.

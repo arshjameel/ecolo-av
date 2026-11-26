@@ -3,7 +3,7 @@
 <package format="3">
   <name>aav_lidar_rs</name>
   <version>0.1.0</version>
-  <description>lidar_scan in Rust (rclrs): a drop-in for aav_lidar's Python node (navigation.launch.py lidar_impl:=rust). The same topics, QoS and ranges: /sensors/lidar/points in; /sensors/lidar/scan, a 720-ray LaserScan in base_link, out. The maths is the lidar-scan crate, with no ROS.</description>
+  <description>lidar_scan in Rust (rclrs): the only one since 22 Nov, a port of aav_lidar's Python node (removed that day). The same topics, QoS and ranges: /sensors/lidar/points in; /sensors/lidar/scan, a 720-ray LaserScan in base_link, out. The maths is the lidar-scan crate, with no ROS.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 

@@ -25,6 +25,7 @@ since 8 Nov, the only simulator since 16 Nov** (its old name, `simulator:=own`, 
 |---|---|---|
 | `crates/sim-core` | the worlds (SDF, `model://`, OBJ), the car (`CarModel`), the ground under each wheel (`ground.rs`: slopes, kerbs), the lidars, the IMU and GPS, the loop, the camera plug-in point (`SensorPlugin`), camera lockstep (`lockstep.rs`: `CameraGate`) | no, no Bevy |
 | `crates/sim-core`, feature `shared` | `SharedCar`: the shared `car-model` crate (`aav_description`) behind `CarModel`, the same states as `ActuatorCar` to 1e-9 (`shared_car.rs`). The node doesn't use it yet: it runs `TwistFollower` behind `sim_adapter`'s model | no |
+| `crates/sim-core`, `jacks.rs` | the car on stands (TODO 272): `Stance`, which wheels spin (`FreeWheels`), what the odometry reads (`SpeedWheels`), and when the car may go up or come down (`switch`, `Refusal`) | no |
 | `crates/sim-core`, `node.rs` | what the node decides, without ROS (S5, 18 Nov): parameter checks, which service requests it accepts and why not (`Refusal`), stamps, its pace against the wall (`Pace`). Tested on any laptop | no |
 | `crates/sim-node` | the node, binary `simulator` (rclrs): ROS's messages to and from `sim-core`. Not tested by itself: that needs a ROS harness (start the binary, call its services, read its topics), like `aav_navigation`'s `test_respawn.py` | yes |
 
@@ -42,11 +43,29 @@ since 8 Nov, the only simulator since 16 Nov** (its old name, `simulator:=own`, 
 | pub | `/joint_states` | JointState, 100 Hz: four wheels, two steering joints |
 | pub | `/sensors/lidar/points` | PointCloud2, 10 Hz, `lidar_link`, 1800 x 16, reliable (`lidar`) |
 | pub | `/vehicle/sim/radar/points` | PointCloud2, 10 Hz, `radar_link`, 61 x 3, best effort (`radar`). Both clouds carry one field more than Gazebo's did: `speed`, how fast what each ray hit moves along it (a person walking; 0 for the still world), so `sim_radar` gives a mover its own Doppler speed (TODO 194) |
+| pub | `/vehicle/sim/jacks` | Bool, latched: true while the car is on stands |
 | pub | `/vehicle/sim/entities` | MarkerArray, latched: every placed model (its SDF file, its pose), for the cameras |
 | service | `/vehicle/sim/spawn_entity`, `/vehicle/sim/delete_entity` | `simulation_interfaces`: place or remove a model |
 | service | `/vehicle/sim/set_entity_state` | `simulation_interfaces/SetEntityState`: put the car (`aav`) at a pose, standing still; or a placed model at a pose, then moving at the twist (map frame: x, y, turn), as a person walking (TODO 170; the cameras draw it where it was put) |
+| service | `/vehicle/sim/set_jacks` | `std_srvs/SetBool`: true puts the car on stands, false back on the ground; refused, in words, unless it stands still and no speed is commanded |
 
-Parameters: `world`, `models`, `start_x`, `start_y`, `start_yaw`, the car's size and sensor
+### The car on stands
+
+`on_stands:=true`, or `pixi run jacks up --sim` while it runs
+([Actuator tests](../../../docs/actuator-tests.md#the-simulated-car-on-stands-pixi-run-jacks)).
+
+| On stands | Says |
+|---|---|
+| rear wheels (`/joint_states`) | spin at the car model's speed; the front wheels stand |
+| steering joints | turn as commanded |
+| `/vehicle/sim/odom` | the wheels' speed and the distance they count (`speed_wheels:=rear`; `front`: 0, as today's car) |
+| `/vehicle/sim/truth`, the IMU, the GPS, the lidar, the radar | still: the body is put back where it stood each step |
+
+Lowered, the car starts from rest, and the odometry keeps what the wheels counted in the
+air. The car is not raised: its height stays the ground's. The car's weight comes off in
+`sim_adapter` (`aav_sim_models/jacks.py`), which holds the actuator model.
+
+Parameters: `on_stands` (false), `speed_wheels` (rear), `world`, `models`, `start_x`, `start_y`, `start_yaw`, the car's size and sensor
 mounts (`aav_sim_models`'s `ravensim.launch.py` passes `vehicle.yaml`'s), `lidar`, `radar`,
 `obstacle`, `body_length` (0: drives through things), `ground_step` (0.1 m: the highest step
 a wheel rolls up; 0: flat ground), `seed`, `wheel_noise` (m/s on each wheel reading) and `wheel_slip` (a fraction: the wheels read that much too far), both 0, off, by default (the odometry then integrates the readings and drifts; `ravensim.launch.py` `wheel_noise:=`, `wheel_slip:=`, `noise_seed:=`), `step` (0.001 s), `clock_hz`

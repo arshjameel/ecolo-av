@@ -53,8 +53,10 @@ MAIN: Tuple[Step, ...] = (
     Step('estop', BEFORE, 'A person at the e-stop',
          'A second person stands at the red e-stop button.',
          'It cuts the power by itself, whatever the program does.'),
-    Step('rc', BEFORE, 'RC on, override off',
-         'Turn the RC transmitter on. The override switch off.'),
+    Step('rc', BEFORE, 'RC on and set up, override off',
+         'Turn the RC transmitter on. The override switch off. The left stick in the middle.',
+         'Its failsafe and End points must be set first: car day, checks T1 to T4. '
+         'CH6 low must read about 1100, or the Rust reads a lost RC and holds its brake.'),
     Step('bridge-off', BEFORE, "The Pi's bridge off",
          "Turn the Motor Pi's bridge off for now.",
          'The first check wants it off: then NO FRAMES is right.'),
@@ -285,6 +287,10 @@ def verdict_sentence(rows) -> Tuple[bool, str]:
     failed = next((r.check for r in rows if r.result == 'FAIL'), None)
     if failed:
         return False, f'Stop. {failed} failed. We roll back now.'
+    if any(r.result == 'WAIT' for r in rows):
+        return False, ('Not yet. The RC is lost, so the board holds its brake. Nothing is '
+                       'wrong with the board: no roll back. Set the transmitter, then we '
+                       'check again.')
     return True, 'Safe to go on.'
 
 

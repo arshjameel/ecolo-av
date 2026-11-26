@@ -7,7 +7,7 @@
 <!-- Generated from docs/acknowledgements.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Acknowledgements: what we built on</h1>
-<div class="meta">31 min read · 9 sections</div></header>
+<div class="meta">32 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -139,7 +143,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#taught-in-the-guide-19-nov">Taught in the guide (19 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#tools-and-the-build">Tools and the build</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#the-earlier-carleton-aav-teams">The earlier Carleton AAV teams</a><a href="#navigation">Navigation</a><a href="#where-the-car-is">Where the car is</a><a href="#seeing">Seeing</a><a href="#maps-and-routes">Maps and routes</a><a href="#looked-at-for-the-league-16-nov">Looked at for the league (16 Nov)</a><a href="#taught-in-the-guide-19-nov">Taught in the guide (19 Nov)</a><a href="#barriers-in-the-path-follower-22-nov">Barriers in the path follower (22 Nov)</a><a href="#simulators-and-screens">Simulators and screens</a><a href="#the-safety-filter">The safety filter</a><a href="#tools-and-the-build">Tools and the build</a></nav>
 <div class="lead"><p>Everything we copied, ported, or took an idea from, with its licence and where we used it.
 Ben, 14 Nov: "give acknowlegement to stuff we have looked at or used as insperation".
 Add a row in the same commit as the work (<code>CLAUDE.md</code>). Copied or ported code also keeps
@@ -886,6 +890,26 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 </tbody>
 </table></div>
 </section>
+<section class="card"><h2 id="barriers-in-the-path-follower-22-nov">Barriers in the path follower (22 Nov)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A. M. Ali, C. Shen, H. A. Hashim, "A linear MPC with control barrier functions for differential drive robots", IET Control Theory &amp; Applications, 2024</td>
+<td>paper (open access)</td>
+<td>idea</td>
+<td>the barrier's rule in <code>aav_mpc_lag</code>'s plan (<code>barrier.rs</code>); our model differs, and its proofs don't carry over as they are</td>
+</tr>
+</tbody>
+</table></div>
+</section>
 <section class="card"><h2 id="simulators-and-screens">Simulators and screens</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -962,6 +986,44 @@ not yet). The papers the guide names; the ones we built on are in the tables abo
 <td>-</td>
 <td>idea</td>
 <td>the "squiggly line" on the HUD and the developer window (Ben, 7 Nov)</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section class="card"><h2 id="the-safety-filter">The safety filter</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Licence</th>
+<th>Kind</th>
+<th>Where we used it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ames, Coogan, Egerstedt, Notomista, Sreenath, Tabuada, <em>Control Barrier Functions: Theory and Applications</em>, ECC 2019 (<a href="https://arxiv.org/abs/1903.11199">arXiv:1903.11199</a>)</td>
+<td>paper</td>
+<td>idea</td>
+<td>the barrier condition <code>ḣ ≥ −α·h</code> and the minimum-change filter (<code>aav_safety_filter_rs</code>)</td>
+</tr>
+<tr>
+<td>Mhaskar, El-Farra, Christofides, <em>Stabilization of nonlinear systems with state and control constraints using Lyapunov-based predictive control</em>, Systems &amp; Control Letters 2006</td>
+<td>paper</td>
+<td>idea</td>
+<td>a Lyapunov decrease asked of the applied command (the filter's Lyapunov term, with a slack)</td>
+</tr>
+<tr>
+<td>Shen, Shi, Buckham, <em>Trajectory Tracking Control of an Autonomous Underwater Vehicle Using Lyapunov-Based Model Predictive Control</em>, IEEE TIE 2018</td>
+<td>paper</td>
+<td>idea</td>
+<td>the same, on a vehicle</td>
+</tr>
+<tr>
+<td>The look-ahead point (the standard feedback-linearising output of the unicycle, from mobile-robot control)</td>
+<td>textbook method</td>
+<td>idea</td>
+<td><code>p = e_y + ℓ·sin e_ψ</code>: the lane barrier that the turn rate moves at once</td>
 </tr>
 </tbody>
 </table></div>

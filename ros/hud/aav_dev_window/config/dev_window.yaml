@@ -28,3 +28,8 @@ road_ahead: /world/road_ahead                    # RoadAhead, map: the road ahea
 ahead: /ego/ahead                                # DiagnosticStatus: the gap, the stop, the room
 route: /drivers/nav/route/path                   # Path, map, latched: the street route (street_router)
 things: /world/things                            # Things, odom: the things near the car, named by the camera (aav_things_rs)
+local_costmap: /drivers/nav/costmap/local        # OccupancyGrid, odom: the window rolling with the car
+ghost: /safety/ghost/marker                      # Marker, map: the ghost (aav_ghost), DELETE when it goes
+keep_out: /drivers/nav/track/barrier_watch/keep_out   # Marker, map, latched: the barrier's keep-out circle (pixi run barrier-watch, research)
+stop_box: /safety/stop_zone/box                  # PolygonStamped, base_link: the stop zone's box in use
+stop_state: /safety/stop_zone/state              # CollisionMonitorState: what the stop zone does, on each change

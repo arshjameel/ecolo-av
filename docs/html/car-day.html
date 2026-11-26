@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -1365,7 +1369,7 @@ reflash to JetPack 7.2 (Q24), and the engine built again there (an engine is tie
 its TensorRT version).</p>
 </div>
 <h3 id="4e-the-motor-pi">4e. The Motor Pi</h3>
-<p>🔒 H1: is it CORTEX (.120)? Then the same kit, the same steps 4b and 4c there.</p>
+<p>🔒 H1: is it CORTEX (.145 on 21 Nov, by WiFi: check <code>hosts.txt</code>)? Then the same kit, the same steps 4b and 4c there.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1378,7 +1382,7 @@ its TensorRT version).</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><code>ssh &lt;user&gt;@192.168.1.120</code>, then <code>uname -m</code></td>
+<td><code>ssh &lt;user&gt;@192.168.1.145</code>, then <code>uname -m</code></td>
 <td><code>aarch64</code></td>
 <td><code>armv7l</code>: a 32-bit OS, the kit can't run: write it down</td>
 </tr>
@@ -1399,7 +1403,7 @@ its TensorRT version).</p>
 <p><strong>Stop point:</strong> our stack built on the Orin and the Motor Pi; the engine built (or why not).</p>
 <h3 id="4f-the-rust-nodes-are-the-ones-running">4f. The Rust nodes are the ones running</h3>
 <p>Since 16 Nov (Ben) four nodes run in <strong>Rust</strong> on the car by default; since 17 Nov six. Since
-20 Nov some have no Python twin left (below: "none"); the rest stay one switch away. Check this each time you start <code>car.launch.py</code>.</p>
+20 and 22 Nov most have no Python twin left (below: "none"); only the ESP32's bridge, <code>rc_driver</code> and <code>camera_stream</code> stay one switch away. Check this each time you start <code>car.launch.py</code>.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1412,7 +1416,7 @@ its TensorRT version).</p>
 <tr>
 <td>ego + look_ahead</td>
 <td><code>aav_ego_rs</code></td>
-<td><code>ego_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>behaviour (with <code>behaviour:=true</code>)</td>
@@ -1432,7 +1436,7 @@ its TensorRT version).</p>
 <tr>
 <td>lidar_scan (the flat scan)</td>
 <td><code>aav_lidar_rs</code></td>
-<td><code>lidar_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>things (with <code>things:=true</code>)</td>
@@ -1442,7 +1446,7 @@ its TensorRT version).</p>
 <tr>
 <td>sensor mux + output mux (the ESP32's heartbeat; the Motor Pi alone too)</td>
 <td><code>aav_io_mux_rs</code></td>
-<td><code>io_mux_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>legacy_uart_bridge (the ESP32's UART, on the Motor Pi)</td>
@@ -1457,7 +1461,7 @@ its TensorRT version).</p>
 <tr>
 <td>lane_finder (with the <code>lane</code> part; since 18 Nov)</td>
 <td><code>aav_lane_finder_rs</code></td>
-<td><code>lane_finder_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>joy_alive (the joystick's check, wherever teleop runs)</td>
@@ -1467,7 +1471,7 @@ its TensorRT version).</p>
 <tr>
 <td>stop_sign_watcher (the stop_signs part, next to the mux)</td>
 <td><code>aav_stop_sign_rs</code></td>
-<td><code>stop_sign_impl:=python</code></td>
+<td>none: the Python removed 22 Nov (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>camera_stream (the camera_stream part, only with <code>detector: none</code> in <code>orin.yaml</code>: RF-DETR runs in the Python one; since 18 Nov)</td>
@@ -1506,11 +1510,26 @@ its TensorRT version).</p>
 </tr>
 </tbody>
 </table></div>
-<p><strong>If a Rust node misbehaves:</strong> stop the car (e-stop), stop the launch, and start it again
-with that node's switch added to the same command, such as <code>... car.launch.py machine:=orin ... ego_impl:=python</code>.
-With the short form, put <code>--</code> before the switch: <code>~/aav-jazzy/aav.sh car orin -- ego_impl:=python</code>
-(without <code>--</code>, Pixi stops: "received more arguments than expected"). One switch
-per node; the others stay Rust. Write down what you saw: it decides whether the Rust stays.</p>
+<p><strong>If a Rust node misbehaves:</strong> stop the car (e-stop) and stop the launch. Write down what
+you saw.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The node</th>
+<th>Then</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>has a fall-back (the bridge, <code>rc_driver</code>, <code>camera_stream</code>)</td>
+<td>start again with its switch added, such as <code>... car.launch.py machine:=motor_pi ... legacy_impl:=python</code>. Short form, with <code>--</code> before the switch: <code>~/aav-jazzy/aav.sh car motor_pi -- legacy_impl:=python</code> (without <code>--</code>, Pixi stops: "received more arguments than expected")</td>
+</tr>
+<tr>
+<td>has none (the rest, since 20 and 22 Nov)</td>
+<td>no switch: the car stays stopped until the Rust is fixed. The Python as it was is in git at the <code>save/python-*</code> tags</td>
+</tr>
+</tbody>
+</table></div>
 </section>
 <section class="card"><h2 id="a6-the-steering-actuators-ends-way-a">A6 · The steering actuator's ends, Way A</h2>
 <p><strong>Who:</strong> the hardware lead, and the laptop person. <strong>How long:</strong> 45 min. <strong>Bring:</strong> a

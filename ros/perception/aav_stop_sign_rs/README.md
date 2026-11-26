@@ -4,7 +4,8 @@
 
 `stop_sign_watcher` in Rust (rclrs): **the default since 17 Nov** (Ben: "I don't think we
 want to do this again later"), in place of `aav_detector`'s Python node. The same node
-name, topics, parameters and answers. `stop_sign_impl:=python` falls back.
+name, topics, parameters and answers. The only one since 22 Nov, when the Python node was
+removed (tag `save/python-fallbacks-1`); its rules, `stop_sign.py`, stay in `aav_detector`.
 
 ```
 detector ─► /perception/detections ─► stop_sign_watcher ─► /perception/stop_sign  (twist_mux's lock, 30)
@@ -41,9 +42,9 @@ Parameters: `stop_distance_m` 4.7, `focal_px` 343, `sign_height_m` 0.75, `min_sc
 
 ### Which one runs
 
-`stop_sign_impl:=rust|python` (`vehicle.STOP_SIGN_IMPLS`, default `rust`):
-`car.launch.py` (the `stop_signs` part), `sim.launch.py` and `bench.launch.py` (with
-`perception:=true`). Not in `stacks.yaml`: the same algorithm in another language.
+This one: `car.launch.py` (the `stop_signs` part), `sim.launch.py` and `bench.launch.py`
+(with `perception:=true`). `stop_sign_impl:=` (`vehicle.STOP_SIGN_IMPLS`) takes `rust`
+only; it stays as a challenger's hook.
 
 ## Invariants
 
@@ -57,9 +58,9 @@ Parameters: `stop_distance_m` 4.7, `focal_px` 343, `sign_height_m` 0.75, `min_sc
 - `stop-sign-core` has no ROS; no `unwrap` in library code; `cargo fmt` and
   `cargo clippy -D warnings` clean. `Cargo.lock` committed; builds use `--locked`.
 
-## Where it differs from the Python
+## Where it differed from the Python node
 
-| Python | Rust |
+| Python (removed 22 Nov) | Rust |
 |---|---|
 | tf2's buffer (`lidar_distance` only) | `aav_behaviour_rs`'s TF buffer: the same lookups at the picture's stamp, interpolated; no wait for a late transform (the Python's timeout is 0 too) |
 | log lines with `:g` numbers | the same words, Rust's own number format |

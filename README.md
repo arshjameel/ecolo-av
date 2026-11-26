@@ -115,7 +115,7 @@ reaches a real car on the same network. A family is one command and a word after
 | `rc-pad` | the RC's rules without the car: a PS4 gamepad as the FS-i6X (left stick the pedal, right stick stop, give and steering, R1 the mode switch, L1 held the radio lost), through the firmware's own RC logic, driving `spine_sim`'s model car in rviz. `mode_start:=low` starts in normal |
 | `keyboard` | drive from the keyboard, in a second terminal: `keyboard --local` with `turtle` or `bench`, `keyboard --sim` with `sim`. With no flag it drives whatever shares the ROS domain: on the car's network, the car |
 | `sim` | Ravensim, our own simulator, plays the car (Gazebo went on 16 Nov; with no GPU put `tools/software_gl.sh` in front), driven by our own stack (`stack:=ours`, the default since 14 Nov; `stack:=best` for the champions, [the league](docs/league.md); Nav2 went on 17 Nov); `world:=road`, `hud:=true`, `sim_speed:=3`... |
-| `demo` | the whole simulated car at once: the simulator, RViz, the HUD and the map window. `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |
+| `demo` | the whole simulated car at once: the simulator, the nav screen (ours: `nav-view`), the HUD and the map window. `demo --rviz` adds RViz (only when asked). `demo --debug` adds the debug HUD (the lidar's cubes, NDT, where each localizer puts the car); `demo --fullscreen` |
 | `pick` | a menu of the switches (who steers, where-am-I, speed loop), so you needn't remember them: prints the command, saves it, runs it; `pick last` runs it again ([Switches](docs/switches.md)) |
 | `bench` | the real car's software, with stand-ins for the hardware |
 | `view` | the car's model in RViz |
@@ -123,6 +123,7 @@ reaches a real car on the same network. A family is one command and a word after
 | `drive-to-point` | drive to one point and stop smoothly: `drive-to-point --sim --ahead 20` |
 | `ghost` | a pretend person only navigation sees, to test stopping: `ghost ahead 10` |
 | `sim-fault` | make a simulated sensor fail on purpose: `sim-fault gps stop`, then `sim-fault gps ok` |
+| `jacks` | put Ravensim's car on stands or back on the ground, next to `pixi run sim`: `jacks up --sim` (the rear wheels spin and steer, the car stays put), `jacks down --sim` (refused while the wheels spin), `jacks status --sim`. The simulator only ([docs](docs/actuator-tests.md#the-simulated-car-on-stands-pixi-run-jacks)) |
 
 ### The screens
 
@@ -135,9 +136,10 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 | `debug-hud` | the debug screen: the lidar's cubes, the localizers, every sensor |
 | `hw-panel` | the hardware panel: every sensor's number, and simple buttons (hold Space to drive) for Ravensim or the bench, beside `sim` or `demo --debug` (this computer only) |
 | `ravensim` | watch Ravensim: the sim and the developer window live on it, in one go; `world:=campus` or any sim switch (this computer only) |
+| `barrier-watch` | watch the barriers in Ravensim (Ben's research, outside the capstone's scope): one drive past a ghost with the follower `plain`, `step` (a hard distance limit) or `barrier`; `--speed 3`, `--offset 0.4`, `--side-by-side`, `--headless`; our navigation view from above (the mode in its title; `--rviz` adds RViz) and one line of result (this computer only; [Barriers](docs/barriers.md#watch-it-in-ravensim)) |
 | `dev-window` | the developer window (Bevy): Ben's layout. Pretend data; `--live` beside `demo` or `sim`; `--watch` listens only |
 | `sim-cameras` | Ravensim's cameras (Bevy, offscreen) on their own: the timing check; `--ros` publishes the car's camera topics (this computer only). `sim` starts them itself |
-| `rviz` | RViz with the driving layout: map, costmaps, path, car |
+| `rviz` | RViz with the driving layout: map, costmaps, path, car. The stock viewer, kept as a reference: nothing opens it by default any more (`nav-view` is ours) |
 | `graph` | a live picture of the nodes and topics |
 
 ### Check that it works
@@ -167,9 +169,13 @@ Add `--demo` to any of the four for pretend data: no ROS, no car, no build.
 |---|---|
 | `car` | the real car: `car orin` (or `motor_pi`, `laptop`, `all`) |
 | `estop` | block every driver (the car brakes) |
-| `clear` | a person clears a latch: `clear estop`, `clear gate` (the output mux's STOP), `clear geofence` (car back inside), `clear watchdog` (the sensor watchdog's faults) |
+| `clear` | a person clears a latch: `clear estop`, `clear gate` (the output mux's STOP), `clear geofence` (car back inside), `clear watchdog` (the sensor watchdog's faults); `--sim` after any of them: a simulator on this computer only |
 | `actuator-test` | the actuator tests, on stands and in a lot: `actuator-test --list`. The preflight on stands, every sensor checked: `actuator-test preflight --stands` |
-| `car-test` | phase A on stands, one command and one report: `car-test --stands` runs the preflight, every sensor, the steering, throttle on free wheels and the faults on purpose; `--sim` against its own Ravensim, `--no-manual`, `--only` ([docs](docs/actuator-tests.md#car-test-the-whole-stands-test)). Phase B in a measured hallway: `car-test --hallway` (the transfer functions with error bars, the model laid over each pass; `--sim` a pretend hallway; `--analyse <session>`) ([docs](docs/actuator-tests.md#car-test-hallway-the-transfer-functions)) |
+| `ladder` | the test ladder, with the progress kept between days: ten rungs named for what the car can do ([the plan](docs/wrap-up.md)). `ladder` shows every rung, the simulator's side and the car's; `ladder next`; `ladder run 1` runs rung 1 in the simulator, records it and saves its report page (the question, the verdict, the graphs); `ladder report 1 --open`; `ladder run code` (a check that moves no car); `ladder record 1 pass --car`. A rung not built is listed, never run. It never moves the car ([Proving it](docs/proving-it.md)) |
+| `nav-view` | the navigation view, for a second screen: the developer window's map panel alone in a small window (Bevy): the map, both costmaps, the plan, the car's trail and body, the stop zone's box, the ghost, a goal by click, a scale. Pretend data alone; `--live` beside a simulator here; `--watch` listens only ([what RViz was for](docs/hud.md#rviz-and-ours)) |
+| `ladder-window` | the tests screen (Bevy, no ROS): the ten rungs, the simulator beside the car; a rung's question and its **Run**, with the console and Stop; its answer: a verdict line, graphs with their numbers, the faults, **Open the report**; the car's command is only shown, to copy. `--pretend`: sample data ([Proving it](docs/proving-it.md#the-tests-screen-pixi-run-ladder-window)) |
+| `dry-run` | the dry run of everything we will do with the car: Ravensim, its picture and the test ladder's window attached to it, in one go; `--panel` adds the hardware panel, `--debug` the debug screen. The window's runs move the car you see. This computer only; Ctrl-C stops everything ([Proving it](docs/proving-it.md#the-dry-run-pixi-run-dry-run)) |
+| `car-test` | phase A on stands, one command and one report: `car-test --stands` runs the preflight, every sensor, the steering, throttle on free wheels and the faults on purpose; `--sim` against its own Ravensim, `--sim --attach` against the one already running here (`pixi run dry-run`), `--no-manual`, `--only` ([docs](docs/actuator-tests.md#car-test-the-whole-stands-test)). Phase B in a measured hallway: `car-test --hallway` (the transfer functions with error bars, the model laid over each pass; `--sim` a pretend hallway; `--analyse <session>`) ([docs](docs/actuator-tests.md#car-test-hallway-the-transfer-functions)) |
 | `calibrate-camera` | calibrate a streamed camera: `calibrate-camera board` prints the checkerboard |
 | `doctor` | can this computer join the car's ROS network? Says what to fix |
 | `link-check` | did the Motor Pi's frames reach the ESP32? `link-check <bag> --esp32 <file>`: PASS, FAIL or NOT TESTED; a parked car is never a PASS ([docs](docs/hardware-debug.md)) |
@@ -191,6 +197,8 @@ Flashing writes a board: on the bench only.
 |---|---|
 | `pico` | our Rust Pico 2 boards: `pico <spine, wheel or sentinel> <tools, build or flash>`. `build` makes the UF2 file to drag on; `flash` goes through a debug probe (`tools` installs probe-rs once) |
 | `esp` | the Rust firmware for today's ESP32 board: `esp tools` (once), `esp build`, `esp flash`, `esp qemu-tools` (once), `esp qemu-check` (does it brake within 0.2 s when the heartbeat stops?), `esp first-check [port]` (right after a flash: SAFE TO GO ON or STOP; `--qemu` on the QEMU build), `esp walk [port]` (walks you through the whole first flash, one step at a time, shown and spoken; `--dry-run` runs nothing) |
+| `espflash` | Espressif's flashing tool, as `esp tools` installed it: `espflash list-ports` (does this computer see a board?), `espflash board-info`, `espflash read-flash`, `espflash flash`. No port listed means the cable or adapter carries no data: nothing can flash until one shows |
+| `-e firmware esptool` | Espressif's `esptool.py`, PlatformIO's copy: `-e firmware esptool --chip esp32 chip_id` |
 | `-e firmware legacy-esp32` | builds today's C++ ESP32 firmware with PlatformIO (`-t upload` flashes it) |
 
 ### Perception, AI and maps

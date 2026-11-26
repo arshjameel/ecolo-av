@@ -3,7 +3,7 @@
 Ported for `ecolo-av` on 2026-11-15 (TODO 185): a Rust rewrite of our own Python nodes and
 modules, `aav_ego` (Ben's code, 10 Oct onward; `ros/ego/aav_ego` and
 `ros/bringup/aav_description` at commit `bc5a1cba`). No outside code: nothing to add to
-`docs/acknowledgements.md` but CPython's `hypot` (below). The Python stays, as the default.
+`docs/acknowledgements.md` but CPython's `hypot` (below).
 
 | Part | From the Python |
 |---|---|
@@ -38,4 +38,7 @@ code), so that the Rust gives Python's last bit. `docs/acknowledgements.md` has 
 ## Changes
 
 - 2026-11-15: written; `ego_impl:=` in `ego.launch.py` and `sim.launch.py`.
+- 2026-11-22: the Python nodes (`aav_ego`'s `ego_node.py`, `look_ahead_node.py`) removed
+  (Ben: "lets start removing the python fall back after being tested enough times"; git tag `save/python-fallbacks-1`).
+  The maths modules stay in `aav_ego`, so `gen_vectors.py` still runs.
 - 2026-11-15 (TODO 176): the Rust API Guidelines pass: `#[must_use]` on pure functions, doc comments, `Debug`, and the lints that keep them; no change in behaviour.

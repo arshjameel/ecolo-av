@@ -15,8 +15,8 @@ to ego. A person always outranks the computer.
 | [aav_rc_rs](./aav_rc_rs/README.md) | the same `rc_driver` in Rust, the default since 17 Nov | `/drivers/rc/cmd_vel` | 95 |
 | [aav_actuator_tests](./aav_actuator_tests/README.md) | stage-3 and stage-4 actuator tests | `/drivers/tests/cmd_vel` | 60 |
 | [aav_scripted](./aav_scripted/README.md) | `/scripted_drive`: one speed profile | `/drivers/scripted/cmd_vel` | 50 |
-| [aav_drive_to_point](./aav_drive_to_point/README.md) | `/drive_to_point`: drive to one GPS or map point and stop (Python: the fall-back, `drive_to_point_impl:=python`) | `/drivers/point/cmd_vel` | 25 |
-| [aav_drive_to_point_rs](./aav_drive_to_point_rs/README.md) | the same `point_driver` and `drive_to_point` client in Rust, the default since 18 Nov | `/drivers/point/cmd_vel` | 25 |
+| [aav_drive_to_point](./aav_drive_to_point/README.md) | the point driver's launch file, config and Python maths (its Python node and client removed 22 Nov) | none | — |
+| [aav_drive_to_point_rs](./aav_drive_to_point_rs/README.md) | `/drive_to_point`: drive to one GPS or map point and stop; `point_driver` and its `drive_to_point` client in Rust, the default since 18 Nov, the only ones since 22 Nov | `/drivers/point/cmd_vel` | 25 |
 | [aav_navigation](./aav_navigation/README.md) | navigation for a car: the launch file and settings (`nav2.yaml`, in Nav2's layout) that start our map server, costmaps, planner, navigator, follower, smoother and stop zone; the maps. Nav2 itself went on 17 Nov ([as it was](../../docs/history/nav2-as-it-was.md)) | `/drivers/nav/cmd_vel` | 20 |
 | [aav_track](./aav_track/README.md) | trial path followers (pure pursuit, Stanley, LQR, MPC, MPC with speed) in `mppi_lag`'s place: `tracker:=` (`docs/trials.md`) | `cmd_vel_nav`, inside navigation's slot | (20) |
 | [aav_mppi_lag](./aav_mppi_lag/README.md) | the path follower: Nav2's MPPI ported to Rust, its model with the actuators' lag: `tracker:=mppi_lag`, the default ([page](../../docs/mppi-lag.md)); says `/drivers/nav/lag_aware` | `cmd_vel_nav`, inside navigation's slot | (20) |

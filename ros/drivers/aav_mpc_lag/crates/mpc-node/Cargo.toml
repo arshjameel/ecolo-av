@@ -18,6 +18,8 @@ car-model = { path = "../../../../bringup/aav_description/car-model" }
 ctrlc = { version = "3", features = ["termination"] }
 # The one-shot channel between the action's task and the tick.
 futures = "0.3"
+# The one stopping law, for the barriers' stop rule (as ego builds it).
+ego-core = { path = "../../../../ego/aav_ego_rs/crates/ego-core" }
 mpc-lag = { path = "../mpc-lag" }
 # Reused from aav_mppi_lag, not copied: the held map -> odom (TODO 186) and Nav2's goal
 # and progress checks (the same as aav_track's checks.py).

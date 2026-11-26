@@ -4,6 +4,17 @@ The sensor mux and the output mux: where the data comes from, and where the comm
 go. Together they make sure a simulator's commands, or a run on simulated data, can
 never drive the real car (`docs/sources-and-targets.md`, `docs/plan.md` S-4).
 
+The two nodes run in Rust: [`aav_io_mux_rs`](../aav_io_mux_rs/README.md). This package's
+Python nodes were removed on 22 Nov 2026 (Ben: "lets start removing the python fall back
+after being tested enough times"; git tag `save/python-fallbacks-1`).
+
+| Here | What |
+|---|---|
+| `launch/io_mux.launch.py` | starts the Rust muxes; every profile includes it |
+| `provenance.py`, `heartbeat.py`, `muxes.py` | the rules in Python, no ROS: the Rust's yardstick; `stack.launch.py` imports `choose` |
+| `domains.py` | `free_domain()`, for tests and checks |
+| `test/test_real_backend_guard.py` | the real-backend guard, on the Rust muxes |
+
 ```
 /system/source (who says REAL, SIM, BENCH, REPLAY) + the ROS graph
       -> sensor_mux -> /system/sensor_mux/state -> output_mux (the gate)
@@ -25,16 +36,16 @@ topics (pictures, point clouds) cost nothing extra.
 
 ## Interface
 
-Launch: `ros2 launch aav_io_mux io_mux.launch.py target:=car|sim|bench|turtle|carla [source:=real|sim|bench|replay] [io_mux_impl:=rust|python]`.
+Launch: `ros2 launch aav_io_mux io_mux.launch.py target:=car|sim|bench|turtle|carla [source:=real|sim|bench|replay] [io_mux_impl:=rust]`.
 An empty `target` starts no output mux (a replay drives nothing). An empty `source`
 takes the target's. A source the target can't take is refused before anything starts.
 
-**Which language.** `io_mux_impl:=rust`, the default since Ben, 17 Nov ("Rust
-tomorrow"), starts both muxes from [`aav_io_mux_rs`](../aav_io_mux_rs/README.md): the same
-node names, topics and answers. `io_mux_impl:=python` starts this package's, the
-fall-back. `car.launch.py` and `sim.launch.py` pass it on.
+**Which language.** Rust: `io_mux_impl:=rust`, the default since Ben, 17 Nov ("Rust
+tomorrow"), starts both muxes from [`aav_io_mux_rs`](../aav_io_mux_rs/README.md). It is the
+only value since 22 Nov; the switch stays as a hook. `car.launch.py` and `sim.launch.py`
+pass it on.
 
-**`sensor_mux`**
+**`sensor_mux`** (the node is `aav_io_mux_rs`'s)
 
 | Item | What |
 |---|---|
@@ -45,7 +56,7 @@ fall-back. `car.launch.py` and `sim.launch.py` pass it on.
 It watches `provenance.SENSORS`: IMU, GPS, three cameras, radar, lidar, `/vehicle/odom`,
 `/vehicle/wheels`, `/vehicle/status`, `/vehicle/battery`.
 
-**`output_mux`**
+**`output_mux`** (the node is `aav_io_mux_rs`'s)
 
 | Item | What |
 |---|---|
@@ -61,7 +72,6 @@ Modules:
 | `provenance.py` | the rules, no ROS: `SOURCES`, `TARGETS`, `SENSORS`, `command_topic`, `choose`, `Announcers`, `foreign`, `check_sensors`, `Hold`, `Report`, `Gate` |
 | `heartbeat.py` | no ROS: `heartbeat_topic(target)`, `Counter.beat()` (1 ... 255, 0) |
 | `muxes.py` | no ROS: `SensorMuxLogic`, `OutputMuxLogic`, `screen_names`: each node's work, each message and tick in, what to publish and log out. The Rust twins are checked against it |
-| `sensor_mux.py`, `output_mux.py` | the two ROS nodes: messages into `muxes.py`, its answers out |
 | `domains.py` | `free_domain()`: a free ROS domain (150-230) for a test or check; used by the guard test, `sim_check.py`, `bench_check.py` |
 
 ## Invariants
@@ -93,8 +103,8 @@ Modules:
 
 ## Side Effects
 
-- Publishes the topics above; logs each state change (STOP as an error).
-- Reads the ROS graph (`get_publishers_info_by_topic`) every tick.
+- The nodes (Rust) publish the topics above, log each state change (STOP as an error),
+  and read the ROS graph every tick.
 - `domains.py` starts probe nodes on other ROS domains and sets
   `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST` in its process.
 
@@ -112,4 +122,4 @@ runs it). `pixi run test` runs everything.
 | `test_provenance.py` | the rules: choose, announcers, check, hold, gate |
 | `test_heartbeat.py` | the counter wraps in a byte |
 | `test_vectors.py` | `muxes.py` still gives the answers the Rust is checked against (`aav_io_mux_rs`'s `vectors.json`) |
-| `test_real_backend_guard.py` | real nodes on a private domain: a SIM announcement stops DRIVE_CMD frames to the real spine_bridge (needs ROS) |
+| `test_real_backend_guard.py` | real nodes on a private domain (the Rust muxes; `spine_bridge` in Rust and in Python): a SIM announcement stops DRIVE_CMD frames to the real spine_bridge (needs ROS) |

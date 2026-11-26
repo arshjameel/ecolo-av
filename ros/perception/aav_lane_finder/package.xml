@@ -3,16 +3,13 @@
 <package format="3">
   <name>aav_lane_finder</name>
   <version>0.1.0</version>
-  <description>The lane finder: classic OpenCV finds the lane lines in the front camera's pictures (a bird's-eye warp of a flat road, a mask for the paint, sliding windows, a second-order fit per line) and publishes /perception/lane/geometry, which our costmap draws as lane costs (lane_source:=camera) and aav_lane_pose reads.</description>
+  <description>The lane finder's launch file (lane_finder.launch.py), its config (lane_finder.yaml) and its maths in Python with no ROS (birds_eye.py, lane_lines.py: a bird's-eye warp of a flat road, a mask for the paint, sliding windows, a second-order fit per line; classic OpenCV). The node that publishes /perception/lane/geometry is aav_lane_finder_rs's (or the learned challenger's); the Python node was removed on 22 Nov 2026.</description>
   <maintainer email="aav-team@todo.invalid">AAV 2026-27 team</maintainer>
   <license>TODO</license>
 
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>cv_bridge</exec_depend>
   <exec_depend>aav_lane_geometry</exec_depend>
   <exec_depend>aav_description</exec_depend>
-  <!-- lane_finder_impl:=rust, the default: the Rust node. -->
+  <!-- lane_finder_impl:=rust, the default: the Rust node (the only classic one). -->
   <exec_depend>aav_lane_finder_rs</exec_depend>
   <!-- lane_finder_impl:=learned, a challenger (TODO 262b): the node is built on a Mac, and
        on Linux only with -DLANE_LEARNED=ON. -->

@@ -4,7 +4,7 @@ The whole stack in a simulator: same nodes and configs as the car, simulated har
   ros2 launch aav_bringup sim.launch.py [stack:=ours|best|car|]
       [pose:=] [path:=] [steer:=] [lanes:=]
       [world:=empty|test_lot|road|campus] [nav:=true]
-      [teleop:=false] [rviz:=true]
+      [teleop:=false] [rviz:=false]
       [perception:=false] [lane:=false|true] [camera_obstacles:=false] [hud:=false]
       [map:=false] [foxglove:=false] [chase_camera:=true] [cameras:=true]
       [obstacle:=false] [start_x:=0.0] [start_y:=0.0] [start_yaw:=0.0] [lidar:=true] [radar:=true]
@@ -43,7 +43,7 @@ the stack's pick; a single switch given by hand (planner:=) still wins over both
 stack:= (empty): no stack, each switch as given, else the champions'. The real
 car (car.launch.py) keeps its own choices until ours wins there too.
   pixi run -e ml sim world:=road perception:=true  adds the detector and the stop-sign watcher
-  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Ravensim, RViz, navigation, the HUD
+  pixi run sim world:=test_lot sim_speed:=3 hud:=true   Ravensim, navigation, the HUD
   pixi run sim world:=test_lot map:=true           ... and the big screen's map window
 
 world:=empty pairs with the empty map (phase 2); world:=test_lot with
@@ -110,6 +110,10 @@ bench's argument names:
                       jitter (TODO 168)
                       mppi_lag_batch:=1000: mppi_lag's samples a tick (empty: 2000),
                       a challenger: half the work a tick (TODO 152; steer:=mppi_lag_1k)
+                      mpc_barriers:=true: with tracker:=mpc_lag_rs ghost:=true, the
+                      MPC keeps off the ghost (research, off by default)
+                      mpc_barrier_gamma:=1: with mpc_barriers, the share of the room
+                      a tick may use (empty: 0.05; 1: a plain distance limit)
                       mpc_lag_tube:=0: mpc_lag_rs's tube off (empty: 0.3 m, tuned
                       21 Nov: it leaves the car alone that near the path, less sway)
                       mppi_lag_sampling:=smooth: mppi_lag samples the steering's
@@ -189,11 +193,12 @@ bench's argument names:
   voxels:=true        our local costmap and the stop zone read the lidar as 0.25 m
                       cubes (aav_voxels, a trial: docs/designs/2026-10-30_voxels.md)
                       instead of the flat scan; only with the lidar
-  lidar_impl:=python  the Python lidar_scan (aav_lidar) in the Rust one's place (the
-                      default since 17 Nov): the same scan
-  lane_finder_impl:=python  the Python lane_finder (aav_lane_finder, OpenCV) in the Rust
-                      one's place (the default since 18 Nov), with lane:=true or
-                      lane_pose:=true: the same topics and lanes
+  lidar_impl:=rust    lidar_scan is aav_lidar_rs's (the default since 17 Nov; the Python
+                      one went on 22 Nov, tag save/python-fallbacks-1)
+  lane_finder_impl:=learned  the learned lane_finder (aav_lane_finder_learned, a
+                      challenger) in the Rust one's place (aav_lane_finder_rs, the default
+                      since 18 Nov; the Python one went on 22 Nov), with lane:=true or
+                      lane_pose:=true: the same topics
   voxels_impl:=rust   the Rust voxels node (aav_voxels_rs) in the Python one's place, for
                       voxels:=true or screen_cubes:=true: the same topics and answers
   detector_impl:=rust with perception:=true, the Rust detector (aav_detector_rs: RF-DETR's
@@ -201,18 +206,20 @@ bench's argument names:
                       place, a challenger: the same name and topics (docs/onnx.md)
   ego_impl:=rust      ego and look_ahead in Rust, one process (aav_ego_rs), in the Python
                       nodes' place: the same node names, topics and answers (TODO 185);
-                      the default on the car and here since 16 Nov (python: aav_ego's two nodes)
+                      the default on the car and here since 16 Nov; the only one since
+                      22 Nov (aav_ego's two Python nodes removed)
   behaviour_impl:=rust  the behaviour node in Rust (aav_behaviour_rs), with behaviour on
                       (TODO 185); the only one since the Python went on 20 Nov
   watchdog_impl:=rust  the sensor watchdog in Rust (aav_watchdog_rs): the same topics and
                       answers as the Python's had; the only one since 20 Nov (Ben, 16 Nov:
                       "watchdog in rust sure")
   stop_sign_impl:=rust  with perception:=true, stop_sign_watcher in Rust (aav_stop_sign_rs):
-                      the same node name, topics and answers; the default since 17 Nov
-                      (python: aav_detector's)
+                      the default since 17 Nov, the only one since 22 Nov (the Python,
+                      aav_detector's, removed; tag save/python-fallbacks-1)
   io_mux_impl:=rust  the sensor mux and the output mux in Rust (aav_io_mux_rs): the same
                       node names, topics and answers; the default on the car and here
-                      since 17 Nov (Ben: "Rust tomorrow"; python: aav_io_mux's)
+                      since 17 Nov (Ben: "Rust tomorrow"); the only ones since 22 Nov
+                      (the Python, aav_io_mux's, removed)
   localization_health_impl:=rust  localization_health in Rust
                       (aav_localization_health_rs): warn only (TODO 185); the only one
                       since the Python went on 20 Nov
@@ -309,6 +316,10 @@ bench's argument names:
                       car for the hallway fits to find (car-test --hallway --sim, TODO 248)
   wheel_noise:=0.05 wheel_slip:=0.02 noise_seed:=1  noisy, slipping wheels (Ravensim's;
                       0: off)
+  on_stands:=true     Ravensim's car starts on stands (on jacks): the rear wheels spin and
+                      steer, the car stays put; pixi run jacks down lowers it (TODO 272).
+                      speed_wheels:=front: the odometry reads the front wheels, as today's
+                      car, so 0 on stands; free_wheel_mass:=20: kg the motor moves there
   lag_scale:=2        the actuator model's throttle, brake and steering lags twice
                       vehicle.yaml's, while every driver still reads vehicle.yaml: how a
                       follower copes with a car slower than it was told (1.0: as written)
@@ -609,6 +620,8 @@ def launch_setup(context):
                 payload=arg('payload'), adaptive_brake=arg('adaptive_brake'),
                 lag_scale=arg('lag_scale'), actuators=arg('actuators'),
                 wheel_noise=arg('wheel_noise'), wheel_slip=arg('wheel_slip'),
+                on_stands=arg('on_stands'), speed_wheels=arg('speed_wheels'),
+                free_wheel_mass=arg('free_wheel_mass'),
                 noise_seed=arg('noise_seed'),
                 faults=flag['faults'],
                 spine=arg('spine'), arm=arg('arm'), bridge=arg('bridge'),
@@ -707,6 +720,8 @@ def launch_setup(context):
                                mppi_lag_batch=arg('mppi_lag_batch'),
                                mppi_lag_sampling=arg('mppi_lag_sampling'),
                                mpc_lag_tube=arg('mpc_lag_tube'),
+                               mpc_barriers=arg('mpc_barriers'),
+                               mpc_barrier_gamma=arg('mpc_barrier_gamma'),
                                lattice_moves=arg('lattice_moves'),
                                lidar_memory=arg('lidar_memory'),
                                global_window=arg('global_window'),
@@ -927,7 +942,8 @@ def generate_launch_description():
         DeclareLaunchArgument('nav', default_value='true'),
         DeclareLaunchArgument('teleop', default_value='false',
                               description='true if a joystick is plugged into this computer'),
-        DeclareLaunchArgument('rviz', default_value='true'),
+        # Off: our own navigation view is the nav screen (pixi run nav-view, docs/hud.md).
+        DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('perception', default_value='false',
                               description='the object detector and the stop-sign watcher (the ml '
                                           'environment; world:=road)'),
@@ -980,6 +996,14 @@ def generate_launch_description():
                               description='the wheels read this share too far (0: off)'),
         DeclareLaunchArgument('noise_seed', default_value='1',
                               description="the sensors' noise seed"),
+        DeclareLaunchArgument('on_stands', default_value='false',
+                              description="true: Ravensim's car starts on stands: the wheels "
+                                          'spin, the car stays put (pixi run jacks)'),
+        DeclareLaunchArgument('speed_wheels', default_value='rear',
+                              description='the wheels the simulated odometry reads: rear '
+                                          "(driven) or front (today's car: 0 on stands)"),
+        DeclareLaunchArgument('free_wheel_mass', default_value='20.0',
+                              description='kg the motor moves on stands (a GUESS)'),
         DeclareLaunchArgument('lag_scale', default_value='1.0',
                               description="the actuator model's lags times this (a "
                                           'robustness test; the drivers keep vehicle.yaml)'),
@@ -1055,20 +1079,22 @@ def generate_launch_description():
                               description='true: the costmap reads the lidar as 0.25 m cubes '
                                           '(aav_voxels, a trial) instead of the flat scan'),
         DeclareLaunchArgument('lidar_impl', default_value=vehicle.DEFAULT_LIDAR_IMPL,
-                              description='python or rust: which lidar_scan flattens the '
-                                          'lidar (aav_lidar, or aav_lidar_rs)'),
+                              description='rust (aav_lidar_rs; the Python removed 22 Nov): '
+                                          'which lidar_scan flattens the lidar'),
         DeclareLaunchArgument('drive_to_point_impl',
                               default_value=vehicle.DEFAULT_DRIVE_TO_POINT_IMPL,
-                              description='rust or python: which point_driver drives to a '
-                                          'point (aav_drive_to_point_rs, or aav_drive_to_point)'),
+                              description='rust (aav_drive_to_point_rs; the Python '
+                                          'removed 22 Nov): which point_driver drives to '
+                                          'a point'),
         DeclareLaunchArgument('arm_when_open_impl',
                               default_value=vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL,
-                              description='rust or python: which arm_when_open arms the spine '
-                                          "(aav_spine_bridge's, or aav_spine's)"),
+                              description='rust: arm_when_open, which arms the spine '
+                                          "(aav_spine_bridge's; the Python removed 22 Nov)"),
         DeclareLaunchArgument('lane_finder_impl',
                               default_value=vehicle.DEFAULT_LANE_FINDER_IMPL,
-                              description='rust or python: which lane_finder finds the lane '
-                                          'lines (aav_lane_finder_rs, or aav_lane_finder)'),
+                              description='rust (aav_lane_finder_rs; the Python removed '
+                                          '22 Nov) or learned (a challenger): which '
+                                          'lane_finder finds the lane lines'),
         DeclareLaunchArgument('things_impl', default_value=vehicle.DEFAULT_THINGS_IMPL,
                               description='rust (aav_things_rs): which things node tracks '
                                           'the cubes (the Python removed 20 Nov)'),
@@ -1092,12 +1118,12 @@ def generate_launch_description():
                               description='rust (aav_watchdog_rs): which sensor watchdog '
                                           'runs (the Python removed 20 Nov)'),
         DeclareLaunchArgument('stop_sign_impl', default_value=vehicle.DEFAULT_STOP_SIGN_IMPL,
-                              description='python or rust: which stop_sign_watcher runs, '
-                                          'with perception:=true (aav_detector, or '
-                                          'aav_stop_sign_rs)'),
+                              description='rust (aav_stop_sign_rs; the Python removed 22 Nov): '
+                                          'which stop_sign_watcher runs, with '
+                                          'perception:=true'),
         DeclareLaunchArgument('io_mux_impl', default_value=vehicle.DEFAULT_IO_MUX_IMPL,
-                              description='python or rust: which sensor mux and output mux '
-                                          'run (aav_io_mux, or aav_io_mux_rs)'),
+                              description='rust (aav_io_mux_rs; the Python removed 22 Nov): '
+                                          'which sensor mux and output mux run'),
         DeclareLaunchArgument('localization_health_impl',
                               default_value=vehicle.SIM_DEFAULT_LOCALIZATION_HEALTH_IMPL,
                               description='rust (aav_localization_health_rs): which '
@@ -1107,8 +1133,8 @@ def generate_launch_description():
                               description='rust (aav_behaviour_rs): which behaviour node '
                                           'runs, with behaviour on'),
         DeclareLaunchArgument('ego_impl', default_value=vehicle.SIM_DEFAULT_EGO_IMPL,
-                              description='python or rust: which ego runs (aav_ego, or '
-                                          'aav_ego_rs: ego and look_ahead in one process)'),
+                              description='rust: which ego runs (aav_ego_rs: ego and look_ahead '
+                                          'in one process; the Python removed 22 Nov)'),
         DeclareLaunchArgument('ghost', default_value='false',
                               description='a pretend person only navigation sees (aav_ghost); '
                                           'place it with pixi run ghost ahead 10'),
@@ -1151,6 +1177,13 @@ def generate_launch_description():
                               description='with tracker:=mppi_lag: its samples a tick '
                                           '(TODO 152): 1000 (steer:=mppi_lag_1k); '
                                           "nav2.yaml's 2000 when nothing sets it"),
+        DeclareLaunchArgument('mpc_barriers', default_value='false',
+                              description='with tracker:=mpc_lag_rs ghost:=true: true, the '
+                                          'MPC keeps off the ghost (research, off by default)'),
+        DeclareLaunchArgument('mpc_barrier_gamma', default_value='',
+                              description='with mpc_barriers:=true: the share of the room '
+                                          'a tick may use, above 0 up to 1 (empty: 0.05; '
+                                          '1: a plain distance limit; research)'),
         DeclareLaunchArgument('mpc_lag_tube', default_value='',
                               description='with tracker:=mpc_lag_rs: m each side of the '
                                           'path where being off it costs nothing (the '

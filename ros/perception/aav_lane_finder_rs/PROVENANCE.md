@@ -1,8 +1,7 @@
 # Provenance
 
 Ported for `ecolo-av` on 2026-11-18: a Rust rewrite of our own Python node and modules,
-`aav_lane_finder` (`ros/perception/aav_lane_finder` at commit `b55880a1`). The Python
-stays, selectable with `lane_finder_impl:=python`.
+`aav_lane_finder` (`ros/perception/aav_lane_finder` at commit `b55880a1`).
 
 | Part | From |
 |---|---|
@@ -27,3 +26,7 @@ distortion (a warning, not an error per picture), and `-p` against a params file
 ## Changes
 
 - 2026-11-18: written; the Python's answers on its pictures.
+- 2026-11-22: the Python node (`aav_lane_finder/lane_finder.py`) removed (Ben: "lets start
+  removing the python fall back after being tested enough times"; tag
+  `save/python-fallbacks-1`). `birds_eye.py` and `lane_lines.py` stay in `aav_lane_finder`,
+  so `gen_vectors.py` and `test/test_lane_finder_node.py` still run.

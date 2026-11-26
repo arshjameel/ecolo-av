@@ -145,7 +145,7 @@ swap an algorithm. The rest:
 | `nav`, `rviz`, `gui`, `chase_camera`, `arm`, `watchdog`, `actuator_model` | navigation, RViz, the simulator's window, the chase camera, arming the spine, the sensor watchdog, the actuator model | `true` |
 | `teleop`, `hud`, `map`, `foxglove` | a joystick here, the HUD, the map window, the Foxglove bridge | `false` |
 | `perception`, `lane`, `camera_obstacles`, `faults` | the detector, the lane finder alone (`true`), boxes into the costmap, the camera fault path (worlds with cameras) | `false` |
-| `lane_finder_impl` | with `lane` or `lanes:=camera`: the lane finder in `rust` or `python`. `lane_follower`, `lane_follower_impl` and `lane:=fake` went with the lane followers on 19 Nov ([their scores](history/lane-followers.md)) | `rust` |
+| `lane_finder_impl` | with `lane` or `lanes:=camera`: the lane finder in `rust` (the Python removed 22 Nov) or `learned` (a challenger). `lane_follower`, `lane_follower_impl` and `lane:=fake` went with the lane followers on 19 Nov ([their scores](history/lane-followers.md)) | `rust` |
 | `geofence_impl`, `stop_hold_impl`, `goal_leash_impl` | the geofence, the stop hold and the goal leash in `rust` (`aav_safety_rs`, 19 Nov: the Python's answers to the bit; the Python removed 20 Nov); the car and the bench take them too | `rust` |
 | `gps_heading_impl` | the GPS heading in `rust` (`aav_gps_heading_rs`, 19 Nov: `course.py`'s answers to the bit; the Python removed 20 Nov); `localization.launch.py`'s | `rust` |
 | `spine`, `esp32`, `esp32_loop`, `bridge` | the spine or today's ESP32 in the loop; `pi` or `open`; `rust` or `python` | `false`, `false`, `pi`, `rust` |

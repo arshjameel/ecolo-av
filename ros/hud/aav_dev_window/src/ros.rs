@@ -9,7 +9,11 @@
 //! `/ego/plan_ahead` (Path), `/ego/stop_point` (PoseStamped), `/ego/ahead`
 //! (DiagnosticStatus); the road ahead, map (`aav_interfaces/RoadAhead`); the things
 //! near the car, odom (`aav_interfaces/Things`, named by the camera); the street route,
-//! map (`/drivers/nav/route/path`, Path, latched) (`config/dev_window.yaml`).
+//! map (`/drivers/nav/route/path`, Path, latched); the local costmap, odom
+//! (`/drivers/nav/costmap/local`); the ghost (`/safety/ghost/marker`, Marker) and the
+//! barrier's keep-out circle (`/drivers/nav/track/barrier_watch/keep_out`, Marker,
+//! latched); the stop zone's box (`/safety/stop_zone/box`, PolygonStamped) and state
+//! (`/safety/stop_zone/state`, CollisionMonitorState) (`config/dev_window.yaml`).
 //! Publishes, only with `--developer`: `/goal_pose`, `/safety/estop` (only ever true).
 //! Calls, only with `--developer` and every sensor SIM: `/navigate_to_pose/_action/cancel_goal`
 //! (action_msgs/CancelGoal, every goal: CANCEL THE GOAL) and `/track/set_parameters`
@@ -48,6 +52,10 @@ use map_core::{
     geom::{Point, Pose, Quaternion},
     grid::{Grid, GridInfo},
 };
+use nav_core::{
+    marker::{self, MarkerParts},
+    zone::ZoneAction,
+};
 use rclrs::*;
 use ros_env::aav_interfaces::msg::{
     DataSource, RoadAhead as RoadAheadMsg, Things, VehicleStatus as VehicleStatusMsg,
@@ -55,12 +63,16 @@ use ros_env::aav_interfaces::msg::{
 use ros_env::action_msgs::srv::{CancelGoal, CancelGoal_Request, CancelGoal_Response};
 use ros_env::builtin_interfaces::msg::Time;
 use ros_env::diagnostic_msgs::msg::DiagnosticStatus;
-use ros_env::geometry_msgs::msg::{Pose as PoseMsg, PoseStamped, PoseWithCovarianceStamped};
+use ros_env::geometry_msgs::msg::{
+    PolygonStamped, Pose as PoseMsg, PoseStamped, PoseWithCovarianceStamped,
+};
+use ros_env::nav2_msgs::msg::CollisionMonitorState;
 use ros_env::nav_msgs::msg::{OccupancyGrid, Odometry, Path};
 use ros_env::rcl_interfaces::msg::{Log, Parameter, ParameterType, ParameterValue};
 use ros_env::rcl_interfaces::srv::{SetParameters, SetParameters_Request, SetParameters_Response};
 use ros_env::sensor_msgs::msg::{Image, PointCloud2};
 use ros_env::std_msgs::msg::{Bool, String as StringMsg, UInt64};
+use ros_env::visualization_msgs::msg::Marker;
 use serde::Deserialize;
 
 use crate::feed::{Feed, Level, RoadAhead, Update};
@@ -108,6 +120,25 @@ struct Topics {
     road_ahead: String,
     things: String,
     route: String,
+    local_costmap: String,
+    ghost: String,
+    keep_out: String,
+    stop_box: String,
+    stop_state: String,
+}
+
+/// A Marker as the view's line on the ground; `None` when it is deleted or not drawn.
+fn marker_outline(m: &Marker) -> Option<marker::Outline> {
+    let points: Vec<(f64, f64)> = m.points.iter().map(|p| (p.x, p.y)).collect();
+    marker::outline(&MarkerParts {
+        frame_id: &m.header.frame_id,
+        shape: marker::Shape::from_code(m.type_),
+        action: marker::Action::from_code(m.action),
+        pose: pose(&m.pose),
+        scale: (m.scale.x, m.scale.y),
+        points: &points,
+        rgb: [m.color.r, m.color.g, m.color.b],
+    })
 }
 
 /// A Path's points, as they are (base_link for the squiggly line's two).
@@ -651,6 +682,45 @@ fn spin(
         move |m: Box<OccupancyGrid>| match grid(&m) {
             Ok(g) => send(&tx, Update::Costmap(g)),
             Err(e) => send(&tx, Update::Log(Level::Warn, format!("the costmap: {e}"))),
+        }
+    })?;
+    let _local_costmap = node.create_subscription(topics.local_costmap.as_str().qos(newest), {
+        let tx = tx.clone();
+        move |m: Box<OccupancyGrid>| match grid(&m) {
+            Ok(g) => send(&tx, Update::LocalCostmap(g)),
+            Err(e) => send(
+                &tx,
+                Update::Log(Level::Warn, format!("the local costmap: {e}")),
+            ),
+        }
+    })?;
+    let _ghost = node.create_subscription(topics.ghost.as_str().qos(newest), {
+        let tx = tx.clone();
+        move |m: Marker| send(&tx, Update::Ghost(marker_outline(&m)))
+    })?;
+    let _keep_out = node.create_subscription(topics.keep_out.as_str().qos(latched), {
+        let tx = tx.clone();
+        move |m: Marker| send(&tx, Update::KeepOut(marker_outline(&m)))
+    })?;
+    let _stop_box = node.create_subscription(topics.stop_box.as_str().qos(newest), {
+        let tx = tx.clone();
+        move |m: PolygonStamped| {
+            let corners = m
+                .polygon
+                .points
+                .iter()
+                .map(|p| (f64::from(p.x), f64::from(p.y)))
+                .collect();
+            send(&tx, Update::StopBox(m.header.frame_id, corners));
+        }
+    })?;
+    let _stop_state = node.create_subscription(topics.stop_state.as_str().qos(newest), {
+        let tx = tx.clone();
+        move |m: CollisionMonitorState| {
+            send(
+                &tx,
+                Update::StopAction(ZoneAction::from_code(m.action_type)),
+            );
         }
     })?;
     let _source = node.create_subscription(topics.source.as_str().qos(latched), {

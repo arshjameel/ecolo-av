@@ -44,6 +44,8 @@
 <a href="tests.html">Every test</a>
 <a href="after-install.html">After the install</a>
 <a href="testing-plan.html">The testing plan</a>
+<a href="wrap-up.html">Wrapping up: the plan</a>
+<a href="proving-it.html">Proving it</a>
 <a href="know-the-car.html">Know the car</a>
 <a href="recording.html">Recording a mapping drive</a>
 <a href="maps-from-drives.html">Maps from drives</a>
@@ -57,9 +59,9 @@
 <a href="learn-journey.html">A command&#x27;s journey</a>
 <a href="faq.html">Questions</a>
 <a href="glossary.html">Glossary</a>
+<span class="sep">Reference:</span>
 <a href="learn-sensors.html">Learn: sensors</a>
 <a href="learn-gps.html">Learn: GPS</a>
-<span class="sep">Reference:</span>
 <a href="learn-localization.html">Learn: localization</a>
 <a href="learn-speed.html">Learn: speed</a>
 <a href="learn-lidar.html">Learn: lidar</a>
@@ -110,6 +112,8 @@
 <a href="hardware-debug.html">Hardware debug</a>
 <a href="learn-state-space.html">Learn: state space</a>
 <a href="control-explained.html">Control, explained</a>
+<a href="barriers.html">Barriers in the MPC</a>
+<a href="barriers-test-plan.html">Barriers: the test plan</a>
 <a href="vehicle-model.html">The car as a linear model</a>
 <a href="car-model.html">One car model</a>
 <a href="safety-case.html">The safety case</a>
@@ -378,8 +382,9 @@ off (<code>legacy_encoder: false</code>). So with only the ESP32 and the Motor P
 </div>
 </section>
 <section class="card"><h2 id="if-the-rust-nodes-misbehave">If the Rust nodes misbehave</h2>
-<p>Since 17 Nov the Motor Pi's nodes run in Rust by default. Each has the Python as a
-fall-back, one switch away (<a href="release-0.4-rc1.html">0.4 on the car</a>):</p>
+<p>Since 17 Nov the Motor Pi's nodes run in Rust by default. The bridge and the RC driver
+have the Python as a fall-back, one switch away; the others have none since 20 and 22 Nov
+(<a href="release-0.4-rc1.html">0.4 on the car</a>):</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -390,7 +395,7 @@ fall-back, one switch away (<a href="release-0.4-rc1.html">0.4 on the car</a>):<
 <tbody>
 <tr>
 <td>The muxes (output and sensor)</td>
-<td><code>~/aav-jazzy/aav.sh car motor_pi_alone -- io_mux_impl:=python</code></td>
+<td>none since 22 Nov: the Python was removed (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>The ESP32's UART bridge</td>
@@ -406,11 +411,11 @@ fall-back, one switch away (<a href="release-0.4-rc1.html">0.4 on the car</a>):<
 </tr>
 <tr>
 <td>The stop-sign watcher</td>
-<td><code>~/aav-jazzy/aav.sh car motor_pi_alone -- stop_sign_impl:=python</code></td>
+<td>none since 22 Nov: the Python was removed (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>The point driver (on the Orin, not the Motor Pi)</td>
-<td><code>~/aav-jazzy/aav.sh car orin -- drive_to_point_impl:=python</code></td>
+<td>none since 22 Nov: the Python was removed (<code>save/python-fallbacks-1</code>)</td>
 </tr>
 <tr>
 <td>The others (ego, the watchdog...)</td>

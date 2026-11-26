@@ -990,12 +990,13 @@ def test_the_stop_zone_reads_the_collision_monitor_block():
     assert p['sources'][1]['kind'] == 'scan' and p['sources'][1]['mount'] == [0.0] * 4
 
 
-def test_ego_impl_is_python_or_rust():
-    # Rust on the car and in the simulator (Ben, 16 Nov); the Python stays selectable.
+def test_ego_impl_is_rust():
+    # Rust on the car and in the simulator (Ben, 16 Nov); the Python went on 22 Nov.
     assert vehicle.DEFAULT_EGO_IMPL == vehicle.SIM_DEFAULT_EGO_IMPL == 'rust'
-    assert vehicle.check_ego_impl('python') == 'python'
     assert vehicle.check_ego_impl(' Rust ') == 'rust'
-    assert vehicle.EGO_IMPLS['rust'] == 'aav_ego_rs'
+    assert vehicle.EGO_IMPLS == {'rust': 'aav_ego_rs'}
+    with pytest.raises(ValueError, match='ego_impl:=python'):
+        vehicle.check_ego_impl('python')
     with pytest.raises(ValueError, match='ego_impl:=c'):
         vehicle.check_ego_impl('c')
 
@@ -1020,11 +1021,12 @@ def test_watchdog_impl_is_rust():
         vehicle.check_watchdog_impl('c')
 
 
-def test_io_mux_impl_is_python_or_rust():
+def test_io_mux_impl_is_rust():
     assert vehicle.DEFAULT_IO_MUX_IMPL == 'rust'
-    assert vehicle.check_io_mux_impl('python') == 'python'
     assert vehicle.check_io_mux_impl(' Rust ') == 'rust'
-    assert vehicle.IO_MUX_IMPLS == {'python': 'aav_io_mux', 'rust': 'aav_io_mux_rs'}
+    assert vehicle.IO_MUX_IMPLS == {'rust': 'aav_io_mux_rs'}
+    with pytest.raises(ValueError, match='io_mux_impl:=python'):
+        vehicle.check_io_mux_impl('python')
     with pytest.raises(ValueError, match='io_mux_impl:=c'):
         vehicle.check_io_mux_impl('c')
 
@@ -1042,14 +1044,15 @@ def test_legacy_and_rc_impls_are_python_or_rust():
         vehicle.check_rc_impl('c')
 
 
-def test_lane_finder_impl_is_rust_or_python():
-    # Ben, 18 Nov: the lane finder in Rust, the default; lane_finder_impl:=python falls back.
+def test_lane_finder_impl_is_rust_or_learned():
+    # Ben, 18 Nov: the lane finder in Rust, the default; the Python went on 22 Nov.
     assert vehicle.DEFAULT_LANE_FINDER_IMPL == 'rust'
-    assert vehicle.LANE_FINDER_IMPLS == {'python': 'aav_lane_finder',
-                                         'rust': 'aav_lane_finder_rs',
+    assert vehicle.LANE_FINDER_IMPLS == {'rust': 'aav_lane_finder_rs',
                                          'learned': 'aav_lane_finder_learned'}
     assert vehicle.check_lane_finder_impl('learned') == 'learned'
-    assert vehicle.check_lane_finder_impl(' Python ') == 'python'
+    assert vehicle.check_lane_finder_impl(' Rust ') == 'rust'
+    with pytest.raises(ValueError, match='lane_finder_impl:=python'):
+        vehicle.check_lane_finder_impl('python')
     with pytest.raises(ValueError, match='lane_finder_impl:=c'):
         vehicle.check_lane_finder_impl('c')
 
@@ -1147,22 +1150,27 @@ def test_joy_alive_impl_is_rust():
         vehicle.check_joy_alive_impl('c')
 
 
-def test_stop_sign_impl_is_python_or_rust():
+def test_stop_sign_impl_is_rust():
     assert vehicle.DEFAULT_STOP_SIGN_IMPL == 'rust'
-    assert vehicle.check_stop_sign_impl('PYTHON') == 'python'
-    assert vehicle.STOP_SIGN_IMPLS == {'python': 'aav_detector', 'rust': 'aav_stop_sign_rs'}
+    assert vehicle.check_stop_sign_impl(' RUST ') == 'rust'
+    assert vehicle.STOP_SIGN_IMPLS == {'rust': 'aav_stop_sign_rs'}
+    with pytest.raises(ValueError, match='stop_sign_impl:=python'):
+        vehicle.check_stop_sign_impl('python')
     with pytest.raises(ValueError, match='stop_sign_impl:=c'):
         vehicle.check_stop_sign_impl('c')
 
 
-def test_drive_to_point_and_arm_when_open_impls_are_python_or_rust():
+def test_drive_to_point_and_arm_when_open_impls_are_rust():
     assert vehicle.DEFAULT_DRIVE_TO_POINT_IMPL == vehicle.DEFAULT_ARM_WHEN_OPEN_IMPL == 'rust'
-    assert vehicle.DRIVE_TO_POINT_IMPLS == {'python': 'aav_drive_to_point',
-                                            'rust': 'aav_drive_to_point_rs'}
-    assert vehicle.ARM_WHEN_OPEN_IMPLS == {'python': 'aav_spine', 'rust': 'aav_spine_bridge'}
-    assert vehicle.check_drive_to_point_impl(' Python ') == 'python'
+    assert vehicle.DRIVE_TO_POINT_IMPLS == {'rust': 'aav_drive_to_point_rs'}
+    assert vehicle.ARM_WHEN_OPEN_IMPLS == {'rust': 'aav_spine_bridge'}
+    assert vehicle.check_drive_to_point_impl(' Rust ') == 'rust'
+    with pytest.raises(ValueError, match='drive_to_point_impl:=python'):
+        vehicle.check_drive_to_point_impl('python')
     assert vehicle.check_arm_when_open_impl('rust') == 'rust'
     with pytest.raises(ValueError, match='drive_to_point_impl:=c'):
         vehicle.check_drive_to_point_impl('c')
+    with pytest.raises(ValueError, match='arm_when_open_impl:=python'):
+        vehicle.check_arm_when_open_impl('python')
     with pytest.raises(ValueError, match='arm_when_open_impl:=c'):
         vehicle.check_arm_when_open_impl('c')
