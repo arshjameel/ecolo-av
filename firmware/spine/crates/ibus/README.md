@@ -45,7 +45,7 @@ The 2025-26 firmware counted channels from 0, as its iBUS library does. So its
 | Index | Transmitter | Use | Switch points |
 |---|---|---|---|
 | 5 | CH6 | mode switch | normal; manual (RC direct) above 1500 (`THREE_POSITION`: RC via ROS 1301..1700, manual above); **under 1050: the failsafe (1000), RC lost**; the switch's low sends 1100 (End points CH6, low side 80%) |
-| 2 | CH3 | the left stick, up and down | the middle ±30 % (1350..1650): throttle off; below it forward, above it reverse; past 88 % (under 1060, over 1940) its end |
+| 2 | CH3 | the left stick, up and down | the middle ±20 % (1400..1600; ±30 % until 26 Nov): throttle off; below it forward, above it reverse; past 88 % (under 1060, over 1940) its end |
 | 3 | CH4 | the right stick, sideways: steering | 1000 is +1 (left?), 2000 is -1; centred within ±15 % (1425..1575) |
 | 1 | CH2 | the right stick, up and down (springs back) | over 1940 (down past 88 %): the stop; under 1060 (up past 88 %) with the steering centred: give the car to the computer |
 | 4 | CH5 | (SwC) not read since 21 Nov: its wiring is loose | |

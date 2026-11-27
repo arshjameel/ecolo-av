@@ -17,7 +17,7 @@
 //!
 //! ```text
 //!   1000 ◄───────────────────── 1500 ─────────────────────► 2000   (µs, CH3)
-//!   forward    │ full │  forward   middle (±30 %)   reverse  │ full │   reverse
+//!   forward    │ full │  forward   middle (±20 %)   reverse  │ full │   reverse
 //!              past 88 %                                       past 88 %
 //! ```
 //!
@@ -124,7 +124,7 @@ impl RcMap {
         via_ros_above: None,
         centre: 1500,
         half_travel: 500,
-        brake_band: 0.30,
+        brake_band: 0.20,
         full: 0.88,
         centred: 0.15,
         throttle_reversed: false,
@@ -336,15 +336,15 @@ mod tests {
     }
 
     #[test]
-    fn the_middle_thirty_percent_is_throttle_off() {
-        for us in [1350, 1400, 1500, 1600, 1650] {
+    fn the_middle_twenty_percent_is_throttle_off() {
+        for us in [1400, 1450, 1500, 1550, 1600] {
             let r = rc(ch(MANUAL, us, 1500)).unwrap();
             assert_eq!((r.throttle, r.middle), (0.0, true), "{us}");
         }
         // Just past either edge: out of the band, barely moving.
-        let fwd = rc(ch(MANUAL, 1349, 1500)).unwrap();
+        let fwd = rc(ch(MANUAL, 1399, 1500)).unwrap();
         assert!(!fwd.middle && fwd.throttle > 0.0 && fwd.throttle < 0.01);
-        let rev = rc(ch(MANUAL, 1651, 1500)).unwrap();
+        let rev = rc(ch(MANUAL, 1601, 1500)).unwrap();
         assert!(!rev.middle && rev.throttle < 0.0 && rev.throttle > -0.01);
     }
 
@@ -353,9 +353,9 @@ mod tests {
         // Below the middle is forward, as the C++ read CH3.
         assert_eq!(rc(ch(MANUAL, 1000, 1500)).unwrap().throttle, 1.0);
         assert_eq!(rc(ch(MANUAL, 2000, 1500)).unwrap().throttle, -1.0);
-        // Halfway between the band's edge (1350) and the end (1000): half throttle.
-        assert!(close(rc(ch(MANUAL, 1175, 1500)).unwrap().throttle, 0.5));
-        assert!(close(rc(ch(MANUAL, 1825, 1500)).unwrap().throttle, -0.5));
+        // Halfway between the band's edge (1400) and the end (1000): half throttle.
+        assert!(close(rc(ch(MANUAL, 1200, 1500)).unwrap().throttle, 0.5));
+        assert!(close(rc(ch(MANUAL, 1800, 1500)).unwrap().throttle, -0.5));
         // Past the end still stops at full.
         assert_eq!(rc(ch(MANUAL, 900, 1500)).unwrap().throttle, 1.0);
     }
@@ -391,7 +391,7 @@ mod tests {
     fn the_gear_switch_is_not_read() {
         // SwC (CH5) anywhere, even out of range, changes nothing.
         for gear in [0, 1000, 1500, 2000, 3000] {
-            let mut c = ch(MANUAL, 1175, 1500);
+            let mut c = ch(MANUAL, 1200, 1500);
             c.0[4] = gear;
             let r = rc(c).unwrap();
             assert!(close(r.throttle, 0.5) && !r.middle, "{gear}");

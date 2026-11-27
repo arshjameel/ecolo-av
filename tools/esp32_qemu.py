@@ -104,7 +104,7 @@ ECHO_WINDOW = 0.5           # s: an echo must be a counter sent this recently
 # failsafe can't go below -100% (1000).
 SWITCH = {'computer': 1100, 'via_ros': 1500, 'direct': 2000, 'failsafe': 1000}
 FULL_STICK = 1000           # the left stick (CH3) all the way forward: below the middle
-BAND = 1500                 # the left stick in its middle (30 % each way): throttle off
+BAND = 1500                 # the left stick in its middle (20 % each way): throttle off
 RIGHT_CENTRE = 1500         # the right stick up and down (CH2) where it springs back to
 RIGHT_GIVE = 1000           # the right stick up past 88 %: give the car to the computer
 RC_WINDOW = 1.2             # s: the RC's hold after boot or a stop (1 s), and a margin

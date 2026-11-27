@@ -1114,14 +1114,14 @@ uplink at 50 Hz, its echo, the three modes: <a href="esp32-bench.html#before-the
 <tr>
 <td>RC sticks: CH3 throttle, CH4 steering, CH5 gear: forward &lt; 1200 &lt; brake &lt; 1800 &lt; reverse</td>
 <td><code>rc_handler.cpp</code></td>
-<td><code>RcMap::TODAY</code>: CH3's whole travel (forward, a ±30 % middle with the throttle off, reverse), CH2 the stop and the give, CH5 not read</td>
+<td><code>RcMap::TODAY</code>: CH3's whole travel (forward, a ±20 % middle with the throttle off, reverse), CH2 the stop and the give, CH5 not read</td>
 <td>⚠️ changed on purpose, 21 and 22 Nov (<code>docs/firmware.md</code>, "The RC transmitter")</td>
 </tr>
 <tr>
 <td>RC throttle: stick × 1023, capped at 700 (the top third of the stick does nothing)</td>
 <td><code>rc_handler.cpp</code></td>
-<td>stick × 1.0 m/s (<code>MAX_SPEED</code>, since 6 Nov), open loop: at most code 233 (<code>throttle_cap_code</code>), reverse capped at 0.5 m/s (<code>MAX_REVERSE_SPEED</code>, about 117)</td>
-<td>⚠️ the whole stick works; slower than the C++</td>
+<td>a fixed 1.0 m/s (<code>MAX_SPEED</code>), 0.5 back (<code>MAX_REVERSE_SPEED</code>), open loop from code 265, where the wheels start to turn (Arsh, 26 Nov), up to 410 (338 back; <code>throttle_cap_code</code>)</td>
+<td>⚠️ changed on purpose: before 26 Nov it gave 233 and 117, under the wheels' start, and the car didn't move</td>
 </tr>
 <tr>
 <td>RC gear on brake: DAC ramps down, brake full</td>

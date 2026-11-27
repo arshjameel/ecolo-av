@@ -661,7 +661,7 @@ with the Motor Pi or the Orin dead. Since 22 Nov (Arsh and Ben,
 which springs back) hands the car over, and the left stick is one pedal:</p>
 <pre class="highlight"><code class="language-text">right stick (CH2):  up past 88 % ── give to the computer (steering centred, 0.5 s)
                     down past 88 % ── hard brake while held; the RC takes the car
-left stick (CH3):   1000 ◄── forward ──┤ middle ±30 %: throttle off ├── reverse ──► 2000
+left stick (CH3):   1000 ◄── forward ──┤ middle ±20 %: throttle off ├── reverse ──► 2000
                     past 88 % the other way, the car still moving: the hard brake too</code></pre>
 <div class="table-wrap"><table>
 <thead>
@@ -699,7 +699,7 @@ left stick (CH3):   1000 ◄── forward ──┤ middle ±30 %: throttle off
 <tbody>
 <tr>
 <td>The left stick up or back</td>
-<td>drive that way at a fixed speed (1.0 m/s, 0.5 back), ramped at 0.5 m/s² (<code>RC_ACCEL</code>)</td>
+<td>drive that way at a fixed speed (1.0 m/s, 0.5 back), ramped at 0.5 m/s² (<code>RC_ACCEL</code>). With no wheel speed (today's ESP32), the throttle starts at 265 of 1023, where the wheels start to turn, and rises to 410 (338 back); 700 is the cap (Arsh, 26 Nov)</td>
 </tr>
 <tr>
 <td>The left stick in its middle</td>
