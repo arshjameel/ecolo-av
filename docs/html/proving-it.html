@@ -7,7 +7,7 @@
 <!-- Generated from docs/proving-it.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Proving it: how the tests fit together</h1>
-<div class="meta">32 min read · 9 sections</div></header>
+<div class="meta">34 min read · 9 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -186,7 +186,8 @@ pixi run ladder session 1            # the newest run: its answer and each step
 pixi run ladder report 1 --open      # that run's report page, in the browser
 pixi run ladder run code             # a "before you start" check: code, stack or bench
 pixi run ladder record --from-report ~/aav-tests/&lt;run&gt;      # a car-test run
-pixi run ladder record 1 pass --car --note "on stands, dry" # a rung done by hand</code></pre>
+pixi run ladder record 1 pass --car --note "on stands, dry" # a rung done by hand
+pixi run ladder all --sim            # the full suite on the virtual car: one report</code></pre>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -247,6 +248,46 @@ pixi run ladder record 1 pass --car --note "on stands, dry" # a rung done by han
 <tr>
 <td>One part alone never moves the ladder</td>
 <td><code>run &lt;rung&gt; --only &lt;test&gt;</code> records nothing: a rung passes whole</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-full-suite-pixi-run-ladder-all-sim">The full suite: <code>pixi run ladder all --sim</code></h3>
+<p>Every built rung in turn, bottom first, on the virtual car (wrap-up step 5).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Each rung</td>
+<td>run and recorded as <code>ladder run &lt;rung&gt;</code> does, its report page saved</td>
+</tr>
+<tr>
+<td>One at a time</td>
+<td>one lock for the whole session: nothing else runs between the rungs</td>
+</tr>
+<tr>
+<td>Not built yet</td>
+<td>skipped, and the report says so (today: rungs 2 to 9 and S)</td>
+</tr>
+<tr>
+<td>Shut</td>
+<td>skipped, with which rung under it failed</td>
+</tr>
+<tr>
+<td>Ctrl-C</td>
+<td>the rung's own command stops its simulator and is waited for; nothing is recorded for it; the rest are skipped</td>
+</tr>
+<tr>
+<td>The report</td>
+<td>one page: <code>~/aav-tests/&lt;time&gt;-all-sim/ladder-all.html</code> (and <code>.yaml</code>): each rung, its result, its time, a link to its own page</td>
+</tr>
+<tr>
+<td>The car</td>
+<td><code>ladder all --car</code> is refused: the car's rungs are run by a person, one at a time</td>
 </tr>
 </tbody>
 </table></div>
@@ -698,6 +739,13 @@ rung 1 ran.</p>
 </tbody>
 </table></div>
 <p>The code: <code>ros/hud/aav_dev_window</code> (<code>src/ladder_window/</code>, and the logic in <code>crates/ladder-core</code>).</p>
+<p><strong>Also on the hardware panel (25 Nov, the test bench, <a href="wrap-up.html#4-the-screens-eight-become-four">wrap-up step 3</a>).</strong>
+The hardware panel has a <strong>LADDER</strong> tab: the ten rungs, a rung's question, Run in the
+simulator and Stop, the answer's verdict, its graphs and numbers, the faults, and the
+jacks switch. The same <code>ladder-core</code>, so the same rules; the car's command is only shown.
+It is there in <code>hw_panel</code> and in the map window's HARDWARE page
+(<a href="hud.html#the-ladder-page-the-test-bench">the LADDER page</a>). Not there yet: the checks'
+Runs, one test at a time, Record by hand, Open the report: those are still this window's.</p>
 </section>
 <section class="card"><h2 id="what-can-be-dry-run-from-the-screen">What can be dry-run from the screen</h2>
 <p><strong>This section is the record of 22 Nov, under the old rungs' names</strong> (bench, stands,

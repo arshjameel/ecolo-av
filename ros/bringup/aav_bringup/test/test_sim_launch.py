@@ -2,9 +2,10 @@
 sim.launch.py and aav_sim_models's ravensim.launch.py: what each world and argument starts.
 
 Each test runs a launch file's own setup with some arguments, and looks at what it would
-start. Nothing starts: no ROS, no simulator. The defaults must start what `pixi run sim`
-always has; the road and test_lot worlds add the car's sensors and the parts that read
-them (test_lot renders them since 15 Oct). The lidar is on by default (15 Oct).
+start. Nothing starts: no ROS, no simulator. The defaults must start what sim.launch.py
+always has (`pixi run sim` adds setup:=car); the road and test_lot worlds add the car's
+sensors and the parts that read them (test_lot renders them since 15 Oct). The lidar is
+on by default (15 Oct).
 """
 
 import importlib.util
@@ -246,7 +247,32 @@ def test_the_stacks_switches_are_declared_empty_so_a_hand_set_one_is_seen():
     assert perform_substitutions(LaunchContext(), declared['reversing']) == 'true'
 
 
-def test_the_defaults_start_what_pixi_run_sim_always_has():
+def test_setup_car_is_the_virtual_car_and_a_switch_by_hand_still_wins():
+    """Start what `pixi run sim` does (setup:=car, wrap-up step 5): the road, the ESP32."""
+    car = included(started(SIM, setup='car'))
+    assert car['ravensim.launch.py']['world'] == 'road'
+    assert car['ravensim.launch.py']['esp32'] == 'true'
+    assert car['geofence.launch.py']['backend'] == 'sim_esp32'
+    lot = included(started(SIM, setup='car', world='test_lot'))
+    assert lot['ravensim.launch.py']['world'] == 'test_lot'
+    assert lot['ravensim.launch.py']['esp32'] == 'true'
+    empty = included(started(SIM, setup='car', world='empty', esp32='false'))
+    assert (empty['ravensim.launch.py']['world'], empty['ravensim.launch.py']['esp32']) == (
+        'empty', 'false')
+    with pytest.raises(ValueError, match='setup:=moon'):
+        started(SIM, setup='moon')
+
+
+def test_with_no_setup_world_and_esp32_keep_their_old_defaults():
+    """Every test, dry-run, sim-check and car-test --sim start it with no setup:=."""
+    declared = {a.name: perform_substitutions(LaunchContext(), a.default_value)
+                for a in SIM.generate_launch_description().get_launch_arguments()}
+    assert (declared['setup'], declared['world'], declared['esp32']) == ('', '', '')
+    sent = included(started(SIM))['ravensim.launch.py']
+    assert (sent['world'], sent['esp32']) == ('empty', 'false')
+
+
+def test_the_launch_files_defaults_start_what_they_always_have():
     actions = started(SIM)
     sent = included(actions)
     assert set(sent) == {'ravensim.launch.py', 'mux.launch.py', 'ego.launch.py',

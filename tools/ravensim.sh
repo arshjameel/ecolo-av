@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ravensim and the developer window, in one go: the window Ben means by "see Ravensim".
 #
-#   pixi run ravensim                  # Ravensim (pixi run sim's world) + the developer window, live
+#   pixi run ravensim                  # Ravensim (sim.launch.py's own defaults) + the developer window, live
 #   pixi run ravensim world:=campus    # any sim.launch.py switch, name:=value, goes to the sim
 #   Ctrl-C, or close the window        # stops both
 #

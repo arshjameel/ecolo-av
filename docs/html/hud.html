@@ -7,7 +7,7 @@
 <!-- Generated from docs/hud.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>The HUD (in-car screen)</h1>
-<div class="meta">75 min read · 10 sections</div></header>
+<div class="meta">84 min read · 10 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -177,7 +177,7 @@
 <td><a href="#the-hardware-panel">The hardware panel</a></td>
 <td><code>hw_panel</code></td>
 <td>a wired laptop</td>
-<td>every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path</td>
+<td>every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path; the test ladder (LADDER)</td>
 </tr>
 </tbody>
 </table></div>
@@ -186,7 +186,8 @@ Orin runs no graphics, so the other two run on a laptop. Laptop screens can be B
 <strong>developer window</strong> (<code>ros/hud/aav_dev_window</code>, <code>pixi run dev-window</code>; not a ROS package)
 is one, live on the simulators since 5 Nov, and <code>debug_hud</code> retires once it covers the
 same ground (<a href="../designs/2026-11-05_one-window.md">design</a>). Its README is the reference; what it took
-over from RViz is in <a href="#rviz-and-ours">RViz and ours</a>.</p>
+over from RViz is in <a href="#rviz-and-ours">RViz and ours</a>. Since 25 Nov (wrap-up step 4) it is
+the <strong>world view</strong>, with the debug screen's pages: <a href="#the-debug-hud-into-the-world-view">what moved, and what is left</a>.</p>
 <p>An easter egg hides in three of them: <a href="#the-little-robot-easter-egg">the little robot</a>.</p>
 <p><strong>Two screens for testing (Ben, 29 Oct evening):</strong> "one screen just to test all the
 sensors and operate all the actuators and another screen to show off the voxels". The
@@ -813,11 +814,150 @@ navigation.</p>
 <td>the <a href="#the-debug-page-who-is-driving">debug page</a> over the map, and back</td>
 </tr>
 <tr>
+<td>F2, or HARDWARE PAGE</td>
+<td>the <a href="#the-hardware-page-f2">hardware page</a>: the hardware panel on this screen; F2 or MAP comes back</td>
+</tr>
+<tr>
 <td>F11</td>
 <td>full screen</td>
 </tr>
 </tbody>
 </table></div>
+<h3 id="the-hardware-page-f2">The hardware page (F2)</h3>
+<p>Ben, 25 Nov: "The hardware panel could also be used on the same screen as the map (not at
+the same time but have it there to watch commands instead of laptop or along side)".
+Step 2 of <a href="wrap-up.html#4-the-screens-eight-become-four">the screens' plan</a>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>How to get there</th>
+<th>Picture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MAP</td>
+<td>the start; MAP (F2) on the hardware page</td>
+<td><img alt="The map page, --demo" src="../img/map-page-map.png" /></td>
+</tr>
+<tr>
+<td>HARDWARE</td>
+<td>F2, or the HARDWARE PAGE button above KEYS (<code>--hardware-page</code> starts there)</td>
+<td><img alt="The hardware page, --demo" src="../img/map-page-hardware.png" /></td>
+</tr>
+</tbody>
+</table></div>
+<p>The hardware page <strong>is</strong> the <a href="#the-hardware-panel">hardware panel</a>: the same code
+(panel-app's <code>HardwarePage</code>), its five pages (Tab; the fifth, <a href="#the-ladder-page-the-test-bench">LADDER</a>,
+since 25 Nov), its numbers, graphs and buttons.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>In the map window</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Its node</td>
+<td><code>hw_panel</code>, a second node in the map's process: the same topics, QoS and parameters (<code>config/hw_panel.yaml</code>)</td>
+</tr>
+<tr>
+<td>Speed buttons</td>
+<td>SIM and BENCH only, as in <code>hw_panel</code>; no <code>--stands</code> here, so the real car's stay off</td>
+</tr>
+<tr>
+<td>GO</td>
+<td>only while held, on the showing page, in a window with focus</td>
+</tr>
+<tr>
+<td>Hidden</td>
+<td>no keys, no clicks, no GO; driving stops (0.5 s of zeros); the calibration page's mode ends, as on leaving it</td>
+</tr>
+<tr>
+<td>A command</td>
+<td>only while the window draws frames (hud-core's heartbeat)</td>
+</tr>
+<tr>
+<td>E-STOP</td>
+<td>only true; its key (E) works only on the hardware page (on the map, E is a letter for the search)</td>
+</tr>
+<tr>
+<td>One or the other</td>
+<td>run the map's page or <code>pixi run hw-panel</code> on one ROS network, not both: both nodes are called <code>hw_panel</code></td>
+</tr>
+<tr>
+<td>On the real car</td>
+<td><strong>watch-only</strong>: numbers and graphs, E-STOP; no driving, no calibrating, no ladder runs (<a href="#who-may-do-what-where">below</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="who-may-do-what-where">Who may do what, where</h4>
+<p>Ben, 26 Nov (option A): "Watch-only on the car: calibration stays laptop-only." The
+car's dash screen runs the map; there the hardware page only <strong>shows</strong> while the car is
+REAL. Calibrate and drive from a laptop (<code>hw_panel</code>).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Source</th>
+<th>Drive buttons</th>
+<th>STEERING CAL buttons</th>
+<th>LADDER: RUN, jacks</th>
+<th>LADDER: STOP its own run</th>
+<th>E-STOP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hw_panel</code> (a laptop)</td>
+<td>any</td>
+<td>its own rules</td>
+<td>its own rules</td>
+<td>its own rules</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>the map's HARDWARE page</td>
+<td>SIM, BENCH, REPLAY</td>
+<td>its own rules</td>
+<td>its own rules</td>
+<td>its own rules</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>the map's HARDWARE page</td>
+<td><strong>REAL</strong>, or not heard yet</td>
+<td><strong>off</strong></td>
+<td><strong>off</strong></td>
+<td><strong>off</strong></td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>"Its own rules": the gate, the calibration page's checks, ladder-core. The table only
+  takes buttons away.</li>
+<li>Not heard yet counts as REAL (fail safe).</li>
+<li>Off buttons are grey, and the page says why: "watch-only on the car's screen: calibrate
+  and drive from a laptop". The readings, the graphs, MEASURE and the ladder's table, question
+  and answers still show.</li>
+<li>The source turning REAL while the calibration page asks ends what it asks, as leaving
+  the page does.</li>
+<li>STOP and E-STOP stay: stopping is always allowed. The tab's STOP only ever stops a run
+  it started itself.</li>
+<li>The rule: panel-core's <code>controls</code> (<code>Controls::for_host</code>), tested for every host and
+  source.</li>
+<li>See it with pretend data: <code>map --demo --demo-real --hardware-page --hardware-tab calibration</code>.
+  Picture not taken yet: on 26 Nov the Mac's screen was locked, so no window could open.</li>
+</ul>
+<p><code>map.launch.py hardware:=false</code> (or <code>map --no-hardware</code>): no page and no second node.
+The pictures: <code>map --demo --screenshot</code> and <code>map --demo --hardware-page --screenshot</code> on
+Ben's MacBook (25 Nov), the window at 1600 x 900; the car's map screen is 1920 x 1080.</p>
 <h3 id="the-debug-page-who-is-driving">The debug page (who is driving)</h3>
 <p>Our professor's idea (TODO 247): the map screen doubles as a debug screen, like the
 hardware panel. <strong>Press D.</strong> The map goes behind frosted glass and two columns of cards
@@ -1977,6 +2117,47 @@ Ravensim of its own (its own ROS domain) with its own navigation view.</p>
 one window. It only listens: it never touches an actuator. Ben, 29 Oct: "the low level
 hud ... should connect directly to the ros node at the sensor". Design:
 <a href="../designs/2026-10-29_debug-hud.md">2026-10-29_debug-hud.md</a>.</p>
+<h3 id="the-debug-hud-into-the-world-view">The debug HUD into the world view</h3>
+<p>Wrap-up step 4 (25 Nov): the world view (the developer window, Bevy, laptops) takes the
+debug screen's job. It reads the same topics into the same <code>debug-core</code> state, and shows
+them as four pages: SENSORS, WHERE AM I, WHAT IT SEES, PLAN. <code>debug_hud</code> keeps working
+until step 5 makes its name an alias.</p>
+<p><img alt="The world view's WHERE AM I page, pretend data" src="../img/world-view-where.png" /></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>The debug screen</th>
+<th>The world view</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the sensor panel (key L)</td>
+<td>SENSORS, WHERE AM I, PLAN</td>
+</tr>
+<tr>
+<td>each localizer's car in 3D and from above; AMCL's particles</td>
+<td>key W; key A</td>
+</tr>
+<tr>
+<td>NDT's score, the health checks, the costmap cubes' road fit</td>
+<td>WHERE AM I; WHAT IT SEES</td>
+</tr>
+<tr>
+<td>the costmap's cubes, the ground hidden, NDT's map, keys 1-4</td>
+<td>there already (V, G, N and M, SWAP)</td>
+</tr>
+<tr>
+<td>the lidar's own cubes, kept and fading</td>
+<td>not ported: the world view draws the car's cubes, never the raw cloud (Ben, 5 Nov)</td>
+</tr>
+<tr>
+<td>NDT's match as ellipses</td>
+<td>not ported yet: its share on the map is a row</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every row of it: <a href="../../ros/hud/aav_dev_window/README.md#the-world-view-the-debug-screens-pages">the developer window's README</a>.</p>
 <h3 id="what-it-shows">What it shows</h3>
 <p>It opens as the <strong>seeing screen</strong> (two screens, 29 Oct): the cubes big on the left, and
 on the right two views from above. Key <strong>L</strong> swaps the right side for the sensor panel.</p>
@@ -2237,7 +2418,8 @@ the car's cable. Not the Orin's own screen: it runs no graphics (Ben, 5 Nov).</p
 <p><code>ros/hud/aav_hud</code>, binary <code>hw_panel</code>: one screen to <strong>test every sensor</strong> and <strong>work
 every actuator</strong> with very simple buttons (Ben, 29 Oct: "We need very simple buttons").
 The only screen that drives, and only through twist_mux, ego and the spine. Design:
-<a href="../designs/2026-10-29_two-screens.md">2026-10-29_two-screens.md</a>.</p>
+<a href="../designs/2026-10-29_two-screens.md">2026-10-29_two-screens.md</a>. Since 25 Nov it is also
+the map window's <a href="#the-hardware-page-f2">HARDWARE page</a>: the same code and rules.</p>
 <p><img alt="The hardware panel, with a pretend car (--demo), driving at 0.3 m/s" src="../img/hw-panel-demo.png" /></p>
 <h3 id="the-buttons">The buttons</h3>
 <div class="table-wrap"><table>
@@ -2647,6 +2829,109 @@ hw_panel --demo --page graphs                     # a pretend path, every hop OK
 </table></div>
 <p>The lines' format is <code>firmware/status/README.md</code>; the reader is tested on its
 <code>golden.jsonl</code>.</p>
+<h3 id="the-ladder-page-the-test-bench">The LADDER page (the test bench)</h3>
+<p>Ben, 25 Nov: "a testing ladder screen ... could be merged with the hardware screen".
+Step 3 of <a href="wrap-up.html#4-the-screens-eight-become-four">the screens' plan</a>: the hardware,
+its graphs, the small steps by hand and the automated tests on one screen.</p>
+<p><img alt="The LADDER page, --demo: the ten rungs, rung 1's question, its verdict and its wheels graph" src="../img/hw-panel-ladder.png" /></p>
+<pre class="highlight"><code class="language-bash">pixi run hw-panel --demo --page ladder   # pretend data: nothing runs, nothing is recorded
+pixi run hw-panel                        # then Tab to LADDER: the real ladder (tools/ladder.py)
+map --demo --hardware-page --hardware-tab ladder   # the same page in the map window</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Shows</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>top left</td>
+<td>PRETEND DATA, or where the results are kept; a problem reading the tool</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Simulated car</strong></td>
+<td>on the ground or ON STANDS (asked every 5 s)</td>
+<td><strong>Put it on stands</strong> / <strong>Lower it</strong>: on only while a simulator runs on this computer</td>
+</tr>
+<tr>
+<td>the table</td>
+<td>rung 9 at the top, S at the bottom; <strong>Simulator</strong> and <strong>The car</strong>, each cell in words (PASS 23 Nov, not run, shut, not built yet)</td>
+<td>click a row, or Up / Down</td>
+</tr>
+<tr>
+<td>the rung</td>
+<td>its question, when it passes</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>RUN RUNG n IN THE SIMULATOR</strong></td>
+<td>on only when ladder-core says so; off: the reason ("shut: ...", "not built yet", "pretend data")</td>
+<td><code>pixi run ladder run &lt;rung&gt;</code>; one run at a time</td>
+</tr>
+<tr>
+<td><strong>STOP THE RUN</strong></td>
+<td>on while a run goes</td>
+<td>stops its process group; again: kills it</td>
+</tr>
+<tr>
+<td><strong>On the car</strong></td>
+<td>the car's command as text, and "A person starts a car test from the terminal"</td>
+<td>nothing: no button runs a car test</td>
+</tr>
+<tr>
+<td>the answer</td>
+<td>the verdict line in a box of its colour, when and which commit; RUNNING NOW while a run goes</td>
+<td></td>
+</tr>
+<tr>
+<td>WHEELS, STEERING, BRAKE, FAULTS</td>
+<td>one graph (asked dashed, measured solid) and the tool's numbers under it; or the faults table; the car's slot beside ("no car run yet")</td>
+<td>click a tab</td>
+</tr>
+<tr>
+<td>THE RUN</td>
+<td>running... with its step, or how the last run ended; its last lines</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Rule</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The same logic as the ladder window</td>
+<td><code>ladder-core</code> (<code>ros/hud/aav_dev_window/crates/ladder-core</code>) decides every button; <code>tools/ladder.py</code> stays the only writer and holds every rule</td>
+</tr>
+<tr>
+<td>No car test</td>
+<td>ladder-core has no function that returns one; the car's side is words only</td>
+</tr>
+<tr>
+<td>Asked only when needed</td>
+<td>the tool is asked (every 2 s) only while this page shows, or while its own run goes on</td>
+</tr>
+<tr>
+<td>No repository here</td>
+<td>the page says so in words ("No tools/ladder.py here ..."); every other tab works</td>
+</tr>
+<tr>
+<td>Closing the window</td>
+<td>stops its run, as the ladder window does</td>
+</tr>
+</tbody>
+</table></div>
+<p><img alt="The same LADDER page inside the map window's HARDWARE page, --demo" src="../img/map-page-ladder.png" /></p>
+<p>The pictures: <code>hw_panel --demo --page ladder --screenshot</code> (1280 x 860) and
+<code>map --demo --hardware-page --hardware-tab ladder --screenshot</code> (1600 x 900), Ben's
+MacBook, 25 Nov, pretend data only. Not yet run against the real tool from this page.</p>
 <h3 id="how-its-built_3">How it's built</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -2662,7 +2947,7 @@ hw_panel --demo --page graphs                     # a pretend path, every hop OK
 </tr>
 <tr>
 <td><code>crates/panel-app</code></td>
-<td>the window (raylib) and the node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst; <code>esp32.rs</code> reads the ESP32's WebSocket on its own thread</td>
+<td>a library and the binary <code>hw_panel</code>. The library's <code>HardwarePage</code> is the whole panel for any window (news, keys, the rules, drawing, the command out): <code>hw_panel</code> fills its own window with it, <code>map</code> shows it as its HARDWARE page. The node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst; <code>esp32.rs</code> reads the ESP32's WebSocket on its own thread</td>
 </tr>
 <tr>
 <td><code>config/hw_panel.yaml</code></td>

@@ -25,7 +25,8 @@ and frame, so nothing downstream changes.
                 /sensors/lidar/points                                           lidar_link
 
 Each one also says, once and latched, on /system/source (aav_interfaces/DataSource), that
-its topic is BENCH: a stand-in, not the real device. The HUD shows a BENCH banner.
+its topic is BENCH: a stand-in, not the real device. The HUD shows a BENCH banner. With
+the parameter source: sim it says SIM instead (Ravensim borrowing one); never REAL.
 
 spine_sim publishes /vehicle/bench/truth: where the model car really is. The real drivers are
 aav_imu_yahboom, ublox_gps, aav_battery_victron, usb_cam (aav_sensors), aav_radar_ti and,
@@ -355,14 +356,24 @@ class MockLidar(Node):
         self.sender.catch_up(time.monotonic(), ranges, int(time.time() * 1e6))
 
 
+# What a stand-in may call itself: never REAL.
+STAND_IN_SOURCES = {'bench': SensorSource.BENCH, 'sim': SensorSource.SIM}
+
+
 def announce(node, name, topic):
-    """Say once, latched, that this topic comes from a bench stand-in (/system/source)."""
+    """Say once, latched, that this topic comes from a stand-in (/system/source)."""
+    # BENCH by default; SIM (parameter source: sim) when Ravensim plays the car and borrows
+    # a stand-in, such as the battery (sim.launch.py esp32:=true), so the output mux sees
+    # one source. A stand-in never says REAL.
+    kind = node.declare_parameter('source', 'bench').value
+    if kind not in STAND_IN_SOURCES:
+        raise ValueError(f'source:={kind}: a stand-in is bench or sim, never anything else')
     latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                          durability=DurabilityPolicy.TRANSIENT_LOCAL)
     node.source_pub = node.create_publisher(DataSource, '/system/source', latched)
     msg = DataSource(announcer=node.get_name())
     msg.header.stamp = node.get_clock().now().to_msg()
-    msg.sensors = [SensorSource(name=name, topic=topic, source=SensorSource.BENCH)]
+    msg.sensors = [SensorSource(name=name, topic=topic, source=STAND_IN_SOURCES[kind])]
     node.source_pub.publish(msg)
 
 

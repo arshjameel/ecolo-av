@@ -273,3 +273,101 @@ def test_a_run_is_recorded_under_its_own_folder_not_one_started_over_it(tmp_path
     began = ladder.datetime.datetime(2026, 11, 24, 0, 31, 5).timestamp()
     assert ladder.newest_session('stands', began, first=True).endswith('003107-stands-sim')
     assert ladder.newest_session('stands', None).endswith('003358-stands-sim')
+
+
+def fake_stands_run(folder, code=0):
+    """Return a stand-in for rung 1's command: it writes a run's folder, as car-test does."""
+    def run(command):
+        folder.mkdir()
+        (folder / 'report.yaml').write_text(yaml.safe_dump({
+            'started': '2099-01-01 00:00:00', 'where': 'a test',
+            'counts': {'PASS': 1} if code == 0 else {'FAIL': 1},
+            'steps': [{'step': 'estop', 'number': '5h',
+                       'status': 'PASS' if code == 0 else 'FAIL', 'files': '',
+                       'detail': 'still 0.52 s after the e-stop (limit 2 s)'}]}))
+        return code
+    return run
+
+
+def test_all_runs_every_built_rung_and_writes_one_report(progress, tmp_path, monkeypatch,
+                                                         capsys):
+    rungs = ladder.load_rungs()
+    folder = tmp_path / '2099-01-01-000000-stands-sim'
+    asked = []
+
+    def run(command):
+        asked.append(command)
+        return fake_stands_run(folder)(command)
+
+    monkeypatch.setattr(ladder, 'run_waiting', run)
+    monkeypatch.setattr(ladder, 'commit', lambda: 'abc1234')
+    assert ladder.main(['all', '--sim']) == 0
+    assert asked == [rungs[0]['sim']]          # only rung 1 is built today
+    kept = ladder.load_progress()
+    assert [(r['rung'], r['place'], r['result']) for r in kept] == [('stands', 'sim', 'pass')]
+    out = capsys.readouterr().out
+    assert 'NOT BUILT YET' in out
+    page = out.strip().splitlines()[-1].split('Its report: ')[1]
+    assert page.endswith('-all-sim/ladder-all.html') and os.path.isfile(page)
+    with open(os.path.join(os.path.dirname(page), 'ladder-all.yaml')) as f:
+        session = yaml.safe_load(f)
+    states = {x['id']: x['state'] for x in session['rungs']}
+    assert states['stands'] == 'pass'
+    assert all(states[r['id']] == 'not built yet' for r in rungs if not ladder.built(r))
+    assert session['rungs'][0]['report_file'].endswith('rung-1-report.html')
+    assert 'rung-1-report.html' in open(page).read()
+
+
+def test_all_refuses_the_real_car_and_records_nothing(progress, capsys):
+    assert ladder.main(['all', '--car']) == 2
+    assert 'never moves the car' in capsys.readouterr().err
+    assert ladder.load_progress() == []
+
+
+def test_all_is_refused_while_another_run_goes_on(progress, capsys):
+    with ladder.only_run() as free:
+        assert free
+        assert ladder.main(['all', '--sim']) == 2
+    assert 'one car, one run at a time' in capsys.readouterr().err
+
+
+def test_all_stops_on_ctrl_c_records_nothing_and_skips_the_rest(progress):
+    rungs = ladder.load_rungs()
+    built_too = [dict(rungs[0]), dict(rungs[0], id='stands2', number='1b', needs=[])]
+
+    def stopped(rung, run):
+        raise ladder.Stopped()
+
+    lines = ladder.all_in_sim(built_too, run_one=stopped)
+    assert [x['state'] for x in lines] == ['stopped', 'not run']
+    assert 'Ctrl-C' in lines[1]['why']
+    assert ladder.load_progress() == []
+
+
+def test_all_skips_a_rung_shut_by_a_failed_one_below(progress, tmp_path):
+    rungs = ladder.load_rungs()
+    two = [dict(rungs[0]), dict(rungs[0], id='next', number='2', needs=['stands'])]
+    folder = tmp_path / '2099-01-01-000000-stands-sim'
+    lines = ladder.all_in_sim(two, run=fake_stands_run(folder, code=1))
+    assert [x['state'] for x in lines] == ['fail', 'shut']
+    assert 'has not passed' in lines[1]['why']
+
+
+def test_run_waiting_waits_for_the_command_after_ctrl_c(monkeypatch):
+    """Ctrl-C: the command (which got it too) is waited for, then Stopped is raised."""
+    calls = []
+
+    class Proc:
+        def wait(self, timeout=None):
+            calls.append(timeout)
+            if len(calls) == 1:
+                raise KeyboardInterrupt
+            return 0
+
+        def terminate(self):
+            calls.append('terminate')
+
+    monkeypatch.setattr(ladder.subprocess, 'Popen', lambda *a, **k: Proc())
+    with pytest.raises(ladder.Stopped):
+        ladder.run_waiting('true', wait=5)
+    assert calls == [None, 5]

@@ -21,6 +21,9 @@ panel-core = { path = "../panel-core" }
 hud-core = { path = "../hud-core" }
 # Only its library: the window's monitor and full screen, shared with the HUD.
 hud-app = { path = "../hud-app", default-features = false }
+# The LADDER tab: the test ladder's logic, the same crate the Bevy ladder_window uses. It
+# lives in aav_dev_window (outside colcon), but has no Bevy and no ROS: serde only.
+ladder-core = { path = "../../../aav_dev_window/crates/ladder-core" }
 # The same raylib as hud-app: TrueType fonts, and --screenshot.
 raylib = { version = "6", features = [
   "SUPPORT_IMAGE_GENERATION",

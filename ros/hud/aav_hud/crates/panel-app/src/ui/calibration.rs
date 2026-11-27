@@ -16,6 +16,7 @@ use hud_app::paint::ToColor;
 use hud_core::theme::Rgba;
 use panel_core::{
     calibration::{Allowance, CalPage, CalPress, Mode, StillBy},
+    controls::{Action, WatchOnly},
     state::PanelState,
     steering_limits::{self, Mark, COUNTS_MAX},
     sweep::Outcome,
@@ -101,22 +102,26 @@ impl Ui {
         let h = d.get_screen_height() as f32;
         let cal = f.cal;
         let ready = matches!(f.cal_allowance, Allowance::SoftwareAllows { .. });
+        // Watch-only (the map's page on the real car): the readings, every button off.
+        let watch_only = f.controls.why_not(Action::Calibrate);
         let raw = state.fresh_raw(f.now);
         let position = raw.and_then(|r| r.position);
 
         // What the software allows, and on what; never "safe": people check the rest.
-        let ink = match f.cal_allowance {
-            Allowance::SoftwareAllows {
-                speed: StillBy::Measured(_),
-            } => t.good,
+        let ink = match (watch_only, f.cal_allowance) {
+            (
+                None,
+                Allowance::SoftwareAllows {
+                    speed: StillBy::Measured(_),
+                },
+            ) => t.good,
             _ => t.warn,
         };
-        let s = fit(
-            &self.font,
-            &f.cal_allowance.to_string(),
-            w - 2.0 * MARGIN,
-            21.0,
+        let line = watch_only.map_or_else(
+            || f.cal_allowance.to_string(),
+            |WatchOnly| format!("BUTTONS OFF: {WatchOnly}"),
         );
+        let s = fit(&self.font, &line, w - 2.0 * MARGIN, 21.0);
         self.text(d, &s, MARGIN, 104.0, 21.0, ink);
         let bridge = match &state.calibration_line {
             Some((at, line)) if f.now.saturating_duration_since(*at).as_secs_f64() < 3.0 => {
@@ -162,7 +167,7 @@ impl Ui {
                 Button::Cal(CalPress::ConfirmStill) => true,
                 Button::Cal(_) => ready,
                 _ => true,
-            };
+            } && watch_only.is_none();
             self.button(d, b, r, f, enabled);
         }
 

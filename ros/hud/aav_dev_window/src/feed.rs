@@ -98,6 +98,10 @@ pub enum Update {
     StopBox(String, Vec<(f64, f64)>),
     /// What the stop zone does (`/safety/stop_zone/state`).
     StopAction(ZoneAction),
+    /// The debug screen's own news, for the world view's pages (wrap-up step 4): each
+    /// sensor's row, the other localizers, map -> odom, AMCL's particles, the health
+    /// checks, the voxels node's and the tracker's status (`debug_core::state`).
+    Debug(debug_core::state::Update),
 }
 
 /// The road ahead (`/world/road_ahead`, the whole-car design), on the map: where the car

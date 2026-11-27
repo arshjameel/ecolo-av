@@ -17,6 +17,9 @@ The test ladder: ten rungs named for what the car can do, and the progress kept 
                                             (--recorded: the run the ladder's result names)
     pixi run ladder report <rung> [--open]  write that run's report page, print where it
                                             is; --open: in the browser (--recorded as above)
+    pixi run ladder all --sim               the full suite on the virtual car: every built
+                                            rung in turn, each recorded, one report
+                                            (--car is refused: a person runs the car's)
     pixi run ladder --json                  the same table, for a screen
 
 A rung is named by its id or its number: `run stands` is `run 1`.
@@ -32,6 +35,14 @@ moves the car: for a car rung it prints the command, and a person runs it.
 Results saved before 23 Nov, under the old rungs' names, are read like this (the file is
 never rewritten): `stands` is rung 1 (the same run, the same pass mark); `code`, `stack`
 and `bench` are the checks; `hallway`, `lot` and `route` are not shown (old_results()).
+
+`all --sim` (wrap-up step 5) runs every built rung bottom first, in one session: each as
+`run <rung>` runs it (recorded, its report page saved), under one lock, so nothing else
+runs between them. A rung not built yet is skipped and says so; one shut by a rung under
+it that failed is skipped too. Ctrl-C stops the rung that runs (its own command gets the
+Ctrl-C and stops its simulator; it is waited for), records nothing for it, and skips the
+rest. The session's one report is `<time>-all-sim/ladder-all.yaml` and `ladder-all.html`
+in ~/aav-tests: every rung, what happened, how long, its own report page.
 
 No ROS. The rules are functions here, tested in tools/tests/test_ladder.py; a rung's
 answer and its report page are tools/rung_answer.py.
@@ -320,6 +331,125 @@ def save_report(rung, folder, entry):
     return rung_answer.save(rung, folder, entry) or ''
 
 
+def run_rung_in_sim(rung, run=None):
+    """
+    Run a built rung's simulator command, record it, save its page: (code, entry, page).
+
+    The caller holds only_run(). run: how to run the shell command (its exit code back);
+    the default is subprocess.run.
+    """
+    run = run or (lambda command: subprocess.run(command, shell=True, cwd=ROOT).returncode)
+    print(f"Running rung {rung['number']} in the simulator: {rung['sim']}", flush=True)
+    began = time.time()
+    code = run(rung['sim'])
+    folder = newest_session(rung['id'], began, first=True)
+    entry = {'rung': rung['id'], 'commit': commit(), 'report': folder,
+             'when': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}
+    page = save_report(rung, folder, entry)
+    entry = record(rung['id'], 'sim', 'pass' if code == 0 else 'fail', report=folder,
+                   report_file=page, when=entry['when'])
+    print(f"Recorded: rung {rung['number']} ({rung['id']}) {entry['result']} (sim) at "
+          f"{entry['commit']}")
+    if page:
+        print(f'Its report: {page}')
+    return code, entry, page
+
+
+class Stopped(Exception):
+    """Ctrl-C during a rung of `all`: its command has ended; the session stops."""
+
+
+STOP_WAIT = 60.0    # s for a rung's command to stop its simulator after Ctrl-C
+
+
+def run_waiting(command, wait=STOP_WAIT):
+    """
+    Run a shell command; on Ctrl-C wait for it to stop itself, then raise Stopped.
+
+    Ctrl-C reaches the command too (the same terminal): car-test stops its own simulator.
+    subprocess.run would kill it after a quarter of a second, and leave that running.
+    """
+    proc = subprocess.Popen(command, shell=True, cwd=ROOT)
+    try:
+        return proc.wait()
+    except KeyboardInterrupt:
+        try:
+            proc.wait(timeout=wait)
+        except (subprocess.TimeoutExpired, KeyboardInterrupt):
+            proc.terminate()
+            proc.wait()
+        raise Stopped() from None
+
+
+def all_in_sim(rungs, run=None, load=load_progress, run_one=run_rung_in_sim):
+    """
+    Run every built rung in the simulator, bottom first; return the session's lines.
+
+    Each line: number, id, title, state (pass, fail, not built yet, shut, stopped, not
+    run), why, seconds, report (the run's folder), report_file (its page).
+    """
+    run = run or run_waiting
+    lines, stopped = [], False
+    for rung in rungs:
+        line = {'number': str(rung['number']), 'id': rung['id'], 'title': rung['title'],
+                'state': 'not run', 'why': '', 'seconds': 0.0, 'report': '',
+                'report_file': ''}
+        lines.append(line)
+        if stopped:
+            line['why'] = 'stopped before it (Ctrl-C)'
+        elif not built(rung):
+            line.update(state=NOT_BUILT + ' yet', why=str(rung.get('today', '')).strip())
+        elif not rung['sim']:
+            line['why'] = 'it has no simulator command'
+        else:
+            shut = blockers(rungs, load(), rung['id'], 'sim')
+            if shut:
+                line.update(state='shut', why='; '.join(shut))
+                continue
+            began = time.monotonic()
+            try:
+                code, entry, page = run_one(rung, run)
+                line.update(state=entry['result'], report=entry.get('report', ''),
+                            report_file=page, why=f'exit {code}' if code else '')
+            except Stopped:
+                stopped = True
+                line.update(state='stopped', why='Ctrl-C: not recorded')
+            line['seconds'] = round(time.monotonic() - began, 1)
+    return lines
+
+
+def write_session(lines, base=None, now=None):
+    """Write the session's one report (YAML and an HTML page); return the HTML's path."""
+    import html as html_lib
+    now = now or datetime.datetime.now()
+    folder = os.path.join(base or tests_dir(), now.strftime('%Y-%m-%d-%H%M%S') + '-all-sim')
+    os.makedirs(folder, exist_ok=True)
+    session = {'what': 'pixi run ladder all --sim: every built rung in the simulator',
+               'when': now.strftime('%Y-%m-%d %H:%M'), 'commit': commit(),
+               'seconds': round(sum(x['seconds'] for x in lines), 1), 'rungs': lines}
+    with open(os.path.join(folder, 'ladder-all.yaml'), 'w') as f:
+        yaml.safe_dump(session, f, sort_keys=False, allow_unicode=True)
+    esc = html_lib.escape
+    rows = ''.join(
+        f"<tr><td>{esc(x['number'])}</td><td>{esc(x['title'])}</td>"
+        f"<td><b>{esc(x['state'].upper())}</b></td><td>{x['seconds']:g} s</td>"
+        f"<td>{esc(x['why'])}</td><td>"
+        + (f'<a href="file://{esc(x["report_file"])}">its report</a>'
+           if x['report_file'] else '') + '</td></tr>'
+        for x in lines)
+    page = os.path.join(folder, 'ladder-all.html')
+    with open(page, 'w') as f:
+        f.write('<!doctype html><meta charset="utf-8"><title>The ladder, every rung</title>'
+                '<style>body{font:16px sans-serif;margin:2em}td,th{padding:4px 12px;'
+                'text-align:left}tr:nth-child(even){background:#eee}</style>'
+                '<h1>The ladder in the simulator, every rung</h1>'
+                f"<p>{esc(session['when'])}, commit {esc(session['commit'])}, "
+                f"{session['seconds']:g} s.</p>"
+                '<table><tr><th>Rung</th><th>What</th><th>Result</th><th>Time</th>'
+                f'<th>Why</th><th></th></tr>{rows}</table>')
+    return page
+
+
 MARK = {'pass': 'PASS', 'fail': 'FAIL', 'not run': '  - ', NOT_BUILT: 'not built yet'}
 
 
@@ -370,6 +500,10 @@ def main(argv=None):
         which.add_argument('--recorded', action='store_true',
                            help="the run the ladder's newest result names, not the newest "
                                 'run (a single test since then is the newest run)')
+    every = sub.add_parser('all', help='every built rung in the simulator, one report')
+    every.add_argument('--sim', action='store_true',
+                       help='in the simulator (the only place: also with no flag)')
+    every.add_argument('--car', action='store_true', help='refused: a person runs the car')
     rec = sub.add_parser('record')
     rec.add_argument('rung', nargs='?')
     rec.add_argument('result', nargs='?', choices=('pass', 'fail'))
@@ -452,20 +586,29 @@ def main(argv=None):
             if not free:
                 print(BUSY, file=sys.stderr)
                 return 2
-            print(f"Running rung {rung['number']} in the simulator: {rung['sim']}", flush=True)
-            began = time.time()
-            code = subprocess.run(rung['sim'], shell=True, cwd=ROOT).returncode
-        folder = newest_session(rung['id'], began, first=True)
-        entry = {'rung': rung['id'], 'commit': commit(), 'report': folder,
-                 'when': datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}
-        page = save_report(rung, folder, entry)
-        entry = record(rung['id'], 'sim', 'pass' if code == 0 else 'fail', report=folder,
-                       report_file=page, when=entry['when'])
-        print(f"Recorded: rung {rung['number']} ({rung['id']}) {entry['result']} (sim) at "
-              f"{entry['commit']}")
-        if page:
-            print(f'Its report: {page}')
+            code, _, _ = run_rung_in_sim(rung)
         return code
+
+    if args.do == 'all':
+        if args.car:
+            print('REFUSED: the ladder never moves the car. Its rungs on the car are run by '
+                  'a person, one at a time: pixi run ladder next --car', file=sys.stderr)
+            return 2
+        with only_run() as free:
+            if not free:
+                print(BUSY, file=sys.stderr)
+                return 2
+            print('The full suite on the virtual car: every built rung, bottom first.',
+                  flush=True)
+            lines = all_in_sim(rungs)
+        page = write_session(lines)
+        print('\nThe session:')
+        for x in lines:
+            print(f"  {x['number']:<3}{x['title']:<45}{x['state'].upper():<16}"
+                  f"{x['seconds']:>7g} s  {x['why']}")
+        print(f'Its report: {page}')
+        states = {x['state'] for x in lines}
+        return 130 if 'stopped' in states else 1 if 'fail' in states else 0
 
     if args.do in ('session', 'report'):
         rung = rung_named(args.rung)

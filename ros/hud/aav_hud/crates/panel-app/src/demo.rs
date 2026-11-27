@@ -349,6 +349,8 @@ pub struct Demo {
     ticks: u64,
     steering_actuator: Steering,
     link: PretendLink,
+    /// What it announces on `/system/source`: SIM, or REAL to see the real car's rules.
+    origin: Origin,
 }
 
 impl Demo {
@@ -372,7 +374,16 @@ impl Demo {
                 last: None,
                 lines: esp32_lines,
             },
+            origin: Origin::Sim,
         }
+    }
+
+    /// Announces `origin` instead of SIM (`map --demo --demo-real`: how the dash screen
+    /// looks on the real car). Still pretend: nothing leaves the program.
+    #[must_use]
+    pub fn announcing(mut self, origin: Origin) -> Self {
+        self.origin = origin;
+        self
     }
 
     /// The car follows the last fresh command, as ego would.
@@ -400,6 +411,10 @@ impl DataSource for Demo {
         "DEMO"
     }
 
+    fn is_pretend(&self) -> bool {
+        true
+    }
+
     fn drain(&mut self, now: Instant) -> Vec<Update> {
         self.step(now);
         self.ticks += 1;
@@ -413,7 +428,7 @@ impl DataSource for Demo {
                 entries: vec![Entry {
                     name: "car".into(),
                     topic: "/vehicle/status".into(),
-                    origin: Origin::Sim,
+                    origin: self.origin,
                 }],
             }));
             news.push(Update::GeofenceLock(false));

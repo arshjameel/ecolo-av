@@ -15,10 +15,11 @@
 //! +--------------------------------------------------------------+
 //! ```
 //!
-//! Three pages, by the tabs or Tab: DRIVE (above), STEERING CALIBRATION
+//! Five pages, by the tabs or Tab: DRIVE (above), STEERING CALIBRATION
 //! ([`calibration`]: find the steering actuator's ends and centre, the limits, the
-//! lock-to-lock check) and GRAPHS ([`graphs`]: what the Pi wrote and the ESP32 got, hop
-//! by hop, over 60 s).
+//! lock-to-lock check), GRAPHS ([`graphs`]: what the Pi wrote and the ESP32 got, hop
+//! by hop, over 60 s), MEASURE ([`measure`]) and LADDER ([`ladder`]: the test ladder,
+//! its Run and Stop, a rung's answer with its graphs and numbers).
 //!
 //! Every colour comes from the theme (`hud_core::theme`, `theme:` in
 //! config/hw_panel.yaml), as the HUD's: the pills, the buttons, the E-STOP's red. In
@@ -28,6 +29,7 @@
 
 mod calibration;
 mod graphs;
+mod ladder;
 mod measure;
 
 use std::time::{Duration, Instant};
@@ -41,6 +43,7 @@ use hud_core::{
 use panel_core::{
     buttons::{Buttons, Press},
     calibration::{Allowance, CalPage, CalPress},
+    controls::{Action, Controls},
     gate::Gate,
     graphs::Freezer,
     measure::{Entry, Odometer},
@@ -48,6 +51,8 @@ use panel_core::{
     steering_limits::Mark,
 };
 use raylib::prelude::*;
+
+use crate::page::Host;
 
 /// Fonts tried in order; raylib's own small pixel font if none is there.
 const FONT_FILES: [&str; 4] = [
@@ -70,6 +75,8 @@ pub enum Page {
     Graphs,
     /// Speed and distance, a tape run, the wheel diameter's check (TODO 71).
     Measure,
+    /// The test ladder (wrap-up step 3): the rungs, Run in the simulator, the answer.
+    Ladder,
 }
 
 impl Page {
@@ -79,10 +86,30 @@ impl Page {
             Self::Calibration => "STEERING CAL",
             Self::Graphs => "GRAPHS",
             Self::Measure => "MEASURE",
+            Self::Ladder => "LADDER",
         }
     }
 
-    pub const ALL: [Page; 4] = [Page::Drive, Page::Calibration, Page::Graphs, Page::Measure];
+    pub const ALL: [Page; 5] = [
+        Page::Drive,
+        Page::Calibration,
+        Page::Graphs,
+        Page::Measure,
+        Page::Ladder,
+    ];
+
+    /// A page by its name on a command line: `drive`, `calibration`, `graphs`, `measure`,
+    /// `ladder`.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "drive" => Self::Drive,
+            "calibration" => Self::Calibration,
+            "graphs" => Self::Graphs,
+            "measure" => Self::Measure,
+            "ladder" => Self::Ladder,
+            _ => return None,
+        })
+    }
 
     /// The next page (Tab).
     pub fn next(self) -> Self {
@@ -90,7 +117,8 @@ impl Page {
             Self::Drive => Self::Calibration,
             Self::Calibration => Self::Graphs,
             Self::Graphs => Self::Measure,
-            Self::Measure => Self::Drive,
+            Self::Measure => Self::Ladder,
+            Self::Ladder => Self::Drive,
         }
     }
 }
@@ -112,6 +140,18 @@ pub enum Button {
     Freeze,
     /// The measure page: the odometer and the tape back to zero.
     Reset,
+    /// In the map window only: back to the map (F2 too).
+    Leave,
+    /// The ladder page: a row of the rungs' table, top first.
+    Rung(usize),
+    /// The ladder page: run the chosen rung in the simulator (ladder-core decides if on).
+    RunRung,
+    /// The ladder page: stop the run.
+    StopRun,
+    /// The ladder page: the simulated car on stands, or on the ground.
+    Jacks,
+    /// The ladder page: one of the answer's views (a graph, or the faults).
+    View(usize),
 }
 
 impl Button {
@@ -132,6 +172,11 @@ impl Button {
             Self::Save => "SAVE",
             Self::Freeze => "FREEZE (P)",
             Self::Reset => "RESET (R)",
+            Self::Leave => "MAP (F2)",
+            Self::RunRung => "RUN IN THE SIMULATOR",
+            Self::StopRun => "STOP THE RUN",
+            // Drawn with their own words (the rung's, the view's, the jacks' state).
+            Self::Rung(_) | Self::Jacks | Self::View(_) => "",
             Self::Press(Press::SpeedUp) => "SPEED +",
             Self::Press(Press::SpeedDown) => "SPEED -",
             Self::Press(Press::Left) => "< LEFT",
@@ -145,7 +190,8 @@ impl Button {
 }
 
 /// Where each button is, in a window `w` wide: the same for drawing and for the mouse.
-pub fn layout(w: f32, page: Page) -> Vec<(Button, Rectangle)> {
+/// First the E-STOP and the tabs (and, in the map window, MAP), then the page's own.
+pub fn layout(w: f32, page: Page, host: Host) -> Vec<(Button, Rectangle)> {
     let mut buttons = vec![(
         Button::Estop,
         Rectangle::new(w - MARGIN - 240.0, 14.0, 240.0, 84.0),
@@ -156,13 +202,24 @@ pub fn layout(w: f32, page: Page) -> Vec<(Button, Rectangle)> {
         let x = tab_x + i as f32 * (tab_w + 8.0);
         buttons.push((Button::Tab(p), Rectangle::new(x, 58.0, tab_w, 36.0)));
     }
+    if host == Host::Map {
+        // Above the tabs, left of the E-STOP: right of the title and its pills.
+        let x = w - MARGIN - 240.0 - 16.0 - tab_w;
+        buttons.push((Button::Leave, Rectangle::new(x, 14.0, tab_w, 36.0)));
+    }
     match page {
         Page::Drive => buttons.extend(drive_layout(w)),
         Page::Calibration => buttons.extend(calibration::layout(w)),
         Page::Graphs => buttons.extend(graphs::layout(w)),
         Page::Measure => buttons.extend(measure::layout(w)),
+        Page::Ladder => buttons.extend(ladder::layout(w)),
     }
     buttons
+}
+
+/// How many of [`layout`]'s buttons are on every page: the E-STOP, the tabs, and MAP.
+fn header_len(host: Host) -> usize {
+    1 + Page::ALL.len() + usize::from(host == Host::Map)
 }
 
 /// The drive page's buttons.
@@ -240,6 +297,8 @@ pub struct Frame<'a> {
     pub wheels_note: Option<&'a str>,
     pub stands: bool,
     pub page: Page,
+    /// `hw_panel`, or the map window's HARDWARE page (a MAP button).
+    pub host: Host,
     pub cal: &'a CalPage,
     /// Whether the software allows the calibration page to ask now, and on what.
     pub cal_allowance: &'a Allowance,
@@ -257,6 +316,10 @@ pub struct Frame<'a> {
     pub tape: &'a Entry,
     pub wheel_diameter: Option<f64>,
     pub measure_saved: Option<&'a str>,
+    /// The ladder page: the tool's session, or why there is none.
+    pub ladder: &'a crate::ladder::LadderTab,
+    /// What a person may do here: watch-only on the map's page on the real car.
+    pub controls: Controls,
 }
 
 /// The little robot's room (the easter egg): where nothing else is drawn this frame.
@@ -347,7 +410,7 @@ impl Ui {
         let left = w * CAR_FROM;
         let place = Placement::bottom_right(left, 0.0, w - MARGIN - left, h - 40.0);
         paint::faint_car(d, t, place, 2.0, paint::Under::Words);
-        let buttons = layout(w, f.page);
+        let buttons = layout(w, f.page, f.host);
         let speed_on = matches!(f.gate, Gate::On { .. });
 
         // Title, the source, the label.
@@ -381,7 +444,7 @@ impl Ui {
         }
 
         // The E-STOP and the tabs, on every page.
-        let header = 1 + Page::ALL.len();
+        let header = header_len(f.host);
         for &(b, r) in buttons.iter().take(header) {
             self.button(d, b, r, f, true);
         }
@@ -389,6 +452,7 @@ impl Ui {
             Page::Calibration => return self.draw_calibration(d, state, f, &buttons[header..]),
             Page::Graphs => return self.draw_graphs(d, state, f, &buttons[header..]),
             Page::Measure => return self.draw_measure(d, state, f, &buttons[header..]),
+            Page::Ladder => return self.draw_ladder(d, f, &buttons[header..]),
             Page::Drive => {}
         }
 
@@ -423,10 +487,12 @@ impl Ui {
             self.text(d, caption, x, 146.0, 17.0, t.caption);
         }
 
+        // Watch-only: every drive button is off; the gate's line says why.
+        let drive = f.controls.allows(Action::Drive);
         for &(b, r) in &buttons[header..] {
             let enabled = match b {
-                Button::Press(Press::Stop | Press::Centre) => true,
-                Button::Go | Button::Press(_) => speed_on,
+                Button::Press(Press::Stop | Press::Centre) => drive,
+                Button::Go | Button::Press(_) => speed_on && drive,
                 _ => true,
             };
             self.button(d, b, r, f, enabled);
@@ -600,12 +666,26 @@ impl Ui {
         f: &Frame<'_>,
         enabled: bool,
     ) {
+        self.button_with(d, b, r, f, enabled, b.label());
+    }
+
+    /// A button with its own words: the ones whose words change.
+    fn button_with(
+        &self,
+        d: &mut RaylibDrawHandle,
+        b: Button,
+        r: Rectangle,
+        f: &Frame<'_>,
+        enabled: bool,
+        label: &str,
+    ) {
         let t = self.theme;
         let down = f.held == Some(b)
             || (b == Button::Go && f.buttons.is_driving())
             || b == Button::Tab(f.page)
             || (b == Button::Cal(CalPress::ConfirmStill) && f.cal.still_confirmed())
-            || (b == Button::Freeze && f.freezer.frozen().is_some());
+            || (b == Button::Freeze && f.freezer.frozen().is_some())
+            || b == Button::View(f.ladder.view_index());
         let (fill, ink) = match (b, enabled, down) {
             (Button::Estop, _, true) => (t.stop_fill_alt, t.stop_ink),
             (Button::Estop, _, false) => (t.stop_fill, t.stop_ink),
@@ -620,15 +700,22 @@ impl Ui {
         }
         let size = match b {
             Button::Estop => 34.0,
-            Button::Tab(_) => 18.0,
-            Button::Cal(_) | Button::Save | Button::Freeze | Button::Reset => 21.0,
+            Button::Tab(_) | Button::Leave | Button::View(_) => 18.0,
+            Button::Cal(_)
+            | Button::Save
+            | Button::Freeze
+            | Button::Reset
+            | Button::Jacks
+            | Button::RunRung
+            | Button::StopRun
+            | Button::Rung(_) => 21.0,
             _ => 26.0,
         };
-        let label = b.label();
-        let tw = self.font.measure(label, size);
+        let label = fit(&self.font, label, r.width - 4.0, size);
+        let tw = self.font.measure(&label, size);
         self.text(
             d,
-            label,
+            &label,
             r.x + (r.width - tw) / 2.0,
             r.y + (r.height - size) / 2.0,
             size,
@@ -690,9 +777,12 @@ mod tests {
 
     #[test]
     fn the_buttons_never_overlap() {
-        for page in Page::ALL {
-            for w in [1100.0, 1280.0, 1920.0] {
-                let buttons = layout(w, page);
+        for (page, host) in Page::ALL
+            .into_iter()
+            .flat_map(|p| [(p, Host::Standalone), (p, Host::Map)])
+        {
+            for w in [1100.0, 1280.0, 1600.0, 1920.0] {
+                let buttons = layout(w, page, host);
                 for (i, (a, ra)) in buttons.iter().enumerate() {
                     assert!(ra.x >= 0.0 && ra.x + ra.width <= w, "{a:?} at {w}");
                     for (b, rb) in &buttons[i + 1..] {
@@ -704,7 +794,14 @@ mod tests {
                 }
             }
         }
-        assert_eq!(layout(1280.0, Page::Drive).len(), 12);
+        assert_eq!(layout(1280.0, Page::Drive, Host::Standalone).len(), 13);
+        assert_eq!(layout(1280.0, Page::Drive, Host::Map).len(), 14);
+        // MAP only in the map window, and among the buttons on every page.
+        assert!(layout(1280.0, Page::Drive, Host::Standalone)
+            .iter()
+            .all(|(b, _)| *b != Button::Leave));
+        let map = layout(1280.0, Page::Graphs, Host::Map);
+        assert_eq!(map[header_len(Host::Map) - 1].0, Button::Leave);
     }
 
     #[test]
@@ -732,9 +829,16 @@ mod tests {
         let room = Room::new(1280.0, 860.0, 850.0, 800.0, &wide);
         assert_eq!(room.corner, None);
         assert_eq!(room.lane, None);
-        // The E-STOP and four tabs, then each page's own.
-        assert_eq!(layout(1280.0, Page::Calibration).len(), 5 + 12);
-        assert_eq!(layout(1280.0, Page::Graphs).len(), 5 + 1);
-        assert_eq!(layout(1280.0, Page::Measure).len(), 5 + 2);
+        // The E-STOP and five tabs, then each page's own.
+        assert_eq!(
+            layout(1280.0, Page::Calibration, Host::Standalone).len(),
+            6 + 12
+        );
+        assert_eq!(layout(1280.0, Page::Graphs, Host::Standalone).len(), 6 + 1);
+        assert_eq!(layout(1280.0, Page::Measure, Host::Standalone).len(), 6 + 2);
+        assert_eq!(
+            layout(1280.0, Page::Ladder, Host::Standalone).len(),
+            6 + ladder::ROWS + 3 + ladder::VIEWS
+        );
     }
 }

@@ -146,7 +146,7 @@ current): after adding, moving or removing a package, run
 | Package | Language | What | Logic | Node | Tests | Config |
 |---|---|---|---|---|---|---|
 | [aav_bringup](../ros/bringup/aav_bringup/README.md) | launch, config | Start the whole stack | - | - | `test/` | `config/`, `launch/` |
-| [aav_description](../ros/bringup/aav_description/README.md) | launch, config | The car's measurements (config/vehicle.yaml), its URDF, launch files to publish and view its frames, and a... | `aav_description/(8 modules)` | - | `test/` | `config/`, `launch/` |
+| [aav_description](../ros/bringup/aav_description/README.md) | launch, config | The car's measurements (config/vehicle.yaml), its URDF, launch files to publish and view its frames, and a... | `aav_description/(9 modules)` | - | `test/` | `config/`, `launch/` |
 | [aav_run_info](../ros/bringup/aav_run_info/README.md) | Python | run_info | `aav_run_info/algorithms.py` | `aav_run_info/run_info.py` | `test/` | - |
 
 ## ros/ecolo_msgs

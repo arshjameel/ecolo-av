@@ -33,6 +33,7 @@ Reading notes:
 - [11 October: the night's results, and what we can try at home](#11-october-the-nights-results-and-what-we-can-try-at-home)
 - [15 October: topic names by area](#15-october-topic-names-by-area)
 - [1 November: fewer pixi commands](#1-november-fewer-pixi-commands)
+- [26 November: the dash screen's hardware page](#26-november-the-dash-screens-hardware-page)
 - [Open threads](#open-threads)
 
 ## The inherited repos and what we found
@@ -1712,6 +1713,21 @@ cost, lright side low cost, car in the way high cost, person in the way high cos
 | Which side | the car's lane is the one it is in; a yellow right line puts it in the oncoming lane |
 | Deleted | the 2025-26 PID, its Rust port, pure pursuit, Stanley, the fake lane, their switches and checks |
 | Kept | git tag `save/lane-followers`; [their scores](lane-followers.md) |
+
+## 26 November: the dash screen's hardware page
+
+**Q: Should the dash's hardware page work fully on the real car?** The map window on the
+car's dash screen has the hardware page (F2) since 25 Nov, with every button `hw_panel` has.
+
+**A (Ben, 26 Nov, option A):** "Watch-only on the car: calibration stays laptop-only."
+
+| Where | What it may do |
+|---|---|
+| The map's page, REAL or nothing heard | show numbers and graphs; E-STOP; STOP of a ladder run it started |
+| The map's page, SIM or BENCH | everything, as before (`pixi run screens --sim`) |
+| `hw_panel` on a laptop | everything, under its own rules, as before |
+
+Built in panel-core's `controls` ([who may do what, where](hud.md#who-may-do-what-where)).
 
 ## Open threads
 

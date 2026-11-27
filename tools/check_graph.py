@@ -2,7 +2,7 @@
 """
 Compare the running ROS graph with docs/interfaces.yaml. Needs a sourced Jazzy install.
 
-usage: tools/check_graph.py --profile turtle|sim|road|spine|car|replay|bench [--wait 5]
+usage: tools/check_graph.py --profile turtle|sim|road|spine|car|virtual|replay|bench [--wait 5]
 
 Reports, for every topic in the contract:
   FAIL  a topic marked live in this profile has no publisher, or a type differs
@@ -18,6 +18,10 @@ check: those checks are warn-only, as on the car.
 road is the sim in its road world (sim.launch.py world:=road), so a topic live in sim must
 be live there too, and so must the road world's own: the camera and the radar. spine is
 the road world with the spine in the loop (spine:=true): road's topics, plus the CAN ones.
+
+virtual is Ravensim as today's car (sim.launch.py world:=road esp32:=true; docs/wrap-up.md,
+step 1): every topic live on the car must be live there too, so the screens and tests see
+the same graph. The exceptions are in the contract, each with its reason (not_virtual:).
 """
 
 import argparse
@@ -35,9 +39,19 @@ HEALTH = '/localization/health'
 # robot_localization (the contract lists its set_pose services instead).
 IGNORE = {'/parameter_events', '/rosout', '/diagnostics',
           '/ekf_local/set_pose', '/ekf_global/set_pose'}
-PROFILES = ('turtle', 'sim', 'road', 'spine', 'car', 'replay', 'bench')
+PROFILES = ('turtle', 'sim', 'road', 'spine', 'car', 'virtual', 'replay', 'bench')
 # The profiles each one runs whole, besides its own: the road world is the sim, and more.
-INCLUDES = {'road': ('sim',), 'spine': ('sim', 'road')}
+INCLUDES = {'road': ('sim',), 'spine': ('sim', 'road'), 'virtual': ('sim', 'road', 'car')}
+
+
+def must_be_live(topic, profile):
+    """Return whether the contract's topic entry must have a publisher in profile."""
+    live = set(topic.get('live', []))
+    if profile == 'virtual' and topic.get('not_virtual'):
+        # On the car only, and why: the contract says (a simulator never sends the car's
+        # commands; Ravensim makes the lidar's points, not its packets...).
+        live -= {'car'}
+    return bool({profile, *INCLUDES.get(profile, ())} & live)
 
 
 def main():
@@ -52,10 +66,9 @@ def main():
     node = rclpy.create_node('check_graph')
     time.sleep(args.wait)
     running = dict(node.get_topic_names_and_types())
-    profiles = {args.profile, *INCLUDES.get(args.profile, ())}
     failed = 0
     for name, t in spec['topics'].items():
-        live = bool(profiles & set(t.get('live', [])))
+        live = must_be_live(t, args.profile)
         pubs = sorted({p.node_name for p in node.get_publishers_info_by_topic(name)})
         subs = sorted({s.node_name for s in node.get_subscriptions_info_by_topic(name)}
                       - {'check_graph'})

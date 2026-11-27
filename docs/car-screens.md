@@ -28,7 +28,7 @@ in the car, on the dash Pi; laptop screens can be Bevy; the Orin runs no graphic
 |---|---|---|
 | **Drive**: the [cockpit](foxglove.md#cockpit) (Lichtblick) | the chase camera's view, the goal, the cubes, the localizers, which algorithms run | stays, as a layout |
 | **Developer window** (Bevy, `pixi run dev-window`; Ben, 5 Nov) | the scene, what the lidar sees with NDT, a map you click, a console: live on the simulators | absorbs the debug screen ([design](designs/2026-11-05_one-window.md)); not the cockpit, as planned on 3 Nov |
-| **Hardware**: the [hardware panel](hud.md#the-hardware-panel) | every sensor, simple buttons, the steering's ends | stays separate |
+| **Hardware**: the [hardware panel](hud.md#the-hardware-panel) | every sensor, simple buttons, the steering's ends | its own window on a laptop; since 25 Nov also the map screen's [HARDWARE page](hud.md#the-hardware-page-f2) (F2) |
 
 The developer window live, 14 Nov: our stack (`stack:=ours`) driving the road world, the road ahead's line on the AHEAD panel:
 

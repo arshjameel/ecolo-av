@@ -104,6 +104,11 @@ const PANEL_W: f32 = 400.0;
 const CAR_MIN_PX: f32 = 22.0;
 /// The little robot is never drawn shorter than this many pixels (at the reference size).
 const ROBOT_MIN_PX: f32 = 40.0;
+/// The KEYS card's height, and the HARDWARE PAGE button's, at the reference size.
+const KEYS_H: f32 = 156.0;
+const HARDWARE_H: f32 = 56.0;
+/// The HARDWARE PAGE button's words.
+const HARDWARE_LABEL: &str = "HARDWARE PAGE (F2)";
 
 /// raylib's font handle: one loaded from a file, or its built-in one.
 enum MapFont {
@@ -148,6 +153,8 @@ pub struct Ui {
     marker: CarMarker,
     /// Metres the car has rolled: the little robot's treads.
     odometer: Odometer,
+    /// The HARDWARE PAGE button, above the keys (the hardware page is there).
+    hardware: bool,
 }
 
 /// A grid's colours as the picture's pixels.
@@ -193,6 +200,14 @@ impl Layout {
         }
     }
 
+    /// The HARDWARE PAGE button: across the panel, just above the KEYS card.
+    pub fn hardware_button(&self) -> Rectangle {
+        let r = self.panel;
+        let (u, m) = (self.u, 12.0 * self.u);
+        let y = r.y + r.height - m - KEYS_H * u - m - HARDWARE_H * u;
+        Rectangle::new(r.x + m, y, r.width - 2.0 * m, HARDWARE_H * u)
+    }
+
     /// The on-screen keyboard, at the bottom of the window, centred under the map.
     pub fn keyboard(&self) -> Keyboard {
         let window = Viewport {
@@ -213,6 +228,7 @@ impl Ui {
         theme: &'static Theme,
         blur: bool,
         marker: CarMarker,
+        hardware: bool,
     ) -> Self {
         let loaded = FONT_FILES
             .iter()
@@ -239,6 +255,7 @@ impl Ui {
             frost,
             marker,
             odometer: Odometer::default(),
+            hardware,
         }
     }
 
@@ -374,7 +391,7 @@ impl Ui {
             let cx = band.x + band.width / 2.0;
             p.centred(cx, band.y + 8.0 * p.u, 40.0, words, t.not_real_ink);
         }
-        panel(&mut p, &layout, state, now, source);
+        panel(&mut p, &layout, state, now, source, self.hardware);
         if debug_page {
             draw_debug_page(&mut p, &vp, state, now);
         } else {
@@ -1222,6 +1239,7 @@ fn panel(
     state: &MapState,
     now: Instant,
     source: &str,
+    hardware: bool,
 ) {
     let u = p.u;
     let t = p.t;
@@ -1307,10 +1325,11 @@ fn panel(
     y += h + m;
 
     // TOPICS: what's been heard.
-    let keys_h = 156.0 * u;
+    let keys_h = KEYS_H * u;
+    let button_h = if hardware { HARDWARE_H * u + m } else { 0.0 };
     let row_h = 32.0 * u;
     let wanted = 44.0 * u + Topic::ALL.len() as f32 * row_h + 8.0 * u;
-    let h = (r.y + r.height - m - keys_h - m - y).clamp(60.0 * u, wanted);
+    let h = (r.y + r.height - m - keys_h - m - button_h - y).clamp(60.0 * u, wanted);
     p.card(x, y, w, h, "TOPICS");
     let rows = ((h - 44.0 * u) / row_h).floor().max(0.0) as usize;
     for (i, topic) in Topic::ALL.into_iter().take(rows).enumerate() {
@@ -1350,6 +1369,21 @@ fn panel(
             18.0,
             inner_w - sw - 12.0 * u,
             state.config.topic(topic),
+            t.text,
+        );
+    }
+
+    // The HARDWARE PAGE button (F2 too): the hardware panel, on this screen.
+    if hardware {
+        let b = layout.hardware_button();
+        let radius = t.style.corner(14.0 * u);
+        paint::glass(p.d, b, radius, t.panel, t, u.max(1.0));
+        let size = 22.0;
+        p.centred(
+            b.x + b.width / 2.0,
+            b.y + (b.height - size * u) / 2.0,
+            size,
+            HARDWARE_LABEL,
             t.text,
         );
     }

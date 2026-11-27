@@ -90,19 +90,20 @@ topic, its type, and who publishes and reads it.
 Stop the turtle first (Ctrl-C in each terminal).
 
 ```bash
-pixi run sim                        # the same on Linux and on a Mac
+pixi run sim                        # the virtual car: the same on Linux and on a Mac
 tools/software_gl.sh pixi run sim   # a computer with no GPU (slower than real time)
+pixi run screens                    # terminal 2: the world view, the HUD and the map
 ```
 
 **You should see:**
-- **RViz:** the car model, the map, and the costmaps around the car.
+- **The world view:** the car on the road, what its lidar sees, the map from above.
+- **The HUD and the map window:** the car's two screens, as the car shows them.
 
-Ravensim is our own simulator, in Rust ([its page](own-simulator.md)). Watch it in RViz,
-in Lichtblick ([Foxglove](foxglove.md)), or in the developer window: `pixi run ravensim`
-starts the sim and the window together.
+Ravensim is our own simulator, in Rust ([its page](own-simulator.md)). `pixi run sim` starts
+it as today's car (`setup:=car`): every topic the real car has.
 
 Drive it with `pixi run keyboard --sim` in another terminal. Then run
-`pixi run check sim`: it should say `0 failed`.
+`pixi run check virtual`: it should say `0 failed`.
 
 ## 5. A goal through a costmap (10 minutes)
 

@@ -22,6 +22,7 @@ the three marks ──► steering_limits ──► the lines to copy;  CHECK �
 | `config` | `PanelConfig` from `config/hw_panel.yaml` (built in); `Topic`, `Number`, `NODE_NAME` = `hw_panel` |
 | `vehicle` | `Vehicle` from vehicle.yaml (built in): `wheelbase`, `max_steering_angle`, `speed_wheels` (`SpeedWheels`), `wheel_diameter` |
 | `rules` | `aav_actuator_tests/safety.py`, ported with its test vectors: `Kind`, `source_kind`, `preflight_refusal` (`Refusal`), `unseen` (`Sample`, `Unseen`), `taken_over` |
+| `controls` | who may do what, where (Ben, 26 Nov, option A): `Controls::for_host(Host, Kind)` -> `Full` or `WatchOnly` (the map's page on REAL or nothing announced); `allows(Action)`, `why_not` -> `WatchOnly` (its words: `WATCH_ONLY`); `Action`: Drive, Calibrate, RunLadder, StopOwnRun, Jacks, Estop |
 | `gate` | `gate(&Situation, Caps)` -> `Gate::On { cap, watch_unseen }` or `Gate::Off(Off)`: SIM and BENCH on (1.0 m/s); REAL on stands only past the preflight's refusal and with a wheel speed seen (0.3 m/s); REAL on the ground, unannounced, REPLAY off |
 | `buttons` | `Buttons`: `press(Press)`, `set_go`, `observe_mux`, `zero(Zeroed)`, `command()` -> `Option<Command>`; `Command::from_steering` (ω = v tan δ / L) |
 | `state` | `PanelState`, `Update`, `Row`: each sensor's number, OK / STALE / NEVER, rates for the big topics, `kind()`, `estop_on()`, `speed()` (`Speed`: measured, or `SpeedUnknown`: never, stale, NaN), `geofence_holds()`, `fresh_raw()`, `calibration_situation()`; `wheels_note` ("front, not driven") |
@@ -40,6 +41,9 @@ It builds on [`hud-core`](../hud-core/README.md) (`health`, `origin`, `vehicle`,
 ## Invariants
 
 - No ROS and no raylib.
+- The map's hardware page on the real car only watches: `controls` takes away every drive,
+  calibration, RUN and jacks button there, and nothing announced counts as REAL. E-STOP
+  and STOP of the tab's own run always stay.
 - The car moves only while GO is held; letting go sends 0.5 s of zeros, then nothing.
 - Speed is never below 0 (no reverse) and never above the gate's cap.
 - An e-stop, a takeover (twist_mux passing someone else's command for 0.3 s), a source

@@ -52,18 +52,9 @@
 //!
 //! usage: hw_panel [--demo [--demo-bind COUNTS]] [--stands] [--fullscreen] [--monitor NAME|N]
 //!                 [--list-monitors] [--config FILE] [--vehicle FILE]
-//!                 [--page drive|calibration|graphs|measure] [--esp32 ws://HOST:PORT/]
+//!                 [--page drive|calibration|graphs|measure|ladder] [--esp32 ws://HOST:PORT/]
 //!                 [--screenshot FILE [--after S]] [--self-test SPEED:SECONDS]
 //!                 [--cal-self-test] [--robot-now] [--ros-args ...]
-
-mod cal_script;
-mod demo;
-mod esp32;
-mod robot;
-#[cfg(feature = "ros")]
-mod ros;
-mod source;
-mod ui;
 
 use std::{
     path::{Path, PathBuf},
@@ -72,43 +63,32 @@ use std::{
 
 use anyhow::{bail, Context as _, Result};
 use hud_app::window;
-use hud_core::{
-    robot::{EasterEgg, Show},
-    screen::Monitor,
+use hud_core::screen::Monitor;
+use panel_app::{
+    cal_script::CalScript, open_source, source::DataSource, ui::Page, HardwarePage, Host,
+    SourceOptions,
 };
 use panel_core::{
-    buttons::{Buttons, Press, Steps, World, Zeroed},
-    calibration::{self, CalPage, CalPress, NotReady, Request},
+    buttons::{Buttons, Press},
     config::PanelConfig,
-    easter_egg::{self, PassWatch},
-    gate::{self, Caps, Gate, Situation},
-    graphs::Freezer,
-    measure::{self, Entry, Odometer},
-    rules::Kind,
-    state::{self as panel_state, PanelState, Update},
-    steering_limits::Mark,
+    gate::Gate,
+    state::PanelState,
     vehicle::Vehicle,
 };
 use raylib::prelude::*;
 
-use crate::{
-    cal_script::CalScript,
-    demo::Demo,
-    esp32::Esp32Reader,
-    source::{DataSource, WithEsp32},
-    ui::{Button, Frame, Page, Ui},
-};
-
 const USAGE: &str = "\
 usage: hw_panel [--demo [--demo-bind COUNTS]] [--stands] [--fullscreen] [--monitor NAME|N]
                 [--list-monitors] [--config FILE] [--vehicle FILE]
-                [--page drive|calibration|graphs|measure] [--esp32 ws://HOST:PORT/]
+                [--page drive|calibration|graphs|measure|ladder] [--esp32 ws://HOST:PORT/]
                 [--screenshot FILE [--after S]] [--self-test SPEED:SECONDS]
                 [--cal-self-test] [--robot-now] [--ros-args ...]
 
   --demo             a pretend car: no ROS, no car
   --demo-bind COUNTS the demo's steering has a stiff spot there (the check finds it)
-  --page PAGE        open on this page: drive, calibration (steering), graphs or measure
+  --page PAGE        open on this page: drive, calibration (steering), graphs, measure
+                     or ladder (the test ladder: its tool in this repository; with
+                     --demo, pretend data: nothing runs)
   --esp32 URL        also read the ESP32's status lines from its WebSocket, such as
                      ws://192.168.4.1:81/ (read only: the GRAPHS page; esp32_url too)
   --stands           the car's wheels are off the ground (the speed buttons stay off on
@@ -190,15 +170,12 @@ impl Options {
                 "--cal-self-test" => opts.cal_self_test = true,
                 "--robot-now" => opts.robot_now = true,
                 "--page" => {
-                    opts.page = Some(match value("--page")?.as_str() {
-                        "calibration" => Page::Calibration,
-                        "drive" => Page::Drive,
-                        "graphs" => Page::Graphs,
-                        "measure" => Page::Measure,
-                        other => {
-                            bail!("--page: drive, calibration, graphs or measure, not {other:?}")
-                        }
-                    })
+                    let name = value("--page")?;
+                    opts.page = Some(Page::from_name(&name).with_context(|| {
+                        format!(
+                            "--page: drive, calibration, graphs, measure or ladder, not {name:?}"
+                        )
+                    })?)
                 }
                 "--esp32" => {
                     let url = value("--esp32")?;
@@ -332,300 +309,33 @@ fn main() -> Result<()> {
         window::print_monitors();
         return Ok(());
     }
-    let mut config = match &opts.config {
+    let config = match &opts.config {
         Some(path) => PanelConfig::from_yaml(&read(path)?)
             .with_context(|| format!("in {}", path.display()))?,
         None => PanelConfig::default(),
     };
-    if let Some(url) = &opts.esp32 {
-        config.esp32_url = url.clone();
-    }
     let vehicle = match &opts.vehicle {
         Some(path) => Vehicle::from_vehicle_yaml(&read(path)?)
             .with_context(|| format!("in {}", path.display()))?,
         None => Vehicle::default(),
     };
-    let (source, mut config) = open_source(&opts, args, config)?;
-    // --esp32 wins over esp32_url from a parameters file.
-    if let Some(url) = &opts.esp32 {
-        config.esp32_url = url.clone();
-    }
-    // The ESP32's status lines beside it: --esp32, or esp32_url (a ROS parameter too).
-    let source: Box<dyn DataSource> = match config.esp32()? {
-        Some(url) => {
-            println!("hw_panel: reading the ESP32's status lines from {url} (read only)");
-            Box::new(WithEsp32 {
-                inner: source,
-                esp32: Esp32Reader::start(url)?,
-            })
-        }
-        None => source,
+    let source_options = SourceOptions {
+        demo: opts.demo,
+        demo_bind: opts.demo_bind,
+        demo_real: false,
+        esp32: opts.esp32.clone(),
     };
-    run(opts, source, &config, &vehicle)
+    // The ESP32's status lines beside it: --esp32, or esp32_url (a ROS parameter too).
+    let (source, config) = open_source(args, config, &source_options, "hw_panel")?;
+    run(opts, source, config, &vehicle)
 }
 
-/// The demo, or the ROS node (which may rename topics from its parameters).
-fn open_source(
-    opts: &Options,
-    args: Vec<String>,
-    config: PanelConfig,
-) -> Result<(Box<dyn DataSource>, PanelConfig)> {
-    if opts.demo {
-        // With a real ESP32's lines, the demo pretends none of its own.
-        let lines = config.esp32_url.trim().is_empty();
-        let demo = Demo::new(Instant::now(), opts.demo_bind, lines);
-        return Ok((Box::new(demo), config));
-    }
-    #[cfg(feature = "ros")]
-    {
-        let (source, config) = ros::RosSource::start(args, config)?;
-        Ok((Box::new(source), config))
-    }
-    #[cfg(not(feature = "ros"))]
-    {
-        let _ = (args, config);
-        bail!("this hw_panel was built without ROS (--no-default-features): run it with --demo")
-    }
-}
-
-/// raylib's keys for each press.
-const PRESS_KEYS: [(KeyboardKey, Press); 10] = [
-    (KeyboardKey::KEY_UP, Press::SpeedUp),
-    (KeyboardKey::KEY_EQUAL, Press::SpeedUp),
-    (KeyboardKey::KEY_KP_ADD, Press::SpeedUp),
-    (KeyboardKey::KEY_DOWN, Press::SpeedDown),
-    (KeyboardKey::KEY_MINUS, Press::SpeedDown),
-    (KeyboardKey::KEY_KP_SUBTRACT, Press::SpeedDown),
-    (KeyboardKey::KEY_LEFT, Press::Left),
-    (KeyboardKey::KEY_RIGHT, Press::Right),
-    (KeyboardKey::KEY_C, Press::Centre),
-    (KeyboardKey::KEY_S, Press::Stop),
-];
-
-/// raylib's keys for the calibration page's presses.
-const CAL_KEYS: [(KeyboardKey, CalPress); 9] = [
-    (KeyboardKey::KEY_L, CalPress::Limp),
-    (KeyboardKey::KEY_H, CalPress::Hold),
-    (KeyboardKey::KEY_LEFT, CalPress::StepLeft),
-    (KeyboardKey::KEY_RIGHT, CalPress::StepRight),
-    (KeyboardKey::KEY_ONE, CalPress::Mark(Mark::Left)),
-    (KeyboardKey::KEY_TWO, CalPress::Mark(Mark::Centre)),
-    (KeyboardKey::KEY_THREE, CalPress::Mark(Mark::Right)),
-    (KeyboardKey::KEY_K, CalPress::Check),
-    (KeyboardKey::KEY_O, CalPress::End),
-];
-
-/// The panel between the source and the window: news in, where it may drive, the
-/// buttons, what to send. The window adds the keys, the mouse and the drawing; the
-/// Gazebo check drives it without a window.
-struct Panel {
-    state: PanelState,
-    buttons: Buttons,
-    last_kind: Option<Kind>,
-    caps: Caps,
-    vehicle: Vehicle,
-    stands: bool,
-    page: Page,
-    cal: CalPage,
-    /// The calibration result's file, once saved (or why it wasn't).
-    saved: Option<String>,
-    /// The GRAPHS page's FREEZE.
-    freezer: Freezer,
-    /// The MEASURE page: distance since RESET, the tape typed in, the file once saved.
-    odometer: Odometer,
-    tape: Entry,
-    measure_saved: Option<String>,
-}
-
-impl Panel {
-    fn new(config: &PanelConfig, vehicle: &Vehicle, stands: bool) -> Self {
-        Self {
-            state: PanelState::new(config.stale_after()),
-            buttons: Buttons::new(Steps {
-                speed: config.speed_step,
-                steer: config.steer_step,
-                creep: config.creep,
-                max_steer: vehicle.max_steering_angle,
-                wheelbase: vehicle.wheelbase,
-            }),
-            last_kind: None,
-            caps: Caps {
-                sim: config.sim_cap,
-                stands: config.stands_cap,
-            },
-            vehicle: vehicle.clone(),
-            stands,
-            page: Page::Drive,
-            cal: CalPage::new(config.calibration()),
-            saved: None,
-            freezer: Freezer::default(),
-            odometer: Odometer::default(),
-            tape: Entry::default(),
-            measure_saved: None,
-        }
-    }
-
-    /// Opens a page. Leaving the calibration page ends what it asks.
-    fn show(&mut self, page: Page, now: Instant) {
-        if self.page == Page::Calibration && page != Page::Calibration {
-            let position = self.position(now);
-            self.cal.press(CalPress::End, now, position, &[]);
-            // A person's ON STANDS, STILL holds only while they stay on the page.
-            self.cal.forget_still();
-        }
-        self.page = page;
-    }
-
-    /// The steering actuator's position, while fresh.
-    fn position(&self, now: Instant) -> Option<u16> {
-        self.state.fresh_raw(now).and_then(|r| r.position)
-    }
-
-    /// What the calibration page's checks rest on now.
-    fn cal_situation(&self, now: Instant) -> calibration::Situation {
-        self.state
-            .calibration_situation(now, self.cal.still_confirmed())
-    }
-
-    /// Why the calibration page may not ask now.
-    fn cal_ready(&self, now: Instant) -> Vec<NotReady> {
-        calibration::readiness(&self.cal_situation(now))
-    }
-
-    /// This frame's calibration presses; returns what to send to the bridge now.
-    fn calibrate(
-        &mut self,
-        now: Instant,
-        presses: impl IntoIterator<Item = CalPress>,
-    ) -> Option<Request> {
-        let ready = self.cal_ready(now);
-        let position = self.position(now);
-        for p in presses {
-            self.cal.press(p, now, position, &ready);
-        }
-        self.cal.tick(now, self.state.fresh_raw(now), &ready)
-    }
-
-    /// SAVE: the result for a person to copy, in a file of its own; never vehicle.yaml.
-    fn save(&mut self) {
-        let (Some(Ok(limits)), Some(marks)) = (self.cal.limits(), self.cal.marks()) else {
-            return;
-        };
-        let text = calibration::result_file(&limits, marks, self.cal.checked());
-        self.saved = Some(match write_result(CALIBRATION_DIR, "steering", &text) {
-            Ok(path) => {
-                println!("hw_panel: the steering calibration, saved to {path}:\n{text}");
-                path
-            }
-            Err(e) => {
-                eprintln!("hw_panel: couldn't save the steering calibration: {e:#}\n{text}");
-                format!("NOT saved ({e}); the lines are in the log")
-            }
-        });
-    }
-
-    /// The MEASURE page's RESET: the odometer and the tape back to zero.
-    fn reset_measure(&mut self) {
-        self.odometer.reset();
-        self.tape.clear();
-        self.measure_saved = None;
-    }
-
-    /// The MEASURE page's SAVE: what was measured, in a file of its own; never vehicle.yaml.
-    fn save_measure(&mut self) {
-        let secs = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_secs());
-        let when = calibration::utc_stamp(secs);
-        let diameter = self.vehicle.wheel_diameter;
-        let text = measure::report(&self.odometer, self.tape.value(), diameter, &when);
-        self.measure_saved = Some(match write_result(MEASURE_DIR, "measure", &text) {
-            Ok(path) => {
-                println!("hw_panel: the measurements, saved to {path}:\n{text}");
-                path
-            }
-            Err(e) => {
-                eprintln!("hw_panel: couldn't save the measurements: {e:#}\n{text}");
-                format!("NOT saved ({e}); the lines are in the log")
-            }
-        });
-    }
-
-    /// Takes what arrived; a source change zeroes the buttons (not the first
-    /// announcement). Returns where the speed buttons may drive now.
-    fn news(&mut self, source: &mut dyn DataSource, now: Instant) -> Gate {
-        for update in source.drain(now) {
-            if let Update::Mux(c) = &update {
-                self.buttons.observe_mux(*c, now);
-            }
-            self.state.apply(update, now);
-        }
-        // An e-stop freezes the graphs, to read what led to it.
-        self.freezer
-            .watch_estop(now, self.state.estop_on(), &self.state.graphs);
-        // Unknown to anything is the first announcement, not a change.
-        let kind = self.state.kind();
-        if self
-            .last_kind
-            .is_some_and(|k| k != kind && k != Kind::Unknown)
-        {
-            self.buttons.zero(Zeroed::SourceChanged);
-        }
-        self.last_kind = Some(kind);
-        gate::gate(
-            &Situation {
-                kind,
-                stands: self.stands,
-                speed_wheels: self.vehicle.speed_wheels.as_ref(),
-                no_timeout_lock: self.state.no_timeout_lock,
-                // Not read yet (a parameter of the legacy bridge): unknown.
-                speed_loop_mode: None,
-                speed_seen: self.state.seen_speed(now).is_some(),
-            },
-            self.caps,
-        )
-    }
-
-    /// This frame's presses and GO; returns what to send now.
-    fn act(
-        &mut self,
-        now: Instant,
-        gate: &Gate,
-        presses: impl IntoIterator<Item = Press>,
-        go: bool,
-    ) -> Option<panel_core::buttons::Command> {
-        // The calibration page has no drive buttons: GO is never held there.
-        let drive = self.page == Page::Drive;
-        for p in presses.into_iter().filter(|_| drive) {
-            self.buttons.press(p, now, gate);
-        }
-        self.buttons.set_go(go && drive, now);
-        self.buttons.command(
-            now,
-            &World {
-                gate,
-                estop: self.state.estop_on(),
-                seen_steer: self.state.seen_steer(now),
-                seen_speed: self.state.seen_speed(now),
-            },
-        )
-    }
-
-    /// "front, not driven" on the real car's stands.
-    fn wheels_note(&self) -> Option<String> {
-        panel_state::wheels_note(
-            self.stands,
-            self.state.kind(),
-            self.vehicle.speed_wheels.as_ref(),
-        )
-    }
-}
-
-/// The window's loop: news in, the buttons, one frame drawn, the command out.
+/// The window's loop: news in, the buttons, one frame drawn, the command out. The page
+/// itself is panel-app's [`HardwarePage`], the same as the map window's HARDWARE page.
 fn run(
     mut opts: Options,
-    mut source: Box<dyn DataSource>,
-    config: &PanelConfig,
+    source: Box<dyn DataSource>,
+    config: PanelConfig,
     vehicle: &Vehicle,
 ) -> Result<()> {
     let (mut rl, thread) = raylib::init()
@@ -640,176 +350,65 @@ fn run(
     rl.set_target_fps(60);
     rl.set_window_min_size(1100, 760);
     window::place(&mut rl, opts.monitor.as_ref(), opts.fullscreen)?;
-    let ui = Ui::new(&mut rl, &thread, config.theme.theme());
-    let mut panel = Panel::new(config, vehicle, opts.stands);
     let started = Instant::now();
-    if let Some(page) = opts
+    // The little robot: it drives across once at start-up, then peeks when all is quiet.
+    let mut egg = config.easter_egg_settings();
+    if opts.robot_now {
+        egg.on = true;
+        egg.idle_after = ROBOT_NOW_AFTER;
+    }
+    let mut page = HardwarePage::new(
+        &mut rl,
+        &thread,
+        source,
+        config,
+        vehicle,
+        opts.stands,
+        Host::Standalone,
+        egg,
+        started,
+    );
+    if let Some(p) = opts
         .page
         .or(opts.cal_self_test.then_some(Page::Calibration))
     {
-        panel.show(page, started);
+        page.show(p, started);
     }
     let mut cal_script = opts
         .cal_self_test
         .then(|| CalScript::new(opts.demo_bind.is_some()));
     let screenshot_after = Duration::from_secs_f64(opts.after.unwrap_or(4.0));
-    // The little robot: it drives across once at start-up, then peeks when all is quiet.
-    let mut egg_settings = config.easter_egg_settings();
-    if opts.robot_now {
-        egg_settings.on = true;
-        egg_settings.idle_after = ROBOT_NOW_AFTER;
-    }
-    let mut egg = EasterEgg::new(egg_settings, started);
-    egg.drive_across(started);
-    let mut passes = PassWatch::default();
 
-    while !rl.window_should_close() && !source.has_stopped() {
+    while !rl.window_should_close() && !page.has_stopped() {
         let now = Instant::now();
-        let gate = panel.news(source.as_mut(), now);
-
-        // Any touch at all hides the little robot.
-        let touched = rl.get_key_pressed().is_some()
-            || [
-                MouseButton::MOUSE_BUTTON_LEFT,
-                MouseButton::MOUSE_BUTTON_RIGHT,
-            ]
-            .into_iter()
-            .any(|b| rl.is_mouse_button_down(b))
-            || rl.get_mouse_delta().length() > 0.0
-            || rl.get_mouse_wheel_move() != 0.0;
-
-        // The mouse and the keys. A window without focus never holds GO.
-        let focused = rl.is_window_focused();
-        let w = rl.get_screen_width() as f32;
-        let mouse = rl.get_mouse_position();
-        let under = ui::layout(w, panel.page)
-            .into_iter()
-            .find(|(_, r)| r.check_collision_point_rec(mouse))
-            .map(|(b, _)| b);
-        let mouse_down = rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT);
-        let held = under.filter(|_| mouse_down);
-        let on_cal = panel.page == Page::Calibration;
-        let on_measure = panel.page == Page::Measure;
-        // The measure page types numbers: the drive keys are off there.
-        let mut presses: Vec<Press> = PRESS_KEYS
-            .iter()
-            .filter(|(k, _)| !on_cal && !on_measure && rl.is_key_pressed(*k))
-            .map(|&(_, p)| p)
-            .collect();
-        let mut cal_presses: Vec<CalPress> = CAL_KEYS
-            .iter()
-            .filter(|(k, _)| on_cal && rl.is_key_pressed(*k))
-            .map(|&(_, p)| p)
-            .collect();
-        let clicked = under.filter(|_| rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT));
-        match clicked {
-            Some(Button::Press(p)) => presses.push(p),
-            Some(Button::Cal(p)) => cal_presses.push(p),
-            Some(Button::Tab(page)) => panel.show(page, now),
-            _ => {}
-        }
-        if rl.is_key_pressed(KeyboardKey::KEY_TAB) {
-            panel.show(panel.page.next(), now);
-        }
-        let on_graphs = panel.page == Page::Graphs;
-        if on_graphs && (clicked == Some(Button::Freeze) || rl.is_key_pressed(KeyboardKey::KEY_P)) {
-            panel.freezer.toggle(now, &panel.state.graphs);
-        }
-        let save_key = clicked == Some(Button::Save) || rl.is_key_pressed(KeyboardKey::KEY_W);
-        let save = on_cal && save_key;
-        // The measure page: the tape typed in, RESET, SAVE; the odometer on every page.
-        while let Some(c) = rl.get_char_pressed() {
-            if on_measure {
-                panel.tape.push(c);
-            }
-        }
-        if on_measure {
-            if rl.is_key_pressed(KeyboardKey::KEY_BACKSPACE) {
-                panel.tape.pop();
-            }
-            if clicked == Some(Button::Reset) || rl.is_key_pressed(KeyboardKey::KEY_R) {
-                panel.reset_measure();
-            }
-            if save_key {
-                panel.save_measure();
-            }
-        }
-        let seen = panel.state.seen_speed(now);
-        panel.odometer.update(seen, now);
+        page.news(now);
+        let mut input = page.read_input(&mut rl, now);
         if let Some(script) = &mut cal_script {
+            let panel = page.panel();
             let position = panel.position(now);
-            cal_presses.extend(script.frame(now, &panel.cal, position));
-        }
-        if clicked == Some(Button::Estop) || rl.is_key_pressed(KeyboardKey::KEY_E) {
-            source.press_estop();
+            input
+                .cal_presses
+                .extend(script.frame(now, panel.cal(), position));
         }
         if rl.is_key_pressed(KeyboardKey::KEY_F11) {
             window::toggle_fullscreen(&mut rl);
         }
-        let mut go =
-            focused && (rl.is_key_down(KeyboardKey::KEY_SPACE) || held == Some(Button::Go));
         if let Some(test) = &mut opts.self_test {
-            let (press, hold) = test.frame(now, &panel.buttons, &gate);
-            presses.extend(press);
-            go |= hold;
+            let (press, hold) = test.frame(now, page.panel().buttons(), page.gate());
+            input.presses.extend(press);
+            input.go |= hold;
         }
-        let command = panel.act(now, &gate, presses, go);
-        let cal_request = panel.calibrate(now, cal_presses);
-        if save {
-            panel.save();
-        }
-        let cal_allowance = calibration::allowance(&panel.cal_situation(now));
-        if passes.just_passed(&panel.cal) {
-            egg.drive_across(now);
-        }
-        let page = match panel.page {
-            Page::Drive => 0,
-            Page::Calibration => 1,
-            Page::Graphs => 2,
-            Page::Measure => 3,
-        };
-        let watch = easter_egg::watch(
-            &panel.state,
-            &panel.buttons,
-            &gate,
-            &panel.cal,
-            page,
-            touched,
-            now,
-        );
-        let show = egg.update(now, watch);
-
-        let note = panel.wheels_note();
-        let frame = Frame {
-            now,
-            label: source.label(),
-            gate: &gate,
-            buttons: &panel.buttons,
-            held,
-            wheels_note: note.as_deref(),
-            stands: opts.stands,
-            page: panel.page,
-            cal: &panel.cal,
-            cal_allowance: &cal_allowance,
-            saved: panel.saved.as_deref(),
-            hide_keys: matches!(show, Show::Drive { .. }),
-            freezer: &panel.freezer,
-            stale_after: config.stale_after(),
-            odometer: &panel.odometer,
-            tape: &panel.tape,
-            wheel_diameter: panel.vehicle.wheel_diameter,
-            measure_saved: panel.measure_saved.as_deref(),
-        };
+        let step = page.step(now, input);
         let mut d = rl.begin_drawing(&thread);
-        let room = ui.draw(&mut d, &panel.state, &frame);
-        robot::draw(&mut d, config.theme.theme(), show, &room);
+        page.draw(&mut d, now, &step);
         drop(d);
-        source.frame_drawn(command, cal_request);
+        page.frame_drawn(&step);
 
         if let Some(script) = &mut cal_script {
-            script.print(now, &panel.cal, panel.position(now));
+            let panel = page.panel();
+            script.print(now, panel.cal(), panel.position(now));
             if script.finished(now) && opts.screenshot.is_none() {
-                if !script.as_expected(&panel.cal) {
+                if !script.as_expected(panel.cal()) {
                     bail!("the lock-to-lock check didn't end as it should");
                 }
                 break;
@@ -817,7 +416,8 @@ fn run(
         }
 
         if let Some(test) = &mut opts.self_test {
-            test.print(now, &panel.state, &panel.buttons);
+            let panel = page.panel();
+            test.print(now, panel.state(), panel.buttons());
             if test.finished(now) && opts.screenshot.is_none() {
                 break;
             }
@@ -830,34 +430,6 @@ fn run(
         }
     }
     Ok(())
-}
-
-/// The calibration page's SAVE folder, under `$XDG_DATA_HOME/aav/`.
-const CALIBRATION_DIR: &str = "steering-calibration";
-/// The measure page's.
-const MEASURE_DIR: &str = "measurements";
-
-/// Where SAVE writes: `$XDG_DATA_HOME/aav/<folder>/`, or `~/.local/share/aav/<folder>/`.
-fn results_dir(folder: &str) -> Result<PathBuf> {
-    let base = match std::env::var_os("XDG_DATA_HOME").filter(|v| !v.is_empty()) {
-        Some(dir) => PathBuf::from(dir),
-        None => {
-            PathBuf::from(std::env::var_os("HOME").context("HOME isn't set")?).join(".local/share")
-        }
-    };
-    Ok(base.join("aav").join(folder))
-}
-
-/// Writes `text` to a new file of its own, `<prefix>-<time>.txt`; returns its path.
-fn write_result(folder: &str, prefix: &str, text: &str) -> Result<String> {
-    let dir = results_dir(folder)?;
-    std::fs::create_dir_all(&dir).with_context(|| format!("making {}", dir.display()))?;
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs());
-    let path = dir.join(format!("{prefix}-{}.txt", calibration::utc_stamp(secs)));
-    std::fs::write(&path, text).with_context(|| format!("writing {}", path.display()))?;
-    Ok(path.display().to_string())
 }
 
 /// Saves what the window shows as a PNG.
@@ -877,7 +449,10 @@ fn save_screenshot(rl: &mut RaylibHandle, thread: &RaylibThread, path: &Path) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panel_core::gate::Off;
+    use panel_core::{
+        buttons::{Steps, Zeroed},
+        gate::Off,
+    };
 
     fn args(list: &[&str]) -> Vec<String> {
         std::iter::once("hw_panel")
@@ -934,28 +509,34 @@ mod tests {
         assert!(test.finished(t + Duration::from_secs(6)));
     }
 
-    /// The Gazebo check without a window (a locked screen can't open one): the real node
-    /// and the same buttons, a frame every 33 ms, the self-test's presses and GO.
+    /// The Ravensim check without a window (a locked screen can't open one): the real
+    /// node and the same buttons, a frame every 33 ms, the self-test's presses and GO.
     /// `HW_PANEL_SELF_TEST=0.3:8 cargo test --release -p panel-app -- --ignored
     /// --nocapture gazebo_self_test`, beside a running sim on the same domain.
     #[cfg(feature = "ros")]
     #[test]
     #[ignore = "needs a running Ravensim on this ROS domain"]
     fn gazebo_self_test() -> Result<()> {
+        use panel_app::Panel;
         let spec = std::env::var("HW_PANEL_SELF_TEST").unwrap_or_else(|_| "0.3:8".into());
         let mut test = SelfTest::parse(&spec)?;
         let config = PanelConfig::default();
-        let (source, config) = ros::RosSource::start(vec!["hw_panel".into()], config)?;
+        let (source, config) = panel_app::ros::RosSource::start(vec!["hw_panel".into()], config)?;
         let mut source: Box<dyn DataSource> = Box::new(source);
-        let mut panel = Panel::new(&config, &Vehicle::default(), false);
+        let mut panel = Panel::new(
+            &config,
+            &Vehicle::default(),
+            false,
+            panel_app::Host::Standalone,
+        );
         let started = Instant::now();
         loop {
             let now = Instant::now();
             let gate = panel.news(source.as_mut(), now);
-            let (press, go) = test.frame(now, &panel.buttons, &gate);
+            let (press, go) = test.frame(now, panel.buttons(), &gate);
             let command = panel.act(now, &gate, press, go);
             source.frame_drawn(command, None);
-            test.print(now, &panel.state, &panel.buttons);
+            test.print(now, panel.state(), panel.buttons());
             if test.finished(now) || now.duration_since(started) > Duration::from_secs(120) {
                 break;
             }
@@ -966,134 +547,6 @@ mod tests {
             "the speed buttons never came on"
         );
         Ok(())
-    }
-
-    /// A source that hands out the updates it is given, once.
-    struct Script(Vec<Update>);
-
-    impl DataSource for Script {
-        fn label(&self) -> &'static str {
-            "TEST"
-        }
-        fn drain(&mut self, _now: Instant) -> Vec<Update> {
-            std::mem::take(&mut self.0)
-        }
-        fn press_estop(&mut self) {}
-        fn frame_drawn(
-            &mut self,
-            _command: Option<panel_core::buttons::Command>,
-            _calibration: Option<Request>,
-        ) {
-        }
-    }
-
-    fn announce(origin: hud_core::origin::Origin) -> Update {
-        Update::Source(hud_core::origin::Announcement {
-            announcer: "sim_adapter".into(),
-            entries: vec![hud_core::origin::Entry {
-                name: "imu".into(),
-                topic: "/sensors/imu/data".into(),
-                origin,
-            }],
-        })
-    }
-
-    #[test]
-    fn the_first_announcement_is_not_a_source_change() {
-        use hud_core::origin::Origin;
-        let t = Instant::now();
-        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
-        let mut quiet = Script(vec![]);
-        assert!(matches!(panel.news(&mut quiet, t), Gate::Off(_)));
-        // Gazebo announces late, while GO is already held: no zero.
-        let mut sim = Script(vec![announce(Origin::Sim)]);
-        let gate = panel.news(&mut sim, t);
-        assert!(matches!(gate, Gate::On { .. }));
-        assert_eq!(panel.buttons.last_zero(), None);
-        let c = panel.act(t, &gate, [Press::SpeedUp], true);
-        assert!(c.is_some_and(|c| (c.speed - 0.1).abs() < 1e-12));
-        // A real announcement beside it: a change, zeroed, and the speed buttons off.
-        let mut real = Script(vec![Update::Source(hud_core::origin::Announcement {
-            announcer: "legacy_uart_bridge".into(),
-            entries: vec![hud_core::origin::Entry {
-                name: "car".into(),
-                topic: String::new(),
-                origin: Origin::Real,
-            }],
-        })]);
-        let gate = panel.news(&mut real, t);
-        assert_eq!(panel.buttons.last_zero(), Some(&Zeroed::SourceChanged));
-        assert!(matches!(gate, Gate::Off(Off::OnTheGround)));
-        assert_eq!(panel.act(t, &gate, [Press::SpeedUp], true), None);
-    }
-
-    #[test]
-    fn the_calibration_page_never_drives_and_leaving_it_ends_the_mode() {
-        use panel_core::calibration::{FirmwareState, Raw};
-        use panel_core::state::Update as U;
-        let t = Instant::now();
-        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
-        let mut news = Script(vec![
-            announce(hud_core::origin::Origin::Sim),
-            U::Vehicle(hud_core::vehicle::VehicleStatus {
-                mode: hud_core::vehicle::Mode::from(1),
-                armed: false,
-                estop_active: false,
-                speed: hud_core::units::MetresPerSecond(0.0),
-                steering_angle: hud_core::units::Radians(0.0),
-                throttle: hud_core::units::Fraction::new(0.0),
-                brake: hud_core::units::Fraction::new(1.0),
-                faults: hud_core::vehicle::Faults(0),
-            }),
-            U::SteeringRaw(Raw {
-                position: Some(2000),
-                state: FirmwareState::Off,
-            }),
-        ]);
-        let gate = panel.news(&mut news, t);
-        panel.show(Page::Calibration, t);
-        assert_eq!(panel.act(t, &gate, [Press::SpeedUp], true), None);
-        assert!(panel.cal_ready(t).is_empty());
-        assert_eq!(panel.calibrate(t, [CalPress::Limp]), Some(Request::Limp));
-        panel.show(Page::Drive, t);
-        assert_eq!(panel.calibrate(t, []), Some(Request::Off));
-        assert_eq!(panel.calibrate(t + Duration::from_secs(1), []), None);
-    }
-
-    /// The calibration self-test, without a window: the demo, the page and the script,
-    /// a frame every 20 ms of the demo's time.
-    fn run_cal_self_test(bind: Option<u16>) -> (bool, Option<panel_core::sweep::Outcome>) {
-        let t0 = Instant::now();
-        let mut demo = Demo::new(t0, bind, true);
-        let mut panel = Panel::new(&PanelConfig::default(), &Vehicle::default(), false);
-        panel.show(Page::Calibration, t0);
-        let mut script = CalScript::new(bind.is_some());
-        let mut now = t0;
-        for _ in 0..10_000 {
-            now += Duration::from_millis(20);
-            panel.news(&mut demo, now);
-            let press = script.frame(now, &panel.cal, panel.position(now));
-            let request = panel.calibrate(now, press);
-            demo.frame_drawn(None, request);
-            if script.finished(now) {
-                break;
-            }
-        }
-        (script.as_expected(&panel.cal), panel.cal.checked().cloned())
-    }
-
-    #[test]
-    fn the_cal_self_test_passes_on_the_demo_and_finds_a_stiff_spot() {
-        let (ok, outcome) = run_cal_self_test(None);
-        assert!(ok, "{outcome:?}");
-        let (ok, outcome) = run_cal_self_test(Some(2800));
-        assert!(ok, "{outcome:?}");
-        match outcome {
-            Some(panel_core::sweep::Outcome::Stopped { position, .. }) => {
-                assert!(position.abs_diff(2800) <= 2, "{position}")
-            }
-            other => panic!("{other:?}"),
-        }
     }
 
     #[test]
@@ -1116,7 +569,5 @@ mod tests {
         assert!(USAGE.contains("K lock-to-lock check") && USAGE.contains("W save"));
         assert!(USAGE.contains("Space held = GO") && USAGE.contains("C centre"));
         assert!(USAGE.contains("P freeze"));
-        let centre = PRESS_KEYS.iter().find(|(_, p)| *p == Press::Centre);
-        assert_eq!(centre.map(|(k, _)| *k), Some(KeyboardKey::KEY_C));
     }
 }

@@ -53,36 +53,85 @@ One rule for the twin: **the laptop only listens.** Exactly one backend drives t
 a simulator must never publish onto the car's network (the sensor mux refuses it today, and
 that stays). The virtual world takes the car's data in; nothing goes back.
 
-## 3. The commands: 68 today
+## 3. The commands: 71 today, four for every day
 
-| Want to | Today | Proposed |
+Ben, 25 Nov: "I want to be able to do a full sweet of tests on a virtual car using the full
+ros messaging system."
+
+| Want to | Today | The one command |
 |---|---|---|
-| Start the virtual car | `sim`, `demo`, `dry-run`, `ravensim`, `sim-cameras` | **`pixi run sim`** (the car, virtual); screens are their own command |
-| Start the real car | `car` | **`pixi run car`** |
-| Open the screens | `hud`, `map`, `debug-hud`, `hw-panel`, `dev-window`, `nav-view`, `ladder-window`, `rviz` | **`pixi run screens`**: picks the same four for either car |
-| Run the tests | `ladder`, `car-test`, `actuator-test`, `sim-check`, `bench-check`, `measure`, `barrier-watch` | **`pixi run ladder`** is the front door; the rest stay as what a rung runs |
-| Watch the car from the laptop | `view`, `dev-window --watch` | **`pixi run twin`** |
+| Start the virtual car | `sim`, `demo`, `dry-run`, `ravensim`, `sim-cameras` | **`pixi run sim`**: Ravensim as the car, every topic the car has (step 1) |
+| Start the real car | `car` | **`pixi run car <computer>`** |
+| Open the screens | `hud`, `map`, `debug-hud`, `hw-panel`, `dev-window`, `nav-view`, `ladder-window`, `rviz` | **`pixi run screens`**: windows 1, 2 and 4 below, for whichever car runs |
+| Run the tests | `ladder`, `car-test`, `actuator-test`, `sim-check`, `bench-check`, `measure` | **`pixi run ladder`**: window 3; `ladder all --sim` is the full suite on the virtual car, one report |
 
-The old names keep working until the new ones have been used for a while; then they go.
-`sim.launch.py` has 127 switches: the plan is a short list of named set-ups (as
-`stacks.yaml` does for algorithms), not fewer abilities.
+The rest stay as what a rung runs, or as tools (maps, firmware, set-up). The old names keep
+working until the new ones have been used for a while; then they go. `sim.launch.py`'s 127
+switches become a short list of named set-ups (as `stacks.yaml` does for algorithms).
 
-## 4. The screens and editors
+## 4. The screens: eight become four
 
-| Screen | Shows | Today | Plan |
-|---|---|---|---|
-| World | the car in its world, 3D and top-down: the map, the plan, the costmap, what it sees | the developer window and `nav-view` | keep; it replaced RViz and Gazebo's picture |
-| Debug | what each layer believes: the localizers, the cubes, who is driving | `debug-hud`, and a debug page in the map window | **needs attention**: one debug screen, its pages named for the layers |
-| Hardware | every sensor's number, the actuators, calibration | `hw-panel` | keep; add "on stands" |
-| Tests | the rungs, run, result, graph, simulator beside car | `ladder-window`: the ten rungs, and rung 1's answer (23 Nov) | rungs 2 to 9 and S, one at a time; the car's side of each graph |
-| In the car | the driver's HUD and street map | `hud`, `map` (raylib, on the Pi) | keep as they are |
+Ben, 25 Nov: the HUD and the map are the car's two screens; the hardware panel goes on the
+map's screen; the tests and the hardware belong together; Ravensim, not RViz, shows the car
+moving.
+
+**The rule:** every screen only talks ROS. None knows whether the car is real or Ravensim.
+
+```
+ Ravensim ─┐                                     ┌─ 1 HUD            (car screen 1)
+           ├── the same ROS topics, both ways ───┼─ 2 Map + Hardware (car screen 2)
+ the car ──┘   (/sensors /vehicle /safety ...)    ├─ 3 Test bench     (laptop)
+                                                  └─ 4 World view     (laptop)
+```
+
+| # | Window | Where | What is in it | Replaces |
+|---|---|---|---|---|
+| 1 | **HUD** | car screen 1 (raylib, Pi) | the driver's screen | `hud` |
+| 2 | **Map + Hardware** | car screen 2 (raylib, Pi) | the street map; one key flips to the hardware page: every number, commanded against measured as graphs | `map`, `hw-panel` |
+| 3 | **Test bench** | laptop (raylib) | the ladder: automated tests, Run, results, reports; live graphs; small steps by hand (speed +0.1 m/s, steering +2°) | `ladder-window`, `hw-panel`'s drive keys |
+| 4 | **World view** | laptop (Bevy) | Ravensim's 3D picture (the real car: the same from its data), with the occupancy, costmaps, plan and lidar cubes on top | `dev-window`, `nav-view`, `debug-hud`, `rviz` |
+
+On a laptop, windows 1 and 2 are the very programs the car runs: in the simulator you see
+what the car's screens would show. Windows 2 and 3 share their graphs, in raylib, so the
+test bench can run on the car's screen too. The ESP32's own read-only page (`wifi-status`)
+stays for the board's direct numbers, on the bench.
 
 | Editor | For | Today |
 |---|---|---|
 | The map editor | chunks, street map, NDT's map, labels | built (`map-edit`) |
 | Painting a costmap by hand | rung 5 | to build, inside the map editor |
 
-RViz opens only when asked for by name. Gazebo went on 16 Nov.
+RViz opens only when asked for by name (since 23 Nov). Gazebo went on 16 Nov.
+
+### The steps for the screens and the virtual car (Ben, 25 Nov: "yes")
+
+| Step | What | Done when |
+|---|---|---|
+| 1 | **Ravensim as the car**: every topic the car has; `pixi run check virtual` fails if the simulator ever drifts from the car | the check passes |
+| 2 | the hardware page into the map program | the page on the car's screen size |
+| 3 | the test bench: the ladder, the graphs, the small steps | rung 1 run from it |
+| 4 | the world view takes `debug-hud` and `nav-view`; the RViz layouts deleted | nothing opens RViz |
+| 5 | the four commands; the old names become aliases | README's command list |
+| 6 | rungs 2 to 9, and the full suite on the virtual car | `ladder all --sim`: one report |
+
+**Step 4, where it is (25 Nov):** the world view has the debug screen's pages (SENSORS,
+WHERE AM I, WHAT IT SEES, PLAN), each localizer's car and AMCL's particles, from
+`debug-core`'s own state ([the table](hud.md#the-debug-hud-into-the-world-view)). Left: the
+lidar's own kept cubes (not ported: the car's cubes stand for them), NDT's match as
+ellipses. `debug-hud`, `nav-view` and the `.rviz` layouts stay until step 5.
+
+**Step 5, where it is (26 Nov):** the four commands are in, first in the README's
+[Every command](../README.md#the-four-commands); every old name still works, marked "old
+name: use ...".
+
+| Command | What it does now |
+|---|---|
+| `pixi run sim` | `sim.launch.py setup:=car`: the road world and the ESP32, the virtual car. A named set-up (`aav_description` `setups.py`), not a new default: with no `setup:=` the launch file keeps `world:=empty esp32:=false`, so `sim-check`, `car-test --sim`, `dry-run`, `measure` and the launch tests start what they did. A switch by hand wins |
+| `pixi run screens` | the world view, the HUD and the map window, each in its own process group; `--sim`, `--car` or asks `/system/source`. The real car is only watched: the world view `--watch`, the map without its hardware page, no HUD |
+| `pixi run ladder all --sim` | every built rung in turn, one report (`ladder-all.html`); not built yet: skipped, saying so; `--car` refused. Only rung 1 is built |
+
+`debug-hud`, `nav-view`, `ladder-window`, `rviz`, `view`, `demo`, `dry-run` and
+`ravensim` go once the new commands have been used for a while.
 
 ## 5. The final report
 

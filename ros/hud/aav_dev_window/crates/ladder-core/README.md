@@ -6,6 +6,9 @@ The test ladder's window (`pixi run ladder-window`), without the window: no Bevy
 egui, no ROS, so `tools/test.sh` tests it on any laptop. `tools/ladder.py` holds every
 rule and is the only writer of the progress file; this crate reads what it prints and
 builds its commands ([Proving it](../../../../../docs/proving-it.md#the-tests-screen-pixi-run-ladder-window)).
+Two windows use it: `ladder_window` (Bevy) and, since 25 Nov, the hardware panel's
+LADDER tab (`aav_hud`'s `panel-app`, raylib, by path: this crate has no Bevy and no ROS,
+so colcon builds `aav_hud` with it). Change it, and test both.
 
 ```text
 python3 tools/ladder.py --json ──▶ Ladder (types) ──▶ Cell, RunButton, CarSide ──▶ the window draws

@@ -33,3 +33,16 @@ ghost: /safety/ghost/marker                      # Marker, map: the ghost (aav_g
 keep_out: /drivers/nav/track/barrier_watch/keep_out   # Marker, map, latched: the barrier's keep-out circle (pixi run barrier-watch, research)
 stop_box: /safety/stop_zone/box                  # PolygonStamped, base_link: the stop zone's box in use
 stop_state: /safety/stop_zone/state              # CollisionMonitorState: what the stop zone does, on each change
+# The world view's pages (wrap-up step 4): what the debug screen read, the same names as
+# aav_hud/config/debug_hud.yaml. All listened to; none is ever published.
+tf: /tf                                          # TFMessage: map -> odom only (WHERE AM I)
+imu: /sensors/imu/data                           # Imu: SENSORS, its yaw rate (at most 10 a second)
+gps: /sensors/gps/fix                            # NavSatFix: SENSORS, the fix's kind and spread
+wheels: /vehicle/wheels                          # WheelSpeeds: SENSORS, the measured wheels' mean
+wheel_odom: /vehicle/odom                        # Odometry: SENSORS, the wheels' odometry
+truth: /vehicle/sim/truth                        # Odometry, map: WHERE AM I, the simulator's truth (white)
+amcl: /localization/amcl/pose                    # PoseWithCovarianceStamped, map: WHERE AM I, AMCL (orange)
+amcl_particles: /localization/amcl/particles     # ParticleCloud, best effort, map: AMCL's particles (key A)
+health: /localization/health                     # String, 1 Hz: WHERE AM I, OK or WARN and each check
+voxels_status: /perception/voxels/status         # DiagnosticStatus: WHAT IT SEES, the road's fit, ms, cubes
+track_status: /drivers/nav/track/status          # DiagnosticStatus: PLAN, the tracker, how far off the path

@@ -6,6 +6,7 @@
 //! | SIM, BENCH | on, capped at `sim_cap` (1.0 m/s); `stands_cap` with `--stands` |
 //! | REAL with `--stands` | the preflight's refusal ([`preflight_refusal`]): off until a driven-wheel speed exists (TODO 49b), the Rust ESP32 and `speed_loop.mode open`; then `stands_cap` (0.3 m/s), and [`crate::rules::unseen`]'s 4 s rule |
 //! | REAL on the ground, nothing announced, REPLAY | off |
+//! | the map's HARDWARE page on REAL or nothing announced | off: watch-only (`controls`, set by the page, not here) |
 
 use std::fmt;
 
@@ -42,6 +43,9 @@ pub enum Off {
     /// The real car on stands with no wheel speed seen (none, stale or NaN): the
     /// throttle goes only where its effect is measured.
     NoWheelSpeed,
+    /// The map window's HARDWARE page on the real car (or nothing announced): it only
+    /// shows ([`crate::controls::Controls::WatchOnly`]).
+    WatchOnly,
 }
 
 impl fmt::Display for Off {
@@ -61,6 +65,7 @@ impl fmt::Display for Off {
                 "on stands: no wheel speed is seen (/vehicle/status: none, stale or NaN), so \
                  the throttle stays off; steering and brake don't need GO",
             ),
+            Self::WatchOnly => f.write_str(crate::controls::WATCH_ONLY),
         }
     }
 }

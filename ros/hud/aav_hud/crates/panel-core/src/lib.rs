@@ -11,6 +11,7 @@
 //! | [`config`] | the topic names, steps and caps, from `config/hw_panel.yaml` |
 //! | [`vehicle`] | the wheelbase, the steering limit, which wheels the speed comes from (vehicle.yaml) |
 //! | [`rules`] | `aav_actuator_tests/safety.py`'s rules, ported with its test vectors: the source, the stands refusal, the unseen speed, a takeover |
+//! | [`controls`] | who may do what, where: the dash screen on the real car only watches (Ben, 26 Nov) |
 //! | [`gate`] | where the speed buttons may drive: SIM, BENCH, stands (later), never the car on the ground |
 //! | [`buttons`] | what a press asks for, and what goes to twist_mux each frame |
 //! | [`state`] | every sensor's and actuator's number, OK / STALE / NEVER, the command path |
@@ -32,6 +33,7 @@
 pub mod buttons;
 pub mod calibration;
 pub mod config;
+pub mod controls;
 pub mod easter_egg;
 pub mod esp32;
 pub mod gate;

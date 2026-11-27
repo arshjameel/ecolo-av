@@ -159,6 +159,17 @@ the simulator's stack since 14 Nov.
 | `describe(league, stack, levels)` | one line for the log (and the levels picked by hand) |
 | `LEVEL_SWITCHES`, `picked(league, stack, levels)` | `pose`, `path`, `steer`, `lanes`: a level's own switch (`path:=hybrid_rs`), over the stack's pick; `resolve` and `switches` take the same `levels` |
 
+### `aav_description.setups` (no ROS): the simulator's named set-ups
+
+A few of `sim.launch.py`'s switches under one name (wrap-up step 5), as `stacks` names
+the algorithms. `pixi run sim` passes `setup:=car`.
+
+| Item | What |
+|---|---|
+| `SETUPS`, `names()`, `switches(setup)` | `car`: `world:=road esp32:=true`, the virtual car; an unknown name is a ValueError |
+| `resolve(setup, given)` | each switch given by hand, else the set-up's, else `FALLBACK` (`world:=empty esp32:=false`, the launch file's old defaults). Not given is `CHOSEN` (empty): `sim.launch.py` declares `world` and `esp32` so |
+| `describe(setup, values)` | one line for the launch's log |
+
 ### `aav_description.adaptive_brake` (no ROS): a heavier car
 
 After the speed loop, before the brake: more brake when the car slows less than the empty

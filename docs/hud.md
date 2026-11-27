@@ -7,14 +7,15 @@ Four raylib programs in one package, `ros/hud/aav_hud`, each also its own ROS no
 | [The HUD](#the-hud-in-rust-raylib) | `hud` | the small ~7" touchscreen | speed, GO / STOP, the e-stop button, the camera, the topics |
 | [The map window](#the-map-window-big-screen) | `map` | the big ~15" monitor | the navigation map over Ottawa's streets, the plan, place search |
 | [The debug HUD](#the-debug-hud) (the seeing screen) | `debug_hud` | a laptop | the lidar's cubes in 3D, NDT's map and match from above, where each localizer puts the car; key L: every sensor |
-| [The hardware panel](#the-hardware-panel) | `hw_panel` | a wired laptop | every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path |
+| [The hardware panel](#the-hardware-panel) | `hw_panel` | a wired laptop | every sensor's number, and simple buttons for the actuators (Ravensim and the bench for now); the steering calibration; the graphs of the Pi-to-ESP32 path; the test ladder (LADDER) |
 
 **Where each runs (Ben, 5 Nov):** the HUD and the map stay raylib, on the dash Pi. The
 Orin runs no graphics, so the other two run on a laptop. Laptop screens can be Bevy: the
 **developer window** (`ros/hud/aav_dev_window`, `pixi run dev-window`; not a ROS package)
 is one, live on the simulators since 5 Nov, and `debug_hud` retires once it covers the
 same ground ([design](designs/2026-11-05_one-window.md)). Its README is the reference; what it took
-over from RViz is in [RViz and ours](#rviz-and-ours).
+over from RViz is in [RViz and ours](#rviz-and-ours). Since 25 Nov (wrap-up step 4) it is
+the **world view**, with the debug screen's pages: [what moved, and what is left](#the-debug-hud-into-the-world-view).
 
 An easter egg hides in three of them: [the little robot](#the-little-robot-easter-egg).
 
@@ -318,7 +319,65 @@ navigation.
 | mouse wheel, + and - | zoom |
 | drag | move the map (a free view; F goes back to the car) |
 | D | the [debug page](#the-debug-page-who-is-driving) over the map, and back |
+| F2, or HARDWARE PAGE | the [hardware page](#the-hardware-page-f2): the hardware panel on this screen; F2 or MAP comes back |
 | F11 | full screen |
+
+### The hardware page (F2)
+
+Ben, 25 Nov: "The hardware panel could also be used on the same screen as the map (not at
+the same time but have it there to watch commands instead of laptop or along side)".
+Step 2 of [the screens' plan](wrap-up.md#4-the-screens-eight-become-four).
+
+| Page | How to get there | Picture |
+|---|---|---|
+| MAP | the start; MAP (F2) on the hardware page | ![The map page, --demo](img/map-page-map.png) |
+| HARDWARE | F2, or the HARDWARE PAGE button above KEYS (`--hardware-page` starts there) | ![The hardware page, --demo](img/map-page-hardware.png) |
+
+The hardware page **is** the [hardware panel](#the-hardware-panel): the same code
+(panel-app's `HardwarePage`), its five pages (Tab; the fifth, [LADDER](#the-ladder-page-the-test-bench),
+since 25 Nov), its numbers, graphs and buttons.
+
+| Rule | In the map window |
+|---|---|
+| Its node | `hw_panel`, a second node in the map's process: the same topics, QoS and parameters (`config/hw_panel.yaml`) |
+| Speed buttons | SIM and BENCH only, as in `hw_panel`; no `--stands` here, so the real car's stay off |
+| GO | only while held, on the showing page, in a window with focus |
+| Hidden | no keys, no clicks, no GO; driving stops (0.5 s of zeros); the calibration page's mode ends, as on leaving it |
+| A command | only while the window draws frames (hud-core's heartbeat) |
+| E-STOP | only true; its key (E) works only on the hardware page (on the map, E is a letter for the search) |
+| One or the other | run the map's page or `pixi run hw-panel` on one ROS network, not both: both nodes are called `hw_panel` |
+| On the real car | **watch-only**: numbers and graphs, E-STOP; no driving, no calibrating, no ladder runs ([below](#who-may-do-what-where)) |
+
+#### Who may do what, where
+
+Ben, 26 Nov (option A): "Watch-only on the car: calibration stays laptop-only." The
+car's dash screen runs the map; there the hardware page only **shows** while the car is
+REAL. Calibrate and drive from a laptop (`hw_panel`).
+
+| Where | Source | Drive buttons | STEERING CAL buttons | LADDER: RUN, jacks | LADDER: STOP its own run | E-STOP |
+|---|---|---|---|---|---|---|
+| `hw_panel` (a laptop) | any | its own rules | its own rules | its own rules | yes | yes |
+| the map's HARDWARE page | SIM, BENCH, REPLAY | its own rules | its own rules | its own rules | yes | yes |
+| the map's HARDWARE page | **REAL**, or not heard yet | **off** | **off** | **off** | yes | yes |
+
+- "Its own rules": the gate, the calibration page's checks, ladder-core. The table only
+  takes buttons away.
+- Not heard yet counts as REAL (fail safe).
+- Off buttons are grey, and the page says why: "watch-only on the car's screen: calibrate
+  and drive from a laptop". The readings, the graphs, MEASURE and the ladder's table, question
+  and answers still show.
+- The source turning REAL while the calibration page asks ends what it asks, as leaving
+  the page does.
+- STOP and E-STOP stay: stopping is always allowed. The tab's STOP only ever stops a run
+  it started itself.
+- The rule: panel-core's `controls` (`Controls::for_host`), tested for every host and
+  source.
+- See it with pretend data: `map --demo --demo-real --hardware-page --hardware-tab calibration`.
+  Picture not taken yet: on 26 Nov the Mac's screen was locked, so no window could open.
+
+`map.launch.py hardware:=false` (or `map --no-hardware`): no page and no second node.
+The pictures: `map --demo --screenshot` and `map --demo --hardware-page --screenshot` on
+Ben's MacBook (25 Nov), the window at 1600 x 900; the car's map screen is 1920 x 1080.
 
 ### The debug page (who is driving)
 
@@ -794,6 +853,26 @@ one window. It only listens: it never touches an actuator. Ben, 29 Oct: "the low
 hud ... should connect directly to the ros node at the sensor". Design:
 [2026-10-29_debug-hud.md](designs/2026-10-29_debug-hud.md).
 
+### The debug HUD into the world view
+
+Wrap-up step 4 (25 Nov): the world view (the developer window, Bevy, laptops) takes the
+debug screen's job. It reads the same topics into the same `debug-core` state, and shows
+them as four pages: SENSORS, WHERE AM I, WHAT IT SEES, PLAN. `debug_hud` keeps working
+until step 5 makes its name an alias.
+
+![The world view's WHERE AM I page, pretend data](img/world-view-where.png)
+
+| The debug screen | The world view |
+|---|---|
+| the sensor panel (key L) | SENSORS, WHERE AM I, PLAN |
+| each localizer's car in 3D and from above; AMCL's particles | key W; key A |
+| NDT's score, the health checks, the costmap cubes' road fit | WHERE AM I; WHAT IT SEES |
+| the costmap's cubes, the ground hidden, NDT's map, keys 1-4 | there already (V, G, N and M, SWAP) |
+| the lidar's own cubes, kept and fading | not ported: the world view draws the car's cubes, never the raw cloud (Ben, 5 Nov) |
+| NDT's match as ellipses | not ported yet: its share on the map is a row |
+
+Every row of it: [the developer window's README](../ros/hud/aav_dev_window/README.md#the-world-view-the-debug-screens-pages).
+
 ### What it shows
 
 It opens as the **seeing screen** (two screens, 29 Oct): the cubes big on the left, and
@@ -908,7 +987,8 @@ Moved to [the hud log](history/hud-log.md#tested-1-november-bens-mac-the-costmap
 `ros/hud/aav_hud`, binary `hw_panel`: one screen to **test every sensor** and **work
 every actuator** with very simple buttons (Ben, 29 Oct: "We need very simple buttons").
 The only screen that drives, and only through twist_mux, ego and the spine. Design:
-[2026-10-29_two-screens.md](designs/2026-10-29_two-screens.md).
+[2026-10-29_two-screens.md](designs/2026-10-29_two-screens.md). Since 25 Nov it is also
+the map window's [HARDWARE page](#the-hardware-page-f2): the same code and rules.
 
 ![The hardware panel, with a pretend car (--demo), driving at 0.3 m/s](img/hw-panel-demo.png)
 
@@ -1112,12 +1192,53 @@ hw_panel --demo --page graphs                     # a pretend path, every hop OK
 The lines' format is `firmware/status/README.md`; the reader is tested on its
 `golden.jsonl`.
 
+### The LADDER page (the test bench)
+
+Ben, 25 Nov: "a testing ladder screen ... could be merged with the hardware screen".
+Step 3 of [the screens' plan](wrap-up.md#4-the-screens-eight-become-four): the hardware,
+its graphs, the small steps by hand and the automated tests on one screen.
+
+![The LADDER page, --demo: the ten rungs, rung 1's question, its verdict and its wheels graph](img/hw-panel-ladder.png)
+
+```bash
+pixi run hw-panel --demo --page ladder   # pretend data: nothing runs, nothing is recorded
+pixi run hw-panel                        # then Tab to LADDER: the real ladder (tools/ladder.py)
+map --demo --hardware-page --hardware-tab ladder   # the same page in the map window
+```
+
+| Part | Shows | Does |
+|---|---|---|
+| top left | PRETEND DATA, or where the results are kept; a problem reading the tool | |
+| **Simulated car** | on the ground or ON STANDS (asked every 5 s) | **Put it on stands** / **Lower it**: on only while a simulator runs on this computer |
+| the table | rung 9 at the top, S at the bottom; **Simulator** and **The car**, each cell in words (PASS 23 Nov, not run, shut, not built yet) | click a row, or Up / Down |
+| the rung | its question, when it passes | |
+| **RUN RUNG n IN THE SIMULATOR** | on only when ladder-core says so; off: the reason ("shut: ...", "not built yet", "pretend data") | `pixi run ladder run <rung>`; one run at a time |
+| **STOP THE RUN** | on while a run goes | stops its process group; again: kills it |
+| **On the car** | the car's command as text, and "A person starts a car test from the terminal" | nothing: no button runs a car test |
+| the answer | the verdict line in a box of its colour, when and which commit; RUNNING NOW while a run goes | |
+| WHEELS, STEERING, BRAKE, FAULTS | one graph (asked dashed, measured solid) and the tool's numbers under it; or the faults table; the car's slot beside ("no car run yet") | click a tab |
+| THE RUN | running... with its step, or how the last run ended; its last lines | |
+
+| Rule | |
+|---|---|
+| The same logic as the ladder window | `ladder-core` (`ros/hud/aav_dev_window/crates/ladder-core`) decides every button; `tools/ladder.py` stays the only writer and holds every rule |
+| No car test | ladder-core has no function that returns one; the car's side is words only |
+| Asked only when needed | the tool is asked (every 2 s) only while this page shows, or while its own run goes on |
+| No repository here | the page says so in words ("No tools/ladder.py here ..."); every other tab works |
+| Closing the window | stops its run, as the ladder window does |
+
+![The same LADDER page inside the map window's HARDWARE page, --demo](img/map-page-ladder.png)
+
+The pictures: `hw_panel --demo --page ladder --screenshot` (1280 x 860) and
+`map --demo --hardware-page --hardware-tab ladder --screenshot` (1600 x 900), Ben's
+MacBook, 25 Nov, pretend data only. Not yet run against the real tool from this page.
+
 ### How it's built
 
 | Part | What it does |
 |---|---|
 | `crates/panel-core` | the logic, no ROS, no raylib: `buttons`, `gate`, `rules` (safety.py's), `state` (every sensor's number), `config`, `vehicle`; the calibration page's `calibration`, `steering_limits` (steering_limits.py's, on shared vectors) and `sweep` (the lock-to-lock check); the graphs page's `graphs` (the lines, the numbers, the verdicts, FREEZE), `esp32` (the status lines) and `ws` (the WebSocket's frames). `cargo test -p panel-core` |
-| `crates/panel-app` | the window (raylib) and the node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst; `esp32.rs` reads the ESP32's WebSocket on its own thread |
+| `crates/panel-app` | a library and the binary `hw_panel`. The library's `HardwarePage` is the whole panel for any window (news, keys, the rules, drawing, the command out): `hw_panel` fills its own window with it, `map` shows it as its HARDWARE page. The node (rclrs): the 10 ms timer sends the buttons' command and the calibration request (heartbeat-gated) and the e-stop burst; `esp32.rs` reads the ESP32's WebSocket on its own thread |
 | `config/hw_panel.yaml` | every topic name, the steps (0.1 m/s, 0.05 rad), the creep, the caps (1.0, 0.3 m/s); the calibration page's jog step and range, and the check's speed and stops |
 
 ### Tested (29 October, Ben's Mac)
