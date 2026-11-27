@@ -472,12 +472,18 @@ impl SpeedLoop {
         (throttle, brake)
     }
 
-    /// Open loop, for a board with no wheel speed: throttle in proportion to the target,
-    /// `full_throttle_speed` (m/s) being full throttle, as the 2025-26 firmware drove.
+    /// Open loop, for a board with no wheel speed: throttle from the target by
+    /// [`open_loop_throttle`], from `start_throttle` (the wheels start to turn) to full
+    /// throttle at `full_throttle_speed` (m/s).
     ///
     /// - Below `stopped_speed`: no throttle, and the hold brake, as a stop does closed loop.
     /// - The gear changes only on a tick with no throttle: the first tick past zero.
-    pub fn open_loop(&mut self, target: f32, full_throttle_speed: f32) -> Drive {
+    pub fn open_loop(
+        &mut self,
+        target: f32,
+        full_throttle_speed: f32,
+        start_throttle: f32,
+    ) -> Drive {
         let c = self.cfg;
         self.reset();
         if abs(target) < c.stopped_speed || target.is_nan() {
@@ -496,16 +502,27 @@ impl SpeedLoop {
                 reverse: self.reverse,
             };
         }
-        let throttle = if full_throttle_speed > 0.0 {
-            clamp01(abs(target) / full_throttle_speed)
-        } else {
-            0.0
-        };
         Drive {
-            throttle,
+            throttle: open_loop_throttle(abs(target), full_throttle_speed, start_throttle),
             brake: 0.0,
             reverse: self.reverse,
         }
+    }
+}
+
+/// The open loop's throttle (0..1) for a speed (m/s, 0 or more): a straight line from
+/// `start_throttle`, the least throttle that turns the wheels, to full throttle at
+/// `full_throttle_speed`. 0 with no map (`full_throttle_speed` 0 or less).
+///
+/// The car's controller does nothing below its start (Arsh, 26 Nov: the C++'s slowest
+/// was 265 of 1023, its cap 700), so every speed the spine asks for gets at least that.
+#[must_use]
+pub fn open_loop_throttle(speed: f32, full_throttle_speed: f32, start_throttle: f32) -> f32 {
+    if full_throttle_speed > 0.0 {
+        let start = clamp01(start_throttle);
+        clamp01(start + (1.0 - start) * speed / full_throttle_speed)
+    } else {
+        0.0
     }
 }
 
@@ -825,28 +842,51 @@ mod tests {
     #[test]
     fn open_loop_throttle_follows_the_target() {
         let mut l = lp();
-        let d = l.open_loop(1.5, 3.0);
+        let d = l.open_loop(1.5, 3.0, 0.0);
         assert_eq!((d.throttle, d.brake, d.reverse), (0.5, 0.0, false));
-        assert_eq!(l.open_loop(6.0, 3.0).throttle, 1.0); // never past full
-        assert_eq!(l.open_loop(1.0, 0.0).throttle, 0.0); // no scale, no throttle
+        assert_eq!(l.open_loop(6.0, 3.0, 0.0).throttle, 1.0); // never past full
+        assert_eq!(l.open_loop(1.0, 0.0, 0.0).throttle, 0.0); // no scale, no throttle
+    }
+
+    #[test]
+    fn open_loop_throttle_starts_where_the_wheels_turn() {
+        let start = 265.0 / 700.0;
+        let mut l = lp();
+        // The least speed past a stop already gets the start; a third of full speed, a
+        // third of the way from it to full.
+        assert!(l.open_loop(0.06, 3.0, start).throttle >= start);
+        let d = l.open_loop(1.0, 3.0, start);
+        assert!(
+            (d.throttle * 700.0 - 410.0).abs() < 0.5,
+            "{}",
+            d.throttle * 700.0
+        );
+        assert_eq!(l.open_loop(3.0, 3.0, start).throttle, 1.0);
+        // Never past full.
+        assert_eq!(l.open_loop(9.0, 3.0, start).throttle, 1.0);
+        // Still nothing at a stop, and nothing with no map.
+        assert_eq!(l.open_loop(0.0, 3.0, start).throttle, 0.0);
+        assert_eq!(l.open_loop(1.0, 0.0, start).throttle, 0.0);
+        assert_eq!(open_loop_throttle(0.0, 3.0, start), start);
+        assert_eq!(open_loop_throttle(1.5, 3.0, 0.0), 0.5); // no start: as before
     }
 
     #[test]
     fn open_loop_holds_the_brake_at_zero() {
         let mut l = lp();
-        let d = l.open_loop(0.0, 3.0);
+        let d = l.open_loop(0.0, 3.0, 0.0);
         assert_eq!(d.throttle, 0.0);
         assert_eq!(d.brake, SpeedLoopConfig::default().hold_brake);
-        assert_eq!(l.open_loop(f32::NAN, 3.0).throttle, 0.0);
+        assert_eq!(l.open_loop(f32::NAN, 3.0, 0.0).throttle, 0.0);
     }
 
     #[test]
     fn open_loop_changes_gear_with_no_throttle() {
         let mut l = lp();
-        assert!(!l.open_loop(1.0, 3.0).reverse);
-        let d = l.open_loop(-1.0, 3.0);
+        assert!(!l.open_loop(1.0, 3.0, 0.0).reverse);
+        let d = l.open_loop(-1.0, 3.0, 0.0);
         assert_eq!((d.throttle, d.reverse), (0.0, true)); // the gear first
-        let d = l.open_loop(-1.0, 3.0);
+        let d = l.open_loop(-1.0, 3.0, 0.0);
         assert!(d.throttle > 0.0 && d.reverse); // then the throttle
     }
 }

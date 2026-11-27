@@ -19,7 +19,7 @@ Leaving RC via ROS: one zero, then nothing (as teleop_twist_joy does on its dead
 person can still take over with RC direct, which needs no computer.
 
 The sticks mean what they mean in RC direct (ibus RcMap): the left stick forward or
-back, its brake band (the middle 30 % each way) a stop, the steering stick a fraction of
+back, its brake band (the middle 20 % each way) a stop, the steering stick a fraction of
 full lock. Through ego the band is a stop at ego's rates, not the ESP32's full brake.
 The steering becomes a turn rate by the bicycle model, as ego expects; so the car can't
 steer while it stands still (ego holds the wheels below 0.05 m/s), unlike RC direct.

@@ -143,6 +143,13 @@ const I2C_KHZ: u32 = 100;
 /// speed. The same guess as `legacy.yaml`'s `full_throttle_speed`. TODO(Q4): measure.
 const FULL_THROTTLE_SPEED: f32 = 3.0;
 
+/// The least DAC code (of 1023) that turns the wheels: the open loop's throttle starts here
+/// and rises to the cap (`Calibration::TODAY`'s 700) at `FULL_THROTTLE_SPEED`. Arsh, 26 Nov,
+/// on stands with the C++: the slowest it drove forward was 265. Before this, the RC's
+/// 1.0 m/s gave 233 and the car didn't move. TODO(Q4): reverse's own start was not
+/// recorded; 265 is used both ways.
+const THROTTLE_START_CODE: u16 = 265;
+
 /// The brake while nobody drives, from boot on. The C++ kept it full on (3500), and this
 /// board has no e-stop input yet to hold it, so it does the same until the team settles
 /// spine-core's `IDLE_BRAKE` (proposed 0.0: released). TODO(Ben): decide.
@@ -544,6 +551,7 @@ async fn main(spawner: Spawner) -> ! {
     let config = SpineConfig {
         speed_feedback: SpeedFeedback::None {
             full_throttle_speed: FULL_THROTTLE_SPEED,
+            start_throttle: cal.throttle.fraction(THROTTLE_START_CODE),
         },
         idle_brake: IDLE_BRAKE,
         // The RC receiver is on GPIO 32: in normal mode too, losing the RC is a hard stop

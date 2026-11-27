@@ -542,6 +542,7 @@ mod legacy_loop_tests {
             let config = SpineConfig {
                 speed_feedback: SpeedFeedback::None {
                     full_throttle_speed: 3.0,
+                    start_throttle: 0.0,
                 },
                 ..SpineConfig::default()
             };
@@ -842,6 +843,7 @@ mod uplink_loop_tests {
             let config = SpineConfig {
                 speed_feedback: SpeedFeedback::None {
                     full_throttle_speed: 3.0,
+                    start_throttle: 0.0,
                 },
                 ..SpineConfig::default()
             };
@@ -1040,6 +1042,7 @@ mod steer_cal_loop_tests {
             let config = SpineConfig {
                 speed_feedback: SpeedFeedback::None {
                     full_throttle_speed: 3.0,
+                    start_throttle: 0.0,
                 },
                 ..SpineConfig::default()
             };

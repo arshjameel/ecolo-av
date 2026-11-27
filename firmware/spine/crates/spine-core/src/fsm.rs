@@ -207,7 +207,7 @@ pub const RC_ACCEL: f32 = 0.5;
 pub enum Pedal {
     /// Back: reverse, or slow down if the car still moves forward.
     Reverse,
-    /// The middle (±30 %): throttle off, so the motor's own braking slows the car.
+    /// The middle (±20 %): throttle off, so the motor's own braking slows the car.
     #[default]
     Middle,
     /// Up: forward, or slow down if the car still moves backward.

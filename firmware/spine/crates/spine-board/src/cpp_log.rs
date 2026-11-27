@@ -99,7 +99,7 @@ impl Display for RcReady<'_> {
             f,
             " | CH{} throttle: middle {}% each way | CH{} steering | CH{} stop and give: past {}%",
             m.throttle + 1,
-            (m.brake_band * 100.0) as u32,
+            (m.brake_band * 100.0 + 0.5) as u32,
             m.steering + 1,
             m.stop_stick + 1,
             (m.full * 100.0 + 0.5) as u32
@@ -344,7 +344,7 @@ mod tests {
     fn the_ready_line_says_the_channels_from_one() {
         assert_eq!(
             RcReady(&RcMap::TODAY).to_string(),
-            "Ready - CH6 mode: RC direct above 1500 | CH3 throttle: middle 30% each way \
+            "Ready - CH6 mode: RC direct above 1500 | CH3 throttle: middle 20% each way \
              | CH4 steering | CH2 stop and give: past 88%"
         );
         assert!(RcReady(&RcMap::THREE_POSITION)

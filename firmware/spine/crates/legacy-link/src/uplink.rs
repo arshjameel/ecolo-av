@@ -107,7 +107,7 @@ pub struct Sticks {
     pub throttle: f32,
     /// -1..1, positive left.
     pub steering: f32,
-    /// The left stick is in its middle zone (30 % each way): throttle off.
+    /// The left stick is in its middle zone (20 % each way): throttle off.
     pub brake: bool,
 }
 

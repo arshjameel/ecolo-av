@@ -107,7 +107,7 @@ rules: on `SpeedFeedback::None` the throttle stays open loop. `0.5` is a guess, 
 | | `SpeedReport` | the speed a link sends: `Known(m/s)`, or `Unknown` |
 | | `DirectCmd` | an open-loop command (throttle, brake, steering), from the UART link |
 | | `RcInput`, `RcSwitch` | the sticks: throttle and steering -1..1, the left stick's `middle` and `full`, the right stick (`right`), `pedal()`; the mode switch: `Computer`, `ViaRos`, `Direct` |
-| | `SpeedFeedback` | `Wheel` (closed loop) or `None { full_throttle_speed }` (open loop) |
+| | `SpeedFeedback` | `Wheel` (closed loop) or `None { full_throttle_speed, start_throttle }` (open loop, from the least throttle that turns the wheels) |
 | | `EstopSteering`, `RcGearBrake` | the types of two of the choices below: `Hold`, `Centre`; `SpeedZero`, `FullBrake` |
 | | `faults::*` | the fault bits, as `VehicleStatus.FAULT_*`; `faults::STOP` latches |
 | `protocol` | `DriveCmd`, `EstopCmd`, `VehicleFeedback`, `VehicleStatus`, `WheelSpeed` | the CAN frames of `aav.dbc`: `encode()`, `decode()` |
@@ -122,7 +122,7 @@ rules: on `SpeedFeedback::None` the throttle stays open loop. `0.5` is a guess, 
 | | `FrameError` | `WrongLength`, `BadChecksum`, `UnknownId` |
 | | `ESTOP_CMD_ID` … `WHEEL_SPEED_R_ID` | the six IDs in the table below |
 | `speed_loop` | `SpeedLoop::update(target, measured, dt)` | a PI with a setpoint weight, or the LQI: a `Drive` (throttle, brake, `reverse`) |
-| | `SpeedLoop::open_loop(target, full_throttle_speed)`, `reset()`, `integral()` | throttle in proportion to the target, with no wheel speed; clear the integral; read it (`aav_mpc_lag`'s estimate predicts the loop from it) |
+| | `SpeedLoop::open_loop(target, full_throttle_speed, start_throttle)`, `open_loop_throttle(...)`, `reset()`, `integral()` | with no wheel speed, throttle in a straight line from `start_throttle` to full at `full_throttle_speed`; clear the integral; read it (`aav_mpc_lag`'s estimate predicts the loop from it) |
 | | `SpeedLoopConfig` (and `smooth()`, `lqi()`, `firm()`), `AntiWindup` | the gains; how the integral is bounded: `Bounds` (today) or `Clamp` |
 | | `SpeedLaw`, `LqiConfig` (`MODEL`, `pedals()`) | `Pi` (the default) or `Lqi`: one signed acceleration, throttle + or brake −, never both; its gains are constants made by `pixi run python3 tools/vehicle_model.py --lqi` (TODO 3) |
 | | `SpeedLoopProfile`, `UnknownProfile` | named sets (`Default`, `Smooth`, `Lqi`, `Firm`: `Smooth` with a firmer brake, TODO 163) for the sims and car days; parsing a name it doesn't know gives `UnknownProfile` |
@@ -166,8 +166,9 @@ Change one only with the team.
 - The test mode moves one actuator at a time; its throttle is forward only, at most
   `TEST_MAX_THROTTLE`, with the brake off. Leaving it always latches.
 - One forward limit for every driver: `MAX_SPEED`, the same as `ego.yaml`'s `max_speed`
-  (`test_vehicle.py` checks). Open-loop commands are capped at `max_speed /
-  full_throttle_speed`, so 700 of 1023 becomes about 233 until the two are raised.
+  (`test_vehicle.py` checks). Open-loop commands are capped at the throttle the
+  open loop gives at `max_speed`: on the ESP32, from 265 of 1023 (where the wheels start,
+  Arsh, 26 Nov) a third of the way to the 700 cap, so 410.
 - No valid command for 100 ms while driving: stop, full brake, latched
   (`CMD_TIMEOUT`). Also while armed but overridden (RC direct): the RC keeps driving,
   but the computer must re-arm before it drives again.
@@ -180,7 +181,7 @@ Change one only with the team.
 - Throttle and brake are never both above zero.
 - Reverse never faster than `MAX_REVERSE_SPEED` (0.5 m/s), whoever drives.
   Open-loop UART commands too: with no wheel speed their reverse throttle is capped at
-  `max_reverse_speed / full_throttle_speed`; with one, cut while at or over the limit.
+  the open loop's throttle at `max_reverse_speed` (338 on the ESP32); with one, cut while at or over the limit.
 - `MAX_STEERING_ANGLE` (0.5 rad) and `MAX_REVERSE_SPEED` copy `vehicle.yaml`;
   `ros/bringup/aav_description/test/test_vehicle.py` checks the copies.
 - `protocol` and `ros/can_bridge/aav_spine/aav_spine/can_codec.py` put the same bytes

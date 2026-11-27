@@ -638,7 +638,7 @@ The Rust reads it differently from the C++:
 ```text
 right stick: down past 88 % = HARD BRAKE while held, the RC takes the car (it springs back)
              up past 88 %, steering centred, 0.5 s = give the car to the computer
-left stick:  pushed away ◄── forward ──┤ the middle ±30 %: throttle off ├── reverse ──► pulled back
+left stick:  pushed away ◄── forward ──┤ the middle ±20 %: throttle off ├── reverse ──► pulled back
              (it doesn't spring back; past 88 % the other way while moving: the hard brake too)
 CH6:         low = normal (the computer, once given) · high = manual
              (the team's FS-i6X has two positions: RC via ROS, the middle, can't be picked)

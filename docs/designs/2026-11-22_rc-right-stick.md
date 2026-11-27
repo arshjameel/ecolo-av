@@ -18,7 +18,7 @@ car, instead of a full brake.
 ```text
 right stick (CH2, springs back)      left stick (CH3, stays where it is put)
    up past 88 %: give the car             up: forward
-   to the computer (steering              middle ±30 %: throttle off, the motor slows the car
+   to the computer (steering              middle ±20 %: throttle off, the motor slows the car
    centred, held 0.5 s)                   back: reverse
    down past 88 %: hard brake,            past 88 % the other way while still moving:
    the RC takes the car                   the hard brake too
@@ -45,7 +45,7 @@ All to check on a car day.
 |---|---|---|
 | Stick ends, both sticks | 88 % | `RcMap::full` |
 | Steering centred, to give | ±15 % | `RcMap::centred` |
-| Left stick middle | ±30 % | `RcMap::brake_band` |
+| Left stick middle | ±20 % (±30 % until 26 Nov) | `RcMap::brake_band` |
 | Held up, to give | 0.5 s | `RC_GIVE_MS` |
 | Braked after a stop | at least 1 s | `RC_BRAKE_MS` |
 | Stopped | under 0.05 m/s for 0.5 s | `STANDSTILL_SPEED`, `RC_STOPPED_MS` |

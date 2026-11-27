@@ -115,7 +115,7 @@ The same as Computer, plus:
 | The left stick (SwC is not read since 21 Nov) | Brake |
 |---|---|
 | Pushed away (forward) or pulled back (reverse), past the band | released |
-| In the middle ±30 % (the band) | full, at once |
+| In the middle ±20 % (the band) | full, at once |
 | Forward to reverse, or back | full until 1 s after the stick entered the band |
 
 In normal mode (CH6 low) the RC outranks the computer too, decided on the ESP32, and a
@@ -141,8 +141,9 @@ lost RC is a hard stop there as well: [the rules](firmware.md#the-rc-transmitter
 !!! note "The speed rules are off on the car"
     The wheel speed comes only in version 4 frames, and the Motor Pi doesn't send them
     yet. So no overspeed check and no lost-speed stop on the ESP32. The only limit is the
-    open-loop throttle cap: `max_speed / full_throttle_speed` = 1.0 / 3.0, and 3.0 is a
-    guess (Q4).
+    open-loop throttle cap: the throttle the open loop gives at `max_speed`, from 265
+    (where the wheels start, Arsh, 26 Nov) a third of the way to 700, so 410 of 1023;
+    `full_throttle_speed` (3.0) is a guess (Q4).
 
 ## 5. What each failure upstream does
 
