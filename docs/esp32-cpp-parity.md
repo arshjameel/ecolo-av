@@ -94,7 +94,7 @@ The default build keeps the team's choices. These features give the C++'s instea
 | channels usable only between 100 and 2200 | `rc_handler.cpp:handleRCMode` | `valid_above`, `valid_below` | Built |
 | gear: forward below 1200, reverse above 1800, brake between | the same | not read: the left stick's whole travel says forward, throttle off, reverse | Changed on purpose (21 Nov): SwC's wiring is loose |
 | gear brake: brake full, DAC down | the same | the right stick pulled down past 88 % (CH2): brake full | Changed on purpose (22 Nov) |
-| throttle only past -0.05 of the stick | the same | past the middle (±20 %), at a fixed speed, ramped, from DAC 265 | Changed on purpose (21 and 22 Nov) |
+| throttle only past -0.05 of the stick | the same | past the middle (±20 %), at a fixed speed, ramped, from DAC 475 (525 back) | Changed on purpose (21 and 22 Nov) |
 | steering: 1950 counts right, 1550 left | the same | 1550 both sides | Built behind `cpp-rc-steering` (`steer_right_gain`) |
 | RC throttle up to 1023, capped at 700 | the same, `writeDACRamped` | capped by `MAX_SPEED`, 1 m/s | Not needed: one forward limit for every driver (`spine` README, #23) |
 | RC idle: brake released, coasting | the same | the stick in its band: the full brake | Not needed: the team's #23 rule, then the band (21 Nov), replaced it (`spine-core`) |

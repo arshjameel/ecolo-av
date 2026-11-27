@@ -267,7 +267,7 @@ left stick (CH3):   1000 ◄── forward ──┤ middle ±20 %: throttle off
 
 | Rule | The spine |
 |---|---|
-| The left stick up or back | drive that way at a fixed speed (1.0 m/s, 0.5 back), ramped at 0.5 m/s² (`RC_ACCEL`). With no wheel speed (today's ESP32), the throttle starts at 265 of 1023, where the wheels start to turn, and rises to 410 (338 back); 700 is the cap (Arsh, 26 Nov) |
+| The left stick up or back | drive that way at a fixed speed (1.0 m/s, 0.5 back), ramped at 0.5 m/s² (`RC_ACCEL`). With no wheel speed (today's ESP32), the throttle starts where the wheels start to turn, 475 of 1023 forward and 525 back, and rises to 550 (554 back); 700 is the cap (Arsh, 27 Nov) |
 | The left stick in its middle | throttle off, no brake: the motor's own braking (regen, assumed) |
 | The left stick the other way, the car still moving | throttle off; past 88 % the hard brake too. The new way once stopped: under 0.05 m/s for 0.5 s, or with no speed (today's ESP32), the hard brake held 1 s |
 | The right stick down | the hard brake while held, the steering stick still steering. In normal mode the RC takes the car |

@@ -107,7 +107,7 @@ rules: on `SpeedFeedback::None` the throttle stays open loop. `0.5` is a guess, 
 | | `SpeedReport` | the speed a link sends: `Known(m/s)`, or `Unknown` |
 | | `DirectCmd` | an open-loop command (throttle, brake, steering), from the UART link |
 | | `RcInput`, `RcSwitch` | the sticks: throttle and steering -1..1, the left stick's `middle` and `full`, the right stick (`right`), `pedal()`; the mode switch: `Computer`, `ViaRos`, `Direct` |
-| | `SpeedFeedback` | `Wheel` (closed loop) or `None { full_throttle_speed, start_throttle }` (open loop, from the least throttle that turns the wheels) |
+| | `SpeedFeedback` | `Wheel` (closed loop) or `None { full_throttle_speed, start_throttle, start_throttle_reverse }` (open loop, from the least throttle that turns the wheels, each way) |
 | | `EstopSteering`, `RcGearBrake` | the types of two of the choices below: `Hold`, `Centre`; `SpeedZero`, `FullBrake` |
 | | `faults::*` | the fault bits, as `VehicleStatus.FAULT_*`; `faults::STOP` latches |
 | `protocol` | `DriveCmd`, `EstopCmd`, `VehicleFeedback`, `VehicleStatus`, `WheelSpeed` | the CAN frames of `aav.dbc`: `encode()`, `decode()` |
@@ -167,8 +167,8 @@ Change one only with the team.
   `TEST_MAX_THROTTLE`, with the brake off. Leaving it always latches.
 - One forward limit for every driver: `MAX_SPEED`, the same as `ego.yaml`'s `max_speed`
   (`test_vehicle.py` checks). Open-loop commands are capped at the throttle the
-  open loop gives at `max_speed`: on the ESP32, from 265 of 1023 (where the wheels start,
-  Arsh, 26 Nov) a third of the way to the 700 cap, so 410.
+  open loop gives at `max_speed`: on the ESP32, from 475 of 1023 (where the wheels start,
+  Arsh, 27 Nov) a third of the way to the 700 cap, so 550.
 - No valid command for 100 ms while driving: stop, full brake, latched
   (`CMD_TIMEOUT`). Also while armed but overridden (RC direct): the RC keeps driving,
   but the computer must re-arm before it drives again.
@@ -181,7 +181,7 @@ Change one only with the team.
 - Throttle and brake are never both above zero.
 - Reverse never faster than `MAX_REVERSE_SPEED` (0.5 m/s), whoever drives.
   Open-loop UART commands too: with no wheel speed their reverse throttle is capped at
-  the open loop's throttle at `max_reverse_speed` (338 on the ESP32); with one, cut while at or over the limit.
+  the open loop's throttle at `max_reverse_speed` (554 on the ESP32, from its own start, 525); with one, cut while at or over the limit.
 - `MAX_STEERING_ANGLE` (0.5 rad) and `MAX_REVERSE_SPEED` copy `vehicle.yaml`;
   `ros/bringup/aav_description/test/test_vehicle.py` checks the copies.
 - `protocol` and `ros/can_bridge/aav_spine/aav_spine/can_codec.py` put the same bytes

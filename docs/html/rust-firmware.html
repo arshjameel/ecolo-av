@@ -1120,8 +1120,8 @@ uplink at 50 Hz, its echo, the three modes: <a href="esp32-bench.html#before-the
 <tr>
 <td>RC throttle: stick × 1023, capped at 700 (the top third of the stick does nothing)</td>
 <td><code>rc_handler.cpp</code></td>
-<td>a fixed 1.0 m/s (<code>MAX_SPEED</code>), 0.5 back (<code>MAX_REVERSE_SPEED</code>), open loop from code 265, where the wheels start to turn (Arsh, 26 Nov), up to 410 (338 back; <code>throttle_cap_code</code>)</td>
-<td>⚠️ changed on purpose: before 26 Nov it gave 233 and 117, under the wheels' start, and the car didn't move</td>
+<td>a fixed 1.0 m/s (<code>MAX_SPEED</code>), 0.5 back (<code>MAX_REVERSE_SPEED</code>), open loop from where the wheels start to turn, code 475 forward and 525 back (Arsh, 27 Nov), up to 550 (554 back; <code>throttle_cap_code</code>)</td>
+<td>⚠️ changed on purpose: 233, then 410, were under the wheels' start, and the car didn't move (#51)</td>
 </tr>
 <tr>
 <td>RC gear on brake: DAC ramps down, brake full</td>

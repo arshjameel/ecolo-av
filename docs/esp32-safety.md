@@ -141,8 +141,8 @@ lost RC is a hard stop there as well: [the rules](firmware.md#the-rc-transmitter
 !!! note "The speed rules are off on the car"
     The wheel speed comes only in version 4 frames, and the Motor Pi doesn't send them
     yet. So no overspeed check and no lost-speed stop on the ESP32. The only limit is the
-    open-loop throttle cap: the throttle the open loop gives at `max_speed`, from 265
-    (where the wheels start, Arsh, 26 Nov) a third of the way to 700, so 410 of 1023;
+    open-loop throttle cap: the throttle the open loop gives at `max_speed`, from 475
+    (where the wheels start, Arsh, 27 Nov) a third of the way to 700, so 550 of 1023;
     `full_throttle_speed` (3.0) is a guess (Q4).
 
 ## 5. What each failure upstream does

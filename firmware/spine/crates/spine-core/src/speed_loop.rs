@@ -514,8 +514,9 @@ impl SpeedLoop {
 /// `start_throttle`, the least throttle that turns the wheels, to full throttle at
 /// `full_throttle_speed`. 0 with no map (`full_throttle_speed` 0 or less).
 ///
-/// The car's controller does nothing below its start (Arsh, 26 Nov: the C++'s slowest
-/// was 265 of 1023, its cap 700), so every speed the spine asks for gets at least that.
+/// The car's controller does nothing below its start (Arsh, 27 Nov, the C++ on stands:
+/// the wheels start at about 475 of 1023 forward, 525 back; its cap is 700), so every
+/// speed the spine asks for gets at least that.
 #[must_use]
 pub fn open_loop_throttle(speed: f32, full_throttle_speed: f32, start_throttle: f32) -> f32 {
     if full_throttle_speed > 0.0 {
@@ -850,14 +851,14 @@ mod tests {
 
     #[test]
     fn open_loop_throttle_starts_where_the_wheels_turn() {
-        let start = 265.0 / 700.0;
+        let start = 475.0 / 700.0;
         let mut l = lp();
         // The least speed past a stop already gets the start; a third of full speed, a
         // third of the way from it to full.
         assert!(l.open_loop(0.06, 3.0, start).throttle >= start);
         let d = l.open_loop(1.0, 3.0, start);
         assert!(
-            (d.throttle * 700.0 - 410.0).abs() < 0.5,
+            (d.throttle * 700.0 - 550.0).abs() < 0.5,
             "{}",
             d.throttle * 700.0
         );
