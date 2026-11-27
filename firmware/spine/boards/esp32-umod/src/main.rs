@@ -153,6 +153,14 @@ const THROTTLE_START_CODE: u16 = 475;
 /// The same in reverse: the wheels started at 521 to 552 (Arsh, 27 Nov).
 const THROTTLE_START_REVERSE_CODE: u16 = 525;
 
+/// The steering's rate limit (rad/s), for the RC and the Motor-Pi's commands alike: the
+/// steering motor's own speed, so the RC steers as the C++ did, while a target that jumps
+/// still moves no faster. Arsh, 27 Nov, the C++ on stands: centre to full lock (1550
+/// counts) in about 0.22 s, filmed at 30 frames a second, so 1.9 to 2.8 rad/s at 3100
+/// counts a radian (`Calibration::TODAY`, itself TODO(Q1)). spine-core's default, 0.6,
+/// copies `ego.yaml`'s `max_steering_rate`, which still limits the computer upstream.
+const STEER_RATE: f32 = 2.2;
+
 /// The brake while nobody drives, from boot on. The C++ kept it full on (3500), and this
 /// board has no e-stop input yet to hold it, so it does the same until the team settles
 /// spine-core's `IDLE_BRAKE` (proposed 0.0: released). TODO(Ben): decide.
@@ -558,6 +566,7 @@ async fn main(spawner: Spawner) -> ! {
             start_throttle_reverse: cal.throttle.fraction(THROTTLE_START_REVERSE_CODE),
         },
         idle_brake: IDLE_BRAKE,
+        max_steer_rate: STEER_RATE,
         // The RC receiver is on GPIO 32: in normal mode too, losing the RC is a hard stop
         // (Arsh, 21 Nov).
         rc_fitted: true,

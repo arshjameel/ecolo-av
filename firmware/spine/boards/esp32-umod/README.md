@@ -171,7 +171,7 @@ copy. Today's default build:
 | Area | Keys (text form) | Today | From |
 |---|---|---|---|
 | Steering | `steer_min`, `steer_centre`, `steer_max` | 400, 1950, 3500 counts | `Calibration::TODAY.steering` |
-| | `steer_counts_per_rad`, `steer_max_rad`, `steer_rate_rad_s` | 3100, 0.5 rad, 0.6 rad/s | the calibration; `SpineConfig` (`MAX_STEERING_ANGLE`) |
+| | `steer_counts_per_rad`, `steer_max_rad`, `steer_rate_rad_s` | 3100, 0.5 rad, 2.2 rad/s | the calibration; `SpineConfig` (`MAX_STEERING_ANGLE`); `STEER_RATE` here: the steering motor's own speed, filmed 27 Nov (spine-core's default is 0.6) |
 | | `steer_cal_rate`, `steer_cal_timeout_ms`, `steer_on_stop` | 300 counts/s, 100 ms, `hold` | `legacy_link::CAL_RATE`, `CAL_TIMEOUT_MS`; `ESTOP_STEERING` |
 | Speed | `max_speed`, `max_reverse_speed` | 1.0, 0.5 m/s | `MAX_SPEED`, `MAX_REVERSE_SPEED` |
 | | `throttle_cap_code`, `reverse_cap_code` | 550, 554 of 1023 | `SpineConfig::open_loop_throttle_cap`, the code the spine caps at: the open loop from `THROTTLE_START_CODE` (475) and `THROTTLE_START_REVERSE_CODE` (525), where the wheels start (Arsh, 27 Nov) |

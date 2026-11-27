@@ -7,7 +7,7 @@
 <!-- Generated from docs/rust-firmware.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Rust on the hardware</h1>
-<div class="meta">57 min read · 15 sections</div></header>
+<div class="meta">58 min read · 15 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -1067,7 +1067,7 @@ uplink at 50 Hz, its echo, the three modes: <a href="esp32-bench.html#before-the
 <td>Steering: 1950 + s × 1950 (s ≤ 0) or × 1550; clamped 400..3500</td>
 <td><code>ros2_handler.cpp</code>, <code>setSteer()</code></td>
 <td><code>Frame::targets</code>, then radians, then the same target</td>
-<td>same target; ⚠️ reached at 0.6 rad/s (spine-core's steering rate limit), not at once</td>
+<td>same target; ⚠️ reached at 2.2 rad/s (<code>STEER_RATE</code>, the motor's own speed, 27 Nov), not at once</td>
 </tr>
 <tr>
 <td>Brake: accel &lt; -0.05 → clamp(|a| × 3500, 400, 3500), DAC cut at once</td>
@@ -1256,7 +1256,7 @@ uplink at 50 Hz, its echo, the three modes: <a href="esp32-bench.html#before-the
 <tr>
 <td>4</td>
 <td>Steering rate limit on the UART link: keep 0.6 rad/s, or pass targets at once like the C++?</td>
-<td>0.6 rad/s</td>
+<td>2.2 rad/s, the motor's own speed (27 Nov): the C++'s feel, still capped</td>
 </tr>
 <tr>
 <td>5</td>
