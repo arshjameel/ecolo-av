@@ -7,7 +7,7 @@
 <!-- Generated from docs/firmware.md by tools/build_docs.py. Edit the markdown, not this file. -->
 <header class="bar"><div class="kicker">AAV 2026–27 · AUTONOMY STACK</div>
 <h1>Firmware: the spine and its CAN contract</h1>
-<div class="meta">21 min read · 10 sections</div></header>
+<div class="meta">24 min read · 11 sections</div></header>
 <nav class="menu"><a href="index.html">Start here</a>
 <a href="what-we-built.html">What we built</a>
 <a href="overview.html">Overview</a>
@@ -143,7 +143,7 @@
 <a href="car_measurements.html">Car numbers</a>
 <a href="hud.html">HUD</a></nav>
 <main>
-<nav class="toc"><span>On this page:</span><a href="#ros-vs-firmware">ros/ vs firmware/</a><a href="#how-a-chip-joins-ros-2">How a chip joins ROS 2</a><a href="#one-interface-many-drivers">One interface, many drivers</a><a href="#the-spines-job">The spine&#x27;s job</a><a href="#the-can-contract">The CAN contract</a><a href="#firmwarespine-the-rust-code">firmware/spine: the Rust code</a><a href="#the-cars-two-other-pico-2s-in-rust-15-october">The car&#x27;s two other Pico 2s, in Rust (15 October)</a><a href="#todays-firmware-firmwarelegacy">Today&#x27;s firmware: firmware/legacy/</a><a href="#t36-the-stops-and-its-done-test">T3.6: the stops and its done test</a><a href="#still-to-decide">Still to decide</a></nav>
+<nav class="toc"><span>On this page:</span><a href="#ros-vs-firmware">ros/ vs firmware/</a><a href="#how-a-chip-joins-ros-2">How a chip joins ROS 2</a><a href="#one-interface-many-drivers">One interface, many drivers</a><a href="#the-spines-job">The spine&#x27;s job</a><a href="#the-can-contract">The CAN contract</a><a href="#firmwarespine-the-rust-code">firmware/spine: the Rust code</a><a href="#the-cars-two-other-pico-2s-in-rust-15-october">The car&#x27;s two other Pico 2s, in Rust (15 October)</a><a href="#todays-firmware-firmwarelegacy">Today&#x27;s firmware: firmware/legacy/</a><a href="#t36-the-stops-and-its-done-test">T3.6: the stops and its done test</a><a href="#braking-with-the-motor-regen-not-used">Braking with the motor (regen): not used</a><a href="#still-to-decide">Still to decide</a></nav>
 <div class="lead"><p>ROS stops at the CAN bus. Below it, a microcontroller called the spine owns the pins, the
 actuators and the watchdog. This page covers what goes where, the CAN contract, and
 what's left to build.</p></div>
@@ -703,7 +703,7 @@ left stick (CH3):   1000 ◄── forward ──┤ middle ±20 %: throttle off
 </tr>
 <tr>
 <td>The left stick in its middle</td>
-<td>throttle off, no brake: the motor's own braking (regen, assumed)</td>
+<td>throttle off, no brake: the car slows as the motor controller decides (<a href="#braking-with-the-motor-regen-not-used">braking with the motor</a>)</td>
 </tr>
 <tr>
 <td>The left stick the other way, the car still moving</td>
@@ -749,6 +749,78 @@ each. Only a deliberate re-arm releases it. Corrupted frames are tested in QEMU.
 </blockquote>
 <p>The 130 ms is the 100 ms timeout, up to two 10 ms ticks, and a margin over QEMU's measured
 111-120 ms. It times the command, not the actuator's travel.</p>
+</section>
+<section class="card"><h2 id="braking-with-the-motor-regen-not-used">Braking with the motor (regen): not used</h2>
+<p>Regenerative braking ("regen") slows a car with its motor, which then works as a generator
+and charges the battery. <strong>The firmware does none of it.</strong> When the throttle is off (the
+RC's middle zone, a stop), it sends the DAC 0, and whatever the motor does then is the motor
+controller's own setting (the silver finned box), not our code.</p>
+<p><strong>Why not, on this car</strong> (Will, the electrical lead, 27 Nov): there is too little energy to
+recover at the speeds it can reach, and its motor doesn't reach the speeds where it would
+pay. The energy in the moving car is ½ × mass × speed²:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Speed</th>
+<th>Energy, empty car (181 kg, <code>vehicle.yaml</code>, a guess)</th>
+<th>About as much as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 m/s (our limit)</td>
+<td>90 J</td>
+<td>lifting a 9 kg bag one metre</td>
+</tr>
+<tr>
+<td>10 m/s (36 km/h, where it would start to pay, Will's estimate)</td>
+<td>9,000 J</td>
+<td>100 times more; out of this motor's reach</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What a later team would need to try it:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Why</th>
+<th>Where to start</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A motor controller that does regen, and its settings</td>
+<td>it decides whether braking charges the battery</td>
+<td>the controller's model and manual (not yet written down)</td>
+</tr>
+<tr>
+<td>A battery and charge path that accept the current</td>
+<td>charging too fast harms the cells</td>
+<td>the battery's datasheet; the Victron monitor (<code>aav_battery_victron</code>) shows the current</td>
+</tr>
+<tr>
+<td>A wheel speed on the board</td>
+<td>regen fades near a stop, so the spine must know the speed to blend it with the mechanical brake</td>
+<td>today's ESP32 has none; the wheel encoder reaches the Motor Pi only</td>
+</tr>
+<tr>
+<td>A way to ask for it</td>
+<td>the firmware has no regen command</td>
+<td>in <code>spine-core</code>, the RC's middle zone and a stop send throttle 0 (<code>Spine::rc</code>, the open loop): a "regen" request would go there, and the board would send it to the controller</td>
+</tr>
+<tr>
+<td>A car that goes faster</td>
+<td>below about 10 m/s it recovers almost nothing</td>
+<td>the motor and the gearing</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What today's controller does at throttle 0</strong> isn't measured. On stands (27 Nov), a rear
+wheel spinning at the RC's speed stopped in about 0.5 s with the throttle off and <strong>no</strong>
+brake, as fast as with the full brake: something slows it (the controller, or the drive
+train's friction). On the ground, under the car's weight, the two will differ. Test there,
+slowly, before changing the brake.</p>
 </section>
 <section class="card"><h2 id="still-to-decide">Still to decide</h2>
 <p>For the team, from the drivers' port. Each is one constant at the top of <code>spine-core</code>'s

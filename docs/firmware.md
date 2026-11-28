@@ -268,7 +268,7 @@ left stick (CH3):   1000 ◄── forward ──┤ middle ±20 %: throttle off
 | Rule | The spine |
 |---|---|
 | The left stick up or back | drive that way at a fixed speed (1.0 m/s, 0.5 back), ramped at 0.5 m/s² (`RC_ACCEL`). With no wheel speed (today's ESP32), the throttle starts where the wheels start to turn, 475 of 1023 forward and 525 back, and rises to 550 (554 back); 700 is the cap (Arsh, 27 Nov) |
-| The left stick in its middle | throttle off, no brake: the motor's own braking (regen, assumed) |
+| The left stick in its middle | throttle off, no brake: the car slows as the motor controller decides ([braking with the motor](#braking-with-the-motor-regen-not-used)) |
 | The left stick the other way, the car still moving | throttle off; past 88 % the hard brake too. The new way once stopped: under 0.05 m/s for 0.5 s, or with no speed (today's ESP32), the hard brake held 1 s |
 | The right stick down | the hard brake while held, the steering stick still steering. In normal mode the RC takes the car |
 | Let go of it; after any other stop, at power-up, after the mode switch moves | braked at least 1 s (`RC_BRAKE_MS`), until the left stick leaves the zone it was in (`RcHold`) |
@@ -293,6 +293,38 @@ version 4: until then the two speed rules stay off.
 
 The 130 ms is the 100 ms timeout, up to two 10 ms ticks, and a margin over QEMU's measured
 111-120 ms. It times the command, not the actuator's travel.
+
+## Braking with the motor (regen): not used
+
+Regenerative braking ("regen") slows a car with its motor, which then works as a generator
+and charges the battery. **The firmware does none of it.** When the throttle is off (the
+RC's middle zone, a stop), it sends the DAC 0, and whatever the motor does then is the motor
+controller's own setting (the silver finned box), not our code.
+
+**Why not, on this car** (Will, the electrical lead, 27 Nov): there is too little energy to
+recover at the speeds it can reach, and its motor doesn't reach the speeds where it would
+pay. The energy in the moving car is ½ × mass × speed²:
+
+| Speed | Energy, empty car (181 kg, `vehicle.yaml`, a guess) | About as much as |
+|---|---|---|
+| 1 m/s (our limit) | 90 J | lifting a 9 kg bag one metre |
+| 10 m/s (36 km/h, where it would start to pay, Will's estimate) | 9,000 J | 100 times more; out of this motor's reach |
+
+**What a later team would need to try it:**
+
+| Need | Why | Where to start |
+|---|---|---|
+| A motor controller that does regen, and its settings | it decides whether braking charges the battery | the controller's model and manual (not yet written down) |
+| A battery and charge path that accept the current | charging too fast harms the cells | the battery's datasheet; the Victron monitor (`aav_battery_victron`) shows the current |
+| A wheel speed on the board | regen fades near a stop, so the spine must know the speed to blend it with the mechanical brake | today's ESP32 has none; the wheel encoder reaches the Motor Pi only |
+| A way to ask for it | the firmware has no regen command | in `spine-core`, the RC's middle zone and a stop send throttle 0 (`Spine::rc`, the open loop): a "regen" request would go there, and the board would send it to the controller |
+| A car that goes faster | below about 10 m/s it recovers almost nothing | the motor and the gearing |
+
+**What today's controller does at throttle 0** isn't measured. On stands (27 Nov), a rear
+wheel spinning at the RC's speed stopped in about 0.5 s with the throttle off and **no**
+brake, as fast as with the full brake: something slows it (the controller, or the drive
+train's friction). On the ground, under the car's weight, the two will differ. Test there,
+slowly, before changing the brake.
 
 ## Still to decide
 
